@@ -1264,7 +1264,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-cli"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "chrono",
  "clap",
@@ -1289,7 +1289,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1297,7 +1297,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1308,7 +1308,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-engine"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "log",
  "serde",
@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "js-sys",
  "serde",
@@ -1333,7 +1333,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "chrono",
  "serde",
@@ -1347,7 +1347,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-intent"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "chrono",
  "regex",
@@ -1362,7 +1362,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-language"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "nom",
  "serde",
@@ -1372,7 +1372,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-lsp"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "async-trait",
  "rand",
@@ -1389,7 +1389,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-report"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1398,7 +1398,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-scan"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "ignore",
  "log",
@@ -1428,7 +1428,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-types"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1436,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.17.0"
+version = "0.17.2"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",

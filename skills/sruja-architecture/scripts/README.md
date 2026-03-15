@@ -139,5 +139,5 @@ curl -fsSL https://sruja.ai/install.sh | bash
 ## See Also
 
 - [SKILL.md](../SKILL.md) - Core skill orchestration guide
-- [REFERENCE.md](../REFERENCE.md) - Detailed discovery and modeling guide
-- [PROMPTS.md](../PROMPTS.md) - Reusable AI prompts
+- [references/REFERENCE.md](../references/REFERENCE.md) - Detailed discovery and modeling guide
+- [references/PROMPTS.md](../references/PROMPTS.md) - Reusable AI prompts

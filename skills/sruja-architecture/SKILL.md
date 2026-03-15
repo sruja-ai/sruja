@@ -173,12 +173,28 @@ For systems spanning multiple repos:
 
 See **docs/FEDERATION.md** for artifact schemas and Phase 4 retrieval behavior.
 
+## Progressive discovery — what to load when
+
+**Do not load references/AGENTS.md, references/REFERENCE.md, or entire rules/ at once.** Load only the files listed for the current task.
+
+| Task | Load only these files |
+|------|------------------------|
+| **Creating baseline / discovery** | rules/sdlc/create-phase.md, references/PROMPTS.md (Discovery section) |
+| **Updating / drift** | rules/sdlc/update-phase.md, references/REFERENCE.md (SDLC update workflow section) |
+| **Impact analysis** | rules/query/impact-analysis.md |
+| **Requirement traceability** | rules/requirements/capture-requirements.md, rules/requirements/link-requirements.md; references/PROMPTS.md if needed |
+| **Compliance** | rules/query/compliance-check.md |
+| **Full design / refactor / patterns** | references/AGENTS.md |
+
+Heavy reference material lives in references/ and is loaded on demand. Keep context minimal by reading only what the task requires.
+
 ## Related References
 
-- **Discovery workflow**: See REFERENCE.md
-- **Modeling rules**: See rules/ directory
-- **Prompt patterns**: See PROMPTS.md and AGENTS.md
-- **Refinement workflow**: See REFERENCE.md
+- **Discovery workflow**: See references/REFERENCE.md
+- **Modeling rules**: See rules/ directory (load specific rule files per task; see table above)
+- **Prompt patterns**: See references/PROMPTS.md and references/AGENTS.md (load AGENTS.md only for full design/refactor)
+- **Refinement workflow**: See references/REFERENCE.md (SDLC update workflow)
+- **SDLC and query**: See rules/sdlc/, rules/requirements/, rules/query/ and references/REFERENCE.md (SDLC update workflow, Query patterns, Integrations)
 - **Multi-repo federation**: See docs/FEDERATION.md
 
 ## Prerequisites

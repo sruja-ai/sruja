@@ -12,9 +12,9 @@ mod languages;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use rayon::prelude::*;
 use crate::graph::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
 use crate::ScanError;
+use rayon::prelude::*;
 
 use self::detector::Language;
 use self::languages::ParsedFile;
@@ -245,7 +245,9 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
 
     // 5. Deterministic output: sort nodes by id, edges by (source, target).
     nodes.sort_by(|a, b| a.id.cmp(&b.id));
-    edges.sort_by(|a, b| (a.source.as_str(), a.target.as_str()).cmp(&(b.source.as_str(), b.target.as_str())));
+    edges.sort_by(|a, b| {
+        (a.source.as_str(), a.target.as_str()).cmp(&(b.source.as_str(), b.target.as_str()))
+    });
 
     Ok(Graph {
         metadata: HashMap::new(),

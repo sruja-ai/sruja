@@ -12,19 +12,19 @@ capabilities:
   - Drift detection and refinement
 
 prompts:
-  default: "Use sruja-architecture skill. Run `sruja sync -r .` (or `sruja discover --context -r . --format json`), gather evidence from the repo, ask targeted questions only if scope or externals are unclear, generate a minimal repo.sruja with evidence-based components and relationships using C4 context and container levels, then run `sruja lint repo.sruja` and fix all errors until it passes. Do not guess about missing information; list open questions instead."
+  default: "Use sruja-architecture skill. Load only rules/sdlc/create-phase.md and references/PROMPTS.md (Discovery) for this task. Run `sruja sync -r .` (or `sruja discover --context -r . --format json`), gather evidence from the repo, ask targeted questions only if scope or externals are unclear, generate a minimal repo.sruja with evidence-based components and relationships using C4 context and container levels, then run `sruja lint repo.sruja` and fix all errors until it passes. Do not guess about missing information; list open questions instead."
 
-  discovery: "Use sruja-architecture skill. Run `sruja sync -r .` or `sruja discover --context -r . --format json`, gather evidence from the repo including structure, technologies, modules, entry points, and dependencies. Ask targeted questions only when evidence is ambiguous. Generate a minimal repo.sruja covering only what evidence supports. Run `sruja lint repo.sruja` and fix all errors."
+  discovery: "Use sruja-architecture skill. Load only rules/sdlc/create-phase.md and references/PROMPTS.md (Discovery section). Run `sruja sync -r .` or `sruja discover --context -r . --format json`, gather evidence from the repo including structure, technologies, modules, entry points, and dependencies. Ask targeted questions only when evidence is ambiguous. Generate a minimal repo.sruja covering only what evidence supports. Run `sruja lint repo.sruja` and fix all errors."
 
-  refinement: "Use sruja-architecture skill. Analyze this existing repo.sruja (or architecture.sruja), run `sruja sync -r .` or `sruja discover --context -r . --format json` for current evidence, compare architecture against evidence, identify discrepancies, propose updates to align with current code, then run `sruja lint repo.sruja` and fix all errors."
+  refinement: "Use sruja-architecture skill. Load only rules/sdlc/update-phase.md and references/REFERENCE.md (SDLC update workflow). Analyze this existing repo.sruja (or architecture.sruja), run `sruja sync -r .` or `sruja discover --context -r . --format json` for current evidence, compare architecture against evidence, identify discrepancies, propose updates to align with current code, then run `sruja lint repo.sruja` and fix all errors."
 
-  drift: "Use sruja-architecture skill. Run `sruja drift -r .` (auto-detects repo.sruja / architecture.sruja) or `sruja drift -r . -a repo.sruja --format json` to detect drift. Analyze results, propose updates to repo.sruja to address drift, run `sruja lint repo.sruja` and fix all errors. List open questions for any uncertainties."
+  drift: "Use sruja-architecture skill. Load only rules/sdlc/update-phase.md and references/REFERENCE.md (SDLC update workflow). Run `sruja drift -r .` (auto-detects repo.sruja / architecture.sruja) or `sruja drift -r . -a repo.sruja --format json` to detect drift. Analyze results, propose updates to repo.sruja to address drift, run `sruja lint repo.sruja` and fix all errors. List open questions for any uncertainties."
 
 references:
   - SKILL.md
-  - REFERENCE.md
-  - PROMPTS.md
-  - AGENTS.md
+  - references/REFERENCE.md
+  - references/PROMPTS.md
+  - references/AGENTS.md
 
 installation: "npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture"
 
