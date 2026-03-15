@@ -33,7 +33,7 @@ cd your-project
 sruja discover --context -r . --format json
 ```
 
-**What this does:** Scans your repo with Tree-sitter, builds the component/dependency graph, then outputs a **summary** of that graph (so the AI can scope and ask targeted questions). The full graph is used internally; for the actual list of nodes and edges (structural relations), use `sruja scan -r . -o graph.json`.
+**What this does:** Scans your repo with Tree-sitter, builds the component/dependency graph, then outputs a **summary** of that graph (so the AI can scope and ask targeted questions). The skill prefers `.sruja/context.json` and `.sruja/graph.json` when present (e.g. after `sruja sync` or the extension's **Refresh repo context**); when missing, it runs discover for you—no need to run a command first. For the full graph on demand: `sruja scan -r . -o graph.json`, or use the graph written by sync at `.sruja/graph.json`.
 
 **Summary output includes:**
 - Component and edge **counts** (from the Tree-sitter graph)
@@ -57,7 +57,7 @@ sruja discover --context -r . --format json
 }
 ```
 
-To get the **full graph** (every component and its relations) for the skill or tooling: `sruja scan -r . -o graph.json`.
+The **full graph** is written by `sruja sync` to `.sruja/graph.json`. You can also produce it on demand with `sruja scan -r . -o graph.json`.
 
 ---
 

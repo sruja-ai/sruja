@@ -101,7 +101,7 @@ The **sruja-architecture skill** is the primary way to get value; it runs discov
 | Command | Purpose |
 |---------|---------|
 | **`sruja discover --context -r <path> --format json`** | Evidence for the skill: repo structure, technologies, modules (skill runs this) |
-| **`sruja sync -r <path>`** | Refresh `.sruja/context.json`; skill uses this for evidence |
+| **`sruja sync -r <path>`** | Refresh `.sruja/context.json` (summary) and `.sruja/graph.json` (full graph); skill uses these for evidence |
 | **`sruja drift -r <path> -a repo.sruja`** | Declared vs actual; skill uses for refinement; CI for gates |
 | **`sruja why "question" -r <path>`** | Answer "why" questions with evidence from the graph |
 | **`sruja context -r <path>`** | Export architecture context for AI tools |

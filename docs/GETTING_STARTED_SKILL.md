@@ -59,8 +59,9 @@ curl -fsSL https://sruja.ai/install.sh | bash
 In your AI editor, run:
 
 ```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`,
-gather evidence, ask targeted questions if needed,
+Use sruja-architecture. Gather evidence (it prefers .sruja/context.json when present;
+when missing, it runs discover for you—no need to run a command first),
+ask targeted questions if needed,
 generate repo.sruja (architecture.sruja is also supported),
 then run `sruja lint` and fix.
 ```

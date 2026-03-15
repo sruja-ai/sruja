@@ -455,7 +455,7 @@ cargo build --release
 
 # Test knowledge graph persistence
 ./target/release/sruja drift -r .
-# Note: .sruja/graph.json is generated when needed
+# Note: .sruja/graph.json is written by sruja sync
 
 # Test unified ask command
 ./target/release/sruja ask "What is architecture?" -r .
