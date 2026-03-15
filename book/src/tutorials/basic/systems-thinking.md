@@ -57,7 +57,7 @@ import { * } from 'sruja.ai/stdlib'
 Shop = system "Shop" {
   WebApp = container "Web App"
   API = container "API"
-  DB = datastore "Database"
+  DB = database "Database"
 }
 
 // Outside boundary: External entities
@@ -99,7 +99,7 @@ Customer = person "Customer"
 Shop = system "Shop" {
   WebApp = container "Web App"
   API = container "API"
-  DB = datastore "Database"
+  DB = database "Database"
 }
 PaymentGateway = system "PaymentGateway" {
   tags ["external"]
@@ -200,7 +200,7 @@ import { * } from 'sruja.ai/stdlib'
 Admin = person "Administrator"
 Shop = system "Shop" {
   API = container "API"
-  Inventory = datastore "Inventory"
+  Inventory = database "Inventory"
 }
 
 // Event-driven feedback loop

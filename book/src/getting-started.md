@@ -160,7 +160,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 You can still use Sruja manually:
 - Run `sruja discover` to get JSON output
-- Create `repo.sruja` by hand (see [Language spec](docs/reference/language-spec.md))
+- Create `repo.sruja` by hand (see [Language spec](reference/language-spec.md))
 - Use `sruja lint` to validate
 
 But AI makes it much easier—consider using Cursor or installing skills.sh.

@@ -8,7 +8,7 @@ initialDsl: |
   person = kind "Person"
   system = kind "System"
   container = kind "Container"
-  datastore = kind "Datastore"
+  database = kind "Database"
 
   Customer = person "Online Customer"
 
@@ -16,9 +16,9 @@ initialDsl: |
     UserService = container "User Management"
     OrderService = container "Order Processing"
     PaymentService = container "Payment Processing"
-    UserDB = datastore "User Database"
-    OrderDB = datastore "Order Database"
-    PaymentDB = datastore "Payment Database"
+    UserDB = database "User Database"
+    OrderDB = database "Order Database"
+    PaymentDB = database "Payment Database"
   }
 
   Customer -> ECommerce.UserService "Logs in"
@@ -57,7 +57,7 @@ solution: |
   person = kind "Person"
   system = kind "System"
   container = kind "Container"
-  datastore = kind "Datastore"
+  database = kind "Database"
 
   Customer = person "Online Customer"
 
@@ -65,9 +65,9 @@ solution: |
     UserService = container "User Management"
     OrderService = container "Order Processing"
     PaymentService = container "Payment Processing"
-    UserDB = datastore "User Database"
-    OrderDB = datastore "Order Database"
-    PaymentDB = datastore "Payment Database"
+    UserDB = database "User Database"
+    OrderDB = database "Order Database"
+    PaymentDB = database "Payment Database"
   }
 
   Customer -> ECommerce.UserService "Logs in"

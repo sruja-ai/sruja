@@ -56,7 +56,7 @@ sruja init my-service
 # Creates: my-service.sruja, .cursorrules, .copilot-instructions.md, .architecture-skill.md
 ```
 
-Or add a single file, e.g. `architecture.sruja` or `docs/architecture.sruja`, and define your systems/containers/relationships (see [Language specification](../reference/language-spec.md) and [examples](https://github.com/sruja-ai/sruja/tree/main/examples)).
+Or add a single file, e.g. `architecture.sruja` or `docs/architecture.sruja`, and define your systems/containers/relationships (see [Language specification](../reference/language-spec.md) and the [Examples Gallery](../examples/index.md)).
 
 ### Step 2: AI editor integration (so AI-generated code follows rules)
 
