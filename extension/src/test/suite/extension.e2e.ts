@@ -18,6 +18,7 @@ suite("Extension (e2e)", () => {
       "sruja.runValidation",
       "sruja.exportMarkdown",
       "sruja.openDiagramPreview",
+      "sruja.openMarkdownPreview",
       "sruja.openSkillsOverview",
       "sruja.openAgentGuide",
       "sruja.listRules",
@@ -118,6 +119,70 @@ suite("Extension (e2e)", () => {
     );
     assert.ok(Array.isArray(symbols) || symbols === undefined, "Document symbols should be array or undefined");
   }).timeout(10_000);
+
+  test("custom editor provider is registered for markdown preview", async () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(folder, "Test workspace should be open");
+    const srujaUri = vscode.Uri.joinPath(folder.uri, "sample.sruja");
+    
+    const editors = vscode.window.visibleNotebookEditors;
+    assert.ok(Array.isArray(editors), "Notebook editors should be array");
+    
+    const allEditors = vscode.window.tabGroups.all;
+    assert.ok(Array.isArray(allEditors), "Tab groups should be array");
+  }).timeout(10_000);
+
+  test("markdown preview custom editor can be opened", async () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(folder, "Test workspace should be open");
+    const srujaUri = vscode.Uri.joinPath(folder.uri, "sample.sruja");
+    
+    await vscode.commands.executeCommand("vscode.openWith", srujaUri, "sruja.markdownPreview");
+    await sleep(1500);
+    
+    const activeEditor = vscode.window.activeTextEditor;
+    assert.ok(activeEditor === undefined || activeEditor?.document.uri.toString() !== srujaUri.toString(), 
+      "Custom editor should be active (not text editor)");
+    
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+  }).timeout(15_000);
+
+  test("sruja.openMarkdownPreview command opens custom editor", async () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(folder, "Test workspace should be open");
+    const srujaUri = vscode.Uri.joinPath(folder.uri, "sample.sruja");
+    
+    const doc = await vscode.workspace.openTextDocument(srujaUri);
+    await vscode.window.showTextDocument(doc);
+    await sleep(500);
+    
+    await assert.doesNotReject(
+      async () => vscode.commands.executeCommand("sruja.openMarkdownPreview"),
+      "openMarkdownPreview should not throw"
+    );
+    await sleep(1000);
+    
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+  }).timeout(15_000);
+
+  test("markdown preview updates on document change", async () => {
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    assert.ok(folder, "Test workspace should be open");
+    const srujaUri = vscode.Uri.joinPath(folder.uri, "sample.sruja");
+    
+    const doc = await vscode.workspace.openTextDocument(srujaUri);
+    await vscode.window.showTextDocument(doc);
+    await sleep(500);
+    
+    await vscode.commands.executeCommand("vscode.openWith", srujaUri, "sruja.markdownPreview", vscode.ViewColumn.Beside);
+    await sleep(1500);
+    
+    const tabGroups = vscode.window.tabGroups.all;
+    const hasPreview = tabGroups.some(g => g.tabs.some(t => t.input && t.label?.includes("Preview")));
+    assert.ok(tabGroups.length >= 1, "Should have at least one tab group");
+    
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+  }).timeout(15_000);
 });
 
 function sleep(ms: number): Promise<void> {

@@ -137,6 +137,10 @@
       {
         "command": "sruja.review",
         "title": "Sruja: Review architecture update"
+      },
+      {
+        "command": "sruja.openMarkdownPreview",
+        "title": "Sruja: Open Markdown Preview"
       }
     ],
     "menus": {
@@ -164,6 +168,12 @@
           "command": "sruja.openDiagramPreview",
           "when": "editorLangId == sruja",
           "group": "navigation"
+        },
+        {
+          "command": "sruja.openMarkdownPreview",
+          "when": "editorLangId == sruja",
+          "group": "navigation",
+          "icon": "$(preview)"
         }
       ]
     },
@@ -174,7 +184,19 @@
           "name": "Sruja Skills"
         }
       ]
-    }
+    },
+    "customEditors": [
+      {
+        "viewType": "sruja.markdownPreview",
+        "displayName": "Sruja Markdown Preview",
+        "selector": [
+          {
+            "filenamePattern": "*.sruja"
+          }
+        ],
+        "priority": "option"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

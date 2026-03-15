@@ -15,6 +15,7 @@ import { runLintJson, runCli } from "./cliRunner";
 import { parseJsonSafe } from "./safeJson";
 import { formatStatusLines, formatReviewLines, type StatusJson, type ReviewJson } from "./cliOutput";
 import { getDiagramPreviewHtml, escapeMermaidForScript } from "./diagramPreview";
+import { SrujaMarkdownPreviewEditorProvider } from "./markdownPreviewEditor";
 
 const execFileAsync = promisify(execFile);
 
@@ -214,6 +215,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerDocumentSymbolProvider("sruja", documentSymbolProvider)
   );
 
+  // Register custom editor for markdown preview (shows "Open Preview" button in editor title)
+  context.subscriptions.push(
+    vscode.window.registerCustomEditorProvider(
+      "sruja.markdownPreview",
+      new SrujaMarkdownPreviewEditorProvider(context),
+      { supportsMultipleEditorsPerDocument: false, webviewOptions: { retainContextWhenHidden: true } }
+    )
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand("sruja.openSkillsOverview", async () => {
       const root = getSkillsRoot(context);
@@ -411,6 +421,21 @@ export function activate(context: vscode.ExtensionContext): void {
         diagramPreviewPanel = undefined;
       });
       diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+    }),
+    vscode.commands.registerCommand("sruja.openMarkdownPreview", async () => {
+      const editor = vscode.window.activeTextEditor;
+      const doc = editor?.document;
+      if (!doc || doc.languageId !== "sruja") {
+        vscode.window.showWarningMessage("Open a .sruja file to open markdown preview.");
+        return;
+      }
+      if (!useWasm()) {
+        vscode.window.showInformationMessage(
+          "Markdown preview uses bundled WASM. Clear sruja.lsp.path to use it."
+        );
+        return;
+      }
+      await vscode.commands.executeCommand("vscode.openWith", doc.uri, "sruja.markdownPreview", vscode.ViewColumn.Beside);
     }),
     vscode.commands.registerCommand("sruja.runDrift", async () => {
       const channel = getCliOutputChannel();
