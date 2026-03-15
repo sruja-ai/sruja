@@ -429,4 +429,308 @@ mod tests {
         assert_eq!(to_b.len(), 1);
         assert_eq!(to_b[0].source, "a");
     }
+
+    #[test]
+    fn test_to_json_and_from_json() {
+        let mut graph = KnowledgeGraph::with_name("TestGraph");
+        graph.add_node(test_node("svc")).unwrap();
+
+        let json = graph.to_json().unwrap();
+        let restored = KnowledgeGraph::from_json(&json).unwrap();
+
+        assert_eq!(restored.metadata.name, "TestGraph");
+        assert!(restored.get_node("svc").is_some());
+    }
+
+    #[test]
+    fn test_add_decision() {
+        let mut graph = KnowledgeGraph::new();
+        let decision = Decision {
+            id: "ADR-001".to_string(),
+            title: "Use PostgreSQL".to_string(),
+            status: DecisionStatus::Proposed,
+            context: "Need reliable database".to_string(),
+            decision: "Use PostgreSQL for primary datastore".to_string(),
+            consequences: "Team needs training".to_string(),
+            alternatives: vec!["MySQL".to_string()],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: Some("Team".to_string()),
+            source: SourceReference::manual(),
+            affects: vec!["db".to_string()],
+        };
+
+        graph.add_decision(decision).unwrap();
+        assert!(graph.get_decision("ADR-001").is_some());
+    }
+
+    #[test]
+    fn test_accept_decision() {
+        let mut graph = KnowledgeGraph::new();
+        let decision = Decision {
+            id: "ADR-001".to_string(),
+            title: "Test".to_string(),
+            status: DecisionStatus::Proposed,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec![],
+        };
+        graph.add_decision(decision).unwrap();
+
+        graph.accept_decision("ADR-001").unwrap();
+        let accepted = graph.get_decision("ADR-001").unwrap();
+        assert_eq!(accepted.status, DecisionStatus::Accepted);
+        assert!(accepted.ratified_at.is_some());
+    }
+
+    #[test]
+    fn test_accept_nonexistent_decision_errors() {
+        let mut graph = KnowledgeGraph::new();
+        let result = graph.accept_decision("missing");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_decisions_for_node() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+        graph.add_node(test_node("db")).unwrap();
+
+        let d1 = Decision {
+            id: "ADR-1".to_string(),
+            title: "API Decision".to_string(),
+            status: DecisionStatus::Accepted,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec!["api".to_string()],
+        };
+        let d2 = Decision {
+            id: "ADR-2".to_string(),
+            title: "DB Decision".to_string(),
+            status: DecisionStatus::Accepted,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec!["db".to_string()],
+        };
+
+        graph.add_decision(d1).unwrap();
+        graph.add_decision(d2).unwrap();
+
+        let api_decisions = graph.get_decisions_for_node("api");
+        assert_eq!(api_decisions.len(), 1);
+        assert_eq!(api_decisions[0].id, "ADR-1");
+    }
+
+    #[test]
+    fn test_add_policy() {
+        let mut graph = KnowledgeGraph::new();
+        let policy = Policy {
+            id: "POL-001".to_string(),
+            name: "Security Policy".to_string(),
+            description: "Enforce security standards".to_string(),
+            rules: vec![],
+            severity: crate::PolicySeverity::Error,
+            source: SourceReference::manual(),
+        };
+
+        graph.add_policy(policy).unwrap();
+        assert!(graph.get_policy("POL-001").is_some());
+    }
+
+    #[test]
+    fn test_add_requirement() {
+        let mut graph = KnowledgeGraph::new();
+        let req = Requirement {
+            id: "REQ-001".to_string(),
+            title: "Login Feature".to_string(),
+            description: "Users must be able to login".to_string(),
+            priority: crate::RequirementPriority::Must,
+            source: SourceReference::manual(),
+            satisfied_by: vec![],
+        };
+
+        graph.add_requirement(req).unwrap();
+        assert!(graph.get_requirement("REQ-001").is_some());
+    }
+
+    #[test]
+    fn test_find_nodes_by_technology() {
+        let mut graph = KnowledgeGraph::new();
+        let mut node1 = test_node("api");
+        node1.technology = Some("Rust".to_string());
+        let mut node2 = test_node("web");
+        node2.technology = Some("TypeScript".to_string());
+
+        graph.add_node(node1).unwrap();
+        graph.add_node(node2).unwrap();
+
+        let rust_nodes = graph.find_nodes_by_technology("rust");
+        assert_eq!(rust_nodes.len(), 1);
+        assert_eq!(rust_nodes[0].id, "api");
+    }
+
+    #[test]
+    fn test_find_nodes_by_technology_case_insensitive() {
+        let mut graph = KnowledgeGraph::new();
+        let mut node = test_node("api");
+        node.technology = Some("Rust".to_string());
+        graph.add_node(node).unwrap();
+
+        let rust_nodes = graph.find_nodes_by_technology("RUST");
+        assert_eq!(rust_nodes.len(), 1);
+    }
+
+    #[test]
+    fn test_remove_edge_by_id() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("a")).unwrap();
+        graph.add_node(test_node("b")).unwrap();
+        graph
+            .add_edge(test_edge("e1", "a", "b", EdgeKind::Calls))
+            .unwrap();
+
+        let removed = graph.remove_edge("e1");
+        assert!(removed.is_some());
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn test_remove_nonexistent_edge_returns_none() {
+        let mut graph = KnowledgeGraph::new();
+        let result = graph.remove_edge("missing");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_node_mut() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+
+        let node = graph.get_node_mut("api").unwrap();
+        node.label = "Updated API".to_string();
+
+        assert_eq!(graph.get_node("api").unwrap().label, "Updated API");
+    }
+
+    #[test]
+    fn test_get_node_mut_nonexistent() {
+        let mut graph = KnowledgeGraph::new();
+        assert!(graph.get_node_mut("missing").is_none());
+    }
+
+    #[test]
+    fn test_default_metadata() {
+        let meta = GraphMetadata::default();
+        assert_eq!(meta.name, "Architecture Graph");
+        assert_eq!(meta.version, "1.0.0");
+    }
+
+    #[test]
+    fn test_touch_updates_timestamp() {
+        let mut graph = KnowledgeGraph::new();
+        let before = graph.metadata.updated_at;
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        graph.touch();
+        assert!(graph.metadata.updated_at > before);
+    }
+
+    #[test]
+    fn test_stats_empty_graph() {
+        let graph = KnowledgeGraph::new();
+        let stats = graph.stats();
+        assert_eq!(stats.total_nodes, 0);
+        assert_eq!(stats.total_edges, 0);
+        assert_eq!(stats.total_decisions, 0);
+    }
+
+    #[test]
+    fn test_stats_with_accepted_decisions() {
+        let mut graph = KnowledgeGraph::new();
+        let d1 = Decision {
+            id: "ADR-1".to_string(),
+            title: "Test".to_string(),
+            status: DecisionStatus::Accepted,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec![],
+        };
+        let d2 = Decision {
+            id: "ADR-2".to_string(),
+            title: "Test".to_string(),
+            status: DecisionStatus::Proposed,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec![],
+        };
+        graph.add_decision(d1).unwrap();
+        graph.add_decision(d2).unwrap();
+
+        let stats = graph.stats();
+        assert_eq!(stats.accepted_decisions, 1);
+        assert_eq!(stats.proposed_decisions, 1);
+    }
+
+    #[test]
+    fn test_merge_edge_skips_duplicate() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("a")).unwrap();
+        graph.add_node(test_node("b")).unwrap();
+        graph.merge_edge(test_edge("e1", "a", "b", EdgeKind::Calls));
+        graph.merge_edge(test_edge("e2", "a", "b", EdgeKind::Calls));
+        assert_eq!(graph.edges.len(), 1);
+    }
+
+    #[test]
+    fn test_merge_edge_allows_different_kinds() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("a")).unwrap();
+        graph.add_node(test_node("b")).unwrap();
+        graph.merge_edge(test_edge("e1", "a", "b", EdgeKind::Calls));
+        graph.merge_edge(test_edge("e2", "a", "b", EdgeKind::DependsOn));
+        assert_eq!(graph.edges.len(), 2);
+    }
+
+    #[test]
+    fn test_empty_graph_json() {
+        let graph = KnowledgeGraph::new();
+        let json = graph.to_json().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.get("nodes").unwrap().as_object().unwrap().is_empty());
+    }
 }
