@@ -6,10 +6,9 @@ use nom::{
     combinator::map,
     multi::separated_list0,
     sequence::{delimited, pair, preceded},
-    IResult,
+    IResult, Parser,
 };
 
-/// Returns the byte offset of the start of the given 0-based line index.
 pub(crate) fn line_to_byte_offset(input: &str, line_index: usize) -> usize {
     if line_index == 0 {
         return 0;
@@ -26,17 +25,17 @@ pub(crate) fn line_to_byte_offset(input: &str, line_index: usize) -> usize {
     input.len()
 }
 
-/// Skip whitespace and comments
 pub(crate) fn skip_whitespace_and_comments(input: &str) -> IResult<&str, ()> {
     use nom::branch::alt;
     let mut input = input;
     loop {
-        let (new_input, _) = multispace0(input)?;
+        let (new_input, _) = multispace0.parse(input)?;
         input = new_input;
         let comment_result: IResult<&str, &str> = alt((
             preceded(tag("//"), take_until("\n")),
             delimited(tag("/*"), take_until("*/"), tag("*/")),
-        ))(input);
+        ))
+        .parse(input);
         match comment_result {
             Ok((new_input, _)) => input = new_input,
             Err(_) => break,
@@ -50,11 +49,11 @@ pub(crate) fn ws(input: &str) -> IResult<&str, ()> {
 }
 
 pub(crate) fn ws0(input: &str) -> IResult<&str, ()> {
-    multispace0(input).map(|(i, _)| (i, ()))
+    multispace0.parse(input).map(|(i, _)| (i, ()))
 }
 
 pub(crate) fn ws1(input: &str) -> IResult<&str, ()> {
-    multispace1(input).map(|(i, _)| (i, ()))
+    multispace1.parse(input).map(|(i, _)| (i, ()))
 }
 
 pub(crate) fn parse_identifier(input: &str) -> IResult<&str, String> {
@@ -65,7 +64,8 @@ pub(crate) fn parse_identifier(input: &str) -> IResult<&str, String> {
             take_while(|c: char| c.is_alphanumeric() || c == '_' || c == '-'),
         )),
         |s: &str| s.to_string(),
-    )(input)
+    )
+    .parse(input)
 }
 
 pub(crate) fn parse_string(input: &str) -> IResult<&str, String> {
@@ -73,8 +73,9 @@ pub(crate) fn parse_string(input: &str) -> IResult<&str, String> {
     alt((
         delimited(char('"'), take_until("\""), char('"')),
         delimited(char('\''), take_until("'"), char('\'')),
-    ))(input)
-    .map(|(input, s): (&str, &str)| (input, s.to_string()))
+    ))
+    .map(|s: &str| s.to_string())
+    .parse(input)
 }
 
 pub(crate) fn parse_string_array(input: &str) -> IResult<&str, Vec<String>> {
@@ -82,7 +83,8 @@ pub(crate) fn parse_string_array(input: &str) -> IResult<&str, Vec<String>> {
         preceded(ws0, char('[')),
         separated_list0(preceded(ws0, char(',')), preceded(ws0, parse_string)),
         preceded(ws0, char(']')),
-    )(input)
+    )
+    .parse(input)
 }
 
 pub(crate) fn parse_kv_string(input: &str) -> IResult<&str, (String, String)> {
@@ -93,7 +95,7 @@ pub(crate) fn parse_kv_string(input: &str) -> IResult<&str, (String, String)> {
 }
 
 pub(crate) fn parse_tag_ref(input: &str) -> IResult<&str, String> {
-    let (input, _) = char('#')(input)?;
+    let (input, _) = char('#').parse(input)?;
     let (input, ident) = parse_identifier(input)?;
     Ok((input, format!("#{}", ident)))
 }
@@ -103,5 +105,6 @@ pub(crate) fn parse_tag_array(input: &str) -> IResult<&str, Vec<String>> {
         preceded(ws0, char('[')),
         separated_list0(preceded(ws0, char(',')), preceded(ws0, parse_identifier)),
         preceded(ws0, char(']')),
-    )(input)
+    )
+    .parse(input)
 }

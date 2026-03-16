@@ -7,7 +7,7 @@ use nom::{
     combinator::map,
     multi::{many0, separated_list1},
     sequence::{delimited, preceded},
-    IResult,
+    IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
@@ -16,7 +16,6 @@ use crate::ast::{ViewDef, ViewRule, ViewRuleExpr};
 use super::primitives::{parse_identifier, parse_string, parse_string_array, ws, ws0, ws1};
 use super::relations::parse_qualified_ident;
 
-// OverviewBlock and OverviewItem are used only in overview parsing.
 use crate::ast::OverviewBlock;
 
 #[derive(Debug, Clone)]
@@ -30,14 +29,15 @@ pub(crate) enum OverviewItem {
 }
 
 pub(crate) fn parse_overview_block(input: &str) -> IResult<&str, OverviewBlock> {
-    let (input, _) = tag("overview")(input)?;
+    let (input, _) = tag("overview").parse(input)?;
     let (input, _) = ws0(input)?;
 
     let (input, items) = delimited(
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_overview_item)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut overview = OverviewBlock {
         location: SourceLocation::new(String::new(), 0, 0),
@@ -92,23 +92,22 @@ fn parse_overview_item(input: &str) -> IResult<&str, OverviewItem> {
             preceded(tag("risks"), preceded(ws1, parse_string_array)),
             OverviewItem::Risks,
         ),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 pub(crate) fn parse_view(input: &str) -> IResult<&str, ViewDef> {
     use nom::combinator::opt;
 
-    // First try new syntax: view id [of ElementName] { title "..."; include ...; }
     if input.starts_with("view ") {
         return parse_view_block_syntax(input);
     }
 
-    // Fall back to old syntax: id = view "title" of ElementName { ... }
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("=")(input)?;
+    let (input, _) = tag("=").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("view")(input)?;
+    let (input, _) = tag("view").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, title) = parse_string(input)?;
     let (input, _) = ws0(input)?;
@@ -116,10 +115,11 @@ pub(crate) fn parse_view(input: &str) -> IResult<&str, ViewDef> {
     let (input, view_of) = opt(preceded(
         preceded(ws0, tag("of")),
         preceded(ws1, parse_qualified_ident),
-    ))(input)?;
+    ))
+    .parse(input)?;
     let (input, _) = ws0(input)?;
 
-    let (input, body_fields) = opt(parse_view_body)(input)?;
+    let (input, body_fields) = opt(parse_view_body).parse(input)?;
 
     let mut includes = None;
     let mut excludes = None;
@@ -189,8 +189,7 @@ pub(crate) fn parse_view(input: &str) -> IResult<&str, ViewDef> {
 
 fn parse_view_block_syntax(input: &str) -> IResult<&str, ViewDef> {
     use nom::combinator::opt;
-    // Parse: view id [of ElementName] { title "..."; description "..."; include ...; exclude ...; }
-    let (input, _) = tag("view")(input)?;
+    let (input, _) = tag("view").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
@@ -198,14 +197,16 @@ fn parse_view_block_syntax(input: &str) -> IResult<&str, ViewDef> {
     let (input, view_of) = opt(preceded(
         preceded(ws0, tag("of")),
         preceded(ws1, parse_qualified_ident),
-    ))(input)?;
+    ))
+    .parse(input)?;
     let (input, _) = ws0(input)?;
 
     let (input, body_items) = delimited(
         char('{'),
         many0(preceded(ws, parse_view_block_item)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut title = id.clone();
     let mut description = None;
@@ -278,9 +279,9 @@ fn parse_view_block_item(input: &str) -> IResult<&str, (String, String)> {
     let (input, _) = ws1(input)?;
 
     let (input, value) = if input.starts_with('"') {
-        map(parse_string, |s| s)(input)?
+        map(parse_string, |s| s).parse(input)?
     } else {
-        map(parse_view_identifier_or_wildcard, |s| s)(input)?
+        map(parse_view_identifier_or_wildcard, |s| s).parse(input)?
     };
 
     Ok((input, (key, value)))
@@ -295,7 +296,8 @@ fn parse_view_body(input: &str) -> IResult<&str, Vec<(String, String)>> {
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_view_body_item)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     Ok((input, items))
 }
@@ -305,9 +307,9 @@ fn parse_view_body_item(input: &str) -> IResult<&str, (String, String)> {
     let (input, _) = ws0(input)?;
 
     let (input, value) = if input.starts_with('"') {
-        map(parse_string, |s| s)(input)?
+        map(parse_string, |s| s).parse(input)?
     } else {
-        map(parse_view_identifier_or_wildcard, |s| s)(input)?
+        map(parse_view_identifier_or_wildcard, |s| s).parse(input)?
     };
 
     Ok((input, (key, value)))
@@ -325,5 +327,6 @@ fn parse_view_identifier_or_wildcard(input: &str) -> IResult<&str, String> {
                 .collect::<Vec<_>>()
                 .join(" ")
         }),
-    ))(input)
+    ))
+    .parse(input)
 }

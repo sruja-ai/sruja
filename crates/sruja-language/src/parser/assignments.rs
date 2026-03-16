@@ -7,7 +7,7 @@ use nom::{
     combinator::{map, opt},
     multi::many0,
     sequence::preceded,
-    IResult,
+    IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
@@ -17,12 +17,11 @@ use super::blocks::{parse_kv_string_block, parse_metadata_block};
 use super::primitives::{parse_identifier, parse_string, parse_tag_array, ws, ws0, ws1};
 use super::relations::parse_qualified_ident;
 
-/// Parse `REQ001 = requirement functional "..."` (preferred authoring form).
 pub(crate) fn parse_requirement_assignment(input: &str) -> IResult<&str, Requirement> {
     let (input, id) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("requirement")(input)?;
+    let (input, _) = tag("requirement").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, r#type) = parse_identifier(input)?;
     let (input, _) = ws1(input)?;
@@ -43,14 +42,14 @@ pub(crate) fn parse_requirement_assignment(input: &str) -> IResult<&str, Require
 
 pub(crate) fn parse_adr_assignment(input: &str) -> IResult<&str, Adr> {
     let (input, id) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("adr")(input)?;
+    let (input, _) = tag("adr").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
 
-    let (input, fields) = opt(parse_kv_string_block)(input)?;
+    let (input, fields) = opt(parse_kv_string_block).parse(input)?;
     let mut adr = Adr {
         location: SourceLocation::new(String::new(), 0, 0),
         id: id.clone(),
@@ -78,13 +77,13 @@ pub(crate) fn parse_adr_assignment(input: &str) -> IResult<&str, Adr> {
 
 pub(crate) fn parse_flow_assignment(input: &str) -> IResult<&str, Flow> {
     let (input, id) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("flow")(input)?;
+    let (input, _) = tag("flow").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, steps) = opt(parse_flow_body)(input)?;
+    let (input, steps) = opt(parse_flow_body).parse(input)?;
 
     Ok((
         input,
@@ -100,14 +99,14 @@ pub(crate) fn parse_flow_assignment(input: &str) -> IResult<&str, Flow> {
 
 pub(crate) fn parse_policy_assignment(input: &str) -> IResult<&str, Policy> {
     let (input, id) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("policy")(input)?;
+    let (input, _) = tag("policy").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
 
-    let (input, fields) = opt(parse_kv_string_block)(input)?;
+    let (input, fields) = opt(parse_kv_string_block).parse(input)?;
     let mut policy = Policy {
         location: SourceLocation::new(String::new(), 0, 0),
         id: id.clone(),
@@ -132,15 +131,15 @@ pub(crate) fn parse_policy_assignment(input: &str) -> IResult<&str, Policy> {
 }
 
 pub(crate) fn parse_scenario(input: &str) -> IResult<&str, Scenario> {
-    let (input, _) = alt((tag("scenario"), tag("story")))(input)?;
+    let (input, _) = alt((tag("scenario"), tag("story"))).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, id) = opt(parse_identifier)(input)?;
+    let (input, id) = opt(parse_identifier).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string)(input)?;
+    let (input, description) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, steps) = opt(parse_scenario_body)(input)?;
+    let (input, steps) = opt(parse_scenario_body).parse(input)?;
 
     Ok((
         input,
@@ -160,21 +159,23 @@ pub(crate) fn parse_scenario_body(input: &str) -> IResult<&str, Vec<ScenarioStep
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_scenario_step)),
         preceded(ws0, char('}')),
-    )(input)
+    )
+    .parse(input)
 }
 
 pub(crate) fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
-    let (input, _) = opt(preceded(tag("step"), ws1))(input)?;
+    let (input, _) = opt(preceded(tag("step"), ws1)).parse(input)?;
     let (input, from) = parse_qualified_ident(input)?;
-    let (input, _) = preceded(ws0, tag("->"))(input)?;
+    let (input, _) = preceded(ws0, tag("->")).parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, to) = parse_qualified_ident(input)?;
     let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string)(input)?;
+    let (input, description) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, tags) = opt(parse_tag_array)(input)?;
+    let (input, tags) = opt(parse_tag_array).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, order_raw) = opt(preceded(tag("order"), preceded(ws1, parse_string)))(input)?;
+    let (input, order_raw) =
+        opt(preceded(tag("order"), preceded(ws1, parse_string))).parse(input)?;
 
     let order = order_raw.as_deref().and_then(|s| s.parse::<usize>().ok());
 
@@ -191,15 +192,15 @@ pub(crate) fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
 }
 
 pub(crate) fn parse_flow(input: &str) -> IResult<&str, Flow> {
-    let (input, _) = tag("flow")(input)?;
+    let (input, _) = tag("flow").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, id) = opt(parse_identifier)(input)?;
+    let (input, id) = opt(parse_identifier).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string)(input)?;
+    let (input, description) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, steps) = opt(parse_flow_body)(input)?;
+    let (input, steps) = opt(parse_flow_body).parse(input)?;
 
     Ok((
         input,
@@ -219,17 +220,18 @@ pub(crate) fn parse_flow_body(input: &str) -> IResult<&str, Vec<ScenarioStep>> {
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_flow_step)),
         preceded(ws0, char('}')),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn parse_flow_step(input: &str) -> IResult<&str, ScenarioStep> {
-    let (input, _) = opt(preceded(tag("step"), ws1))(input)?;
+    let (input, _) = opt(preceded(tag("step"), ws1)).parse(input)?;
     let (input, from) = parse_qualified_ident(input)?;
-    let (input, _) = preceded(ws0, tag("->"))(input)?;
+    let (input, _) = preceded(ws0, tag("->")).parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, to) = parse_qualified_ident(input)?;
     let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string)(input)?;
+    let (input, description) = opt(parse_string).parse(input)?;
 
     Ok((
         input,
@@ -244,16 +246,16 @@ fn parse_flow_step(input: &str) -> IResult<&str, ScenarioStep> {
 }
 
 pub(crate) fn parse_requirement(input: &str) -> IResult<&str, Requirement> {
-    let (input, _) = tag("requirement")(input)?;
+    let (input, _) = tag("requirement").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, id) = parse_identifier(input)?;
     let id_for_title = id.clone();
     let (input, _) = ws0(input)?;
-    let (input, r#type) = opt(parse_identifier)(input)?;
+    let (input, r#type) = opt(parse_identifier).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string)(input)?;
+    let (input, description) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _body) = opt(parse_requirement_body)(input)?;
+    let (input, _body) = opt(parse_requirement_body).parse(input)?;
 
     Ok((
         input,
@@ -274,7 +276,8 @@ fn parse_requirement_body(input: &str) -> IResult<&str, ()> {
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_requirement_property)),
         preceded(ws0, char('}')),
-    )(input)
+    )
+    .parse(input)
     .map(|(i, _)| (i, ()))
 }
 
@@ -294,19 +297,20 @@ fn parse_requirement_property(input: &str) -> IResult<&str, ()> {
                 map(parse_metadata_block, |_| ()),
             )),
         ),
-    )(input)
+    )
+    .parse(input)
     .map(|(i, _)| (i, ()))
 }
 
 pub(crate) fn parse_adr(input: &str) -> IResult<&str, Adr> {
-    let (input, _) = tag("adr")(input)?;
+    let (input, _) = tag("adr").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
 
-    let (input, fields) = opt(parse_kv_string_block)(input)?;
+    let (input, fields) = opt(parse_kv_string_block).parse(input)?;
     let mut adr = Adr {
         location: SourceLocation::new(String::new(), 0, 0),
         id: id.clone(),
@@ -333,14 +337,14 @@ pub(crate) fn parse_adr(input: &str) -> IResult<&str, Adr> {
 }
 
 pub(crate) fn parse_policy(input: &str) -> IResult<&str, Policy> {
-    let (input, _) = tag("policy")(input)?;
+    let (input, _) = tag("policy").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
 
-    let (input, fields) = opt(parse_kv_string_block)(input)?;
+    let (input, fields) = opt(parse_kv_string_block).parse(input)?;
     let mut policy = Policy {
         location: SourceLocation::new(String::new(), 0, 0),
         id: id.clone(),

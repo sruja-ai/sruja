@@ -1,6 +1,6 @@
 //! Program and top-level item parsing.
 
-use nom::{branch::alt, combinator::map, IResult};
+use nom::{branch::alt, combinator::map, IResult, Parser};
 
 use crate::ast::{ElementAssignment, ElementDef, ElementKind, Program, TopLevelItem};
 
@@ -16,7 +16,6 @@ use super::overview_views::{parse_overview_block, parse_view};
 use super::primitives::ws;
 use super::relations::parse_relation;
 
-/// Parse a complete program. Lenient: on item failure, skip to next line and continue.
 pub(super) fn parse_program(input: &str) -> IResult<&str, Program> {
     let (input, _) = ws(input)?;
     let mut items = Vec::new();
@@ -44,7 +43,6 @@ pub(super) fn parse_program(input: &str) -> IResult<&str, Program> {
     Ok((remaining, Program::with_items(Program::new(), items)))
 }
 
-/// Parse a single top-level item.
 pub(super) fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
     alt((
         map(parse_kind_def, TopLevelItem::KindDef),
@@ -78,5 +76,6 @@ pub(super) fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
                 },
             }))
         }),
-    ))(input)
+    ))
+    .parse(input)
 }

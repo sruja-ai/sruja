@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use nom::{
     bytes::complete::tag, character::complete::char, combinator::map, multi::many0,
-    sequence::preceded, IResult,
+    sequence::preceded, IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
@@ -19,25 +19,25 @@ use super::primitives::{
 };
 
 pub(crate) fn parse_kv_string_block(input: &str) -> IResult<&str, Vec<(String, String)>> {
-    use nom::multi::many0 as many0_nom;
     use nom::sequence::delimited;
     delimited(
         preceded(ws0, char('{')),
-        many0_nom(preceded(ws, parse_kv_string)),
+        many0(preceded(ws, parse_kv_string)),
         preceded(ws0, char('}')),
-    )(input)
+    )
+    .parse(input)
 }
 
 pub(crate) fn parse_metadata_block(input: &str) -> IResult<&str, MetadataBlock> {
-    use nom::multi::many0 as many0_nom;
     use nom::sequence::delimited;
-    let (input, _) = tag("metadata")(input)?;
+    let (input, _) = tag("metadata").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, entries) = delimited(
         preceded(ws0, char('{')),
-        many0_nom(preceded(ws, parse_metadata_entry)),
+        many0(preceded(ws, parse_metadata_entry)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
     Ok((
         input,
         MetadataBlock {
@@ -55,20 +55,21 @@ pub(crate) fn parse_metadata_entry(input: &str) -> IResult<&str, MetaEntry> {
         map(parse_string_array, |arr| Some(arr.join(", "))),
         map(parse_tag_array, |arr| Some(arr.join(", "))),
         map(parse_string, Some),
-    ))(input)?;
+    ))
+    .parse(input)?;
     Ok((input, MetaEntry { key, value }))
 }
 
 pub(crate) fn parse_constraints_block(input: &str) -> IResult<&str, ConstraintsBlock> {
-    use nom::multi::many0 as many0_nom;
     use nom::sequence::delimited;
-    let (input, _) = tag("constraints")(input)?;
+    let (input, _) = tag("constraints").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, entries) = delimited(
         char('{'),
-        many0_nom(preceded(ws, parse_constraint_entry)),
+        many0(preceded(ws, parse_constraint_entry)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
     Ok((
         input,
         ConstraintsBlock {
@@ -86,15 +87,15 @@ pub(crate) fn parse_constraint_entry(input: &str) -> IResult<&str, ConstraintEnt
 }
 
 pub(crate) fn parse_conventions_block(input: &str) -> IResult<&str, ConventionsBlock> {
-    use nom::multi::many0 as many0_nom;
     use nom::sequence::delimited;
-    let (input, _) = tag("conventions")(input)?;
+    let (input, _) = tag("conventions").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, entries) = delimited(
         char('{'),
-        many0_nom(preceded(ws, parse_convention_entry)),
+        many0(preceded(ws, parse_convention_entry)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
     Ok((
         input,
         ConventionsBlock {
@@ -113,7 +114,7 @@ pub(crate) fn parse_convention_entry(input: &str) -> IResult<&str, ConventionEnt
 
 pub(crate) fn parse_style_decl(input: &str) -> IResult<&str, StyleDecl> {
     use nom::sequence::delimited;
-    let (input, _) = tag("style")(input)?;
+    let (input, _) = tag("style").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, selector) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
@@ -121,7 +122,8 @@ pub(crate) fn parse_style_decl(input: &str) -> IResult<&str, StyleDecl> {
         char('{'),
         many0(preceded(ws, parse_kv_string)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
     let mut props_map = HashMap::new();
     for (k, v) in properties {
         props_map.insert(k, v);

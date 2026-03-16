@@ -7,7 +7,7 @@ use nom::{
     combinator::{map, opt, value},
     multi::many0,
     sequence::preceded,
-    IResult,
+    IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
@@ -26,14 +26,13 @@ use super::primitives::{
 };
 use super::relations::parse_relation;
 
-/// Parse a kind definition: `identifier = kind "Title" ...`
 pub(crate) fn parse_kind_def(input: &str) -> IResult<&str, ElementKindDef> {
     let (input, id) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("kind")(input)?;
+    let (input, _) = tag("kind").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
 
     let kind = match id.to_lowercase().as_str() {
@@ -62,18 +61,17 @@ pub(crate) fn parse_kind_def(input: &str) -> IResult<&str, ElementKindDef> {
     ))
 }
 
-/// Parse an element definition: Name = Kind [SubKind] [Label] [#tags...] [Body]
 pub(crate) fn parse_element_def(input: &str) -> IResult<&str, ElementDef> {
     let (input, name) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, kind) = parse_element_kind(input)?;
     let (input, _) = ws0(input)?;
-    let (input, sub_kind) = opt(parse_identifier)(input)?;
+    let (input, sub_kind) = opt(parse_identifier).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, title) = opt(parse_string)(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, tag_refs) = many0(parse_tag_ref)(input)?;
+    let (input, tag_refs) = many0(parse_tag_ref).parse(input)?;
     let (input, _) = ws0(input)?;
 
     let (input, body) = if input.trim_start().starts_with('{') {
@@ -152,11 +150,12 @@ pub(crate) fn parse_element_kind(input: &str) -> IResult<&str, ElementKind> {
         value(ElementKind::Scenario, tag("scenario")),
         value(ElementKind::Story, tag("story")),
         map(parse_identifier, ElementKind::Custom),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {
-    let (input, _) = preceded(ws0, char('{'))(input)?;
+    let (input, _) = preceded(ws0, char('{')).parse(input)?;
 
     let mut items = Vec::new();
     let mut current = input;
@@ -186,7 +185,7 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
     }
 
     let (input, _) = ws0(current)?;
-    let (input, _) = char('}')(input)?;
+    let (input, _) = char('}').parse(input)?;
 
     let mut body = ElementDefBody::default();
     for item in items {
@@ -256,18 +255,20 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
             ),
             |t| ElementDefBodyItem::Tags(t.unwrap_or_default()),
         ),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 pub(crate) fn parse_slo_block(input: &str) -> IResult<&str, SloBlock> {
     use nom::sequence::delimited;
-    let (input, _) = tag("slo")(input)?;
+    let (input, _) = tag("slo").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, items) = delimited(
         char('{'),
         many0(preceded(ws, parse_slo_item)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut slo = SloBlock {
         location: SourceLocation::new(String::new(), 0, 0),
@@ -303,18 +304,20 @@ fn parse_slo_item(input: &str) -> IResult<&str, SloItem> {
         map(parse_slo_latency, SloItem::Latency),
         map(parse_slo_error_rate, SloItem::ErrorRate),
         map(parse_slo_throughput, SloItem::Throughput),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 fn parse_slo_availability(input: &str) -> IResult<&str, SloAvailability> {
     use nom::sequence::delimited;
-    let (input, _) = tag("availability")(input)?;
+    let (input, _) = tag("availability").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, entries) = delimited(
         char('{'),
         many0(preceded(ws, parse_kv_string)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut out = SloAvailability {
         target: None,
@@ -334,13 +337,14 @@ fn parse_slo_availability(input: &str) -> IResult<&str, SloAvailability> {
 
 fn parse_slo_latency(input: &str) -> IResult<&str, SloLatency> {
     use nom::sequence::delimited;
-    let (input, _) = tag("latency")(input)?;
+    let (input, _) = tag("latency").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, items) = delimited(
         char('{'),
         many0(preceded(ws, parse_latency_item)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut out = SloLatency {
         p95: None,
@@ -382,18 +386,20 @@ fn parse_latency_item(input: &str) -> IResult<&str, LatencyItem> {
             LatencyItem::Window,
         ),
         map(parse_slo_current, LatencyItem::Current),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 fn parse_slo_current(input: &str) -> IResult<&str, SloCurrent> {
     use nom::sequence::delimited;
-    let (input, _) = tag("current")(input)?;
+    let (input, _) = tag("current").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, entries) = delimited(
         char('{'),
         many0(preceded(ws, parse_kv_string)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut out = SloCurrent {
         p95: None,
@@ -411,13 +417,14 @@ fn parse_slo_current(input: &str) -> IResult<&str, SloCurrent> {
 
 fn parse_slo_error_rate(input: &str) -> IResult<&str, SloErrorRate> {
     use nom::sequence::delimited;
-    let (input, _) = tag("errorRate")(input)?;
+    let (input, _) = tag("errorRate").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, entries) = delimited(
         char('{'),
         many0(preceded(ws, parse_kv_string)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut out = SloErrorRate {
         target: None,
@@ -437,13 +444,14 @@ fn parse_slo_error_rate(input: &str) -> IResult<&str, SloErrorRate> {
 
 fn parse_slo_throughput(input: &str) -> IResult<&str, SloThroughput> {
     use nom::sequence::delimited;
-    let (input, _) = tag("throughput")(input)?;
+    let (input, _) = tag("throughput").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, entries) = delimited(
         char('{'),
         many0(preceded(ws, parse_kv_string)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
 
     let mut out = SloThroughput {
         target: None,
@@ -463,13 +471,14 @@ fn parse_slo_throughput(input: &str) -> IResult<&str, SloThroughput> {
 
 pub(crate) fn parse_scale_block(input: &str) -> IResult<&str, ScaleBlock> {
     use nom::sequence::delimited;
-    let (input, _) = tag("scale")(input)?;
+    let (input, _) = tag("scale").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, items) = delimited(
         char('{'),
         many0(preceded(ws, parse_scale_item)),
         preceded(ws0, char('}')),
-    )(input)?;
+    )
+    .parse(input)?;
     let mut scale = ScaleBlock {
         location: SourceLocation::new(String::new(), 0, 0),
         min: None,
@@ -494,6 +503,7 @@ fn parse_scale_item(input: &str) -> IResult<&str, (String, String)> {
         parse_string,
         map(parse_identifier, |s| s),
         map(digit1, |s: &str| s.to_string()),
-    ))(input)?;
+    ))
+    .parse(input)?;
     Ok((input, (key, value)))
 }

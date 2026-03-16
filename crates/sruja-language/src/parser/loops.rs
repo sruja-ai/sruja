@@ -7,7 +7,7 @@ use nom::{
     combinator::{map, opt, value},
     multi::many0,
     sequence::{delimited, preceded},
-    IResult,
+    IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
@@ -23,9 +23,9 @@ use crate::ast::Relation;
 
 pub(crate) fn parse_feedback_loop(input: &str) -> IResult<&str, FeedbackLoop> {
     let (input, id) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("feedback")(input)?;
+    let (input, _) = tag("feedback").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, title) = parse_string(input)?;
     let (input, _) = ws0(input)?;
@@ -34,7 +34,8 @@ pub(crate) fn parse_feedback_loop(input: &str) -> IResult<&str, FeedbackLoop> {
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_feedback_loop_field)),
         preceded(ws0, char('}')),
-    ))(input)?;
+    ))
+    .parse(input)?;
 
     let mut loop_type = FeedbackLoopType::Reinforcing;
     let mut loop_id = None;
@@ -98,21 +99,23 @@ fn parse_feedback_loop_field(input: &str) -> IResult<&str, FeedbackLoopField> {
             FeedbackLoopField::Description,
         ),
         map(parse_relation, FeedbackLoopField::Relation),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 fn parse_feedback_loop_type(input: &str) -> IResult<&str, FeedbackLoopType> {
     alt((
         value(FeedbackLoopType::Reinforcing, tag("reinforcing")),
         value(FeedbackLoopType::Balancing, tag("balancing")),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 pub(crate) fn parse_causal_loop(input: &str) -> IResult<&str, CausalLoop> {
     let (input, id) = parse_identifier(input)?;
-    let (input, _) = preceded(ws0, char('='))(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("causal_loop")(input)?;
+    let (input, _) = tag("causal_loop").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, title) = parse_string(input)?;
     let (input, _) = ws0(input)?;
@@ -121,7 +124,8 @@ pub(crate) fn parse_causal_loop(input: &str) -> IResult<&str, CausalLoop> {
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_causal_loop_field)),
         preceded(ws0, char('}')),
-    ))(input)?;
+    ))
+    .parse(input)?;
 
     let mut loop_type = FeedbackLoopType::Reinforcing;
     let mut loop_id = None;
@@ -189,7 +193,6 @@ fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
             CausalLoopField::Description,
         ),
         map(parse_causal_loop_variable, CausalLoopField::Variable),
-        // Accept relation syntax (qualified idents) so "ecommerce.api -> admin" stays inside the loop
         map(parse_relation, |r| {
             CausalLoopField::Relationship(CausalRelationship {
                 from: r.from.as_string(),
@@ -203,15 +206,16 @@ fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
             parse_causal_loop_relationship,
             CausalLoopField::Relationship,
         ),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 fn parse_causal_loop_variable(input: &str) -> IResult<&str, CausalLoopVariable> {
-    let (input, _) = tag("variable")(input)?;
+    let (input, _) = tag("variable").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, id) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, label) = opt(parse_string)(input)?;
+    let (input, label) = opt(parse_string).parse(input)?;
 
     Ok((input, CausalLoopVariable { id, label }))
 }
@@ -225,7 +229,7 @@ enum CausalRelField {
 fn parse_causal_loop_relationship(input: &str) -> IResult<&str, CausalRelationship> {
     let (input, from) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _) = tag("->")(input)?;
+    let (input, _) = tag("->").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, to) = parse_identifier(input)?;
     let (input, _) = ws0(input)?;
@@ -234,7 +238,8 @@ fn parse_causal_loop_relationship(input: &str) -> IResult<&str, CausalRelationsh
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_causal_rel_field)),
         preceded(ws0, char('}')),
-    ))(input)?;
+    ))
+    .parse(input)?;
 
     let mut effect = None;
     let mut polarity = CausalPolarity::Positive;
@@ -276,12 +281,14 @@ fn parse_causal_rel_field(input: &str) -> IResult<&str, CausalRelField> {
             preceded(tag("delay"), preceded(ws1, parse_string)),
             CausalRelField::Delay,
         ),
-    ))(input)
+    ))
+    .parse(input)
 }
 
 fn parse_causal_polarity(input: &str) -> IResult<&str, CausalPolarity> {
     alt((
         value(CausalPolarity::Positive, tag("+")),
         value(CausalPolarity::Negative, tag("-")),
-    ))(input)
+    ))
+    .parse(input)
 }
