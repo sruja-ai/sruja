@@ -119,10 +119,10 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 | ------------------------------------- | ------------------------------ | -------------------- |
 | **Git/GitHub/GitLab**                 | Native integration             | ✅ Available         |
 | **CI/CD (GitHub Actions, GitLab CI)** | Validation in pipelines        | ✅ Available         |
-| **Terraform/OpenTofu**                | Infrastructure generation      | 🚧 Roadmap (Phase 2) |
-| **Kubernetes/Istio**                  | Service mesh config generation | 🚧 Roadmap (Phase 3) |
-| **API Gateways (Kong, Apigee)**       | Config generation              | 🚧 Roadmap (Phase 3) |
-| **OPA (Open Policy Agent)**           | Policy integration             | 🚧 Roadmap (Phase 2) |
+| **Terraform/OpenTofu**                | Infrastructure generation      | 🚧 Roadmap (Medium-Term) |
+| **Kubernetes/Istio**                  | Service mesh config generation | 🚧 Roadmap (Long-Term) |
+| **API Gateways (Kong, Apigee)**       | Config generation              | 🚧 Roadmap (Long-Term) |
+| **OPA (Open Policy Agent)**           | Policy integration             | 🚧 Roadmap (Medium-Term) |
 
 **Action**:
 
@@ -246,7 +246,7 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 **Response**:
 
 - Core features (validation, CI/CD) are **available now**
-- Roadmap features (Terraform, Istio, OPA) are planned for **Phase 2-3** (see [Roadmap Discussions](https://github.com/sruja-ai/sruja/discussions))
+- Roadmap features (Terraform, Istio, OPA) are planned for **Medium-Term to Long-Term** (see [Roadmap Discussions](https://github.com/sruja-ai/sruja/discussions))
 - You can start with core features and add advanced later
 - Early adoption gives you influence on roadmap priorities
 

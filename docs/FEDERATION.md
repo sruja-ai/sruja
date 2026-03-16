@@ -1,6 +1,6 @@
-# Multi-Repo Federation (Phase 3 & 4)
+# Multi-Repo Federation
 
-This document describes the federation artifacts and commands for multi-repo architecture truth, and how editors and skills use them (Phase 4 retrieval).
+This document describes the federation artifacts and commands for multi-repo architecture truth, and how editors and skills use them for retrieval.
 
 ## Artifacts
 
@@ -63,7 +63,7 @@ sruja compose -i repo.bundle.json -o system.index.json
 - The same logical service/API/queue may appear in multiple repos; composition does not auto-merge them. Duplicate kind+label across repos are reported in **conflicts** so humans or tooling can resolve (e.g. map to a single canonical service or document ownership).
 - Conflicts produce `conflicted` or `unknown` in downstream use; there are no silent merges.
 
-## Phase 4: Retrieval Order for Editors and Skills
+## Retrieval Order for Editors and Skills
 
 When doing architecture-aware codegen or review, use this order to load context:
 
@@ -80,7 +80,7 @@ When doing architecture-aware codegen or review, use this order to load context:
 - Include ownership, contracts, and recent drift when present.
 - If context is missing or insufficient, ask a targeted question or mark `unknown`; do not invent.
 
-## Stakeholder Views (Phase 4)
+## Stakeholder Views
 
 The same system index can drive derived views; no stakeholder-facing DSL editing:
 
