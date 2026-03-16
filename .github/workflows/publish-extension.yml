@@ -133,7 +133,7 @@ jobs:
             echo "AZURE_DEVOPS_PAT not set - skipping Visual Studio Marketplace"
             exit 0
           fi
-          npx --yes @vscode/vsce publish --no-dependencies --pat "$AZURE_DEVOPS_PAT"
+          npx --yes @vscode/vsce publish --no-dependencies --skip-duplicate --pat "$AZURE_DEVOPS_PAT"
         working-directory: extension
         env:
           AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}

@@ -95,6 +95,9 @@ internal-docs
 
 # Sruja runtime state (memory, cache, local context)
 .sruja/
+# Allow committed component knowledge (doc feature)
+!.sruja/knowledge/
+!.sruja/knowledge/*
 
 # Demo generated outputs
 demo/intent_report.md
