@@ -1337,7 +1337,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-cli"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "chrono",
  "clap",
@@ -1362,7 +1362,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1370,7 +1370,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-engine"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "log",
  "serde",
@@ -1394,7 +1394,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "js-sys",
  "serde",
@@ -1406,7 +1406,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "chrono",
  "proptest",
@@ -1421,7 +1421,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-intent"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "chrono",
  "regex",
@@ -1436,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-language"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "nom",
  "serde",
@@ -1446,7 +1446,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-lsp"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "async-trait",
  "rand",
@@ -1463,7 +1463,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-report"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-scan"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "ignore",
  "log",
@@ -1502,7 +1502,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-types"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1510,7 +1510,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.18.3"
+version = "0.18.5"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -1904,9 +1904,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-scala"
-version = "0.23.4"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efde5e68b4736e9eac17bfa296c6f104a26bffab363b365eb898c40a63c15d2f"
+checksum = "83079f50ea7d03e0faf6be6260ed97538e6df7349ec3cbcbf5771f7b38e3c8b7"
 dependencies = [
  "cc",
  "tree-sitter-language",
