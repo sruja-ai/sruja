@@ -140,8 +140,26 @@ Surface missing or unclear information explicitly in comments:
 
 ## Multi-repo (Publish and Compose)
 
-- **Publish** — In each repo: `sruja publish -r . -o repo.bundle.json`. Collect bundles in a shared location.
-- **Compose** — `sruja compose -i <dir-or-bundle> -o system.index.json` builds a single system graph with canonical IDs. Resolve same kind+label conflicts in `conflicts`; never silently merge.
+**Setup:** See [FEDERATION_SETUP_GUIDE.md](../../docs/FEDERATION_SETUP_GUIDE.md) for step-by-step instructions.
+
+**Workflow:**
+1. **Per-repo:** Generate `repo.sruja` in each repository (same as single-repo workflow)
+2. **Publish:** In each repo: `sruja publish -r . -o repo.bundle.json`
+3. **Collect:** Copy bundles to shared location (rename to avoid collisions: `api.repo.bundle.json`)
+4. **Compose:** `sruja compose -i <dir> -o system.index.json` builds unified graph with canonical IDs
+5. **Resolve conflicts:** Check `conflicts` array for duplicate kind+label across repos
+
+**When working across repos:**
+- Use canonical IDs: `repo_id::local_id` (e.g., `api-service::PaymentAPI`)
+- Load only impacted slice from `system.index.json`, not full graph
+- Check ownership before modifying cross-repo relationships
+
+**Prompt for multi-repo setup:**
+```
+Use sruja-architecture. Help me set up federation across multiple repos.
+Guide me through: 1) generating repo.sruja in each repo, 2) publishing bundles,
+3) composing system.index.json. Reference docs/FEDERATION_SETUP_GUIDE.md for steps.
+```
 
 See **docs/FEDERATION.md** for artifact schemas and retrieval behavior.
 
@@ -164,7 +182,8 @@ Do not load `references/AGENTS.md`, `references/REFERENCE.md`, or entire `rules/
 - Discovery and refinement: `references/REFERENCE.md`
 - Modeling rules: `rules/` (per-task; see table above)
 - Prompts: `references/PROMPTS.md`; `references/AGENTS.md` only for full design/refactor
-- Multi-repo: **docs/FEDERATION.md**
+- Multi-repo setup: **docs/FEDERATION_SETUP_GUIDE.md** (step-by-step)
+- Multi-repo reference: **docs/FEDERATION.md** (schemas, commands)
 
 ## Prerequisites and Installation
 
@@ -196,10 +215,17 @@ Prefer canonical IDs; do not invent when context is missing — ask or mark `unk
 
 ## Quick Start Prompt
 
-Copy-paste for your AI assistant:
-
+**Single repo:**
 ```
 Use sruja-architecture skill. If .sruja/context.json exists and is recent, use it for evidence; otherwise run `sruja sync -r .` or `sruja discover --context -r . --format json`. Gather evidence, ask targeted questions only if scope or externals are unclear, generate a minimal repo.sruja with evidence-based components and relationships, then run `sruja lint` and fix all errors until it passes. Do not guess; list open questions instead.
 ```
 
-**Optional Cursor rule:** "For architecture tasks, use `.sruja/context.json` when present and recent; else run `sruja sync -r .` or `sruja discover --context -r . --format json`. For multi-repo, use impacted slice from `system.index.json` when available; see docs/FEDERATION.md."
+**Multi-repo:**
+```
+Use sruja-architecture skill. Help me set up federation across multiple repos.
+1) First, help me generate repo.sruja in each repository.
+2) Then guide me through publishing bundles and composing system.index.json.
+Reference docs/FEDERATION_SETUP_GUIDE.md for detailed steps.
+```
+
+**Optional Cursor rule:** "For architecture tasks, use `.sruja/context.json` when present and recent; else run `sruja sync -r .` or `sruja discover --context -r . --format json`. For multi-repo, use impacted slice from `system.index.json` when available; see docs/FEDERATION_SETUP_GUIDE.md."
