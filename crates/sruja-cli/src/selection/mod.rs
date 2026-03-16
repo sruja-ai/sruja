@@ -128,7 +128,9 @@ mod tests {
     #[test]
     fn smart_select_single_node() {
         let mut graph = Graph::new();
-        graph.nodes.push(create_test_node("main", Some("src/main.rs")));
+        graph
+            .nodes
+            .push(create_test_node("main", Some("src/main.rs")));
         let config = SelectionConfig::default();
         let result = smart_select(&graph, &config);
         assert!(!result.nodes.is_empty());
@@ -137,7 +139,9 @@ mod tests {
     #[test]
     fn smart_select_includes_selection_reasons() {
         let mut graph = Graph::new();
-        graph.nodes.push(create_test_node("api", Some("src/api.rs")));
+        graph
+            .nodes
+            .push(create_test_node("api", Some("src/api.rs")));
         graph.nodes.push(create_test_node("db", Some("src/db.rs")));
         graph.nodes.push(create_test_node("ui", Some("src/ui.rs")));
         let config = SelectionConfig {
@@ -165,7 +169,10 @@ mod tests {
 
     #[test]
     fn role_coverage_counts() {
-        let coverage = RoleCoverage { total: 10, selected: 3 };
+        let coverage = RoleCoverage {
+            total: 10,
+            selected: 3,
+        };
         assert_eq!(coverage.total, 10);
         assert_eq!(coverage.selected, 3);
     }

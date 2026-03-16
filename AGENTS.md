@@ -198,12 +198,13 @@ WASM is used for browser and Node.js targets. LSP provides language server featu
 ## Key Commands for AI Agents
 
 When working on Sruja:
-1. Run `make lint` and `cargo test` before committing
-2. For .sruja files, run `sruja lint file.sruja` after changes
-3. Use `cargo clippy -- -D warnings` for strict linting
-4. Build extension with `make build-extension`
-5. Test CLI commands with `make test-cli-smoke`
-6. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`
+1. Run `cargo fmt --all` before committing to ensure consistent formatting
+2. Run `make lint` and `cargo test` before committing
+3. For .sruja files, run `sruja lint file.sruja` after changes
+4. Use `cargo clippy -- -D warnings` for strict linting
+5. Build extension with `make build-extension`
+6. Test CLI commands with `make test-cli-smoke`
+7. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`
 
 ## Common Patterns
 
