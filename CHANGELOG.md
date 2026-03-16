@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.4](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.3...sruja-v0.18.4) (2026-03-16)
+
+
+### Bug Fixes
+
+* **extension:** lower VS Code engine to ^1.85.0 for compatibility with 1.105.x ([c28564f](https://github.com/sruja-ai/sruja/commit/c28564f3cc7f3b2550e0f609fcc6785048a8a9bb))
+
 ## [0.18.3](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.2...sruja-v0.18.3) (2026-03-15)
 
 
