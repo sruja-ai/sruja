@@ -226,7 +226,7 @@
     "install:vsix": "npm run package && echo '\nInstall in Cursor/VS Code: Extensions → ⋯ → Install from VSIX... → select extension/*.vsix\n'"
   },
   "devDependencies": {
-    "@types/glob": "^8.1.0",
+    "@types/glob": "^9.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/vscode": "^1.85.0",
