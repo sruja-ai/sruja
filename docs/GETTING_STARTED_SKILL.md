@@ -233,8 +233,94 @@ Read repo.sruja and explain:
 
 ---
 
+## Using Sruja in your project (single repo, monorepo, multi-repo)
+
+Same skill-first workflow for every setup. Pick the one that matches you.
+
+| Setup | What it means | What you do |
+|-------|----------------|-------------|
+| **Single repo** | One repository, one codebase, one architecture boundary. | One `repo.sruja`, one CI job. Default flow below. |
+| **Monorepo** | One repository with multiple packages, apps, or services. | One `repo.sruja` for the whole repo (typical), or one per area if you want separate boundaries. Same CI as single repo. |
+| **Multi-repo** | Many repositories (e.g. one repo per service or app). | Each repo has its own `repo.sruja` and CI. Optional: [federation](FEDERATION.md) to build a system-wide index. |
+
+---
+
+### Single repo
+
+One codebase, one architecture. This is the default.
+
+1. **Install the skill** (see [Quick Start](#quick-start-copy-these-steps) above). Use your AI to generate `repo.sruja` at the repo root.
+2. **Commit** `repo.sruja` and your skill setup (e.g. `.cursorrules` or `npx skills add ...`) so the team shares the same rules. See [Install as a Skill](INSTALL_AS_SKILL.md).
+3. **Add CI** to lint `.sruja` on every PR. Example (GitHub Actions):
+
+```yaml
+name: Validate Sruja
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  paths:
+    - '**/*.sruja'
+jobs:
+  sruja:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Sruja CLI
+        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
+      - name: Lint all .sruja files
+        run: |
+          find . -name '*.sruja' -not -path './target/*' | while read f; do
+            echo "Linting $f"
+            sruja lint "$f"
+          done
+```
+
+**Optional:** `sruja quickstart -r . -f json` for drift reports; `sruja export markdown` / `sruja export mermaid` for docs.
+
+---
+
+### Monorepo
+
+One repo, many packages or apps (e.g. `packages/api`, `packages/web`, `apps/mobile`). Sruja treats it as one repo: discovery scans the whole tree from the root.
+
+- **Typical:** One `repo.sruja` at the repo root that describes all systems, containers, and boundaries. Same workflow as single repo: skill, commit, CI.
+- **Optional:** One `.sruja` per area (e.g. `packages/api/api.sruja`) if you want separate architecture files per package. CI: lint all `*.sruja` (same `find` as above).
+- **Discovery:** Run from repo root: `sruja discover -r .` (or let the skill run it). The CLI scans the entire repo; you can scope later in the DSL by system/container.
+
+No extra tooling. Same skill and CLI as single repo.
+
+---
+
+### Multi-repo
+
+Many repos (e.g. one repo per microservice or app). Each repo is independent.
+
+1. **In each repo:** Same as single repo — install the skill, generate and commit `repo.sruja`, add the same CI job. Use the same [sruja-architecture skill](https://github.com/sruja-ai/sruja/tree/main/skills/sruja-architecture) everywhere so AI and humans share rules.
+2. **Optional – system-wide view:** To compose architecture across repos (one graph, canonical IDs, conflict reporting), use **federation**: each repo runs `sruja publish -r . -o repo.bundle.json`; a central job or script runs `sruja compose -i <bundles-dir> -o system.index.json`. See [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) for step-by-step setup or [FEDERATION.md](FEDERATION.md) for technical reference.
+
+**Patterns:** Per-repo ownership (each repo owns its `.sruja`); or a central “docs” / “architecture” repo that holds `.sruja` files and Sruja CI while other repos use the skill locally.
+
+---
+
+### How this enhances your code
+
+| Practice | How Sruja helps |
+|----------|------------------|
+| **AI-generated architecture** | Skill uses real code evidence; lint and drift keep output valid and in sync. |
+| **Onboarding** | New devs (and AI) read `.sruja` and exported docs; single source of truth. |
+| **PR reviews** | CI fails if `.sruja` is invalid; reviewers see architecture changes in the diff. |
+| **Compliance / governance** | Policies in the DSL; lint enforces structure; export for auditors. |
+| **Multi-repo** | Each repo has its own `repo.sruja` and CI; optional federation for system-wide view. |
+
+---
+
 ## What's Next?
 
 - **Deep dive:** [Skill Reference](../skills/sruja-architecture/SKILL.md)
 - **Prompt patterns:** [Prompt Library](../skills/sruja-architecture/PROMPTS.md)
 - **Complete guide:** [Skill Workflow Reference](../skills/sruja-architecture/REFERENCE.md)
+- **Adoption:** [Adoption Guide](../book/src/docs/adoption-guide.md) (evaluate fit, plan rollout)

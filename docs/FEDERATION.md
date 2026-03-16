@@ -1,5 +1,7 @@
 # Multi-Repo Federation
 
+**⚡ Quick start:** For a complete step-by-step setup guide, see [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md).
+
 This document describes the federation artifacts and commands for multi-repo architecture truth, and how editors and skills use them for retrieval.
 
 ## Artifacts

@@ -265,7 +265,8 @@ Install from [VS Code Marketplace](https://marketplace.visualstudio.com/) for:
 
 **Advanced Topics:**
 
-- [Multi-Repo Federation](docs/FEDERATION.md) – Managing multiple repos
+- [Multi-Repo Federation Setup Guide](docs/FEDERATION_SETUP_GUIDE.md) – Step-by-step federation setup
+- [Multi-Repo Federation](docs/FEDERATION.md) – Technical reference for federation
 - [Design Philosophy](docs/DESIGN_PHILOSOPHY.md) – Why Sruja works this way
 
 ---

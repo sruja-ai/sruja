@@ -22,8 +22,8 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 
 | Doc | Purpose |
 |-----|---------|
-| [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** - Install, use, workflows |
-| [USING_SRUJA_IN_YOUR_PROJECT.md](USING_SRUJA_IN_YOUR_PROJECT.md) | CI integration, team workflows |
+| [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** – Install, use, workflows, [single repo / monorepo / multi-repo](GETTING_STARTED_SKILL.md#using-sruja-in-your-project-single-repo-monorepo-multi-repo) |
+| [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) | **Multi-repo federation** – Step-by-step guide to test and deploy federation across repos |
 | [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) | DSL reference |
 | [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) | Language design principles |
 | [RUN_GUIDE.md](RUN_GUIDE.md) | Build, run, demo |
@@ -32,7 +32,6 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 | [CODING_GUIDELINES.md](CODING_GUIDELINES.md) | Coding standards |
 | [SCOPE.md](SCOPE.md) | Product scope |
 | [SECURITY.md](SECURITY.md) | Security policy |
-| [DOCS_CONSISTENCY_REPORT.md](DOCS_CONSISTENCY_REPORT.md) | Docs consistency check and fixes |
 | [adr/](adr/) | Architecture decision records |
 | [internal/](internal/) | Internal docs |
 
