@@ -352,14 +352,23 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
     vscode.commands.registerCommand("sruja.openComponentKnowledge", async (docUriArg?: string) => {
-      if (docUriArg) {
-        try {
-          const uri = vscode.Uri.parse(docUriArg);
+      async function openDocInSplit(uri: vscode.Uri): Promise<void> {
+        const isMarkdown = uri.fsPath.toLowerCase().endsWith(".md");
+        if (isMarkdown) {
+          await vscode.workspace.openTextDocument(uri);
+          await vscode.commands.executeCommand("markdown.showPreviewToSide", uri);
+        } else {
           const doc = await vscode.workspace.openTextDocument(uri);
           await vscode.window.showTextDocument(doc, {
             viewColumn: vscode.ViewColumn.Beside,
             preserveFocus: false,
           });
+        }
+      }
+      if (docUriArg) {
+        try {
+          const uri = vscode.Uri.parse(docUriArg);
+          await openDocInSplit(uri);
         } catch {
           vscode.window.showWarningMessage("Could not open component knowledge file.");
         }
@@ -392,11 +401,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage(`Knowledge file not found: ${element.doc}`);
         return;
       }
-      const knowledgeDoc = await vscode.workspace.openTextDocument(docUri);
-      await vscode.window.showTextDocument(knowledgeDoc, {
-        viewColumn: vscode.ViewColumn.Beside,
-        preserveFocus: false,
-      });
+      await openDocInSplit(docUri);
     }),
     vscode.commands.registerCommand("sruja.openDiagramPreview", async () => {
       const editor = vscode.window.activeTextEditor;

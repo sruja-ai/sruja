@@ -177,7 +177,7 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
       markdown.appendMarkdown(`*Parent:* \`${parentId}\`\n\n`);
     }
 
-    // When element has doc, add link to open knowledge file in split
+    // When element has doc, add clickable link to open knowledge file in split (Markdown as preview)
     if (element.doc) {
       const docUri = resolveDocUri(element.doc, document);
       if (docUri) {
@@ -185,7 +185,9 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
         const cmdUri = vscode.Uri.parse(
           `command:sruja.openComponentKnowledge?${encodeURIComponent(JSON.stringify(args))}`
         );
-        markdown.appendMarkdown(`*Documentation:* [Open in split](${cmdUri})\n\n`);
+        const isMd = docUri.fsPath.toLowerCase().endsWith(".md");
+        const label = isMd ? "Open doc (preview)" : "Open in split";
+        markdown.appendMarkdown(`*Documentation:* [${label}](${cmdUri})\n\n`);
         markdown.isTrusted = true;
       }
     }

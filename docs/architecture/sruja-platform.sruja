@@ -14,20 +14,24 @@ component = kind "Component"
 // Actors
 Architect = person "Software Architect" {
   description "Uses Sruja to design and document systems"
+  doc "book/src/docs/concepts/person.md"
 }
 
 Developer = person "Developer" {
   description "Uses Sruja CLI and VS Code extension for development"
+  doc "book/src/docs/concepts/person.md"
 }
 
 Contributor = person "Contributor" {
   description "Contributes to Sruja development"
+  doc "book/src/docs/concepts/person.md"
 }
 
 // Main System
 Sruja = system "Sruja Platform" {
   description "Tools for defining, visualizing, and analyzing software architecture"
   tags ["platform", "architecture-as-code"]
+  doc "skills/sruja-architecture/references/REFERENCE.md"
 }
 
 // Core (Rust)

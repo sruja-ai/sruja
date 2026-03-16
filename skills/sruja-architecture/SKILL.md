@@ -88,6 +88,8 @@ System.Container -> ExternalAPI "HTTPS"
 
 **Component knowledge (opt-in):** Ask the user if they want per-component markdown under `.sruja/knowledge/`. If yes: one file per component (e.g. `.sruja/knowledge/PaymentService.md`), add `doc ".sruja/knowledge/<Id>.md"` on the element, use `references/KNOWLEDGE_TEMPLATE.md`. Scope: containers and key systems; quality over coverage.
 
+**Doc references — markdown only:** In `.sruja` files, `doc` must point to **markdown** (e.g. `.sruja/knowledge/Component.md`, `docs/README.md`, or a generated knowledge base). Do **not** set `doc` to source code paths (e.g. `.rs`, `.ts`, `crates/...`). The markdown itself may link to or reference code; the separation is: Sruja DSL elements reference markdown via `doc`, and that markdown can refer to files.
+
 ### 4. Validate and Repair
 
 ```bash
@@ -126,6 +128,7 @@ Use drift results to refine `repo.sruja`. Use `-a path` to specify a different a
 - Do not create components for completeness only.
 - Do not add relationships unsupported by evidence.
 - Do not skip linting.
+- Do not set `doc` on elements to source code paths (e.g. `crates/foo/src/lib.rs`, `extension/src/bar.ts`). Use markdown only; the markdown can reference code.
 
 ## Open Questions
 
