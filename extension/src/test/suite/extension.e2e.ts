@@ -77,6 +77,25 @@ export function runTests({ describe, it, beforeAll, assert }: {
       );
     });
 
+    it("with sruja-platform.sruja: runValidation and exportMarkdown run without throwing", async () => {
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      assert.ok(folder, "Test workspace should be open");
+      const srujaUri = vscode.Uri.joinPath(folder!.uri, "sruja-platform.sruja");
+      const doc = await vscode.workspace.openTextDocument(srujaUri);
+      await vscode.window.showTextDocument(doc);
+      await sleep(500);
+      await assert.doesNotReject(
+        async () => vscode.commands.executeCommand("sruja.runValidation"),
+        "runValidation on sruja-platform.sruja should not throw"
+      );
+      await sleep(1500);
+      await assert.doesNotReject(
+        async () => vscode.commands.executeCommand("sruja.exportMarkdown"),
+        "exportMarkdown on sruja-platform.sruja should not throw"
+      );
+      await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    });
+
     it("sruja.exportMarkdown when no .sruja open shows warning (does not throw)", async () => {
       await vscode.commands.executeCommand("workbench.action.closeAllEditors");
       await assert.doesNotReject(

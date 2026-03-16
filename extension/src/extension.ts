@@ -204,6 +204,16 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
 
+  const openMarkdownPreview = async (): Promise<void> => {
+    const editor = vscode.window.activeTextEditor;
+    const doc = editor?.document;
+    if (!doc || doc.languageId !== "sruja") {
+      vscode.window.showWarningMessage("Open a .sruja file to open markdown preview.");
+      return;
+    }
+    await vscode.commands.executeCommand("vscode.openWith", doc.uri, "sruja.markdownPreview", vscode.ViewColumn.Beside);
+  };
+
   context.subscriptions.push(
     vscode.commands.registerCommand("sruja.openSkillsOverview", async () => {
       const root = getSkillsRoot(context);
@@ -416,15 +426,8 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
     }),
-    vscode.commands.registerCommand("sruja.openMarkdownPreview", async () => {
-      const editor = vscode.window.activeTextEditor;
-      const doc = editor?.document;
-      if (!doc || doc.languageId !== "sruja") {
-        vscode.window.showWarningMessage("Open a .sruja file to open markdown preview.");
-        return;
-      }
-      await vscode.commands.executeCommand("vscode.openWith", doc.uri, "sruja.markdownPreview", vscode.ViewColumn.Beside);
-    }),
+    vscode.commands.registerCommand("sruja.markdownPreview", openMarkdownPreview),
+    vscode.commands.registerCommand("sruja.openMarkdownPreview", openMarkdownPreview),
     vscode.commands.registerCommand("sruja.runDrift", async () => {
       const channel = getCliOutputChannel();
       channel.clear();

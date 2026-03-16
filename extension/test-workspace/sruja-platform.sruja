@@ -1,0 +1,457 @@
+// docs/architecture/sruja-platform.sruja
+// Complete architecture of the Sruja platform
+// This file describes Sruja's own architecture using Sruja DSL
+//
+// Note: This file is written as a comprehensive blueprint and is intended to be
+// validated with `sruja lint`.
+
+// Element kinds
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
+
+// Actors
+Architect = person "Software Architect" {
+  description "Uses Sruja to design and document systems"
+}
+
+Developer = person "Developer" {
+  description "Uses Sruja CLI and VS Code extension for development"
+}
+
+Contributor = person "Contributor" {
+  description "Contributes to Sruja development"
+}
+
+// Main System
+Sruja = system "Sruja Platform" {
+  description "Tools for defining, visualizing, and analyzing software architecture"
+  tags ["platform", "architecture-as-code"]
+}
+
+// Core (Rust)
+Sruja_CLI = container "Sruja CLI" {
+  technology "Rust, clap"
+  description "Command-line interface for Sruja operations"
+  tags ["cli", "backend"]
+}
+
+Sruja_CLI_Commands = component "CLI Commands" {
+  description "lint, export, and other subcommands"
+  technology "Rust, crates/sruja-cli"
+}
+
+Sruja_CLI_WASMBuilder = component "WASM Builder" {
+  description "WebAssembly modules for browser usage"
+  technology "Rust, wasm"
+}
+
+Sruja_Language = container "Language Engine" {
+  technology "Rust"
+  description "DSL parsing, AST, and language processing"
+  tags ["core", "parser"]
+}
+
+Sruja_Language_Lexer = component "Lexer" {
+  description "Tokenizes Sruja DSL input"
+  technology "Rust, crates/sruja-language"
+}
+
+Sruja_Language_Parser = component "Parser" {
+  description "Parses tokens into Abstract Syntax Tree"
+  technology "Rust, crates/sruja-language"
+}
+
+Sruja_Language_AST = component "AST Builder" {
+  description "Builds and manages Abstract Syntax Tree"
+  technology "Rust, crates/sruja-language"
+}
+
+Sruja_Language_Printer = component "Printer" {
+  description "Formats and prints AST back to DSL"
+  technology "Rust, crates/sruja-language"
+}
+
+Sruja_Engine = container "Validation Engine" {
+  technology "Rust"
+  description "Validates architecture models against rules"
+  tags ["validation", "rules"]
+}
+
+Sruja_Engine_Validator = component "Validator" {
+  description "Orchestrates validation rules execution"
+  technology "Rust, crates/sruja-engine"
+}
+
+Sruja_Engine_Scorer = component "Scorer" {
+  description "Calculates architecture health scores"
+  technology "Rust, crates/sruja-engine"
+}
+
+Sruja_Engine_Rules = component "Validation Rules" {
+  description "Unique ID, valid refs, cycles, orphans, causal/feedback loop integrity"
+  technology "Rust, crates/sruja-engine"
+}
+
+Sruja_Engine_Resolver = component "Reference Resolver" {
+  description "Resolves and validates references"
+  technology "Rust, crates/sruja-engine"
+}
+
+Sruja_Export = container "Export System" {
+  technology "Rust"
+  description "Exports architecture models to various formats"
+  tags ["export"]
+}
+
+Sruja_Export_MermaidExporter = component "Mermaid Exporter" {
+  description "Exports to Mermaid diagram format"
+  technology "Rust, crates/sruja-export"
+}
+
+Sruja_Export_ViewGenerator = component "View Generator" {
+  description "Generates views and diagrams"
+  technology "Rust, crates/sruja-export"
+}
+
+Sruja_LSP = container "LSP / IDE Support" {
+  technology "Rust, TypeScript"
+  description "Language Server Protocol and VS Code extension"
+  tags ["lsp", "ide"]
+}
+
+Sruja_LSP_Diagnostics = component "Diagnostics" {
+  description "Error and warning reporting"
+  technology "packages/shared, extension"
+}
+
+Sruja_LSP_Completion = component "Completion" {
+  description "Code completion support"
+  technology "Rust, TypeScript, extension"
+}
+
+Sruja_LSP_Hover = component "Hover" {
+  description "Hover information"
+  technology "Rust, TypeScript, extension"
+}
+
+Sruja_LSP_Definition = component "Definition" {
+  description "Go to definition support"
+  technology "Rust, TypeScript, extension"
+}
+
+Sruja_Stdlib = container "Standard Library" {
+  technology "Sruja DSL"
+  description "Standard C4 element definitions and styles"
+  tags ["stdlib", "core"]
+}
+
+Sruja_Stdlib_CoreElements = component "Core Elements" {
+  description "Standard C4 element kinds (person, system, container, component, etc.)"
+  technology "Sruja DSL, lib/"
+}
+
+Sruja_Stdlib_Styles = component "Styles" {
+  description "Standard styling definitions"
+  technology "Sruja DSL, lib/"
+}
+
+// Frontend (TypeScript)
+Sruja_Designer = container "Designer Application" {
+  technology "TypeScript, React, Vite"
+  description "Interactive designer for testing Sruja code in browser"
+  tags ["frontend", "app"]
+}
+
+Sruja_Designer_Canvas = component "Canvas" {
+  description "Diagram rendering canvas"
+  technology "React"
+}
+
+Sruja_Designer_Editor = component "Code Editor" {
+  description "DSL code editor with LSP support"
+  technology "Monaco Editor"
+}
+
+Sruja_Designer_WASMAdapter = component "WASM Adapter" {
+  description "Adapter for WASM backend communication"
+  technology "TypeScript, packages/shared/web"
+}
+
+Sruja_Website = container "Website Application" {
+  technology "Astro, TypeScript"
+  description "Documentation website with playground"
+  tags ["frontend", "app", "docs"]
+}
+
+Sruja_Website_Playground = component "Playground" {
+  description "Interactive Sruja playground"
+  technology "Astro, WASM"
+}
+
+Sruja_Website_Docs = component "Documentation" {
+  description "Documentation pages"
+  technology "Astro, Markdown"
+}
+
+Sruja_VSCode = container "VS Code Extension" {
+  technology "TypeScript, VS Code API"
+  description "VS Code language support"
+  tags ["frontend", "ide"]
+}
+
+Sruja_VSCode_LanguageSupport = component "Language Support" {
+  description "Syntax highlighting, LSP integration"
+  technology "VS Code API"
+}
+
+Sruja_VSCode_Preview = component "Preview" {
+  description "Diagram preview"
+  technology "VS Code Webview"
+}
+
+Sruja_SocialPublish = container "Social Publish" {
+  technology "TypeScript"
+  description "Social media publishing tools"
+  tags ["frontend", "app", "automation"]
+}
+
+Sruja_SocialPublish_Publishers = component "Publishers" {
+  description "Publishes to various social platforms (Bluesky, GitHub, LinkedIn, Mastodon, Reddit)"
+  technology "TypeScript, apps/social-publish"
+}
+
+Sruja_Storybook = container "Storybook" {
+  technology "TypeScript, Storybook"
+  description "Component documentation and visual testing"
+  tags ["frontend", "app", "docs"]
+}
+
+Sruja_Storybook_Stories = component "Stories" {
+  description "Component stories for documentation and testing"
+  technology "Storybook, apps/storybook"
+}
+
+// Shared Packages
+Sruja_Shared = container "Shared Package" {
+  technology "TypeScript"
+  description "Shared utilities and types"
+  tags ["package", "shared"]
+}
+
+Sruja_Shared_Types = component "Types" {
+  description "TypeScript type definitions"
+  technology "TypeScript, packages/shared/types"
+}
+
+Sruja_Shared_Utils = component "Utilities" {
+  description "Shared utility functions"
+  technology "TypeScript, packages/shared/utils"
+}
+
+Sruja_Shared_Builder = component "Builder API" {
+  description "Programmatic API for building models"
+  technology "TypeScript, packages/shared/builder"
+}
+
+Sruja_UI = container "UI Package" {
+  technology "TypeScript, React"
+  description "UI component library"
+  tags ["package", "ui"]
+}
+
+Sruja_UI_Components = component "Components" {
+  description "Reusable UI components"
+  technology "React, packages/ui"
+}
+
+Sruja_Layout = container "Layout Package" {
+  technology "TypeScript"
+  description "Layout algorithms for diagrams"
+  tags ["package", "layout"]
+}
+
+Sruja_Layout_Algorithms = component "Algorithms" {
+  description "Graph layout algorithms"
+  technology "TypeScript, packages/layout"
+}
+
+Sruja_Diagram = container "Diagram Package" {
+  technology "TypeScript, React"
+  description "Diagram rendering utilities"
+  tags ["package", "diagram"]
+}
+
+Sruja_Diagram_Renderer = component "Renderer" {
+  description "Diagram rendering components"
+  technology "React"
+}
+
+Sruja_ESLintConfig = container "ESLint Config Package" {
+  technology "TypeScript"
+  description "Shared ESLint configuration"
+  tags ["package", "linting"]
+}
+
+Sruja_ESLintConfig_Config = component "ESLint Config" {
+  description "Shared ESLint rules and configuration"
+  technology "TypeScript, packages/eslint-config"
+}
+
+// Backend relationships
+Sruja_CLI -> Sruja_Language "Calls"
+Sruja_CLI -> Sruja_Engine "Calls"
+Sruja_CLI -> Sruja_Export "Calls"
+Sruja_CLI -> Sruja_LSP "Starts"
+
+Sruja_Language_Lexer -> Sruja_Language_Parser "Tokenizes"
+Sruja_Language_Parser -> Sruja_Language_AST "Builds AST"
+Sruja_Language_AST -> Sruja_Language_Printer "Formats"
+Sruja_Language -> Sruja_Stdlib "Uses"
+
+Sruja_Language_Parser -> Sruja_Engine "Validates AST"
+Sruja_Language_AST -> Sruja_Export "Exports"
+
+Sruja_Engine_Validator -> Sruja_Engine_Rules "Executes"
+Sruja_Engine_Validator -> Sruja_Engine_Resolver "Uses"
+Sruja_Engine_Scorer -> Sruja_Engine_Validator "Uses"
+
+Sruja_Engine -> Sruja_Export "Validates before export"
+
+// Frontend relationships
+Sruja_Designer_WASMAdapter -> Sruja_CLI_WASMBuilder "Uses WASM"
+Sruja_Designer_Canvas -> Sruja_Diagram_Renderer "Renders diagrams"
+Sruja_Designer_Editor -> Sruja_LSP "LSP client"
+Sruja_Designer -> Sruja_Shared "Uses"
+Sruja_Designer -> Sruja_UI "Uses"
+Sruja_Designer -> Sruja_Layout "Uses"
+Sruja_Designer -> Sruja_Diagram "Uses"
+Sruja_Designer -> Sruja_ESLintConfig "Uses"
+
+Sruja_Website_Playground -> Sruja_CLI_WASMBuilder "Uses WASM"
+Sruja_Website -> Sruja_Shared "Uses"
+Sruja_Website -> Sruja_UI "Uses"
+Sruja_Website -> Sruja_ESLintConfig "Uses"
+
+Sruja_VSCode_LanguageSupport -> Sruja_LSP "LSP client"
+Sruja_VSCode -> Sruja_Shared "Uses"
+Sruja_VSCode -> Sruja_ESLintConfig "Uses"
+
+Sruja_SocialPublish -> Sruja_Shared "Uses"
+Sruja_SocialPublish -> Sruja_ESLintConfig "Uses"
+
+Sruja_Storybook -> Sruja_UI "Uses"
+Sruja_Storybook -> Sruja_Shared "Uses"
+Sruja_Storybook -> Sruja_ESLintConfig "Uses"
+
+Sruja_Diagram_Renderer -> Sruja_Layout_Algorithms "Uses layout"
+Sruja_Diagram_Renderer -> Sruja_Shared_Types "Uses types"
+
+// User relationships
+Architect -> Sruja_CLI "Uses"
+Architect -> Sruja_VSCode "Writes DSL"
+Architect -> Sruja_Website_Playground "Visualizes architecture"
+Architect -> Sruja_Website "Reads docs"
+
+Developer -> Sruja_CLI "Runs lint/compile"
+Developer -> Sruja_VSCode "Writes code"
+Developer -> Sruja_Designer "Tests DSL"
+
+Contributor -> Sruja "Contributes to"
+
+// Requirements
+R1 = requirement functional "Must support full C4 model hierarchy"
+R2 = requirement performance "Parsing must be < 100ms for typical files"
+R3 = requirement portability "Core must compile to WASM"
+R4 = requirement functional "Must export to JSON format"
+
+// Architecture Decision Records
+ADR001 = adr "Rust for Core and CLI" {
+  status "Accepted"
+  context "Need a single language for parser, engine, and CLI with WASM support."
+  decision "Use Rust (crates: sruja-language, sruja-engine, sruja-cli, sruja-export)."
+  consequences "Gain: WASM, single toolchain, type-safe AST. Trade-off: Ecosystem different from previous Go stack"
+}
+
+ADR002 = adr "Client-Side Rendering for Playground" {
+  status "Accepted"
+  context "Playground needs to run without a backend server for cost and simplicity"
+  decision "Compile Rust engine to WASM and run entirely client-side"
+  consequences "Gain: Zero backend costs, works offline. Trade-off: Larger bundle size, WASM compatibility considerations"
+}
+
+ADR003 = adr "JSON as Primary Export Format" {
+  status "Accepted"
+  context "Need a format that can be consumed by various tools and frontend applications"
+  decision "Use JSON as the primary export format, with TypeScript exporters in frontend apps for other formats"
+  consequences "Gain: Interoperability, easy integration. Trade-off: Frontend apps handle format conversion"
+}
+
+// Policies
+CodeStyle = policy "Rust code must be formatted with rustfmt" {
+  category "quality"
+  enforcement "required"
+}
+
+NoCycles = policy "Architecture graph must be acyclic" {
+  category "structural"
+  enforcement "strict"
+}
+
+// Flows
+AuthoringFlow = flow "Authoring Architecture" {
+  step Architect -> Sruja_VSCode "Writes DSL"
+  step Sruja_VSCode -> Sruja_LSP "Validates in real-time"
+  step Architect -> Sruja_Website_Playground "Opens preview"
+  step Sruja_Website_Playground -> Sruja_CLI_WASMBuilder "Renders diagram"
+}
+
+CICDFlow = flow "CI/CD Verification" {
+  step Developer -> Sruja_CLI "Pushes code"
+  step Sruja_CLI -> Sruja_Engine "Runs lint"
+  step Sruja_CLI -> Sruja_Export "Runs export json"
+  step Sruja_CLI -> Sruja_Export "Generates artifacts"
+}
+
+// Views
+view index {
+  title "Sruja Platform Overview"
+  include *
+}
+
+view backend of Sruja {
+  title "Backend Components"
+  description "Rust core and LSP components"
+  include Sruja_CLI, Sruja_Language, Sruja_Engine, Sruja_Export, Sruja_LSP, Sruja_Stdlib
+}
+
+view frontend of Sruja {
+  title "Frontend Applications"
+  description "TypeScript frontend applications"
+  include Sruja_Designer, Sruja_Website, Sruja_VSCode, Sruja_SocialPublish, Sruja_Storybook
+}
+
+view packages of Sruja {
+  title "Shared Packages"
+  description "TypeScript packages and their relationships"
+  include Sruja_Shared, Sruja_UI, Sruja_Layout, Sruja_Diagram, Sruja_ESLintConfig
+}
+
+view validation of Sruja_Engine {
+  title "Validation Rules"
+  description "Engine components"
+  include Sruja_Engine_Validator, Sruja_Engine_Scorer, Sruja_Engine_Rules, Sruja_Engine_Resolver
+}
+
+view exporters of Sruja_Export {
+  title "Export Formats"
+  description "Export components"
+  include Sruja_Export_MermaidExporter, Sruja_Export_ViewGenerator
+}
+
+view dataflow of Sruja {
+  title "Data Processing Flow"
+  description "How DSL is processed through the system"
+  include Sruja_Language, Sruja_Engine, Sruja_Export
+}

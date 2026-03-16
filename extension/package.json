@@ -143,6 +143,10 @@
         "title": "Sruja: Review architecture update"
       },
       {
+        "command": "sruja.markdownPreview",
+        "title": "Sruja: Markdown Preview"
+      },
+      {
         "command": "sruja.openMarkdownPreview",
         "title": "Sruja: Open Markdown Preview"
       }
@@ -170,7 +174,8 @@
         {
           "command": "sruja.exportMarkdown",
           "when": "editorLangId == sruja",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "$(preview)"
         },
         {
           "command": "sruja.openDiagramPreview",
@@ -183,10 +188,9 @@
           "group": "navigation"
         },
         {
-          "command": "sruja.openMarkdownPreview",
+          "command": "sruja.markdownPreview",
           "when": "editorLangId == sruja",
-          "group": "navigation",
-          "icon": "$(preview)"
+          "group": "navigation"
         }
       ]
     },

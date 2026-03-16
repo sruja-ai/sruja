@@ -90,7 +90,16 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
   }
 
   private getMarkdownHtml(markdown: string): string {
-    const escaped = JSON.stringify(markdown);
+    const mermaidBlocks: string[] = [];
+    const markdownWithPlaceholders = markdown.replace(
+      /```mermaid\n([\s\S]*?)```/g,
+      (_match, code: string) => {
+        mermaidBlocks.push(code.trim());
+        return `\n\n<!--MERMAID${mermaidBlocks.length - 1}-->\n\n`;
+      }
+    );
+    const escapedMarkdown = JSON.stringify(markdownWithPlaceholders);
+    const escapedMermaidBlocks = JSON.stringify(mermaidBlocks);
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -98,6 +107,7 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net;">
   <title>Sruja Markdown Preview</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 16px; max-width: 900px; margin: 0 auto; line-height: 1.6; }
     h1, h2, h3 { margin-top: 1.5em; }
@@ -107,16 +117,32 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
     table { border-collapse: collapse; width: 100%; margin: 1em 0; }
     th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
     th { background: #f4f4f4; }
+    .mermaid { margin: 1em 0; }
   </style>
 </head>
 <body>
   <div id="content">Loading...</div>
   <script>
     try {
-      const md = ${escaped};
-      document.getElementById('content').innerHTML = marked.parse(md);
+      const md = ${escapedMarkdown};
+      const mermaidBlocks = ${escapedMermaidBlocks};
+      var html = marked.parse(md);
+      for (var i = 0; i < mermaidBlocks.length; i++) {
+        html = html.replace('<!--MERMAID' + i + '-->', '<div class="mermaid" data-mermaid-id="' + i + '"></div>');
+      }
+      document.getElementById('content').innerHTML = html;
+      document.querySelectorAll('.mermaid[data-mermaid-id]').forEach(function(el) {
+        var id = parseInt(el.getAttribute('data-mermaid-id'), 10);
+        el.textContent = mermaidBlocks[id];
+      });
+      mermaid.initialize({ startOnLoad: false });
+      mermaid.run({ querySelector: '.mermaid' }).catch(function(err) {
+        document.querySelectorAll('.mermaid').forEach(function(el) {
+          el.innerHTML = '<p style="color:#c00">Diagram error: ' + (err.message || String(err)) + '</p>';
+        });
+      });
     } catch(e) {
-      document.getElementById('content').innerHTML = '<p style="color:#c00">Error: ' + e.message + '</p>';
+      document.getElementById('content').innerHTML = '<p style="color:#c00">Error: ' + (e.message || String(e)) + '</p>';
     }
   </script>
 </body>
