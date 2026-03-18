@@ -9,13 +9,33 @@ person = kind "Person"
 system = kind "System"
 container = kind "Container"
 
-User = person "User" { description "End user" }
+User = person "User" {
+  description "End user"
+}
+
 App = system "My App" {
   description "Main application"
-  Web = container "Web" { technology "React"; description "UI" }
+
+  Web = container "Web" {
+    technology "React"
+    description "UI"
+  }
 }
 User -> App "uses"
 "#;
+
+fn write_minimal_cargo_repo(repo_root: &std::path::Path) {
+    write_file(
+        repo_root,
+        "Cargo.toml",
+        r#"[package]
+name = "dummy"
+version = "0.1.0"
+edition = "2021"
+"#,
+    );
+    write_file(repo_root, "src/lib.rs", "pub fn foo() {}");
+}
 
 #[test]
 fn export_json_succeeds_on_valid_file() {
@@ -148,16 +168,7 @@ fn validate_succeeds_on_valid_file() {
 #[test]
 fn scan_succeeds_on_repo_with_cargo_toml() {
     let repo = create_test_repo();
-    write_file(
-        repo.path(),
-        "Cargo.toml",
-        r#"[package]
-name = "dummy"
-version = "0.1.0"
-edition = "2021"
-"#,
-    );
-    write_file(repo.path(), "src/lib.rs", "pub fn foo() {}");
+    write_minimal_cargo_repo(repo.path());
     let path_str = repo.path().to_str().expect("utf-8");
 
     let (success, stdout, stderr) = run_sruja(&["scan", path_str, "--output", "-"]);
@@ -229,4 +240,260 @@ module.exports = { main: () => helper.help() };
         }),
         "impact downstream should include src_helper_js"
     );
+}
+
+#[test]
+fn status_json_includes_truth_and_baseline() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&["status", "-r", repo_str, "-f", "json"]);
+
+    assert!(success, "status should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("truth_status").is_some());
+    assert!(parsed.get("baseline").is_some());
+}
+
+#[test]
+fn init_creates_dot_sruja_dir() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, _stdout, stderr) = run_sruja(&["init", "-r", repo_str]);
+
+    assert!(success, "init should succeed: stderr={}", stderr);
+    assert!(repo.path().join(".sruja").exists());
+}
+
+#[test]
+fn sync_writes_context_and_graph() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&["sync", "-r", repo_str, "-f", "json"]);
+
+    assert!(success, "sync should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    let context_path = parsed
+        .get("context_path")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    assert!(context_path.ends_with(".sruja/context.json"));
+    assert!(repo.path().join(".sruja/context.json").exists());
+    assert!(repo.path().join(".sruja/graph.json").exists());
+}
+
+#[test]
+fn review_json_succeeds_without_baseline() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&["review", "-r", repo_str, "-f", "json"]);
+
+    assert!(success, "review should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("truth_status").is_some());
+    assert!(parsed.get("suggestions").is_some());
+}
+
+#[test]
+fn baseline_and_check_json_succeeds() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let baseline_out = repo
+        .path()
+        .join(".sruja/violations.baseline.json")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+
+    let (baseline_success, baseline_stdout, baseline_stderr) =
+        run_sruja(&["baseline", "-r", repo_str, "-o", &baseline_out]);
+    assert!(
+        baseline_success,
+        "baseline should succeed: stderr={}",
+        baseline_stderr
+    );
+    let baseline_path_printed = baseline_stdout.trim();
+    assert!(!baseline_path_printed.is_empty());
+    assert!(std::path::Path::new(baseline_path_printed).exists());
+
+    let (check_success, check_stdout, check_stderr) = run_sruja(&[
+        "check",
+        "-r",
+        repo_str,
+        "-f",
+        "json",
+        "--baseline",
+        baseline_path_printed,
+    ]);
+    assert!(
+        check_success,
+        "check should succeed: stderr={}",
+        check_stderr
+    );
+    let parsed: serde_json::Value = serde_json::from_str(check_stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("truth_status").is_some());
+    assert!(parsed.get("violations_baseline").is_some());
+}
+
+#[test]
+fn publish_and_compose_succeeds() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let bundle = repo
+        .path()
+        .join("repo.bundle.json")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+
+    let (pub_success, _pub_stdout, pub_stderr) =
+        run_sruja(&["publish", "-r", repo_str, "-o", &bundle]);
+    assert!(pub_success, "publish should succeed: stderr={}", pub_stderr);
+    assert!(std::path::Path::new(&bundle).exists());
+
+    let index = repo
+        .path()
+        .join("system.index.json")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+    let (compose_success, _compose_stdout, compose_stderr) =
+        run_sruja(&["compose", "-i", &bundle, "-o", &index]);
+    assert!(
+        compose_success,
+        "compose should succeed: stderr={}",
+        compose_stderr
+    );
+    assert!(std::path::Path::new(&index).exists());
+}
+
+#[test]
+fn sources_and_knowledge_commands_work() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    write_file(
+        repo.path(),
+        "repo.sruja",
+        r#"
+system = kind "System"
+
+App = system "App" {
+  description "Main"
+  doc ".sruja/knowledge/App.md"
+  source openapi "api/openapi.yaml"
+}
+
+Worker = system "Worker" { description "Background jobs" }
+
+App -> Worker "queues jobs"
+"#,
+    );
+    write_file(
+        repo.path(),
+        "api/openapi.yaml",
+        "openapi: 3.0.0\ninfo:\n  title: API\n  version: 1.0.0\n",
+    );
+    write_file(repo.path(), ".sruja/knowledge/App.md", "App knowledge\n");
+
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (sources_success, sources_stdout, sources_stderr) = run_sruja(&[
+        "sources",
+        "-r",
+        repo_str,
+        "-a",
+        "repo.sruja",
+        "--format",
+        "json",
+    ]);
+    assert!(
+        sources_success,
+        "sources should succeed: stderr={}",
+        sources_stderr
+    );
+    let sources_json: serde_json::Value =
+        serde_json::from_str(sources_stdout.trim()).expect("valid JSON");
+    assert!(sources_json.as_array().is_some());
+
+    let (knowledge_list_success, knowledge_list_stdout, knowledge_list_stderr) =
+        run_sruja(&["knowledge", "list", "-r", repo_str, "-a", "repo.sruja"]);
+    assert!(
+        knowledge_list_success,
+        "knowledge list should succeed: stderr={}",
+        knowledge_list_stderr
+    );
+    assert!(knowledge_list_stdout.contains("App"));
+
+    let (knowledge_show_success, knowledge_show_stdout, knowledge_show_stderr) = run_sruja(&[
+        "knowledge",
+        "show",
+        "App",
+        "-r",
+        repo_str,
+        "-a",
+        "repo.sruja",
+    ]);
+    assert!(
+        knowledge_show_success,
+        "knowledge show should succeed: stderr={}",
+        knowledge_show_stderr
+    );
+    assert!(knowledge_show_stdout.contains("App knowledge"));
+
+    let (knowledge_gaps_success, knowledge_gaps_stdout, knowledge_gaps_stderr) =
+        run_sruja(&["knowledge", "gaps", "-r", repo_str, "-a", "repo.sruja"]);
+    assert!(
+        knowledge_gaps_success,
+        "knowledge gaps should succeed: stderr={}",
+        knowledge_gaps_stderr
+    );
+    assert!(knowledge_gaps_stdout.contains("Worker"));
+}
+
+#[test]
+fn generate_prompt_only_writes_file() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+    let out = repo
+        .path()
+        .join("prompt.txt")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+
+    let skill_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("skills/sruja-architecture/SKILL.md")
+        .canonicalize()
+        .expect("skill file exists");
+    let skill_path_str = skill_path.to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&[
+        "generate",
+        "-r",
+        repo_str,
+        "--skill-path",
+        skill_path_str,
+        "--prompt-only",
+        "-o",
+        &out,
+    ]);
+
+    assert!(success, "generate should succeed: stderr={}", stderr);
+    assert!(stdout.contains("Wrote prompt"));
+    let content = std::fs::read_to_string(&out).expect("prompt exists");
+    assert!(content.contains("SKILL (follow these rules):"));
+    assert!(content.contains("REPO CONTEXT"));
 }

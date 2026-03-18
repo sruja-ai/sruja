@@ -81,6 +81,25 @@ jobs:
       - name: Lint
         run: cargo clippy --workspace -- -D warnings
 
+  wasm:
+    name: WASM tests (wasm-pack --node)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Test WASM (Node)
+        run: cd crates/sruja-wasm && wasm-pack test --node
+
   sruja-files:
     name: Sruja files (lint)
     needs: changes

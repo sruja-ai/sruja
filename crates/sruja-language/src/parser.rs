@@ -75,6 +75,101 @@ fn generic_parse_suggestions() -> Vec<String> {
     ]
 }
 
+fn count_char(input: &str, ch: char) -> usize {
+    input.chars().filter(|c| *c == ch).count()
+}
+
+fn detect_common_syntax_diagnostic(
+    input: &str,
+    remaining: &str,
+) -> Option<(&'static str, String, Vec<String>)> {
+    let remaining_trimmed = remaining.trim_start();
+
+    if input.trim_start().starts_with("architecture") {
+        return Some((
+            sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+            "Top-level `architecture \"...\" { ... }` blocks are not supported. Keep declarations at the top level (no wrapper).".to_string(),
+            vec![
+                "Remove the outer `architecture \"...\" {` and matching `}`".to_string(),
+                "Put `MySystem = system \"...\" { ... }` and `A -> B \"...\"` directly in the file".to_string(),
+            ],
+        ));
+    }
+
+    if count_char(input, '{') > count_char(input, '}') {
+        return Some((
+            sruja_diagnostics::codes::CODE_MISSING_BRACE,
+            "Missing closing `}`".to_string(),
+            vec![
+                "Add a matching `}` for the last opened `{`".to_string(),
+                "If you intended a single-line element, remove the `{ ... }` block".to_string(),
+            ],
+        ));
+    }
+
+    if count_char(input, '[') > count_char(input, ']') {
+        return Some((
+            sruja_diagnostics::codes::CODE_MISSING_BRACE,
+            "Missing closing `]`".to_string(),
+            vec![
+                "Add a matching `]` for the last opened `[`".to_string(),
+                "Check list syntax: tags [\"a\", \"b\"]".to_string(),
+            ],
+        ));
+    }
+
+    if count_char(input, '"') % 2 == 1 || count_char(input, '\'') % 2 == 1 {
+        return Some((
+            sruja_diagnostics::codes::CODE_INVALID_STRING,
+            "Unterminated string literal (missing closing quote)".to_string(),
+            vec![
+                "Close the string with a matching quote".to_string(),
+                "Prefer double quotes for strings: \"...\"".to_string(),
+            ],
+        ));
+    }
+
+    if remaining_trimmed.starts_with('=') {
+        return Some((
+            sruja_diagnostics::codes::CODE_UNEXPECTED_TOKEN,
+            "Expected an identifier before `=` (e.g. `MySystem = system \"My System\"`)"
+                .to_string(),
+            vec![
+                "Add a name on the left side: `App = system \"App\" { ... }`".to_string(),
+                "If this line is accidental, delete it".to_string(),
+            ],
+        ));
+    }
+
+    if remaining_trimmed.starts_with("->")
+        || remaining_trimmed.starts_with("<-")
+        || remaining_trimmed.starts_with("<->")
+    {
+        return Some((
+            sruja_diagnostics::codes::CODE_UNEXPECTED_TOKEN,
+            "Expected an identifier before a relationship arrow (e.g. `A -> B \"calls\"`)"
+                .to_string(),
+            vec![
+                "Add a source element id before the arrow".to_string(),
+                "If you meant a comment, prefix with `//`".to_string(),
+            ],
+        ));
+    }
+
+    if remaining_trimmed.starts_with('}') || remaining_trimmed.starts_with(']') {
+        return Some((
+            sruja_diagnostics::codes::CODE_UNEXPECTED_TOKEN,
+            "Unexpected closing delimiter".to_string(),
+            vec![
+                "Remove the extra closing delimiter".to_string(),
+                "Check for a missing opening `{` or `[` earlier in the file".to_string(),
+            ],
+        ));
+    }
+
+    None
+}
+
 /// Parser for Sruja DSL
 pub struct Parser {
     filename: String,
@@ -119,19 +214,26 @@ impl Parser {
                     let pos = input.len().saturating_sub(remaining.len());
                     let (line, col) = line_col_1_indexed(input, pos);
 
+                    let (code, message, suggestions) =
+                        detect_common_syntax_diagnostic(input, trimmed).unwrap_or((
+                            sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+                            format!(
+                                "Unexpected input at {}:{}: {}",
+                                line,
+                                col,
+                                preview.replace('\n', "\\n").replace('\r', "\\r")
+                            ),
+                            generic_parse_suggestions(),
+                        ));
+
                     let mut d = Diagnostic::new(
-                        sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+                        code,
                         Severity::Error,
-                        format!(
-                            "Unexpected input at {}:{}: {}",
-                            line,
-                            col,
-                            preview.replace('\n', "\\n").replace('\r', "\\r")
-                        ),
+                        message,
                         SourceLocation::new(self.filename.clone(), line, col),
                     )
                     .with_context(context_snippet(input, line, col, 2, 2))
-                    .with_suggestions(generic_parse_suggestions());
+                    .with_suggestions(suggestions);
 
                     return Err(vec![{
                         d.context.retain(|s| !s.trim().is_empty());
@@ -141,7 +243,7 @@ impl Parser {
                 Ok(program)
             }
             Err(e) => {
-                let (error_msg, line, col) = match &e {
+                let (pos, error_msg, line, col) = match &e {
                     nom::Err::Error(err) => {
                         let pos = input.len().saturating_sub(err.input.len());
                         let (line, col) = line_col_1_indexed(input, pos);
@@ -154,6 +256,7 @@ impl Parser {
                             .replace('\n', "\\n")
                             .replace('\r', "\\r");
                         (
+                            pos,
                             format!("Parse error ({:?}) near: {}", err.code, remaining_preview),
                             line,
                             col,
@@ -171,22 +274,35 @@ impl Parser {
                             .replace('\n', "\\n")
                             .replace('\r', "\\r");
                         (
+                            pos,
                             format!("Parse failure ({:?}) near: {}", err.code, remaining_preview),
                             line,
                             col,
                         )
                     }
-                    nom::Err::Incomplete(_) => ("Incomplete input".to_string(), 1, 1),
+                    nom::Err::Incomplete(_) => {
+                        let pos = input.len();
+                        let (line, col) = line_col_1_indexed(input, pos);
+                        (pos, "Incomplete input".to_string(), line, col)
+                    }
                 };
 
+                let remaining = input.get(pos..).unwrap_or("");
+                let (code, message, suggestions) =
+                    detect_common_syntax_diagnostic(input, remaining).unwrap_or((
+                        sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+                        error_msg,
+                        generic_parse_suggestions(),
+                    ));
+
                 Err(vec![Diagnostic::new(
-                    sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+                    code,
                     Severity::Error,
-                    error_msg,
+                    message,
                     SourceLocation::new(self.filename.clone(), line, col),
                 )
                 .with_context(context_snippet(input, line, col, 2, 2))
-                .with_suggestions(generic_parse_suggestions())])
+                .with_suggestions(suggestions)])
             }
         }
     }

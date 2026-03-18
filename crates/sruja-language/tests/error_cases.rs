@@ -1,3 +1,4 @@
+use sruja_diagnostics::codes;
 use sruja_language::Parser;
 
 #[test]
@@ -8,8 +9,8 @@ A = system "System A" {
 "#;
     let parser = Parser::new("test.sruja".to_string());
     let result = parser.parse(input);
-    // Parser should handle error gracefully
-    assert!(result.is_ok() || result.is_err());
+    let diags = result.expect_err("expected an error for unclosed brace");
+    assert!(diags.iter().any(|d| d.code == codes::CODE_MISSING_BRACE));
 }
 
 #[test]
@@ -17,8 +18,8 @@ fn test_empty_identifier_error() {
     let input = "= system \"System\"";
     let parser = Parser::new("test.sruja".to_string());
     let result = parser.parse(input);
-    // Should fail or parse nothing
-    assert!(result.is_err() || result.unwrap().items.is_empty());
+    let diags = result.expect_err("expected an error for empty identifier");
+    assert!(diags.iter().any(|d| d.code == codes::CODE_UNEXPECTED_TOKEN));
 }
 
 #[test]
@@ -28,8 +29,8 @@ A = system "Unclosed string
 "#;
     let parser = Parser::new("test.sruja".to_string());
     let result = parser.parse(input);
-    // Parser should handle malformed strings
-    assert!(result.is_ok() || result.is_err());
+    let diags = result.expect_err("expected an error for unterminated string");
+    assert!(diags.iter().any(|d| d.code == codes::CODE_INVALID_STRING));
 }
 
 #[test]
