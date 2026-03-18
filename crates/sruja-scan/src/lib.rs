@@ -13,7 +13,10 @@ use std::path::Path;
 
 use thiserror::Error;
 
-pub use graph::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
+pub use graph::{
+    BlastRadiusDirection, BlastRadiusNode, BlastRadiusResult, Edge, EdgeEvidence, EdgeKind, Graph,
+    Node, NodeKind,
+};
 pub use scan_scope::{ScanScope, DEFAULT_EXCLUDE_PATTERNS};
 pub use tree_sitter::{scan_with_tree_sitter, ScanConfig};
 

@@ -103,6 +103,16 @@ sruja drift -r . -a repo.sruja
 
 **When it's used:** When you've changed code and want to update architecture.
 
+### Impact analysis (optional)
+
+```bash
+sruja impact <target> -r . --depth 3
+```
+
+**What this does:** Computes blast radius from the scanned code dependency graph (upstream dependents + downstream dependencies), including centrality metrics when available.
+
+**When it's used:** Before refactors to estimate change risk and identify critical nodes.
+
 ---
 
 ## Common Workflows

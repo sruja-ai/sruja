@@ -67,6 +67,11 @@ fn extract_from_node(
                 imports.push(source);
             }
         }
+        "call_expression" => {
+            if let Some(source) = extract_require_source(node, content) {
+                imports.push(source);
+            }
+        }
         "export_statement" => {
             extract_exports(node, content, exports, definitions);
         }
@@ -132,6 +137,50 @@ fn extract_import_source(node: &tree_sitter::Node, content: &str) -> Option<Stri
             }
         }
     }
+    None
+}
+
+fn extract_require_source(node: &tree_sitter::Node, content: &str) -> Option<String> {
+    let mut is_require_call = false;
+    let mut args_node: Option<tree_sitter::Node> = None;
+
+    for i in 0..node.child_count() {
+        let child = node.child(i as u32)?;
+        match child.kind() {
+            "identifier" => {
+                let text = child.utf8_text(content.as_bytes()).ok()?;
+                if text == "require" {
+                    is_require_call = true;
+                }
+            }
+            "arguments" => {
+                args_node = Some(child);
+            }
+            _ => {}
+        }
+    }
+
+    if !is_require_call {
+        return None;
+    }
+
+    let args_node = args_node?;
+    for i in 0..args_node.child_count() {
+        let child = args_node.child(i as u32)?;
+        if child.kind() == "string" || child.kind() == "string_fragment" {
+            let text = child.utf8_text(content.as_bytes()).ok()?;
+            let cleaned = text
+                .trim_matches('"')
+                .trim_matches('\'')
+                .trim_matches('`')
+                .to_string();
+            if cleaned.is_empty() {
+                return None;
+            }
+            return Some(cleaned);
+        }
+    }
+
     None
 }
 

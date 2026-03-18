@@ -36,6 +36,20 @@ enum Commands {
         #[arg(long, default_value = "sruja.graph.json")]
         output: String,
     },
+    /// Impact analysis: blast radius (upstream dependents + downstream dependencies)
+    Impact {
+        /// Node selector (exact id or substring match against id/label/path)
+        target: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Max traversal depth (0 = none, 1 = direct neighbors)
+        #[arg(long, default_value_t = 3)]
+        depth: usize,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Lint a Sruja file
     Lint {
         /// Path to .sruja file
@@ -420,6 +434,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = match cli.command {
         Commands::Version => commands::version(),
         Commands::Scan { path, output } => commands::scan(&path, &output).await,
+        Commands::Impact {
+            repo,
+            target,
+            depth,
+            format,
+        } => commands::impact(&repo, &target, depth, &format).await,
         Commands::Lint { file, format } => commands::lint(&file, &format).await,
         Commands::Export {
             format,

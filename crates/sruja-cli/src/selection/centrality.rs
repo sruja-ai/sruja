@@ -2,11 +2,12 @@
 //!
 //! Implements multiple centrality measures to identify architecturally important components.
 
+use serde::{Deserialize, Serialize};
 use sruja_scan::Graph;
 use std::collections::HashMap;
 
 /// Multi-dimensional importance score for a component
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ComponentImportance {
     /// Number of direct connections (in + out)
     pub degree_centrality: f64,

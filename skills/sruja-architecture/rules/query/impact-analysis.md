@@ -14,25 +14,35 @@ Before changing or removing an element (e.g. a service or database), developers 
 
 1. **Identify the element.** Use the element ID as it appears in repo.sruja (e.g. `AuthService`, `Application.Database`).
 
-2. **Run the CLI.** Execute `sruja explain <element_id> --file repo.sruja`. The output includes:
+2. **Run architecture-level impact (DSL).** Execute `sruja explain <element_id> --file repo.sruja`. The output includes:
    - Element description
    - Incoming relations (who depends on this element)
    - Outgoing relations (what this element depends on)
 
-3. **Optional: full hierarchy.** Run `sruja tree repo.sruja` to see the full architecture tree. Note: `tree` takes a **file path**, not an element ID; there is no `--depth` or element-scoped tree in the current CLI.
+3. **Run code-level impact (scan graph) when refactoring code.** Execute:
 
-4. **Summarize for the user.** Report:
+   - `sruja impact <target> -r . --depth 3` (text)
+   - `sruja impact <target> -r . --depth 3 -f json` (machine-readable)
+
+   Interpretation:
+   - `upstream` = dependents (callers/importers): what is likely to break if `<target>` changes
+   - `downstream` = dependencies (callees/imports): what `<target>` relies on
+   - output includes centrality metrics when available (use as a risk signal; not a proof)
+
+4. **Optional: full hierarchy (DSL).** Run `sruja tree repo.sruja` to see the full architecture tree. Note: `tree` takes a **file path**, not an element ID.
+
+5. **Summarize for the user.** Report:
    - Dependents (incoming): components that would be affected if this element is removed or changed
    - Dependencies (outgoing): components this element relies on
-   - Any structural concerns (e.g. if it is in a cycle, mention that)
+   - Any structural concerns (cycles, high fan-in/fan-out, high centrality)
 
 Use only data from the CLI and DSL; do not invent dependencies.
 
 ## CLI Notes
 
-- `sruja explain <id> --file repo.sruja` — correct. Use `--file` if the baseline is not architecture.sruja.
+- `sruja explain <id> --file repo.sruja` — architecture (DSL) impact. Use `--file` if the baseline is not repo.sruja.
 - `sruja tree repo.sruja` — correct (tree accepts a file path).
-- `sruja tree <element> --depth 3` — **not supported**; do not document or use.
+- `sruja impact <target> -r . --depth 3` — code (scan graph) impact. `<target>` can be an exact node id or a substring match against id/label/path.
 
 ## Incorrect Approach
 
@@ -42,4 +52,4 @@ Use only data from the CLI and DSL; do not invent dependencies.
 
 ## Summary
 
-**Impact analysis: run `sruja explain <element_id> --file repo.sruja`, optionally `sruja tree repo.sruja`; summarize dependents and dependencies from evidence only.**
+**Impact analysis: for DSL use `sruja explain <element_id> --file repo.sruja`; for code refactors use `sruja impact <target> -r . --depth 3` (or `-f json`). Summarize dependents and dependencies from evidence only.**

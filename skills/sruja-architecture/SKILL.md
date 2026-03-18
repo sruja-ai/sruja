@@ -19,6 +19,7 @@ Deterministic, evidence-first workflow for generating and maintaining `repo.sruj
 3. **Generate** — Produce minimal `repo.sruja` from evidence (C4 context + containers; components only when justified).
 4. **Validate** — Run `sruja lint repo.sruja` and fix all errors before considering complete.
 5. **Refine** — Optionally run `sruja drift -r .` and update DSL from drift results.
+6. **Impact (Optional)** — Before refactoring code, run `sruja impact <target> -r . --depth 3` to quickly see upstream dependents and downstream dependencies.
 
 Workflow checklist: `[ ] Evidence gathered → [ ] Questions (if needed) → [ ] repo.sruja generated → [ ] sruja lint passed → [ ] Open questions listed (no guessing)`
 
@@ -212,7 +213,7 @@ Do not load `references/AGENTS.md`, `references/REFERENCE.md`, or entire `rules/
 
 ## Prerequisites and Installation
 
-**CLI:** Workflow uses `sruja sync`, `sruja discover`, `sruja lint`, `sruja drift`. Install a CLI that includes `sync` and `discover`:
+**CLI:** Workflow uses `sruja sync`, `sruja discover`, `sruja lint`, `sruja drift`, and (optionally) `sruja impact`. Install a CLI that includes `sync` and `discover`:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash

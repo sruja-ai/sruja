@@ -48,7 +48,7 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 
 ### Step 2: Install the CLI when the skill needs it
 
-When you use the skill, it runs `sruja discover`, `sruja lint`, and `sruja drift`. If the CLI isn’t installed, the skill will guide you. You can also install now:
+When you use the skill, it runs `sruja discover`, `sruja lint`, and `sruja drift` (and can also run `sruja impact` for change risk). If the CLI isn’t installed, the skill will guide you. You can also install now:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
@@ -144,6 +144,22 @@ sruja export mermaid repo.sruja > ARCHITECTURE.mmd
 - After making code changes
 - Before a release
 - Regular maintenance checks
+
+### sruja impact
+
+**What it does:** Computes blast radius from the scanned code dependency graph.
+
+**Why use it:** Estimate change risk before refactors by seeing:
+- Upstream dependents (what relies on your target)
+- Downstream dependencies (what your target relies on)
+- Centrality metrics (useful signal for “critical” nodes)
+
+**Examples:**
+
+```bash
+sruja impact <target> -r . --depth 3
+sruja impact <target> -r . --depth 3 -f json
+```
 
 ---
 

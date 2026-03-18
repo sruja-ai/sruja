@@ -183,3 +183,50 @@ fn version_prints_version() {
     assert!(success, "version should succeed: stderr={}", stderr);
     assert!(!stdout.is_empty(), "version should print something");
 }
+
+#[test]
+fn impact_json_includes_direct_dependency() {
+    let repo = create_test_repo();
+    write_file(
+        repo.path(),
+        "src/index.js",
+        r#"
+const helper = require("./helper");
+module.exports = { main: () => helper.help() };
+"#,
+    );
+    write_file(
+        repo.path(),
+        "src/helper.js",
+        r#"module.exports = { help: () => "ok" };"#,
+    );
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&[
+        "impact",
+        "src_index_js",
+        "-r",
+        repo_str,
+        "--depth",
+        "1",
+        "-f",
+        "json",
+    ]);
+
+    assert!(success, "impact should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    let downstream = parsed
+        .get("downstream")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        downstream.iter().any(|hit| {
+            hit.get("node")
+                .and_then(|n| n.get("id"))
+                .and_then(|id| id.as_str())
+                == Some("src_helper_js")
+        }),
+        "impact downstream should include src_helper_js"
+    );
+}

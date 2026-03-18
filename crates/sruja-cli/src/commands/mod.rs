@@ -10,6 +10,7 @@ mod dsl;
 mod error;
 mod federation;
 mod generate;
+mod impact;
 mod init;
 mod intent;
 mod knowledge;
@@ -29,6 +30,7 @@ pub use dsl::{
 pub use error::CliError;
 pub use federation::{compose, publish};
 pub use generate::generate_prompt;
+pub use impact::impact;
 pub use init::init;
 pub use intent::{intent_check, intent_propose};
 pub use knowledge::knowledge;
