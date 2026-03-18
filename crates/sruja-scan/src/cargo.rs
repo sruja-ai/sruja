@@ -299,7 +299,7 @@ mod tests {
             "workspace_root": "/tmp/test"
         }"#;
 
-        let metadata: CargoMetadata = serde_json::from_str(json).expect("parse");
+        let _metadata: CargoMetadata = serde_json::from_str(json).expect("parse");
         let mut graph = Graph::new();
         graph.metadata.insert(
             "scanner".to_string(),

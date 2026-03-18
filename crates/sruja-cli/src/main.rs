@@ -40,7 +40,7 @@ enum Commands {
     Lint {
         /// Path to .sruja file
         file: String,
-        /// Output format: text (default) or json (machine-readable for IDE/CI)
+        /// Output format: text (default), json, github-actions
         #[arg(long, default_value = "text")]
         format: String,
     },
@@ -146,7 +146,7 @@ enum Commands {
         /// Path to .sruja architecture file (optional)
         #[arg(long, short = 'a')]
         architecture: Option<String>,
-        /// Output format (text, json)
+        /// Output format (text, json, github-actions)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
         /// Only show violations, not suggestions
@@ -200,7 +200,7 @@ enum Commands {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', default_value = ".")]
         path: String,
-        /// Output format (text or json)
+        /// Output format (text, json, github-actions)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },

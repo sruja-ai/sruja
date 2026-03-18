@@ -1,5 +1,3 @@
-use serde_json;
-use sruja_diff::{Severity, SourceRef, Violation, ViolationKind};
 use sruja_report::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
 
 #[test]

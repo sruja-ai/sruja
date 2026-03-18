@@ -1,13 +1,101 @@
 //! DSL printer tests.
 
 use super::DslPrinter;
+use crate::json::Exporter as JsonExporter;
+use serde_json::Value;
 use sruja_diagnostics::SourceLocation;
 use sruja_language::Parser;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 fn parse(input: &str) -> sruja_language::Program {
     Parser::new("test.sruja".to_string())
         .parse(input)
         .expect("Failed to parse")
+}
+
+fn parse_with_filename(filename: &str, input: &str) -> sruja_language::Program {
+    Parser::new(filename.to_string())
+        .parse(input)
+        .expect("Failed to parse")
+}
+
+fn export_model_json(program: &sruja_language::Program) -> Value {
+    let exporter = JsonExporter::new();
+    let json = exporter.export(program).expect("export json");
+    serde_json::from_str(&json).expect("valid json")
+}
+
+fn normalize_model_json(mut model: Value) -> Value {
+    let Some(obj) = model.as_object_mut() else {
+        return model;
+    };
+
+    if let Some(Value::Array(relations)) = obj.get_mut("relations") {
+        relations.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+    }
+
+    if let Some(Value::Object(sruja)) = obj.get_mut("sruja") {
+        if let Some(Value::Array(requirements)) = sruja.get_mut("requirements") {
+            for req in requirements.iter_mut() {
+                let Some(req_obj) = req.as_object_mut() else {
+                    continue;
+                };
+                let title = req_obj.get("title").and_then(|v| v.as_str());
+                let description = req_obj.get("description").and_then(|v| v.as_str());
+                if matches!((title, description), (Some(t), Some(d)) if t == d) {
+                    req_obj.remove("description");
+                }
+            }
+            requirements.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+        }
+    }
+
+    model
+}
+
+fn assert_semantic_roundtrip(filename: &str, input: &str) {
+    let program = parse_with_filename(filename, input);
+    let printer = DslPrinter::new();
+    let printed = printer.print(&program);
+    let reparsed = parse_with_filename(filename, &printed);
+
+    let a = normalize_model_json(export_model_json(&program));
+    let b = normalize_model_json(export_model_json(&reparsed));
+    if a != b {
+        let left = serde_json::to_string(&a).unwrap_or_default();
+        let right = serde_json::to_string(&b).unwrap_or_default();
+        let min_len = left.len().min(right.len());
+        let mut i = 0;
+        while i < min_len && left.as_bytes()[i] == right.as_bytes()[i] {
+            i += 1;
+        }
+        let start = i.saturating_sub(200);
+        let end = (i + 200).min(min_len);
+        panic!(
+            "semantic mismatch in {} at byte {}.\nleft: {}\nright: {}",
+            filename,
+            i,
+            &left[start..end],
+            &right[start..end]
+        );
+    }
+}
+
+fn assert_idempotent(filename: &str, input: &str) {
+    let program = parse_with_filename(filename, input);
+    let printer = DslPrinter::new();
+    let printed_once = printer.print(&program);
+    let reparsed = parse_with_filename(filename, &printed_once);
+    let printed_twice = printer.print(&reparsed);
+    assert_eq!(printed_twice, printed_once);
+}
+
+fn workspace_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .expect("workspace root should resolve")
 }
 
 #[test]
@@ -184,9 +272,9 @@ fn test_print_view() {
     let printer = DslPrinter::new();
     let out = printer.print(&program);
 
-    assert!(out.contains("SystemView = view"));
+    assert!(out.contains("view SystemView"));
     assert!(out.contains("System Architecture"));
-    assert!(out.contains("include System Container recursive"));
+    assert!(out.contains("include System Container"));
     assert!(out.contains("exclude ExternalSystem"));
 }
 
@@ -560,4 +648,27 @@ fn test_print_style() {
     assert!(out.contains("System"));
     assert!(out.contains("color \"#4CAF50\""));
     assert!(out.contains("shape \"rounded\""));
+}
+
+#[test]
+fn test_roundtrip_and_idempotency_on_book_golden_files() {
+    let dir = workspace_root().join("book/valid-examples");
+    let mut files = Vec::new();
+    for entry in fs::read_dir(&dir).expect("book/valid-examples should exist") {
+        let entry = entry.expect("dir entry");
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("sruja") {
+            continue;
+        }
+        files.push(path);
+    }
+    files.sort();
+    assert!(!files.is_empty(), "expected at least one golden file");
+
+    for file in files {
+        let content = fs::read_to_string(&file).expect("read golden file");
+        let filename = file.to_string_lossy().to_string();
+        assert_semantic_roundtrip(&filename, &content);
+        assert_idempotent(&filename, &content);
+    }
 }

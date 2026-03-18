@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use sruja_diagnostics::format_diagnostic;
+use sruja_diagnostics::{format_diagnostic, format_github_actions_annotation};
 use sruja_engine::Validator;
 use sruja_export::context::ContextExporter;
 use sruja_export::dsl::DslPrinter;
@@ -43,6 +43,7 @@ struct LintOutput {
 }
 
 pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
+    let github = matches!(format, "github" | "github-actions");
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
 
@@ -56,6 +57,15 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
                     "{}",
                     serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?
                 );
+                return Err(CliError::Parse {
+                    file: file.to_string(),
+                    message: format!("Parsing failed with {} errors", diagnostics.len()),
+                });
+            }
+            if github {
+                for diag in &diagnostics {
+                    println!("{}", format_github_actions_annotation(diag));
+                }
                 return Err(CliError::Parse {
                     file: file.to_string(),
                     message: format!("Parsing failed with {} errors", diagnostics.len()),
@@ -89,6 +99,23 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
             "{}",
             serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?
         );
+        if error_count > 0 {
+            return Err(CliError::Validation(format!(
+                "Linting failed with {} errors",
+                error_count
+            )));
+        }
+        return Ok(());
+    }
+
+    if github {
+        let error_count = diagnostics
+            .iter()
+            .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
+            .count();
+        for diag in &diagnostics {
+            println!("{}", format_github_actions_annotation(diag));
+        }
         if error_count > 0 {
             return Err(CliError::Validation(format!(
                 "Linting failed with {} errors",

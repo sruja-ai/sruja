@@ -28,5 +28,6 @@ mod types;
 mod tests;
 
 pub use format::format_diagnostic;
+pub use format::format_github_actions_annotation;
 pub use reporter::{BasicErrorReporter, ErrorReporter};
 pub use types::{Diagnostic, Severity, SourceLocation};

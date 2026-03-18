@@ -3,21 +3,34 @@
 use sruja_language::{Adr, Policy, PolicyRuleAst, PolicySelectorAst, Requirement};
 
 pub fn print_requirement(out: &mut String, req: &Requirement) {
-    out.push_str("requirement ");
+    if req.description.is_some() {
+        out.push_str("requirement ");
+        out.push_str(&req.id);
+        out.push(' ');
+        out.push_str(&req.r#type);
+        if !req.title.is_empty() {
+            out.push_str(" \"");
+            out.push_str(&req.title);
+            out.push('"');
+        }
+        if let Some(desc) = &req.description {
+            if desc != &req.title {
+                out.push_str(" \"");
+                out.push_str(desc);
+                out.push('"');
+            }
+        }
+        out.push('\n');
+        return;
+    }
+
     out.push_str(&req.id);
-    out.push(' ');
+    out.push_str(" = requirement ");
     out.push_str(&req.r#type);
     if !req.title.is_empty() {
         out.push_str(" \"");
         out.push_str(&req.title);
         out.push('"');
-    }
-    if let Some(desc) = &req.description {
-        if desc != &req.title {
-            out.push_str(" \"");
-            out.push_str(desc);
-            out.push('"');
-        }
     }
     out.push('\n');
 }

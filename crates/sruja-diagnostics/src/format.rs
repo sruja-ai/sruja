@@ -2,6 +2,35 @@
 
 use crate::types::Diagnostic;
 
+fn escape_github_actions_message(input: &str) -> String {
+    input
+        .replace('%', "%25")
+        .replace('\n', "%0A")
+        .replace('\r', "%0D")
+}
+
+#[must_use]
+pub fn format_github_actions_annotation(d: &Diagnostic) -> String {
+    let level = match d.severity {
+        crate::types::Severity::Error => "error",
+        crate::types::Severity::Warning => "warning",
+        crate::types::Severity::Info => "notice",
+    };
+    let file = if d.location.file.is_empty() {
+        "unknown"
+    } else {
+        d.location.file.as_str()
+    };
+    let line = d.location.line.max(1);
+    let col = d.location.column.max(1);
+
+    let msg = format!("{}: {}", d.code, d.message);
+    format!(
+        "::{level} file={file},line={line},col={col}::{}",
+        escape_github_actions_message(&msg)
+    )
+}
+
 /// Formats a diagnostic into a user-friendly string representation.
 ///
 /// This simulates a "Rust-like" error message format, compatible with

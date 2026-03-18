@@ -85,6 +85,70 @@ fn truth_status_from_baseline_compare(
     Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
 }
 
+fn escape_github_actions_message(input: &str) -> String {
+    input
+        .replace('%', "%25")
+        .replace('\n', "%0A")
+        .replace('\r', "%0D")
+}
+
+fn violation_kind_str(kind: sruja_diff::ViolationKind) -> &'static str {
+    match kind {
+        sruja_diff::ViolationKind::LayerViolation => "layer-violation",
+        sruja_diff::ViolationKind::MissingDependency => "missing-dependency",
+        sruja_diff::ViolationKind::OrphanComponent => "orphan-component",
+        sruja_diff::ViolationKind::CircularDependency => "circular-dependency",
+        sruja_diff::ViolationKind::UndocumentedComponent => "undocumented-component",
+        sruja_diff::ViolationKind::PatternMismatch => "pattern-mismatch",
+        sruja_diff::ViolationKind::GodModule => "god-module",
+    }
+}
+
+fn violation_best_file_line(v: &sruja_diff::Violation) -> (Option<&str>, Option<u32>) {
+    if let Some(src) = v.sources.first() {
+        if let (Some(ref file), Some(line)) = (&src.file, src.line) {
+            return (Some(file.as_str()), Some(line));
+        }
+        if let Some(ref file) = src.file {
+            return (Some(file.as_str()), None);
+        }
+    }
+
+    if let Some(ref loc) = v.location {
+        if let Some((file, line)) = loc.rsplit_once(':') {
+            if let Ok(line_num) = line.parse::<u32>() {
+                return (Some(file), Some(line_num));
+            }
+        }
+        return (Some(loc.as_str()), None);
+    }
+
+    (None, None)
+}
+
+fn print_violations_github_actions(violations: &[sruja_diff::Violation]) {
+    for v in violations {
+        let level = match v.severity {
+            sruja_diff::Severity::Error => "error",
+            sruja_diff::Severity::Warning => "warning",
+            sruja_diff::Severity::Info => "notice",
+        };
+        let (file, line) = violation_best_file_line(v);
+        let message = format!("{}: {}", violation_kind_str(v.kind), v.message);
+        match (file, line) {
+            (Some(f), Some(l)) => println!(
+                "::{level} file={f},line={l}::{}",
+                escape_github_actions_message(&message)
+            ),
+            (Some(f), None) => println!(
+                "::{level} file={f}::{}",
+                escape_github_actions_message(&message)
+            ),
+            (None, _) => println!("::{level}::{}", escape_github_actions_message(&message)),
+        }
+    }
+}
+
 pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
     let graph =
         sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::Scan(e.to_string()))?;
@@ -148,6 +212,9 @@ pub async fn drift(
             "json" => {
                 println!("{}", serde_json::to_string_pretty(&diff_result)?);
             }
+            "github" | "github-actions" => {
+                print_violations_github_actions(&diff_result.violations);
+            }
             _ => {
                 print_diff_text(&diff_result, violations_only);
             }
@@ -162,6 +229,9 @@ pub async fn drift(
         match format {
             "json" => {
                 println!("{}", serde_json::to_string_pretty(&drift_result)?);
+            }
+            "github" | "github-actions" => {
+                print_violations_github_actions(&drift_result.violations);
             }
             _ => {
                 print_drift_text(&drift_result, violations_only);
