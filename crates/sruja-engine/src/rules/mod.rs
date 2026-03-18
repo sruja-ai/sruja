@@ -11,6 +11,7 @@ pub mod public_interface_documentation;
 pub mod scenario_validation;
 pub mod simplicity;
 pub mod slo_validation;
+pub mod sources_validation;
 pub mod unique_id;
 pub mod valid_ref;
 
@@ -25,5 +26,6 @@ pub use public_interface_documentation::PublicInterfaceDocumentationRule;
 pub use scenario_validation::ScenarioValidationRule;
 pub use simplicity::SimplicityRule;
 pub use slo_validation::SloValidationRule;
+pub use sources_validation::SourcesValidationRule;
 pub use unique_id::UniqueIdRule;
 pub use valid_ref::ValidRefRule;

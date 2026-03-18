@@ -90,6 +90,28 @@ System.Container -> ExternalAPI "HTTPS"
 
 **Doc references — markdown only:** In `.sruja` files, `doc` must point to **markdown** (e.g. `.sruja/knowledge/Component.md`, `docs/README.md`, or a generated knowledge base). Do **not** set `doc` to source code paths (e.g. `.rs`, `.ts`, `crates/...`). The markdown itself may link to or reference code; the separation is: Sruja DSL elements reference markdown via `doc`, and that markdown can refer to files.
 
+**Sources (specs and infra artifacts):** Use `source <kind> "<path>"` inside an element body to bind code-adjacent artifacts (OpenAPI specs, Kubernetes manifests, Terraform modules, docs) to the architecture element they describe. This keeps architecture grounded in real, reviewable files without requiring the user to write DSL.
+
+```sruja
+Payments = container "Payments API" {
+  technology "Go"
+  description "Handles payment processing"
+
+  source openapi "./specs/payments.yaml"
+  source kubernetes "./k8s/payments/"
+  source terraform "./infra/payments/"
+  source docs "./docs/payments.md"
+}
+```
+
+Supported kinds include: `openapi`, `asyncapi`, `kubernetes` (`k8s`), `dockerfile` (`docker`), `terraform` (`tf`), `docs` (`doc`), `readme`, `proto` (`protobuf`), `config`, `graphql` (`gql`), `helm`, and `custom`.
+
+After adding or updating sources, validate paths with:
+
+```bash
+sruja sources -r . -a repo.sruja -v
+```
+
 ### 4. Validate and Repair
 
 ```bash

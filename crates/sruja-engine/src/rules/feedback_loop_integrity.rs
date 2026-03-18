@@ -2,11 +2,10 @@
 //!
 //! Validates that feedback loops are properly formed and have valid relationships.
 
-use std::collections::{HashMap, HashSet};
-
 use sruja_diagnostics::Diagnostic;
 use sruja_language::{ast::TopLevelItem, collect_elements, Program};
 
+use crate::utils::element_exists;
 use crate::validator::Rule;
 
 /// Rule that validates feedback loop integrity
@@ -22,7 +21,6 @@ impl Rule for FeedbackLoopIntegrityRule {
 
         // Collect all elements to check for valid references
         let (elements_map, _) = collect_elements(program);
-        let element_names: HashSet<String> = elements_map.keys().cloned().collect();
 
         // Check each feedback loop
         for item in &program.items {
@@ -51,7 +49,7 @@ impl Rule for FeedbackLoopIntegrityRule {
                     let from_name = rel.from.as_string();
                     let to_name = rel.to.as_string();
 
-                    if !element_names.contains(&from_name) {
+                    if !element_exists(&elements_map, &from_name) {
                         diagnostics.push(Diagnostic::new(
                             sruja_diagnostics::codes::CODE_UNDEFINED_REF,
                             sruja_diagnostics::Severity::Error,
@@ -63,10 +61,11 @@ impl Rule for FeedbackLoopIntegrityRule {
                         ).with_suggestions(vec![
                             format!("Define the element '{}' before using it in the feedback loop", from_name),
                             "Check for typos in the element name".to_string(),
+                            "If the element is nested, try referencing it using a fully qualified name (e.g., Parent.Child)".to_string(),
                         ]));
                     }
 
-                    if !element_names.contains(&to_name) {
+                    if !element_exists(&elements_map, &to_name) {
                         diagnostics.push(Diagnostic::new(
                             sruja_diagnostics::codes::CODE_UNDEFINED_REF,
                             sruja_diagnostics::Severity::Error,
@@ -78,6 +77,7 @@ impl Rule for FeedbackLoopIntegrityRule {
                         ).with_suggestions(vec![
                             format!("Define the element '{}' before using it in the feedback loop", to_name),
                             "Check for typos in the element name".to_string(),
+                            "If the element is nested, try referencing it using a fully qualified name (e.g., Parent.Child)".to_string(),
                         ]));
                     }
                 }
@@ -286,6 +286,32 @@ feedback Loop1 reinforcing "Nested Loop" {
             error_count == 0,
             "Qualified references should be valid, got {} errors: {:?}",
             error_count,
+            diagnostics
+        );
+    }
+
+    #[test]
+    fn test_feedback_loop_allows_leaf_references_for_nested_elements() {
+        let input = r#"
+Shop = system "Shop" {
+    API = container "API"
+    DB = database "Database"
+}
+
+feedback Loop1 reinforcing "Nested Loop (Leaf)" {
+    API -> DB "reads"
+    DB -> API "updates"
+}
+"#;
+        let parser = sruja_language::Parser::new("test.sruja".to_string());
+        let program = parser.parse(input).unwrap();
+
+        let rule = FeedbackLoopIntegrityRule;
+        let diagnostics = rule.validate(&program);
+
+        assert!(
+            diagnostics.is_empty(),
+            "Leaf references should be valid for nested elements: {:?}",
             diagnostics
         );
     }

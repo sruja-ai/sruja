@@ -128,20 +128,19 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
       const mermaidBlocks = ${escapedMermaidBlocks};
       var html = marked.parse(md);
       for (var i = 0; i < mermaidBlocks.length; i++) {
-        html = html.replace('<!--MERMAID' + i + '-->', '<div class="mermaid" data-mermaid-id="' + i + '"></div>');
+        html = html.replace('<!--MERMAID' + i + '-->', '<div class="mermaid">' + mermaidBlocks[i] + '</div>');
       }
       document.getElementById('content').innerHTML = html;
-      document.querySelectorAll('.mermaid[data-mermaid-id]').forEach(function(el) {
-        var id = parseInt(el.getAttribute('data-mermaid-id'), 10);
-        el.textContent = mermaidBlocks[id];
-      });
-      mermaid.initialize({ startOnLoad: false });
+      mermaid.initialize({ startOnLoad: false, theme: 'default' });
       mermaid.run({ querySelector: '.mermaid' }).catch(function(err) {
+        console.error('Mermaid error:', err);
         document.querySelectorAll('.mermaid').forEach(function(el) {
-          el.innerHTML = '<p style="color:#c00">Diagram error: ' + (err.message || String(err)) + '</p>';
+          var errText = 'Diagram error: ' + (err && err.message ? err.message : String(err));
+          el.innerHTML = '<p style="color:#c00">' + errText + '</p>';
         });
       });
     } catch(e) {
+      console.error('Markdown preview error:', e);
       document.getElementById('content').innerHTML = '<p style="color:#c00">Error: ' + (e.message || String(e)) + '</p>';
     }
   </script>

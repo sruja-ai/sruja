@@ -103,5 +103,100 @@
     "prefix": ["selector {}", "policy selector"],
     "body": ["{ kind \"${1:container}\" tag \"${2:production}\" }$0"],
     "description": "Create a policy selector block"
+  },
+  "Source: OpenAPI": {
+    "prefix": ["source openapi", "openapi"],
+    "body": ["source openapi \"${1:./specs/api.yaml}\"", "$0"],
+    "description": "Add OpenAPI spec source binding"
+  },
+  "Source: Kubernetes": {
+    "prefix": ["source kubernetes", "kubernetes", "k8s"],
+    "body": ["source kubernetes \"${1:./k8s/}\"", "$0"],
+    "description": "Add Kubernetes manifest source binding"
+  },
+  "Source: AsyncAPI": {
+    "prefix": ["source asyncapi", "asyncapi"],
+    "body": ["source asyncapi \"${1:./specs/events.yaml}\"", "$0"],
+    "description": "Add AsyncAPI spec source binding"
+  },
+  "Source: Terraform": {
+    "prefix": ["source terraform", "terraform"],
+    "body": ["source terraform \"${1:./infra/}\"", "$0"],
+    "description": "Add Terraform source binding"
+  },
+  "Source: Dockerfile": {
+    "prefix": ["source dockerfile", "dockerfile"],
+    "body": ["source dockerfile \"${1:./Dockerfile}\"", "$0"],
+    "description": "Add Dockerfile source binding"
+  },
+  "Source: Docs": {
+    "prefix": ["source docs", "docs"],
+    "body": ["source docs \"${1:./docs/architecture.md}\"", "$0"],
+    "description": "Add documentation source binding"
+  },
+  "Source: README": {
+    "prefix": ["source readme", "readme"],
+    "body": ["source readme \"${1:./README.md}\"", "$0"],
+    "description": "Add README source binding"
+  },
+  "Source: Proto": {
+    "prefix": ["source proto", "proto"],
+    "body": ["source proto \"${1:./proto/service.proto}\"", "$0"],
+    "description": "Add Protocol Buffer source binding"
+  },
+  "Source: Config": {
+    "prefix": ["source config", "config"],
+    "body": ["source config \"${1:./config/config.yaml}\"", "$0"],
+    "description": "Add configuration file source binding"
+  },
+  "Source: GraphQL": {
+    "prefix": ["source graphql", "graphql"],
+    "body": ["source graphql \"${1:./graphql/schema.graphql}\"", "$0"],
+    "description": "Add GraphQL schema source binding"
+  },
+  "Source: Helm": {
+    "prefix": ["source helm", "helm"],
+    "body": ["source helm \"${1:./helm/}\"", "$0"],
+    "description": "Add Helm chart source binding"
+  },
+  "ID (canonical)": {
+    "prefix": ["id", "canonical id"],
+    "body": ["id \"${1:canonical.id}\"", "$0"],
+    "description": "Set canonical ID for cross-system reference"
+  },
+  "Aliases": {
+    "prefix": ["aliases"],
+    "body": ["aliases [\"${1:alias1}\", \"${2:alias2}\"]", "$0"],
+    "description": "Define alternative names found in codebase"
+  },
+  "Owner": {
+    "prefix": ["owner"],
+    "body": ["owner \"${1:team-name}\"", "$0"],
+    "description": "Set owner team or individual"
+  },
+  "Domain": {
+    "prefix": ["domain"],
+    "body": ["domain \"${1:business-domain}\"", "$0"],
+    "description": "Set business domain"
+  },
+  "Criticality: high": {
+    "prefix": ["criticality high"],
+    "body": ["criticality high", "$0"],
+    "description": "Set high criticality level"
+  },
+  "Criticality: critical": {
+    "prefix": ["criticality critical"],
+    "body": ["criticality critical", "$0"],
+    "description": "Set critical criticality level"
+  },
+  "Criticality: low": {
+    "prefix": ["criticality low"],
+    "body": ["criticality low", "$0"],
+    "description": "Set low criticality level"
+  },
+  "Criticality: medium": {
+    "prefix": ["criticality medium"],
+    "body": ["criticality medium", "$0"],
+    "description": "Set medium criticality level"
   }
 }

@@ -10,7 +10,7 @@ use crate::rules::{
     CycleDetectionRule, DatabaseIsolationRule, GovernanceValidationRule, LayerViolationRule,
     OrphanDetectionRule, PolicyEvaluationRule, PropertiesValidationRule,
     PublicInterfaceDocumentationRule, ScenarioValidationRule, SimplicityRule, SloValidationRule,
-    UniqueIdRule, ValidRefRule,
+    SourcesValidationRule, UniqueIdRule, ValidRefRule,
 };
 
 use super::config::ValidatorConfig;
@@ -110,6 +110,7 @@ impl Validator {
         self.register_rule(Arc::new(PublicInterfaceDocumentationRule));
         self.register_rule(Arc::new(SloValidationRule));
         self.register_rule(Arc::new(PropertiesValidationRule));
+        self.register_rule(Arc::new(SourcesValidationRule));
         self.register_rule(Arc::new(GovernanceValidationRule));
         self.register_rule(Arc::new(PolicyEvaluationRule));
         self

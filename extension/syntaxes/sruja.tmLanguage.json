@@ -19,7 +19,7 @@
     "keywords": {
       "patterns": [{
         "name": "keyword.control.sruja",
-        "match": "\\b(system|container|component|person|database|datastore|queue|relation|description|technology|tags|metadata|requirement|adr|policy|category|enforcement|rule|deny|require|edge|from|to|except|message|suggest|on|key|value|meta|scenario|story|flow|step|view|include|exclude|of|recursive)\\b"
+        "match": "\\b(system|container|component|person|database|datastore|queue|relation|description|technology|tags|metadata|requirement|adr|policy|category|enforcement|rule|deny|require|edge|from|to|except|message|suggest|on|key|value|meta|scenario|story|flow|step|view|include|exclude|of|recursive|source|id|aliases|owner|domain|criticality)\\b"
       }]
     },
     "relations": {
