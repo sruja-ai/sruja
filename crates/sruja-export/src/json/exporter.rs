@@ -192,23 +192,21 @@ impl Exporter {
         elem.assignment
             .body
             .as_ref()
-            .map(|body| {
-                ArchitectureIndexFields {
-                    canonical_id: body.canonical_id.clone(),
-                    aliases: body.aliases.clone(),
-                    owner: body.owner.clone(),
-                    domain: body.domain.clone(),
-                    criticality: body.criticality.map(|c| c.as_str().to_string()),
-                    sources: body
-                        .sources
-                        .iter()
-                        .map(|s| SourceBindingDump {
-                            kind: s.kind.as_str().to_string(),
-                            path: s.path.clone(),
-                            description: s.description.clone(),
-                        })
-                        .collect(),
-                }
+            .map(|body| ArchitectureIndexFields {
+                canonical_id: body.canonical_id.clone(),
+                aliases: body.aliases.clone(),
+                owner: body.owner.clone(),
+                domain: body.domain.clone(),
+                criticality: body.criticality.map(|c| c.as_str().to_string()),
+                sources: body
+                    .sources
+                    .iter()
+                    .map(|s| SourceBindingDump {
+                        kind: s.kind.as_str().to_string(),
+                        path: s.path.clone(),
+                        description: s.description.clone(),
+                    })
+                    .collect(),
             })
             .unwrap_or(ArchitectureIndexFields {
                 canonical_id: None,

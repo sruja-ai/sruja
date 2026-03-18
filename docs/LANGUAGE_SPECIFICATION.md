@@ -176,6 +176,126 @@ MyComponent = component "My Component" {
 }
 ```
 
+### Architecture Index Fields
+
+Sruja can serve as an **architecture index** — linking architecture elements to external resources like OpenAPI specs, Kubernetes manifests, documentation, and more. This enables AI agents to discover and navigate complex software ecosystems.
+
+**Core principle**: Sruja owns structure and linkage, NOT detailed content. It points to source artifacts rather than duplicating them.
+
+#### Available Fields
+
+All element types (person, system, container, component, database, queue) support these optional fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `canonical_id` | string | Unique, stable identifier for cross-system reference (e.g., `svc.payments`, `db.primary`) |
+| `aliases` | string[] | Alternative names used in code, configs, or documentation |
+| `owner` | string | Team or individual responsible for this element |
+| `domain` | string | Business domain (e.g., `commerce`, `auth`, `platform`) |
+| `criticality` | enum | Importance level: `low`, `medium`, `high`, `critical` |
+| `sources` | block | Links to external resources (specs, configs, docs) |
+
+#### Source Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `openapi` | OpenAPI/Swagger specification | `./specs/api.yaml` |
+| `asyncapi` | AsyncAPI specification | `./specs/events.yaml` |
+| `kubernetes` | Kubernetes manifests directory | `./k8s/payments/` |
+| `terraform` | Terraform/IaC configuration | `./infra/database/` |
+| `docs` | Documentation file | `./docs/services/payments.md` |
+| `readme` | README or guide | `./services/payments/README.md` |
+| `url` | External URL | `https://stripe.com/docs/api` |
+
+#### Example: Full Architecture Index Element
+
+```sruja
+Payments = container "Payment Service" {
+  technology "Node.js"
+  description "Handles payment processing with Stripe integration"
+
+  // Architecture index fields
+  canonical_id "svc.payments"
+  aliases ["payments-api", "payments-service", "PAYMENTS_SVC"]
+  owner "team-payments"
+  domain "commerce"
+  criticality "high"
+
+  sources {
+    openapi "./specs/payments.yaml"
+    kubernetes "./k8s/payments/"
+    readme "./services/payments/README.md"
+    docs "./docs/services/payments.md"
+  }
+}
+```
+
+#### Example: External System with URL
+
+```sruja
+StripeAPI = system "Stripe Payment API" {
+  description "Third-party payment processing"
+  canonical_id "ext.stripe"
+  owner "team-payments"
+
+  sources {
+    docs url "https://stripe.com/docs/api"
+  }
+}
+```
+
+#### Example: Database with Terraform
+
+```sruja
+PrimaryDB = database "Primary Database" {
+  technology "PostgreSQL"
+  description "Main application database"
+  canonical_id "db.primary"
+  owner "team-platform"
+  criticality "critical"
+
+  sources {
+    docs "./docs/database/schema.md"
+    terraform "./infra/database/"
+  }
+}
+```
+
+#### CLI Commands
+
+List all source bindings:
+
+```bash
+sruja sources -a architecture.sruja
+```
+
+Filter by source type:
+
+```bash
+sruja sources -a architecture.sruja -t openapi
+```
+
+Validate source paths exist:
+
+```bash
+sruja sources -a architecture.sruja --validate
+```
+
+JSON output:
+
+```bash
+sruja sources -a architecture.sruja --format json
+```
+
+#### Design Philosophy
+
+- **Sruja = Index + Graph**: Structure and relationships, not content duplication
+- **Markdown = Story**: Narratives, explanations, guides
+- **OpenAPI/AsyncAPI = Contract**: Detailed API specifications
+- **Kubernetes = Deployment**: Runtime configuration
+
+Sruja ties these together by providing canonical identities and source references, allowing AI agents to discover the right artifact for any query.
+
 #### Data Stores
 
 ```sruja

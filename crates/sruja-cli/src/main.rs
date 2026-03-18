@@ -540,6 +540,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Commands::Knowledge { cmd } => commands::knowledge(cmd).await,
+        Commands::Sources {
+            repo,
+            architecture,
+            element,
+            source_type,
+            validate,
+            format,
+        } => {
+            commands::sources(
+                &repo,
+                architecture.as_deref(),
+                element.as_deref(),
+                source_type.as_deref(),
+                validate,
+                &format,
+            )
+            .await
+        }
         Commands::Generate {
             repo,
             skill_path,

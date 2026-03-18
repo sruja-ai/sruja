@@ -18,10 +18,11 @@ fn resolve_baseline(
         if p.exists() {
             return Ok(p);
         }
-        return Err(
-            io::Error::new(io::ErrorKind::NotFound, format!("Architecture file not found: {}", p.display()))
-                .into(),
-        );
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Architecture file not found: {}", p.display()),
+        )
+        .into());
     }
     resolve_architecture_path(repo_path).ok_or_else(|| {
         CliError::Validation(
@@ -59,9 +60,7 @@ pub async fn sources(
         let elem = elements.get(elem_id).or_else(|| {
             elements
                 .iter()
-                .find(|(fqn, _)| {
-                    fqn.as_str() == elem_id || fqn.ends_with(&format!(".{}", elem_id))
-                })
+                .find(|(fqn, _)| fqn.as_str() == elem_id || fqn.ends_with(&format!(".{}", elem_id)))
                 .map(|(_, e)| e)
         });
 
@@ -82,7 +81,10 @@ pub async fn sources(
                     .iter()
                     .filter(|s| {
                         source_type
-                            .map(|t| s.kind.as_str() == t || s.kind.as_str().to_lowercase() == t.to_lowercase())
+                            .map(|t| {
+                                s.kind.as_str() == t
+                                    || s.kind.as_str().to_lowercase() == t.to_lowercase()
+                            })
                             .unwrap_or(true)
                     })
                     .collect::<Vec<_>>()
@@ -121,12 +123,7 @@ pub async fn sources(
                     } else {
                         ""
                     };
-                    println!(
-                        "  {}: {} {}",
-                        s.kind.as_str(),
-                        s.path,
-                        status
-                    );
+                    println!("  {}: {} {}", s.kind.as_str(), s.path, status);
                 }
             }
         }
@@ -137,7 +134,10 @@ pub async fn sources(
             if let Some(body) = elem.assignment.body.as_ref() {
                 for s in &body.sources {
                     if source_type
-                        .map(|t| s.kind.as_str() == t || s.kind.as_str().to_lowercase() == t.to_lowercase())
+                        .map(|t| {
+                            s.kind.as_str() == t
+                                || s.kind.as_str().to_lowercase() == t.to_lowercase()
+                        })
                         .unwrap_or(true)
                     {
                         all_sources.push((fqn.clone(), s));
