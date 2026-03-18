@@ -71,6 +71,14 @@ pub fn print_element(
                 ElementDefBodyItem::Relation(rel) => {
                     print_relation(out, rel, indent + 1);
                 }
+                ElementDefBodyItem::Tags(tags) => {
+                    let formatted = tags
+                        .iter()
+                        .map(|t| format!("\"{}\"", t))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    out.push_str(&format!("{indent_str}  tags [{formatted}]\n"));
+                }
                 _ => {}
             }
         }

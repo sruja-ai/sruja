@@ -1,0 +1,126 @@
+// Example: Architecture Index with Source Bindings
+// This demonstrates the new DSL extensions for AI agent navigation
+//
+// PHASE 1 FEATURES: id, aliases, source, owner, domain, criticality
+// PHASE 4 (FUTURE): mcp blocks for direct AI agent access
+
+import { * } from 'sruja.ai/stdlib'
+
+// ============================================
+// Architecture Elements with Source Bindings
+// ============================================
+
+// Example: Full-featured container with all new fields
+Payments = container "Payment Service" {
+  technology "Go"
+  description "Handles payment processing for the platform"
+  
+  // Identity - canonical ID and aliases found in codebase
+  id "svc.payments"
+  aliases ["payments-api", "payments-service", "PAYMENTS_SVC"]
+  
+  // Structured metadata
+  owner "team-payments"
+  domain "commerce"
+  criticality high
+  
+  // Source bindings - AI follows these to get details
+  source openapi "./specs/payments.yaml"
+  source kubernetes "./k8s/payments/"
+  source readme "./services/payments/README.md"
+  source docs "./docs/services/payments.md"
+  
+  // Existing fields continue to work
+  doc ".sruja/knowledge/Payments.md"
+  tags ["api", "payments", "critical"]
+  
+  slo {
+    availability { target "99.99%" }
+    latency { p95 "100ms" p99 "200ms" }
+  }
+}
+
+// Example: Simpler container with minimal new fields
+Checkout = container "Checkout Service" {
+  technology "Node.js"
+  description "Handles checkout flow"
+  
+  id "svc.checkout"
+  owner "team-checkout"
+  domain "commerce"
+  criticality high
+  
+  source openapi "./specs/checkout.yaml"
+  source kubernetes "./k8s/checkout/"
+}
+
+// Example: Database with source binding
+PrimaryDB = database "Primary Database" {
+  technology "PostgreSQL 15"
+  description "Main transactional database"
+  
+  id "db.primary"
+  owner "team-platform"
+  criticality critical
+  
+  source docs "./docs/database/schema.md"
+  source terraform "./infra/database/"
+}
+
+// Example: Queue with source binding
+OrderEvents = queue "Order Events" {
+  technology "Kafka"
+  description "Order processing event stream"
+  
+  id "queue.orders"
+  owner "team-orders"
+  
+  source asyncapi "./specs/order-events.yaml"
+  source docs "./docs/events/order-events.md"
+}
+
+// Example: External system
+StripeAPI = system "Stripe" {
+  description "Payment gateway"
+  
+  id "ext.stripe"
+  criticality high
+  
+  source docs "https://stripe.com/docs/api"
+}
+
+// ============================================
+// Relationships
+// ============================================
+
+Checkout -> Payments "processes payment via"
+Payments -> PrimaryDB "persists to"
+Payments -> StripeAPI "charges via"
+Checkout -> OrderEvents "publishes to"
+
+// ============================================
+// Governance
+// ============================================
+
+R1 = requirement availability "99.9% uptime for payment processing"
+
+ADR001 = adr "Use Stripe for payments" {
+  status "accepted"
+  context "Need reliable payment processing"
+  decision "Integrate with Stripe API"
+  consequences "Gain: Proven reliability. Cost: Transaction fees"
+}
+
+policy CriticalServicesMustHaveSLO "Critical services require SLOs" {
+  category "reliability"
+  enforcement "required"
+}
+
+// ============================================
+// Queries this enables (Phase 3)
+// ============================================
+// sruja query "sources for Payments"
+// sruja query "what calls Payments"  
+// sruja query "critical services"
+// sruja query "services owned by team-payments"
+// sruja query "dependencies of Checkout"

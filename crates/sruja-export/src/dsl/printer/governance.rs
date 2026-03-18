@@ -1,6 +1,6 @@
 //! Requirement, ADR, and policy printing.
 
-use sruja_language::{Adr, Policy, Requirement};
+use sruja_language::{Adr, Policy, PolicyRuleAst, PolicySelectorAst, Requirement};
 
 pub fn print_requirement(out: &mut String, req: &Requirement) {
     out.push_str("requirement ");
@@ -64,7 +64,8 @@ pub fn print_policy(out: &mut String, policy: &Policy) {
     }
     let has_body = policy.category != "general"
         || policy.enforcement != "warn"
-        || policy.description.is_some();
+        || policy.description.is_some()
+        || !policy.rules.is_empty();
     if has_body {
         out.push_str(" {\n");
         if policy.category != "general" {
@@ -76,8 +77,145 @@ pub fn print_policy(out: &mut String, policy: &Policy) {
         if let Some(desc) = &policy.description {
             out.push_str(&format!("    description \"{}\"\n", desc));
         }
+        for rule in &policy.rules {
+            match rule {
+                PolicyRuleAst::DenyEdge {
+                    from,
+                    to,
+                    except,
+                    message,
+                    suggestions,
+                } => {
+                    out.push_str(&format!(
+                        "    rule deny edge from {} to {}",
+                        format_selector(from),
+                        format_selector(to)
+                    ));
+                    for e in except {
+                        out.push_str(&format!(
+                            " except from {} to {}",
+                            format_selector(&e.from),
+                            format_selector(&e.to)
+                        ));
+                    }
+                    if let Some(m) = message {
+                        out.push_str(&format!(" message \"{}\"", m));
+                    }
+                    for s in suggestions {
+                        out.push_str(&format!(" suggest \"{}\"", s));
+                    }
+                    out.push('\n');
+                }
+                PolicyRuleAst::RequireTags {
+                    selector,
+                    tags,
+                    except,
+                    message,
+                    suggestions,
+                } => {
+                    let formatted = tags
+                        .iter()
+                        .map(|t| format!("\"{}\"", t))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    out.push_str(&format!(
+                        "    rule require tags on {} tags [{}]",
+                        format_selector(selector),
+                        formatted
+                    ));
+                    for e in except {
+                        out.push_str(&format!(" except {}", format_selector(e)));
+                    }
+                    if let Some(m) = message {
+                        out.push_str(&format!(" message \"{}\"", m));
+                    }
+                    for s in suggestions {
+                        out.push_str(&format!(" suggest \"{}\"", s));
+                    }
+                    out.push('\n');
+                }
+                PolicyRuleAst::RequireMetadata {
+                    selector,
+                    key,
+                    value,
+                    except,
+                    message,
+                    suggestions,
+                } => {
+                    out.push_str(&format!(
+                        "    rule require metadata on {} key \"{}\"",
+                        format_selector(selector),
+                        key
+                    ));
+                    if let Some(v) = value {
+                        out.push_str(&format!(" value \"{}\"", v));
+                    }
+                    for e in except {
+                        out.push_str(&format!(" except {}", format_selector(e)));
+                    }
+                    if let Some(m) = message {
+                        out.push_str(&format!(" message \"{}\"", m));
+                    }
+                    for s in suggestions {
+                        out.push_str(&format!(" suggest \"{}\"", s));
+                    }
+                    out.push('\n');
+                }
+                PolicyRuleAst::RequireSlo {
+                    selector,
+                    except,
+                    message,
+                    suggestions,
+                } => {
+                    out.push_str(&format!(
+                        "    rule require slo on {}",
+                        format_selector(selector)
+                    ));
+                    for e in except {
+                        out.push_str(&format!(" except {}", format_selector(e)));
+                    }
+                    if let Some(m) = message {
+                        out.push_str(&format!(" message \"{}\"", m));
+                    }
+                    for s in suggestions {
+                        out.push_str(&format!(" suggest \"{}\"", s));
+                    }
+                    out.push('\n');
+                }
+            }
+        }
         out.push_str("}\n");
     } else {
         out.push('\n');
+    }
+}
+
+fn format_selector(selector: &PolicySelectorAst) -> String {
+    let mut parts: Vec<String> = Vec::new();
+
+    if let Some(kind) = &selector.kind {
+        parts.push(format!("kind \"{}\"", kind));
+    }
+    if let Some(id) = &selector.id {
+        parts.push(format!("id \"{}\"", id));
+    }
+    for tag in &selector.tags {
+        parts.push(format!("tag \"{}\"", tag));
+    }
+    if let Some(technology) = &selector.technology {
+        parts.push(format!("technology \"{}\"", technology));
+    }
+    for meta in &selector.meta {
+        if let Some(value) = &meta.value {
+            parts.push(format!("meta \"{}\"=\"{}\"", meta.key, value));
+        } else {
+            parts.push(format!("meta \"{}\"", meta.key));
+        }
+    }
+
+    if parts.is_empty() {
+        "{}".to_string()
+    } else {
+        format!("{{ {} }}", parts.join(" "))
     }
 }

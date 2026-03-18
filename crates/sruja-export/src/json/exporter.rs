@@ -29,6 +29,16 @@ pub struct Exporter {
     pub extended: bool,
 }
 
+#[derive(Debug, Clone)]
+struct ArchitectureIndexFields {
+    canonical_id: Option<String>,
+    aliases: Vec<String>,
+    owner: Option<String>,
+    domain: Option<String>,
+    criticality: Option<String>,
+    sources: Vec<SourceBindingDump>,
+}
+
 impl Exporter {
     /// Create a new exporter
     pub fn new() -> Self {
@@ -147,6 +157,9 @@ impl Exporter {
             // Determine parent FQN
             let parent = fqn.rfind('.').map(|dot_idx| fqn[..dot_idx].to_string());
 
+            // Extract architecture index fields
+            let architecture_index = self.extract_architecture_index_fields(elem);
+
             let element_dump = ElementDump {
                 id: fqn.clone(),
                 kind,
@@ -159,10 +172,52 @@ impl Exporter {
                 metadata,
                 style: None,
                 parent,
+                canonical_id: architecture_index.canonical_id,
+                aliases: architecture_index.aliases,
+                owner: architecture_index.owner,
+                domain: architecture_index.domain,
+                criticality: architecture_index.criticality,
+                sources: architecture_index.sources,
             };
 
             dump.elements.insert(fqn.clone(), element_dump);
         }
+    }
+
+    /// Extract architecture index fields from element body
+    fn extract_architecture_index_fields(
+        &self,
+        elem: &sruja_language::ElementDef,
+    ) -> ArchitectureIndexFields {
+        elem.assignment
+            .body
+            .as_ref()
+            .map(|body| {
+                ArchitectureIndexFields {
+                    canonical_id: body.canonical_id.clone(),
+                    aliases: body.aliases.clone(),
+                    owner: body.owner.clone(),
+                    domain: body.domain.clone(),
+                    criticality: body.criticality.map(|c| c.as_str().to_string()),
+                    sources: body
+                        .sources
+                        .iter()
+                        .map(|s| SourceBindingDump {
+                            kind: s.kind.as_str().to_string(),
+                            path: s.path.clone(),
+                            description: s.description.clone(),
+                        })
+                        .collect(),
+                }
+            })
+            .unwrap_or(ArchitectureIndexFields {
+                canonical_id: None,
+                aliases: vec![],
+                owner: None,
+                domain: None,
+                criticality: None,
+                sources: vec![],
+            })
     }
 
     /// Convert relations to RelationDump

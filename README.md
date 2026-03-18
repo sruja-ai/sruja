@@ -2,7 +2,7 @@
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-Sruja brings architecture intelligence to the AI era—use AI to generate and maintain architecture as code so it stays in sync with your codebase.
+**Not a diagram language—architecture as code that stays in sync.** Sruja uses AI to generate and maintain architecture as code so it stays in sync with your codebase. You validate, version-control, and enforce it; export to Mermaid when you need a diagram.
 
 *(Official positioning: [docs/MESSAGING.md](docs/MESSAGING.md).)*
 
@@ -12,7 +12,7 @@ Sruja brings architecture intelligence to the AI era—use AI to generate and ma
 
 **Problem:** Your code changes, but your architecture diagrams don't. They're in Miro, LucidChart, or old PDFs—drifting from reality.
 
-**Solution:** Sruja uses AI to analyze your codebase and generate architecture as code (`.sruja` files). You can validate, version-control, and export it—keeping it always up-to-date.
+**Solution:** Sruja uses AI to analyze your codebase and generate architecture as code (`.sruja` files). You validate, version-control, and export it—keeping it always up-to-date.
 
 **How it works:**
 1. Install the CLI and the sruja-architecture skill
@@ -57,7 +57,7 @@ Your AI will:
 1. Run discovery (structural analysis) to understand your code
 2. Ask you a few questions if anything is unclear
 3. Generate a `repo.sruja` file
-4. Fix any validation errors
+4. Run `sruja lint` and fix any validation errors so you see **concrete value in the first run** (real errors/warnings and a clean, valid architecture)
 
 ### Step 4: Validate and export
 
@@ -69,7 +69,7 @@ sruja lint repo.sruja
 sruja export mermaid repo.sruja > diagram.mmd
 ```
 
-You can open `diagram.mmd` in [Mermaid Live Editor](https://mermaid.live) or use the VS Code extension for preview.
+You can open `diagram.mmd` in [Mermaid Live Editor](https://mermaid.live) or use the VS Code extension for preview. **You can export to Mermaid whenever you need a diagram; Sruja’s job is to keep that architecture valid and in sync** (lint, drift, compliance), not to replace Mermaid—it complements it.
 
 ---
 
@@ -145,6 +145,16 @@ Diagramming tools (Miro, LucidChart, Visio) are for drawing. Sruja is for defini
 - Version-controlled
 
 You can still export diagrams from Sruja—just treat diagrams as output, not the source.
+
+**Sruja vs Mermaid**
+
+| | Mermaid | Sruja |
+|---|--------|-------|
+| **Purpose** | Draw diagrams (syntax for charts) | Define architecture as code; validate and keep in sync |
+| **Value** | Diagrams | Single source of truth, lint, drift, compliance, versioned `.sruja` |
+| **Export** | N/A (native format) | Export to Mermaid (and Markdown/JSON) when you need a diagram |
+
+Mermaid is an **export target** for Sruja, not a competitor. Use Sruja for grounding, validation, and persistence; use the exported Mermaid for viewing or embedding diagrams.
 
 **What if the AI makes a mistake?**
 

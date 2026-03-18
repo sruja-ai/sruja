@@ -257,16 +257,8 @@ mod tests {
     fn program_with_metadata(entries: Vec<MetaEntry>) -> Program {
         let loc = SourceLocation::new(String::new(), 0, 0);
         let body = ElementDefBody {
-            description: None,
-            technology: None,
-            doc: None,
             metadata: entries,
-            constraints: vec![],
-            conventions: vec![],
-            style: None,
-            scale: None,
-            slo: None,
-            items: vec![],
+            ..Default::default()
         };
         let elem = ElementDef {
             location: loc.clone(),

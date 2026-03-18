@@ -3,6 +3,7 @@
 //! This module defines the Abstract Syntax Tree structures that represent
 //! parsed Sruja DSL code.
 
+use serde::{Deserialize, Serialize};
 use sruja_diagnostics::SourceLocation;
 use std::collections::HashMap;
 
@@ -157,6 +158,123 @@ impl std::fmt::Display for ElementKind {
     }
 }
 
+/// Criticality level for an element
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Criticality {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+impl Criticality {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Criticality::Low => "low",
+            Criticality::Medium => "medium",
+            Criticality::High => "high",
+            Criticality::Critical => "critical",
+        }
+    }
+}
+
+impl std::fmt::Display for Criticality {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for Criticality {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "low" => Ok(Criticality::Low),
+            "medium" | "med" => Ok(Criticality::Medium),
+            "high" => Ok(Criticality::High),
+            "critical" => Ok(Criticality::Critical),
+            _ => Err(format!("Unknown criticality: {}", s)),
+        }
+    }
+}
+
+/// Source kind for external resource bindings
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceKind {
+    OpenApi,
+    AsyncApi,
+    Kubernetes,
+    Dockerfile,
+    Terraform,
+    Docs,
+    Readme,
+    Proto,
+    Config,
+    GraphQL,
+    Helm,
+    Custom(String),
+}
+
+impl SourceKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SourceKind::OpenApi => "openapi",
+            SourceKind::AsyncApi => "asyncapi",
+            SourceKind::Kubernetes => "kubernetes",
+            SourceKind::Dockerfile => "dockerfile",
+            SourceKind::Terraform => "terraform",
+            SourceKind::Docs => "docs",
+            SourceKind::Readme => "readme",
+            SourceKind::Proto => "proto",
+            SourceKind::Config => "config",
+            SourceKind::GraphQL => "graphql",
+            SourceKind::Helm => "helm",
+            SourceKind::Custom(s) => s,
+        }
+    }
+
+    pub fn parse(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "openapi" => SourceKind::OpenApi,
+            "asyncapi" => SourceKind::AsyncApi,
+            "kubernetes" | "k8s" => SourceKind::Kubernetes,
+            "dockerfile" | "docker" => SourceKind::Dockerfile,
+            "terraform" | "tf" => SourceKind::Terraform,
+            "docs" | "doc" => SourceKind::Docs,
+            "readme" => SourceKind::Readme,
+            "proto" | "protobuf" => SourceKind::Proto,
+            "config" => SourceKind::Config,
+            "graphql" | "gql" => SourceKind::GraphQL,
+            "helm" => SourceKind::Helm,
+            _ => SourceKind::Custom(s.to_string()),
+        }
+    }
+}
+
+impl std::str::FromStr for SourceKind {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(SourceKind::parse(s))
+    }
+}
+
+impl std::fmt::Display for SourceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Source binding linking element to external resource
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SourceBinding {
+    pub kind: SourceKind,
+    pub path: String,
+    pub description: Option<String>,
+}
+
 /// Element definition body containing nested items
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ElementDefBody {
@@ -171,6 +289,18 @@ pub struct ElementDefBody {
     pub scale: Option<ScaleBlock>,
     pub slo: Option<SloBlock>,
     pub items: Vec<ElementDefBodyItem>,
+    /// Canonical ID for cross-system reference
+    pub canonical_id: Option<String>,
+    /// Aliases found in codebase (alternative names for this element)
+    pub aliases: Vec<String>,
+    /// Owner team or individual
+    pub owner: Option<String>,
+    /// Business domain
+    pub domain: Option<String>,
+    /// Criticality level
+    pub criticality: Option<Criticality>,
+    /// Source bindings to external resources
+    pub sources: Vec<SourceBinding>,
 }
 
 /// Items that can appear in an element body
@@ -190,6 +320,18 @@ pub enum ElementDefBodyItem {
     Slo(Box<SloBlock>),
     /// Tags on an element (parsed but not stored in ElementDefBody; consumed to avoid parse failures)
     Tags(Vec<String>),
+    /// Canonical ID for cross-system reference
+    CanonicalId(String),
+    /// Aliases found in codebase
+    Aliases(Vec<String>),
+    /// Owner team or individual
+    Owner(String),
+    /// Business domain
+    Domain(String),
+    /// Criticality level
+    Criticality(Criticality),
+    /// Source binding to external resource
+    Source(SourceBinding),
 }
 
 /// System element (specialized ElementDef)
@@ -353,6 +495,60 @@ pub struct Policy {
     pub category: String,
     pub enforcement: String,
     pub description: Option<String>,
+    pub rules: Vec<PolicyRuleAst>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PolicySelectorAst {
+    pub kind: Option<String>,
+    pub id: Option<String>,
+    pub tags: Vec<String>,
+    pub technology: Option<String>,
+    pub meta: Vec<PolicyMetaSelectorAst>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyMetaSelectorAst {
+    pub key: String,
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyEdgeExceptionAst {
+    pub from: PolicySelectorAst,
+    pub to: PolicySelectorAst,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PolicyRuleAst {
+    DenyEdge {
+        from: PolicySelectorAst,
+        to: PolicySelectorAst,
+        except: Vec<PolicyEdgeExceptionAst>,
+        message: Option<String>,
+        suggestions: Vec<String>,
+    },
+    RequireTags {
+        selector: PolicySelectorAst,
+        tags: Vec<String>,
+        except: Vec<PolicySelectorAst>,
+        message: Option<String>,
+        suggestions: Vec<String>,
+    },
+    RequireMetadata {
+        selector: PolicySelectorAst,
+        key: String,
+        value: Option<String>,
+        except: Vec<PolicySelectorAst>,
+        message: Option<String>,
+        suggestions: Vec<String>,
+    },
+    RequireSlo {
+        selector: PolicySelectorAst,
+        except: Vec<PolicySelectorAst>,
+        message: Option<String>,
+        suggestions: Vec<String>,
+    },
 }
 
 /// View definition

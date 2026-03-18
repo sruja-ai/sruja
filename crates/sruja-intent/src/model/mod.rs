@@ -98,15 +98,99 @@ pub enum BoundaryRuleType {
 pub struct DeclaredPolicy {
     pub name: String,
     pub description: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub category: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub enforcement: String,
     pub scope: Vec<String>,
     pub rules: Vec<PolicyRule>,
     pub source_ref: SourceReference,
 }
 
+/// Content of a policy rule: either a structured rule (evaluated by rule engine) or a legacy phrase (compatibility shim).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PolicyRuleContent {
+    DenyEdge {
+        from: PolicySelector,
+        to: PolicySelector,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        except: Vec<PolicyEdgeException>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        message: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        suggestions: Vec<String>,
+    },
+    RequireTags {
+        selector: PolicySelector,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tags: Vec<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        except: Vec<PolicySelector>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        message: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        suggestions: Vec<String>,
+    },
+    RequireMetadata {
+        selector: PolicySelector,
+        key: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        value: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        except: Vec<PolicySelector>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        message: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        suggestions: Vec<String>,
+    },
+    RequireSlo {
+        selector: PolicySelector,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        except: Vec<PolicySelector>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        message: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        suggestions: Vec<String>,
+    },
+    /// Legacy: free-text constraint; only "X must not call Y" / "X cannot call Y" are parsed (compatibility shim).
+    Phrase(String),
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PolicySelector {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub technology: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub meta: Vec<PolicyMetaSelector>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyMetaSelector {
+    pub key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyEdgeException {
+    pub from: PolicySelector,
+    pub to: PolicySelector,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolicyRule {
     pub description: String,
+    /// Legacy constraint text; used when content is Phrase or for violation message.
     pub constraint: String,
+    /// Structured rule content. When present, evaluation uses this instead of parsing constraint.
+    #[serde(default)]
+    pub content: Option<PolicyRuleContent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,6 +260,8 @@ impl IntentModel {
                 model.policies.push(DeclaredPolicy {
                     name: format!("Policy from {}", adr.title),
                     description: policy.clone(),
+                    category: String::new(),
+                    enforcement: String::new(),
                     scope: vec![],
                     rules: vec![],
                     source_ref: SourceReference {
@@ -190,12 +276,17 @@ impl IntentModel {
         model
     }
 
+    /// Load intent model from .sruja file path.
     pub fn from_sruja_file(path: &Path) -> Result<Self, IntentError> {
         let content = std::fs::read_to_string(path).map_err(IntentError::Io)?;
+        Self::from_sruja_content(&content, path)
+    }
 
+    /// Load intent model from .sruja content string (e.g. for tests). `path` is used for source_ref.
+    pub fn from_sruja_content(content: &str, path: &Path) -> Result<Self, IntentError> {
         let parser = sruja_language::Parser::new(path.to_string_lossy().to_string());
         let program = parser
-            .parse(&content)
+            .parse(content)
             .map_err(|e| IntentError::Dsl(format!("{:?}", e)))?;
 
         let source = IntentSourceInfo {
@@ -208,8 +299,17 @@ impl IntentModel {
         };
 
         let mut model = Self::new(source);
+        model.fill_from_program(&program, path)?;
 
-        let (elements, _) = sruja_language::collect_elements(&program);
+        Ok(model)
+    }
+
+    fn fill_from_program(
+        &mut self,
+        program: &sruja_language::Program,
+        path: &Path,
+    ) -> Result<(), IntentError> {
+        let (elements, _) = sruja_language::collect_elements(program);
 
         for (fqn, element) in &elements {
             let assignment = &element.assignment;
@@ -238,7 +338,7 @@ impl IntentModel {
                 })
             });
 
-            model.components.push(DeclaredComponent {
+            self.components.push(DeclaredComponent {
                 id: fqn.clone(),
                 kind: format!("{:?}", assignment.kind).to_lowercase(),
                 label,
@@ -252,9 +352,9 @@ impl IntentModel {
             });
         }
 
-        let (_, relations) = sruja_language::collect_elements(&program);
+        let (_, relations) = sruja_language::collect_elements(program);
         for rel in &relations {
-            model.relationships.push(DeclaredRelationship {
+            self.relationships.push(DeclaredRelationship {
                 source: rel.from.as_string(),
                 target: rel.to.as_string(),
                 kind: "depends_on".to_string(),
@@ -269,18 +369,109 @@ impl IntentModel {
 
         for item in &program.items {
             if let sruja_language::TopLevelItem::Policy(p) = item {
-                let constraint_text = p
-                    .description
-                    .clone()
-                    .unwrap_or_else(|| format!("{} / {}", p.category, p.enforcement));
-                model.policies.push(DeclaredPolicy {
-                    name: p.id.clone(),
-                    description: p.title.clone(),
-                    scope: vec![],
-                    rules: vec![PolicyRule {
+                let rules: Vec<PolicyRule> = if p.rules.is_empty() {
+                    // Legacy: no structured rules; one synthetic rule from description (compatibility shim).
+                    let constraint_text = p
+                        .description
+                        .clone()
+                        .unwrap_or_else(|| format!("{} / {}", p.category, p.enforcement));
+                    vec![PolicyRule {
                         description: p.title.clone(),
                         constraint: constraint_text,
-                    }],
+                        content: None,
+                    }]
+                } else {
+                    // Structured rules from DSL; no phrase parsing for evaluation.
+                    p.rules
+                        .iter()
+                        .map(|r| {
+                            let (constraint, content) = match r {
+                                sruja_language::PolicyRuleAst::DenyEdge {
+                                    from,
+                                    to,
+                                    except,
+                                    message,
+                                    suggestions,
+                                } => (
+                                    "deny edge".to_string(),
+                                    Some(PolicyRuleContent::DenyEdge {
+                                        from: selector_from_ast(from),
+                                        to: selector_from_ast(to),
+                                        except: except
+                                            .iter()
+                                            .map(|e| PolicyEdgeException {
+                                                from: selector_from_ast(&e.from),
+                                                to: selector_from_ast(&e.to),
+                                            })
+                                            .collect(),
+                                        message: message.clone(),
+                                        suggestions: suggestions.clone(),
+                                    }),
+                                ),
+                                sruja_language::PolicyRuleAst::RequireTags {
+                                    selector,
+                                    tags,
+                                    except,
+                                    message,
+                                    suggestions,
+                                } => (
+                                    "require tags".to_string(),
+                                    Some(PolicyRuleContent::RequireTags {
+                                        selector: selector_from_ast(selector),
+                                        tags: tags.clone(),
+                                        except: except.iter().map(selector_from_ast).collect(),
+                                        message: message.clone(),
+                                        suggestions: suggestions.clone(),
+                                    }),
+                                ),
+                                sruja_language::PolicyRuleAst::RequireMetadata {
+                                    selector,
+                                    key,
+                                    value,
+                                    except,
+                                    message,
+                                    suggestions,
+                                } => (
+                                    "require metadata".to_string(),
+                                    Some(PolicyRuleContent::RequireMetadata {
+                                        selector: selector_from_ast(selector),
+                                        key: key.clone(),
+                                        value: value.clone(),
+                                        except: except.iter().map(selector_from_ast).collect(),
+                                        message: message.clone(),
+                                        suggestions: suggestions.clone(),
+                                    }),
+                                ),
+                                sruja_language::PolicyRuleAst::RequireSlo {
+                                    selector,
+                                    except,
+                                    message,
+                                    suggestions,
+                                } => (
+                                    "require slo".to_string(),
+                                    Some(PolicyRuleContent::RequireSlo {
+                                        selector: selector_from_ast(selector),
+                                        except: except.iter().map(selector_from_ast).collect(),
+                                        message: message.clone(),
+                                        suggestions: suggestions.clone(),
+                                    }),
+                                ),
+                            };
+                            PolicyRule {
+                                description: p.title.clone(),
+                                constraint,
+                                content,
+                            }
+                        })
+                        .collect()
+                };
+                self.policies.push(DeclaredPolicy {
+                    name: p.id.clone(),
+                    description: p.title.clone(),
+                    category: p.category.clone(),
+                    enforcement: p.enforcement.clone(),
+                    scope: vec![],
+                    rules,
                     source_ref: SourceReference {
                         file: path.to_string_lossy().to_string(),
                         line: Some(p.location.line),
@@ -290,7 +481,7 @@ impl IntentModel {
             }
         }
 
-        Ok(model)
+        Ok(())
     }
 
     pub fn merge(&mut self, other: IntentModel) {
@@ -314,6 +505,23 @@ impl IntentModel {
 
     pub fn find_component(&self, id: &str) -> Option<&DeclaredComponent> {
         self.components.iter().find(|c| c.id == id)
+    }
+}
+
+fn selector_from_ast(ast: &sruja_language::PolicySelectorAst) -> PolicySelector {
+    PolicySelector {
+        kind: ast.kind.clone(),
+        id: ast.id.clone(),
+        tags: ast.tags.clone(),
+        technology: ast.technology.clone(),
+        meta: ast
+            .meta
+            .iter()
+            .map(|m| PolicyMetaSelector {
+                key: m.key.clone(),
+                value: m.value.clone(),
+            })
+            .collect(),
     }
 }
 

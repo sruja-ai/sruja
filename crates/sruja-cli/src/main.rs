@@ -304,6 +304,26 @@ enum Commands {
         #[command(subcommand)]
         cmd: KnowledgeCommand,
     },
+    /// List source bindings (OpenAPI, Kubernetes, docs) linked to architecture elements
+    Sources {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to .sruja architecture file (optional)
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Element ID to show sources for (optional; shows all if omitted)
+        element: Option<String>,
+        /// Filter by source type (openapi, kubernetes, docs, etc.)
+        #[arg(long, short = 't')]
+        source_type: Option<String>,
+        /// Validate that all source paths exist
+        #[arg(long, short = 'v')]
+        validate: bool,
+        /// Output format: text (default) or json
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
     /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
     Generate {
         /// Path to repository

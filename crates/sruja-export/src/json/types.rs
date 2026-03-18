@@ -128,6 +128,16 @@ pub struct TagDump {
     pub color: Option<String>,
 }
 
+/// Source binding dump
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceBindingDump {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
 /// Element dump
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ElementDump {
@@ -150,6 +160,19 @@ pub struct ElementDump {
     pub style: Option<StyleDump>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>, // Parent FQN
+    // Architecture Index fields
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub canonical_id: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub aliases: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub criticality: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<SourceBindingDump>,
 }
 
 /// Link dump

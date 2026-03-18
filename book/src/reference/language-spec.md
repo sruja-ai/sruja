@@ -345,13 +345,25 @@ deployment Prod "Production" {
 #### Policies
 
 ```sruja
+// Two equivalent forms:
+SecurityPolicy = policy "Enforce TLS 1.3" {
+    category "security"
+    enforcement "required"
+}
+
 policy SecurityPolicy "Enforce TLS 1.3" category "security" enforcement "required"
 
-// Or with body block
+// Or with body block (and optional structured rules)
 policy DataRetentionPolicy "Retain data for 7 years" {
     category "compliance"
     enforcement "required"
     description "Detailed policy description"
+}
+
+policy NoExtToDb "External APIs must not call databases" {
+    category "security"
+    enforcement "required"
+    rule deny edge from { kind "external_api" } to { kind "database" }
 }
 ```
 

@@ -1,7 +1,9 @@
 //! Compliance: policy evaluation from intent and compliance report building.
 //!
 //! Evaluates DeclaredPolicy rules against the scan graph by converting them to
-//! sruja-graph Policy/Constraint and using find_policy_violations.
+//! sruja-graph Policy/Constraint and using find_policy_violations. Structured
+//! rules (e.g. ForbidEdge) are evaluated first; legacy phrase parsing is a
+//! compatibility shim.
 
 use sruja_graph::NodeKind;
 use sruja_graph::{
@@ -9,6 +11,7 @@ use sruja_graph::{
     SourceReference,
 };
 use sruja_intent::compare::Evidence;
+use sruja_intent::model::PolicyRuleContent;
 use sruja_intent::{Drift, DriftKind, IntentModel, Severity};
 use sruja_scan::Graph;
 use std::str::FromStr;
@@ -48,6 +51,52 @@ pub fn parse_constraint_to_rule(
     Some((source_kind, target_kind, false))
 }
 
+/// Normalize kind string to match NodeKind::from_str (e.g. "external_api", "External API" -> "external_api").
+fn normalize_kind(s: &str) -> String {
+    s.replace([' ', '-'], "_").to_lowercase()
+}
+
+fn enforcement_to_policy_severity(enforcement: &str) -> PolicySeverity {
+    match enforcement.to_lowercase().trim() {
+        "required" | "error" => PolicySeverity::Error,
+        "recommended" | "warn" | "warning" => PolicySeverity::Warning,
+        "optional" | "info" => PolicySeverity::Info,
+        _ => PolicySeverity::Error,
+    }
+}
+
+/// Build graph Constraint from a DeclaredPolicy rule. Uses structured content first; falls back to phrase parsing.
+fn rule_to_constraint(
+    rule: &sruja_intent::model::PolicyRule,
+) -> Option<(NodeKind, NodeKind, bool)> {
+    match &rule.content {
+        Some(PolicyRuleContent::DenyEdge {
+            from, to, except, ..
+        }) => {
+            if !except.is_empty() {
+                return None;
+            }
+            let source_kind = selector_to_node_kind(from)?;
+            let target_kind = selector_to_node_kind(to)?;
+            Some((source_kind, target_kind, false))
+        }
+        _ => parse_constraint_to_rule(rule.constraint.as_str()),
+    }
+}
+
+fn selector_to_node_kind(selector: &sruja_intent::model::PolicySelector) -> Option<NodeKind> {
+    if selector.id.is_some()
+        || !selector.tags.is_empty()
+        || selector.technology.is_some()
+        || !selector.meta.is_empty()
+    {
+        return None;
+    }
+    let kind = selector.kind.as_deref()?;
+    let kind = normalize_kind(kind);
+    NodeKind::from_str(&kind).ok()
+}
+
 /// Evaluate intent policies against the scan graph using the knowledge graph policy engine.
 /// Returns drifts for each policy violation found.
 pub fn evaluate_policy_violations(intent: &IntentModel, scan_graph: &Graph) -> Vec<Drift> {
@@ -57,16 +106,14 @@ pub fn evaluate_policy_violations(intent: &IntentModel, scan_graph: &Graph) -> V
     for policy in &intent.policies {
         let mut rules: Vec<PolicyRule> = Vec::new();
         for rule in &policy.rules {
-            if let Some((source_kind, target_kind, allowed)) =
-                parse_constraint_to_rule(rule.constraint.as_str())
-            {
+            if let Some((source_kind, target_kind, allowed)) = rule_to_constraint(rule) {
                 rules.push(PolicyRule {
                     description: rule.description.clone(),
                     constraint: Constraint {
                         source_kind: Some(source_kind),
                         target_kind: Some(target_kind),
                         allowed,
-                        message: rule.description.clone(),
+                        message: rule.constraint.clone(),
                     },
                 });
             }
@@ -77,7 +124,7 @@ pub fn evaluate_policy_violations(intent: &IntentModel, scan_graph: &Graph) -> V
                 name: policy.name.clone(),
                 description: policy.description.clone(),
                 rules,
-                severity: PolicySeverity::Error,
+                severity: enforcement_to_policy_severity(policy.enforcement.as_str()),
                 source: SourceReference::Manual,
             };
             let _ = kg.add_policy(graph_policy);
@@ -137,5 +184,55 @@ mod tests {
     #[test]
     fn test_parse_constraint_unrecognized_returns_none() {
         assert!(parse_constraint_to_rule("random text").is_none());
+    }
+
+    #[test]
+    fn test_structured_forbid_edge_rule_produces_violation() {
+        use sruja_intent::model::PolicyRuleContent;
+        use sruja_intent::IntentModel;
+        use std::collections::HashMap;
+        use std::path::PathBuf;
+
+        let sruja = r#"
+Security = policy "No external API to database" {
+  category "security"
+  rule deny edge from { kind "external_api" } to { kind "database" }
+}
+"#;
+        let path = PathBuf::from("test.sruja");
+        let model = IntentModel::from_sruja_content(sruja, &path).expect("parse");
+        assert_eq!(model.policies.len(), 1);
+        assert_eq!(model.policies[0].rules.len(), 1);
+        assert!(matches!(
+            model.policies[0].rules[0].content,
+            Some(PolicyRuleContent::DenyEdge { .. })
+        ));
+
+        let mut scan_graph = sruja_scan::Graph::new();
+        scan_graph.nodes.push(sruja_scan::Node {
+            id: "ext".to_string(),
+            kind: sruja_scan::NodeKind::ExternalApi,
+            label: "External API".to_string(),
+            technology: None,
+            path: None,
+            metadata: HashMap::new(),
+        });
+        scan_graph.nodes.push(sruja_scan::Node {
+            id: "db".to_string(),
+            kind: sruja_scan::NodeKind::Database,
+            label: "DB".to_string(),
+            technology: None,
+            path: None,
+            metadata: HashMap::new(),
+        });
+        scan_graph.edges.push(sruja_scan::Edge {
+            source: "ext".to_string(),
+            target: "db".to_string(),
+            kind: sruja_scan::EdgeKind::Calls,
+            evidence: vec![],
+        });
+
+        let drifts = evaluate_policy_violations(&model, &scan_graph);
+        assert!(!drifts.is_empty(), "should report policy violation");
     }
 }

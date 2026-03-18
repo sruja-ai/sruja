@@ -7,8 +7,14 @@
 use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
-use sruja_language::{collect_elements, ElementDef, Program, ScenarioStep, TopLevelItem};
+use sruja_language::{
+    collect_elements, ElementDef, PolicyRuleAst, Program, ScenarioStep, TopLevelItem,
+};
 
+use crate::utils::{
+    edge_is_excepted, element_exists, enforcement_to_severity, find_element,
+    selector_matches_element,
+};
 use crate::validator::Rule;
 
 /// Validates scenarios and flows.
@@ -25,7 +31,15 @@ impl Rule for ScenarioValidationRule {
         }
 
         let (elements, _relations) = collect_elements(program);
-        let runner = ScenarioRunner::new(&elements);
+        let policies: Vec<&sruja_language::Policy> = program
+            .items
+            .iter()
+            .filter_map(|i| match i {
+                TopLevelItem::Policy(p) => Some(p),
+                _ => None,
+            })
+            .collect();
+        let runner = ScenarioRunner::new(&elements, policies);
 
         let mut diags: Vec<Diagnostic> = Vec::new();
 
@@ -48,11 +62,15 @@ impl Rule for ScenarioValidationRule {
 
 struct ScenarioRunner<'a> {
     elements: &'a HashMap<String, ElementDef>,
+    policies: Vec<&'a sruja_language::Policy>,
 }
 
 impl<'a> ScenarioRunner<'a> {
-    fn new(elements: &'a HashMap<String, ElementDef>) -> Self {
-        Self { elements }
+    fn new(
+        elements: &'a HashMap<String, ElementDef>,
+        policies: Vec<&'a sruja_language::Policy>,
+    ) -> Self {
+        Self { elements, policies }
     }
 
     fn validate_steps(
@@ -70,8 +88,8 @@ impl<'a> ScenarioRunner<'a> {
                 .unwrap_or_default();
             let to_fqn = step.to.as_ref().map(|q| q.as_string()).unwrap_or_default();
 
-            let from_exists = self.element_exists(&from_fqn);
-            let to_exists = self.element_exists(&to_fqn);
+            let from_exists = element_exists(self.elements, &from_fqn);
+            let to_exists = element_exists(self.elements, &to_fqn);
 
             if !from_exists {
                 diags.push(Diagnostic::new(
@@ -102,20 +120,6 @@ impl<'a> ScenarioRunner<'a> {
         diags
     }
 
-    fn element_exists(&self, fqn: &str) -> bool {
-        if fqn.is_empty() {
-            return false;
-        }
-        if self.elements.contains_key(fqn) {
-            return true;
-        }
-        // Allow leaf-id match as fallback (parity-ish; Go uses exact FQN from parts)
-        let suffix = format!(".{}", fqn);
-        self.elements
-            .keys()
-            .any(|k| k == fqn || k.ends_with(&suffix))
-    }
-
     fn check_policies(
         &self,
         _step: &ScenarioStep,
@@ -125,82 +129,66 @@ impl<'a> ScenarioRunner<'a> {
     ) -> Vec<Diagnostic> {
         let mut diags: Vec<Diagnostic> = Vec::new();
 
-        let Some(from_elem) = self.find_element(from_fqn) else {
+        let Some(from_elem) = find_element(self.elements, from_fqn) else {
             return diags;
         };
-        let Some(to_elem) = self.find_element(to_fqn) else {
+        let Some(to_elem) = find_element(self.elements, to_fqn) else {
             return diags;
         };
 
-        let from_tags = self.get_tags(from_elem);
-        let to_tags = self.get_tags(to_elem);
+        for policy in &self.policies {
+            let severity = enforcement_to_severity(policy.enforcement.as_str());
+            for rule in &policy.rules {
+                let PolicyRuleAst::DenyEdge {
+                    from,
+                    to,
+                    except,
+                    message,
+                    suggestions,
+                } = rule
+                else {
+                    continue;
+                };
 
-        if has_tag(&from_tags, "external") && has_tag(&to_tags, "database") {
-            diags.push(
-                Diagnostic::new(
-                    sruja_diagnostics::codes::CODE_POLICY_VIOLATION,
-                    Severity::Error,
+                if !selector_matches_element(from, from_fqn, from_elem) {
+                    continue;
+                }
+                if !selector_matches_element(to, to_fqn, to_elem) {
+                    continue;
+                }
+                if edge_is_excepted(except, from_fqn, from_elem, to_fqn, to_elem) {
+                    continue;
+                }
+
+                let msg = message.clone().unwrap_or_else(|| {
                     format!(
-                        "Security Policy Violation: External node '{}' cannot talk directly to database '{}'",
-                        from_fqn, to_fqn
-                    ),
-                    loc.clone(),
-                )
-                .with_suggestions(vec![
-                    "Route this request through an API Gateway or Service layer".to_string(),
-                    "Ensure the database is not publicly accessible".to_string(),
-                ]),
-            );
+                        "Policy '{}' violated: {} must not connect to {}",
+                        policy.id, from_fqn, to_fqn
+                    )
+                });
+                let suggs = if suggestions.is_empty() {
+                    vec![
+                        "Remove the step or route through an allowed intermediary".to_string(),
+                        "If intentional, add an exception".to_string(),
+                    ]
+                } else {
+                    suggestions.clone()
+                };
+
+                diags.push(
+                    Diagnostic::new(
+                        sruja_diagnostics::codes::CODE_POLICY_VIOLATION,
+                        severity,
+                        msg,
+                        loc.clone(),
+                    )
+                    .with_suggestions(suggs),
+                );
+            }
         }
 
         diags
     }
-
-    fn get_tags(&self, elem: &ElementDef) -> Vec<String> {
-        let mut tags: Vec<String> = Vec::new();
-
-        // 1) Tag refs on assignment
-        for t in &elem.assignment.tag_refs {
-            tags.push(t.trim_start_matches('#').to_string());
-        }
-
-        // 2) Metadata tags: metadata { tag "a,b" } or tags "a,b"
-        if let Some(body) = &elem.assignment.body {
-            for m in &body.metadata {
-                if m.key == "tags" || m.key == "tag" {
-                    if let Some(val) = m.value.as_ref() {
-                        let v = val.trim().trim_matches('"');
-                        tags.extend(
-                            v.split(',')
-                                .map(|s| s.trim().to_string())
-                                .filter(|s| !s.is_empty()),
-                        );
-                    }
-                }
-            }
-        }
-
-        tags
-    }
-
-    fn find_element(&self, fqn: &str) -> Option<&ElementDef> {
-        if let Some(e) = self.elements.get(fqn) {
-            return Some(e);
-        }
-        let suffix = format!(".{}", fqn);
-        self.elements.iter().find_map(|(k, e)| {
-            if k == fqn || k.ends_with(&suffix) {
-                Some(e)
-            } else {
-                None
-            }
-        })
-    }
-}
-
-fn has_tag(tags: &[String], target: &str) -> bool {
-    let target = target.to_lowercase();
-    tags.iter().any(|t| t.trim().to_lowercase() == target)
 }
 
 #[cfg(test)]
@@ -276,6 +264,11 @@ scenario Flow1 "Flow" {
     #[test]
     fn external_to_database_policy_violation() {
         let input = r#"
+NoExternalToDb = policy "No external to db" {
+    enforcement "required"
+    rule deny edge from { kind "container" tag "external" } to { kind "datastore" tag "database" }
+}
+
 ext = container "External" {
     metadata { tags ["external"] }
 }
@@ -289,7 +282,7 @@ scenario BadFlow "Bad Flow" {
 "#;
         let diags = validate_program(input);
         assert!(!diags.is_empty());
-        assert!(diags.iter().any(|d| d.message.contains("Policy Violation")));
+        assert!(diags.iter().any(|d| d.message.contains("NoExternalToDb")));
     }
 
     #[test]

@@ -203,4 +203,134 @@ mod tests {
             elapsed_ms
         );
     }
+
+    #[test]
+    fn test_parse_element_with_canonical_id() {
+        let input = r#"
+Payments = container "Payment Service" {
+  id "svc.payments"
+  technology "Go"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        assert_eq!(elem.assignment.name, "Payments");
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.canonical_id, Some("svc.payments".to_string()));
+    }
+
+    #[test]
+    fn test_parse_element_with_aliases() {
+        let input = r#"
+API = container "API Service" {
+  aliases ["payments-api", "PAYMENTS_SVC"]
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.aliases, vec!["payments-api", "PAYMENTS_SVC"]);
+    }
+
+    #[test]
+    fn test_parse_element_with_owner_domain() {
+        let input = r#"
+Checkout = container "Checkout Service" {
+  owner "team-checkout"
+  domain "commerce"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.owner, Some("team-checkout".to_string()));
+        assert_eq!(body.domain, Some("commerce".to_string()));
+    }
+
+    #[test]
+    fn test_parse_element_with_criticality() {
+        let input = r#"
+Database = database "Primary DB" {
+  criticality critical
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.criticality, Some(crate::ast::Criticality::Critical));
+    }
+
+    #[test]
+    fn test_parse_element_with_source_bindings() {
+        let input = r#"
+API = container "API Service" {
+  source openapi "./specs/api.yaml"
+  source kubernetes "./k8s/api/"
+  source docs "./docs/api.md"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.sources.len(), 3);
+
+        let openapi = &body.sources[0];
+        assert_eq!(openapi.kind.as_str(), "openapi");
+        assert_eq!(openapi.path, "./specs/api.yaml");
+
+        let k8s = &body.sources[1];
+        assert_eq!(k8s.kind.as_str(), "kubernetes");
+        assert_eq!(k8s.path, "./k8s/api/");
+
+        let docs = &body.sources[2];
+        assert_eq!(docs.kind.as_str(), "docs");
+        assert_eq!(docs.path, "./docs/api.md");
+    }
+
+    #[test]
+    fn test_parse_element_full_architecture_index() {
+        let input = r#"
+Payments = container "Payment Service" {
+  technology "Go"
+  description "Handles payment processing"
+  
+  id "svc.payments"
+  aliases ["payments-api", "payments-service"]
+  
+  owner "team-payments"
+  domain "commerce"
+  criticality high
+  
+  source openapi "./specs/payments.yaml"
+  source kubernetes "./k8s/payments/"
+  source docs "./docs/payments.md"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(
+            result.is_ok(),
+            "should parse full element: {:?}",
+            result.err()
+        );
+        let (_, elem) = result.unwrap();
+        assert_eq!(elem.assignment.name, "Payments");
+
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.technology, Some("Go".to_string()));
+        assert_eq!(
+            body.description,
+            Some("Handles payment processing".to_string())
+        );
+        assert_eq!(body.canonical_id, Some("svc.payments".to_string()));
+        assert_eq!(body.aliases, vec!["payments-api", "payments-service"]);
+        assert_eq!(body.owner, Some("team-payments".to_string()));
+        assert_eq!(body.domain, Some("commerce".to_string()));
+        assert_eq!(body.criticality, Some(crate::ast::Criticality::High));
+        assert_eq!(body.sources.len(), 3);
+    }
 }

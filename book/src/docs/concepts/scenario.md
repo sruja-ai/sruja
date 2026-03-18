@@ -87,6 +87,28 @@ OrderProcess = flow "Order Processing" {
 - Use fully qualified names when referring outside the current context
 - Use `scenario` or `story` for behavior; use `flow` for data flows; use relations for structure
 
+## Policy Enforcement
+
+Policy rules can also be enforced on scenario/flow steps.
+
+Today, `deny edge` policy rules are evaluated against each `step from -> to` in a scenario/flow, using the same selector semantics as graph edges:
+
+```sruja
+NoExternalToDb = policy "No external to db" {
+  enforcement "required"
+  rule deny edge from { kind "container" tag "external" } to { kind "database" }
+}
+
+Ext = container "External" {
+  tags ["external"]
+}
+Db = database "DB"
+
+BadFlow = scenario "Bad Flow" {
+  step Ext -> Db "direct access"
+}
+```
+
 ## See Also
 
 - [Layering](docs/concepts/layering.md)

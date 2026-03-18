@@ -125,6 +125,7 @@ SecurityPolicy = policy "Security Rules" {
   category "security"
   enforcement "error"
   description "Must use HTTPS"
+  rule deny edge from { kind "container" } to { kind "datastore" }
 }
 "#;
     let program = parse(input);
@@ -137,6 +138,7 @@ SecurityPolicy = policy "Security Rules" {
     assert!(out.contains("category \"security\""));
     assert!(out.contains("enforcement \"error\""));
     assert!(out.contains("description \"Must use HTTPS\""));
+    assert!(out.contains("rule deny edge"));
 }
 
 #[test]
@@ -302,7 +304,6 @@ fn test_print_element_with_all_fields() {
             body: Some(sruja_language::ElementDefBody {
                 description: Some("Test system".to_string()),
                 technology: Some("Rust".to_string()),
-                doc: None,
                 metadata: vec![
                     sruja_language::MetaEntry {
                         key: "owner".to_string(),
@@ -313,12 +314,7 @@ fn test_print_element_with_all_fields() {
                         value: Some("high".to_string()),
                     },
                 ],
-                constraints: vec![],
-                conventions: vec![],
-                style: None,
-                scale: None,
-                slo: None,
-                items: vec![],
+                ..Default::default()
             }),
         },
     };
@@ -511,11 +507,6 @@ fn test_print_extend() {
             body: Some(sruja_language::ElementDefBody {
                 description: None,
                 technology: None,
-                doc: None,
-                metadata: vec![],
-                constraints: vec![],
-                conventions: vec![],
-                style: None,
                 scale: Some(sruja_language::ScaleBlock {
                     location: SourceLocation::new("test.sruja".to_string(), 2, 3),
                     min: None,
@@ -533,7 +524,7 @@ fn test_print_extend() {
                     error_rate: None,
                     throughput: None,
                 }),
-                items: vec![],
+                ..Default::default()
             }),
         }],
     };

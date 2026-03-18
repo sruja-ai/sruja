@@ -22,3 +22,7 @@ SecurityPolicy = policy "Encrypt data at rest" {
   enforcement "required"
 }
 
+NoExtToDb = policy "External APIs must not call databases" {
+  category "architecture"
+  rule deny edge from { kind "external_api" } to { kind "database" }
+}

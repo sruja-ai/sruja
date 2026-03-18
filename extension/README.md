@@ -2,6 +2,8 @@
 
 VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architecture DSL. **Lint and Markdown export run in-process using bundled WebAssembly** (no CLI required). You can optionally use the Sruja CLI by setting `sruja.lsp.path`.
 
+This extension gives you **lint**, **export**, and **diagram preview**. The diagram is generated from your validated architecture (not hand-drawn)—Sruja keeps the architecture as code in sync; you export to Mermaid when you need a diagram.
+
 **Status:** The VS Code extension is **supported and actively maintained**. Core features (syntax highlighting, diagnostics, snippets, export, diagram preview) are stable. Features that depend on the CLI (drift detection) require the CLI to be installed.
 
 ## Features

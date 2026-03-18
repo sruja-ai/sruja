@@ -12,9 +12,9 @@ use nom::{
 use sruja_diagnostics::SourceLocation;
 
 use crate::ast::{
-    ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem, ElementKind, ElementKindDef,
-    ScaleBlock, SloAvailability, SloBlock, SloCurrent, SloErrorRate, SloLatency, SloThroughput,
-    StyleBlock,
+    Criticality, ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem, ElementKind,
+    ElementKindDef, ScaleBlock, SloAvailability, SloBlock, SloCurrent, SloErrorRate, SloLatency,
+    SloThroughput, SourceBinding, SourceKind, StyleBlock,
 };
 
 use super::blocks::{
@@ -206,7 +206,13 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
                 })
             }
             ElementDefBodyItem::Scale(s) => body.scale = Some(s),
-            ElementDefBodyItem::Tags(_) => {}
+            ElementDefBodyItem::Tags(t) => body.items.push(ElementDefBodyItem::Tags(t)),
+            ElementDefBodyItem::CanonicalId(id) => body.canonical_id = Some(id),
+            ElementDefBodyItem::Aliases(a) => body.aliases = a,
+            ElementDefBodyItem::Owner(o) => body.owner = Some(o),
+            ElementDefBodyItem::Domain(d) => body.domain = Some(d),
+            ElementDefBodyItem::Criticality(c) => body.criticality = Some(c),
+            ElementDefBodyItem::Source(s) => body.sources.push(s),
             #[allow(unreachable_patterns)]
             _ => {}
         }
@@ -255,6 +261,25 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
             ),
             |t| ElementDefBodyItem::Tags(t.unwrap_or_default()),
         ),
+        // New fields for architecture index
+        map(
+            preceded(tag("id"), preceded(ws1, parse_string)),
+            ElementDefBodyItem::CanonicalId,
+        ),
+        map(
+            preceded(tag("aliases"), preceded(ws0, parse_string_array)),
+            ElementDefBodyItem::Aliases,
+        ),
+        map(
+            preceded(tag("owner"), preceded(ws1, parse_string)),
+            ElementDefBodyItem::Owner,
+        ),
+        map(
+            preceded(tag("domain"), preceded(ws1, parse_string)),
+            ElementDefBodyItem::Domain,
+        ),
+        map(parse_criticality, ElementDefBodyItem::Criticality),
+        map(parse_source_binding, ElementDefBodyItem::Source),
     ))
     .parse(input)
 }
@@ -506,4 +531,40 @@ fn parse_scale_item(input: &str) -> IResult<&str, (String, String)> {
     ))
     .parse(input)?;
     Ok((input, (key, value)))
+}
+
+fn parse_criticality(input: &str) -> IResult<&str, Criticality> {
+    let (input, _) = tag("criticality").parse(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, level) = parse_identifier(input)?;
+    let crit = match level.to_lowercase().as_str() {
+        "low" => Criticality::Low,
+        "medium" | "med" => Criticality::Medium,
+        "high" => Criticality::High,
+        "critical" => Criticality::Critical,
+        _ => {
+            return Err(nom::Err::Error(nom::error::Error::new(
+                input,
+                nom::error::ErrorKind::Tag,
+            )))
+        }
+    };
+    Ok((input, crit))
+}
+
+fn parse_source_binding(input: &str) -> IResult<&str, SourceBinding> {
+    let (input, _) = tag("source").parse(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, kind_str) = parse_identifier(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, path) = parse_string(input)?;
+    let kind = SourceKind::parse(&kind_str);
+    Ok((
+        input,
+        SourceBinding {
+            kind,
+            path,
+            description: None,
+        },
+    ))
 }

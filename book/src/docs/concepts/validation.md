@@ -14,6 +14,7 @@ Sruja validates your model to catch issues early.
 - Valid references (relations connect existing elements)
 - Cycles (informational; feedback loops are valid)
 - Layering violations (dependencies must flow downward)
+- Policy evaluation (deterministic `rule ...` checks inside `policy` blocks)
 - External boundary checks
 - Simplicity guidance (non‑blocking)
 

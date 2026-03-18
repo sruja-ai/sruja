@@ -361,16 +361,41 @@ deployment Prod "Production" {
 
 #### Policies
 
+Policies define architectural rules and constraints. Policy evaluation is **deterministic and rule-based**: rules in the DSL are evaluated by the rule engine (no ad-hoc phrase parsing for structured rules).
+
 ```sruja
+// Two equivalent forms:
+SecurityPolicy = policy "Enforce TLS 1.3" {
+    category "security"
+    enforcement "required"
+}
+
 policy SecurityPolicy "Enforce TLS 1.3" category "security" enforcement "required"
 
-// Or with body block
+// Or with body block (category, enforcement, description, and optional rules)
 policy DataRetentionPolicy "Retain data for 7 years" {
   category "compliance"
   enforcement "required"
   description "Detailed policy description"
 }
+
+// Policy with structured rules (evaluated by rule engine)
+policy NoExtToDb "External APIs must not call databases" {
+  category "security"
+  rule deny edge from { kind "external_api" } to { kind "database" }
+}
 ```
+
+**Policy rules (inside the policy block):**
+
+- **`rule deny edge from { ... } to { ... }`** — Denies edges matching a source selector and target selector. Supports `except from { ... } to { ... }`, `message "..."`, and repeatable `suggest "..."`.
+- **`rule require tags on { ... } tags ["..."]`** — Requires tags on matched elements. Supports `except { ... }`, `message "..."`, and `suggest "..."`.
+- **`rule require metadata on { ... } key "..." [value "..."]`** — Requires a metadata key (and optionally a specific value) on matched elements. Supports `except { ... }`, `message "..."`, and `suggest "..."`.
+- **`rule require slo on { ... }`** — Requires an `slo { ... }` block on matched elements. Supports `except { ... }`, `message "..."`, and `suggest "..."`.
+
+**Selector fields (inside `{ ... }`):**
+
+- `kind "..."`, `id "..."`, `tag "..."`, `technology "..."`, `meta "key" "value"`
 
 #### Constraints
 

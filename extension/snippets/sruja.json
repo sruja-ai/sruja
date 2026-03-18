@@ -53,5 +53,55 @@
     "prefix": ["description"],
     "body": ["description \"${1:Description text}\"", "$0"],
     "description": "Add description"
+  },
+  "Policy": {
+    "prefix": ["policy", "policy {}"],
+    "body": [
+      "${1:PolicyId} = policy \"${2:Title}\" {",
+      "  category \"${3:security}\"",
+      "  enforcement \"${4:required}\"",
+      "  description \"${5:What this policy enforces}\"",
+      "  rule deny edge from { kind \"${6:service}\" } to { kind \"${7:database}\" }",
+      "}",
+      "$0"
+    ],
+    "description": "Define a policy with one rule"
+  },
+  "Policy rule: deny edge": {
+    "prefix": ["rule deny", "deny edge", "rule deny edge"],
+    "body": [
+      "rule deny edge from { kind \"${1:service}\" } to { kind \"${2:database}\" } message \"${3:Reason}\" suggest \"${4:Preferred alternative}\"",
+      "$0"
+    ],
+    "description": "Deny edges matching from/to selectors"
+  },
+  "Policy rule: require tags": {
+    "prefix": ["rule require tags", "require tags"],
+    "body": [
+      "rule require tags on { kind \"${1:database}\" } tags [\"${2:encrypted}\"]",
+      "$0"
+    ],
+    "description": "Require tags on elements matching selector"
+  },
+  "Policy rule: require metadata": {
+    "prefix": ["rule require metadata", "require metadata"],
+    "body": [
+      "rule require metadata on { kind \"${1:container}\" } key \"${2:owner}\"",
+      "$0"
+    ],
+    "description": "Require metadata key (and optional value) on elements matching selector"
+  },
+  "Policy rule: require slo": {
+    "prefix": ["rule require slo", "require slo"],
+    "body": [
+      "rule require slo on { kind \"${1:container}\" tag \"${2:production}\" }",
+      "$0"
+    ],
+    "description": "Require SLO metadata on elements matching selector"
+  },
+  "Policy selector": {
+    "prefix": ["selector {}", "policy selector"],
+    "body": ["{ kind \"${1:container}\" tag \"${2:production}\" }$0"],
+    "description": "Create a policy selector block"
   }
 }

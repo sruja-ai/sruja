@@ -27,7 +27,8 @@
 //! # }
 //! ```
 
-use sruja_language::ElementDef;
+use sruja_diagnostics::Severity;
+use sruja_language::{ElementDef, PolicyEdgeExceptionAst, PolicySelectorAst};
 use std::collections::HashMap;
 
 /// Finds an element by exact fully qualified name (FQN) or by leaf ID suffix match.
@@ -313,8 +314,24 @@ pub fn extract_tags(elem: &ElementDef) -> Vec<String> {
         }
     }
 
-    // Extract from metadata
+    // Extract from metadata and body tags
     if let Some(body) = &elem.assignment.body {
+        for item in &body.items {
+            let sruja_language::ElementDefBodyItem::Tags(inner) = item else {
+                continue;
+            };
+            for t in inner {
+                let tag = t
+                    .trim()
+                    .trim_start_matches('@')
+                    .trim_start_matches('#')
+                    .to_string();
+                if !tag.is_empty() {
+                    tags.push(tag);
+                }
+            }
+        }
+
         for metadata in &body.metadata {
             if metadata.key == "tags" || metadata.key == "tag" {
                 if let Some(value) = &metadata.value {
@@ -374,6 +391,142 @@ pub fn has_tag(elem: &ElementDef, tag_name: &str) -> bool {
     extract_tags(elem)
         .iter()
         .any(|tag| tag.to_lowercase() == tag_name_lower)
+}
+
+#[inline]
+pub(crate) fn enforcement_to_severity(enforcement: &str) -> Severity {
+    let enforcement = enforcement.trim();
+    if enforcement.eq_ignore_ascii_case("required") || enforcement.eq_ignore_ascii_case("error") {
+        return Severity::Error;
+    }
+    if enforcement.eq_ignore_ascii_case("recommended")
+        || enforcement.eq_ignore_ascii_case("warn")
+        || enforcement.eq_ignore_ascii_case("warning")
+    {
+        return Severity::Warning;
+    }
+    if enforcement.eq_ignore_ascii_case("optional") || enforcement.eq_ignore_ascii_case("info") {
+        return Severity::Info;
+    }
+    Severity::Warning
+}
+
+#[inline]
+pub(crate) fn normalize_kind(s: &str) -> String {
+    s.trim().replace([' ', '-'], "_").to_lowercase()
+}
+
+#[inline]
+pub(crate) fn normalize_tag(s: &str) -> String {
+    s.trim()
+        .trim_start_matches('@')
+        .trim_start_matches('#')
+        .to_lowercase()
+}
+
+#[inline]
+fn element_kind_norm(elem: &ElementDef) -> String {
+    let kind = elem.assignment.kind.to_string();
+    normalize_kind(kind.as_str())
+}
+
+#[inline]
+fn fqn_matches_leaf_id(fqn: &str, id: &str) -> bool {
+    if fqn == id {
+        return true;
+    }
+    match fqn.strip_suffix(id) {
+        Some(prefix) => prefix.ends_with('.'),
+        None => false,
+    }
+}
+
+#[inline]
+pub(crate) fn element_has_metadata(elem: &ElementDef, key: &str, value: Option<&str>) -> bool {
+    let Some(body) = &elem.assignment.body else {
+        return false;
+    };
+
+    let Some(entry) = body.metadata.iter().find(|entry| entry.key == key) else {
+        return false;
+    };
+
+    let Some(value) = value else {
+        return true;
+    };
+
+    entry
+        .value
+        .as_deref()
+        .map(|v| v.trim().eq_ignore_ascii_case(value.trim()))
+        .unwrap_or(false)
+}
+
+pub(crate) fn selector_matches_element(
+    selector: &PolicySelectorAst,
+    fqn: &str,
+    elem: &ElementDef,
+) -> bool {
+    if let Some(id) = &selector.id {
+        let id_match = if id.contains('.') {
+            fqn == id
+        } else {
+            elem.assignment.name.as_str() == id.as_str() || fqn_matches_leaf_id(fqn, id.as_str())
+        };
+        if !id_match {
+            return false;
+        }
+    }
+
+    if let Some(kind) = &selector.kind {
+        let kind = normalize_kind(kind.as_str());
+        if element_kind_norm(elem) != kind {
+            return false;
+        }
+    }
+
+    if let Some(technology) = &selector.technology {
+        let Some(elem_tech) = elem
+            .assignment
+            .body
+            .as_ref()
+            .and_then(|b| b.technology.as_deref())
+        else {
+            return false;
+        };
+        if normalize_kind(elem_tech) != normalize_kind(technology) {
+            return false;
+        }
+    }
+
+    for tag in &selector.tags {
+        let tag = normalize_tag(tag);
+        if !has_tag(elem, tag.as_str()) {
+            return false;
+        }
+    }
+
+    for meta in &selector.meta {
+        if !element_has_metadata(elem, meta.key.as_str(), meta.value.as_deref()) {
+            return false;
+        }
+    }
+
+    true
+}
+
+#[inline]
+pub(crate) fn edge_is_excepted(
+    except: &[PolicyEdgeExceptionAst],
+    from_fqn: &str,
+    from_elem: &ElementDef,
+    to_fqn: &str,
+    to_elem: &ElementDef,
+) -> bool {
+    except.iter().any(|e| {
+        selector_matches_element(&e.from, from_fqn, from_elem)
+            && selector_matches_element(&e.to, to_fqn, to_elem)
+    })
 }
 
 /// Resolves the layer for an element based on metadata or name heuristics.
@@ -609,6 +762,34 @@ mod tests {
         assert!(tags.contains(&"api".to_string()));
         assert!(tags.contains(&"external".to_string()));
         assert!(tags.contains(&"pub".to_string()));
+    }
+
+    #[test]
+    fn test_extract_tags_from_body_tags() {
+        let assignment = ElementAssignment {
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            name: "service".to_string(),
+            kind: ElementKind::System,
+            sub_kind: None,
+            title: None,
+            tag_refs: Vec::new(),
+            body: Some(ElementDefBody {
+                items: vec![sruja_language::ElementDefBodyItem::Tags(vec![
+                    "api".to_string(),
+                    "#external".to_string(),
+                ])],
+                ..Default::default()
+            }),
+        };
+
+        let elem = ElementDef {
+            assignment,
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+        };
+
+        let tags = extract_tags(&elem);
+        assert!(tags.contains(&"api".to_string()));
+        assert!(tags.contains(&"external".to_string()));
     }
 
     #[test]
