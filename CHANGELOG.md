@@ -5,6 +5,18 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.20.0...sruja-v0.21.0) (2026-03-18)
+
+
+### Features
+
+* **onboarding:** improve DSL diagnostics, baseline, validation ([2bb94ec](https://github.com/sruja-ai/sruja/commit/2bb94ecf1aed73c23fde48150877a3528685ed1d))
+
+
+### Bug Fixes
+
+* formatting issues ([d40e05c](https://github.com/sruja-ai/sruja/commit/d40e05cd0e6e405c26b720aab2cd9ae656ba26a8))
+
 ## [0.20.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.19.0...sruja-v0.20.0) (2026-03-18)
 
 
