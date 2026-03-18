@@ -24,7 +24,7 @@ impl Default for MermaidConfig {
     fn default() -> Self {
         Self {
             direction: "LR".to_string(),
-            view_level: 1,
+            view_level: 3, // Changed from 1 to 3 to show all elements by default
             target_id: None,
         }
     }
@@ -225,6 +225,7 @@ fn compute_view(
     mut focus: Option<String>,
 ) -> (HashMap<String, sruja_language::ElementDef>, Vec<Relation>) {
     // Auto-detect L2 (Go behavior): if L1, no focus, exactly one system and it has children.
+    // Also auto-dect if there are no systems/persons but there are container-level elements.
     if level <= 1 && focus.is_none() {
         let systems: Vec<String> = elements
             .iter()
@@ -245,6 +246,27 @@ fn compute_view(
             if has_children {
                 level = 2;
                 focus = Some(sys.clone());
+            }
+        } else if systems.is_empty() {
+            // No systems: check if there are any persons
+            let has_persons = elements.values().any(|e| {
+                let kind_str = e.assignment.kind.to_string();
+                normalize_kind(&kind_str) == "person"
+            });
+
+            if !has_persons {
+                // No systems, no persons: check if there are container-level elements
+                let has_container_level = elements.values().any(|e| {
+                    let kind_str = e.assignment.kind.to_string();
+                    let k = normalize_kind(&kind_str);
+                    k == "container" || k == "database" || k == "queue" || k == "datastore"
+                });
+
+                if has_container_level {
+                    // No C4 L1 elements (systems/persons), but we have L2 elements.
+                    // Show everything (treat as L3 for visibility).
+                    level = 3;
+                }
             }
         }
     }
@@ -353,9 +375,6 @@ fn compute_view(
         if source.starts_with(&(target.clone() + "."))
             || target.starts_with(&(source.clone() + "."))
         {
-            continue;
-        }
-        if !visible.contains(&source) && !visible.contains(&target) {
             continue;
         }
         visible.insert(source.clone());

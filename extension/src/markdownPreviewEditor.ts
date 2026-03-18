@@ -128,7 +128,9 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
       const mermaidBlocks = ${escapedMermaidBlocks};
       var html = marked.parse(md);
       for (var i = 0; i < mermaidBlocks.length; i++) {
-        html = html.replace('<!--MERMAID' + i + '-->', '<div class="mermaid">' + mermaidBlocks[i] + '</div>');
+        var placeholder = '<!--MERMAID' + i + '-->';
+        var mermaidDiv = '<div class="mermaid">' + mermaidBlocks[i] + '</div>';
+        html = html.replace(placeholder, mermaidDiv);
       }
       document.getElementById('content').innerHTML = html;
       mermaid.initialize({ startOnLoad: false, theme: 'default' });
