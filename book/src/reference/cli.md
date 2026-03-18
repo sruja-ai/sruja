@@ -7,6 +7,7 @@ Core commands:
 | `sruja lint <file>` | Validate `.sruja` file |
 | `sruja fmt <file>` | Format DSL |
 | `sruja tree <file>` | Print element tree |
+| `sruja sources -a <file>` | List architecture index source bindings |
 | `sruja export json <file>` | Export to JSON |
 | `sruja export markdown <file>` | Export to Markdown |
 | `sruja export mermaid <file>` | Export to Mermaid |
