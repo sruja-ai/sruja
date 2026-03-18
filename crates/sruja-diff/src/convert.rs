@@ -144,6 +144,148 @@ A -> B "depends on"
     }
 
     #[test]
+    fn program_to_graph_reads_label_maps_to_reads_from() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+DB = database "DB"
+A -> DB "reads"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::ReadsFrom);
+    }
+
+    #[test]
+    fn program_to_graph_publishes_label_maps_to_publishes_to() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+B = system "B"
+A -> B "publishes"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::PublishesTo);
+    }
+
+    #[test]
+    fn program_to_graph_subscribes_label_maps_to_subscribes_to() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+B = system "B"
+A -> B "subscribes"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::SubscribesTo);
+    }
+
+    #[test]
+    fn program_to_graph_owns_label_maps_to_owns() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+DB = database "DB"
+A -> DB "owns"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::Owns);
+    }
+
+    #[test]
+    fn program_to_graph_contains_label_maps_to_contains() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+B = system "B"
+A -> B "contains"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::Contains);
+    }
+
+    #[test]
+    fn program_to_graph_uses_label_maps_to_uses() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+B = system "B"
+A -> B "uses"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::Uses);
+    }
+
+    #[test]
+    fn program_to_graph_unknown_label_defaults_to_calls() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+B = system "B"
+A -> B "HTTPS"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::Calls);
+    }
+
+    #[test]
+    fn program_to_graph_ignores_relations_to_unknown_elements() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+A -> Missing "calls"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn program_to_graph_edge_includes_dsl_evidence_and_label_detail() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+B = system "B"
+A -> B "writes"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        let edge = &graph.edges[0];
+        assert_eq!(edge.evidence.len(), 1);
+        assert_eq!(edge.evidence[0].rule, "dsl");
+        assert_eq!(edge.evidence[0].detail, Some("writes".to_string()));
+    }
+
+    #[test]
+    fn program_to_graph_maps_database_kind_to_database_node_kind() {
+        let program = parse_dsl(
+            r#"
+S = system "S" {
+  description "S"
+  DB = database "DB" { description "db" }
+}
+"#,
+        );
+        let graph = program_to_graph(&program);
+        let db = graph.nodes.iter().find(|n| n.id == "S.DB").expect("db");
+        assert_eq!(db.kind, NodeKind::Database);
+    }
+
+    #[test]
     fn program_to_graph_single_node() {
         let program = parse_dsl(r#"S = system "My System" {}"#);
         let graph = program_to_graph(&program);

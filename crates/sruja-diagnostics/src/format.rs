@@ -140,4 +140,43 @@ mod tests {
         assert!(formatted.contains("= Help:"));
         assert!(formatted.contains("Add description"));
     }
+
+    #[test]
+    fn format_github_actions_annotation_escapes_percent_and_newlines() {
+        let diag = Diagnostic::new(
+            "E200",
+            Severity::Error,
+            "line 1\nline 2 100%",
+            SourceLocation::new("arch.sruja".to_string(), 2, 3),
+        );
+        let out = format_github_actions_annotation(&diag);
+        assert!(out.starts_with("::error "));
+        assert!(out.contains("file=arch.sruja,line=2,col=3::"));
+        assert!(out.contains("E200: line 1%0Aline 2 100%25"));
+    }
+
+    #[test]
+    fn format_github_actions_annotation_uses_unknown_file_and_clamps_line_and_col() {
+        let diag = Diagnostic::new(
+            "E201",
+            Severity::Warning,
+            "msg",
+            SourceLocation::new("".to_string(), 0, 0),
+        );
+        let out = format_github_actions_annotation(&diag);
+        assert!(out.starts_with("::warning "));
+        assert!(out.contains("file=unknown,line=1,col=1::"));
+    }
+
+    #[test]
+    fn format_github_actions_annotation_maps_info_to_notice() {
+        let diag = Diagnostic::new(
+            "I001",
+            Severity::Info,
+            "msg",
+            SourceLocation::new("arch.sruja".to_string(), 1, 1),
+        );
+        let out = format_github_actions_annotation(&diag);
+        assert!(out.starts_with("::notice "));
+    }
 }

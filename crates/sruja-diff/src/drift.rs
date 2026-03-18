@@ -518,8 +518,12 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
 
 #[cfg(test)]
 mod tests {
-    use super::{find_circular_dependencies, find_orphan_modules};
-    use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
+    use super::{
+        detect_architectural_drift_with_config, find_circular_dependencies, find_god_modules,
+        find_layer_violations_advanced, find_orphan_modules,
+    };
+    use crate::types::{DriftConfig, ViolationKind};
+    use sruja_scan::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
     use std::collections::HashMap;
 
     fn node(id: &str, kind: NodeKind, path: Option<&str>) -> Node {
@@ -556,6 +560,24 @@ mod tests {
     }
 
     #[test]
+    fn find_circular_dependencies_canonicalizes_cycle_rotation() {
+        let mut g = Graph::default();
+        g.nodes.push(node("b", NodeKind::Module, None));
+        g.nodes.push(node("c", NodeKind::Module, None));
+        g.nodes.push(node("a", NodeKind::Module, None));
+        g.edges.push(edge("b", "c"));
+        g.edges.push(edge("c", "a"));
+        g.edges.push(edge("a", "b"));
+
+        let cycles = find_circular_dependencies(&g);
+        assert_eq!(cycles.len(), 1);
+        assert_eq!(
+            cycles[0],
+            vec!["a".to_string(), "b".to_string(), "c".to_string()]
+        );
+    }
+
+    #[test]
     fn find_circular_dependencies_no_cycle_returns_empty() {
         let mut g = Graph::default();
         g.nodes.push(node("a", NodeKind::Module, None));
@@ -581,5 +603,104 @@ mod tests {
         let orphans = find_orphan_modules(&g);
         assert_eq!(orphans.len(), 1);
         assert_eq!(orphans[0], "orphan");
+    }
+
+    #[test]
+    fn find_layer_violations_advanced_detects_frontend_to_db_access() {
+        let mut g = Graph::default();
+        g.nodes
+            .push(node("web_frontend", NodeKind::Module, Some("src/web.rs")));
+        g.nodes
+            .push(node("db", NodeKind::Database, Some("src/db.rs")));
+        g.nodes
+            .push(node("service", NodeKind::Module, Some("src/service.rs")));
+        g.edges.push(edge("web_frontend", "db"));
+        g.edges.push(edge("service", "db"));
+
+        let violations = find_layer_violations_advanced(&g);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].source, "web_frontend");
+        assert_eq!(violations[0].target, "db");
+    }
+
+    #[test]
+    fn find_god_modules_respects_threshold_and_excludes_doc_paths() {
+        let mut g = Graph::default();
+        g.nodes
+            .push(node("god", NodeKind::Module, Some("src/god.rs")));
+        g.nodes
+            .push(node("docs_mod", NodeKind::Module, Some("src/doc/readme.rs")));
+        for i in 0..3 {
+            let dep = format!("dep_{i}");
+            g.nodes
+                .push(node(&dep, NodeKind::Module, Some(&format!("src/{dep}.rs"))));
+            g.edges.push(edge("god", &dep));
+            g.edges.push(edge("docs_mod", &dep));
+        }
+
+        let god_modules = find_god_modules(&g, 3);
+        assert_eq!(god_modules.len(), 1);
+        assert_eq!(god_modules[0].name, "god");
+        assert_eq!(god_modules[0].dependency_count, 3);
+    }
+
+    #[test]
+    fn detect_architectural_drift_includes_source_refs_for_layer_and_god_module_violations() {
+        let mut g = Graph::default();
+        g.nodes
+            .push(node("web", NodeKind::Module, Some("src/web.rs")));
+        g.nodes
+            .push(node("db", NodeKind::Database, Some("src/db.rs")));
+        g.nodes
+            .push(node("god", NodeKind::Module, Some("src/god.rs")));
+
+        g.edges.push(Edge {
+            source: "web".to_string(),
+            target: "db".to_string(),
+            kind: EdgeKind::Calls,
+            evidence: vec![EdgeEvidence {
+                rule: "scan".to_string(),
+                file: Some("src/web.rs".to_string()),
+                line: Some(12),
+                detail: Some("db.query".to_string()),
+            }],
+        });
+
+        for i in 0..2 {
+            let dep = format!("dep_{i}");
+            g.nodes
+                .push(node(&dep, NodeKind::Module, Some(&format!("src/{dep}.rs"))));
+            g.edges.push(edge("god", &dep));
+        }
+
+        let config = DriftConfig {
+            god_module_threshold: 2,
+        };
+        let report = detect_architectural_drift_with_config(&g, &config);
+
+        let layer = report
+            .violations
+            .iter()
+            .find(|v| v.kind == ViolationKind::LayerViolation)
+            .expect("layer violation");
+        assert!(
+            layer
+                .sources
+                .iter()
+                .any(|s| { s.file.as_deref() == Some("src/web.rs") && s.line == Some(12) }),
+            "layer violation should include evidence-derived sources"
+        );
+
+        let god = report
+            .violations
+            .iter()
+            .find(|v| v.kind == ViolationKind::GodModule)
+            .expect("god module violation");
+        assert!(
+            god.sources
+                .iter()
+                .any(|s| s.file.as_deref() == Some("src/god.rs")),
+            "god module violation should include node path source"
+        );
     }
 }

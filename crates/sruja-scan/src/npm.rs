@@ -193,4 +193,64 @@ mod tests {
         let result = scan_npm_repo(root);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn scan_npm_repo_with_workspaces_creates_nodes_and_edges_with_deduped_deps() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path();
+
+        std::fs::create_dir_all(root.join("packages/a")).expect("mkdir");
+        std::fs::create_dir_all(root.join("packages/b")).expect("mkdir");
+
+        std::fs::write(
+            root.join("package.json"),
+            r#"{"name":"root","workspaces":["packages/*"]}"#,
+        )
+        .expect("write root");
+
+        std::fs::write(
+            root.join("packages/a/package.json"),
+            r#"{"name":"a","dependencies":{"b":"1.0.0"},"devDependencies":{"b":"1.0.0"}}"#,
+        )
+        .expect("write a");
+        std::fs::write(
+            root.join("packages/b/package.json"),
+            r#"{"name":"b","dependencies":{}}"#,
+        )
+        .expect("write b");
+
+        let graph = scan_npm_repo(root).expect("scan");
+
+        assert_eq!(graph.nodes.len(), 2);
+        assert!(graph.nodes.iter().any(|n| n.id == "npm:a"));
+        assert!(graph.nodes.iter().any(|n| n.id == "npm:b"));
+
+        let a = graph.nodes.iter().find(|n| n.id == "npm:a").expect("a");
+        assert_eq!(a.path.as_deref(), Some("packages/a/package.json"));
+
+        assert_eq!(graph.edges.len(), 1);
+        let e = &graph.edges[0];
+        assert_eq!(e.source, "npm:a");
+        assert_eq!(e.target, "npm:b");
+        assert_eq!(e.kind, EdgeKind::Calls);
+        assert_eq!(e.evidence.len(), 1);
+        assert!(e.evidence[0].file.as_ref().is_some());
+    }
+
+    #[test]
+    fn scan_npm_repo_without_workspaces_creates_single_root_package_node() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path();
+
+        std::fs::write(
+            root.join("package.json"),
+            r#"{"name":"root","dependencies":{"left-pad":"1.0.0"}}"#,
+        )
+        .expect("write root");
+
+        let graph = scan_npm_repo(root).expect("scan");
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].id, "npm:root");
+        assert!(graph.edges.is_empty());
+    }
 }

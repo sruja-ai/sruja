@@ -218,6 +218,37 @@ impl Default for Validator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sruja_diagnostics::{Severity, SourceLocation};
+    use sruja_language::Program;
+    use std::sync::Arc;
+
+    struct TestRule {
+        rule_name: &'static str,
+        diagnostics: usize,
+        panic_on_validate: bool,
+    }
+
+    impl Rule for TestRule {
+        fn name(&self) -> &str {
+            self.rule_name
+        }
+
+        fn validate(&self, _program: &Program) -> Vec<Diagnostic> {
+            if self.panic_on_validate {
+                panic!("validate should not be called");
+            }
+            (0..self.diagnostics)
+                .map(|i| {
+                    Diagnostic::new(
+                        "T000",
+                        Severity::Error,
+                        format!("{}:{i}", self.rule_name),
+                        SourceLocation::new("test.sruja".to_string(), 1, 1),
+                    )
+                })
+                .collect()
+        }
+    }
 
     #[test]
     fn validator_new_creates_empty_validator() {
@@ -257,6 +288,49 @@ mod tests {
         let validator = Validator::with_default_rules();
         assert!(validator.has_rule("Unique IDs"));
         assert!(validator.has_rule("Valid References"));
+    }
+
+    #[test]
+    fn validate_sync_fail_fast_stops_after_first_rule_with_diagnostics() {
+        let mut validator = Validator::new();
+        validator.config.fail_fast = true;
+        validator.register_rule(Arc::new(TestRule {
+            rule_name: "first",
+            diagnostics: 1,
+            panic_on_validate: false,
+        }));
+        validator.register_rule(Arc::new(TestRule {
+            rule_name: "second",
+            diagnostics: 1,
+            panic_on_validate: true,
+        }));
+
+        let program = Program::default();
+        let diags = validator.validate_sync(&program);
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].message.starts_with("first:"));
+    }
+
+    #[test]
+    fn validate_sync_without_fail_fast_runs_all_rules() {
+        let mut validator = Validator::new();
+        validator.config.fail_fast = false;
+        validator.register_rule(Arc::new(TestRule {
+            rule_name: "a",
+            diagnostics: 1,
+            panic_on_validate: false,
+        }));
+        validator.register_rule(Arc::new(TestRule {
+            rule_name: "b",
+            diagnostics: 2,
+            panic_on_validate: false,
+        }));
+
+        let program = Program::default();
+        let diags = validator.validate_sync(&program);
+        assert_eq!(diags.len(), 3);
+        assert!(diags.iter().any(|d| d.message.starts_with("a:")));
+        assert!(diags.iter().any(|d| d.message.starts_with("b:")));
     }
 
     #[test]
