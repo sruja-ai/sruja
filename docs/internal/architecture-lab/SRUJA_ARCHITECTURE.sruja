@@ -116,50 +116,28 @@ SrujaPlatform = system "Sruja Platform" {
         tags ["intelligence"]
     }
 
-    Extract = container "Extraction Engine" {
-        technology "Rust, Rig LLM"
-        description "LLM-based extraction of architecture from conversations"
-        tags ["intelligence"]
-    }
-
     Scan = container "Repository Scanner" {
         technology "Rust, Tree-sitter"
         description "Code analysis to infer architecture from source"
         tags ["intelligence"]
     }
 
-    MCP = container "MCP Server" {
-        technology "Rust, Axum"
-        description "Model Context Protocol server for AI assistants"
-        tags ["intelligence"]
-    }
-
-    Chat = container "Chat System" {
-        technology "Rust, Rig LLM"
-        description "Multi-party architecture discussion with AI agents"
-        tags ["intelligence"]
-    }
-
-    Watch = container "File Watcher" {
-        technology "Rust, notify"
-        description "File system monitoring for change detection"
-        tags ["intelligence"]
-    }
-
-    // ============================================================
-    // CONTAINERS - Application Layer
-    // ============================================================
-
-    DesktopApp = container "Desktop Application" {
-        technology "Rust, Dioxus"
-        description "Native desktop app for architecture chat"
-        tags ["application"]
-    }
-
-    SkillLint = container "Skill Linter" {
+    Diff = container "Drift / Diff" {
         technology "Rust"
-        description "Validation tool for skill definitions"
-        tags ["application"]
+        description "Drift detection and delta computation between declared and discovered architecture"
+        tags ["intelligence"]
+    }
+
+    Intent = container "Intent" {
+        technology "Rust"
+        description "Intent vs reality comparisons and intent parsing (ADRs)"
+        tags ["intelligence"]
+    }
+
+    Report = container "Reports" {
+        technology "Rust"
+        description "Compliance and report generation utilities"
+        tags ["intelligence"]
     }
 
     // ============================================================
@@ -195,10 +173,6 @@ SrujaPlatform = system "Sruja Platform" {
 // ============================================================
 // EXTERNAL SYSTEMS
 // ============================================================
-
-LLMProvider = system "LLM Provider" {
-    description "External LLM API (OpenAI, Anthropic, etc.)"
-}
 
 IDE = system "IDE" {
     description "VS Code, Cursor, or other LSP-compatible IDE"
@@ -254,24 +228,11 @@ IDE -> SrujaPlatform.LSP "connects via LSP protocol"
 // ============================================================
 
 // Graph is the central knowledge store
-SrujaPlatform.Extract -> SrujaPlatform.Graph "populates"
 SrujaPlatform.Scan -> SrujaPlatform.Graph "populates"
-SrujaPlatform.MCP -> SrujaPlatform.Graph "queries"
-
-// LLM integration
-LLMProvider -> SrujaPlatform.Extract "powers extraction"
-LLMProvider -> SrujaPlatform.Chat "powers chat"
-
-// Chat uses intelligence modules
-SrujaPlatform.Chat -> SrujaPlatform.Graph "reads/writes"
-SrujaPlatform.Chat -> SrujaPlatform.Extract "extracts decisions"
-
-// Watch monitors files
-SrujaPlatform.Watch -> SrujaPlatform.Scan "triggers on changes"
-
-// Desktop app
-SrujaPlatform.DesktopApp -> SrujaPlatform.Chat "uses"
-SrujaPlatform.DesktopApp -> SrujaPlatform.Graph "displays"
+SrujaPlatform.Diff -> SrujaPlatform.Scan "compares"
+SrujaPlatform.Diff -> SrujaPlatform.Graph "reads"
+SrujaPlatform.Intent -> SrujaPlatform.Diff "compares"
+SrujaPlatform.Report -> SrujaPlatform.Diff "summarizes"
 
 // ============================================================
 // RELATIONSHIPS - User Interactions
@@ -279,8 +240,8 @@ SrujaPlatform.DesktopApp -> SrujaPlatform.Graph "displays"
 
 Developer -> SrujaPlatform.CLI "runs commands"
 Developer -> IDE "edits .sruja files"
-Architect -> SrujaPlatform.DesktopApp "discusses architecture"
-AI -> SrujaPlatform.MCP "queries architecture"
+Architect -> IDE "edits .sruja files"
+AI -> SrujaPlatform.CLI "runs commands"
 AI -> SrujaPlatform.Skills "reads rules from"
 
 // ============================================================
@@ -322,9 +283,9 @@ ADR002 = adr "Separate Graph from Language AST" {
 
 ADR003 = adr "LLM-only extraction, no regex patterns" {
     status "accepted"
-    context "Architecture discussions are unstructured natural language"
-    decision "Use LLM for extraction, avoid brittle regex patterns"
-    consequences "Gain: Robust to phrasing variations. Trade-off: Requires API key, latency, cost"
+    context "Core platform workflows must be reliable in CI and developer machines without requiring API keys."
+    decision "Keep lint/export/discover/drift deterministic; optional LLM usage stays outside the core validation path."
+    consequences "Gain: Reproducible results and easy adoption. Trade-off: Some insights require external tooling or skills."
 }
 
 // ============================================================
@@ -349,7 +310,7 @@ NoCyclesPolicy = policy "Acyclic dependencies" {
 
 view index {
     title "Sruja Platform Context"
-    include Developer Architect AI SrujaPlatform LLMProvider IDE SourceRepo
+    include Developer Architect AI SrujaPlatform IDE SourceRepo
 }
 
 view containers of SrujaPlatform {
@@ -365,7 +326,7 @@ view core_layer {
 
 view intelligence_layer {
     title "Intelligence Layer Dependencies"
-    include SrujaPlatform.Graph SrujaPlatform.Extract SrujaPlatform.Scan SrujaPlatform.MCP SrujaPlatform.Chat SrujaPlatform.Watch LLMProvider
+    include SrujaPlatform.Graph SrujaPlatform.Scan SrujaPlatform.Diff SrujaPlatform.Intent SrujaPlatform.Report
 }
 
 view data_flow {

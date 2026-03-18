@@ -2,7 +2,7 @@
 
 This document outlines coding standards and conventions for the Sruja codebase to ensure consistency, maintainability, and code quality.
 
-**Primary stack:** The Sruja CLI and core libraries are implemented in **Rust**. Rust modules live under `crates/`; CLI commands are split by domain in `crates/sruja-cli/src/commands/` (see `crates/sruja-cli/REFACTORING_PLAN.md`). The sections below also cover Go and TypeScript where relevant (e.g. other tooling or frontends).
+**Primary stack:** The Sruja CLI and core libraries are implemented in **Rust**. Rust modules live under `crates/`; CLI commands are split by domain in `crates/sruja-cli/src/commands/` (see `crates/sruja-cli/REFACTORING_PLAN.md`). The VS Code extension is implemented in **TypeScript** under `extension/`.
 
 ## Table of Contents
 
@@ -16,68 +16,20 @@ This document outlines coding standards and conventions for the Sruja codebase t
 
 ## CLI Commands
 
-### Function Signatures
+### Structure
 
-All CLI command functions must follow this standard signature:
-
-```go
-func runXxx(args []string, stdout, stderr io.Writer) int
-```
+CLI subcommands are defined via Clap in [main.rs](file:///Users/dilipkola/Workspace/sruja/crates/sruja-cli/src/main.rs) and implemented as functions under [commands/](file:///Users/dilipkola/Workspace/sruja/crates/sruja-cli/src/commands).
 
 **Rules:**
 
-- Function name: `run` + PascalCase command name (e.g., `runCompile`, `runLint`)
-- Parameters: `args []string`, `stdout io.Writer`, `stderr io.Writer`
-- Return: `int` (0 for success, non-zero for failure)
-- Use `stdout` for normal output, `stderr` for errors
-- Wrap in Cobra command with `RunE` that converts int return to error
-
-**Example:**
-
-```go
-func runInit(args []string, stdout, stderr io.Writer) int {
-    projectName := "my-sruja-project"
-    if len(args) > 0 {
-        projectName = args[0]
-    }
-
-    if err := os.MkdirAll(projectName, 0o750); err != nil {
-        _, _ = fmt.Fprintf(stderr, "Error: failed to create project directory: %v\n", err)
-        return 1
-    }
-
-    _, _ = fmt.Fprintf(stdout, "Initialized project in %s\n", projectName)
-    return 0
-}
-```
-
-**Cobra Integration:**
-
-```go
-var initCmd = &cobra.Command{
-    Use:   "init [project-name]",
-    Short: "Initialize a new Sruja project",
-    RunE: func(cmd *cobra.Command, args []string) error {
-        if runInit(args, cmd.OutOrStdout(), cmd.ErrOrStderr()) != 0 {
-            return fmt.Errorf("init failed")
-        }
-        return nil
-    },
-}
-```
+- Add new command logic under `crates/sruja-cli/src/commands/<domain>.rs` (or a new module if needed).
+- Prefer command functions that return `Result<(), CliError>` (sync) or `async fn ... -> Result<(), CliError>` (async).
+- Export the function from [commands/mod.rs](file:///Users/dilipkola/Workspace/sruja/crates/sruja-cli/src/commands/mod.rs) and wire it into Clap in `main.rs`.
+- Use `println!` for user-facing command output and `eprintln!` for error output; use `log::{debug,info,warn,error}` for internal diagnostics.
 
 ## TypeScript Exports
 
 ### Preferred Patterns
-
-**1. Function Declarations (Preferred for Components)**
-
-```typescript
-// ✅ Preferred for React components
-export function MyComponent() {
-  return <div>Hello</div>;
-}
-```
 
 **2. Named Exports (Always Preferred)**
 
@@ -87,8 +39,8 @@ export function myFunction() { ... }
 export type MyType = ...
 export interface MyInterface { ... }
 
-// ❌ Avoid - default export (except for entry points)
-export default function MyComponent() { ... }
+// ❌ Avoid - default export (except for entry points required by tooling)
+export default function entryPoint() { ... }
 ```
 
 **3. Const Arrow Functions (Acceptable but Less Preferred)**
@@ -111,37 +63,21 @@ export { someFunction } from "./other";
 ### Rules
 
 - **Always use named exports** for functions, types, and interfaces
-- **Prefer function declarations** over const arrow functions for React components (better for debugging)
 - **Avoid default exports** except for:
-  - Main entry points (e.g., `index.tsx`)
-  - When required by framework conventions
+  - Main entry points
+  - When required by tooling conventions
 - **Use `export const`** for constants and simple utilities
 - **Use `export type`** for type-only exports
 
 ## Error Handling
 
-### Go Error Handling
-
-**Standard Pattern:**
-
-```go
-// ✅ Good - wrap errors with context
-if err != nil {
-    return fmt.Errorf("operation failed: %w", err)
-}
-
-// ✅ Good - simple errors
-if condition {
-    return errors.New("invalid argument")
-}
-```
+### Rust Error Handling
 
 **Rules:**
 
-- Always use `fmt.Errorf` with `%w` verb for error wrapping (Go 1.13+)
-- Use `errors.New` for simple errors without wrapping
-- Include context in error messages
-- Use descriptive error messages
+- Prefer `Result<T, E>` with domain-specific error types (e.g. `CliError`).
+- Use `?` for propagation and add context at the call site where it’s most meaningful.
+- Avoid `unwrap()`/`expect()` outside tests.
 
 ### TypeScript Error Handling
 
@@ -162,47 +98,32 @@ try {
 
 ### TypeScript Logging
 
-**Always use the centralized logger:**
+**Use VS Code primitives (extension):**
 
 ```typescript
-import { logger } from "@sruja/shared";
+import * as vscode from "vscode";
 
-// ✅ Good - structured logging
-logger.error("DSL parse failed", {
-  component: "DSLPanel",
-  action: "parse_dsl",
-  error: error instanceof Error ? error.message : String(error),
-});
+const channel = vscode.window.createOutputChannel("Sruja");
+channel.appendLine("Running sruja drift -r . ...");
 
-logger.warn("Score calculation skipped", {
-  component: "GovernancePanel",
-  action: "calculateScore",
-  error: error instanceof Error ? error.message : String(error),
-});
-
-logger.info("Model loaded successfully", {
-  component: "ArchitectureStore",
-  action: "loadFromDSL",
-  elementCount: model.elements?.length || 0,
-});
-
-logger.debug("Cache hit", {
-  component: "Cache",
-  key: cacheKey,
-});
+try {
+  // ...
+} catch (err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  channel.appendLine(`Error: ${msg}`);
+  vscode.window.showErrorMessage("Sruja command failed: " + msg);
+}
 ```
 
 **Rules:**
 
 - ❌ **Never use** `console.log`, `console.error`, `console.warn`, `console.debug`
-- ✅ **Always use** `logger` from `@sruja/shared`
-- Use structured logging with context objects
-- Use appropriate log levels: `error`, `warn`, `info`, `debug`
-- Include component and action in context for traceability
+- ✅ **Use** `vscode.window.createOutputChannel("Sruja")` for command/session logs
+- ✅ **Use** `vscode.window.showErrorMessage` / `showWarningMessage` for user-visible notifications
 
-### Go Logging
+### Rust Logging
 
-Go code should use standard library logging or structured logging libraries as appropriate for the context.
+Rust code uses the `log` crate (`log::{debug, info, warn, error}`), with the CLI initializing `env_logger` where appropriate.
 
 ## Type Safety
 
@@ -242,29 +163,24 @@ function isSrujaModel(data: unknown): data is SrujaModelDump {
 
 ## Test File Naming
 
-### Go Tests
+### Rust Tests
 
-- **Pattern:** `*_test.go`
-- **Location:** Same directory as source files
-- **Example:** `parser.go` → `parser_test.go`
+- Unit tests live in `#[cfg(test)]` modules within crates.
+- Integration tests live under `crates/*/tests/` (for example, the CLI has tests under `crates/sruja-cli/tests/`).
 
-### TypeScript Tests
+### TypeScript Tests (extension)
 
 - **Pattern:** `*.test.ts` or `*.test.tsx`
-- **Location:**
-  - **Preferred:** Co-located with source files (e.g., `utils.ts` → `utils.test.ts`)
-  - **Alternative:** `__tests__` subdirectory for complex test suites
-- **Example:** `architectureStore.ts` → `architectureStore.test.ts` or `__tests__/architectureStore.test.ts`
+- **Location:** Existing extension tests live under `extension/src/test/`.
 
 ## Configuration Files
 
 ### File Extensions
 
-**ESLint Configs:**
+**Config files should match their toolchain:**
 
-- ✅ Use `.ts` extension when TypeScript is available
-- ⚠️ Use `.js` only when TypeScript is not available
-- ⚠️ Use `.mjs` only when required by tooling (e.g., Astro)
+- Rust: `Cargo.toml`, `rustfmt.toml` (if present)
+- Node/TypeScript (extension and e2e): `package.json`, `tsconfig.json`
 
 **Other Configs:**
 
@@ -295,17 +211,15 @@ function isSrujaModel(data: unknown): data is SrujaModelDump {
 
 When writing code, ensure:
 
-- [ ] CLI commands use standard `runXxx(args []string, stdout, stderr io.Writer) int` signature
+- [ ] CLI command logic lives under `crates/sruja-cli/src/commands/` and returns `Result<(), CliError>`
 - [ ] TypeScript uses named exports (avoid default exports)
-- [ ] React components use function declarations when possible
-- [ ] All logging uses `logger` from `@sruja/shared` (never `console.*`)
+- [ ] Extension logging uses VS Code OutputChannel (never `console.*`)
 - [ ] No `any` types - use proper types or `unknown` with type guards
-- [ ] Test files follow naming conventions (`*_test.go` for Go, `*.test.ts` for TypeScript)
+- [ ] Test files follow naming conventions (`crates/*/tests` for Rust integration, `*.test.ts` for TypeScript)
 - [ ] Configuration files use appropriate extensions (`.ts` when possible)
-- [ ] Errors are wrapped with context using `fmt.Errorf` with `%w` verb
+- [ ] Errors include actionable context and avoid `unwrap()` outside tests
 
 ## Additional Resources
 
-- [Go Error Handling Best Practices](https://go.dev/blog/error-handling-and-go)
+- [Rust Error Handling](https://doc.rust-lang.org/book/ch09-00-error-handling.html)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
-- [React Component Patterns](https://react.dev/learn/your-first-component)

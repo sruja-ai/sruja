@@ -125,24 +125,19 @@ Validated from current code:
 - `sruja-scan` (code reality ingestion)
 - `sruja-graph` (knowledge/state)
 - `sruja-diff` (drift/delta logic)
+- `sruja-intent` (intent vs reality comparisons)
 - `sruja-language` (DSL)
 - `sruja-diagnostics` (shared diagnostics contracts)
-
-## Keep as Core-Orchestration (P0/P1)
-- `sruja-chat` (backend orchestration; should become channel-agnostic service core)
-- `sruja-mcp` (interface layer; align naming/transport with actual protocol)
+- `sruja-report` (compliance and reporting)
+- `sruja-types` (shared types)
 
 ## Keep but Scope Down (P1)
 - `sruja-engine` (reduce default rules; keep strict essentials on by default)
 - `sruja-export` (human docs/CI output; not core runtime path)
-- `sruja-extract` (optional enhancement path)
 
 ## Deprioritize (no deletion yet)
-- `sruja-app`
 - `sruja-lsp`
 - `sruja-wasm`
-- `skill-lint`
-- `sruja-watch`
 
 Deletion is only after usage evidence confirms inactivity.
 
@@ -200,14 +195,12 @@ No API key prompts in this flow.
 4. Reorder README/docs around no-key first value.
 
 ### Phase 2 (3-5 weeks): Runtime Consolidation
-1. Extract shared orchestration service used by CLI and MCP.
-2. Expand MCP/API tools for read/write/query/drift operations.
+1. Extract shared orchestration functions used by CLI subcommands (scan/graph/diff/intent) to reduce duplicated logic.
+2. Improve machine-readable outputs (JSON) and stability guarantees for CI and IDE integrations.
 3. Reduce engine default rule set and add profiles.
 
 ### Phase 3 (optional channels)
-1. Add native MCP transport if required by target clients.
-2. Add Slack adapter only after backend API is stable.
-3. Keep `sruja-app` as optional until channel usage data is clear.
+1. Keep additional channels out of the core repo until there is clear demand and a stable contract.
 
 ---
 

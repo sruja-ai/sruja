@@ -47,19 +47,13 @@ make wasm-nodejs # nodejs target (for future LSP/extension)
 | **sruja-lsp** | LSP server (VS Code extension) |
 | **sruja-wasm** | WASM build for browser/Node |
 | **sruja-diagnostics** | Diagnostic types |
-| **sruja-app** | Desktop app (Dioxus) — architecture collaboration |
 | **sruja-graph** | Knowledge graph, centrality, coupling |
 | **sruja-scan** | Repo scanning (multi-language tree-sitter) |
 | **sruja-diff** | Drift detection |
 | **sruja-intent** | Intent vs. reality comparison |
+| **sruja-report** | Compliance and reporting |
+| **sruja-types** | Shared types |
 | **book/** | mdBook documentation |
-
-## Run sruja-app
-
-```bash
-export OPENROUTER_API_KEY="sk-or-v1-..."
-cargo run -p sruja-app
-```
 
 ## VS Code extension
 

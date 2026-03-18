@@ -9,7 +9,7 @@ Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagra
 3. **WASM** (`sruja-wasm`) – browser/Node export and parsing
 4. **mdBook** (`book/`) – **this is the website** (no separate Astro/React site)
 5. **VS Code extension** (`extension/`) – edit, preview, LSP
-6. **Architecture intelligence** – CLI: quickstart, drift, why, analyze, context; sruja-app (desktop: repo + query); sruja-graph, sruja-scan, sruja-diff, sruja-intent.
+6. **Architecture intelligence** – CLI: quickstart, drift, why, analyze, context; sruja-graph, sruja-scan, sruja-diff, sruja-intent, sruja-report.
 
 Nothing else is in scope (no designer app, no storybook, no social-publish, no separate website app).
 
@@ -26,11 +26,12 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | **crates/sruja-wasm** | WASM bindings for browser/Node |
 | **crates/sruja-lsp** | LSP server (used by VS Code extension) |
 | **crates/sruja-engine** | Validation rules |
-| **crates/sruja-app** | Desktop app (Dioxus) — architecture collaboration |
 | **crates/sruja-graph** | Knowledge graph, centrality, coupling |
 | **crates/sruja-scan** | Repo scanning (multi-language tree-sitter) |
 | **crates/sruja-diff** | Drift detection (code vs. intent) |
 | **crates/sruja-intent** | Intent vs. reality comparison |
+| **crates/sruja-report** | Compliance and reporting |
+| **crates/sruja-types** | Shared types |
 | **book/** | mdBook source; build output = deployed website |
 | **extension/** | VS Code extension (preview, LSP, snippets) |
 | **book/valid-examples/** | Canonical example `.sruja` files (rendered in the book). |
@@ -39,11 +40,10 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 
 | Item | Notes |
 |------|-------|
-| **packages/ui** | No web app; mdBook is static. |
 | **apps/website** | Website = mdBook build. |
 | **apps/designer** | No standalone designer app. |
 | **apps/storybook** | Not in scope. |
-| **sruja-engine** | Kept for CLI/extension validation. |
+| **packages/** | No JS/TS monorepo packages. |
 
 ## mdBook as the website
 
@@ -54,12 +54,10 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 
 ## Cleanup done
 
-References to ui, website, designer, storybook, social-publish removed from configs and docs. Turbo, release-please, size-limit, CI, Chromatic, social-publish workflow, PR template, book, and README updated. nextjs.json removed. Lockfile pruned via npm install. Optional next: slim packages/shared if extension-only desired.
+References to website, designer, storybook, and social-publish have been removed from configs and docs to match the current Rust + mdBook scope.
 
 ## Next steps (optional)
 
 1. Remove out-of-scope apps (if any remain) (website, designer, storybook, social-publish) if they exist in the repo.
-2. Remove `packages/ui` and update root `package.json` workspaces.
-3. Slim `packages/shared` to extension-only needs; remove or stub browser-only and analytics if unused.
-4. Make mdBook the single “website” in CI/deploy (build book, deploy `book/book/`).
-5. Optionally remove or slim `sruja-engine` if validation is not required for the minimal scope.
+2. Make mdBook the single “website” in CI/deploy (build book, deploy `book/book/`).
+3. Optionally remove or slim `sruja-engine` if validation is not required for the minimal scope.

@@ -242,13 +242,11 @@ book-lint-examples:
 # Copy assets to correct locations (logo, icons, etc.)
 assets:
 	@echo "Copying assets to correct locations..."
-	@mkdir -p crates/sruja-app/assets
 	@if [ -f "extension/sruja-logo.png" ]; then \
-		cp extension/sruja-logo.png crates/sruja-app/assets/; \
-		echo "  ✅ sruja-logo.png → crates/sruja-app/assets/"; \
-	fi
-	@if [ -f "extension/sruja-logo.png" ]; then \
-		cp extension/sruja-logo.png pkg/ 2>/dev/null || true; \
+		if [ -d "crates/sruja-wasm/pkg" ]; then \
+			cp extension/sruja-logo.png crates/sruja-wasm/pkg/; \
+			echo "  ✅ sruja-logo.png → crates/sruja-wasm/pkg/"; \
+		fi; \
 	fi
 	@echo "✅ Assets copied"
 

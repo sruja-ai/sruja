@@ -51,8 +51,8 @@ We will respond within 48 hours and work with you to resolve the issue.
 ### For Contributors
 
 1. **Never commit secrets**: API keys, passwords, tokens, etc.
-2. **Validate inputs**: Use validation utilities from `@sruja/shared/utils/validation`
-3. **Sanitize file paths**: Use `validateFilePath` from `@sruja/shared/utils/pathValidation`
+2. **Validate inputs**: Validate CLI arguments (Clap) and DSL inputs (parser + validator). Treat all user-provided strings as untrusted.
+3. **Sanitize file paths**: Resolve and validate paths before reading/writing; avoid path traversal by constraining reads/writes to the workspace root.
 4. **Keep dependencies updated**: Run `npm audit` and `cargo update` regularly
 5. **Review security reports**: Check CI security scan results
 
@@ -67,9 +67,8 @@ We will respond within 48 hours and work with you to resolve the issue.
 
 ### Input Validation
 
-- Comprehensive validation utilities in `packages/shared/src/utils/validation.ts`
-- Path validation to prevent path traversal attacks
-- Type guards for runtime type checking
+- DSL parsing and validation is centralized in Rust (parser + validator), producing structured diagnostics without leaking sensitive data.
+- VS Code extension operations should validate user/workspace inputs (paths, URIs, JSON) before invoking the CLI or WASM.
 
 ### Error Handling
 
@@ -99,9 +98,7 @@ We will respond within 48 hours and work with you to resolve the issue.
 
 ### Browser Storage
 
-- Uses IndexedDB for browser storage
-- No sensitive data stored without encryption
-- Storage keys are namespaced
+- The project does not rely on browser storage for core security guarantees.
 
 ## Verifying Releases
 

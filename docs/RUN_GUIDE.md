@@ -1,6 +1,6 @@
 # How to Run Sruja (Step-by-Step)
 
-This guide walks you through running the Sruja OSS project from a fresh clone. It covers CLI (required), optional demo, desktop app, VS Code extension, and evaluation.
+This guide walks you through running the Sruja OSS project from a fresh clone. It covers CLI (required), optional demo, VS Code extension, evaluation, and the mdBook site.
 
 ---
 
@@ -126,26 +126,12 @@ See `demo/README.md` for details.
 
 ---
 
-## Step 6: Run the desktop app (optional)
-
-The Slack-style desktop app (chat, agents, extraction) needs an LLM API key.
-
-```bash
-export OPENROUTER_API_KEY="sk-or-v1-..."   # or OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.
-cargo run -p sruja-app
-```
-
-Or use a `.env` in the repo root with the same variables; the app may pick them up depending on how it’s started.
-
----
-
-## Step 7: LLM / API keys (optional)
+## Step 6: LLM / API keys (optional)
 
 Only needed for:
 
 - `sruja eval <path>`
 - `./run_demo.sh --llm` or `./evaluate_architecture.sh <repo> --llm`
-- **sruja-app** (desktop)
 
 **Quick setup for evaluation/demo:**
 
@@ -168,7 +154,7 @@ Then:
 
 ---
 
-## Step 8: VS Code extension (optional)
+## Step 7: VS Code extension (optional)
 
 For syntax highlighting and LSP (e.g. validation, autocomplete) for `.sruja` files:
 
@@ -183,7 +169,7 @@ Or build a VSIX and install it: `npm run package` then install the generated `.v
 
 ---
 
-## Step 9: Run tests
+## Step 8: Run tests
 
 ```bash
 make test
@@ -200,7 +186,7 @@ cargo test -p sruja-cli --test why_e2e   # Why command E2E (optional)
 
 ---
 
-## Step 10: Book (mdBook docs, optional)
+## Step 9: Book (mdBook docs, optional)
 
 ```bash
 make book-deps    # Install mdbook, mdbook-mermaid (one-time)
