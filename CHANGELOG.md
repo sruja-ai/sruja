@@ -5,6 +5,19 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.5...sruja-v0.19.0) (2026-03-18)
+
+
+### Features
+
+* architecture index sources and policy rules ([a8160a6](https://github.com/sruja-ai/sruja/commit/a8160a65e33ce1bdbcbff6efbbc1fc93e48d95bf))
+* implement sources CLI command and JSON export for architecture index ([7fa062d](https://github.com/sruja-ai/sruja/commit/7fa062da4907f873d27ee2dac1f6ce82b02c681d))
+
+
+### Bug Fixes
+
+* **extension:** render mermaid diagrams correctly in markdown preview ([9f5a04b](https://github.com/sruja-ai/sruja/commit/9f5a04b6be4edcae5eff1cb6c0bfc4411660d9b3))
+
 ## [0.18.5](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.4...sruja-v0.18.5) (2026-03-16)
 
 

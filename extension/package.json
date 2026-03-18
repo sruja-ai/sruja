@@ -2,7 +2,7 @@
   "name": "sruja",
   "displayName": "Sruja – Architecture intelligence for the AI era.",
   "description": "Sruja – Architecture intelligence for the AI era.: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
-  "version": "0.18.5",
+  "version": "0.19.0",
   "publisher": "SrujaAI",
   "icon": "sruja-logo.png",
   "license": "Apache-2.0",
