@@ -5,6 +5,18 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.19.0...sruja-v0.20.0) (2026-03-18)
+
+
+### Features
+
+* **cli:** add impact analysis command ([6aa9eaa](https://github.com/sruja-ai/sruja/commit/6aa9eaac8f3ef0f59c4293154daf2f96c1f3644a))
+
+
+### Bug Fixes
+
+* DSL printer roundtrip; add WASM parity tests ([1e20b21](https://github.com/sruja-ai/sruja/commit/1e20b21b271d532d669b0a40085aba22a577e4ca))
+
 ## [0.19.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.18.5...sruja-v0.19.0) (2026-03-18)
 
 
