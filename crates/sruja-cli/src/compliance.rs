@@ -22,29 +22,26 @@ use std::str::FromStr;
 pub fn parse_constraint_to_rule(
     s: &str,
 ) -> Option<(sruja_graph::NodeKind, sruja_graph::NodeKind, bool)> {
-    let lower = s.to_lowercase().trim().to_string();
-    let lower = lower.as_str();
+    let tokens: Vec<String> = s
+        .split_whitespace()
+        .map(|t| t.to_ascii_lowercase())
+        .collect();
 
-    // "X must not call Y" or "X cannot call Y"
-    let (source, target) = if lower.contains(" must not call ") {
-        let parts: Vec<&str> = lower.splitn(2, " must not call ").collect();
-        if parts.len() != 2 {
+    let (src_tokens, tgt_tokens) =
+        if let Some(pos) = tokens.windows(3).position(|w| w == ["must", "not", "call"]) {
+            (&tokens[..pos], &tokens[(pos + 3)..])
+        } else if let Some(pos) = tokens.windows(2).position(|w| w == ["cannot", "call"]) {
+            (&tokens[..pos], &tokens[(pos + 2)..])
+        } else {
             return None;
-        }
-        (parts[0].trim(), parts[1].trim())
-    } else if lower.contains(" cannot call ") {
-        let parts: Vec<&str> = lower.splitn(2, " cannot call ").collect();
-        if parts.len() != 2 {
-            return None;
-        }
-        (parts[0].trim(), parts[1].trim())
-    } else {
+        };
+
+    if src_tokens.is_empty() || tgt_tokens.is_empty() {
         return None;
-    };
+    }
 
-    let norm = |t: &str| t.replace([' ', '-'], "_").to_lowercase();
-    let src_str = norm(source);
-    let tgt_str = norm(target);
+    let src_str = normalize_kind(&src_tokens.join(" "));
+    let tgt_str = normalize_kind(&tgt_tokens.join(" "));
 
     let source_kind = NodeKind::from_str(&src_str).ok()?;
     let target_kind = NodeKind::from_str(&tgt_str).ok()?;
@@ -163,9 +160,8 @@ mod tests {
 
     #[test]
     fn test_parse_constraint_must_not_call() {
-        let r = parse_constraint_to_rule("external_api must not call database");
-        assert!(r.is_some());
-        let (src, tgt, allowed) = r.unwrap();
+        let (src, tgt, allowed) =
+            parse_constraint_to_rule("external_api must not call database").unwrap();
         assert_eq!(src, NodeKind::ExternalApi);
         assert_eq!(tgt, NodeKind::Database);
         assert!(!allowed);
@@ -173,17 +169,126 @@ mod tests {
 
     #[test]
     fn test_parse_constraint_cannot_call() {
-        let r = parse_constraint_to_rule("service cannot call external_api");
-        assert!(r.is_some());
-        let (src, tgt, allowed) = r.unwrap();
+        let (src, tgt, allowed) =
+            parse_constraint_to_rule("service cannot call external_api").unwrap();
         assert_eq!(src, NodeKind::Service);
         assert_eq!(tgt, NodeKind::ExternalApi);
         assert!(!allowed);
     }
 
     #[test]
+    fn test_parse_constraint_is_case_insensitive_and_whitespace_tolerant() {
+        let (src, tgt, allowed) =
+            parse_constraint_to_rule("  External   API   MUST   NOT   CALL   DataBase  ").unwrap();
+        assert_eq!(src, NodeKind::ExternalApi);
+        assert_eq!(tgt, NodeKind::Database);
+        assert!(!allowed);
+    }
+
+    #[test]
+    fn test_parse_constraint_supports_hyphens_and_spaces_in_kinds() {
+        let (src, tgt, allowed) =
+            parse_constraint_to_rule("external-api cannot call external api").unwrap();
+        assert_eq!(src, NodeKind::ExternalApi);
+        assert_eq!(tgt, NodeKind::ExternalApi);
+        assert!(!allowed);
+    }
+
+    #[test]
+    fn test_parse_constraint_invalid_kind_returns_none() {
+        assert!(parse_constraint_to_rule("madeup_kind must not call database").is_none());
+    }
+
+    #[test]
+    fn test_parse_constraint_missing_target_returns_none() {
+        assert!(parse_constraint_to_rule("service cannot call").is_none());
+        assert!(parse_constraint_to_rule("service must not call").is_none());
+    }
+
+    #[test]
     fn test_parse_constraint_unrecognized_returns_none() {
         assert!(parse_constraint_to_rule("random text").is_none());
+    }
+
+    #[test]
+    fn test_selector_to_node_kind_accepts_simple_kind_and_rejects_extra_filters() {
+        use sruja_intent::model::PolicySelector;
+
+        let selector = PolicySelector {
+            kind: Some("External API".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(
+            selector_to_node_kind(&selector),
+            Some(NodeKind::ExternalApi)
+        );
+
+        let selector_with_id = PolicySelector {
+            kind: Some("external_api".to_string()),
+            id: Some("x".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(selector_to_node_kind(&selector_with_id), None);
+
+        let selector_with_tag = PolicySelector {
+            kind: Some("external_api".to_string()),
+            tags: vec!["pci".to_string()],
+            ..Default::default()
+        };
+        assert_eq!(selector_to_node_kind(&selector_with_tag), None);
+    }
+
+    #[test]
+    fn test_enforcement_to_policy_severity() {
+        assert_eq!(
+            enforcement_to_policy_severity("required"),
+            PolicySeverity::Error
+        );
+        assert_eq!(
+            enforcement_to_policy_severity("warn"),
+            PolicySeverity::Warning
+        );
+        assert_eq!(enforcement_to_policy_severity("INFO"), PolicySeverity::Info);
+        assert_eq!(
+            enforcement_to_policy_severity("unknown"),
+            PolicySeverity::Error
+        );
+    }
+
+    #[test]
+    fn test_rule_to_constraint_deny_edge_with_exceptions_is_ignored() {
+        use sruja_intent::model::{
+            PolicyEdgeException, PolicyRule, PolicyRuleContent, PolicySelector,
+        };
+
+        let rule = PolicyRule {
+            description: "deny edge with exception".to_string(),
+            constraint: "deny edge".to_string(),
+            content: Some(PolicyRuleContent::DenyEdge {
+                from: PolicySelector {
+                    kind: Some("service".to_string()),
+                    ..Default::default()
+                },
+                to: PolicySelector {
+                    kind: Some("database".to_string()),
+                    ..Default::default()
+                },
+                except: vec![PolicyEdgeException {
+                    from: PolicySelector {
+                        kind: Some("service".to_string()),
+                        ..Default::default()
+                    },
+                    to: PolicySelector {
+                        kind: Some("database".to_string()),
+                        ..Default::default()
+                    },
+                }],
+                message: None,
+                suggestions: vec![],
+            }),
+        };
+
+        assert_eq!(rule_to_constraint(&rule), None);
     }
 
     #[test]

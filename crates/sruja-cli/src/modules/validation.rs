@@ -418,6 +418,16 @@ mod tests {
         )
     }
 
+    fn create_diagnostic_at(line: u32, column: u32, context: Vec<String>) -> Diagnostic {
+        Diagnostic::new(
+            codes::CODE_UNDEFINED_REF,
+            Severity::Error,
+            "Undefined ref",
+            SourceLocation::new("test.sruja".to_string(), line, column),
+        )
+        .with_context(context)
+    }
+
     #[test]
     fn test_validation_result_success() {
         let diagnostics = vec![];
@@ -636,5 +646,124 @@ mod tests {
         assert!(config.fail_on_errors);
         assert!(!config.include_info);
         assert!(!config.calculate_score);
+    }
+
+    #[test]
+    fn test_enrich_diagnostics_with_source_adds_snippet_and_caret_and_preserves_notes() {
+        let content = "first line\nsecond line\nthird line\n";
+        let mut diagnostics = vec![create_diagnostic_at(
+            2,
+            4,
+            vec!["existing context".to_string(), "".to_string()],
+        )];
+
+        enrich_diagnostics_with_source(content, &mut diagnostics);
+
+        let diag = &diagnostics[0];
+        assert!(diag.context.iter().any(|l| l.contains("| second line")));
+        assert!(diag.context.iter().any(|l| l.contains("^")));
+        assert!(diag.context.iter().any(|l| l == "note: existing context"));
+    }
+
+    #[test]
+    fn test_enrich_diagnostics_with_source_ignores_zero_line() {
+        let content = "line\n";
+        let mut diagnostics = vec![create_diagnostic_at(0, 1, vec!["x".to_string()])];
+        enrich_diagnostics_with_source(content, &mut diagnostics);
+        assert_eq!(diagnostics[0].context, vec!["x".to_string()]);
+    }
+
+    #[test]
+    fn test_enrich_diagnostics_with_source_ignores_out_of_range_line() {
+        let content = "line\n";
+        let mut diagnostics = vec![create_diagnostic_at(10, 1, vec!["x".to_string()])];
+        enrich_diagnostics_with_source(content, &mut diagnostics);
+        assert_eq!(diagnostics[0].context, vec!["x".to_string()]);
+    }
+
+    #[test]
+    fn test_diagnostic_formatter_skips_info_when_disabled() {
+        let diagnostics = vec![
+            create_test_diagnostic(codes::CODE_BEST_PRACTICE, Severity::Info, "Info msg"),
+            create_test_diagnostic(codes::CODE_DUPLICATE_ID, Severity::Error, "Err msg"),
+        ];
+        let config = ValidationConfig::default();
+        let result = ValidationResult::new(diagnostics, &config);
+
+        let formatted = DiagnosticFormatter::format_result(&result, false);
+        assert_eq!(formatted.len(), 1);
+        assert!(formatted[0].contains("Err msg"));
+    }
+
+    #[test]
+    fn test_format_summary_includes_score_and_grade() {
+        let diagnostics = vec![create_test_diagnostic(
+            codes::CODE_DUPLICATE_ID,
+            Severity::Error,
+            "err",
+        )];
+        let config = ValidationConfig {
+            calculate_score: true,
+            ..Default::default()
+        };
+        let result = ValidationResult::new(diagnostics, &config);
+
+        let summary = DiagnosticFormatter::format_summary(&result, "arch.sruja");
+        assert!(summary.contains("arch.sruja"));
+        assert!(summary.contains("/100"));
+        assert!(summary.contains('('));
+        assert!(summary.contains(')'));
+    }
+
+    #[test]
+    fn test_batch_validation_result_paths_helpers() {
+        let ok = ValidationResult::new(vec![], &ValidationConfig::default());
+        let mut bad_diags = Vec::new();
+        bad_diags.push(create_test_diagnostic(
+            codes::CODE_DUPLICATE_ID,
+            Severity::Error,
+            "err",
+        ));
+        let bad = ValidationResult::new(bad_diags, &ValidationConfig::default());
+
+        let batch = BatchValidationResult {
+            total_files: 2,
+            passed_files: 1,
+            failed_files: 1,
+            total_errors: bad.error_count,
+            total_warnings: 0,
+            results: vec![("ok.sruja".to_string(), ok), ("bad.sruja".to_string(), bad)],
+        };
+
+        assert_eq!(batch.passed_file_paths(), vec!["ok.sruja"]);
+        assert_eq!(batch.failed_file_paths(), vec!["bad.sruja"]);
+    }
+
+    #[test]
+    fn test_format_batch_summary_contains_counts() {
+        let ok = ValidationResult::new(vec![], &ValidationConfig::default());
+        let bad = ValidationResult::new(
+            vec![create_test_diagnostic(
+                codes::CODE_DUPLICATE_ID,
+                Severity::Error,
+                "err",
+            )],
+            &ValidationConfig::default(),
+        );
+
+        let batch = BatchValidationResult {
+            total_files: 2,
+            passed_files: 1,
+            failed_files: 1,
+            total_errors: 1,
+            total_warnings: 0,
+            results: vec![("ok.sruja".to_string(), ok), ("bad.sruja".to_string(), bad)],
+        };
+
+        let summary = DiagnosticFormatter::format_batch_summary(&batch);
+        assert!(summary.contains("Total files: 2"));
+        assert!(summary.contains("Valid: 1"));
+        assert!(summary.contains("Invalid: 1"));
+        assert!(summary.contains("Total errors: 1"));
     }
 }

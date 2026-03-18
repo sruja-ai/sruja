@@ -219,14 +219,10 @@ impl LanguageServer for SrujaLanguageServer {
         };
 
         let locations = find_definition(&doc, &program, word);
-        if locations.is_empty() {
-            Ok(None)
-        } else if locations.len() == 1 {
-            Ok(Some(GotoDefinitionResponse::Scalar(
-                locations.into_iter().next().unwrap(),
-            )))
-        } else {
-            Ok(Some(GotoDefinitionResponse::Array(locations)))
+        match locations.len() {
+            0 => Ok(None),
+            1 => Ok(Some(GotoDefinitionResponse::Scalar(locations[0].clone()))),
+            _ => Ok(Some(GotoDefinitionResponse::Array(locations))),
         }
     }
 

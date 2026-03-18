@@ -199,6 +199,16 @@ mod tests {
     use std::io::Write;
     use tempfile::TempDir;
 
+    fn create_error_diagnostic() -> Diagnostic {
+        use sruja_diagnostics::SourceLocation;
+        Diagnostic::new(
+            "E_TEST",
+            sruja_diagnostics::Severity::Error,
+            "test error",
+            SourceLocation::new("test.sruja".to_string(), 1, 1),
+        )
+    }
+
     #[test]
     fn test_read_nonexistent_file() {
         let result = read_file("nonexistent.sruja");
@@ -225,6 +235,29 @@ user = person "User" {
         let result = parse_file(file_path.to_str().unwrap());
         assert!(result.is_ok());
         assert!(result.unwrap().is_success());
+    }
+
+    #[test]
+    fn test_parse_file_invalid_returns_cli_error_parse() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("invalid_parse_file.sruja");
+
+        let content = "app = system \"My App\" {}\n@@@";
+
+        File::create(&file_path)
+            .unwrap()
+            .write_all(content.as_bytes())
+            .unwrap();
+
+        let result = parse_file(file_path.to_str().unwrap());
+        match result {
+            Ok(_) => panic!("expected CliError::Parse"),
+            Err(CliError::Parse { file, message }) => {
+                assert!(file.ends_with("invalid_parse_file.sruja"));
+                assert!(message.contains("Parsing failed"));
+            }
+            Err(other) => panic!("expected CliError::Parse, got {other:?}"),
+        }
     }
 
     #[test]
@@ -256,6 +289,35 @@ system "Test" {
         let parse_result = result.unwrap();
         // The content should have been read
         assert!(!parse_result.content.is_empty(), "Content should be read");
+    }
+
+    #[test]
+    fn test_parse_file_with_diagnostics_invalid_sets_errors_and_default_program() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("invalid_with_diags.sruja");
+
+        let content = "app = system \"My App\" {}\n@@@";
+        File::create(&file_path)
+            .unwrap()
+            .write_all(content.as_bytes())
+            .unwrap();
+
+        let result = parse_file_with_diagnostics(file_path.to_str().unwrap()).unwrap();
+        assert!(result.has_errors());
+        assert!(!result.diagnostics.is_empty());
+        assert!(result.program.items.is_empty());
+    }
+
+    #[test]
+    fn test_parse_result_error_helpers() {
+        let parse_result = ParseResult {
+            program: Program::default(),
+            diagnostics: vec![create_error_diagnostic()],
+            content: "x".to_string(),
+        };
+
+        assert!(!parse_result.is_success());
+        assert!(parse_result.has_errors());
     }
 
     #[test]
