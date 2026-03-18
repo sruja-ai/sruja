@@ -21,12 +21,12 @@ fn intent_model_from_empty_file_does_not_panic() {
 #[test]
 fn intent_model_from_minimal_sruja_succeeds() {
     let minimal = r#"
-        architecture "Test" {
-            description "Minimal"
-            user = person "User" { description "User" }
-            web = system "Web" { description "Web" }
-            user -> web "uses"
-        }
+        person = kind "Person"
+        system = kind "System"
+
+        user = person "User" { description "User" }
+        web = system "Web" { description "Web" }
+        user -> web "uses"
     "#;
     let dir = tempfile::tempdir().expect("temp dir");
     let path = dir.path().join("minimal.sruja");

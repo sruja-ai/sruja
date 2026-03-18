@@ -20,6 +20,89 @@ use super::primitives::{
 };
 use super::relations::parse_qualified_ident;
 
+#[derive(Debug, Clone)]
+enum ScenarioBodyData {
+    Steps(Vec<ScenarioStep>),
+    Block {
+        title: Option<String>,
+        description: Option<String>,
+        steps: Vec<ScenarioStep>,
+    },
+}
+
+fn parse_steps_array(input: &str) -> IResult<&str, Vec<ScenarioStep>> {
+    use nom::sequence::delimited;
+    delimited(
+        preceded(ws0, char('[')),
+        many0(preceded(ws, parse_scenario_step)),
+        preceded(ws0, char(']')),
+    )
+    .parse(input)
+}
+
+#[derive(Debug, Clone)]
+enum ScenarioBlockItem {
+    Title(String),
+    Description(String),
+    Steps(Vec<ScenarioStep>),
+}
+
+fn parse_scenario_block_item(input: &str) -> IResult<&str, ScenarioBlockItem> {
+    alt((
+        map(
+            preceded(tag("title"), preceded(ws1, parse_string)),
+            ScenarioBlockItem::Title,
+        ),
+        map(
+            preceded(tag("description"), preceded(ws1, parse_string)),
+            ScenarioBlockItem::Description,
+        ),
+        map(
+            preceded(tag("steps"), preceded(ws0, parse_steps_array)),
+            ScenarioBlockItem::Steps,
+        ),
+    ))
+    .parse(input)
+}
+
+fn parse_scenario_block_body(input: &str) -> IResult<&str, ScenarioBodyData> {
+    use nom::sequence::delimited;
+    let (input, items) = delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_scenario_block_item)),
+        preceded(ws0, char('}')),
+    )
+    .parse(input)?;
+
+    let mut title = None;
+    let mut description = None;
+    let mut steps = Vec::new();
+    for item in items {
+        match item {
+            ScenarioBlockItem::Title(t) => title = Some(t),
+            ScenarioBlockItem::Description(d) => description = Some(d),
+            ScenarioBlockItem::Steps(s) => steps = s,
+        }
+    }
+
+    Ok((
+        input,
+        ScenarioBodyData::Block {
+            title,
+            description,
+            steps,
+        },
+    ))
+}
+
+fn parse_scenario_body_any(input: &str) -> IResult<&str, ScenarioBodyData> {
+    alt((
+        parse_scenario_block_body,
+        map(parse_scenario_body, ScenarioBodyData::Steps),
+    ))
+    .parse(input)
+}
+
 pub(crate) fn parse_requirement_assignment(input: &str) -> IResult<&str, Requirement> {
     let (input, id) = parse_identifier(input)?;
     let (input, _) = preceded(ws0, char('=')).parse(input)?;
@@ -29,6 +112,17 @@ pub(crate) fn parse_requirement_assignment(input: &str) -> IResult<&str, Require
     let (input, r#type) = parse_identifier(input)?;
     let (input, _) = ws1(input)?;
     let (input, title) = parse_string(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, details) = opt(parse_requirement_details).parse(input)?;
+
+    let mut description = None;
+    let mut tags = Vec::new();
+    if let Some(d) = details {
+        if d.description.is_some() {
+            description = d.description;
+        }
+        tags = d.tags;
+    }
 
     Ok((
         input,
@@ -37,8 +131,8 @@ pub(crate) fn parse_requirement_assignment(input: &str) -> IResult<&str, Require
             id,
             title,
             r#type,
-            description: None,
-            tags: Vec::new(),
+            description,
+            tags,
         },
     ))
 }
@@ -144,16 +238,88 @@ pub(crate) fn parse_scenario(input: &str) -> IResult<&str, Scenario> {
     let (input, _) = ws0(input)?;
     let (input, description) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, steps) = opt(parse_scenario_body).parse(input)?;
+    let (input, body) = opt(parse_scenario_body_any).parse(input)?;
+
+    let mut out_title = title.unwrap_or_default();
+    let mut out_description = description;
+    let mut out_steps = Vec::new();
+    if let Some(b) = body {
+        match b {
+            ScenarioBodyData::Steps(steps) => out_steps = steps,
+            ScenarioBodyData::Block {
+                title,
+                description,
+                steps,
+            } => {
+                if title.is_some() {
+                    out_title = title.unwrap_or_default();
+                }
+                if description.is_some() {
+                    out_description = description;
+                }
+                out_steps = steps;
+            }
+        }
+    }
+    let out_id = id.unwrap_or_default();
+    if out_title.is_empty() {
+        out_title = out_id.clone();
+    }
 
     Ok((
         input,
         Scenario {
             location: SourceLocation::new(String::new(), 0, 0),
-            id: id.unwrap_or_default(),
-            title: title.unwrap_or_default(),
-            description,
-            steps: steps.unwrap_or_default(),
+            id: out_id,
+            title: out_title,
+            description: out_description,
+            steps: out_steps,
+        },
+    ))
+}
+
+pub(crate) fn parse_scenario_assignment(input: &str) -> IResult<&str, Scenario> {
+    let (input, id) = parse_identifier(input)?;
+    let (input, _) = preceded(ws0, char('=')).parse(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, _) = alt((tag("scenario"), tag("story"))).parse(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, description) = opt(parse_string).parse(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, body) = opt(parse_scenario_body_any).parse(input)?;
+
+    let mut out_title = title.unwrap_or_else(|| id.clone());
+    let mut out_description = description;
+    let mut out_steps = Vec::new();
+    if let Some(b) = body {
+        match b {
+            ScenarioBodyData::Steps(steps) => out_steps = steps,
+            ScenarioBodyData::Block {
+                title,
+                description,
+                steps,
+            } => {
+                if title.is_some() {
+                    out_title = title.unwrap_or_else(|| id.clone());
+                }
+                if description.is_some() {
+                    out_description = description;
+                }
+                out_steps = steps;
+            }
+        }
+    }
+
+    Ok((
+        input,
+        Scenario {
+            location: SourceLocation::new(String::new(), 0, 0),
+            id,
+            title: out_title,
+            description: out_description,
+            steps: out_steps,
         },
     ))
 }
@@ -254,57 +420,100 @@ pub(crate) fn parse_requirement(input: &str) -> IResult<&str, Requirement> {
     let (input, _) = tag("requirement").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, id) = parse_identifier(input)?;
-    let id_for_title = id.clone();
     let (input, _) = ws0(input)?;
     let (input, r#type) = opt(parse_identifier).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string).parse(input)?;
+    let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, _body) = opt(parse_requirement_body).parse(input)?;
+    let (input, details) = opt(parse_requirement_details).parse(input)?;
+
+    let mut out_type = r#type.unwrap_or_else(|| "functional".to_string());
+    let mut description = None;
+    let mut tags = Vec::new();
+    if let Some(d) = details {
+        if d.r#type.is_some() {
+            out_type = d.r#type.unwrap_or(out_type);
+        }
+        description = d.description;
+        tags = d.tags;
+    }
 
     Ok((
         input,
         Requirement {
             location: SourceLocation::new(String::new(), 0, 0),
-            id,
-            title: description.clone().unwrap_or(id_for_title),
-            r#type: r#type.unwrap_or_else(|| "functional".to_string()),
+            title: title.unwrap_or_else(|| id.clone()),
+            r#type: out_type,
             description,
-            tags: Vec::new(),
+            tags,
+            id,
         },
     ))
 }
 
-fn parse_requirement_body(input: &str) -> IResult<&str, ()> {
-    use nom::sequence::delimited;
-    delimited(
-        preceded(ws0, char('{')),
-        many0(preceded(ws, parse_requirement_property)),
-        preceded(ws0, char('}')),
-    )
-    .parse(input)
-    .map(|(i, _)| (i, ()))
+#[derive(Debug, Clone, Default)]
+struct RequirementDetails {
+    r#type: Option<String>,
+    description: Option<String>,
+    tags: Vec<String>,
 }
 
-fn parse_requirement_property(input: &str) -> IResult<&str, ()> {
-    preceded(
-        alt((
-            tag("type"),
-            tag("description"),
-            tag("tags"),
-            tag("metadata"),
-        )),
-        preceded(
-            ws0,
-            alt((
-                map(parse_string, |_| ()),
-                map(parse_tag_array, |_| ()),
-                map(parse_metadata_block, |_| ()),
-            )),
+#[derive(Debug, Clone)]
+enum RequirementField {
+    Type(String),
+    Description(String),
+    Tags(Vec<String>),
+    Ignored,
+}
+
+fn parse_requirement_field(input: &str) -> IResult<&str, RequirementField> {
+    alt((
+        map(
+            preceded(
+                tag("type"),
+                preceded(ws1, alt((parse_identifier, parse_string))),
+            ),
+            RequirementField::Type,
         ),
-    )
+        map(
+            preceded(tag("description"), preceded(ws1, parse_string)),
+            RequirementField::Description,
+        ),
+        map(
+            preceded(
+                tag("tags"),
+                preceded(ws1, alt((parse_string_array, parse_tag_array))),
+            ),
+            RequirementField::Tags,
+        ),
+        map(
+            preceded(tag("metadata"), preceded(ws0, parse_metadata_block)),
+            |_| RequirementField::Ignored,
+        ),
+    ))
     .parse(input)
-    .map(|(i, _)| (i, ()))
+}
+
+fn parse_requirement_details(input: &str) -> IResult<&str, RequirementDetails> {
+    use nom::sequence::delimited;
+    let (input, fields) = delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_requirement_field)),
+        preceded(ws0, char('}')),
+    )
+    .parse(input)?;
+
+    let mut details = RequirementDetails::default();
+    for field in fields {
+        match field {
+            RequirementField::Type(t) => details.r#type = Some(t),
+            RequirementField::Description(d) => details.description = Some(d),
+            RequirementField::Tags(t) => details.tags = t,
+            RequirementField::Ignored => {}
+        }
+    }
+
+    Ok((input, details))
 }
 
 pub(crate) fn parse_adr(input: &str) -> IResult<&str, Adr> {

@@ -18,6 +18,11 @@ use super::primitives::{
     ws1,
 };
 
+enum MaybeKeyedString {
+    Keyed(String, String),
+    Bare(String),
+}
+
 pub(crate) fn parse_kv_string_block(input: &str) -> IResult<&str, Vec<(String, String)>> {
     use nom::sequence::delimited;
     delimited(
@@ -61,15 +66,35 @@ pub(crate) fn parse_metadata_entry(input: &str) -> IResult<&str, MetaEntry> {
 }
 
 pub(crate) fn parse_constraints_block(input: &str) -> IResult<&str, ConstraintsBlock> {
+    use nom::branch::alt;
     use nom::sequence::delimited;
     let (input, _) = tag("constraints").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, entries) = delimited(
+    let (input, raw_entries) = delimited(
         char('{'),
-        many0(preceded(ws, parse_constraint_entry)),
+        many0(preceded(
+            ws,
+            alt((
+                map(parse_constraint_entry, |e| {
+                    MaybeKeyedString::Keyed(e.key, e.value)
+                }),
+                map(parse_string, MaybeKeyedString::Bare),
+            )),
+        )),
         preceded(ws0, char('}')),
     )
     .parse(input)?;
+
+    let mut entries = Vec::with_capacity(raw_entries.len());
+    for (idx, raw) in raw_entries.into_iter().enumerate() {
+        match raw {
+            MaybeKeyedString::Keyed(key, value) => entries.push(ConstraintEntry { key, value }),
+            MaybeKeyedString::Bare(value) => entries.push(ConstraintEntry {
+                key: format!("C{}", idx + 1),
+                value,
+            }),
+        }
+    }
     Ok((
         input,
         ConstraintsBlock {
@@ -87,15 +112,35 @@ pub(crate) fn parse_constraint_entry(input: &str) -> IResult<&str, ConstraintEnt
 }
 
 pub(crate) fn parse_conventions_block(input: &str) -> IResult<&str, ConventionsBlock> {
+    use nom::branch::alt;
     use nom::sequence::delimited;
     let (input, _) = tag("conventions").parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, entries) = delimited(
+    let (input, raw_entries) = delimited(
         char('{'),
-        many0(preceded(ws, parse_convention_entry)),
+        many0(preceded(
+            ws,
+            alt((
+                map(parse_convention_entry, |e| {
+                    MaybeKeyedString::Keyed(e.key, e.value)
+                }),
+                map(parse_string, MaybeKeyedString::Bare),
+            )),
+        )),
         preceded(ws0, char('}')),
     )
     .parse(input)?;
+
+    let mut entries = Vec::with_capacity(raw_entries.len());
+    for (idx, raw) in raw_entries.into_iter().enumerate() {
+        match raw {
+            MaybeKeyedString::Keyed(key, value) => entries.push(ConventionEntry { key, value }),
+            MaybeKeyedString::Bare(value) => entries.push(ConventionEntry {
+                key: format!("V{}", idx + 1),
+                value,
+            }),
+        }
+    }
     Ok((
         input,
         ConventionsBlock {

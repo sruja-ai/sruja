@@ -143,6 +143,27 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_error_includes_location_context_and_suggestions() {
+        let input = "=\n";
+        let parser = Parser::new("test.sruja");
+        let result = parser.parse(input);
+        assert!(result.is_err());
+        let diags = result.err().unwrap();
+        assert!(!diags.is_empty());
+        let d = &diags[0];
+        assert!(d.location.line > 0, "line should be 1-indexed");
+        assert!(d.location.column > 0, "column should be 1-indexed");
+        assert!(
+            !d.context.is_empty(),
+            "context should be present for parser errors"
+        );
+        assert!(
+            !d.suggestions.is_empty(),
+            "suggestions should be present for parser errors"
+        );
+    }
+
+    #[test]
     fn test_parse_incrementally_context_window() {
         let input = "A = system \"A\"\nB = system \"B\"\nA -> B \"uses\"\n";
         let parser = Parser::new("test.sruja");

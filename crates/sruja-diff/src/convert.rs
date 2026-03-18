@@ -79,6 +79,18 @@ fn relation_label_to_edge_kind(label: &str) -> EdgeKind {
         EdgeKind::ReadsFrom
     } else if lower.contains("write") || lower == "writes" {
         EdgeKind::WritesTo
+    } else if lower.contains("depend") {
+        EdgeKind::DependsOn
+    } else if lower.contains("publish") {
+        EdgeKind::PublishesTo
+    } else if lower.contains("subscrib") {
+        EdgeKind::SubscribesTo
+    } else if lower.contains("own") {
+        EdgeKind::Owns
+    } else if lower.contains("contain") {
+        EdgeKind::Contains
+    } else if lower.contains("use") {
+        EdgeKind::Uses
     } else {
         EdgeKind::Calls
     }
@@ -115,6 +127,20 @@ A -> DB "writes to"
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
         assert_eq!(graph.edges[0].kind, EdgeKind::WritesTo);
+    }
+
+    #[test]
+    fn program_to_graph_depends_label_maps_to_depends_on() {
+        let program = parse_dsl(
+            r#"
+A = system "Service A"
+B = system "Service B"
+A -> B "depends on"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].kind, EdgeKind::DependsOn);
     }
 
     #[test]

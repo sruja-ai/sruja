@@ -7,6 +7,8 @@
 
 use std::fs;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{collections::HashSet, path::PathBuf};
 
 use super::CliError;
 use crate::utils::architecture_path;
@@ -73,6 +75,7 @@ fn is_production_relevant(v: &Violation) -> bool {
 pub struct CheckOutput {
     pub truth_status: String,
     pub baseline: Option<String>,
+    pub violations_baseline: Option<String>,
     pub has_drift: bool,
     pub violations_count: usize,
     pub health_score: Option<u8>,
@@ -88,6 +91,46 @@ pub struct ViolationSummary {
     pub message: String,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ViolationBaseline {
+    pub schema_version: u32,
+    pub generated_at_unix: u64,
+    pub fingerprints: Vec<String>,
+}
+
+fn kind_slug(kind: ViolationKind) -> &'static str {
+    match kind {
+        ViolationKind::OrphanComponent => "orphan-component",
+        ViolationKind::UndocumentedComponent => "undocumented-component",
+        ViolationKind::LayerViolation => "layer-violation",
+        ViolationKind::CircularDependency => "circular-dependency",
+        ViolationKind::GodModule => "god-module",
+        ViolationKind::MissingDependency => "missing-dependency",
+        ViolationKind::PatternMismatch => "pattern-mismatch",
+    }
+}
+
+fn fingerprint_violation(v: &Violation) -> String {
+    let location = v.location.clone().unwrap_or_default();
+    format!("{}|{}|{}", kind_slug(v.kind), location, v.message)
+}
+
+fn resolve_repo_relative(repo_root: &Path, path: &str) -> PathBuf {
+    let p = Path::new(path);
+    if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        repo_root.join(p)
+    }
+}
+
+fn load_violation_baseline(baseline_path: &Path) -> Result<HashSet<String>, CliError> {
+    let content = fs::read_to_string(baseline_path)?;
+    let baseline: ViolationBaseline =
+        serde_json::from_str(&content).map_err(|e| CliError::Validation(e.to_string()))?;
+    Ok(baseline.fingerprints.into_iter().collect())
+}
+
 fn categorize_violations(violations: &[sruja_diff::Violation]) -> Vec<ViolationSummary> {
     violations
         .iter()
@@ -97,17 +140,8 @@ fn categorize_violations(violations: &[sruja_diff::Violation]) -> Vec<ViolationS
                 .as_deref()
                 .or_else(|| v.sources.first().and_then(|s| s.detail.as_deref()))
                 .unwrap_or("unknown");
-            let kind_str = match v.kind {
-                ViolationKind::OrphanComponent => "orphan-component",
-                ViolationKind::UndocumentedComponent => "undocumented-component",
-                ViolationKind::LayerViolation => "layer-violation",
-                ViolationKind::CircularDependency => "circular-dependency",
-                ViolationKind::GodModule => "god-module",
-                ViolationKind::MissingDependency => "missing-dependency",
-                ViolationKind::PatternMismatch => "pattern-mismatch",
-            };
             ViolationSummary {
-                kind: kind_str.to_string(),
+                kind: kind_slug(v.kind).to_string(),
                 location: v.location.clone(),
                 message: match v.kind {
                     ViolationKind::OrphanComponent | ViolationKind::UndocumentedComponent => {
@@ -203,7 +237,52 @@ fn generate_suggestions(
     suggestions
 }
 
-pub async fn check(repo_root: &str, format: &str) -> Result<(), CliError> {
+pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
+    let repo_path = Path::new(repo_root);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let drift = sruja_diff::detect_architectural_drift(&graph);
+    let filtered: Vec<_> = drift
+        .violations
+        .iter()
+        .filter(|v| is_production_relevant(v))
+        .cloned()
+        .collect();
+
+    let fingerprints: Vec<String> = filtered.iter().map(fingerprint_violation).collect();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let baseline = ViolationBaseline {
+        schema_version: 1,
+        generated_at_unix: now,
+        fingerprints,
+    };
+
+    let out_path = resolve_repo_relative(repo_path, output);
+    if let Some(parent) = out_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let json =
+        serde_json::to_string_pretty(&baseline).map_err(|e| CliError::Validation(e.to_string()))?;
+    fs::write(&out_path, json)?;
+    println!("{}", out_path.to_string_lossy());
+
+    Ok(())
+}
+
+pub async fn check(
+    repo_root: &str,
+    format: &str,
+    violations_baseline: Option<&str>,
+) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
@@ -215,58 +294,74 @@ pub async fn check(repo_root: &str, format: &str) -> Result<(), CliError> {
     let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
 
-    let (truth_status, violations, health_score) = if let Some(ref baseline) = baseline_path {
-        let content = fs::read_to_string(baseline)?;
-        let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
-        let program = parser.parse(&content).map_err(|diags| {
-            let message = diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; ");
-            CliError::Parse {
-                file: baseline.to_string_lossy().to_string(),
-                message,
-            }
-        })?;
-
-        let proposed_graph = sruja_diff::program_to_graph(&program);
-        let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
-        let truth_status = match diff.truth_status {
-            sruja_diff::TruthStatus::Reviewed => "reviewed",
-            sruja_diff::TruthStatus::Drifted => "drifted",
-            sruja_diff::TruthStatus::Unknown => "unknown",
-        };
-
-        let filtered: Vec<_> = diff
-            .violations
-            .iter()
-            .filter(|v| is_production_relevant(v))
-            .cloned()
-            .collect();
-        let violations = categorize_violations(&filtered);
-        let health_score = Some(diff.summary.health_score);
-
-        (truth_status.to_string(), violations, health_score)
+    let baseline_filter_set = if let Some(b) = violations_baseline {
+        let p = resolve_repo_relative(repo_path, b);
+        Some(load_violation_baseline(&p)?)
     } else {
-        let drift = sruja_diff::detect_architectural_drift(&graph);
-        let truth_status = match drift.truth_status {
-            sruja_diff::TruthStatus::Reviewed => "reviewed",
-            sruja_diff::TruthStatus::Drifted => "drifted",
-            sruja_diff::TruthStatus::Unknown => "unknown",
-        };
-        let filtered: Vec<_> = drift
-            .violations
-            .iter()
-            .filter(|v| is_production_relevant(v))
-            .cloned()
-            .collect();
-        let violations = categorize_violations(&filtered);
-        let health_score = Some(drift.health_score);
-
-        (truth_status.to_string(), violations, health_score)
+        None
     };
 
+    let (truth_status, filtered_violations, health_score) =
+        if let Some(ref baseline) = baseline_path {
+            let content = fs::read_to_string(baseline)?;
+            let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
+            let program = parser.parse(&content).map_err(|diags| {
+                let message = diags
+                    .iter()
+                    .map(|d| d.message.as_str())
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                CliError::Parse {
+                    file: baseline.to_string_lossy().to_string(),
+                    message,
+                }
+            })?;
+
+            let proposed_graph = sruja_diff::program_to_graph(&program);
+            let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
+            let truth_status = match diff.truth_status {
+                sruja_diff::TruthStatus::Reviewed => "reviewed",
+                sruja_diff::TruthStatus::Drifted => "drifted",
+                sruja_diff::TruthStatus::Unknown => "unknown",
+            };
+
+            let filtered: Vec<_> = diff
+                .violations
+                .iter()
+                .filter(|v| is_production_relevant(v))
+                .cloned()
+                .collect();
+            let health_score = Some(diff.summary.health_score);
+
+            (truth_status.to_string(), filtered, health_score)
+        } else {
+            let drift = sruja_diff::detect_architectural_drift(&graph);
+            let truth_status = match drift.truth_status {
+                sruja_diff::TruthStatus::Reviewed => "reviewed",
+                sruja_diff::TruthStatus::Drifted => "drifted",
+                sruja_diff::TruthStatus::Unknown => "unknown",
+            };
+            let filtered: Vec<_> = drift
+                .violations
+                .iter()
+                .filter(|v| is_production_relevant(v))
+                .cloned()
+                .collect();
+            let health_score = Some(drift.health_score);
+
+            (truth_status.to_string(), filtered, health_score)
+        };
+
+    let filtered_violations: Vec<Violation> = if let Some(ref set) = baseline_filter_set {
+        filtered_violations
+            .into_iter()
+            .filter(|v| !set.contains(&fingerprint_violation(v)))
+            .collect()
+    } else {
+        filtered_violations
+    };
+
+    let violations = categorize_violations(&filtered_violations);
     let has_drift = !violations.is_empty();
     let open_questions = generate_open_questions(&violations);
     let suggestions = generate_suggestions(&violations, baseline_path.as_deref(), &truth_status);
@@ -274,6 +369,7 @@ pub async fn check(repo_root: &str, format: &str) -> Result<(), CliError> {
     let output = CheckOutput {
         truth_status,
         baseline: baseline_path.and_then(|p| p.to_str().map(String::from)),
+        violations_baseline: violations_baseline.map(|s| s.to_string()),
         has_drift,
         violations_count: violations.len(),
         health_score,

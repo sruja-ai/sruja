@@ -21,7 +21,7 @@ mod status;
 mod sync_cmd;
 mod version;
 
-pub use check::check;
+pub use check::{baseline, check};
 pub use compliance::compliance;
 pub use discover::{discover_context, discover_questions};
 pub use dsl::{

@@ -193,6 +193,10 @@ fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
             CausalLoopField::Description,
         ),
         map(parse_causal_loop_variable, CausalLoopField::Variable),
+        map(
+            parse_causal_loop_relationship,
+            CausalLoopField::Relationship,
+        ),
         map(parse_relation, |r| {
             CausalLoopField::Relationship(CausalRelationship {
                 from: r.from.as_string(),
@@ -202,10 +206,6 @@ fn parse_causal_loop_field(input: &str) -> IResult<&str, CausalLoopField> {
                 delay: None,
             })
         }),
-        map(
-            parse_causal_loop_relationship,
-            CausalLoopField::Relationship,
-        ),
     ))
     .parse(input)
 }
@@ -232,26 +232,24 @@ fn parse_causal_loop_relationship(input: &str) -> IResult<&str, CausalRelationsh
     let (input, _) = tag("->").parse(input)?;
     let (input, _) = ws0(input)?;
     let (input, to) = parse_identifier(input)?;
-    let (input, _) = ws0(input)?;
+    let (input, _) = ws(input)?;
 
-    let (input, body_fields) = opt(delimited(
+    let (input, body_fields) = delimited(
         preceded(ws0, char('{')),
         many0(preceded(ws, parse_causal_rel_field)),
         preceded(ws0, char('}')),
-    ))
+    )
     .parse(input)?;
 
     let mut effect = None;
     let mut polarity = CausalPolarity::Positive;
     let mut delay = None;
 
-    if let Some(fields) = body_fields {
-        for field in fields {
-            match field {
-                CausalRelField::Effect(e) => effect = Some(e),
-                CausalRelField::Polarity(p) => polarity = p,
-                CausalRelField::Delay(d) => delay = Some(d),
-            }
+    for field in body_fields {
+        match field {
+            CausalRelField::Effect(e) => effect = Some(e),
+            CausalRelField::Polarity(p) => polarity = p,
+            CausalRelField::Delay(d) => delay = Some(d),
         }
     }
 
@@ -289,6 +287,13 @@ fn parse_causal_polarity(input: &str) -> IResult<&str, CausalPolarity> {
     alt((
         value(CausalPolarity::Positive, tag("+")),
         value(CausalPolarity::Negative, tag("-")),
+        map(parse_string, |s| {
+            if s.trim() == "-" {
+                CausalPolarity::Negative
+            } else {
+                CausalPolarity::Positive
+            }
+        }),
     ))
     .parse(input)
 }

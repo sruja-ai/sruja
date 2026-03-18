@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use sruja_scan::scan_scope::resolve_scan_scope;
-use sruja_scan::{scan_repo, Graph, NodeKind};
+use sruja_scan::{scan_repo, EdgeKind, Graph, NodeKind};
 
 use super::CliError;
 use crate::context_detection::{
@@ -83,6 +83,199 @@ fn truth_status_from_baseline_compare(
     })?;
     let proposed_graph = sruja_diff::program_to_graph(&program);
     Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
+}
+
+fn sanitize_identifier(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len().max(1));
+    for (i, ch) in raw.chars().enumerate() {
+        let ok = if i == 0 {
+            ch.is_alphabetic() || ch == '_'
+        } else {
+            ch.is_alphanumeric() || ch == '_' || ch == '-'
+        };
+        if ok {
+            out.push(ch);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() {
+        "_".to_string()
+    } else if out.chars().next().map(|c| c.is_alphabetic() || c == '_') != Some(true) {
+        format!("_{}", out)
+    } else {
+        out
+    }
+}
+
+fn element_kind_for_node(node_kind: NodeKind) -> (sruja_language::ElementKind, Option<String>) {
+    match node_kind {
+        NodeKind::System => (sruja_language::ElementKind::System, None),
+        NodeKind::Service => (
+            sruja_language::ElementKind::Container,
+            Some("service".to_string()),
+        ),
+        NodeKind::Container => (sruja_language::ElementKind::Container, None),
+        NodeKind::Component => (sruja_language::ElementKind::Component, None),
+        NodeKind::Database => (sruja_language::ElementKind::Database, None),
+        NodeKind::Queue => (sruja_language::ElementKind::Queue, None),
+        NodeKind::ExternalApi => (
+            sruja_language::ElementKind::ExternalSystem,
+            Some("api".to_string()),
+        ),
+        NodeKind::Frontend => (
+            sruja_language::ElementKind::Container,
+            Some("frontend".to_string()),
+        ),
+        NodeKind::Module => (
+            sruja_language::ElementKind::Component,
+            Some("module".to_string()),
+        ),
+    }
+}
+
+fn relation_label_for_edge(edge_kind: EdgeKind) -> &'static str {
+    match edge_kind {
+        EdgeKind::ReadsFrom => "reads from",
+        EdgeKind::WritesTo => "writes to",
+        EdgeKind::DependsOn => "depends on",
+        EdgeKind::PublishesTo => "publishes to",
+        EdgeKind::SubscribesTo => "subscribes to",
+        EdgeKind::Owns => "owns",
+        EdgeKind::Contains => "contains",
+        EdgeKind::Uses => "uses",
+        EdgeKind::Calls => "calls",
+    }
+}
+
+fn qualified_ident_from_id(id: &str) -> sruja_language::QualifiedIdent {
+    let parts = id
+        .split('.')
+        .filter(|p| !p.is_empty())
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>();
+    if parts.is_empty() {
+        sruja_language::QualifiedIdent {
+            parts: vec!["_".to_string()],
+        }
+    } else {
+        sruja_language::QualifiedIdent { parts }
+    }
+}
+
+fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_language::Program {
+    let mut id_map: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
+    let mut used: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+    for node in &graph.nodes {
+        let mut base = sanitize_identifier(&node.id);
+        let n = used.entry(base.clone()).or_insert(0);
+        if *n > 0 {
+            base = format!("{}_{}", base, *n + 1);
+        }
+        *n += 1;
+        id_map.insert(node.id.as_str(), base);
+    }
+
+    let mut nodes = graph.nodes.clone();
+    nodes.sort_by(|a, b| {
+        let ida = id_map
+            .get(a.id.as_str())
+            .map(String::as_str)
+            .unwrap_or(a.id.as_str());
+        let idb = id_map
+            .get(b.id.as_str())
+            .map(String::as_str)
+            .unwrap_or(b.id.as_str());
+        ida.cmp(idb)
+    });
+
+    let mut items: Vec<sruja_language::TopLevelItem> = Vec::new();
+    for node in &nodes {
+        let name = id_map
+            .get(node.id.as_str())
+            .cloned()
+            .unwrap_or_else(|| sanitize_identifier(&node.id));
+        let (kind, sub_kind) = element_kind_for_node(node.kind);
+
+        let body = sruja_language::ElementDefBody {
+            description: node
+                .path
+                .as_ref()
+                .map(|p| format!("Scanned from {}", p))
+                .or_else(|| Some("Scanned from repository".to_string())),
+            technology: match kind {
+                sruja_language::ElementKind::Container | sruja_language::ElementKind::Database => {
+                    Some(
+                        node.technology
+                            .clone()
+                            .unwrap_or_else(|| "Unknown".to_string()),
+                    )
+                }
+                _ => node.technology.clone(),
+            },
+            ..Default::default()
+        };
+
+        let assignment = sruja_language::ElementAssignment {
+            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+            name,
+            kind,
+            sub_kind,
+            title: Some(node.label.clone()),
+            tag_refs: Vec::new(),
+            body: Some(body),
+        };
+        let def = sruja_language::ElementDef {
+            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+            assignment,
+        };
+        items.push(sruja_language::TopLevelItem::ElementDef(Box::new(def)));
+    }
+
+    let mut edges = graph.edges.clone();
+    edges.sort_by(|a, b| {
+        (a.source.as_str(), a.target.as_str(), a.kind.as_str()).cmp(&(
+            b.source.as_str(),
+            b.target.as_str(),
+            b.kind.as_str(),
+        ))
+    });
+    for edge in &edges {
+        let from = id_map
+            .get(edge.source.as_str())
+            .cloned()
+            .unwrap_or_else(|| sanitize_identifier(&edge.source));
+        let to = id_map
+            .get(edge.target.as_str())
+            .cloned()
+            .unwrap_or_else(|| sanitize_identifier(&edge.target));
+
+        let rel = sruja_language::Relation {
+            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+            from: qualified_ident_from_id(&from),
+            to: qualified_ident_from_id(&to),
+            label: Some(relation_label_for_edge(edge.kind).to_string()),
+            description: None,
+            technology: None,
+            tags: Vec::new(),
+        };
+        items.push(sruja_language::TopLevelItem::Relation(rel));
+    }
+
+    sruja_language::Program::new().with_items(items)
+}
+
+fn write_draft_baseline(repo_root: &Path, graph: &Graph) -> Result<Option<PathBuf>, CliError> {
+    let out_path = repo_root.join("repo.sruja");
+    if out_path.exists() {
+        return Ok(None);
+    }
+    let program = build_draft_program_from_graph(graph, out_path.to_string_lossy().as_ref());
+    let printer = sruja_export::DslPrinter::new();
+    let dsl = printer.print(&program);
+    fs::write(&out_path, dsl)?;
+    Ok(Some(out_path))
 }
 
 fn escape_github_actions_message(input: &str) -> String {
@@ -994,12 +1187,16 @@ pub async fn quickstart(
     };
 
     if generate_baseline {
-        eprintln!("📝 Generate baseline using sruja-architecture skill:");
-        eprintln!("   'Use sruja-architecture. Run `sruja sync -r .` (or `sruja discover --context -r . --format json`),");
-        eprintln!(
-            "   generate repo.sruja (or architecture.sruja), then run `sruja lint` and fix.'"
-        );
-        eprintln!();
+        match write_draft_baseline(repo_path, &graph)? {
+            Some(p) => {
+                eprintln!("📝 Wrote draft baseline: {}", p.to_string_lossy().cyan());
+                eprintln!();
+            }
+            None => {
+                eprintln!("📝 Baseline already exists (repo.sruja). Skipping write.");
+                eprintln!();
+            }
+        }
     }
 
     match format {

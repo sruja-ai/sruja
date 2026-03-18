@@ -5,6 +5,7 @@
 
 mod assignments;
 mod blocks;
+mod deployment;
 mod elements;
 mod import;
 mod loops;
@@ -23,6 +24,57 @@ use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
 
 use crate::ast::*;
 
+fn line_col_1_indexed(input: &str, pos: usize) -> (u32, u32) {
+    let pos = pos.min(input.len());
+    let prefix = &input[..pos];
+
+    let line = prefix.matches('\n').count().saturating_add(1);
+    let line_u32 = (line.min(u32::MAX as usize)) as u32;
+
+    let col_start = prefix.rfind('\n').map(|i| i + 1).unwrap_or(0);
+    let col_chars = input[col_start..pos].chars().count().saturating_add(1);
+    let col_u32 = (col_chars.min(u32::MAX as usize)) as u32;
+
+    (line_u32, col_u32)
+}
+
+fn context_snippet(
+    input: &str,
+    line: u32,
+    column: u32,
+    before: usize,
+    after: usize,
+) -> Vec<String> {
+    if line == 0 {
+        return Vec::new();
+    }
+    let target = line as usize;
+    let start = target.saturating_sub(before).max(1);
+    let end = target.saturating_add(after);
+
+    let mut out: Vec<String> = Vec::new();
+    for (idx, text) in input.lines().enumerate() {
+        let ln = idx + 1;
+        if ln < start || ln > end {
+            continue;
+        }
+        out.push(format!("{:>4} | {}", ln, text));
+        if ln == target {
+            let caret_spaces = " ".repeat(column.saturating_sub(1) as usize);
+            out.push(format!("     | {}^", caret_spaces));
+        }
+    }
+    out
+}
+
+fn generic_parse_suggestions() -> Vec<String> {
+    vec![
+        "Check for a missing `}` or `]` near the marked location".to_string(),
+        "Ensure strings are quoted (prefer double quotes)".to_string(),
+        "Ensure assignments use `=` (e.g. `A = system \"A\"`)".to_string(),
+    ]
+}
+
 /// Parser for Sruja DSL
 pub struct Parser {
     filename: String,
@@ -39,19 +91,17 @@ impl Parser {
     /// Calculate the line number for a byte position in the input
     #[allow(dead_code)]
     fn line_number(&self, input: &str, pos: usize) -> u32 {
-        let truncated = if pos <= input.len() {
-            &input[..pos]
-        } else {
-            input
-        };
-        let line = truncated.matches('\n').count();
+        let pos = pos.min(input.len());
+        let truncated = &input[..pos];
+        let line = truncated.matches('\n').count().saturating_add(1);
         line.min(u32::MAX as usize) as u32
     }
 
     /// Create a SourceLocation for a position
     #[allow(dead_code)]
     fn location(&self, input: &str, pos: usize) -> SourceLocation {
-        SourceLocation::new(self.filename.clone(), self.line_number(input, pos), 0)
+        let (line, col) = line_col_1_indexed(input, pos);
+        SourceLocation::new(self.filename.clone(), line, col)
     }
 
     /// Parse source code into a Program AST
@@ -60,59 +110,83 @@ impl Parser {
             Ok((remaining, program)) => {
                 let trimmed = remaining.trim();
                 if !trimmed.is_empty() {
-                    // Try to provide more context about what couldn't be parsed
                     let preview = if trimmed.len() > 100 {
                         format!("{}...", &trimmed[..100])
                     } else {
                         trimmed.to_string()
                     };
 
-                    // Count lines to provide better error location
-                    let lines_before_remaining = input.len() - remaining.len();
-                    let line_number = input[..lines_before_remaining].matches('\n').count();
-                    let line_number_u32 = line_number.min(u32::MAX as usize) as u32;
+                    let pos = input.len().saturating_sub(remaining.len());
+                    let (line, col) = line_col_1_indexed(input, pos);
 
-                    return Err(vec![Diagnostic::new(
+                    let mut d = Diagnostic::new(
                         sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                         Severity::Error,
                         format!(
-                            "Unexpected input remaining at line {}: {}",
-                            line_number + 1,
+                            "Unexpected input at {}:{}: {}",
+                            line,
+                            col,
                             preview.replace('\n', "\\n").replace('\r', "\\r")
                         ),
-                        SourceLocation::new(self.filename.clone(), line_number_u32, 0),
-                    )]);
+                        SourceLocation::new(self.filename.clone(), line, col),
+                    )
+                    .with_context(context_snippet(input, line, col, 2, 2))
+                    .with_suggestions(generic_parse_suggestions());
+
+                    return Err(vec![{
+                        d.context.retain(|s| !s.trim().is_empty());
+                        d
+                    }]);
                 }
                 Ok(program)
             }
             Err(e) => {
-                // Try to extract more information from the nom error
-                let (error_msg, error_pos) = match &e {
+                let (error_msg, line, col) = match &e {
                     nom::Err::Error(err) => {
-                        let pos = input.len() - err.input.len();
-                        let line = self.line_number(input, pos);
+                        let pos = input.len().saturating_sub(err.input.len());
+                        let (line, col) = line_col_1_indexed(input, pos);
+                        let remaining_preview = input
+                            .get(pos..)
+                            .unwrap_or("")
+                            .chars()
+                            .take(80)
+                            .collect::<String>()
+                            .replace('\n', "\\n")
+                            .replace('\r', "\\r");
                         (
-                            format!("Parse error at line {}: {:?}", line + 1, err.code),
+                            format!("Parse error ({:?}) near: {}", err.code, remaining_preview),
                             line,
+                            col,
                         )
                     }
                     nom::Err::Failure(err) => {
-                        let pos = input.len() - err.input.len();
-                        let line = self.line_number(input, pos);
+                        let pos = input.len().saturating_sub(err.input.len());
+                        let (line, col) = line_col_1_indexed(input, pos);
+                        let remaining_preview = input
+                            .get(pos..)
+                            .unwrap_or("")
+                            .chars()
+                            .take(80)
+                            .collect::<String>()
+                            .replace('\n', "\\n")
+                            .replace('\r', "\\r");
                         (
-                            format!("Parse failure at line {}: {:?}", line + 1, err.code),
+                            format!("Parse failure ({:?}) near: {}", err.code, remaining_preview),
                             line,
+                            col,
                         )
                     }
-                    nom::Err::Incomplete(_) => ("Incomplete input".to_string(), 0),
+                    nom::Err::Incomplete(_) => ("Incomplete input".to_string(), 1, 1),
                 };
 
                 Err(vec![Diagnostic::new(
                     sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                     Severity::Error,
                     error_msg,
-                    SourceLocation::new(self.filename.clone(), error_pos, 0),
-                )])
+                    SourceLocation::new(self.filename.clone(), line, col),
+                )
+                .with_context(context_snippet(input, line, col, 2, 2))
+                .with_suggestions(generic_parse_suggestions())])
             }
         }
     }
@@ -175,36 +249,37 @@ impl Parser {
                 })
             }
             Err(e) => {
-                // Try to provide more context about the parse error
-                let (error_msg, line_number) = match &e {
+                let (error_msg, line_number, column_number) = match &e {
                     nom::Err::Error(err) => {
-                        // Calculate line number within the context section
-                        let context_line = context_section[..err.input.len()].matches('\n').count();
-                        let absolute_line = context_start_line + context_line;
+                        let pos = context_section.len().saturating_sub(err.input.len());
+                        let (context_line, context_col) = line_col_1_indexed(context_section, pos);
+                        let absolute_line = context_start_line as u32 + context_line;
                         (
                             format!(
-                                "Parse error in context section at line {}: {:?}",
-                                absolute_line + 1,
-                                err.code
+                                "Parse error in context section at {}:{} ({:?})",
+                                absolute_line, context_col, err.code
                             ),
-                            absolute_line as u32,
+                            absolute_line,
+                            context_col,
                         )
                     }
                     nom::Err::Failure(err) => {
-                        let context_line = context_section[..err.input.len()].matches('\n').count();
-                        let absolute_line = context_start_line + context_line;
+                        let pos = context_section.len().saturating_sub(err.input.len());
+                        let (context_line, context_col) = line_col_1_indexed(context_section, pos);
+                        let absolute_line = context_start_line as u32 + context_line;
                         (
                             format!(
-                                "Parse failure in context section at line {}: {:?}",
-                                absolute_line + 1,
-                                err.code
+                                "Parse failure in context section at {}:{} ({:?})",
+                                absolute_line, context_col, err.code
                             ),
-                            absolute_line as u32,
+                            absolute_line,
+                            context_col,
                         )
                     }
                     nom::Err::Incomplete(_) => (
                         "Incomplete input in context section".to_string(),
-                        context_start_line as u32,
+                        context_start_line.saturating_add(1) as u32,
+                        1,
                     ),
                 };
 
@@ -212,8 +287,10 @@ impl Parser {
                     sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
                     Severity::Error,
                     error_msg,
-                    SourceLocation::new(self.filename.clone(), line_number, 0),
-                )])
+                    SourceLocation::new(self.filename.clone(), line_number, column_number),
+                )
+                .with_context(context_snippet(input, line_number, column_number, 2, 2))
+                .with_suggestions(generic_parse_suggestions())])
             }
         }
     }

@@ -515,8 +515,8 @@ requirement REQ-001 "User Authentication" {
     #[test]
     fn test_collect_all_relations() {
         let input = r#"
-system A "System A"
-system B "System B"
+A = system "System A"
+B = system "System B"
 A -> B "relation1"
 B -> A "relation2"
 "#;
@@ -565,8 +565,8 @@ A = system "System A" {
     #[test]
     fn test_resolve_relation_fqns_simple() {
         let input = r#"
-system A "System A"
-system B "System B"
+A = system "System A"
+B = system "System B"
 A -> B "calls"
 "#;
         let program = parse_test_input(input);
