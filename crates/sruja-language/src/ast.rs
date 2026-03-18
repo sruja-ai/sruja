@@ -308,6 +308,7 @@ pub struct ElementDefBody {
 pub enum ElementDefBodyItem {
     ElementDef(Box<ElementDef>),
     Relation(Relation),
+    Step(ScenarioStep),
     Description(String),
     Technology(String),
     /// Doc path to component knowledge file (e.g. ".sruja/knowledge/<id>.md").

@@ -9,7 +9,7 @@ use super::assignments::{
     parse_policy_assignment, parse_requirement, parse_requirement_assignment, parse_scenario,
 };
 use super::blocks::parse_metadata_block;
-use super::elements::{parse_element_def, parse_kind_def};
+use super::elements::{parse_element_def, parse_element_def_unassigned, parse_kind_def};
 use super::import::parse_import;
 use super::loops::{parse_causal_loop, parse_feedback_loop};
 use super::overview_views::{parse_overview_block, parse_view};
@@ -53,6 +53,9 @@ pub(super) fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
         map(parse_overview_block, TopLevelItem::Overview),
         map(parse_feedback_loop, TopLevelItem::FeedbackLoop),
         map(parse_causal_loop, TopLevelItem::CausalLoop),
+        map(parse_element_def_unassigned, |e| {
+            TopLevelItem::ElementDef(Box::new(e))
+        }),
         map(parse_element_def, |e| TopLevelItem::ElementDef(Box::new(e))),
         map(parse_relation, TopLevelItem::Relation),
         map(parse_import, TopLevelItem::Import),

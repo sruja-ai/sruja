@@ -17,6 +17,7 @@ use crate::ast::{
     SloThroughput, SourceBinding, SourceKind, StyleBlock,
 };
 
+use super::assignments::parse_scenario_step;
 use super::blocks::{
     parse_constraints_block, parse_conventions_block, parse_metadata_block, parse_style_decl,
 };
@@ -134,6 +135,130 @@ pub(crate) fn parse_element_def(input: &str) -> IResult<&str, ElementDef> {
     ))
 }
 
+pub(crate) fn parse_element_def_unassigned(input: &str) -> IResult<&str, ElementDef> {
+    let (input, kind) = parse_unassigned_element_kind(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, title) = parse_string(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, tag_refs) = many0(parse_tag_ref).parse(input)?;
+    let (input, _) = ws0(input)?;
+
+    let (input, body) = if input.trim_start().starts_with('{') {
+        match parse_element_def_body(input) {
+            Ok((rest, parsed_body)) => (rest, Some(parsed_body)),
+            Err(_) => {
+                let mut depth = 0;
+                let mut in_string = false;
+                let mut escape = false;
+                let mut consumed = 0;
+
+                for (i, ch) in input.char_indices() {
+                    if escape {
+                        escape = false;
+                        continue;
+                    }
+                    match ch {
+                        '\\' => escape = true,
+                        '"' => in_string = !in_string,
+                        '{' if !in_string => depth += 1,
+                        '}' if !in_string => {
+                            depth -= 1;
+                            if depth == 0 {
+                                consumed = i + 1;
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if consumed > 0 {
+                    (&input[consumed..], None)
+                } else {
+                    return Err(nom::Err::Error(nom::error::Error::new(
+                        input,
+                        nom::error::ErrorKind::Tag,
+                    )));
+                }
+            }
+        }
+    } else {
+        (input, None)
+    };
+
+    let name = derive_id_from_title(&title);
+
+    Ok((
+        input,
+        ElementDef {
+            location: SourceLocation::new(String::new(), 0, 0),
+            assignment: ElementAssignment {
+                location: SourceLocation::new(String::new(), 0, 0),
+                name,
+                kind,
+                sub_kind: None,
+                title: Some(title),
+                tag_refs,
+                body,
+            },
+        },
+    ))
+}
+
+fn parse_unassigned_element_kind(input: &str) -> IResult<&str, ElementKind> {
+    alt((
+        value(ElementKind::Person, tag("person")),
+        value(ElementKind::Role, tag("role")),
+        value(ElementKind::System, tag("system")),
+        value(ElementKind::Container, tag("container")),
+        value(ElementKind::Component, tag("component")),
+        value(ElementKind::Database, tag("database")),
+        value(ElementKind::Queue, tag("queue")),
+        value(ElementKind::Custom("service".to_string()), tag("service")),
+        value(ElementKind::Custom("feedback".to_string()), tag("feedback")),
+        value(
+            ElementKind::Custom("causal_loop".to_string()),
+            tag("causal_loop"),
+        ),
+        value(ElementKind::Custom("variable".to_string()), tag("variable")),
+    ))
+    .parse(input)
+}
+
+fn derive_id_from_title(title: &str) -> String {
+    let mut out = String::with_capacity(title.len());
+    let mut prev_underscore = false;
+
+    for ch in title.chars() {
+        if ch.is_alphanumeric() {
+            out.push(ch);
+            prev_underscore = false;
+        } else if (ch == '_' || ch == '-' || ch.is_whitespace())
+            && !prev_underscore
+            && !out.is_empty()
+        {
+            out.push('_');
+            prev_underscore = true;
+        }
+    }
+
+    while out.ends_with('_') {
+        out.pop();
+    }
+
+    if out.is_empty() {
+        return "Element".to_string();
+    }
+    if !out
+        .chars()
+        .next()
+        .is_some_and(|c| c.is_alphabetic() || c == '_')
+    {
+        out.insert(0, '_');
+    }
+    out
+}
+
 pub(crate) fn parse_element_kind(input: &str) -> IResult<&str, ElementKind> {
     alt((
         value(ElementKind::Person, tag("person")),
@@ -197,6 +322,7 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
             ElementDefBodyItem::Slo(s) => body.slo = Some(*s),
             ElementDefBodyItem::ElementDef(e) => body.items.push(ElementDefBodyItem::ElementDef(e)),
             ElementDefBodyItem::Relation(r) => body.items.push(ElementDefBodyItem::Relation(r)),
+            ElementDefBodyItem::Step(s) => body.items.push(ElementDefBodyItem::Step(s)),
             ElementDefBodyItem::Constraints(c) => body.constraints = c.entries,
             ElementDefBodyItem::Conventions(c) => body.conventions = c.entries,
             ElementDefBodyItem::Style(s) => {
@@ -219,6 +345,10 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
     }
 
     Ok((input, body))
+}
+
+fn parse_inline_step(input: &str) -> IResult<&str, crate::ast::ScenarioStep> {
+    preceded(tag("step"), preceded(ws1, parse_scenario_step)).parse(input)
 }
 
 fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
@@ -249,6 +379,10 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
         map(parse_element_def, |e| {
             ElementDefBodyItem::ElementDef(Box::new(e))
         }),
+        map(parse_element_def_unassigned, |e| {
+            ElementDefBodyItem::ElementDef(Box::new(e))
+        }),
+        map(parse_inline_step, ElementDefBodyItem::Step),
         map(parse_relation, ElementDefBodyItem::Relation),
         map(parse_constraints_block, ElementDefBodyItem::Constraints),
         map(parse_conventions_block, ElementDefBodyItem::Conventions),

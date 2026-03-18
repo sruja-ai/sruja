@@ -223,12 +223,7 @@ mod tests {
         assert!(!diags.is_empty(), "Self-cycle should be detected");
     }
 
-    // TODO: These tests fail because relations inside causal_loop/feedback elements
-    // are not properly scoped. The is_scope_feedback_loop check works, but the
-    // relations are being collected without the correct scope. This needs investigation
-    // into collect_relations_with_scope behavior.
     #[test]
-    #[ignore = "Relations inside causal_loop not properly scoped - needs investigation"]
     fn test_causal_loop_not_reported() {
         let source = r#"
             system "Main" {
@@ -249,7 +244,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Relations inside feedback not properly scoped - needs investigation"]
     fn test_feedback_loop_not_reported() {
         let source = r#"
             system "Main" {

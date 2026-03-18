@@ -73,6 +73,26 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_element_def_unassigned_system() {
+        let input = r#"system "My System" { }"#;
+        let parser = Parser::new("test.sruja");
+        let result = parser.parse(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let program = result.unwrap();
+        let elem = program
+            .items
+            .iter()
+            .find_map(|i| match i {
+                TopLevelItem::ElementDef(e) => Some((**e).clone()),
+                _ => None,
+            })
+            .expect("element should be present");
+        assert_eq!(elem.assignment.name, "My_System");
+        assert_eq!(elem.assignment.kind, ElementKind::System);
+        assert_eq!(elem.assignment.title, Some("My System".to_string()));
+    }
+
+    #[test]
     fn test_parse_relation() {
         let input = r#"SystemA -> SystemB "Uses" "SystemA uses SystemB""#;
         let result = parse_relation(input);

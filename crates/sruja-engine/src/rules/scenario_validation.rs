@@ -8,7 +8,8 @@ use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
 use sruja_language::{
-    collect_elements, ElementDef, PolicyRuleAst, Program, ScenarioStep, TopLevelItem,
+    collect_elements, ElementDef, ElementDefBodyItem, PolicyRuleAst, Program, ScenarioStep,
+    TopLevelItem,
 };
 
 use crate::utils::{
@@ -51,13 +52,48 @@ impl Rule for ScenarioValidationRule {
                 TopLevelItem::Flow(f) => {
                     diags.extend(runner.validate_steps(&f.steps, &f.location));
                 }
-                // TODO(parity): Go also validates inline steps inside element bodies.
+                TopLevelItem::ElementDef(elem) => {
+                    diags.extend(validate_inline_steps_in_element(&runner, elem));
+                }
                 _ => {}
             }
         }
 
         diags
     }
+}
+
+fn validate_inline_steps_in_element(
+    runner: &ScenarioRunner<'_>,
+    elem: &ElementDef,
+) -> Vec<Diagnostic> {
+    let mut diags = Vec::new();
+
+    let Some(body) = &elem.assignment.body else {
+        return diags;
+    };
+
+    let inline_steps: Vec<ScenarioStep> = body
+        .items
+        .iter()
+        .filter_map(|i| match i {
+            ElementDefBodyItem::Step(s) => Some(s.clone()),
+            _ => None,
+        })
+        .collect();
+
+    if !inline_steps.is_empty() {
+        diags.extend(runner.validate_steps(&inline_steps, &elem.location));
+    }
+
+    for item in &body.items {
+        let ElementDefBodyItem::ElementDef(nested) = item else {
+            continue;
+        };
+        diags.extend(validate_inline_steps_in_element(runner, nested));
+    }
+
+    diags
 }
 
 struct ScenarioRunner<'a> {
@@ -297,5 +333,32 @@ LoginFlow = flow "Login" {
 "#;
         let diags = validate_program(input);
         assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn inline_steps_inside_element_body_pass() {
+        let input = r#"
+user = person "User"
+api = system "API" {
+    step user -> api "calls"
+}
+db = datastore "DB"
+
+api -> db "queries"
+"#;
+        let diags = validate_program(input);
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn inline_steps_inside_element_body_invalid_source_fails() {
+        let input = r#"
+api = system "API" {
+    step nonexistent -> api "calls"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("source")));
     }
 }
