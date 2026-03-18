@@ -628,8 +628,11 @@ mod tests {
         let mut g = Graph::default();
         g.nodes
             .push(node("god", NodeKind::Module, Some("src/god.rs")));
-        g.nodes
-            .push(node("docs_mod", NodeKind::Module, Some("src/doc/readme.rs")));
+        g.nodes.push(node(
+            "docs_mod",
+            NodeKind::Module,
+            Some("src/doc/readme.rs"),
+        ));
         for i in 0..3 {
             let dep = format!("dep_{i}");
             g.nodes
