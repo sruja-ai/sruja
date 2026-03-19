@@ -80,6 +80,7 @@ pub fn parse_file(file_path: &str) -> Result<ParseResult, CliError> {
             return Err(CliError::Parse {
                 file: file_path.to_string(),
                 message: format!("Parsing failed with {} error(s)", diagnostics.len()),
+                diagnostics,
             });
         }
     };
@@ -252,7 +253,7 @@ user = person "User" {
         let result = parse_file(file_path.to_str().unwrap());
         match result {
             Ok(_) => panic!("expected CliError::Parse"),
-            Err(CliError::Parse { file, message }) => {
+            Err(CliError::Parse { file, message, .. }) => {
                 assert!(file.ends_with("invalid_parse_file.sruja"));
                 assert!(message.contains("Parsing failed"));
             }

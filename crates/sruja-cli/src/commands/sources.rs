@@ -49,6 +49,7 @@ pub async fn sources(
             .map(|d| d.message.as_str())
             .collect::<Vec<_>>()
             .join("; "),
+        diagnostics: diags,
     })?;
 
     let (elements, _) = collect_elements(&program);

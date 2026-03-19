@@ -31,6 +31,10 @@ fn normalize_model_json(mut model: Value) -> Value {
         return model;
     };
 
+    if let Some(Value::Object(metadata)) = obj.get_mut("_metadata") {
+        metadata.remove("generated");
+    }
+
     if let Some(Value::Array(relations)) = obj.get_mut("relations") {
         relations.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
     }

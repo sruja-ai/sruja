@@ -29,11 +29,19 @@ fn line_col_1_indexed(input: &str, pos: usize) -> (u32, u32) {
     let prefix = &input[..pos];
 
     let line = prefix.matches('\n').count().saturating_add(1);
-    let line_u32 = (line.min(u32::MAX as usize)) as u32;
+    let line_u32 = if line > u32::MAX as usize {
+        u32::MAX
+    } else {
+        line as u32
+    };
 
     let col_start = prefix.rfind('\n').map(|i| i + 1).unwrap_or(0);
     let col_chars = input[col_start..pos].chars().count().saturating_add(1);
-    let col_u32 = (col_chars.min(u32::MAX as usize)) as u32;
+    let col_u32 = if col_chars > u32::MAX as usize {
+        u32::MAX
+    } else {
+        col_chars as u32
+    };
 
     (line_u32, col_u32)
 }

@@ -60,6 +60,7 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
                 return Err(CliError::Parse {
                     file: file.to_string(),
                     message: format!("Parsing failed with {} errors", diagnostics.len()),
+                    diagnostics,
                 });
             }
             if github {
@@ -69,6 +70,7 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
                 return Err(CliError::Parse {
                     file: file.to_string(),
                     message: format!("Parsing failed with {} errors", diagnostics.len()),
+                    diagnostics,
                 });
             }
             for diag in &diagnostics {
@@ -77,6 +79,7 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
             return Err(CliError::Parse {
                 file: file.to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
+                diagnostics,
             });
         }
     };
@@ -235,6 +238,7 @@ pub async fn export(
             return Err(CliError::Parse {
                 file: file.to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
+                diagnostics,
             });
         }
     };
@@ -305,6 +309,7 @@ pub async fn fmt(file: &str, check: bool) -> Result<(), CliError> {
                     "Formatting failed: file has {} parse errors",
                     diagnostics.len()
                 ),
+                diagnostics,
             });
         }
     };
@@ -344,6 +349,7 @@ pub async fn list_elements(file: &str) -> Result<(), CliError> {
             return Err(CliError::Parse {
                 file: file.to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
+                diagnostics,
             });
         }
     };
@@ -378,6 +384,7 @@ pub async fn tree(file: &str) -> Result<(), CliError> {
             return Err(CliError::Parse {
                 file: file.to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
+                diagnostics,
             });
         }
     };
@@ -452,6 +459,7 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
             return Err(CliError::Parse {
                 file: file1.to_string(),
                 message: "Failed to parse first file".to_string(),
+                diagnostics: diags,
             });
         }
     };
@@ -466,6 +474,7 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
             return Err(CliError::Parse {
                 file: file2.to_string(),
                 message: "Failed to parse second file".to_string(),
+                diagnostics: diags,
             });
         }
     };
@@ -530,6 +539,7 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
             return Err(CliError::Parse {
                 file: file_path.to_string(),
                 message: format!("Parsing failed with {} errors", diags.len()),
+                diagnostics: diags,
             });
         }
     };
@@ -539,6 +549,7 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
     let elem = elements.get(element_id).ok_or_else(|| CliError::Parse {
         file: element_id.to_string(),
         message: "Element not found".to_string(),
+        diagnostics: Vec::new(),
     })?;
 
     let incoming: Vec<_> = relations
@@ -593,6 +604,7 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
         return Err(CliError::Parse {
             file: file.to_string(),
             message: format!("Unsupported import format: {}. Supported: json", format),
+            diagnostics: Vec::new(),
         });
     }
 
@@ -631,6 +643,7 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
     Err(CliError::Parse {
         file: "import".to_string(),
         message: "Could not identify architecture in JSON".to_string(),
+        diagnostics: Vec::new(),
     })
 }
 
@@ -668,6 +681,7 @@ pub async fn validate(
             return Err(CliError::Parse {
                 file: file.to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
+                diagnostics,
             });
         }
     };
@@ -807,6 +821,7 @@ async fn validate_single_file(file: &str, _constraints: &[String]) -> Result<(),
             return Err(CliError::Parse {
                 file: file.to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
+                diagnostics,
             });
         }
     };
@@ -846,6 +861,7 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
             return Err(CliError::Parse {
                 file: String::new(),
                 message: format!("Compilation failed with {} errors", diagnostics.len()),
+                diagnostics,
             });
         }
     };

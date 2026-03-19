@@ -13,6 +13,7 @@ sruja-language = { path = "../sruja-language" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 sruja-language = { path = "../sruja-language" }

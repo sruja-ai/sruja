@@ -56,19 +56,31 @@ pub fn scan_repo_with_config(repo_root: &Path, config: &ScanConfig) -> Result<Gr
 
 /// Scan a repository using only package manifests (package.json, Cargo.toml).
 /// This is a fallback for cases where source code parsing is not needed.
+/// Logs errors for each manifest type attempted before returning the final error.
 pub fn scan_repo_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
+    let mut last_error: Option<ScanError> = None;
+
     if repo_root.join("package.json").exists() {
-        if let Ok(g) = npm::scan_npm_repo(repo_root) {
-            return Ok(g);
-        }
-    }
-    if repo_root.join("Cargo.toml").exists() {
-        if let Ok(g) = cargo::scan_cargo_repo(repo_root) {
-            return Ok(g);
+        match npm::scan_npm_repo(repo_root) {
+            Ok(g) => return Ok(g),
+            Err(e) => {
+                eprintln!("[sruja-scan] npm scan failed: {}", e);
+                last_error = Some(e);
+            }
         }
     }
 
-    Err(ScanError::UnsupportedRepo {
+    if repo_root.join("Cargo.toml").exists() {
+        match cargo::scan_cargo_repo(repo_root) {
+            Ok(g) => return Ok(g),
+            Err(e) => {
+                eprintln!("[sruja-scan] cargo scan failed: {}", e);
+                last_error = Some(e);
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| ScanError::UnsupportedRepo {
         path: repo_root.display().to_string(),
-    })
+    }))
 }

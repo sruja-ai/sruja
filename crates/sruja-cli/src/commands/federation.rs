@@ -116,6 +116,7 @@ pub async fn publish(repo_root: &str, output_path: &str) -> Result<(), CliError>
                 .map(|d| d.message.as_str())
                 .collect::<Vec<_>>()
                 .join("; "),
+            diagnostics: diags,
         })?;
         let proposed = sruja_diff::program_to_graph(&program);
         let diff = sruja_diff::compare_graphs(&graph, &proposed);

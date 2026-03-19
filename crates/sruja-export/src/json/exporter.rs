@@ -4,9 +4,6 @@
 
 use std::collections::HashMap;
 
-#[cfg(not(target_arch = "wasm32"))]
-use std::time::SystemTime;
-
 use sruja_language::{collect_elements, Program};
 
 use crate::json::types::*;
@@ -516,28 +513,19 @@ impl Default for Exporter {
     }
 }
 
-/// Generate ISO 8601 timestamp
+/// Generate ISO 8601 timestamp in RFC3339 format
 #[cfg(target_arch = "wasm32")]
 fn timestamp() -> String {
-    // In WASM, use js_sys::Date for time
     let date = js_sys::Date::new_0();
     date.to_iso_string()
         .as_string()
-        .unwrap_or_else(|| String::from("1970-01-01T00:00:00Z"))
+        .unwrap_or_else(|| chrono::Utc::now().to_rfc3339())
 }
 
-/// Generate ISO 8601 timestamp
+/// Generate ISO 8601 timestamp in RFC3339 format
 #[cfg(not(target_arch = "wasm32"))]
 fn timestamp() -> String {
-    // Simple RFC3339 format - in production, use chrono crate
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|_d| {
-            // For now, return a placeholder. In production, use chrono::DateTime::from()
-            // to format as RFC3339 properly
-            "1970-01-01T00:00:00Z".to_string()
-        })
-        .unwrap_or_else(|_| String::from("1970-01-01T00:00:00Z"))
+    chrono::Utc::now().to_rfc3339()
 }
 
 #[cfg(test)]

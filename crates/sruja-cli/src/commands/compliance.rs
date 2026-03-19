@@ -57,9 +57,14 @@ pub async fn compliance(
         }
         let content = std::fs::read_to_string(arch_path)?;
         let parser = Parser::new(arch_path.to_string_lossy().to_string());
-        let program = parser.parse(&content).map_err(|e| CliError::Parse {
+        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
             file: arch_path.to_string_lossy().to_string(),
-            message: format!("{:?}", e),
+            message: diags
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; "),
+            diagnostics: diags,
         })?;
         let proposed = program_to_graph(&program);
         let diff_result = compare_graphs(&scan_graph, &proposed);

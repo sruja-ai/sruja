@@ -306,15 +306,7 @@ pub async fn check(
             let content = fs::read_to_string(baseline)?;
             let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
             let program = parser.parse(&content).map_err(|diags| {
-                let message = diags
-                    .iter()
-                    .map(|d| d.message.as_str())
-                    .collect::<Vec<_>>()
-                    .join("; ");
-                CliError::Parse {
-                    file: baseline.to_string_lossy().to_string(),
-                    message,
-                }
+                CliError::parse_with_diagnostics(baseline.to_string_lossy(), diags)
             })?;
 
             let proposed_graph = sruja_diff::program_to_graph(&program);

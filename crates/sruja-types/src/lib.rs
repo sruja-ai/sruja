@@ -14,6 +14,7 @@
 //! types as the single source of truth for kind identity in architecture intelligence.
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 pub mod severity;
 
@@ -30,6 +31,16 @@ pub type PolicyId = String;
 
 /// Unique identifier for a requirement in the architecture.
 pub type RequirementId = String;
+
+/// Error type for parsing NodeKind from string
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
+#[error("Unknown NodeKind: '{0}'")]
+pub struct ParseNodeKindError(pub String);
+
+/// Error type for parsing EdgeKind from string
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
+#[error("Unknown EdgeKind: '{0}'")]
+pub struct ParseEdgeKindError(pub String);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -77,7 +88,7 @@ impl std::fmt::Display for NodeKind {
 }
 
 impl std::str::FromStr for NodeKind {
-    type Err = String;
+    type Err = ParseNodeKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -90,7 +101,7 @@ impl std::str::FromStr for NodeKind {
             "external_api" | "externalapi" => Ok(NodeKind::ExternalApi),
             "frontend" => Ok(NodeKind::Frontend),
             "module" => Ok(NodeKind::Module),
-            _ => Err(format!("Unknown NodeKind: {}", s)),
+            _ => Err(ParseNodeKindError(s.to_string())),
         }
     }
 }
@@ -141,7 +152,7 @@ impl std::fmt::Display for EdgeKind {
 }
 
 impl std::str::FromStr for EdgeKind {
-    type Err = String;
+    type Err = ParseEdgeKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -154,7 +165,7 @@ impl std::str::FromStr for EdgeKind {
             "owns" => Ok(EdgeKind::Owns),
             "contains" => Ok(EdgeKind::Contains),
             "uses" => Ok(EdgeKind::Uses),
-            _ => Err(format!("Unknown EdgeKind: {}", s)),
+            _ => Err(ParseEdgeKindError(s.to_string())),
         }
     }
 }
@@ -178,7 +189,9 @@ mod tests {
             Ok(NodeKind::ExternalApi)
         );
         assert_eq!("externalapi".parse::<NodeKind>(), Ok(NodeKind::ExternalApi));
-        assert!("unknown".parse::<NodeKind>().is_err());
+        let err = "unknown".parse::<NodeKind>();
+        assert!(err.is_err());
+        assert_eq!(err.unwrap_err(), ParseNodeKindError("unknown".to_string()));
     }
 
     #[test]
@@ -203,7 +216,9 @@ mod tests {
             Ok(EdgeKind::PublishesTo)
         );
         assert_eq!("owns".parse::<EdgeKind>(), Ok(EdgeKind::Owns));
-        assert!("unknown".parse::<EdgeKind>().is_err());
+        let err = "unknown".parse::<EdgeKind>();
+        assert!(err.is_err());
+        assert_eq!(err.unwrap_err(), ParseEdgeKindError("unknown".to_string()));
     }
 
     #[test]

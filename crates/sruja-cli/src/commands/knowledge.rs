@@ -45,6 +45,7 @@ pub async fn knowledge(cmd: crate::KnowledgeCommand) -> Result<(), CliError> {
                     .map(|d| d.message.as_str())
                     .collect::<Vec<_>>()
                     .join("; "),
+                diagnostics: diags,
             })?;
             let (elements, _) = collect_elements(&program);
             let repo_path = Path::new(&repo)
@@ -81,6 +82,7 @@ pub async fn knowledge(cmd: crate::KnowledgeCommand) -> Result<(), CliError> {
                     .map(|d| d.message.as_str())
                     .collect::<Vec<_>>()
                     .join("; "),
+                diagnostics: diags,
             })?;
             let (elements, _) = collect_elements(&program);
             let elem = elements.get(&element_id).or_else(|| {
@@ -122,6 +124,7 @@ pub async fn knowledge(cmd: crate::KnowledgeCommand) -> Result<(), CliError> {
                     .map(|d| d.message.as_str())
                     .collect::<Vec<_>>()
                     .join("; "),
+                diagnostics: diags,
             })?;
             let (elements, _) = collect_elements(&program);
             let gaps: Vec<_> = elements

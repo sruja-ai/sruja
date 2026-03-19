@@ -168,6 +168,7 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
                 .map(|d| d.message.as_str())
                 .collect::<Vec<_>>()
                 .join("; "),
+            diagnostics: diags,
         })?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
         let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);

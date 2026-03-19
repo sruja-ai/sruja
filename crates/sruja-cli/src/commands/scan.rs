@@ -80,6 +80,7 @@ fn truth_status_from_baseline_compare(
             .map(|d| d.message.as_str())
             .collect::<Vec<_>>()
             .join("; "),
+        diagnostics: diags,
     })?;
     let proposed_graph = sruja_diff::program_to_graph(&program);
     Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
@@ -397,6 +398,7 @@ pub async fn drift(
                 .map(|d| d.message.as_str())
                 .collect::<Vec<_>>()
                 .join("; "),
+            diagnostics: diags,
         })?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
         let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
@@ -491,6 +493,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
                 .map(|d| d.message.as_str())
                 .collect::<Vec<_>>()
                 .join("; "),
+            diagnostics: diags,
         })?;
         let proposed = sruja_diff::program_to_graph(&program);
         let diff = sruja_diff::compare_graphs(&graph, &proposed);
