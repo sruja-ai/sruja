@@ -9,7 +9,6 @@ import {
   getDocumentSymbolsFromWasm,
   wasmRangeToVscodeRange,
   SrujaElement,
-  SrujaDocumentSymbol,
 } from "./wasm";
 
 export interface ElementRange {
@@ -192,6 +191,16 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
       }
     }
 
+    const viewLevel = elementKindToViewLevel(element.kind);
+    if (viewLevel !== 1) {
+      const args = [{ docUri: document.uri.toString(), viewLevel, targetId: element.id }];
+      const cmdUri = vscode.Uri.parse(
+        `command:sruja.openFocusedDiagramPreviewAt?${encodeURIComponent(JSON.stringify(args))}`
+      );
+      markdown.appendMarkdown(`*Diagram:* [Open focused diagram (L${viewLevel})](${cmdUri})\n\n`);
+      markdown.isTrusted = true;
+    }
+
     return new vscode.Hover(markdown, wordRange);
   }
 }
@@ -254,5 +263,97 @@ export class SrujaDocumentSymbolProvider implements vscode.DocumentSymbolProvide
       default:
         return vscode.SymbolKind.Object;
     }
+  }
+}
+
+type FocusDiagramArgs = {
+  docUri: string;
+  viewLevel: 1 | 2 | 3;
+  targetId?: string;
+};
+
+function elementKindToViewLevel(kind: string): 1 | 2 | 3 {
+  const k = kind.toLowerCase();
+  if (k.includes("component")) return 3;
+  if (k.includes("container")) return 2;
+  if (k.includes("database")) return 2;
+  if (k.includes("system")) return 2;
+  return 1;
+}
+
+function findElementsByRegex(document: vscode.TextDocument): Array<{ id: string; kind: string; range: vscode.Range }> {
+  const re = /^\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*=\s*(container|component|system|database)\b/;
+  const out: Array<{ id: string; kind: string; range: vscode.Range }> = [];
+  for (let i = 0; i < document.lineCount; i++) {
+    const line = document.lineAt(i).text;
+    const m = re.exec(line);
+    if (!m) continue;
+    const id = m[1];
+    const kind = m[2];
+    out.push({
+      id,
+      kind,
+      range: new vscode.Range(new vscode.Position(i, 0), new vscode.Position(i, 0)),
+    });
+  }
+  return out;
+}
+
+export class SrujaDiagramCodeLensProvider implements vscode.CodeLensProvider {
+  constructor(private context: vscode.ExtensionContext) {}
+
+  async provideCodeLenses(
+    document: vscode.TextDocument,
+    token: vscode.CancellationToken
+  ): Promise<vscode.CodeLens[]> {
+    if (document.languageId !== "sruja") return [];
+
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    if (token.isCancellationRequested) return [];
+
+    const lenses: vscode.CodeLens[] = [];
+    const topRange = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
+    lenses.push(
+      new vscode.CodeLens(topRange, {
+        title: "Open diagram preview",
+        command: "sruja.openDiagramPreview",
+      }),
+      new vscode.CodeLens(topRange, {
+        title: "Open focused diagram preview…",
+        command: "sruja.openFocusedDiagramPreview",
+      })
+    );
+
+    const fallback = !elements?.length ? findElementsByRegex(document) : null;
+
+    const elementLike = elements?.length
+      ? elements.map((e) => ({
+          id: e.id,
+          kind: e.kind,
+          range: wasmRangeToVscodeRange(e.range),
+        }))
+      : fallback;
+
+    if (!elementLike?.length) return lenses;
+    for (const element of elementLike) {
+      const viewLevel = elementKindToViewLevel(element.kind);
+      if (viewLevel === 1) continue;
+
+      const lensRange = new vscode.Range(element.range.start, element.range.start);
+      const args: FocusDiagramArgs = {
+        docUri: document.uri.toString(),
+        viewLevel,
+        targetId: element.id,
+      };
+      lenses.push(
+        new vscode.CodeLens(lensRange, {
+          title: `Open focused diagram (L${viewLevel})`,
+          command: "sruja.openFocusedDiagramPreviewAt",
+          arguments: [args],
+        })
+      );
+    }
+
+    return lenses;
   }
 }

@@ -169,12 +169,12 @@ build-extension:
 	@cd extension && npm run compile
 	@echo "  📦 Packaging VSIX..."
 	@cd extension && npx --yes @vscode/vsce package --no-dependencies
-	@echo "✅ Extension built: $$(ls extension/sruja-*.vsix 2>/dev/null | tail -1)"
+	@echo "✅ Extension built: $$(ls -t extension/sruja-*.vsix 2>/dev/null | head -1)"
 
 # Build and install VS Code extension into VS Code and/or Cursor
 # Detects available editors automatically.
 install-extension: build-extension
-	@VSIX="$$(ls extension/sruja-*.vsix 2>/dev/null | tail -1)"; \
+	@VSIX="$$(ls -t extension/sruja-*.vsix 2>/dev/null | head -1)"; \
 	if [ -z "$$VSIX" ]; then \
 		echo "❌ No .vsix found. Run 'make build-extension' first."; exit 1; \
 	fi; \
@@ -196,6 +196,20 @@ install-extension: build-extension
 		echo "✅ Extension installed! Reload your editor window to activate it."; \
 		echo "   Open any .sruja file to see diagnostics, hover docs, and diagram preview."; \
 	fi
+
+deploy-trae: build-extension
+	@VSIX="$$(ls -t extension/sruja-*.vsix 2>/dev/null | head -1)"; \
+	if [ -z "$$VSIX" ]; then \
+		echo "❌ No .vsix found. Run 'make build-extension' first."; exit 1; \
+	fi; \
+	if command -v open >/dev/null 2>&1; then \
+		open -R "$$VSIX" || true; \
+	fi; \
+	echo ""; \
+	echo "✅ VSIX ready: $$VSIX"; \
+	echo ""; \
+	echo "Trae: Extensions → ... → Install from VSIX → select $$VSIX"; \
+	echo "Or drag-and-drop the VSIX into the Extensions panel."
 
 # --- Book (mdBook) ---
 BOOK_DIR := book

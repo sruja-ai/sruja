@@ -5,7 +5,14 @@ import * as vscode from "vscode";
 
 import { getSkills, getSkillsRoot } from "./skills";
 import { SrujaSkillsTreeProvider } from "./skillsTree";
-import { SrujaDefinitionProvider, SrujaHoverProvider, SrujaDocumentSymbolProvider, resolveDocUri, docUriExists } from "./providers";
+import {
+  SrujaDefinitionProvider,
+  SrujaHoverProvider,
+  SrujaDocumentSymbolProvider,
+  SrujaDiagramCodeLensProvider,
+  resolveDocUri,
+  docUriExists,
+} from "./providers";
 import { exportMarkdownFromWasm, getDiagnosticsFromWasm, getMermaidFromWasm, getElementsFromWasm } from "./wasm";
 import { getSrujaLspPath } from "./config";
 import { runCli } from "./cliRunner";
@@ -193,6 +200,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const documentSymbolProvider = new SrujaDocumentSymbolProvider(context);
   context.subscriptions.push(
     vscode.languages.registerDocumentSymbolProvider("sruja", documentSymbolProvider)
+  );
+
+  const diagramCodeLensProvider = new SrujaDiagramCodeLensProvider(context);
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider("sruja", diagramCodeLensProvider)
   );
 
   // Register custom editor for markdown preview (shows "Open Preview" button in editor title)
@@ -423,6 +435,127 @@ export function activate(context: vscode.ExtensionContext): void {
       diagramPreviewPanel = vscode.window.createWebviewPanel(
         "srujaDiagramPreview",
          "Sruja – Architecture intelligence for the AI era. – Diagram Preview",
+        vscode.ViewColumn.Beside,
+        { enableScripts: true }
+      );
+      diagramPreviewPanel.onDidDispose(() => {
+        diagramPreviewPanel = undefined;
+      });
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+    }),
+    vscode.commands.registerCommand("sruja.openFocusedDiagramPreviewAt", async (arg?: unknown) => {
+      const parsed =
+        typeof arg === "object" && arg !== null
+          ? (arg as { docUri?: string; viewLevel?: unknown; targetId?: unknown })
+          : undefined;
+
+      const docUriRaw = typeof parsed?.docUri === "string" ? parsed.docUri : undefined;
+      const viewLevelRaw = typeof parsed?.viewLevel === "number" ? parsed.viewLevel : undefined;
+      const viewLevel = viewLevelRaw === 1 || viewLevelRaw === 2 || viewLevelRaw === 3 ? viewLevelRaw : 2;
+      const targetId = viewLevel === 1 ? undefined : (typeof parsed?.targetId === "string" ? parsed.targetId : undefined);
+
+      let doc: vscode.TextDocument | undefined;
+      if (docUriRaw) {
+        try {
+          doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(docUriRaw));
+        } catch {
+          doc = undefined;
+        }
+      } else {
+        doc = vscode.window.activeTextEditor?.document;
+      }
+
+      if (!doc || doc.languageId !== "sruja") {
+        vscode.window.showWarningMessage("Open a .sruja file to open diagram preview.");
+        return;
+      }
+
+      const configJson = JSON.stringify({ viewLevel, targetId });
+      const mermaid = await getMermaidFromWasm(context, doc.getText(), configJson);
+      if (mermaid === null || mermaid.trim() === "") {
+        vscode.window.showErrorMessage(
+          "Sruja WASM could not load or diagram is empty. Run npm run copy:assets if developing, or reinstall the extension."
+        );
+        return;
+      }
+
+      if (diagramPreviewPanel) {
+        diagramPreviewPanel.dispose();
+      }
+      const titleSuffix = targetId ? ` – L${viewLevel}: ${targetId}` : ` – L${viewLevel}`;
+      diagramPreviewPanel = vscode.window.createWebviewPanel(
+        "srujaDiagramPreview",
+        "Sruja – Architecture intelligence for the AI era. – Diagram Preview" + titleSuffix,
+        vscode.ViewColumn.Beside,
+        { enableScripts: true }
+      );
+      diagramPreviewPanel.onDidDispose(() => {
+        diagramPreviewPanel = undefined;
+      });
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+    }),
+    vscode.commands.registerCommand("sruja.openFocusedDiagramPreview", async () => {
+      const editor = vscode.window.activeTextEditor;
+      const doc = editor?.document;
+      if (!doc || doc.languageId !== "sruja") {
+        vscode.window.showWarningMessage("Open a .sruja file to open diagram preview.");
+        return;
+      }
+
+      const levelPick = await vscode.window.showQuickPick(
+        [
+          { label: "L1 (Context)", level: 1 },
+          { label: "L2 (Container)", level: 2 },
+          { label: "L3 (Component)", level: 3 },
+        ],
+        { placeHolder: "Choose diagram level" }
+      );
+      if (!levelPick) return;
+
+      let targetId: string | undefined;
+      if (levelPick.level !== 1) {
+        const elements = await getElementsFromWasm(context, doc.getText(), doc.uri.fsPath);
+        if (!elements?.length) {
+          vscode.window.showWarningMessage(
+            "Could not list elements for focus selection. Ensure the file parses and Sruja WASM is available."
+          );
+          return;
+        }
+
+        const items = elements
+          .map((e) => ({
+            label: e.id,
+            description: e.kind,
+            detail: e.title ?? undefined,
+            id: e.id,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const picked = await vscode.window.showQuickPick(items, {
+          placeHolder: "Choose a focus element ID",
+          matchOnDescription: true,
+          matchOnDetail: true,
+        });
+        if (!picked) return;
+        targetId = picked.id;
+      }
+
+      const configJson = JSON.stringify({ viewLevel: levelPick.level, targetId });
+      const mermaid = await getMermaidFromWasm(context, doc.getText(), configJson);
+      if (mermaid === null || mermaid.trim() === "") {
+        vscode.window.showErrorMessage(
+          "Sruja WASM could not load or diagram is empty. Run npm run copy:assets if developing, or reinstall the extension."
+        );
+        return;
+      }
+
+      if (diagramPreviewPanel) {
+        diagramPreviewPanel.dispose();
+      }
+      const titleSuffix = targetId ? ` – ${levelPick.label}: ${targetId}` : ` – ${levelPick.label}`;
+      diagramPreviewPanel = vscode.window.createWebviewPanel(
+        "srujaDiagramPreview",
+        "Sruja – Architecture intelligence for the AI era. – Diagram Preview" + titleSuffix,
         vscode.ViewColumn.Beside,
         { enableScripts: true }
       );

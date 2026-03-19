@@ -28,6 +28,8 @@ export function runTests({ describe, it, beforeAll, assert }: {
         "sruja.runValidation",
         "sruja.exportMarkdown",
         "sruja.openDiagramPreview",
+        "sruja.openFocusedDiagramPreview",
+        "sruja.openFocusedDiagramPreviewAt",
         "sruja.openComponentKnowledge",
         "sruja.openMarkdownPreview",
         "sruja.openSkillsOverview",
@@ -148,6 +150,21 @@ export function runTests({ describe, it, beforeAll, assert }: {
         srujaUri
       );
       assert.ok(Array.isArray(symbols) || symbols === undefined, "Document symbols should be array or undefined");
+    });
+
+    it("language providers: code lenses", async () => {
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      assert.ok(folder, "Test workspace should be open");
+      const srujaUri = vscode.Uri.joinPath(folder!.uri, "sruja-platform.sruja");
+      const doc = await vscode.workspace.openTextDocument(srujaUri);
+      await vscode.window.showTextDocument(doc);
+      await sleep(1500);
+
+      const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+        "vscode.executeCodeLensProvider",
+        srujaUri
+      );
+      assert.ok(Array.isArray(lenses) || lenses === undefined, "Code lenses should be array or undefined");
     });
 
     it("custom editor provider is registered for markdown preview", async () => {

@@ -89,6 +89,11 @@
         }
       }
     },
+    "configurationDefaults": {
+      "[sruja]": {
+        "editor.codeLens": true
+      }
+    },
     "commands": [
       {
         "command": "sruja.runValidation",
@@ -101,6 +106,14 @@
       {
         "command": "sruja.openDiagramPreview",
         "title": "Sruja: Open Diagram Preview"
+      },
+      {
+        "command": "sruja.openFocusedDiagramPreview",
+        "title": "Sruja: Open Focused Diagram Preview"
+      },
+      {
+        "command": "sruja.openFocusedDiagramPreviewAt",
+        "title": "Sruja: Open Focused Diagram Preview (at element)"
       },
       {
         "command": "sruja.openComponentKnowledge",
@@ -166,6 +179,10 @@
           "when": "editorLangId == sruja"
         },
         {
+          "command": "sruja.openFocusedDiagramPreview",
+          "when": "editorLangId == sruja"
+        },
+        {
           "command": "sruja.openComponentKnowledge",
           "when": "editorLangId == sruja"
         }
@@ -223,7 +240,8 @@
     "test:vscode": "npm run compile && node out/test/runTest.js",
     "copy:assets": "bash scripts/copy-assets.sh",
     "package": "npm run copy:assets && npm run compile && vsce package --no-dependencies",
-    "install:vsix": "npm run package && echo '\nInstall in Cursor/VS Code: Extensions → ⋯ → Install from VSIX... → select extension/*.vsix\n'"
+    "install:vsix": "npm run package && echo '\nInstall in Cursor/VS Code: Extensions → ⋯ → Install from VSIX... → select extension/*.vsix\n'",
+    "deploy:trae": "npm run package && node -e \"const fs=require('fs');const path=require('path');const cp=require('child_process');const dir=__dirname;const vsix=fs.readdirSync(dir).filter(f=>f.endsWith('.vsix')).map(f=>({f,mtime:fs.statSync(path.join(dir,f)).mtimeMs})).sort((a,b)=>a.mtime-b.mtime).pop();if(!vsix){console.error('No .vsix found.');process.exit(1);}const p=path.join(dir,vsix.f);try{cp.spawnSync('open',['-R',p],{stdio:'ignore'});}catch{}console.log('\\nVSIX ready: '+p+'\\n');console.log('Trae: Extensions → … → Install from VSIX → select that file (or drag it into the Extensions panel).\\n');\""
   },
   "devDependencies": {
     "@types/glob": "^9.0.0",

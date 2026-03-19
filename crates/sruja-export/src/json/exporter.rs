@@ -10,6 +10,7 @@ use std::time::SystemTime;
 use sruja_language::{collect_elements, Program};
 
 use crate::json::types::*;
+use crate::mermaid::views::resolve_view;
 
 /// Result type for export operations
 pub type ExportResult<T> = Result<T, ExportError>;
@@ -293,9 +294,116 @@ impl Exporter {
     }
 
     /// Convert views from program
-    fn convert_views_from_program(&self, _dump: &mut SrujaModelDump, _program: &Program) {
-        // Views are not currently exported to JSON
-        // This would need to process ViewDef items from the program
+    fn convert_views_from_program(&self, dump: &mut SrujaModelDump, program: &Program) {
+        let (elements, relations) = collect_elements(program);
+        let mut view_items: Vec<&sruja_language::ViewDef> = vec![];
+        for item in &program.items {
+            if let sruja_language::TopLevelItem::View(view) = item {
+                view_items.push(view);
+            }
+        }
+        if view_items.is_empty() {
+            return;
+        }
+
+        fn to_rule_expr(expr: &sruja_language::ViewRuleExpr) -> ViewRuleExpr {
+            ViewRuleExpr {
+                wildcard: expr.wildcard,
+                recursive: expr.recursive,
+                elements: expr.elements.clone(),
+            }
+        }
+
+        fn to_rule(rule: &sruja_language::ViewRule) -> ViewRule {
+            ViewRule {
+                include: rule.include.as_ref().map(to_rule_expr),
+                exclude: rule.exclude.as_ref().map(to_rule_expr),
+            }
+        }
+
+        for view in view_items {
+            let resolved = resolve_view(view, &elements, &relations);
+
+            let mut element_ids: Vec<String> = resolved.elements.keys().cloned().collect();
+            element_ids.sort();
+
+            let columns = 4usize;
+            let x_step = 220.0f64;
+            let y_step = 140.0f64;
+            let width = 180.0f64;
+            let height = 80.0f64;
+
+            let mut nodes_by_id: HashMap<String, NodeDump> = HashMap::new();
+            for (idx, element_id) in element_ids.iter().enumerate() {
+                let row = (idx / columns) as f64;
+                let col = (idx % columns) as f64;
+                let x = col * x_step;
+                let y = row * y_step;
+
+                let parent = element_id.rfind('.').and_then(|dot| {
+                    let p = &element_id[..dot];
+                    resolved.elements.contains_key(p).then(|| p.to_string())
+                });
+                let title = resolved
+                    .elements
+                    .get(element_id)
+                    .and_then(|e| e.assignment.title.clone())
+                    .or_else(|| {
+                        resolved
+                            .elements
+                            .get(element_id)
+                            .map(|e| e.assignment.name.clone())
+                    });
+
+                nodes_by_id.insert(
+                    element_id.clone(),
+                    NodeDump {
+                        id: element_id.clone(),
+                        element: element_id.clone(),
+                        parent,
+                        title,
+                        x,
+                        y,
+                        width,
+                        height,
+                    },
+                );
+            }
+
+            let mut edges: Vec<EdgeDump> = vec![];
+            for (idx, rel) in resolved.relations.iter().enumerate() {
+                let source = rel.from.as_string();
+                let target = rel.to.as_string();
+                if !nodes_by_id.contains_key(&source) || !nodes_by_id.contains_key(&target) {
+                    continue;
+                }
+                edges.push(EdgeDump {
+                    id: format!("e{}", idx),
+                    source,
+                    target,
+                    relation: None,
+                    title: rel.label.clone(),
+                });
+            }
+
+            let mut nodes: Vec<NodeDump> = nodes_by_id.into_values().collect();
+            nodes.sort_by(|a, b| a.id.cmp(&b.id));
+
+            dump.views.insert(
+                view.id.clone(),
+                ViewDump {
+                    id: view.id.clone(),
+                    title: Some(view.title.clone()).filter(|t| !t.is_empty()),
+                    description: view.description.clone(),
+                    view_of: view.view_of.as_ref().map(|q| q.as_string()),
+                    tags: view.tags.clone(),
+                    rules: view.rules.iter().map(to_rule).collect(),
+                    nodes,
+                    edges,
+                    layout: None,
+                },
+            );
+        }
     }
 
     /// Build Sruja extensions (scenarios, flows, requirements, ADRs, policies)
