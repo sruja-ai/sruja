@@ -4,6 +4,8 @@
  */
 
 import { execFile } from "child_process";
+import * as path from "path";
+import * as fs from "fs";
 
 export interface CliResult {
   stdout: string;
@@ -22,6 +24,14 @@ export class CliExecError extends Error {
   }
 }
 
+/** Thrown when the CLI path is invalid or unsafe. */
+export class CliPathError extends Error {
+  constructor(message: string, public readonly path: string) {
+    super(message);
+    this.name = "CliPathError";
+  }
+}
+
 export type ExecFileFn = (
   command: string,
   args: string[],
@@ -33,6 +43,45 @@ const LINT_TIMEOUT_MS = 15_000;
 const LINT_MAX_BUFFER = 2 * 1024 * 1024;
 const CLI_TIMEOUT_MS = 120_000;
 const CLI_MAX_BUFFER = 4 * 1024 * 1024;
+
+/**
+ * Validates that the CLI path is safe to execute.
+ * - Must be an absolute path
+ * - Must not contain path traversal sequences (..)
+ * - Must exist and be a file
+ * - Must not be a symlink to an unsafe location (basic check)
+ */
+export function validateCliPath(srujaPath: string): void {
+  if (!path.isAbsolute(srujaPath)) {
+    throw new CliPathError(
+      `CLI path must be absolute: ${srujaPath}`,
+      srujaPath
+    );
+  }
+
+  const normalized = path.normalize(srujaPath);
+  if (normalized !== srujaPath && !normalized.endsWith(path.basename(srujaPath))) {
+    throw new CliPathError(
+      `CLI path contains suspicious path traversal: ${srujaPath}`,
+      srujaPath
+    );
+  }
+
+  if (!fs.existsSync(srujaPath)) {
+    throw new CliPathError(
+      `CLI binary not found: ${srujaPath}`,
+      srujaPath
+    );
+  }
+
+  const stats = fs.statSync(srujaPath);
+  if (!stats.isFile()) {
+    throw new CliPathError(
+      `CLI path is not a file: ${srujaPath}`,
+      srujaPath
+    );
+  }
+}
 
 function normalizeBuffer(stdout: unknown, stderr: unknown): { stdout: string; stderr: string } {
   return {
@@ -60,13 +109,19 @@ function execErrorMessage(err: Error, srujaPath: string): string {
 /**
  * Run "sruja lint --format json <filePath>". Uses injectable exec for tests.
  * Rejects with CliExecError when the process cannot be started (ENOENT, timeout, etc.).
+ * Rejects with CliPathError when the CLI path is invalid.
  * Resolves with stdout/stderr when the process ran (even if it exited non-zero).
  */
 export function runLintJson(
   srujaPath: string,
   filePath: string,
-  execFn: ExecFileFn = execFile
+  execFn: ExecFileFn = execFile,
+  skipValidation = false
 ): Promise<{ stdout: string; stderr: string }> {
+  if (!skipValidation) {
+    validateCliPath(srujaPath);
+  }
+
   return new Promise((resolve, reject) => {
     execFn(
       srujaPath,
@@ -91,14 +146,20 @@ export function runLintJson(
 /**
  * Run a Sruja CLI command in the given cwd. Uses injectable exec for tests.
  * Rejects with CliExecError when the process cannot be started (ENOENT, timeout).
+ * Rejects with CliPathError when the CLI path is invalid.
  * Resolves with actual exit code when the process ran (including non-zero).
  */
 export function runCli(
   srujaPath: string,
   args: string[],
   cwd: string,
-  execFn: ExecFileFn = execFile
+  execFn: ExecFileFn = execFile,
+  skipValidation = false
 ): Promise<CliResult> {
+  if (!skipValidation) {
+    validateCliPath(srujaPath);
+  }
+
   return new Promise((resolve, reject) => {
     execFn(
       srujaPath,

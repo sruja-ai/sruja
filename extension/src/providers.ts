@@ -275,32 +275,58 @@ type FocusDiagramArgs = {
 function elementKindToViewLevel(kind: string): 1 | 2 | 3 {
   const k = kind.toLowerCase();
   if (k.includes("component")) return 3;
-  if (k.includes("container")) return 2;
-  if (k.includes("database")) return 2;
+  if (k.includes("container")) return 3;
+  if (k.includes("database")) return 3;
   if (k.includes("system")) return 2;
   return 1;
 }
 
-function findElementsByRegex(document: vscode.TextDocument): Array<{ id: string; kind: string; range: vscode.Range }> {
-  const re = /^\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\s*=\s*(container|component|system|database)\b/;
-  const out: Array<{ id: string; kind: string; range: vscode.Range }> = [];
+function kindToCodeLensViewLevel(kind: string): 2 | 3 | null {
+  const k = kind.toLowerCase();
+  if (k === "system") return 2;
+  if (k === "container" || k === "database") return 3;
+  return null;
+}
+
+function findFocusableElementsByBlockParsing(document: vscode.TextDocument): Array<{ id: string; viewLevel: 2 | 3; range: vscode.Range }> {
+  const declRe = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(system|container|component|database)\b/;
+  const stack: Array<{ id: string; kind: string }> = [];
+  const out: Array<{ id: string; viewLevel: 2 | 3; range: vscode.Range }> = [];
+
   for (let i = 0; i < document.lineCount; i++) {
     const line = document.lineAt(i).text;
-    const m = re.exec(line);
-    if (!m) continue;
-    const id = m[1];
-    const kind = m[2];
-    out.push({
-      id,
-      kind,
-      range: new vscode.Range(new vscode.Position(i, 0), new vscode.Position(i, 0)),
-    });
+    const m = declRe.exec(line);
+    if (m) {
+      const localId = m[1];
+      const kind = m[2];
+      const parent = stack.length > 0 ? stack[stack.length - 1] : undefined;
+      const fullId = parent ? `${parent.id}.${localId}` : localId;
+
+      const viewLevel = kindToCodeLensViewLevel(kind);
+      if (viewLevel) {
+        out.push({
+          id: fullId,
+          viewLevel,
+          range: new vscode.Range(new vscode.Position(i, 0), new vscode.Position(i, 0)),
+        });
+      }
+
+      if (line.includes("{")) {
+        stack.push({ id: fullId, kind });
+      }
+    }
+
+    const closeCount = (line.match(/\}/g) ?? []).length;
+    for (let c = 0; c < closeCount; c++) {
+      stack.pop();
+    }
   }
+
   return out;
 }
 
 export class SrujaDiagramCodeLensProvider implements vscode.CodeLensProvider {
-  constructor(private context: vscode.ExtensionContext) {}
+  constructor(_context: vscode.ExtensionContext) {}
 
   async provideCodeLenses(
     document: vscode.TextDocument,
@@ -308,46 +334,28 @@ export class SrujaDiagramCodeLensProvider implements vscode.CodeLensProvider {
   ): Promise<vscode.CodeLens[]> {
     if (document.languageId !== "sruja") return [];
 
-    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
-    if (token.isCancellationRequested) return [];
-
     const lenses: vscode.CodeLens[] = [];
     const topRange = new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
     lenses.push(
       new vscode.CodeLens(topRange, {
-        title: "Open diagram preview",
+        title: "Open diagram preview (L1)",
         command: "sruja.openDiagramPreview",
-      }),
-      new vscode.CodeLens(topRange, {
-        title: "Open focused diagram preview…",
-        command: "sruja.openFocusedDiagramPreview",
       })
     );
 
-    const fallback = !elements?.length ? findElementsByRegex(document) : null;
+    const focusable = findFocusableElementsByBlockParsing(document);
+    if (token.isCancellationRequested) return lenses;
 
-    const elementLike = elements?.length
-      ? elements.map((e) => ({
-          id: e.id,
-          kind: e.kind,
-          range: wasmRangeToVscodeRange(e.range),
-        }))
-      : fallback;
-
-    if (!elementLike?.length) return lenses;
-    for (const element of elementLike) {
-      const viewLevel = elementKindToViewLevel(element.kind);
-      if (viewLevel === 1) continue;
-
+    for (const element of focusable) {
       const lensRange = new vscode.Range(element.range.start, element.range.start);
       const args: FocusDiagramArgs = {
         docUri: document.uri.toString(),
-        viewLevel,
+        viewLevel: element.viewLevel,
         targetId: element.id,
       };
       lenses.push(
         new vscode.CodeLens(lensRange, {
-          title: `Open focused diagram (L${viewLevel})`,
+          title: `Open focused diagram (L${element.viewLevel})`,
           command: "sruja.openFocusedDiagramPreviewAt",
           arguments: [args],
         })

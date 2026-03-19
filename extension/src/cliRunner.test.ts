@@ -6,7 +6,7 @@ describe("cliRunner", () => {
       const execFn: ExecFileFn = (_cmd, _args, _opts, cb) => {
         cb(null, "json stdout", "json stderr");
       };
-      const result = await runLintJson("/bin/sruja", "/path/to/file.sruja", execFn);
+      const result = await runLintJson("/bin/sruja", "/path/to/file.sruja", execFn, true);
       expect(result.stdout).toBe("json stdout");
       expect(result.stderr).toBe("json stderr");
     });
@@ -15,7 +15,7 @@ describe("cliRunner", () => {
       const execFn: ExecFileFn = (_cmd, _args, _opts, cb) => {
         cb(null, undefined as unknown as string, undefined as unknown as string);
       };
-      const result = await runLintJson("/bin/sruja", "/f", execFn);
+      const result = await runLintJson("/bin/sruja", "/f", execFn, true);
       expect(result.stdout).toBe("");
       expect(result.stderr).toBe("");
     });
@@ -26,7 +26,7 @@ describe("cliRunner", () => {
         captured = { cmd, args };
         cb(null, "", "");
       };
-      await runLintJson("/bin/sruja", "/f.sruja", execFn);
+      await runLintJson("/bin/sruja", "/f.sruja", execFn, true);
       expect(captured.cmd).toBe("/bin/sruja");
       expect(captured.args).toEqual(["lint", "--format", "json", "/f.sruja"]);
     });
@@ -37,14 +37,14 @@ describe("cliRunner", () => {
         err.code = "ENOENT";
         cb(err, "", "");
       };
-      await expect(runLintJson("/bin/sruja", "/f.sruja", execFn)).rejects.toThrow(CliExecError);
+      await expect(runLintJson("/bin/sruja", "/f.sruja", execFn, true)).rejects.toThrow(CliExecError);
     });
   });
 
   describe("runCli", () => {
     it("returns code 0 when exec succeeds", async () => {
       const execFn: ExecFileFn = (_cmd, _args, _opts, cb) => cb(null, "out", "");
-      const result = await runCli("/bin/sruja", ["status", "-r", "."], "/cwd", execFn);
+      const result = await runCli("/bin/sruja", ["status", "-r", "."], "/cwd", execFn, true);
       expect(result.code).toBe(0);
       expect(result.stdout).toBe("out");
       expect(result.stderr).toBe("");
@@ -55,7 +55,7 @@ describe("cliRunner", () => {
         const err = Object.assign(new Error("Command failed"), { code: 2 }) as unknown as NodeJS.ErrnoException;
         cb(err, "out", "err");
       };
-      const result = await runCli("/bin/sruja", ["status"], "/cwd", execFn);
+      const result = await runCli("/bin/sruja", ["status"], "/cwd", execFn, true);
       expect(result.code).toBe(2);
       expect(result.stdout).toBe("out");
       expect(result.stderr).toBe("err");
@@ -67,7 +67,7 @@ describe("cliRunner", () => {
         err.code = "ENOENT";
         cb(err, "", "");
       };
-      await expect(runCli("/bin/sruja", ["status"], "/cwd", execFn)).rejects.toThrow(CliExecError);
+      await expect(runCli("/bin/sruja", ["status"], "/cwd", execFn, true)).rejects.toThrow(CliExecError);
     });
   });
 });

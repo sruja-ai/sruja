@@ -16,6 +16,32 @@ export interface WasmDiagnostic {
   source?: string;
 }
 
+/** Error types for WASM operations */
+export class WasmError extends Error {
+  constructor(
+    message: string,
+    public readonly operation: string,
+    public readonly cause?: unknown
+  ) {
+    super(message);
+    this.name = "WasmError";
+  }
+}
+
+export class WasmInitError extends WasmError {
+  constructor(message: string, cause?: unknown) {
+    super(message, "init", cause);
+    this.name = "WasmInitError";
+  }
+}
+
+export class WasmParseError extends WasmError {
+  constructor(message: string, public readonly raw?: string, cause?: unknown) {
+    super(message, "parse", cause);
+    this.name = "WasmParseError";
+  }
+}
+
 /** WASM/Sruja use 1-based line and column; VS Code uses 0-based. Convert to VS Code Range. */
 export function wasmRangeToVscodeRange(r: {
   start: { line: number; character: number };
@@ -51,7 +77,8 @@ export function mapWasmDiagnosticsJsonToVscode(json: string): vscode.Diagnostic[
       diag.source = d.source ?? "sruja";
       return diag;
     });
-  } catch {
+  } catch (e) {
+    console.error("[Sruja] Failed to parse diagnostics JSON:", e, "Input:", json.substring(0, 200));
     return [];
   }
 }
@@ -89,6 +116,7 @@ function isWasmAvailable(context: vscode.ExtensionContext): boolean {
 /**
  * Initialize the WASM module from extension/wasm/ (Node build).
  * Returns the module or null if not available / init fails.
+ * Uses a promise-based lock pattern to prevent race conditions.
  */
 export async function initWasm(context: vscode.ExtensionContext): Promise<SrujaWasmModule | null> {
   if (wasmModule) return wasmModule;
@@ -104,7 +132,8 @@ export async function initWasm(context: vscode.ExtensionContext): Promise<SrujaW
       wasmModule = mod as SrujaWasmModule;
       return wasmModule;
     } catch (e) {
-      console.warn("[Sruja] WASM init failed:", e);
+      console.error("[Sruja] WASM initialization failed:", e);
+      wasmInitPromise = null;
       return null;
     }
   })();
@@ -125,7 +154,8 @@ export async function getDiagnosticsFromWasm(
   try {
     const json = mod.sruja_get_diagnostics(dsl, filename);
     return mapWasmDiagnosticsJsonToVscode(json);
-  } catch {
+  } catch (e) {
+    console.error("[Sruja] Failed to get diagnostics from WASM:", e, "File:", filename);
     return [];
   }
 }
@@ -142,7 +172,8 @@ export async function exportMarkdownFromWasm(
 
   try {
     return mod.sruja_dsl_to_markdown(dsl);
-  } catch {
+  } catch (e) {
+    console.error("[Sruja] Failed to export markdown from WASM:", e);
     return null;
   }
 }
@@ -160,7 +191,8 @@ export async function getMermaidFromWasm(
 
   try {
     return mod.sruja_dsl_to_mermaid(dsl, configJson ?? null);
-  } catch {
+  } catch (e) {
+    console.error("[Sruja] Failed to get Mermaid from WASM:", e);
     return null;
   }
 }
@@ -188,19 +220,58 @@ export interface SrujaDocumentSymbol {
   children: SrujaDocumentSymbol[];
 }
 
+/** Type guard for SrujaElement - validates all required fields */
+function isSrujaElement(item: unknown): item is SrujaElement {
+  if (typeof item !== "object" || item === null) return false;
+  const el = item as Record<string, unknown>;
+  return (
+    typeof el.id === "string" &&
+    typeof el.kind === "string" &&
+    (el.title === null || typeof el.title === "string") &&
+    typeof el.range === "object" &&
+    el.range !== null &&
+    typeof (el.range as Record<string, unknown>).start === "object" &&
+    typeof (el.range as Record<string, unknown>).end === "object"
+  );
+}
+
+/** Type guard for SrujaDocumentSymbol - validates all required fields */
+function isSrujaDocumentSymbol(item: unknown): item is SrujaDocumentSymbol {
+  if (typeof item !== "object" || item === null) return false;
+  const sym = item as Record<string, unknown>;
+  const validKinds = ["element", "view", "scenario", "flow", "requirement", "adr", "policy"];
+  return (
+    typeof sym.kind === "string" &&
+    validKinds.includes(sym.kind) &&
+    typeof sym.name === "string" &&
+    typeof sym.detail === "string" &&
+    typeof sym.range === "object" &&
+    sym.range !== null &&
+    Array.isArray(sym.children)
+  );
+}
+
 function parseJsonArray<T>(json: string, guard?: (item: unknown) => item is T): T[] | null {
   try {
     const value: unknown = JSON.parse(json);
-    if (!Array.isArray(value)) return null;
+    if (!Array.isArray(value)) {
+      console.error("[Sruja] Expected JSON array, got:", typeof value);
+      return null;
+    }
     if (guard) {
       const out: T[] = [];
       for (const item of value) {
-        if (guard(item)) out.push(item);
+        if (guard(item)) {
+          out.push(item);
+        } else {
+          console.warn("[Sruja] Filtered malformed item:", JSON.stringify(item).substring(0, 100));
+        }
       }
       return out;
     }
     return value as T[];
-  } catch {
+  } catch (e) {
+    console.error("[Sruja] Failed to parse JSON:", e, "Input:", json.substring(0, 200));
     return null;
   }
 }
@@ -219,11 +290,9 @@ export async function getElementsFromWasm(
 
   try {
     const json = mod.sruja_get_elements(dsl, filename ?? null);
-    const arr = parseJsonArray<SrujaElement>(json, (item): item is SrujaElement =>
-      typeof item === "object" && item !== null && "id" in item && typeof (item as SrujaElement).id === "string"
-    );
-    return arr;
-  } catch {
+    return parseJsonArray<SrujaElement>(json, isSrujaElement);
+  } catch (e) {
+    console.error("[Sruja] Failed to get elements from WASM:", e, "File:", filename);
     return null;
   }
 }
@@ -242,11 +311,9 @@ export async function getDocumentSymbolsFromWasm(
 
   try {
     const json = mod.sruja_get_document_symbols(dsl, filename ?? null);
-    const arr = parseJsonArray<SrujaDocumentSymbol>(json, (item): item is SrujaDocumentSymbol =>
-      typeof item === "object" && item !== null && "name" in item && "range" in item && typeof (item as SrujaDocumentSymbol).name === "string"
-    );
-    return arr;
-  } catch {
+    return parseJsonArray<SrujaDocumentSymbol>(json, isSrujaDocumentSymbol);
+  } catch (e) {
+    console.error("[Sruja] Failed to get document symbols from WASM:", e, "File:", filename);
     return null;
   }
 }

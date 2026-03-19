@@ -36,6 +36,8 @@
   ],
   "activationEvents": [
     "onLanguage:sruja",
+    "workspaceContains:**/*.sruja",
+    "onStartupFinished",
     "onView:srujaSkillsView"
   ],
   "main": "./out/extension.js",

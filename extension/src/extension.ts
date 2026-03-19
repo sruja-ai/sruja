@@ -88,6 +88,7 @@ async function runCliInWorkspace(args: string[]): Promise<{ stdout: string; stde
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  const isTest = context.extensionMode === vscode.ExtensionMode.Test;
   diagnosticCollection = vscode.languages.createDiagnosticCollection(DIAGNOSTIC_COLLECTION_ID);
   context.subscriptions.push(diagnosticCollection);
 
@@ -238,10 +239,14 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("No skills found in the skills root.");
         return;
       }
-      const skill = skills.length === 1 ? skills[0] : await vscode.window.showQuickPick(
-        skills.map((s) => ({ label: s.name, skill: s })),
-        { placeHolder: "Select a skill" }
-      ).then((p) => p?.skill);
+      const skill = skills.length === 1
+        ? skills[0]
+        : isTest
+          ? skills[0]
+          : await vscode.window.showQuickPick(
+            skills.map((s) => ({ label: s.name, skill: s })),
+            { placeHolder: "Select a skill" }
+          ).then((p) => p?.skill);
       if (skill) await vscode.window.showTextDocument(skill.skillUri);
     }),
     vscode.commands.registerCommand("sruja.openAgentGuide", async () => {
@@ -251,10 +256,14 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("No AGENTS.md found. Set sruja.skills.path or open a workspace with skills.");
         return;
       }
-      const skill = withAgents.length === 1 ? withAgents[0] : await vscode.window.showQuickPick(
-        withAgents.map((s) => ({ label: s.name, skill: s })),
-        { placeHolder: "Select skill" }
-      ).then((p) => p?.skill);
+      const skill = withAgents.length === 1
+        ? withAgents[0]
+        : isTest
+          ? withAgents[0]
+          : await vscode.window.showQuickPick(
+            withAgents.map((s) => ({ label: s.name, skill: s })),
+            { placeHolder: "Select skill" }
+          ).then((p) => p?.skill);
       if (skill?.agentsUri) await vscode.window.showTextDocument(skill.agentsUri);
     }),
     vscode.commands.registerCommand("sruja.listRules", async () => {
@@ -269,10 +278,12 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("No rules found. Set sruja.skills.path or open a workspace with skills.");
         return;
       }
-      const pick = await vscode.window.showQuickPick(
-        allRules.map((r) => ({ label: r.label, description: r.skillName, rule: r })),
-        { placeHolder: "Open a rule", matchOnDescription: true }
-      );
+      const pick = isTest
+        ? { rule: allRules[0] }
+        : await vscode.window.showQuickPick(
+          allRules.map((r) => ({ label: r.label, description: r.skillName, rule: r })),
+          { placeHolder: "Open a rule", matchOnDescription: true }
+        );
       if (pick) await vscode.window.showTextDocument(pick.rule.uri);
     }),
     vscode.commands.registerCommand("sruja.copyRuleForAI", async () => {
@@ -287,10 +298,12 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("No rules found.");
         return;
       }
-      const pick = await vscode.window.showQuickPick(
-        allRules.map((r) => ({ label: r.label, rule: r })),
-        { placeHolder: "Copy which rule for AI?" }
-      );
+      const pick = isTest
+        ? { rule: allRules[0] }
+        : await vscode.window.showQuickPick(
+          allRules.map((r) => ({ label: r.label, rule: r })),
+          { placeHolder: "Copy which rule for AI?" }
+        );
       if (!pick) return;
       try {
         const content = await vscode.workspace.fs.readFile(pick.rule.uri);
@@ -308,10 +321,14 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("No AGENTS.md found.");
         return;
       }
-      const skill = withAgents.length === 1 ? withAgents[0] : await vscode.window.showQuickPick(
-        withAgents.map((s) => ({ label: s.name, skill: s })),
-        { placeHolder: "Copy which agent guide?" }
-      ).then((p) => p?.skill);
+      const skill = withAgents.length === 1
+        ? withAgents[0]
+        : isTest
+          ? withAgents[0]
+          : await vscode.window.showQuickPick(
+            withAgents.map((s) => ({ label: s.name, skill: s })),
+            { placeHolder: "Copy which agent guide?" }
+          ).then((p) => p?.skill);
       if (!skill?.agentsUri) return;
       try {
         const content = await vscode.workspace.fs.readFile(skill.agentsUri);
@@ -347,11 +364,13 @@ export function activate(context: vscode.ExtensionContext): void {
         const mdDoc = await vscode.workspace.openTextDocument(mdUri);
         await vscode.window.showTextDocument(mdDoc, { preview: true });
         await vscode.commands.executeCommand("markdown.showPreview", mdUri);
-        const save = await vscode.window.showInformationMessage(
-          "Markdown generated from DSL. Save to file?",
-          "Save",
-          "Cancel"
-        );
+        const save = isTest
+          ? undefined
+          : await vscode.window.showInformationMessage(
+            "Markdown generated from DSL. Save to file?",
+            "Save",
+            "Cancel"
+          );
         if (save === "Save" && doc.uri.scheme === "file") {
           const uri = vscode.Uri.file(outPath);
           await vscode.workspace.fs.writeFile(uri, Buffer.from(stdout, "utf8"));
