@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.21.0...sruja-v0.22.0) (2026-03-19)
+
+
+### Features
+
+* **extension:** add focused diagram preview and JSON view export ([7e750da](https://github.com/sruja-ai/sruja/commit/7e750dabc9fec98768a5255398df70ddf375a0ee))
+* **validation:** enforce C4 hierarchy with ContainerNestingRule ([d23245c](https://github.com/sruja-ai/sruja/commit/d23245ce0b9bb37cc08bac996f9d9a6ff4a7119d))
+
 ## [0.21.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.20.0...sruja-v0.21.0) (2026-03-18)
 
 
