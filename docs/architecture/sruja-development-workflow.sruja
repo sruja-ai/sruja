@@ -17,153 +17,160 @@ Maintainer = person "Maintainer" {
   description "Maintains CI/CD and release processes"
 }
 
-// Local Development
-Local = container "Local Development" {
-  technology "Rust, Node.js, npm"
-  description "Developer's local environment"
-  tags ["development", "ci-cd"]
+SrujaDevelopment = system "Sruja Development Workflow" {
+  description "How Sruja is developed, tested, and released"
+  tags ["development", "ci-cd", "release"]
+
+  // Local Development
+  Local = container "Local Development" {
+    technology "Rust, Node.js, npm"
+    description "Developer local environment"
+    tags ["development"]
+
+    GitHooks = component "Git Hooks" {
+      description "Pre-commit hooks for validation"
+      technology "Husky, pre-commit"
+    }
+
+    LocalBuild = component "Local Build" {
+      description "Building locally before commit"
+      technology "cargo, npm"
+    }
+
+    LocalTests = component "Local Tests" {
+      description "Running tests locally"
+      technology "cargo test, Vitest"
+    }
+  }
+
+  // CI/CD Pipeline
+  CICD = container "CI/CD Pipeline" {
+    technology "GitHub Actions"
+    description "Continuous Integration and Deployment"
+    tags ["ci-cd", "github-actions"]
+
+    RustTests = component "Rust Tests" {
+      description "Rust unit tests and coverage"
+      technology "cargo test, cargo clippy"
+    }
+
+    TSTests = component "TypeScript Tests" {
+      description "TypeScript/JavaScript tests"
+      technology "Vitest, Playwright"
+    }
+
+    SecurityScan = component "Security Scanning" {
+      description "Security vulnerability scanning"
+      technology "cargo audit, npm audit, TruffleHog"
+    }
+
+    BuildCheck = component "Build Check" {
+      description "Verifies all packages build"
+      technology "Turbo, cargo build"
+    }
+
+    LintCheck = component "Lint Check" {
+      description "Code quality checks"
+      technology "ESLint, cargo clippy"
+    }
+
+    CoverageCheck = component "Coverage Check" {
+      description "Test coverage validation"
+      technology "Codecov, Codacy"
+    }
+
+    BundleSizeCheck = component "Bundle Size Check" {
+      description "Frontend bundle size monitoring"
+      technology "size-limit"
+    }
+  }
+
+  // Release Process
+  Release = container "Release Process" {
+    technology "cargo, GitHub Actions"
+    description "Automated release and publishing"
+    tags ["release", "publishing"]
+
+    VersionBump = component "Version Bump" {
+      description "Automatic version bumping"
+      technology "release-please"
+    }
+
+    BuildArtifacts = component "Build Artifacts" {
+      description "Builds binaries for all platforms"
+      technology "cargo build --release"
+    }
+
+    PublishRelease = component "Publish Release" {
+      description "Publishes to GitHub Releases"
+      technology "GitHub Actions"
+    }
+
+    PublishNPM = component "Publish NPM" {
+      description "Publishes TypeScript packages"
+      technology "npm publish"
+    }
+  }
+
+  // Testing Infrastructure
+  Testing = container "Testing Infrastructure" {
+    technology "Rust, Vitest, Playwright"
+    description "Testing tools and infrastructure"
+    tags ["testing"]
+
+    UnitTests = component "Unit Tests" {
+      description "Rust and TypeScript unit tests"
+      technology "cargo test, Vitest"
+    }
+
+    IntegrationTests = component "Integration Tests" {
+      description "End-to-end integration tests"
+      technology "Playwright"
+    }
+
+    PropertyTests = component "Property-Based Tests" {
+      description "Property-based testing for validation"
+      technology "fast-check, Vitest"
+    }
+
+    ExampleTests = component "Example Tests" {
+      description "Validates example .sruja files"
+      technology "cargo, sruja-cli"
+    }
+  }
+
+  // Relationships
+  Local -> CICD "Pushes to"
+  CICD -> CICD.BuildCheck "Runs"
+  CICD -> CICD.SecurityScan "Runs"
+  CICD -> CICD.BundleSizeCheck "Runs"
+  CICD -> CICD.CoverageCheck "Runs"
+  CICD -> CICD.LintCheck "Runs"
+  CICD -> CICD.RustTests "Runs"
+  CICD -> CICD.TSTests "Runs"
+  CICD.RustTests -> Testing "Validates"
+  CICD.TSTests -> Testing "Validates"
+  CICD -> Testing "Triggers"
+  Testing.UnitTests -> Testing "Part of"
+  Testing.IntegrationTests -> Testing "Part of"
+  Testing.PropertyTests -> Testing "Part of"
+  Testing.ExampleTests -> Testing "Part of"
+
+  CICD -> Release "Triggers on tag"
+  Release.VersionBump -> Release.BuildArtifacts "Triggers"
+  Release.BuildArtifacts -> Release.PublishRelease "Publishes"
+  Release.BuildArtifacts -> Release.PublishNPM "Publishes"
+
+  Developer -> SrujaDevelopment "Develops"
+  Developer -> Local "Uses"
+  Developer -> Local.GitHooks "Triggers"
+  Developer -> Local.LocalBuild "Runs"
+  Developer -> Local.LocalTests "Runs"
+
+  Maintainer -> SrujaDevelopment "Maintains"
+  Maintainer -> CICD "Manages"
+  Maintainer -> Release "Manages"
 }
-
-Local_GitHooks = component "Git Hooks" {
-  description "Pre-commit hooks for validation"
-  technology "Husky, pre-commit"
-}
-
-Local_LocalBuild = component "Local Build" {
-  description "Building locally before commit"
-  technology "cargo, npm"
-}
-
-Local_LocalTests = component "Local Tests" {
-  description "Running tests locally"
-  technology "cargo test, Vitest"
-}
-
-// CI/CD Pipeline
-CICD = container "CI/CD Pipeline" {
-  technology "GitHub Actions"
-  description "Continuous Integration and Deployment"
-  tags ["ci-cd", "github-actions"]
-}
-
-CICD_RustTests = component "Rust Tests" {
-  description "Rust unit tests and coverage"
-  technology "cargo test, cargo clippy"
-}
-
-CICD_TSTests = component "TypeScript Tests" {
-  description "TypeScript/JavaScript tests"
-  technology "Vitest, Playwright"
-}
-
-CICD_SecurityScan = component "Security Scanning" {
-  description "Security vulnerability scanning"
-  technology "cargo audit, npm audit, TruffleHog"
-}
-
-CICD_BuildCheck = component "Build Check" {
-  description "Verifies all packages build"
-  technology "Turbo, cargo build"
-}
-
-CICD_LintCheck = component "Lint Check" {
-  description "Code quality checks"
-  technology "ESLint, cargo clippy"
-}
-
-CICD_CoverageCheck = component "Coverage Check" {
-  description "Test coverage validation"
-  technology "Codecov, Codacy"
-}
-
-CICD_BundleSizeCheck = component "Bundle Size Check" {
-  description "Frontend bundle size monitoring"
-  technology "size-limit"
-}
-
-// Release Process
-Release = container "Release Process" {
-  technology "cargo, GitHub Actions"
-  description "Automated release and publishing"
-  tags ["release", "publishing"]
-}
-
-Release_VersionBump = component "Version Bump" {
-  description "Automatic version bumping"
-  technology "release-please"
-}
-
-Release_BuildArtifacts = component "Build Artifacts" {
-  description "Builds binaries for all platforms"
-  technology "cargo build --release"
-}
-
-Release_PublishRelease = component "Publish Release" {
-  description "Publishes to GitHub Releases"
-  technology "GitHub Actions"
-}
-
-Release_PublishNPM = component "Publish NPM" {
-  description "Publishes TypeScript packages"
-  technology "npm publish"
-}
-
-// Testing Infrastructure
-Testing = container "Testing Infrastructure" {
-  technology "Rust, Vitest, Playwright"
-  description "Testing tools and infrastructure"
-  tags ["testing"]
-}
-
-Testing_UnitTests = component "Unit Tests" {
-  description "Rust and TypeScript unit tests"
-  technology "cargo test, Vitest"
-}
-
-Testing_IntegrationTests = component "Integration Tests" {
-  description "End-to-end integration tests"
-  technology "Playwright"
-}
-
-Testing_PropertyTests = component "Property-Based Tests" {
-  description "Property-based testing for validation"
-  technology "fast-check, Vitest"
-}
-
-Testing_ExampleTests = component "Example Tests" {
-  description "Validates example .sruja files"
-  technology "cargo, sruja-cli"
-}
-
-// Relationships
-Local -> CICD "Pushes to"
-CICD -> CICD_BuildCheck "Runs"
-CICD -> CICD_SecurityScan "Runs"
-CICD -> CICD_BundleSizeCheck "Runs"
-CICD -> CICD_CoverageCheck "Runs"
-CICD -> CICD_LintCheck "Runs"
-CICD -> CICD_RustTests "Runs"
-CICD -> CICD_TSTests "Runs"
-CICD_RustTests -> Testing "Validates"
-CICD_TSTests -> Testing "Validates"
-CICD -> Testing "Triggers"
-Testing_UnitTests -> Testing "Part of"
-Testing_IntegrationTests -> Testing "Part of"
-Testing_PropertyTests -> Testing "Part of"
-Testing_ExampleTests -> Testing "Part of"
-
-CICD -> Release "Triggers on tag"
-Release_VersionBump -> Release_BuildArtifacts "Triggers"
-Release_BuildArtifacts -> Release_PublishRelease "Publishes"
-Release_BuildArtifacts -> Release_PublishNPM "Publishes"
-
-Developer -> Local "Uses"
-Developer -> Local_GitHooks "Triggers"
-Developer -> Local_LocalBuild "Runs"
-Developer -> Local_LocalTests "Runs"
-
-Maintainer -> CICD "Manages"
-Maintainer -> Release "Manages"
 
 // Views
 view index {
@@ -173,10 +180,10 @@ view index {
 
 view cicd {
   title "CI/CD Pipeline"
-  include CICD, Testing
+  include "SrujaDevelopment.CICD SrujaDevelopment.Testing"
 }
 
 view release {
   title "Release Process"
-  include Release
+  include SrujaDevelopment.Release
 }

@@ -1,6 +1,6 @@
 // docs/architecture/sruja-platform.sruja
 // Complete architecture of the Sruja platform
-// This file describes Sruja's own architecture using Sruja DSL
+// This file describes the Sruja platform architecture using Sruja DSL
 //
 // Note: This file is written as a comprehensive blueprint and is intended to be
 // validated with `sruja lint`.
@@ -236,10 +236,19 @@ Sruja = system "Sruja Platform" {
   Language -> Stdlib "Uses"
   Language -> Diagnostics "Reports via"
 
+  CLI.Commands -> Language "Parses"
+  CLI.Commands -> Engine "Validates"
+  CLI.Commands -> Export "Exports"
+  CLI.Commands -> Diagnostics "Emits"
+
   Language.Parser -> Engine "Validates AST"
   Language.AST -> Export "Exports"
   Engine -> Diagnostics "Reports via"
   Export -> Diagnostics "Reports via"
+
+  Export.ViewGenerator -> Export.MermaidExporter "Generates diagrams"
+  Export.ViewGenerator -> Diagnostics "Reports via"
+  Export.MermaidExporter -> Diagnostics "Reports via"
 
   Engine.Validator -> Engine.Rules "Executes"
   Engine.Validator -> Engine.Resolver "Uses"
@@ -255,6 +264,16 @@ Sruja = system "Sruja Platform" {
   LSP -> Language "Parses"
   LSP -> Engine "Validates"
   LSP -> Diagnostics "Reports via"
+
+  LSP.Completion -> Language "Uses AST"
+  LSP.Hover -> Language "Uses AST"
+  LSP.Definition -> Language "Resolves symbols"
+
+  Language -> Stdlib.CoreElements "Uses"
+  Language -> Stdlib.Styles "Uses"
+
+  VSCode.LanguageSupport -> LSP "Connects to"
+  VSCode.Preview -> WASM "Renders diagrams"
 
   Scan -> Graph "Populates"
   Diff -> Graph "Reads"
@@ -277,6 +296,11 @@ R1 = requirement functional "Must support full C4 model hierarchy"
 R2 = requirement performance "Parsing must be < 100ms for typical files"
 R3 = requirement portability "Core must compile to WASM"
 R4 = requirement functional "Must export to JSON format"
+
+Sruja -> R1 "Satisfies"
+Sruja -> R2 "Satisfies"
+Sruja -> R3 "Satisfies"
+Sruja -> R4 "Satisfies"
 
 // Architecture Decision Records
 ADR001 = adr "Rust for Core and CLI" {
@@ -334,29 +358,29 @@ view index {
 view backend of Sruja {
   title "Backend Components"
   description "Rust core and LSP components"
-  include Sruja.CLI, Sruja.Diagnostics, Sruja.Language, Sruja.Engine, Sruja.Export, Sruja.WASM, Sruja.LSP, Sruja.Stdlib, Sruja.Scan, Sruja.Graph, Sruja.Diff, Sruja.Intent, Sruja.Report
+  include "Sruja.CLI Sruja.Diagnostics Sruja.Language Sruja.Engine Sruja.Export Sruja.WASM Sruja.LSP Sruja.Stdlib Sruja.Scan Sruja.Graph Sruja.Diff Sruja.Intent Sruja.Report"
 }
 
 view interfaces of Sruja {
   title "Developer Interfaces"
   description "How developers interact with Sruja"
-  include Sruja.CLI, Sruja.VSCode, Sruja.Book
+  include "Sruja.CLI Sruja.VSCode Sruja.Book"
 }
 
 view validation of Sruja.Engine {
   title "Validation Rules"
   description "Engine components"
-  include Sruja.Engine.Validator, Sruja.Engine.Scorer, Sruja.Engine.Rules, Sruja.Engine.Resolver
+  include "Sruja.Engine.Validator Sruja.Engine.Scorer Sruja.Engine.Rules Sruja.Engine.Resolver"
 }
 
 view exporters of Sruja.Export {
   title "Export Formats"
   description "Export components"
-  include Sruja.Export.MermaidExporter, Sruja.Export.ViewGenerator
+  include "Sruja.Export.MermaidExporter Sruja.Export.ViewGenerator"
 }
 
 view dataflow of Sruja {
   title "Data Processing Flow"
   description "How DSL is processed through the system"
-  include Sruja.Language, Sruja.Engine, Sruja.Export
+  include "Sruja.Language Sruja.Engine Sruja.Export"
 }

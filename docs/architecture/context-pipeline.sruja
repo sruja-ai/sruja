@@ -1,4 +1,4 @@
-// Architecture model for Sruja's AI-Assisted Development Pipeline
+// Architecture model for Sruja AI-Assisted Development Pipeline
 // This models the context provisioning system that provides architectural
 // context to AI coding assistants
 
@@ -26,32 +26,50 @@ ContextProvisioningSystem = system "Context Provisioning System" {
   DSLParser = container "DSL Parser" {
     description "Existing parser that processes .sruja files into AST"
     technology "Go, pkg/language"
-    Lexer = component "Lexer"
-    Parser = component "Parser"
-    ASTBuilder = component "AST Builder"
+    Lexer = component "Lexer" {
+      description "Tokenizes the DSL input stream"
+    }
+    Parser = component "Parser" {
+      description "Parses tokens into an AST"
+    }
+    ASTBuilder = component "AST Builder" {
+      description "Builds the AST structures used by downstream stages"
+    }
   }
   
   JSONExport = container "JSON Export" {
     description "Existing export system that converts AST to JSON"
     technology "Go, pkg/export/json"
-    JSONConverter = component "JSON Converter"
-    SchemaValidator = component "Schema Validator"
+    JSONConverter = component "JSON Converter" {
+      description "Serializes the model to JSON"
+    }
+    SchemaValidator = component "Schema Validator" {
+      description "Validates exported JSON against a schema"
+    }
   }
   
   // New components for context provisioning
   PIMExtractor = container "PIM Extractor" {
     description "Extracts Platform Independent Model from JSON for AI context"
     technology "Go, pkg/context"
-    PIMBuilder = component "PIM Builder"
-    AbstractionLayer = component "Abstraction Layer"
-    PIMValidator = component "PIM Validator"
+    PIMBuilder = component "PIM Builder" {
+      description "Builds a platform-independent representation from JSON"
+    }
+    AbstractionLayer = component "Abstraction Layer" {
+      description "Removes platform-specific details from extracted models"
+    }
+    PIMValidator = component "PIM Validator" {
+      description "Validates extracted PIM structure and constraints"
+    }
   }
   
   ContextFormatter = container "Context Formatter" {
     description "Formats PIM into various formats for different AI assistants"
     technology "Go, pkg/context"
     
-    FormatRouter = component "Format Router"
+    FormatRouter = component "Format Router" {
+      description "Routes formatted output based on target assistant and format"
+    }
     MarkdownFormatter = component "Markdown Formatter" {
       description "Formats context as Markdown for Copilot/Cursor"
     }
@@ -97,23 +115,37 @@ ContextProvisioningSystem = system "Context Provisioning System" {
   ValidationEngine = container "Validation Engine" {
     description "Enhanced validation for PIM and architecture quality"
     technology "Go, pkg/validation"
-    EnhancedPIMValidator = component "Enhanced PIM Validator"
-    QualityChecker = component "Quality Checker"
+    EnhancedPIMValidator = component "Enhanced PIM Validator" {
+      description "Validates PIM with additional architecture quality rules"
+    }
+    QualityChecker = component "Quality Checker" {
+      description "Computes quality signals for context completeness and consistency"
+    }
   }
   
   LSPIntegration = container "LSP Integration" {
     description "Provides context via Language Server Protocol for IDE integration"
     technology "Go, pkg/lsp"
-    ContextProvider = component "Context Provider"
-    HoverEnhancer = component "Hover Enhancer"
+    ContextProvider = component "Context Provider" {
+      description "Serves formatted context to IDE features"
+    }
+    HoverEnhancer = component "Hover Enhancer" {
+      description "Enriches hover content with architecture context"
+    }
   }
   
   CLI = container "CLI" {
     description "Command-line interface for context export and traceability"
     technology "Go, cmd/sruja"
-    ContextExportCmd = component "Context Export Command"
-    TraceCmd = component "Trace Command"
-    OptionalAICmd = component "Optional AI Command"
+    ContextExportCmd = component "Context Export Command" {
+      description "Exports context from DSL in the requested format"
+    }
+    TraceCmd = component "Trace Command" {
+      description "Creates and queries traceability links between DSL and code"
+    }
+    OptionalAICmd = component "Optional AI Command" {
+      description "Runs optional AI-assisted DSL authoring helpers"
+    }
   }
 }
 
@@ -130,16 +162,19 @@ AICodingAssistants = system "AI Coding Assistants" {
   }
   ChatGPT = container "ChatGPT" {
     description "OpenAI ChatGPT for code generation"
+    technology "OpenAI"
   }
   Claude = container "Claude" {
     description "Anthropic Claude for code generation"
+    technology "Anthropic"
   }
 }
 
 DeveloperWorkspace = system "Developer Workspace" {
-  description "Developer's codebase where code is generated with AI assistance"
+  description "Developer codebase where code is generated with AI assistance"
   Codebase = container "Codebase" {
     description "Application and infrastructure code"
+    technology "Multi-language repository"
   }
 }
 
@@ -147,8 +182,10 @@ DeveloperWorkspace = system "Developer Workspace" {
 ContextProvisioningSystem.DSLParser.Lexer -> ContextProvisioningSystem.DSLParser.Parser "Tokenizes input"
 ContextProvisioningSystem.DSLParser.Parser -> ContextProvisioningSystem.DSLParser.ASTBuilder "Builds AST"
 ContextProvisioningSystem.DSLParser.ASTBuilder -> ContextProvisioningSystem.JSONExport.JSONConverter "AST to JSON"
+ContextProvisioningSystem.DSLParser -> ContextProvisioningSystem.JSONExport "Feeds export"
 ContextProvisioningSystem.JSONExport.JSONConverter -> ContextProvisioningSystem.JSONExport.SchemaValidator "Validates JSON"
 ContextProvisioningSystem.JSONExport.JSONConverter -> ContextProvisioningSystem.PIMExtractor.PIMBuilder "JSON to PIM"
+ContextProvisioningSystem.JSONExport -> ContextProvisioningSystem.PIMExtractor "Feeds extraction"
 ContextProvisioningSystem.PIMExtractor.PIMBuilder -> ContextProvisioningSystem.PIMExtractor.AbstractionLayer "Removes platform details"
 ContextProvisioningSystem.PIMExtractor.AbstractionLayer -> ContextProvisioningSystem.PIMExtractor.PIMValidator "Validates PIM structure"
 ContextProvisioningSystem.PIMExtractor.PIMValidator -> ContextProvisioningSystem.ContextFormatter.FormatRouter "Routes PIM by format"
@@ -177,6 +214,7 @@ ContextProvisioningSystem.ValidationEngine -> ContextProvisioningSystem.ContextF
 // User interactions - See stories for detailed workflows
 
 // Context flow to AI assistants
+ContextProvisioningSystem.ContextFormatter -> AICodingAssistants "Provides context"
 ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> AICodingAssistants.Copilot "Markdown context"
 ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> AICodingAssistants.Cursor "Markdown context"
 ContextProvisioningSystem.ContextFormatter.PromptFormatter -> AICodingAssistants.ChatGPT "Prompt context"
@@ -198,33 +236,29 @@ Developer -> ContextProvisioningSystem.CLI "runs commands"
 ContextProvisioningSystem.ContextFormatter -> ContextProvisioningSystem.LSPIntegration "provides formatted context"
 
 // Stories/Flows
-Developer -> ExportContext "initiates"
-Developer -> UseContextWithAI "initiates"
-Developer -> TrackTraceability "initiates"
-Developer -> LSPContextProvision "initiates"
-ExportContext = story "Export Context for System" {
-  Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context export --system=OrderService --format=markdown"
-  ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "formats context"
-  ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.DSLParser "parses DSL"
-  ContextProvisioningSystem.DSLParser -> ContextProvisioningSystem.JSONExport "exports to JSON"
+ExportContext = flow "Export Context for System" {
+  step Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context export --system=OrderService --format=markdown"
+  step ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "formats context"
+  step ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.DSLParser "parses DSL"
+  step ContextProvisioningSystem.DSLParser -> ContextProvisioningSystem.JSONExport "exports to JSON"
 }
 
-UseContextWithAI = story "Use Context with AI Assistant" {
-  Developer -> AICodingAssistants.Copilot "provides context + code request"
-  ContextProvisioningSystem -> AICodingAssistants "provides context"
-  AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "generates code with architecture awareness"
+UseContextWithAI = flow "Use Context with AI Assistant" {
+  step Developer -> AICodingAssistants.Copilot "provides context + code request"
+  step ContextProvisioningSystem -> AICodingAssistants "provides context"
+  step AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "generates code with architecture awareness"
 }
 
-TrackTraceability = story "Track Traceability" {
-  Developer -> ContextProvisioningSystem.CLI.TraceCmd "links: sruja trace link --element=system.App.container.Web --file=app/web/server.go"
-  ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.LinkStore "stores traceability link"
-  DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.LinkStore "tracks code file"
+TrackTraceability = flow "Track Traceability" {
+  step Developer -> ContextProvisioningSystem.CLI.TraceCmd "links: sruja trace link --element=system.App.container.Web --file=app/web/server.go"
+  step ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.LinkStore "stores traceability link"
+  step DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.LinkStore "tracks code file"
 }
 
-LSPContextProvision = story "LSP Context Provision" {
-  Developer -> ContextProvisioningSystem.LSPIntegration.HoverEnhancer "hovers over DSL element"
-  ContextProvisioningSystem.LSPIntegration.ContextProvider -> AICodingAssistants.Cursor "provides context automatically"
-  ContextProvisioningSystem.LSPIntegration -> ContextProvisioningSystem "integrates with context system"
+LSPContextProvision = flow "LSP Context Provision" {
+  step Developer -> ContextProvisioningSystem.LSPIntegration.HoverEnhancer "hovers over DSL element"
+  step ContextProvisioningSystem.LSPIntegration.ContextProvider -> AICodingAssistants.Cursor "provides context automatically"
+  step ContextProvisioningSystem.LSPIntegration -> ContextProvisioningSystem "integrates with context system"
 }
 
 // Requirements
@@ -235,8 +269,8 @@ REQ_LSP_INTEGRATION = requirement functional "System must provide context via LS
 REQ_BACKWARD_COMPAT = requirement constraint "New features must not break existing Sruja functionality"
 
 // Requirement traceability
-REQ_TRACEABILITY -> TrackTraceability "satisfied by"
-REQ_CONTEXT_EXPORT -> ExportContext "satisfied by"
+REQ_TRACEABILITY -> ContextProvisioningSystem.TraceabilityManager "satisfied by"
+REQ_CONTEXT_EXPORT -> ContextProvisioningSystem.CLI.ContextExportCmd "satisfied by"
 REQ_TOKEN_OPTIMIZATION -> ContextProvisioningSystem.ContextFormatter.TokenOptimizer "satisfied by"
-REQ_LSP_INTEGRATION -> LSPContextProvision "satisfied by"
+REQ_LSP_INTEGRATION -> ContextProvisioningSystem.LSPIntegration "satisfied by"
 REQ_BACKWARD_COMPAT -> ContextProvisioningSystem "satisfied by"
