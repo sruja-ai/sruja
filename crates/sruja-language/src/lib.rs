@@ -41,6 +41,38 @@ A -> B "calls"
     }
 
     #[test]
+    #[ignore]
+    fn perf_parse_docs_platform_under_100ms() {
+        use std::path::PathBuf;
+        use std::time::{Duration, Instant};
+
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let path = repo_root.join("docs/architecture/sruja-platform.sruja");
+        let input =
+            std::fs::read_to_string(path).expect("read docs/architecture/sruja-platform.sruja");
+
+        let parser = Parser::new("docs/architecture/sruja-platform.sruja".to_string());
+
+        for _ in 0..3 {
+            parser.parse(&input).expect("parse warmup");
+        }
+
+        let mut samples: Vec<Duration> = Vec::with_capacity(20);
+        for _ in 0..20 {
+            let start = Instant::now();
+            parser.parse(&input).expect("parse");
+            samples.push(start.elapsed());
+        }
+
+        samples.sort();
+        let median = samples[samples.len() / 2];
+        assert!(
+            median < Duration::from_millis(100),
+            "median parse time was {median:?}"
+        );
+    }
+
+    #[test]
     fn test_parse_nested_elements() {
         let input = r#"
 MySystem = system "My System" {

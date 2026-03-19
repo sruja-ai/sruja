@@ -5,11 +5,7 @@
 // Note: This file is written as a comprehensive blueprint and is intended to be
 // validated with `sruja lint`.
 
-// Element kinds
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-component = kind "Component"
+import { * } from 'sruja.ai/stdlib'
 
 // Actors
 Architect = person "Software Architect" {
@@ -25,6 +21,36 @@ Developer = person "Developer" {
 Contributor = person "Contributor" {
   description "Contributes to Sruja development"
   doc "book/src/docs/concepts/person.md"
+}
+
+GitHub = system "GitHub" {
+  description "Source control, issues, pull requests, and releases"
+  tags ["external"]
+}
+
+GitHubActions = system "GitHub Actions" {
+  description "CI/CD workflows for building, testing, and releasing artifacts"
+  tags ["external", "ci"]
+}
+
+CratesIo = system "crates.io" {
+  description "Rust package registry for publishing and installing the Sruja CLI crate"
+  tags ["external", "registry"]
+}
+
+VSCodeMarketplace = system "VS Code Marketplace" {
+  description "Distribution channel for installing and updating the VS Code extension"
+  tags ["external", "distribution"]
+}
+
+OpenVSX = system "Open VSX Registry" {
+  description "Alternative distribution channel for VS Code-compatible extensions"
+  tags ["external", "distribution"]
+}
+
+SrujaWebsite = system "sruja.ai" {
+  description "Public website for documentation and installation entry points"
+  tags ["external", "docs"]
 }
 
 // Main System with nested containers and components
@@ -159,7 +185,7 @@ Sruja = system "Sruja Platform" {
     description "Language Server Protocol server for IDE integration"
     tags ["lsp", "ide"]
 
-    Diagnostics = component "Diagnostics" {
+    DiagnosticsAdapter = component "Diagnostics Adapter" {
       description "Error and warning reporting"
       technology "Rust, crates/sruja-lsp"
     }
@@ -219,26 +245,26 @@ Sruja = system "Sruja Platform" {
   }
 
   // Container relationships
-  CLI -> Language "Calls"
-  CLI -> Engine "Calls"
-  CLI -> Export "Calls"
+  CLI -> Language "Invokes parse/format"
+  CLI -> Engine "Invokes validation"
+  CLI -> Export "Invokes export"
   CLI -> Diagnostics "Formats diagnostics"
-  CLI -> Scan "Discovers"
-  CLI -> Graph "Queries"
+  CLI -> Scan "Scans repositories"
+  CLI -> Graph "Runs graph queries"
   CLI -> Diff "Computes drift"
-  CLI -> Intent "Checks intent"
+  CLI -> Intent "Evaluates intent vs reality"
   CLI -> Report "Generates reports"
 
   // Component relationships within containers
-  Language.Lexer -> Language.Parser "Tokenizes"
+  Language.Lexer -> Language.Parser "Provides tokens"
   Language.Parser -> Language.AST "Builds AST"
   Language.AST -> Language.Printer "Formats"
   Language -> Stdlib "Uses"
   Language -> Diagnostics "Reports via"
 
-  CLI.Commands -> Language "Parses"
-  CLI.Commands -> Engine "Validates"
-  CLI.Commands -> Export "Exports"
+  CLI.Commands -> Language "Parses DSL"
+  CLI.Commands -> Engine "Runs validation"
+  CLI.Commands -> Export "Generates exports"
   CLI.Commands -> Diagnostics "Emits"
 
   Language.Parser -> Engine "Validates AST"
@@ -264,6 +290,8 @@ Sruja = system "Sruja Platform" {
   LSP -> Language "Parses"
   LSP -> Engine "Validates"
   LSP -> Diagnostics "Reports via"
+  LSP -> LSP.DiagnosticsAdapter "Publishes diagnostics"
+  LSP.DiagnosticsAdapter -> Diagnostics "Formats via"
 
   LSP.Completion -> Language "Uses AST"
   LSP.Hover -> Language "Uses AST"
@@ -288,8 +316,19 @@ Architect -> Sruja.Book "Reads docs"
 
 Developer -> Sruja.CLI "Runs lint/compile"
 Developer -> Sruja.VSCode "Writes code"
+Developer -> CratesIo "Installs CLI from"
+Developer -> VSCodeMarketplace "Installs extension from"
 
 Contributor -> Sruja "Contributes to"
+Contributor -> GitHub "Opens pull requests"
+
+GitHub -> GitHubActions "Triggers workflows"
+GitHubActions -> Sruja.CLI "Builds and tests"
+GitHubActions -> CratesIo "Publishes sruja-cli"
+GitHubActions -> VSCodeMarketplace "Publishes extension"
+GitHubActions -> OpenVSX "Publishes extension"
+Book -> SrujaWebsite "Publishes to"
+GitHubActions -> SrujaWebsite "Deploys docs"
 
 // Requirements
 R1 = requirement functional "Must support full C4 model hierarchy"
@@ -297,10 +336,12 @@ R2 = requirement performance "Parsing must be < 100ms for typical files"
 R3 = requirement portability "Core must compile to WASM"
 R4 = requirement functional "Must export to JSON format"
 
-Sruja -> R1 "Satisfies"
-Sruja -> R2 "Satisfies"
-Sruja -> R3 "Satisfies"
-Sruja -> R4 "Satisfies"
+Language -> R1 "Satisfies"
+Engine -> R1 "Satisfies"
+Language -> R2 "Satisfies"
+Engine -> R2 "Satisfies"
+WASM -> R3 "Satisfies"
+Export -> R4 "Satisfies"
 
 // Architecture Decision Records
 ADR001 = adr "Rust for Core and CLI" {
@@ -330,7 +371,7 @@ CodeStyle = policy "Rust code must be formatted with rustfmt" {
   enforcement "required"
 }
 
-NoCycles = policy "Architecture graph must be acyclic" {
+NoCycles = policy "No cyclic dependencies between systems" {
   category "structural"
   enforcement "strict"
 }
@@ -349,6 +390,17 @@ CICDFlow = flow "CI/CD Verification" {
   step Sruja.CLI -> Sruja.Export "Generates artifacts"
 }
 
+ReleaseFlow = flow "Release & Distribution" {
+  step Contributor -> GitHub "Merges changes"
+  step GitHub -> GitHubActions "Triggers release workflows"
+  step GitHubActions -> CratesIo "Publishes sruja-cli"
+  step GitHubActions -> VSCodeMarketplace "Publishes extension"
+  step GitHubActions -> OpenVSX "Publishes extension"
+  step GitHubActions -> SrujaWebsite "Deploys docs"
+  step Developer -> CratesIo "Installs CLI"
+  step Developer -> VSCodeMarketplace "Installs extension"
+}
+
 // Views
 view index {
   title "Sruja Platform Overview"
@@ -364,7 +416,7 @@ view backend of Sruja {
 view interfaces of Sruja {
   title "Developer Interfaces"
   description "How developers interact with Sruja"
-  include "Sruja.CLI Sruja.VSCode Sruja.Book"
+  include "Sruja.CLI Sruja.VSCode Sruja.Book VSCodeMarketplace OpenVSX CratesIo"
 }
 
 view validation of Sruja.Engine {
@@ -383,4 +435,10 @@ view dataflow of Sruja {
   title "Data Processing Flow"
   description "How DSL is processed through the system"
   include "Sruja.Language Sruja.Engine Sruja.Export"
+}
+
+view release of Sruja {
+  title "Release & Distribution"
+  description "How Sruja artifacts ship to users"
+  include "GitHub GitHubActions CratesIo VSCodeMarketplace OpenVSX SrujaWebsite Sruja.CLI Sruja.VSCode Sruja.Book"
 }

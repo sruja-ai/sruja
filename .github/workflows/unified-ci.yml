@@ -74,6 +74,8 @@ jobs:
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       - name: Build
         run: cargo build --release
+      - name: Perf smoke (parse < 100ms, release)
+        run: cargo test -p sruja-language --release perf_parse_docs_platform_under_100ms -- --ignored
       - name: Test
         run: cargo test --workspace
       - name: Format (code per standards in .sruja)
