@@ -36,6 +36,8 @@ pub const CODE_CYCLE_DETECTED: &str = "E204";
 pub const CODE_ORPHAN_ELEMENT: &str = "E205";
 /// Layer architecture constraint violation
 pub const CODE_LAYER_VIOLATION: &str = "E206";
+/// Container/component not nested in a system
+pub const CODE_NESTING_VIOLATION: &str = "E207";
 
 // Validation Errors (E3xx)
 /// Property value fails validation

@@ -7,8 +7,8 @@ use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
 
 use crate::rules::{
-    CycleDetectionRule, DatabaseIsolationRule, GovernanceValidationRule, LayerViolationRule,
-    OrphanDetectionRule, PolicyEvaluationRule, PropertiesValidationRule,
+    ContainerNestingRule, CycleDetectionRule, DatabaseIsolationRule, GovernanceValidationRule,
+    LayerViolationRule, OrphanDetectionRule, PolicyEvaluationRule, PropertiesValidationRule,
     PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule, SimplicityRule,
     SloValidationRule, SourcesValidationRule, UniqueIdRule, ValidRefRule,
 };
@@ -99,6 +99,7 @@ impl Validator {
 
     /// Register all default validation rules (used by builder and with_default_rules).
     pub(crate) fn with_registered_default_rules(mut self) -> Self {
+        self.register_rule(Arc::new(ContainerNestingRule));
         self.register_rule(Arc::new(UniqueIdRule));
         self.register_rule(Arc::new(ValidRefRule));
         self.register_rule(Arc::new(OrphanDetectionRule));

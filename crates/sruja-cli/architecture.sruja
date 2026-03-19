@@ -12,12 +12,12 @@ user = person "User" {
 
 app = system "Application" {
   description "Main application system"
-}
 
-schemas = database "schemas" {
-  technology "Rust"
-  description "Schema storage"
+  schemas = database "schemas" {
+    technology "Rust"
+    description "Schema storage"
+  }
 }
 
 user -> app "uses"
-app -> schemas "reads from"
+app -> app.schemas "reads from"

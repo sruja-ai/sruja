@@ -10,17 +10,57 @@ Sruja is a domain-specific language (DSL) for defining software architecture mod
 
 ### File Structure
 
-Sruja uses a **flat syntax** — all declarations are top-level, no wrapper blocks required.
+Sruja uses a **nested syntax** that follows the C4 model hierarchy:
+
+- **Systems** are defined at the top level
+- **Containers** must be nested inside a system
+- **Components** must be nested inside a container
+- **Persons** can be defined at the top level (external actors)
 
 ```sruja
-// Elements
-User = person "User"
-Shop = system "E-commerce Shop"
+// Element kinds (required at top of file)
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+component = kind "Component"
 
-// Relationships
-User -> Shop "uses"
+// External actors (top level)
+User = person "User" {
+  description "End user of the system"
+}
 
-// Governance
+// System with nested containers
+Shop = system "E-commerce Shop" {
+  description "Online shopping platform"
+
+  // Containers MUST be nested inside systems
+  WebApp = container "Web Application" {
+    technology "React"
+    description "Customer-facing web app"
+
+    // Components MUST be nested inside containers
+    Cart = component "Shopping Cart" {
+      description "Shopping cart functionality"
+    }
+  }
+
+  API = container "API Gateway" {
+    technology "Node.js"
+    description "API gateway"
+  }
+
+  DB = database "Product Database" {
+    technology "PostgreSQL"
+    description "Product catalog storage"
+  }
+}
+
+// Relationships between nested elements use dot notation
+User -> Shop.WebApp "Browses"
+Shop.WebApp -> Shop.API "Calls"
+Shop.API -> Shop.DB "Reads/Writes"
+
+// Governance (top level)
 R1 = requirement functional "Must handle 10k users"
 SecurityPolicy = policy "Encrypt all data" category "security"
 ```
@@ -599,9 +639,9 @@ view container_view of Shop {
 
 ## Key Rules
 
-1. **Flat Syntax**: All declarations are top-level, no `specification {}`, `model {}`, or `views {}` wrapper blocks
+1. **Nested Syntax**: Containers and components must be nested inside their parent element (system and container respectively). Only persons, systems, and governance items (requirements, ADRs, policies) can be at top level.
 2. **IDs**: Must be unique within their scope
-3. **References**: Use dot notation (e.g., `System.Container`)
+3. **References**: Use dot notation (e.g., `System.Container`, `System.Container.Component`)
 4. **Relations**: Can be defined anywhere (implied relationships are automatically inferred)
 5. **Metadata**: Freeform key-value pairs
 6. **Descriptions**: Optional string values

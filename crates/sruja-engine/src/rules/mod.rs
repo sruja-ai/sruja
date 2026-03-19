@@ -1,5 +1,6 @@
 //! Validation rules for Sruja architectures
 
+pub mod container_nesting;
 pub mod cycle;
 pub mod database_isolation;
 pub mod governance_validation;
@@ -16,6 +17,7 @@ pub mod sources_validation;
 pub mod unique_id;
 pub mod valid_ref;
 
+pub use container_nesting::ContainerNestingRule;
 pub use cycle::CycleDetectionRule;
 pub use database_isolation::DatabaseIsolationRule;
 pub use governance_validation::GovernanceValidationRule;

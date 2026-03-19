@@ -27,248 +27,248 @@ Contributor = person "Contributor" {
   doc "book/src/docs/concepts/person.md"
 }
 
-// Main System
+// Main System with nested containers and components
 Sruja = system "Sruja Platform" {
   description "Tools for defining, visualizing, and analyzing software architecture"
   tags ["platform", "architecture-as-code"]
   doc "skills/sruja-architecture/references/REFERENCE.md"
+
+  CLI = container "Sruja CLI" {
+    technology "Rust, clap"
+    description "Command-line interface for Sruja operations"
+    tags ["cli", "backend"]
+
+    Commands = component "CLI Commands" {
+      description "lint, export, and other subcommands"
+      technology "Rust, crates/sruja-cli"
+    }
+  }
+
+  Diagnostics = container "Diagnostics" {
+    technology "Rust, crates/sruja-diagnostics"
+    description "Diagnostic codes, spans, and JSON/text formatting"
+    tags ["core"]
+  }
+
+  Language = container "Language Engine" {
+    technology "Rust"
+    description "DSL parsing, AST, and language processing"
+    tags ["core", "parser"]
+
+    Lexer = component "Lexer" {
+      description "Tokenizes Sruja DSL input"
+      technology "Rust, crates/sruja-language"
+    }
+
+    Parser = component "Parser" {
+      description "Parses tokens into Abstract Syntax Tree"
+      technology "Rust, crates/sruja-language"
+    }
+
+    AST = component "AST Builder" {
+      description "Builds and manages Abstract Syntax Tree"
+      technology "Rust, crates/sruja-language"
+    }
+
+    Printer = component "Printer" {
+      description "Formats and prints AST back to DSL"
+      technology "Rust, crates/sruja-language"
+    }
+  }
+
+  Engine = container "Validation Engine" {
+    technology "Rust"
+    description "Validates architecture models against rules"
+    tags ["validation", "rules"]
+
+    Validator = component "Validator" {
+      description "Orchestrates validation rules execution"
+      technology "Rust, crates/sruja-engine"
+    }
+
+    Scorer = component "Scorer" {
+      description "Calculates architecture health scores"
+      technology "Rust, crates/sruja-engine"
+    }
+
+    Rules = component "Validation Rules" {
+      description "Unique ID, valid refs, cycles, orphans, causal/feedback loop integrity"
+      technology "Rust, crates/sruja-engine"
+    }
+
+    Resolver = component "Reference Resolver" {
+      description "Resolves and validates references"
+      technology "Rust, crates/sruja-engine"
+    }
+  }
+
+  Export = container "Export System" {
+    technology "Rust"
+    description "Exports architecture models to various formats"
+    tags ["export"]
+
+    MermaidExporter = component "Mermaid Exporter" {
+      description "Exports to Mermaid diagram format"
+      technology "Rust, crates/sruja-export"
+    }
+
+    ViewGenerator = component "View Generator" {
+      description "Generates views and diagrams"
+      technology "Rust, crates/sruja-export"
+    }
+  }
+
+  WASM = container "WASM Bindings" {
+    technology "Rust, wasm-bindgen, crates/sruja-wasm"
+    description "WASM module for in-editor and docs preview (lint/export without a local CLI)"
+    tags ["wasm", "core"]
+  }
+
+  Graph = container "Knowledge Graph" {
+    technology "Rust, crates/sruja-graph"
+    description "Graph algorithms and queries (centrality, coupling, SCC, etc.)"
+    tags ["intelligence"]
+  }
+
+  Scan = container "Repository Scanner" {
+    technology "Rust, Tree-sitter, crates/sruja-scan"
+    description "Multi-language repository scanning and dependency graph extraction"
+    tags ["intelligence"]
+  }
+
+  Diff = container "Drift / Diff" {
+    technology "Rust, crates/sruja-diff"
+    description "Drift detection and delta computation between declared and discovered architecture"
+    tags ["intelligence"]
+  }
+
+  Intent = container "Intent" {
+    technology "Rust, crates/sruja-intent"
+    description "Intent vs reality comparisons and intent parsing (ADRs)"
+    tags ["intelligence"]
+  }
+
+  Report = container "Reports" {
+    technology "Rust, crates/sruja-report"
+    description "Compliance and report generation utilities"
+    tags ["intelligence"]
+  }
+
+  LSP = container "LSP / IDE Support" {
+    technology "Rust, crates/sruja-lsp"
+    description "Language Server Protocol server for IDE integration"
+    tags ["lsp", "ide"]
+
+    Diagnostics = component "Diagnostics" {
+      description "Error and warning reporting"
+      technology "Rust, crates/sruja-lsp"
+    }
+
+    Completion = component "Completion" {
+      description "Code completion support"
+      technology "Rust, crates/sruja-lsp"
+    }
+
+    Hover = component "Hover" {
+      description "Hover information"
+      technology "Rust, crates/sruja-lsp"
+    }
+
+    Definition = component "Definition" {
+      description "Go to definition support"
+      technology "Rust, crates/sruja-lsp"
+    }
+  }
+
+  Stdlib = container "Standard Library" {
+    technology "Sruja DSL"
+    description "Standard C4 element definitions and styles"
+    tags ["stdlib", "core"]
+
+    CoreElements = component "Core Elements" {
+      description "Standard C4 element kinds (person, system, container, component, etc.)"
+      technology "Sruja DSL, lib/"
+    }
+
+    Styles = component "Styles" {
+      description "Standard styling definitions"
+      technology "Sruja DSL, lib/"
+    }
+  }
+
+  Book = container "Documentation Site (mdBook)" {
+    technology "Rust, mdBook"
+    description "Docs site and courses built from markdown; published as a static site"
+    tags ["docs"]
+  }
+
+  VSCode = container "VS Code Extension" {
+    technology "TypeScript, VS Code API"
+    description "VS Code language support"
+    tags ["frontend", "ide"]
+
+    LanguageSupport = component "Language Support" {
+      description "Syntax highlighting, LSP integration"
+      technology "VS Code API"
+    }
+
+    Preview = component "Preview" {
+      description "Diagram preview"
+      technology "VS Code Webview"
+    }
+  }
+
+  // Container relationships
+  CLI -> Language "Calls"
+  CLI -> Engine "Calls"
+  CLI -> Export "Calls"
+  CLI -> Diagnostics "Formats diagnostics"
+  CLI -> Scan "Discovers"
+  CLI -> Graph "Queries"
+  CLI -> Diff "Computes drift"
+  CLI -> Intent "Checks intent"
+  CLI -> Report "Generates reports"
+
+  // Component relationships within containers
+  Language.Lexer -> Language.Parser "Tokenizes"
+  Language.Parser -> Language.AST "Builds AST"
+  Language.AST -> Language.Printer "Formats"
+  Language -> Stdlib "Uses"
+  Language -> Diagnostics "Reports via"
+
+  Language.Parser -> Engine "Validates AST"
+  Language.AST -> Export "Exports"
+  Engine -> Diagnostics "Reports via"
+  Export -> Diagnostics "Reports via"
+
+  Engine.Validator -> Engine.Rules "Executes"
+  Engine.Validator -> Engine.Resolver "Uses"
+  Engine.Scorer -> Engine.Validator "Uses"
+
+  Engine -> Export "Validates before export"
+
+  WASM -> Language "Parses"
+  WASM -> Engine "Validates"
+  WASM -> Export "Exports"
+  WASM -> Diagnostics "Reports via"
+
+  LSP -> Language "Parses"
+  LSP -> Engine "Validates"
+  LSP -> Diagnostics "Reports via"
+
+  Scan -> Graph "Populates"
+  Diff -> Graph "Reads"
+  Diff -> Scan "Compares"
+  Intent -> Diff "Compares"
 }
-
-// Core (Rust)
-Sruja_CLI = container "Sruja CLI" {
-  technology "Rust, clap"
-  description "Command-line interface for Sruja operations"
-  tags ["cli", "backend"]
-}
-
-Sruja_CLI_Commands = component "CLI Commands" {
-  description "lint, export, and other subcommands"
-  technology "Rust, crates/sruja-cli"
-}
-
-Sruja_Diagnostics = container "Diagnostics" {
-  technology "Rust, crates/sruja-diagnostics"
-  description "Diagnostic codes, spans, and JSON/text formatting"
-  tags ["core"]
-}
-
-Sruja_Language = container "Language Engine" {
-  technology "Rust"
-  description "DSL parsing, AST, and language processing"
-  tags ["core", "parser"]
-}
-
-Sruja_Language_Lexer = component "Lexer" {
-  description "Tokenizes Sruja DSL input"
-  technology "Rust, crates/sruja-language"
-}
-
-Sruja_Language_Parser = component "Parser" {
-  description "Parses tokens into Abstract Syntax Tree"
-  technology "Rust, crates/sruja-language"
-}
-
-Sruja_Language_AST = component "AST Builder" {
-  description "Builds and manages Abstract Syntax Tree"
-  technology "Rust, crates/sruja-language"
-}
-
-Sruja_Language_Printer = component "Printer" {
-  description "Formats and prints AST back to DSL"
-  technology "Rust, crates/sruja-language"
-}
-
-Sruja_Engine = container "Validation Engine" {
-  technology "Rust"
-  description "Validates architecture models against rules"
-  tags ["validation", "rules"]
-}
-
-Sruja_Engine_Validator = component "Validator" {
-  description "Orchestrates validation rules execution"
-  technology "Rust, crates/sruja-engine"
-}
-
-Sruja_Engine_Scorer = component "Scorer" {
-  description "Calculates architecture health scores"
-  technology "Rust, crates/sruja-engine"
-}
-
-Sruja_Engine_Rules = component "Validation Rules" {
-  description "Unique ID, valid refs, cycles, orphans, causal/feedback loop integrity"
-  technology "Rust, crates/sruja-engine"
-}
-
-Sruja_Engine_Resolver = component "Reference Resolver" {
-  description "Resolves and validates references"
-  technology "Rust, crates/sruja-engine"
-}
-
-Sruja_Export = container "Export System" {
-  technology "Rust"
-  description "Exports architecture models to various formats"
-  tags ["export"]
-}
-
-Sruja_Export_MermaidExporter = component "Mermaid Exporter" {
-  description "Exports to Mermaid diagram format"
-  technology "Rust, crates/sruja-export"
-}
-
-Sruja_Export_ViewGenerator = component "View Generator" {
-  description "Generates views and diagrams"
-  technology "Rust, crates/sruja-export"
-}
-
-Sruja_WASM = container "WASM Bindings" {
-  technology "Rust, wasm-bindgen, crates/sruja-wasm"
-  description "WASM module for in-editor and docs preview (lint/export without a local CLI)"
-  tags ["wasm", "core"]
-}
-
-Sruja_Graph = container "Knowledge Graph" {
-  technology "Rust, crates/sruja-graph"
-  description "Graph algorithms and queries (centrality, coupling, SCC, etc.)"
-  tags ["intelligence"]
-}
-
-Sruja_Scan = container "Repository Scanner" {
-  technology "Rust, Tree-sitter, crates/sruja-scan"
-  description "Multi-language repository scanning and dependency graph extraction"
-  tags ["intelligence"]
-}
-
-Sruja_Diff = container "Drift / Diff" {
-  technology "Rust, crates/sruja-diff"
-  description "Drift detection and delta computation between declared and discovered architecture"
-  tags ["intelligence"]
-}
-
-Sruja_Intent = container "Intent" {
-  technology "Rust, crates/sruja-intent"
-  description "Intent vs reality comparisons and intent parsing (ADRs)"
-  tags ["intelligence"]
-}
-
-Sruja_Report = container "Reports" {
-  technology "Rust, crates/sruja-report"
-  description "Compliance and report generation utilities"
-  tags ["intelligence"]
-}
-
-Sruja_LSP = container "LSP / IDE Support" {
-  technology "Rust, crates/sruja-lsp"
-  description "Language Server Protocol server for IDE integration"
-  tags ["lsp", "ide"]
-}
-
-Sruja_LSP_Diagnostics = component "Diagnostics" {
-  description "Error and warning reporting"
-  technology "Rust, crates/sruja-lsp"
-}
-
-Sruja_LSP_Completion = component "Completion" {
-  description "Code completion support"
-  technology "Rust, crates/sruja-lsp"
-}
-
-Sruja_LSP_Hover = component "Hover" {
-  description "Hover information"
-  technology "Rust, crates/sruja-lsp"
-}
-
-Sruja_LSP_Definition = component "Definition" {
-  description "Go to definition support"
-  technology "Rust, crates/sruja-lsp"
-}
-
-Sruja_Stdlib = container "Standard Library" {
-  technology "Sruja DSL"
-  description "Standard C4 element definitions and styles"
-  tags ["stdlib", "core"]
-}
-
-Sruja_Stdlib_CoreElements = component "Core Elements" {
-  description "Standard C4 element kinds (person, system, container, component, etc.)"
-  technology "Sruja DSL, lib/"
-}
-
-Sruja_Stdlib_Styles = component "Styles" {
-  description "Standard styling definitions"
-  technology "Sruja DSL, lib/"
-}
-
-Sruja_Book = container "Documentation Site (mdBook)" {
-  technology "Rust, mdBook"
-  description "Docs site and courses built from markdown; published as a static site"
-  tags ["docs"]
-}
-
-Sruja_VSCode = container "VS Code Extension" {
-  technology "TypeScript, VS Code API"
-  description "VS Code language support"
-  tags ["frontend", "ide"]
-}
-
-Sruja_VSCode_LanguageSupport = component "Language Support" {
-  description "Syntax highlighting, LSP integration"
-  technology "VS Code API"
-}
-
-Sruja_VSCode_Preview = component "Preview" {
-  description "Diagram preview"
-  technology "VS Code Webview"
-}
-
-// Backend relationships
-Sruja_CLI -> Sruja_Language "Calls"
-Sruja_CLI -> Sruja_Engine "Calls"
-Sruja_CLI -> Sruja_Export "Calls"
-Sruja_CLI -> Sruja_Diagnostics "Formats diagnostics"
-Sruja_CLI -> Sruja_Scan "Discovers"
-Sruja_CLI -> Sruja_Graph "Queries"
-Sruja_CLI -> Sruja_Diff "Computes drift"
-Sruja_CLI -> Sruja_Intent "Checks intent"
-Sruja_CLI -> Sruja_Report "Generates reports"
-
-Sruja_Language_Lexer -> Sruja_Language_Parser "Tokenizes"
-Sruja_Language_Parser -> Sruja_Language_AST "Builds AST"
-Sruja_Language_AST -> Sruja_Language_Printer "Formats"
-Sruja_Language -> Sruja_Stdlib "Uses"
-Sruja_Language -> Sruja_Diagnostics "Reports via"
-
-Sruja_Language_Parser -> Sruja_Engine "Validates AST"
-Sruja_Language_AST -> Sruja_Export "Exports"
-Sruja_Engine -> Sruja_Diagnostics "Reports via"
-Sruja_Export -> Sruja_Diagnostics "Reports via"
-
-Sruja_Engine_Validator -> Sruja_Engine_Rules "Executes"
-Sruja_Engine_Validator -> Sruja_Engine_Resolver "Uses"
-Sruja_Engine_Scorer -> Sruja_Engine_Validator "Uses"
-
-Sruja_Engine -> Sruja_Export "Validates before export"
-
-Sruja_WASM -> Sruja_Language "Parses"
-Sruja_WASM -> Sruja_Engine "Validates"
-Sruja_WASM -> Sruja_Export "Exports"
-Sruja_WASM -> Sruja_Diagnostics "Reports via"
-
-Sruja_LSP -> Sruja_Language "Parses"
-Sruja_LSP -> Sruja_Engine "Validates"
-Sruja_LSP -> Sruja_Diagnostics "Reports via"
-
-Sruja_Scan -> Sruja_Graph "Populates"
-Sruja_Diff -> Sruja_Graph "Reads"
-Sruja_Diff -> Sruja_Scan "Compares"
-Sruja_Intent -> Sruja_Diff "Compares"
 
 // User relationships
-Architect -> Sruja_CLI "Uses"
-Architect -> Sruja_VSCode "Writes DSL"
-Architect -> Sruja_Book "Reads docs"
+Architect -> Sruja.CLI "Uses"
+Architect -> Sruja.VSCode "Writes DSL"
+Architect -> Sruja.Book "Reads docs"
 
-Developer -> Sruja_CLI "Runs lint/compile"
-Developer -> Sruja_VSCode "Writes code"
+Developer -> Sruja.CLI "Runs lint/compile"
+Developer -> Sruja.VSCode "Writes code"
 
 Contributor -> Sruja "Contributes to"
 
@@ -313,16 +313,16 @@ NoCycles = policy "Architecture graph must be acyclic" {
 
 // Flows
 AuthoringFlow = flow "Authoring Architecture" {
-  step Architect -> Sruja_VSCode "Writes DSL"
-  step Sruja_VSCode -> Sruja_WASM "Validates and exports diagram"
-  step Sruja_VSCode -> Sruja_LSP "Optional IDE language features"
+  step Architect -> Sruja.VSCode "Writes DSL"
+  step Sruja.VSCode -> Sruja.WASM "Validates and exports diagram"
+  step Sruja.VSCode -> Sruja.LSP "Optional IDE language features"
 }
 
 CICDFlow = flow "CI/CD Verification" {
-  step Developer -> Sruja_CLI "Pushes code"
-  step Sruja_CLI -> Sruja_Engine "Runs lint"
-  step Sruja_CLI -> Sruja_Export "Runs export json"
-  step Sruja_CLI -> Sruja_Export "Generates artifacts"
+  step Developer -> Sruja.CLI "Pushes code"
+  step Sruja.CLI -> Sruja.Engine "Runs lint"
+  step Sruja.CLI -> Sruja.Export "Runs export json"
+  step Sruja.CLI -> Sruja.Export "Generates artifacts"
 }
 
 // Views
@@ -334,29 +334,29 @@ view index {
 view backend of Sruja {
   title "Backend Components"
   description "Rust core and LSP components"
-  include Sruja_CLI, Sruja_Diagnostics, Sruja_Language, Sruja_Engine, Sruja_Export, Sruja_WASM, Sruja_LSP, Sruja_Stdlib, Sruja_Scan, Sruja_Graph, Sruja_Diff, Sruja_Intent, Sruja_Report
+  include Sruja.CLI, Sruja.Diagnostics, Sruja.Language, Sruja.Engine, Sruja.Export, Sruja.WASM, Sruja.LSP, Sruja.Stdlib, Sruja.Scan, Sruja.Graph, Sruja.Diff, Sruja.Intent, Sruja.Report
 }
 
 view interfaces of Sruja {
   title "Developer Interfaces"
   description "How developers interact with Sruja"
-  include Sruja_CLI, Sruja_VSCode, Sruja_Book
+  include Sruja.CLI, Sruja.VSCode, Sruja.Book
 }
 
-view validation of Sruja_Engine {
+view validation of Sruja.Engine {
   title "Validation Rules"
   description "Engine components"
-  include Sruja_Engine_Validator, Sruja_Engine_Scorer, Sruja_Engine_Rules, Sruja_Engine_Resolver
+  include Sruja.Engine.Validator, Sruja.Engine.Scorer, Sruja.Engine.Rules, Sruja.Engine.Resolver
 }
 
-view exporters of Sruja_Export {
+view exporters of Sruja.Export {
   title "Export Formats"
   description "Export components"
-  include Sruja_Export_MermaidExporter, Sruja_Export_ViewGenerator
+  include Sruja.Export.MermaidExporter, Sruja.Export.ViewGenerator
 }
 
 view dataflow of Sruja {
   title "Data Processing Flow"
   description "How DSL is processed through the system"
-  include Sruja_Language, Sruja_Engine, Sruja_Export
+  include Sruja.Language, Sruja.Engine, Sruja.Export
 }

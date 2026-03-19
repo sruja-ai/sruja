@@ -151,10 +151,17 @@ npm run test:vscode
 ### Sruja DSL (.sruja files)
 
 **Structure:**
-- Flat top-level declarations (no `architecture "Name" { }` wrapper)
-- Define components before use in relationships
+- **Nested syntax following C4 hierarchy**: Systems at top level, containers nested in systems, components nested in containers
+- Persons and external systems can be at top level
+- Define kinds at the top of file before using them
 - PascalCase for element IDs
 - Double quotes for all string values
+
+**Nesting Requirements:**
+- `container`, `component`, `database`, `queue` MUST be nested inside a system
+- `component` MUST be nested inside a container (or system for edge cases)
+- `system` and `person` can be at top level
+- Use dot notation to reference nested elements: `System.Container`, `System.Container.Component`
 
 **Components:**
 - Every component must have a `description` field
@@ -166,7 +173,7 @@ npm run test:vscode
 **Relationships:**
 - Syntax: `source -> target "label"`
 - Use specific, descriptive labels ("HTTPS", "REST API", "publishes events to")
-- Reference nested components: `System.Container`
+- Reference nested components: `System.Container.Component`
 - Avoid circular dependencies
 - No orphan components
 
@@ -241,10 +248,19 @@ export async function myFunction(): Promise<void> {
 
 **Sruja DSL:**
 ```sruja
-MyComponent = container "My Component" {
-  technology "Node.js"
-  description "A deployable service"
+MySystem = system "My System" {
+  description "A deployable system"
+
+  MyContainer = container "My Container" {
+    technology "Node.js"
+    description "A deployable service"
+  }
+
+  Database = database "Database" {
+    technology "PostgreSQL"
+    description "Data storage"
+  }
 }
 
-MyComponent -> Database "SQL"
+MySystem.MyContainer -> MySystem.Database "SQL"
 ```

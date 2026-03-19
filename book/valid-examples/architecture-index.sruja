@@ -10,73 +10,78 @@ import { * } from 'sruja.ai/stdlib'
 // Architecture Elements with Source Bindings
 // ============================================
 
-// Example: Full-featured container with all new fields
-Payments = container "Payment Service" {
-  technology "Go"
-  description "Handles payment processing for the platform"
-  
-  // Identity - canonical ID and aliases found in codebase
-  id "svc.payments"
-  aliases ["payments-api", "payments-service", "PAYMENTS_SVC"]
-  
-  // Structured metadata
-  owner "team-payments"
-  domain "commerce"
-  criticality high
-  
-  // Source bindings - AI follows these to get details
-  source openapi "./specs/payments.yaml"
-  source kubernetes "./k8s/payments/"
-  source readme "./services/payments/README.md"
-  source docs "./docs/services/payments.md"
-  
-  // Existing fields continue to work
-  doc ".sruja/knowledge/Payments.md"
-  tags ["api", "payments", "critical"]
-  
-  slo {
-    availability { target "99.99%" }
-    latency { p95 "100ms" p99 "200ms" }
+// Example: System containing all internal services
+Commerce = system "Commerce Platform" {
+  description "E-commerce platform handling payments, checkout, and orders"
+
+  // Example: Full-featured container with all new fields
+  Payments = container "Payment Service" {
+    technology "Go"
+    description "Handles payment processing for the platform"
+    
+    // Identity - canonical ID and aliases found in codebase
+    id "svc.payments"
+    aliases ["payments-api", "payments-service", "PAYMENTS_SVC"]
+    
+    // Structured metadata
+    owner "team-payments"
+    domain "commerce"
+    criticality high
+    
+    // Source bindings - AI follows these to get details
+    source openapi "./specs/payments.yaml"
+    source kubernetes "./k8s/payments/"
+    source readme "./services/payments/README.md"
+    source docs "./docs/services/payments.md"
+    
+    // Existing fields continue to work
+    doc ".sruja/knowledge/Payments.md"
+    tags ["api", "payments", "critical"]
+    
+    slo {
+      availability { target "99.99%" }
+      latency { p95 "100ms" p99 "200ms" }
+    }
   }
-}
 
-// Example: Simpler container with minimal new fields
-Checkout = container "Checkout Service" {
-  technology "Node.js"
-  description "Handles checkout flow"
-  
-  id "svc.checkout"
-  owner "team-checkout"
-  domain "commerce"
-  criticality high
-  
-  source openapi "./specs/checkout.yaml"
-  source kubernetes "./k8s/checkout/"
-}
+  // Example: Simpler container with minimal new fields
+  Checkout = container "Checkout Service" {
+    technology "Node.js"
+    description "Handles checkout flow"
+    
+    id "svc.checkout"
+    owner "team-checkout"
+    domain "commerce"
+    criticality high
+    
+    source openapi "./specs/checkout.yaml"
+    source kubernetes "./k8s/checkout/"
+  }
 
-// Example: Database with source binding
-PrimaryDB = database "Primary Database" {
-  technology "PostgreSQL 15"
-  description "Main transactional database"
-  
-  id "db.primary"
-  owner "team-platform"
-  criticality critical
-  
-  source docs "./docs/database/schema.md"
-  source terraform "./infra/database/"
-}
+  // Example: Database with source binding
+  PrimaryDB = database "Primary Database" {
+    technology "PostgreSQL 15"
+    description "Main transactional database"
+    
+    id "db.primary"
+    owner "team-platform"
+    criticality critical
+    
+    source docs "./docs/database/schema.md"
+    source terraform "./infra/database/"
+  }
 
-// Example: Queue with source binding
-OrderEvents = queue "Order Events" {
-  technology "Kafka"
-  description "Order processing event stream"
-  
-  id "queue.orders"
-  owner "team-orders"
-  
-  source asyncapi "./specs/order-events.yaml"
-  source docs "./docs/events/order-events.md"
+  // Example: Queue with source binding
+  OrderEvents = queue "Order Events" {
+    technology "Kafka"
+    description "Order processing event stream"
+    
+    id "queue.orders"
+    owner "team-orders"
+    
+    source asyncapi "./specs/order-events.yaml"
+    source docs "./docs/events/order-events.md"
+  }
 }
 
 // Example: External system
@@ -93,10 +98,10 @@ StripeAPI = system "Stripe" {
 // Relationships
 // ============================================
 
-Checkout -> Payments "processes payment via"
-Payments -> PrimaryDB "persists to"
-Payments -> StripeAPI "charges via"
-Checkout -> OrderEvents "publishes to"
+Commerce.Checkout -> Commerce.Payments "processes payment via"
+Commerce.Payments -> Commerce.PrimaryDB "persists to"
+Commerce.Payments -> StripeAPI "charges via"
+Commerce.Checkout -> Commerce.OrderEvents "publishes to"
 
 // ============================================
 // Governance
