@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.22.1...sruja-v0.23.0) (2026-03-20)
+
+
+### Features
+
+* add MCP stdio server and Cursor registration ([7633ea4](https://github.com/sruja-ai/sruja/commit/7633ea40b9adb60e6b661c98dab181b6022ac32d))
+* **context:** add repomap command and enhance discover --context ([5027071](https://github.com/sruja-ai/sruja/commit/50270717337176d849cb6bb56ed31ce039bd6cf4))
+
 ## [0.22.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.22.0...sruja-v0.22.1) (2026-03-20)
 
 
