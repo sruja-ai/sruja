@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.22.0...sruja-v0.22.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* resolve lint issues in sruja-cli commands ([ef659df](https://github.com/sruja-ai/sruja/commit/ef659df484fe06091b82fe742024e6c2d6d1a273))
+* wasm build + check output improvements ([1bd466d](https://github.com/sruja-ai/sruja/commit/1bd466d0f49a4ae6f68d5c5070e5793f6d00aba4))
+
 ## [0.22.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.21.0...sruja-v0.22.0) (2026-03-19)
 
 
