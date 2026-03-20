@@ -10,6 +10,7 @@ import {
   SrujaHoverProvider,
   SrujaDocumentSymbolProvider,
   SrujaDiagramCodeLensProvider,
+  SrujaCodeActionProvider,
   resolveDocUri,
   docUriExists,
 } from "./providers";
@@ -206,6 +207,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const diagramCodeLensProvider = new SrujaDiagramCodeLensProvider(context);
   context.subscriptions.push(
     vscode.languages.registerCodeLensProvider("sruja", diagramCodeLensProvider)
+  );
+
+  const codeActionProvider = new SrujaCodeActionProvider();
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider("sruja", codeActionProvider, {
+      providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
+    })
   );
 
   // Register custom editor for markdown preview (shows "Open Preview" button in editor title)

@@ -104,6 +104,21 @@ export class Diagnostic {
   }
 }
 
+export class WorkspaceEdit {
+  insert(_uri: Uri, _position: Position, _text: string): void {}
+}
+
+export class CodeAction {
+  diagnostics?: Diagnostic[];
+  edit?: WorkspaceEdit;
+  constructor(public title: string, public kind?: CodeActionKind) {}
+}
+
+export class CodeActionKind {
+  static QuickFix = new CodeActionKind("quickfix");
+  constructor(public value: string) {}
+}
+
 export class DiagnosticCollection {
   set(_uri: Uri, _diagnostics: Diagnostic[]): void {}
   delete(_uri: Uri): void {}
@@ -114,6 +129,7 @@ export const languages = {
   registerDefinitionProvider: () => {},
   registerHoverProvider: () => {},
   registerDocumentSymbolProvider: () => {},
+  registerCodeActionsProvider: () => {},
   createDiagnosticCollection: () => new DiagnosticCollection(),
 };
 

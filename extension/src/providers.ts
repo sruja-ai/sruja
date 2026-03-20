@@ -10,6 +10,7 @@ import {
   wasmRangeToVscodeRange,
   SrujaElement,
 } from "./wasm";
+import { extractMissingFieldName, getDiagnosticCodeValue } from "./lintParser";
 
 export interface ElementRange {
   start: { line: number; character: number };
@@ -363,5 +364,87 @@ export class SrujaDiagramCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     return lenses;
+  }
+}
+
+function findLineIndexToInsertAfterOpenBrace(
+  document: vscode.TextDocument,
+  startLine: number
+): number | null {
+  const maxLookahead = Math.min(document.lineCount - 1, startLine + 10);
+  for (let i = startLine; i <= maxLookahead; i++) {
+    const line = document.lineAt(i).text;
+    if (line.includes("{")) return i;
+    if (line.includes("}")) return null;
+  }
+  return null;
+}
+
+function blockContainsField(
+  document: vscode.TextDocument,
+  openBraceLine: number,
+  fieldName: string
+): boolean {
+  let depth = 0;
+  for (let i = openBraceLine; i < document.lineCount; i++) {
+    const line = document.lineAt(i).text;
+    depth += (line.match(/\{/g) ?? []).length;
+    depth -= (line.match(/\}/g) ?? []).length;
+    if (i > openBraceLine) {
+      if (new RegExp(`^\\s*${fieldName}\\b`).test(line)) return true;
+    }
+    if (depth <= 0 && i > openBraceLine) break;
+  }
+  return false;
+}
+
+function buildAddMissingFieldQuickFix(
+  document: vscode.TextDocument,
+  diagnostic: vscode.Diagnostic
+): vscode.CodeAction | null {
+  const code = getDiagnosticCodeValue(diagnostic);
+  if (code !== "E302") return null;
+
+  const fieldName = extractMissingFieldName(diagnostic.message);
+  if (!fieldName) return null;
+
+  const openBraceLine = findLineIndexToInsertAfterOpenBrace(
+    document,
+    diagnostic.range.start.line
+  );
+  if (openBraceLine == null) return null;
+
+  if (blockContainsField(document, openBraceLine, fieldName)) return null;
+
+  const openLineText = document.lineAt(openBraceLine).text;
+  const indent = (openLineText.match(/^\s*/)?.[0] ?? "") + "  ";
+  const insertLine = openBraceLine + 1;
+  const pos = new vscode.Position(insertLine, 0);
+  const newText = `${indent}${fieldName} "..."` + "\n";
+
+  const action = new vscode.CodeAction(
+    `Add ${fieldName} "..."`,
+    vscode.CodeActionKind.QuickFix
+  );
+  action.diagnostics = [diagnostic];
+  action.edit = new vscode.WorkspaceEdit();
+  action.edit.insert(document.uri, pos, newText);
+  return action;
+}
+
+export class SrujaCodeActionProvider implements vscode.CodeActionProvider {
+  provideCodeActions(
+    document: vscode.TextDocument,
+    _range: vscode.Range,
+    context: vscode.CodeActionContext,
+    _token: vscode.CancellationToken
+  ): vscode.CodeAction[] {
+    if (document.languageId !== "sruja") return [];
+    const actions: vscode.CodeAction[] = [];
+    for (const d of context.diagnostics) {
+      const quickFix = buildAddMissingFieldQuickFix(document, d);
+      if (quickFix) actions.push(quickFix);
+    }
+    return actions;
   }
 }

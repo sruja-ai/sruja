@@ -1,5 +1,6 @@
+import { describe, expect, it } from "@jest/globals";
 import * as vscode from "vscode";
-import { parseLintStderr, parseLintJson, parseLintOutput } from "./lintParser";
+import { parseLintStderr, parseLintJson, parseLintOutput, getDiagnosticCodeValue, extractMissingFieldName } from "./lintParser";
 import { getDiagramPreviewHtml, escapeMermaidForScript } from "./diagramPreview";
 
 describe("parseLintStderr", () => {
@@ -177,5 +178,44 @@ describe("escapeMermaidForScript", () => {
     expect(escapeMermaidForScript("cost $100")).toContain("\\$");
     expect(escapeMermaidForScript("</script>")).toContain("<\\/script>");
     expect(escapeMermaidForScript("</SCRIPT>")).toContain("<\\/script>");
+  });
+});
+
+describe("getDiagnosticCodeValue", () => {
+  it("returns string codes", () => {
+    const d = new vscode.Diagnostic(new vscode.Range(0, 0, 0, 0), "msg");
+    d.code = "E201";
+    expect(getDiagnosticCodeValue(d)).toBe("E201");
+  });
+
+  it("returns number codes", () => {
+    const d = new vscode.Diagnostic(new vscode.Range(0, 0, 0, 0), "msg");
+    d.code = 1234;
+    expect(getDiagnosticCodeValue(d)).toBe(1234);
+  });
+
+  it("returns object .value codes", () => {
+    const d = new vscode.Diagnostic(new vscode.Range(0, 0, 0, 0), "msg");
+    d.code = { value: "E302", target: vscode.Uri.file("/docs/E302") };
+    expect(getDiagnosticCodeValue(d)).toBe("E302");
+  });
+
+  it("returns undefined when code is missing", () => {
+    const d = new vscode.Diagnostic(new vscode.Range(0, 0, 0, 0), "msg");
+    expect(getDiagnosticCodeValue(d)).toBeUndefined();
+  });
+});
+
+describe("extractMissingFieldName", () => {
+  it("extracts description from backticks", () => {
+    expect(extractMissingFieldName("Missing required field `description` on container `A`")).toBe("description");
+  });
+
+  it("extracts technology from quotes", () => {
+    expect(extractMissingFieldName("Missing required field \"technology\" on database `DB`")).toBe("technology");
+  });
+
+  it("returns null when not a missing-field message", () => {
+    expect(extractMissingFieldName("Cycle detected: A -> B -> A")).toBeNull();
   });
 });

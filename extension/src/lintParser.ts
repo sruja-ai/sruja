@@ -21,6 +21,35 @@ export interface LintJsonOutput {
 const MSG_RE = /^\[([^\]]+)\]\s+(Error|Warning|Info):\s+(.+)$/;
 const LOC_RE = /^\s+-->\s+(.+):(\d+):(\d+)$/;
 
+export function getDiagnosticCodeValue(
+  diag: vscode.Diagnostic
+): string | number | undefined {
+  const code = diag.code;
+  if (typeof code === "string" || typeof code === "number") return code;
+  if (
+    code &&
+    typeof code === "object" &&
+    "value" in code &&
+    (typeof (code as { value: unknown }).value === "string" ||
+      typeof (code as { value: unknown }).value === "number")
+  ) {
+    return (code as { value: string | number }).value;
+  }
+  return undefined;
+}
+
+export function extractMissingFieldName(message: string): string | null {
+  const m1 = /Missing required field\s+`([^`]+)`/i.exec(message);
+  if (m1) return m1[1].trim();
+  const m2 = /Missing required field\s+"([^"]+)"/i.exec(message);
+  if (m2) return m2[1].trim();
+  const m3 = /Missing required field\s+'([^']+)'/i.exec(message);
+  if (m3) return m3[1].trim();
+  const m4 = /Missing field\s+`([^`]+)`/i.exec(message);
+  if (m4) return m4[1].trim();
+  return null;
+}
+
 /**
  * Parse "sruja lint" stderr into diagnostics. Format:
  * [CODE] Error: message
