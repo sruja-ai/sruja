@@ -79,6 +79,170 @@ function getCliOutputChannel(): vscode.OutputChannel {
   return cliOutputChannel;
 }
 
+function toFsPathOrUri(uri: vscode.Uri): string {
+  return uri.scheme === "file" ? uri.fsPath : uri.toString();
+}
+
+function formatRangeOneBased(range: vscode.Range): string {
+  const line = range.start.line + 1;
+  const col = range.start.character + 1;
+  return `${line}:${col}`;
+}
+
+function formatDiagnosticSummary(rootPath: string | undefined, uri: vscode.Uri, d: vscode.Diagnostic): string {
+  const severity =
+    d.severity === vscode.DiagnosticSeverity.Error
+      ? "error"
+      : d.severity === vscode.DiagnosticSeverity.Warning
+        ? "warning"
+        : d.severity === vscode.DiagnosticSeverity.Information
+          ? "info"
+          : "hint";
+  const fsPath = toFsPathOrUri(uri);
+  const rel = rootPath && uri.scheme === "file" ? path.relative(rootPath, fsPath) : fsPath;
+  const where = `${rel}:${formatRangeOneBased(d.range)}`;
+  const msg = String(d.message).replace(/\s+/g, " ").trim();
+  return `- [${severity}] ${where} ${msg}`;
+}
+
+async function readContextJsonSummary(folder: vscode.WorkspaceFolder): Promise<{
+  path: string;
+  size: number;
+  mtimeMs: number;
+  truthStatus?: string;
+}> {
+  const contextUri = vscode.Uri.joinPath(folder.uri, ".sruja", "context.json");
+  const stat = await vscode.workspace.fs.stat(contextUri);
+  const summary = { path: contextUri.fsPath, size: stat.size, mtimeMs: stat.mtime } as {
+    path: string;
+    size: number;
+    mtimeMs: number;
+    truthStatus?: string;
+  };
+  if (stat.size > 512_000) return summary;
+  try {
+    const raw = await vscode.workspace.fs.readFile(contextUri);
+    const text = Buffer.from(raw).toString("utf8");
+    const parsed = parseJsonSafe<{ truth_status?: string }>(text);
+    if (parsed.ok && typeof parsed.value.truth_status === "string") {
+      summary.truthStatus = parsed.value.truth_status;
+    }
+  } catch {
+    return summary;
+  }
+  return summary;
+}
+
+async function buildContextPack(context: vscode.ExtensionContext): Promise<string> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  const rootPath = folder?.uri.fsPath;
+
+  const editor = vscode.window.activeTextEditor;
+  const activeDoc = editor?.document;
+  const activePath = activeDoc ? toFsPathOrUri(activeDoc.uri) : undefined;
+  const activeRel = rootPath && activeDoc?.uri.scheme === "file" ? path.relative(rootPath, activeDoc.uri.fsPath) : activePath;
+
+  const selectionText = (() => {
+    if (!editor || !activeDoc) return undefined;
+    const sel = editor.selection;
+    if (!sel.isEmpty) {
+      const selected = activeDoc.getText(sel).trimEnd();
+      return selected.length > 0 ? selected : undefined;
+    }
+    const line = sel.active.line;
+    const start = Math.max(0, line - 20);
+    const end = Math.min(activeDoc.lineCount - 1, line + 20);
+    const lines: string[] = [];
+    for (let i = start; i <= end; i++) {
+      lines.push(activeDoc.lineAt(i).text);
+    }
+    const snippet = lines.join("\n").trimEnd();
+    return snippet.length > 0 ? snippet : undefined;
+  })();
+
+  const visibleEditors = vscode.window.visibleTextEditors
+    .map((e) => e.document.uri)
+    .filter((u, idx, arr) => arr.findIndex((x) => x.toString() === u.toString()) === idx);
+
+  const diagEntries = vscode.languages.getDiagnostics();
+  const flattened = diagEntries
+    .flatMap(([uri, diags]) => diags.map((d) => ({ uri, d })))
+    .filter(({ d }) => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning);
+
+  const diagLines = flattened.slice(0, 80).map(({ uri, d }) => formatDiagnosticSummary(rootPath, uri, d));
+  const diagOmitted = Math.max(0, flattened.length - diagLines.length);
+
+  let contextJsonLine: string | undefined;
+  if (folder) {
+    try {
+      const summary = await readContextJsonSummary(folder);
+      const parts = [`path=${summary.path}`, `size=${summary.size}B`];
+      if (summary.truthStatus) parts.push(`truth=${summary.truthStatus}`);
+      contextJsonLine = `- context.json ${parts.join(" ")}`;
+    } catch {
+      contextJsonLine = undefined;
+    }
+  }
+
+  const skillsRoot = getSkillsRoot(context);
+  const skills = getSkills(context);
+  const skillsLine =
+    skillsRoot && skills.length > 0
+      ? `- skills root=${skillsRoot.fsPath} skills=${skills.map((s) => s.name).join(", ")}`
+      : skillsRoot
+        ? `- skills root=${skillsRoot.fsPath} skills=none`
+        : "- skills root=none";
+
+  const now = new Date().toISOString();
+  const lines: string[] = [];
+  lines.push("# Sruja Context Pack");
+  lines.push("");
+  lines.push(`- generated=${now}`);
+  lines.push(`- workspace=${rootPath ?? "none"}`);
+  lines.push(`- activeFile=${activeRel ?? "none"}`);
+  lines.push("");
+  if (selectionText) {
+    const lang = activeDoc?.languageId ?? "";
+    lines.push("## Focus");
+    lines.push("");
+    lines.push("```" + lang);
+    lines.push(selectionText);
+    lines.push("```");
+    lines.push("");
+  }
+  if (visibleEditors.length > 0) {
+    lines.push("## Open Editors");
+    lines.push("");
+    for (const u of visibleEditors) {
+      const fsPath = toFsPathOrUri(u);
+      const rel = rootPath && u.scheme === "file" ? path.relative(rootPath, fsPath) : fsPath;
+      lines.push(`- ${rel}`);
+    }
+    lines.push("");
+  }
+  lines.push("## Diagnostics");
+  lines.push("");
+  if (diagLines.length === 0) {
+    lines.push("- none");
+  } else {
+    lines.push(...diagLines);
+    if (diagOmitted > 0) lines.push(`- ... (${diagOmitted} more omitted)`);
+  }
+  lines.push("");
+  lines.push("## Sruja");
+  lines.push("");
+  lines.push(skillsLine);
+  if (contextJsonLine) lines.push(contextJsonLine);
+  lines.push("");
+  lines.push("## Ask");
+  lines.push("");
+  lines.push("- What is the root cause?");
+  lines.push("- What is the smallest safe change?");
+  lines.push("- Show exact files/lines to edit.");
+  lines.push("");
+  return lines.join("\n");
+}
+
 /** Run a Sruja CLI command in the workspace root. Throws if no folder open. */
 async function runCliInWorkspace(args: string[]): Promise<{ stdout: string; stderr: string; code: number }> {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -86,6 +250,60 @@ async function runCliInWorkspace(args: string[]): Promise<{ stdout: string; stde
     throw new Error("No workspace folder open. Open a folder to run context engineering.");
   }
   return runCli(getSrujaPath(), args, folder.uri.fsPath);
+}
+
+async function registerMcpServer(): Promise<void> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (!folder) {
+    vscode.window.showWarningMessage("Open a workspace folder to register the MCP server.");
+    return;
+  }
+
+  const serverName = "sruja";
+  const command = getSrujaPath();
+  const args = ["mcp"];
+
+  const cursorMcp = (vscode as unknown as { cursor?: { mcp?: { registerServer?: (cfg: unknown) => Promise<void> } } })
+    .cursor?.mcp;
+
+  if (cursorMcp?.registerServer) {
+    try {
+      await cursorMcp.registerServer({ name: serverName, type: "stdio", command, args });
+      vscode.window.showInformationMessage("Sruja MCP server registered in Cursor.");
+      return;
+    } catch {
+    }
+  }
+
+  const cursorDir = vscode.Uri.joinPath(folder.uri, ".cursor");
+  const cursorConfigUri = vscode.Uri.joinPath(cursorDir, "mcp.json");
+  await vscode.workspace.fs.createDirectory(cursorDir);
+
+  let existing: unknown = undefined;
+  try {
+    const raw = await vscode.workspace.fs.readFile(cursorConfigUri);
+    const text = Buffer.from(raw).toString("utf8");
+    const parsed = parseJsonSafe<Record<string, unknown>>(text);
+    if (parsed.ok) existing = parsed.value;
+  } catch {
+    existing = undefined;
+  }
+
+  const base = (existing && typeof existing === "object" ? (existing as Record<string, unknown>) : {}) as Record<string, unknown>;
+  const mcpServers =
+    base.mcpServers && typeof base.mcpServers === "object" ? (base.mcpServers as Record<string, unknown>) : {};
+
+  mcpServers[serverName] = {
+    type: "stdio",
+    command,
+    args,
+  };
+
+  const next = { ...base, mcpServers };
+  const jsonText = JSON.stringify(next, null, 2) + "\n";
+  await vscode.workspace.fs.writeFile(cursorConfigUri, Buffer.from(jsonText, "utf8"));
+
+  vscode.window.showInformationMessage(`Sruja MCP server registered in ${path.relative(folder.uri.fsPath, cursorConfigUri.fsPath)}.`);
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -148,6 +366,34 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
+    vscode.commands.registerCommand("sruja.commandCenter", async () => {
+      const items: { label: string; detail?: string; command: string }[] = [
+        { label: "Run validation", command: "sruja.runValidation" },
+        { label: "Open Diagram Preview", command: "sruja.openDiagramPreview" },
+        { label: "Open Focused Diagram Preview", command: "sruja.openFocusedDiagramPreview" },
+        { label: "Export architecture to Markdown", command: "sruja.exportMarkdown" },
+        { label: "Open Markdown Preview", command: "sruja.openMarkdownPreview" },
+        { label: "Open component knowledge", command: "sruja.openComponentKnowledge" },
+        { label: "Open Skills Overview", command: "sruja.openSkillsOverview" },
+        { label: "Open Agent Guide (AGENTS.md)", command: "sruja.openAgentGuide" },
+        { label: "List Rules…", command: "sruja.listRules" },
+        { label: "Copy Rule for AI", command: "sruja.copyRuleForAI" },
+        { label: "Copy Agent Guide for AI", command: "sruja.copyAgentGuideForAI" },
+        { label: "Copy Context Pack for AI", command: "sruja.copyContextPackForAI" },
+        { label: "Run drift (architecture health)", command: "sruja.runDrift" },
+        { label: "Refresh repo context", command: "sruja.refreshContext" },
+        { label: "Status", command: "sruja.status" },
+        { label: "Review architecture update", command: "sruja.review" },
+      ];
+      const pick = isTest
+        ? items[0]
+        : await vscode.window.showQuickPick(
+          items.map((i) => ({ label: i.label, detail: i.detail, item: i })),
+          { placeHolder: "Sruja Command Center" }
+        ).then((p) => p?.item);
+      if (!pick) return;
+      await vscode.commands.executeCommand(pick.command);
+    }),
     vscode.commands.registerCommand("sruja.runValidation", async () => {
       const editor = vscode.window.activeTextEditor;
       const doc = editor?.document;
@@ -345,6 +591,17 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage(`Copied "${skill.name}" agent guide to clipboard.`);
       } catch (e) {
         vscode.window.showErrorMessage(`Failed to read agent guide: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }),
+    vscode.commands.registerCommand("sruja.copyContextPackForAI", async () => {
+      try {
+        const text = await buildContextPack(context);
+        await vscode.env.clipboard.writeText(text);
+        vscode.window.showInformationMessage(`Copied context pack to clipboard (${text.length} chars).`);
+      } catch (err) {
+        vscode.window.showErrorMessage(
+          `Failed to build context pack: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }),
     vscode.commands.registerCommand("sruja.exportMarkdown", async () => {
@@ -593,6 +850,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("sruja.markdownPreview", openMarkdownPreview),
     vscode.commands.registerCommand("sruja.openMarkdownPreview", openMarkdownPreview),
+    vscode.commands.registerCommand("sruja.registerMcpServer", registerMcpServer),
     vscode.commands.registerCommand("sruja.runDrift", async () => {
       const channel = getCliOutputChannel();
       channel.clear();

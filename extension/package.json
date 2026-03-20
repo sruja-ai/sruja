@@ -98,6 +98,10 @@
     },
     "commands": [
       {
+        "command": "sruja.commandCenter",
+        "title": "Sruja: Command Center"
+      },
+      {
         "command": "sruja.runValidation",
         "title": "Sruja: Run validation (check after AI/edit)"
       },
@@ -164,6 +168,14 @@
       {
         "command": "sruja.openMarkdownPreview",
         "title": "Sruja: Open Markdown Preview"
+      },
+      {
+        "command": "sruja.copyContextPackForAI",
+        "title": "Sruja: Copy Context Pack for AI"
+      },
+      {
+        "command": "sruja.registerMcpServer",
+        "title": "Sruja: Register MCP Server (Cursor)"
       }
     ],
     "menus": {

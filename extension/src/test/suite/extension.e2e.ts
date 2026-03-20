@@ -25,6 +25,7 @@ export function runTests({ describe, it, beforeAll, assert }: {
       const commands = await vscode.commands.getCommands(true);
       const srujaCommands = commands.filter((c) => c.startsWith("sruja."));
       const expected = [
+        "sruja.commandCenter",
         "sruja.runValidation",
         "sruja.exportMarkdown",
         "sruja.openDiagramPreview",
@@ -37,6 +38,8 @@ export function runTests({ describe, it, beforeAll, assert }: {
         "sruja.listRules",
         "sruja.copyRuleForAI",
         "sruja.copyAgentGuideForAI",
+        "sruja.copyContextPackForAI",
+        "sruja.registerMcpServer",
         "sruja.runDrift",
         "sruja.refreshContext",
         "sruja.status",
@@ -115,6 +118,9 @@ export function runTests({ describe, it, beforeAll, assert }: {
         "sruja.openSkillsOverview",
         "sruja.openAgentGuide",
         "sruja.listRules",
+        "sruja.copyContextPackForAI",
+        "sruja.registerMcpServer",
+        "sruja.commandCenter",
       ];
       for (const cmd of commands) {
         await assert.doesNotReject(

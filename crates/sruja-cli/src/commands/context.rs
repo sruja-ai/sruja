@@ -6,6 +6,7 @@ use std::path::Path;
 use sruja_scan::{scan_repo, Graph, NodeKind};
 
 use super::CliError;
+use crate::selection::compute_all_centrality;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct AiContext {
@@ -59,14 +60,13 @@ struct BoundaryRule {
     reason: String,
 }
 
-pub async fn context_export(
+pub async fn context_string(
     repo_root: &str,
     format: &str,
-    output: Option<&str>,
     file: Option<&str>,
     intent: Option<&str>,
     depth: usize,
-) -> Result<(), CliError> {
+) -> Result<String, CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
@@ -78,18 +78,28 @@ pub async fn context_export(
     let graph = scan_repo(repo_path)?;
     let context = build_ai_context(&graph, repo_root, file, intent, depth)?;
 
-    let content = match format {
-        "cursor-rules" => format_cursor_rules(&context),
-        "copilot-instructions" => format_copilot_instructions(&context),
-        "markdown" => format_markdown(&context),
-        "json" | "for-ai" => serde_json::to_string_pretty(&context)?,
-        _ => {
-            return Err(CliError::Validation(format!(
-            "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, json, for-ai",
+    match format {
+        "cursor-rules" => Ok(format_cursor_rules(&context)),
+        "copilot-instructions" => Ok(format_copilot_instructions(&context)),
+        "markdown" => Ok(format_markdown(&context)),
+        "repomap" => Ok(format_repomap(&context, &graph)),
+        "json" | "for-ai" => Ok(serde_json::to_string_pretty(&context)?),
+        _ => Err(CliError::Validation(format!(
+            "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, repomap, json, for-ai",
             format
-        )))
-        }
-    };
+        ))),
+    }
+}
+
+pub async fn context_export(
+    repo_root: &str,
+    format: &str,
+    output: Option<&str>,
+    file: Option<&str>,
+    intent: Option<&str>,
+    depth: usize,
+) -> Result<(), CliError> {
+    let content = context_string(repo_root, format, file, intent, depth).await?;
 
     if let Some(path) = output {
         fs::write(path, &content)?;
@@ -591,6 +601,196 @@ fn format_markdown(context: &AiContext) -> String {
     md
 }
 
+fn format_repomap(context: &AiContext, graph: &Graph) -> String {
+    let mut out = String::new();
+    out.push_str("# Sruja Repomap\n\n");
+    out.push_str(&format!("Repo: {}\n", context.repo));
+    out.push_str(&format!("Nodes: {}\n", graph.nodes.len()));
+    out.push_str(&format!("Edges: {}\n", graph.edges.len()));
+
+    let scores = compute_all_centrality(graph);
+    let node_by_id: std::collections::HashMap<&str, &sruja_scan::Node> =
+        graph.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+
+    let mut outgoing: std::collections::HashMap<&str, std::collections::HashSet<&str>> =
+        std::collections::HashMap::new();
+    let mut incoming: std::collections::HashMap<&str, std::collections::HashSet<&str>> =
+        std::collections::HashMap::new();
+    for e in &graph.edges {
+        let src = e.source.as_str();
+        let tgt = e.target.as_str();
+        if src == tgt {
+            continue;
+        }
+        outgoing.entry(src).or_default().insert(tgt);
+        incoming.entry(tgt).or_default().insert(src);
+    }
+
+    let repo_root = Path::new(&context.repo);
+    let repo_prefix = repo_root
+        .canonicalize()
+        .ok()
+        .and_then(|p| p.to_str().map(|s| s.replace('\\', "/")));
+
+    out.push_str("\n## Top Nodes\n\n");
+
+    let mut ranked: Vec<(&sruja_scan::Node, f64)> = graph
+        .nodes
+        .iter()
+        .filter(|n| !n.id.contains('#'))
+        .map(|n| {
+            let pr = scores.get(&n.id).map(|s| s.pagerank).unwrap_or(0.0_f64);
+            (n, pr)
+        })
+        .collect();
+
+    ranked.sort_by(|left, right| {
+        let (a, ap) = left;
+        let (b, bp) = right;
+        bp.partial_cmp(ap)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.id.cmp(&b.id))
+    });
+
+    let top_limit = 30usize;
+    for (n, pr) in ranked
+        .into_iter()
+        .filter(|(n, _)| {
+            matches!(
+                n.kind,
+                NodeKind::Service | NodeKind::Database | NodeKind::ExternalApi | NodeKind::Module
+            )
+        })
+        .take(top_limit)
+    {
+        let kind = repomap_kind(n.kind);
+        let path = n
+            .path
+            .as_deref()
+            .and_then(|p| repomap_relative_path(p, repo_prefix.as_deref()));
+
+        if let Some(p) = &path {
+            out.push_str(&format!("- {}: {} ({}) [pr={:.3}]\n", kind, n.label, p, pr));
+        } else {
+            out.push_str(&format!("- {}: {} [pr={:.3}]\n", kind, n.label, pr));
+        }
+
+        let deps = outgoing
+            .get(n.id.as_str())
+            .map(|s| repomap_top_neighbors(s, &node_by_id, &scores, 5))
+            .unwrap_or_default();
+        if !deps.is_empty() {
+            out.push_str(&format!("  deps: {}\n", deps.join(", ")));
+        }
+
+        let used_by = incoming
+            .get(n.id.as_str())
+            .map(|s| repomap_top_neighbors(s, &node_by_id, &scores, 5))
+            .unwrap_or_default();
+        if !used_by.is_empty() {
+            out.push_str(&format!("  used_by: {}\n", used_by.join(", ")));
+        }
+    }
+
+    if let Some(focus) = &context.focus {
+        out.push_str("\n## Focus\n\n");
+        out.push_str(&format!("- File: {}\n", focus.file));
+        if let Some(intent) = &focus.intent {
+            out.push_str(&format!("- Intent: {}\n", intent));
+        }
+        out.push_str(&format!("- Depth: {}\n", focus.depth));
+
+        if !focus.matched_nodes.is_empty() {
+            out.push_str("\nMatched nodes:\n");
+            for n in &focus.matched_nodes {
+                let path = n
+                    .path
+                    .as_deref()
+                    .and_then(|p| repomap_relative_path(p, repo_prefix.as_deref()));
+                if let Some(p) = path {
+                    out.push_str(&format!(
+                        "- {}: {} ({})\n",
+                        repomap_kind(n.kind),
+                        n.label,
+                        p
+                    ));
+                } else {
+                    out.push_str(&format!("- {}: {}\n", repomap_kind(n.kind), n.label));
+                }
+            }
+        }
+
+        if let Some(br) = &focus.blast_radius {
+            out.push_str(&format!(
+                "\nBlast radius: {} upstream, {} downstream\n",
+                br.upstream.len(),
+                br.downstream.len()
+            ));
+        }
+    }
+
+    out
+}
+
+fn repomap_kind(kind: NodeKind) -> &'static str {
+    match kind {
+        NodeKind::Service => "service",
+        NodeKind::Database => "database",
+        NodeKind::ExternalApi => "external_api",
+        NodeKind::Module => "module",
+        _ => "node",
+    }
+}
+
+fn repomap_relative_path(path: &str, repo_prefix: Option<&str>) -> Option<String> {
+    let normalized = path.replace('\\', "/");
+    let rel = if let Some(prefix) = repo_prefix {
+        normalized
+            .strip_prefix(prefix)
+            .or_else(|| normalized.strip_prefix(&format!("{}/", prefix)))
+            .unwrap_or(normalized.as_str())
+            .trim_start_matches('/')
+            .to_string()
+    } else {
+        normalized
+            .trim_start_matches("./")
+            .trim_start_matches('/')
+            .to_string()
+    };
+    if rel.is_empty() {
+        None
+    } else {
+        Some(rel)
+    }
+}
+
+fn repomap_top_neighbors(
+    neighbors: &std::collections::HashSet<&str>,
+    node_by_id: &std::collections::HashMap<&str, &sruja_scan::Node>,
+    scores: &std::collections::HashMap<String, crate::selection::ComponentImportance>,
+    limit: usize,
+) -> Vec<String> {
+    let mut v: Vec<(&str, f64, &str)> = neighbors
+        .iter()
+        .filter_map(|id| {
+            let n = node_by_id.get(id)?;
+            let pr = scores.get(n.id.as_str()).map(|s| s.pagerank).unwrap_or(0.0);
+            Some((n.label.as_str(), pr, n.id.as_str()))
+        })
+        .collect();
+
+    v.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.2.cmp(b.2))
+    });
+
+    v.into_iter()
+        .take(limit)
+        .map(|(label, _, _)| label.to_string())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -632,5 +832,26 @@ mod tests {
         assert_eq!(focus.file, "src/lib.rs");
         assert!(focus.matched_nodes.iter().any(|n| n.id == "src_lib_rs"));
         assert!(focus.blast_radius.is_some());
+    }
+
+    #[test]
+    fn repomap_includes_top_nodes_and_focus() {
+        let graph = Graph {
+            metadata: HashMap::new(),
+            nodes: vec![
+                node("svc", NodeKind::Service, Some("/repo/svc/main.rs")),
+                node("db", NodeKind::Database, Some("/repo/db/schema.sql")),
+                node("mod", NodeKind::Module, Some("/repo/src/lib.rs")),
+            ],
+            edges: vec![edge("svc", "db"), edge("svc", "mod")],
+        };
+
+        let context = build_ai_context(&graph, "/repo", Some("src/lib.rs"), Some("fix-bug"), 1)
+            .expect("ai context should build");
+        let repomap = format_repomap(&context, &graph);
+        assert!(repomap.contains("# Sruja Repomap"));
+        assert!(repomap.contains("## Top Nodes"));
+        assert!(repomap.contains("## Focus"));
+        assert!(repomap.contains("File: src/lib.rs"));
     }
 }

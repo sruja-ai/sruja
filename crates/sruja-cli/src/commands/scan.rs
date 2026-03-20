@@ -441,6 +441,75 @@ pub async fn drift(
     Ok(())
 }
 
+pub async fn drift_json_string(
+    repo_root: &str,
+    architecture_path: Option<&str>,
+    violations_only: bool,
+) -> Result<String, CliError> {
+    let repo_path = Path::new(repo_root);
+
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let actual_graph = scan_repo(repo_path)?;
+
+    let resolved = architecture_path::resolve_architecture_path(repo_path);
+    let effective_arch = architecture_path.or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
+
+    if let Some(arch_path) = effective_arch {
+        let arch_file = Path::new(arch_path);
+        if !arch_file.exists() {
+            return Err(CliError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Architecture file not found: {}", arch_path),
+            )));
+        }
+        let content = fs::read_to_string(arch_file)?;
+        let parser = sruja_language::Parser::new(arch_path);
+        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
+            file: arch_path.to_string(),
+            message: diags
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; "),
+            diagnostics: diags,
+        })?;
+        let proposed_graph = sruja_diff::program_to_graph(&program);
+        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
+
+        if !violations_only {
+            return Ok(serde_json::to_string_pretty(&diff_result)?);
+        }
+
+        let value = serde_json::to_value(&diff_result)?;
+        let out = serde_json::json!({
+            "truth_status": value.get("truth_status").cloned().unwrap_or(serde_json::Value::Null),
+            "summary": value.get("summary").cloned().unwrap_or(serde_json::Value::Null),
+            "violations": value.get("violations").cloned().unwrap_or(serde_json::Value::Null)
+        });
+        return Ok(serde_json::to_string_pretty(&out)?);
+    }
+
+    let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
+
+    if !violations_only {
+        return Ok(serde_json::to_string_pretty(&drift_result)?);
+    }
+
+    let value = serde_json::to_value(&drift_result)?;
+    let out = serde_json::json!({
+        "truth_status": value.get("truth_status").cloned().unwrap_or(serde_json::Value::Null),
+        "health_score": value.get("health_score").cloned().unwrap_or(serde_json::Value::Null),
+        "violations": value.get("violations").cloned().unwrap_or(serde_json::Value::Null)
+    });
+    Ok(serde_json::to_string_pretty(&out)?)
+}
+
 /// Result of `sruja status`: baseline path, truth status, and counts for extension/CI.
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct StatusOutput {

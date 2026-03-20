@@ -151,6 +151,8 @@ enum Commands {
         #[arg(long)]
         stdio: bool,
     },
+    /// Start MCP server (stdio)
+    Mcp,
     /// Compile a Sruja file
     Compile {
         /// Path to .sruja file
@@ -512,6 +514,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Fmt { file, check } => commands::fmt(&file, check).await,
         Commands::Lsp { .. } => commands::lsp().await,
+        Commands::Mcp => commands::mcp().await,
         Commands::Compile { file } => commands::compile(&file).await,
         Commands::Validate {
             file,
