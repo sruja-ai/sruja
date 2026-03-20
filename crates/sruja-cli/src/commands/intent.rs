@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use sruja_intent::{
-    AdrParser, AdrStatus, DriftDetector, DriftKind, IntentIntelligence, IntentModel, IntentReport,
+    AdrParser, AdrStatus, DriftDetector, DriftKind, IntentContext, IntentModel, IntentReport,
     ParsedAdr, Severity,
 };
 use sruja_scan::scan_repo;
@@ -86,7 +86,7 @@ pub async fn intent_check(
 
     let graph = scan_repo(repo_path)?;
 
-    let mut intelligence = IntentIntelligence::new();
+    let mut context = IntentContext::new();
 
     let intent_dir = if let Some(path) = intent_path {
         PathBuf::from(path)
@@ -94,9 +94,7 @@ pub async fn intent_check(
         repo_path.join("docs").join("architecture")
     };
 
-    let models = intelligence
-        .load_from_directory(&intent_dir)
-        .unwrap_or_default();
+    let models = context.load_from_directory(&intent_dir).unwrap_or_default();
 
     let mut merged_model = IntentModel::default();
     for model in models {
@@ -230,7 +228,7 @@ pub async fn intent_propose(repo_root: &str, intent_path: Option<&str>) -> Resul
 
     let graph = scan_repo(repo_path)?;
 
-    let mut intelligence = IntentIntelligence::new();
+    let mut context = IntentContext::new();
 
     let intent_dir = if let Some(path) = intent_path {
         PathBuf::from(path)
@@ -238,9 +236,7 @@ pub async fn intent_propose(repo_root: &str, intent_path: Option<&str>) -> Resul
         repo_path.join("docs").join("architecture")
     };
 
-    let models = intelligence
-        .load_from_directory(&intent_dir)
-        .unwrap_or_default();
+    let models = context.load_from_directory(&intent_dir).unwrap_or_default();
 
     let mut merged_model = IntentModel::default();
     for model in models {

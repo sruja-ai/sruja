@@ -127,7 +127,7 @@
 
 ## 11. sruja-intent
 
-- **What:** Load intent from .sruja + ADRs (`IntentIntelligence::load_from_directory`), compare to scan graph (`DriftDetector::detect`), produce drift report (undocumented/missing components and relationships, boundary/policy violations).
+- **What:** Load intent from .sruja + ADRs (`IntentContext::load_from_directory`), compare to scan graph (`DriftDetector::detect`), produce drift report (undocumented/missing components and relationships, boundary/policy violations).
 - **Consumers:** sruja-cli: commands/intent.rs (`sruja intent check`), commands/compliance.rs (intent drift entries in ComplianceReport).
 - **User value:**
   - **`sruja intent check -r . -i <dir>`:** “Does the codebase match our declared architecture and ADRs?” Single command for intent vs reality.

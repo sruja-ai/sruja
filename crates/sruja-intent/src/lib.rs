@@ -19,11 +19,11 @@ pub use report::{IntentReport, IntentViolation};
 
 use std::path::Path;
 
-pub struct IntentIntelligence {
+pub struct IntentContext {
     models: Vec<IntentModel>,
 }
 
-impl IntentIntelligence {
+impl IntentContext {
     pub fn new() -> Self {
         Self { models: Vec::new() }
     }
@@ -62,7 +62,7 @@ impl IntentIntelligence {
     }
 }
 
-impl Default for IntentIntelligence {
+impl Default for IntentContext {
     fn default() -> Self {
         Self::new()
     }

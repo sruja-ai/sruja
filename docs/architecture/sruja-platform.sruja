@@ -178,31 +178,31 @@ Sruja = system "Sruja Platform" {
   Graph = container "Knowledge Graph" {
     technology "Rust, crates/sruja-graph"
     description "Graph algorithms and queries (centrality, coupling, SCC, etc.)"
-    tags ["intelligence"]
+    tags ["context"]
   }
 
   Scan = container "Repository Scanner" {
     technology "Rust, Tree-sitter, crates/sruja-scan"
     description "Multi-language repository scanning and dependency graph extraction"
-    tags ["intelligence"]
+    tags ["context"]
   }
 
   Diff = container "Drift / Diff" {
     technology "Rust, crates/sruja-diff"
     description "Drift detection and delta computation between declared and discovered architecture"
-    tags ["intelligence"]
+    tags ["context"]
   }
 
   Intent = container "Intent" {
     technology "Rust, crates/sruja-intent"
     description "Intent vs reality comparisons and intent parsing (ADRs)"
-    tags ["intelligence"]
+    tags ["context"]
   }
 
   Report = container "Reports" {
     technology "Rust, crates/sruja-report"
     description "Compliance and report generation utilities"
-    tags ["intelligence"]
+    tags ["context"]
   }
 
   LSP = container "LSP / IDE Support" {

@@ -584,7 +584,7 @@ api = container "API" {
 "#;
         std::fs::write(&sruja_path, minimal_sruja).expect("write sruja");
 
-        let mut intelligence = crate::IntentIntelligence::new();
+        let mut intelligence = crate::IntentContext::new();
         let models = intelligence
             .load_from_directory(temp_dir.path())
             .expect("load from directory");

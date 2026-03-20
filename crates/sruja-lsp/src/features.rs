@@ -21,9 +21,7 @@ pub fn word_bounds(line: &str, pos: usize) -> (usize, usize) {
             }
 
             let mut left_start = left_end;
-            while left_start > 0
-                && is_ident_char(line.chars().nth(left_start - 1).unwrap_or(' '))
-            {
+            while left_start > 0 && is_ident_char(line.chars().nth(left_start - 1).unwrap_or(' ')) {
                 left_start -= 1;
             }
 
@@ -207,8 +205,7 @@ pub fn get_hover(
     if let Some(arrow_idx) = line_text.find("->") {
         if character >= arrow_idx && character < arrow_idx + 2 {
             let mut left_pos = arrow_idx;
-            while left_pos > 0
-                && !is_ident_char(line_text.chars().nth(left_pos - 1).unwrap_or(' '))
+            while left_pos > 0 && !is_ident_char(line_text.chars().nth(left_pos - 1).unwrap_or(' '))
             {
                 left_pos -= 1;
             }

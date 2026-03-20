@@ -1,8 +1,8 @@
-# Architecture Intelligence Analysis: Sruja DSL vs Knowledge Graph
+# Architecture Context Engineering Analysis: Sruja DSL vs Knowledge Graph
 
 ## Executive Summary
 
-**Sruja DSL alone is NOT sufficient** for comprehensive architecture intelligence. The current hybrid approach (DSL + Knowledge Graph) is correct. This document explains why and provides recommendations.
+**Sruja DSL alone is NOT sufficient** for comprehensive architecture context. The current hybrid approach (DSL + Knowledge Graph) is correct. This document explains why and provides recommendations.
 
 ---
 
@@ -13,7 +13,7 @@
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | **DSL + AST** | Sruja Language | File-based, declarative architecture definitions |
-| **Knowledge Graph** | sruja-graph | Multi-source, queryable architecture intelligence |
+| **Knowledge Graph** | sruja-graph | Multi-source, queryable architecture context |
 
 ### Data Flow
 
@@ -73,8 +73,8 @@
 
 ### 3. **Validation Rules vs Intelligence Rules**
 
-| DSL Validation | Knowledge Graph Intelligence |
-|---------------|------------------------------|
+| DSL Validation | Knowledge Graph Context |
+|---------------|-------------------------||
 | Duplicate IDs | "This pattern often leads to outages" |
 | Invalid refs | "Similar architectures failed at scale" |
 | Syntax errors | "Your SLO is unachievable with current stack" |
@@ -436,8 +436,8 @@ Skills provide the AI intelligence layer that multiplies CLI and Knowledge Graph
 
 ### Skill → Intelligence Layer Mapping
 
-| Intelligence Layer | CLI Commands | AI Skill Enhancement |
-|-------------------|--------------|---------------------|
+| Context Layer | CLI Commands | AI Skill Enhancement |
+|--------------|--------------|---------------------|||
 | **Syntactic** | `sruja lint` | `sruja-architecture` rules for correct DSL |
 | **Structural** | `sruja scan`, `sruja quickstart` | `sruja-architecture` discovery from code |
 | **Semantic** | `sruja analyze` | `sruja-architecture` patterns and trade-offs |

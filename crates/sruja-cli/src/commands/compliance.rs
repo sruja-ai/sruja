@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use sruja_diff::{compare_graphs, detect_architectural_drift, program_to_graph};
 use sruja_intent::{
     compare::{DriftKind, DriftReport as IntentDriftReport},
-    IntentIntelligence, IntentModel,
+    IntentContext, IntentModel,
 };
 use sruja_language::Parser;
 use sruja_report::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
@@ -77,8 +77,8 @@ pub async fn compliance(
     let intent_dir = resolve_intent_dir(repo_path, intent_path);
     let mut merged_model = IntentModel::default();
     if intent_dir.exists() {
-        let mut intelligence = IntentIntelligence::new();
-        if let Ok(models) = intelligence.load_from_directory(&intent_dir) {
+        let mut context = IntentContext::new();
+        if let Ok(models) = context.load_from_directory(&intent_dir) {
             for model in models {
                 merged_model.merge(model);
             }

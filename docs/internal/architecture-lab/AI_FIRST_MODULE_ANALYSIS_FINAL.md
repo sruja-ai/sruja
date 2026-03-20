@@ -1,4 +1,4 @@
-# AI-First Architecture Intelligence: Final Practical Direction
+# AI-First Architecture Context Engineering: Final Practical Direction
 
 **Status:** Final  
 **Date:** 2026-02-22  
@@ -12,7 +12,7 @@
 
 Sruja should be positioned as:
 
-> **Architecture memory + drift intelligence for real codebases.**
+> **Architecture memory + drift context for real codebases.**
 
 The first value must **not** require:
 - model keys
@@ -35,9 +35,9 @@ So the product entry point is:
 
 ---
 
-## 3. Zero-Model-Key First Value (Deterministic Intelligence)
+## 3. Zero-Model-Key First Value (Deterministic Context)
 
-Without LLM, Sruja still provides architecture intelligence via code evidence:
+Without LLM, Sruja still provides architecture context via code evidence:
 
 ### Inputs
 - source code + manifests (`sruja-scan`)
@@ -82,7 +82,7 @@ Validated from current code:
 - `sruja-mcp` is currently HTTP API surface, not full MCP transport implementation.
 - `sruja-diff` exists, but drift behavior is still partly duplicated in CLI logic.
 - `sruja-diagnostics` is shared broadly; merging into language now increases coupling.
-- Core checks/tests pass on workspace and architecture-intelligence E2E paths.
+- Core checks/tests pass on workspace and architecture-context E2E paths.
 
 ---
 
@@ -96,7 +96,7 @@ Validated from current code:
                                   |
                                   v
                   +-------------------------------+
-                  |  Architecture Intelligence     |
+                  |  Architecture Context         |
                   |  (single orchestration layer)  |
                   |  scan + query + drift + merge  |
                   +------+------------+------------+
@@ -219,7 +219,7 @@ If these move up, investment case is strong.
 
 ## 12. Final Recommendation
 
-1. Make **zero-key deterministic intelligence** the default product.
+1. Make **zero-key deterministic context** the default product.
 2. Make **CLI the hero** for immediate and obvious adoption.
 3. Keep **chat as backend orchestration**, not as mandatory user channel.
 4. Treat **LLM and Slack as acceleration layers**, not entry requirements.

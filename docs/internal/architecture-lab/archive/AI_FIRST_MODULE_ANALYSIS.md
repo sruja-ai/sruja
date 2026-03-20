@@ -1,4 +1,4 @@
-# AI-First Architecture Intelligence: Module Analysis
+# AI-First Architecture Context Engineering: Module Analysis
 
 ## Strategic Direction
 
@@ -20,7 +20,7 @@ This document analyzes each of the 16 modules against this strategy.
 | Aspect | Assessment |
 |--------|------------|
 | AI needs it? | **Yes** - AI reads/writes .sruja files |
-| Critical for intelligence? | **Yes** - Intent declarations are parsed here |
+| Critical for context? | **Yes** - Intent declarations are parsed here |
 | Maturity | Good - full language spec implemented |
 | Changes needed | Minor - add round-trip (AST → DSL) |
 
@@ -41,8 +41,8 @@ This document analyzes each of the 16 modules against this strategy.
 
 | Aspect | Assessment |
 |--------|------------|
-| AI needs it? | **Yes** - This IS the intelligence |
-| Critical for intelligence? | **Yes** - Core of the system |
+| AI needs it? | **Yes** - This IS the context layer |
+| Critical for context? | **Yes** - Core of the system |
 | Maturity | Basic - needs enhancement |
 | Changes needed | Major - add queries, temporal, provenance |
 
