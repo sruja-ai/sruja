@@ -18,9 +18,11 @@ use rayon::prelude::*;
 
 use self::detector::Language;
 use self::languages::ParsedFile;
+use crate::scan_scope::should_exclude_with_config;
 
 pub use detector::detect_language;
 
+#[derive(Clone)]
 pub struct ScanConfig {
     pub include_tests: bool,
     pub include_node_modules: bool,
@@ -264,70 +266,11 @@ fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
         .git_global(true)
         .git_exclude(true);
 
-    if !config.include_node_modules {
-        builder.filter_entry(|e| {
-            let name = e.file_name().to_string_lossy();
-            let path = e.path().to_string_lossy();
-            name != "node_modules"
-                && name != "target"
-                && name != "dist"
-                && name != "build"
-                && name != "vendor"
-                && name != ".git"
-                && !path.contains("/vendor/")
-        });
-    }
-
-    let exclude_examples = config.exclude_examples;
-    let exclude_benches = config.exclude_benches;
-    let exclude_fixtures = config.exclude_fixtures;
-    let exclude_docs = config.exclude_docs;
-
-    if !config.include_tests {
-        builder.filter_entry(move |e| {
-            let name = e.file_name().to_string_lossy();
-            let path = e.path().to_string_lossy();
-            let is_test = name.contains("test")
-                || name.contains("spec")
-                || name == "__tests__"
-                || path.contains("/tests/");
-            let is_docs = exclude_docs
-                && (name == "docs"
-                    || name == "documentation"
-                    || path.contains("/docs/")
-                    || path.contains("/documentation/"));
-
-            let is_example =
-                exclude_examples && (name.contains("example") || path.contains("/examples/"));
-            let is_bench =
-                exclude_benches && (name.contains("bench") || path.contains("/benches/"));
-            let is_fixtures = exclude_fixtures
-                && (name.contains("fixture")
-                    || path.contains("/fixtures/")
-                    || path.contains("/__mocks__/"));
-
-            !is_test && !is_example && !is_bench && !is_fixtures && !is_docs
-        });
-    } else {
-        builder.filter_entry(move |e| {
-            let name = e.file_name().to_string_lossy();
-            let path = e.path().to_string_lossy();
-            let is_docs = exclude_docs
-                && (name == "docs"
-                    || name == "documentation"
-                    || path.contains("/docs/")
-                    || path.contains("/documentation/"));
-            let is_example =
-                exclude_examples && (name.contains("example") || path.contains("/examples/"));
-            let is_bench =
-                exclude_benches && (name.contains("bench") || path.contains("/benches/"));
-            let is_fixtures = exclude_fixtures
-                && (name.contains("fixture")
-                    || path.contains("/fixtures/")
-                    || path.contains("/__mocks__/"));
-            !is_example && !is_bench && !is_fixtures && !is_docs
-        });
-    }
+    let config_clone = config.clone();
+    builder.filter_entry(move |e| {
+        let path = e.path();
+        !should_exclude_with_config(path, &config_clone)
+    });
 
     builder.build()
 }

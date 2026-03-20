@@ -7,10 +7,12 @@
 //! - drift
 //! - intent flows
 //! - context detection
+//! - tree-sitter walker
 
-use crate::ScanConfig;
 use std::collections::HashSet;
 use std::path::Path;
+
+use crate::tree_sitter::ScanConfig;
 
 /// Default exclude patterns for production-relevant code scanning.
 ///
@@ -229,6 +231,139 @@ pub fn should_exclude(path: &Path) -> bool {
     false
 }
 
+/// Check if a path should be excluded based on ScanConfig options.
+///
+/// This is the config-aware version of `should_exclude` that respects:
+/// - `include_tests`: if false, excludes test files and directories
+/// - `include_node_modules`: if false, excludes node_modules
+/// - `exclude_examples`: if true, excludes example files/directories
+/// - `exclude_benches`: if true, excludes benchmark files/directories
+/// - `exclude_fixtures`: if true, excludes fixture files/directories
+/// - `exclude_docs`: if true, excludes documentation files/directories
+///
+/// First applies the base `should_exclude` patterns, then applies config-specific overrides.
+pub fn should_exclude_with_config(path: &Path, config: &ScanConfig) -> bool {
+    let path_str = path.to_string_lossy();
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+    // First, apply base exclusions but respect config overrides
+    // We need to check each pattern individually to allow overrides
+
+    // Generated/build directories - always exclude
+    let always_exclude = [
+        "node_modules",
+        "target",
+        "dist",
+        "build",
+        ".next",
+        "out",
+        ".git",
+    ];
+    if always_exclude
+        .iter()
+        .any(|p| file_name == *p || path_str.contains(&format!("/{}", p)) || path_str == *p)
+    {
+        // Allow node_modules override
+        if file_name == "node_modules" || path_str.contains("/node_modules/") {
+            return !config.include_node_modules;
+        }
+        return true;
+    }
+
+    // Minified files - always exclude
+    if file_name.ends_with(".min.js") || file_name.ends_with(".min.css") {
+        return true;
+    }
+
+    // Vendor directories - always exclude
+    let vendor_dirs = ["vendor", "third_party"];
+    if vendor_dirs
+        .iter()
+        .any(|p| file_name == *p || path_str.contains(&format!("/{}", p)))
+    {
+        return true;
+    }
+
+    // Test files and directories - respect include_tests
+    if !config.include_tests {
+        let is_test_file = file_name.contains("test")
+            || file_name.contains("spec")
+            || file_name.ends_with("_test.rs")
+            || file_name.ends_with("_test.go")
+            || file_name.ends_with("_test.py")
+            || file_name.ends_with(".test.js")
+            || file_name.ends_with(".test.ts")
+            || file_name.ends_with(".spec.js")
+            || file_name.ends_with(".spec.ts");
+        let is_test_dir = file_name == "__tests__" || file_name == "tests" || file_name == "spec";
+        let in_test_dir = path_str.contains("/tests/")
+            || path_str.contains("/__tests__/")
+            || path_str.contains("/spec/");
+
+        if is_test_file || is_test_dir || in_test_dir {
+            return true;
+        }
+    }
+
+    // Examples - respect exclude_examples
+    if config.exclude_examples
+        && (file_name.contains("example")
+            || path_str.contains("/examples/")
+            || path_str.contains("/example/"))
+    {
+        return true;
+    }
+
+    // Benchmarks - respect exclude_benches
+    if config.exclude_benches
+        && (file_name.contains("bench")
+            || file_name.contains("benchmark")
+            || path_str.contains("/benches/")
+            || path_str.contains("/benchmark/"))
+    {
+        return true;
+    }
+
+    // Fixtures - respect exclude_fixtures
+    if config.exclude_fixtures
+        && (file_name.contains("fixture")
+            || path_str.contains("/fixtures/")
+            || path_str.contains("/__mocks__/")
+            || path_str.contains("/__fixtures__/")
+            || path_str.contains("/test_data/"))
+    {
+        return true;
+    }
+
+    // Documentation - respect exclude_docs
+    if config.exclude_docs
+        && (file_name == "docs"
+            || file_name == "documentation"
+            || path_str.contains("/docs/")
+            || path_str.contains("/documentation/")
+            || file_name.ends_with(".md")
+            || file_name.ends_with(".rst"))
+    {
+        return true;
+    }
+
+    // Other non-production
+    if file_name.starts_with(".env") || file_name.ends_with(".log") {
+        return true;
+    }
+
+    // Evaluation directories
+    if file_name == "evaluation"
+        || file_name == "perf"
+        || path_str.contains("/evaluation/")
+        || path_str.contains("/perf/")
+    {
+        return true;
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,5 +409,113 @@ mod tests {
         let scope = ScanScope::default();
         assert!(!scope.exclude_patterns.is_empty());
         assert!(scope.exclude_patterns.contains(&"node_modules".to_string()));
+    }
+
+    #[test]
+    fn test_should_exclude_with_config_tests() {
+        let config = ScanConfig {
+            include_tests: false,
+            ..Default::default()
+        };
+        assert!(should_exclude_with_config(
+            Path::new("/project/tests/test.rs"),
+            &config
+        ));
+        assert!(should_exclude_with_config(
+            Path::new("/project/src/module_test.rs"),
+            &config
+        ));
+
+        let config_with_tests = ScanConfig {
+            include_tests: true,
+            ..Default::default()
+        };
+        assert!(!should_exclude_with_config(
+            Path::new("/project/tests/test.rs"),
+            &config_with_tests
+        ));
+    }
+
+    #[test]
+    fn test_should_exclude_with_config_examples() {
+        let config = ScanConfig {
+            exclude_examples: true,
+            ..Default::default()
+        };
+        assert!(should_exclude_with_config(
+            Path::new("/project/examples/demo.rs"),
+            &config
+        ));
+
+        let config_include_examples = ScanConfig {
+            exclude_examples: false,
+            ..Default::default()
+        };
+        assert!(!should_exclude_with_config(
+            Path::new("/project/examples/demo.rs"),
+            &config_include_examples
+        ));
+    }
+
+    #[test]
+    fn test_should_exclude_with_config_benches() {
+        let config = ScanConfig {
+            exclude_benches: true,
+            ..Default::default()
+        };
+        assert!(should_exclude_with_config(
+            Path::new("/project/benches/benchmark.rs"),
+            &config
+        ));
+    }
+
+    #[test]
+    fn test_should_exclude_with_config_node_modules() {
+        let config = ScanConfig {
+            include_node_modules: false,
+            ..Default::default()
+        };
+        assert!(should_exclude_with_config(
+            Path::new("/project/node_modules/pkg/index.js"),
+            &config
+        ));
+
+        let config_include_node_modules = ScanConfig {
+            include_node_modules: true,
+            ..Default::default()
+        };
+        assert!(!should_exclude_with_config(
+            Path::new("/project/node_modules/pkg/index.js"),
+            &config_include_node_modules
+        ));
+    }
+
+    #[test]
+    fn test_should_exclude_with_config_fixtures() {
+        let config = ScanConfig {
+            exclude_fixtures: true,
+            ..Default::default()
+        };
+        assert!(should_exclude_with_config(
+            Path::new("/project/fixtures/data.json"),
+            &config
+        ));
+        assert!(should_exclude_with_config(
+            Path::new("/project/__mocks__/api.ts"),
+            &config
+        ));
+    }
+
+    #[test]
+    fn test_should_exclude_with_config_minified() {
+        let config = ScanConfig::default();
+        assert!(should_exclude_with_config(
+            Path::new("/project/app.min.js"),
+            &config
+        ));
+        assert!(should_exclude_with_config(
+            Path::new("/project/style.min.css"),
+            &config
+        ));
     }
 }

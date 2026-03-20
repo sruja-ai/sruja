@@ -17,7 +17,7 @@ pub use graph::{
     BlastRadiusDirection, BlastRadiusNode, BlastRadiusResult, Edge, EdgeEvidence, EdgeKind, Graph,
     Node, NodeKind,
 };
-pub use scan_scope::{ScanScope, DEFAULT_EXCLUDE_PATTERNS};
+pub use scan_scope::{should_exclude_with_config, ScanScope, DEFAULT_EXCLUDE_PATTERNS};
 pub use tree_sitter::{scan_with_tree_sitter, ScanConfig};
 
 #[derive(Debug, Error)]
