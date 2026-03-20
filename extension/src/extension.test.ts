@@ -33,6 +33,29 @@ describe("parseLintStderr", () => {
     expect(diags[0].severity).toBe(vscode.DiagnosticSeverity.Information);
   });
 
+  it("includes multiline message content before the location line", () => {
+    const stderr = [
+      "[E123] Error: Missing required field `description`",
+      "  on container `A`",
+      "  --> file.sruja:10:2",
+    ].join("\n");
+    const diags = parseLintStderr(stderr, "file:///file.sruja");
+    expect(diags).toHaveLength(1);
+    expect(diags[0].message).toBe("Missing required field `description` on container `A`");
+  });
+
+  it("filters out diagnostics for other files when docUri is file://", () => {
+    const stderr = [
+      "[E1] Error: For other file",
+      "  --> other.sruja:1:0",
+      "[E2] Error: For this file",
+      "  --> file.sruja:2:3",
+    ].join("\n");
+    const diags = parseLintStderr(stderr, "file:///file.sruja");
+    expect(diags).toHaveLength(1);
+    expect(diags[0].message).toBe("For this file");
+  });
+
   it("ignores lines that do not match location pattern", () => {
     const stderr = "some random output\n  --> file.sruja:1:0";
     const diags = parseLintStderr(stderr, "file:///file.sruja");
@@ -101,6 +124,35 @@ describe("parseLintJson", () => {
     expect(diags).toHaveLength(2);
     expect(diags![0].severity).toBe(vscode.DiagnosticSeverity.Warning);
     expect(diags![1].severity).toBe(vscode.DiagnosticSeverity.Information);
+  });
+
+  it("maps warn/info/hint variants to VS Code severities", () => {
+    const stdout = JSON.stringify({
+      ok: false,
+      diagnostics: [
+        { code: "W1", severity: "WARN", message: "Warn" },
+        { code: "I1", severity: "information", message: "Info" },
+        { code: "H1", severity: "hint", message: "Hint" },
+      ],
+    });
+    const diags = parseLintJson(stdout, "file:///a.sruja");
+    expect(diags).toHaveLength(3);
+    expect(diags![0].severity).toBe(vscode.DiagnosticSeverity.Warning);
+    expect(diags![1].severity).toBe(vscode.DiagnosticSeverity.Information);
+    expect(diags![2].severity).toBe(vscode.DiagnosticSeverity.Hint);
+  });
+
+  it("filters json diagnostics by file when location.file is present", () => {
+    const stdout = JSON.stringify({
+      ok: false,
+      diagnostics: [
+        { code: "E1", severity: "error", message: "Other", location: { file: "other.sruja", line: 1, column: 0 } },
+        { code: "E2", severity: "error", message: "This", location: { file: "a.sruja", line: 2, column: 0 } },
+      ],
+    });
+    const diags = parseLintJson(stdout, "file:///a.sruja");
+    expect(diags).toHaveLength(1);
+    expect(diags![0].message).toBe("This");
   });
 
   it("uses line/column 0 when location is missing", () => {
@@ -213,6 +265,14 @@ describe("extractMissingFieldName", () => {
 
   it("extracts technology from quotes", () => {
     expect(extractMissingFieldName("Missing required field \"technology\" on database `DB`")).toBe("technology");
+  });
+
+  it("extracts unquoted field names", () => {
+    expect(extractMissingFieldName("Missing required field description on system `S`")).toBe("description");
+  });
+
+  it("handles plural form and different quoting styles", () => {
+    expect(extractMissingFieldName("Missing required fields “technology” on database `DB`")).toBe("technology");
   });
 
   it("returns null when not a missing-field message", () => {

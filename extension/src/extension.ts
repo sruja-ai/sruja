@@ -21,6 +21,7 @@ import { parseJsonSafe } from "./safeJson";
 import { formatStatusLines, formatReviewLines, type StatusJson, type ReviewJson } from "./cliOutput";
 import { getDiagramPreviewHtml, escapeMermaidForScript } from "./diagramPreview";
 import { SrujaMarkdownPreviewEditorProvider } from "./markdownPreviewEditor";
+import { getDiagnosticCodeValue } from "./lintParser";
 
 const DIAGNOSTIC_COLLECTION_ID = "sruja";
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
@@ -102,7 +103,47 @@ function formatDiagnosticSummary(rootPath: string | undefined, uri: vscode.Uri, 
   const rel = rootPath && uri.scheme === "file" ? path.relative(rootPath, fsPath) : fsPath;
   const where = `${rel}:${formatRangeOneBased(d.range)}`;
   const msg = String(d.message).replace(/\s+/g, " ").trim();
-  return `- [${severity}] ${where} ${msg}`;
+  const code = getDiagnosticCodeValue(d);
+  const codeText = code === undefined ? "" : ` ${String(code)}`;
+  return `- [${severity}${codeText}] ${where} ${msg}`;
+}
+
+function truncateLines(text: string, maxLines: number, maxChars: number): { body: string; omittedLines: number } {
+  const lines = text.split(/\r?\n/);
+  const sliced = lines.slice(0, maxLines).map((l) => (l.length > maxChars ? l.slice(0, maxChars) : l));
+  const omittedLines = Math.max(0, lines.length - sliced.length);
+  return { body: sliced.join("\n").trimEnd(), omittedLines };
+}
+
+function pickActiveSrujaDoc(): vscode.TextDocument | undefined {
+  const active = vscode.window.activeTextEditor?.document;
+  if (active?.languageId === "sruja") return active;
+  for (const e of vscode.window.visibleTextEditors ?? []) {
+    if (e.document.languageId === "sruja") return e.document;
+  }
+  for (const d of vscode.workspace.textDocuments ?? []) {
+    if (d.languageId === "sruja") return d;
+  }
+  return undefined;
+}
+
+function groupDiagnosticsByFile(
+  diagEntries: Array<[vscode.Uri, vscode.Diagnostic[]]>,
+  rootPath: string | undefined
+): Array<{ uri: vscode.Uri; rel: string; errors: number; warnings: number; diags: vscode.Diagnostic[] }> {
+  const out: Array<{ uri: vscode.Uri; rel: string; errors: number; warnings: number; diags: vscode.Diagnostic[] }> = [];
+  for (const [uri, diags] of diagEntries) {
+    const fsPath = toFsPathOrUri(uri);
+    const rel = rootPath && uri.scheme === "file" ? path.relative(rootPath, fsPath) : fsPath;
+    const filtered = diags.filter(
+      (d) => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning
+    );
+    if (filtered.length === 0) continue;
+    const errors = filtered.filter((d) => d.severity === vscode.DiagnosticSeverity.Error).length;
+    const warnings = filtered.filter((d) => d.severity === vscode.DiagnosticSeverity.Warning).length;
+    out.push({ uri, rel, errors, warnings, diags: filtered });
+  }
+  return out.sort((a, b) => (b.errors - a.errors) || (b.warnings - a.warnings) || a.rel.localeCompare(b.rel));
 }
 
 async function readContextJsonSummary(folder: vscode.WorkspaceFolder): Promise<{
@@ -160,17 +201,41 @@ async function buildContextPack(context: vscode.ExtensionContext): Promise<strin
     return snippet.length > 0 ? snippet : undefined;
   })();
 
+  const activeSrujaDoc = pickActiveSrujaDoc();
+  const activeSrujaPath = activeSrujaDoc?.uri.scheme === "file" ? activeSrujaDoc.uri.fsPath : undefined;
+  const activeSrujaRel =
+    rootPath && activeSrujaDoc?.uri.scheme === "file" ? path.relative(rootPath, activeSrujaDoc.uri.fsPath) : activeSrujaPath;
+
   const visibleEditors = vscode.window.visibleTextEditors
     .map((e) => e.document.uri)
     .filter((u, idx, arr) => arr.findIndex((x) => x.toString() === u.toString()) === idx);
 
   const diagEntries = vscode.languages.getDiagnostics();
-  const flattened = diagEntries
-    .flatMap(([uri, diags]) => diags.map((d) => ({ uri, d })))
-    .filter(({ d }) => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning);
+  const activeDiagLines = (() => {
+    if (!activeDoc) return [];
+    const fileDiags = vscode.languages.getDiagnostics(activeDoc.uri).filter(
+      (d) => d.severity === vscode.DiagnosticSeverity.Error || d.severity === vscode.DiagnosticSeverity.Warning
+    );
+    return fileDiags.slice(0, 25).map((d) => formatDiagnosticSummary(rootPath, activeDoc.uri, d));
+  })();
 
-  const diagLines = flattened.slice(0, 80).map(({ uri, d }) => formatDiagnosticSummary(rootPath, uri, d));
-  const diagOmitted = Math.max(0, flattened.length - diagLines.length);
+  const byFile = groupDiagnosticsByFile(diagEntries, rootPath);
+  const topFiles = byFile.slice(0, 25);
+  const workspaceDiagLines: string[] = [];
+  for (const f of topFiles) {
+    const header = `- ${f.rel} (errors=${f.errors} warnings=${f.warnings})`;
+    workspaceDiagLines.push(header);
+    for (const d of f.diags.slice(0, 8)) {
+      const where = `${f.rel}:${formatRangeOneBased(d.range)}`;
+      const msg = String(d.message).replace(/\s+/g, " ").trim();
+      const code = getDiagnosticCodeValue(d);
+      const codeText = code === undefined ? "" : `${String(code)} `;
+      const sev = d.severity === vscode.DiagnosticSeverity.Error ? "error" : "warning";
+      workspaceDiagLines.push(`  - [${sev} ${codeText}${where}] ${msg}`);
+    }
+  }
+  const totalFilesWithDiags = byFile.length;
+  const omittedFiles = Math.max(0, totalFilesWithDiags - topFiles.length);
 
   let contextJsonLine: string | undefined;
   if (folder) {
@@ -193,6 +258,65 @@ async function buildContextPack(context: vscode.ExtensionContext): Promise<strin
         ? `- skills root=${skillsRoot.fsPath} skills=none`
         : "- skills root=none";
 
+  const skillsDetailLines: string[] = [];
+  for (const s of skills.slice(0, 25)) {
+    const rules = s.ruleUris.map((r) => r.label);
+    const rulesPreview = rules.slice(0, 10).join(", ");
+    const rulesMore = Math.max(0, rules.length - Math.min(rules.length, 10));
+    const agents = s.agentsUri ? "agents=yes" : "agents=no";
+    const ruleText = rules.length === 0 ? "rules=none" : rulesMore > 0 ? `rules=${rulesPreview} (+${rulesMore} more)` : `rules=${rulesPreview}`;
+    skillsDetailLines.push(`- ${s.name} ${agents} ${ruleText}`);
+  }
+  const skillsOmitted = Math.max(0, skills.length - Math.min(skills.length, 25));
+
+  let elementsBlock: string[] = [];
+  let mermaidBlock: string[] = [];
+  if (activeSrujaDoc && activeSrujaPath) {
+    try {
+      const elements = await getElementsFromWasm(context, activeSrujaDoc.getText(), activeSrujaPath);
+      if (elements && elements.length > 0) {
+        const byKind = new Map<string, string[]>();
+        for (const el of elements) {
+          const k = el.kind ?? "unknown";
+          const arr = byKind.get(k) ?? [];
+          arr.push(el.id);
+          byKind.set(k, arr);
+        }
+        const kinds = Array.from(byKind.entries()).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+        elementsBlock.push(`- elements=${elements.length}`);
+        for (const [k, ids] of kinds) {
+          const preview = ids.slice(0, 12).join(", ");
+          const more = Math.max(0, ids.length - Math.min(ids.length, 12));
+          elementsBlock.push(more > 0 ? `- ${k} (${ids.length}) ${preview} (+${more} more)` : `- ${k} (${ids.length}) ${preview}`);
+        }
+      } else if (elements) {
+        elementsBlock.push("- elements=0");
+      } else {
+        elementsBlock.push("- elements=unavailable");
+      }
+    } catch {
+      elementsBlock.push("- elements=unavailable");
+    }
+
+    try {
+      const mermaid = await getMermaidFromWasm(context, activeSrujaDoc.getText());
+      if (mermaid && mermaid.trim().length > 0) {
+        const trimmed = truncateLines(mermaid.trimEnd(), 140, 260);
+        mermaidBlock.push("```mermaid");
+        mermaidBlock.push(trimmed.body);
+        mermaidBlock.push("```");
+        if (trimmed.omittedLines > 0) mermaidBlock.push(`- mermaid omittedLines=${trimmed.omittedLines}`);
+      } else {
+        mermaidBlock.push("- mermaid=empty");
+      }
+    } catch {
+      mermaidBlock.push("- mermaid=unavailable");
+    }
+  } else {
+    elementsBlock = ["- elements=unavailable (no .sruja file open)"];
+    mermaidBlock = ["- mermaid=unavailable (no .sruja file open)"];
+  }
+
   const now = new Date().toISOString();
   const lines: string[] = [];
   lines.push("# Sruja Context Pack");
@@ -210,6 +334,12 @@ async function buildContextPack(context: vscode.ExtensionContext): Promise<strin
     lines.push("```");
     lines.push("");
   }
+  lines.push("## What You Can Ask Sruja");
+  lines.push("");
+  lines.push("- Run `Sruja: Command Center` and use: Run drift / Refresh repo context / Status / Review.");
+  lines.push("- Open a .sruja file and use: Diagram Preview / Focused Diagram Preview.");
+  lines.push("- Use: Copy Rule for AI / Copy Agent Guide for AI / Copy Context Pack for AI.");
+  lines.push("");
   if (visibleEditors.length > 0) {
     lines.push("## Open Editors");
     lines.push("");
@@ -220,25 +350,52 @@ async function buildContextPack(context: vscode.ExtensionContext): Promise<strin
     }
     lines.push("");
   }
+  lines.push("## Architecture Snapshot");
+  lines.push("");
+  lines.push(`- activeSrujaFile=${activeSrujaRel ?? "none"}`);
+  lines.push(...elementsBlock);
+  lines.push("");
+  lines.push("## Diagram (Mermaid)");
+  lines.push("");
+  lines.push(...mermaidBlock);
+  lines.push("");
   lines.push("## Diagnostics");
   lines.push("");
-  if (diagLines.length === 0) {
+  if (activeDiagLines.length === 0 && workspaceDiagLines.length === 0) {
     lines.push("- none");
   } else {
-    lines.push(...diagLines);
-    if (diagOmitted > 0) lines.push(`- ... (${diagOmitted} more omitted)`);
+    if (activeDiagLines.length > 0) {
+      lines.push("### Active File");
+      lines.push("");
+      lines.push(...activeDiagLines);
+      lines.push("");
+    }
+    if (workspaceDiagLines.length > 0) {
+      lines.push("### Workspace (Top Files)");
+      lines.push("");
+      lines.push(...workspaceDiagLines);
+      if (omittedFiles > 0) lines.push(`- ... (${omittedFiles} more files omitted)`);
+    }
   }
   lines.push("");
   lines.push("## Sruja");
   lines.push("");
   lines.push(skillsLine);
   if (contextJsonLine) lines.push(contextJsonLine);
+  if (skillsDetailLines.length > 0) {
+    lines.push("");
+    lines.push("### Skills");
+    lines.push("");
+    lines.push(...skillsDetailLines);
+    if (skillsOmitted > 0) lines.push(`- ... (${skillsOmitted} more skills omitted)`);
+  }
   lines.push("");
   lines.push("## Ask");
   lines.push("");
   lines.push("- What is the root cause?");
   lines.push("- What is the smallest safe change?");
   lines.push("- Show exact files/lines to edit.");
+  lines.push("- If changes touch architecture, propose updated Sruja DSL + updated context via Refresh/Drift/Review.");
   lines.push("");
   return lines.join("\n");
 }
