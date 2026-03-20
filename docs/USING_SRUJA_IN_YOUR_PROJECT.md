@@ -46,9 +46,9 @@ Install **Sruja Language Support** from the [VS Code Marketplace](https://market
 
 ---
 
-## 0. Try Architecture Intelligence (no .sruja required)
+## 0. Try Context Engineering (no .sruja required)
 
-Get architecture insights in seconds—no API keys, no `.sruja` files, no configuration:
+Get architecture context in seconds—no API keys, no `.sruja` files, no configuration:
 
 ```bash
 sruja quickstart -r .

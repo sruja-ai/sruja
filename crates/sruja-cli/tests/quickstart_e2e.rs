@@ -608,7 +608,7 @@ export function app() { return hello(); }
         assert!(success, "quickstart should succeed: stderr={}", stderr);
         let out = format!("{} {}", stdout, stderr);
         assert!(
-            out.contains("Architecture Inventory") || out.contains("Architecture Intelligence"),
+            out.contains("Architecture Inventory") || out.contains("Context Engineering"),
             "Should show inventory section"
         );
         assert!(

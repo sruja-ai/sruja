@@ -1,8 +1,8 @@
-# Sruja – Architecture intelligence for the AI era.
+# Sruja – Context engineering for the AI era.
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Not a diagram language—architecture as code that stays in sync.** Sruja uses AI to generate and maintain architecture as code so it stays in sync with your codebase. You validate, version-control, and enforce it; export to Mermaid when you need a diagram.
+**Not a diagram language—architecture context that stays in sync.** Sruja helps your AI coding workflow by generating and maintaining architecture as code, plus evidence-backed context (graph, drift, violations) so changes stay grounded in your real codebase. You validate, version-control, and enforce it; export to Mermaid when you need a diagram.
 
 *(Official positioning: [docs/MESSAGING.md](docs/MESSAGING.md).)*
 

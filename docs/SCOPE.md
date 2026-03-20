@@ -1,6 +1,6 @@
 # Product scope
 
-**Strategy:** For Architecture Intelligence direction, module decisions, and execution plan, see [docs/internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md](internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md).
+**Strategy:** For context engineering direction, module decisions, and execution plan, see [docs/internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md](internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md).
 
 Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagramming product. We ship:
 
@@ -9,7 +9,7 @@ Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagra
 3. **WASM** (`sruja-wasm`) – browser/Node export and parsing
 4. **mdBook** (`book/`) – **this is the website** (no separate Astro/React site)
 5. **VS Code extension** (`extension/`) – edit, preview, LSP
-6. **Architecture intelligence** – CLI: quickstart, drift, why, analyze, context; sruja-graph, sruja-scan, sruja-diff, sruja-intent, sruja-report.
+6. **Context engineering** – CLI: quickstart, drift, why, analyze, context; sruja-graph, sruja-scan, sruja-diff, sruja-intent, sruja-report.
 
 Nothing else is in scope (no designer app, no storybook, no social-publish, no separate website app).
 

@@ -21,7 +21,7 @@ if [ ! -f "$WASM_SRC/sruja_wasm.js" ] || [ ! -f "$WASM_SRC/sruja_wasm_bg.wasm" ]
 fi
 # Shrink WASM with wasm-opt if available (size reduction for extension)
 if command -v wasm-opt >/dev/null 2>&1; then
-  wasm-opt --enable-bulk-memory --enable-sign-ext -Oz --strip-debug \
+  wasm-opt --enable-bulk-memory --enable-sign-ext --enable-nontrapping-float-to-int -Oz --strip-debug \
     "$WASM_SRC/sruja_wasm_bg.wasm" -o "$WASM_SRC/sruja_wasm_bg.wasm.tmp" && \
   mv "$WASM_SRC/sruja_wasm_bg.wasm.tmp" "$WASM_SRC/sruja_wasm_bg.wasm"
   echo "  wasm-opt applied (size reduction)"

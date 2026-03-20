@@ -1,4 +1,4 @@
-# Sruja – Architecture intelligence for the AI era.
+# Sruja – Context engineering for the AI era.
 
 VS Code extension for the [Sruja](https://github.com/sruja-ai/sruja) architecture DSL. **Lint and Markdown export run in-process using bundled WebAssembly** (no CLI required). You can optionally use the Sruja CLI by setting `sruja.lsp.path`.
 
@@ -17,7 +17,7 @@ This extension gives you **lint**, **export**, and **diagram preview**. The diag
 - **AI features (skills & rules)** – Browse skills, open SKILL.md / AGENTS.md, list and open rules, copy rule or agent guide to clipboard for use with AI assistants (e.g. Cursor, Copilot). **Multi‑root workspaces**: skills are collected from every folder that has a `skills` subfolder.
 - **Workspace support** – Extension runs in the workspace (remote/SSH); supports untrusted workspaces.
 
-## Architecture intelligence (CLI)
+## Context engineering (CLI)
 
 The following commands run via the Sruja CLI and are surfaced in the extension. They require **Sruja CLI** (on PATH or `sruja.lsp.path`).
 

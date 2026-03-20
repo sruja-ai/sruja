@@ -6,7 +6,7 @@ schema-version: 1.0.0
 project:
   name: Sruja
   display-name: Sruja
-  description: Architecture intelligence for the AI era - use AI to generate and maintain architecture as code
+  description: Context engineering for the AI era - use AI to generate and maintain architecture as code
   homepage: https://sruja.ai
   repository: https://github.com/sruja-ai/sruja
   license:

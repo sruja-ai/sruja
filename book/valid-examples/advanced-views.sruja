@@ -14,18 +14,36 @@ Shop = system "E-Commerce Shop" {
   WebApp = container "Web Application" {
     technology "React"
     description "Customer-facing web UI"
-    Cart = component "Shopping Cart"
-    Checkout = component "Checkout Service"
-    Catalog = component "Product Catalog"
+    Cart = component "Shopping Cart" {
+      description "Manages items selected for purchase"
+    }
+    Checkout = component "Checkout Service" {
+      description "Collects payment and confirms the order"
+    }
+    Catalog = component "Product Catalog" {
+      description "Displays the product list and details"
+    }
   }
 
   API = container "REST API" {
-    Auth = component "Authentication"
-    Orders = component "Order Handler"
+    technology "Rust"
+    description "Backend HTTP API for authentication and order processing"
+    Auth = component "Authentication" {
+      description "Authenticates users and issues session tokens"
+    }
+    Orders = component "Order Handler" {
+      description "Validates and processes customer orders"
+    }
   }
 
-  DB = database "PostgreSQL"
-  Cache = database "Redis Cache"
+  DB = database "PostgreSQL" {
+    technology "PostgreSQL"
+    description "Primary transactional data store for orders and products"
+  }
+  Cache = database "Redis Cache" {
+    technology "Redis"
+    description "Cache for session and frequently accessed catalog data"
+  }
 }
 
 // Relationships
@@ -42,4 +60,3 @@ Shop.WebApp.Cart -> Shop.API.Auth "validates"
 Shop.API.Auth -> Shop.API.Orders "authorizes"
 Shop.WebApp.Checkout -> Shop.API.Orders "creates orders"
 Shop.WebApp.Catalog -> Shop.API "browses catalog via"
-

@@ -21,11 +21,11 @@ test-rust:
 		exit 1; \
 	fi
 
-# Test architecture intelligence (why command E2E)
+# Test context engineering (why command E2E)
 test-arch-intel:
-	@echo "Testing architecture intelligence (why E2E)..."
+	@echo "Testing context engineering (why E2E)..."
 	@cargo test -p sruja-cli --test why_e2e && \
-	echo "✅ Architecture intelligence tests passed"
+	echo "✅ Context engineering tests passed"
 
 # Test extraction CLI (lint --format json, discover --format json)
 test-extraction:
@@ -132,7 +132,7 @@ wasm:
 		fi; \
 		wasm-pack build --target web --out-dir $(WASM_PKG) crates/sruja-wasm --release; \
 		if command -v wasm-opt >/dev/null 2>&1; then \
-			wasm-opt --enable-bulk-memory --enable-sign-ext -Oz --strip-debug $(WASM_PKG)/sruja_wasm_bg.wasm -o $(WASM_PKG)/sruja_wasm_bg.wasm.tmp && mv $(WASM_PKG)/sruja_wasm_bg.wasm.tmp $(WASM_PKG)/sruja_wasm_bg.wasm; \
+			wasm-opt --enable-bulk-memory --enable-sign-ext --enable-nontrapping-float-to-int -Oz --strip-debug $(WASM_PKG)/sruja_wasm_bg.wasm -o $(WASM_PKG)/sruja_wasm_bg.wasm.tmp && mv $(WASM_PKG)/sruja_wasm_bg.wasm.tmp $(WASM_PKG)/sruja_wasm_bg.wasm; \
 		fi; \
 		gzip -9 -k -f $(WASM_PKG)/sruja_wasm_bg.wasm 2>/dev/null || true; \
 		if command -v brotli >/dev/null 2>&1; then brotli -q 11 -k -f $(WASM_PKG)/sruja_wasm_bg.wasm; fi; \
@@ -273,10 +273,10 @@ demo:
 		echo "❌ evaluation/real-world-test/run_demo.sh not found"; exit 1; \
 	fi
 
-# Run Architecture Intelligence demo (intent → scan → drift → analyze → AI ask)
+# Run Context Engineering demo (intent → scan → drift → analyze → AI ask)
 # Uses demo/ microservices + architecture.sruja. Optional: set LLM key for AI step.
 demo-intel:
-	@echo "Running Architecture Intelligence demo..."
+	@echo "Running Context Engineering demo..."
 	@if [ -f "demo/run_demo.sh" ]; then \
 		cd demo && ./run_demo.sh; \
 	else \
@@ -315,11 +315,11 @@ help:
 	@echo "  make lint               - Run Rust linter (clippy)"
 	@echo "  make fmt                - Format Rust code"
 	@echo ""
-	@echo "Architecture Intelligence:"
-	@echo "  make test-arch-intel    - Run architecture intelligence E2E (why command)"
+	@echo "Context Engineering:"
+	@echo "  make test-arch-intel    - Run context engineering E2E (why command)"
 	@echo "  make test-cli-smoke     - Run CLI smoke tests (validates documented command shapes)"
 	@echo "  make demo               - Run E2E value demo (quickstart + drift on sample repo)"
-	@echo "  make demo-intel         - Run Architecture Intelligence demo (intent → scan → drift → analyze → AI)"
+	@echo "  make demo-intel         - Run Context Engineering demo (intent → scan → drift → analyze → AI)"
 	@echo ""
 	@echo "Direct Cargo Commands:"
 	@echo "  cargo build --release   - Build release version"

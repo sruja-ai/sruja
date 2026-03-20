@@ -22,7 +22,7 @@ export function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net;">
-  <title>Sruja – Architecture intelligence for the AI era. – Diagram Preview</title>
+  <title>Sruja – Context engineering for the AI era. – Diagram Preview</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 </head>
 <body>

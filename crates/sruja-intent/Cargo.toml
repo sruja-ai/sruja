@@ -3,7 +3,7 @@ name = "sruja-intent"
 version.workspace = true
 edition = "2021"
 license = "MIT"
-description = "Intent vs Reality comparison for Sruja architecture intelligence"
+description = "Intent vs Reality comparison for Sruja context engineering"
 
 [dependencies]
 thiserror = { workspace = true }

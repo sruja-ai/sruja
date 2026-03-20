@@ -1,4 +1,4 @@
-//! E2E tests for `sruja why` - architecture intelligence layer.
+//! E2E tests for `sruja why` - context engineering layer.
 //!
 //! Exercises the same flow as `sruja why`: scan repo → merge into KnowledgeGraph → query.
 

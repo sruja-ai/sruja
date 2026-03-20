@@ -1131,9 +1131,7 @@ pub async fn quickstart(
     eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
     eprintln!(
         "{}",
-        "🚀 Sruja Quickstart - Architecture Intelligence"
-            .green()
-            .bold()
+        "🚀 Sruja Quickstart - Context Engineering".green().bold()
     );
     eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
     eprintln!();

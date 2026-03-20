@@ -68,7 +68,7 @@ async function updateDiagnostics(
   }
 }
 
-/** Output channel for architecture intelligence (drift, sync, status, review). */
+/** Output channel for context engineering (drift, sync, status, review). */
 let cliOutputChannel: vscode.OutputChannel | undefined;
 
 function getCliOutputChannel(): vscode.OutputChannel {
@@ -82,7 +82,7 @@ function getCliOutputChannel(): vscode.OutputChannel {
 async function runCliInWorkspace(args: string[]): Promise<{ stdout: string; stderr: string; code: number }> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    throw new Error("No workspace folder open. Open a folder to run architecture intelligence.");
+    throw new Error("No workspace folder open. Open a folder to run context engineering.");
   }
   return runCli(getSrujaPath(), args, folder.uri.fsPath);
 }
@@ -453,7 +453,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       diagramPreviewPanel = vscode.window.createWebviewPanel(
         "srujaDiagramPreview",
-         "Sruja – Architecture intelligence for the AI era. – Diagram Preview",
+         "Sruja – Context engineering for the AI era. – Diagram Preview",
         vscode.ViewColumn.Beside,
         { enableScripts: true }
       );
@@ -504,7 +504,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const titleSuffix = targetId ? ` – L${viewLevel}: ${targetId}` : ` – L${viewLevel}`;
       diagramPreviewPanel = vscode.window.createWebviewPanel(
         "srujaDiagramPreview",
-        "Sruja – Architecture intelligence for the AI era. – Diagram Preview" + titleSuffix,
+        "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix,
         vscode.ViewColumn.Beside,
         { enableScripts: true }
       );
@@ -574,7 +574,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const titleSuffix = targetId ? ` – ${levelPick.label}: ${targetId}` : ` – ${levelPick.label}`;
       diagramPreviewPanel = vscode.window.createWebviewPanel(
         "srujaDiagramPreview",
-        "Sruja – Architecture intelligence for the AI era. – Diagram Preview" + titleSuffix,
+        "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix,
         vscode.ViewColumn.Beside,
         { enableScripts: true }
       );

@@ -70,7 +70,7 @@ sudo ln -sf "$(pwd)/target/release/sruja" /usr/local/bin/sruja
 
 ## Step 4: First value (no config, no API keys)
 
-Run architecture intelligence on the repo itself:
+Run context engineering on the repo itself:
 
 ```bash
 # If you used Option B or C:
@@ -110,9 +110,9 @@ cd evaluation/real-world-test
 
 If the script says “sruja CLI not found”, ensure `sruja` is on PATH or build from repo root first (`make build`) and add `target/release` to PATH.
 
-### Optional: Architecture Intelligence microservices demo (~2 min)
+### Optional: Context Engineering microservices demo (~2 min)
 
-This demo walks through the full intelligence flow: **intent (rulebook) → scan → drift → analyze → AI ask**, using the small Python microservices in `demo/`.
+This demo walks through the full flow: **intent (rulebook) → scan → drift → analyze → AI ask**, using the small Python microservices in `demo/`.
 
 ```bash
 make demo-intel
@@ -206,7 +206,7 @@ make book-serve   # Serve at http://localhost:3000 (live reload)
 | 3 | `./target/release/sruja --version` | Verify CLI |
 | 4 | `./target/release/sruja quickstart -r .` | First value (no config) |
 | 5a | `cd evaluation/real-world-test && ./run_demo.sh` | Optional: E2E demo (quickstart + drift) |
-| 5b | `make demo-intel` | Optional: Architecture Intelligence demo (intent → scan → drift → analyze → AI) |
+| 5b | `make demo-intel` | Optional: Context Engineering demo (intent → scan → drift → analyze → AI) |
 
 **Troubleshooting**
 

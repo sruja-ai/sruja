@@ -2,11 +2,11 @@
 
 **Canonical positioning (use for website, docs, and pitch):**
 
-- **Tagline:** Architecture intelligence for the AI era.
-- **One-liner:** Sruja brings architecture intelligence to the AI era—use AI to generate and maintain architecture as code so it stays in sync with your codebase.
-- **Short:** Architecture-as-code with AI: analyze code, generate and validate `.sruja` files, export diagrams and docs.
+- **Tagline:** Context engineering for the AI era.
+- **One-liner:** Sruja brings context engineering to the AI era—use AI to generate and maintain architecture as code, backed by deterministic evidence from your codebase.
+- **Short:** Architecture-as-code + evidence: analyze code, generate and validate `.sruja` files, export diagrams and docs, and produce citable context for AI coding.
 
-Do not use the old framing (e.g. "developer-friendly language for defining, visualizing, and validating" or "governance / best practices / standardize" as the primary pitch). Lead with **architecture intelligence for the AI era** and AI-driven discovery/maintenance.
+Do not use the old framing (e.g. "developer-friendly language for defining, visualizing, and validating" or "governance / best practices / standardize" as the primary pitch). Lead with **context engineering for the AI era** and AI-driven discovery/maintenance.
 
 ---
 
@@ -21,7 +21,7 @@ Do not use the old framing (e.g. "developer-friendly language for defining, visu
 
 **Why Sruja when AI can give architecture?**
 
-AI without Sruja can propose architecture, but it is ungrounded (it may invent components and dependencies) and ephemeral (no single source of truth in the repo). The Sruja skill gives the AI deterministic evidence from your actual code (scan/graph) and structure (architecture as code: lint, drift, version control). So: AI proposes and reasons; Sruja grounds, validates, and persists. As models get smarter, we don't replace them—we give them better evidence and tools so their output is accurate and maintainable.
+AI without Sruja can propose architecture or generate code, but it is often ungrounded (it may invent components, dependencies, or boundaries) and ephemeral (no single source of truth in the repo). Sruja gives the AI deterministic, repo-specific context (scan/graph, drift, violations with sources) and a persistent artifact (architecture as code: lint, drift, version control). So: AI proposes and edits; Sruja provides context, validation, and persistence. As models get smarter, we don't replace them—we give them better evidence and better checks so their output is accurate and maintainable.
 
 **Three pillars:**
 

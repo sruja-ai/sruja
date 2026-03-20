@@ -1,8 +1,8 @@
-# Sruja – Architecture intelligence for the AI era.
+# Sruja – Context engineering for the AI era.
 
 <img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
 
-**Architecture intelligence for the AI era.** Use AI to generate and maintain architecture as code; validate and export to Markdown and Mermaid. A backend tool for the SDLC—not a diagramming product.
+**Context engineering for the AI era.** Use AI to generate and maintain architecture as code; validate and export to Markdown and Mermaid. A backend tool for the SDLC—not a diagramming product.
 
 ## Why Sruja?
 

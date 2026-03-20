@@ -1,7 +1,7 @@
 {
   "name": "sruja",
-  "displayName": "Sruja – Architecture intelligence for the AI era.",
-  "description": "Sruja – Architecture intelligence for the AI era.: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
+  "displayName": "Sruja – Context engineering for the AI era.",
+  "description": "Sruja – Context engineering for the AI era.: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
   "version": "0.22.0",
   "publisher": "SrujaAI",
   "icon": "sruja-logo.png",
@@ -17,7 +17,7 @@
   "keywords": [
     "sruja",
     "architecture",
-    "architecture intelligence",
+    "context engineering",
     "ai era",
     "dsl",
     "c4",
@@ -77,7 +77,7 @@
       }
     ],
     "configuration": {
-      "title": "Sruja – Architecture intelligence for the AI era.",
+      "title": "Sruja – Context engineering for the AI era.",
       "properties": {
         "sruja.lsp.path": {
           "type": "string",

@@ -4,11 +4,11 @@
 # Serve (live): mdbook serve
 
 [book]
-title = "Sruja – Architecture intelligence for the AI era."
+title = "Sruja – Context engineering for the AI era."
 authors = ["Sruja contributors"]
 language = "en"
 src = "src"
-description = "Architecture intelligence for the AI era. Define, validate, and export architecture as code with CLI and VS Code."
+description = "Context engineering for the AI era. Define, validate, and export architecture as code with CLI and VS Code."
 
 [build]
 build-dir = "book"

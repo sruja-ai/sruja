@@ -203,9 +203,9 @@ The `sruja` CLI ([`sruja-cli`](https://github.com/sruja-ai/sruja/tree/main/crate
 - **CI/CD**: Validate and export architecture in pipelines.
 - **Export**: `sruja export json`, `sruja export mermaid`, `sruja export markdown`, `sruja export context`, `sruja export dsl`.
 
-## Architecture Intelligence
+## Context Engineering
 
-Sruja provides **architecture intelligence** across four progressive layers:
+Sruja provides **context engineering** across four progressive layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -234,7 +234,7 @@ Each layer builds on the previous:
 - **Semantic**: What patterns and relationships mean? (analyze)
 - **Intent**: Does reality match declared architecture? (drift, intent check)
 
-### AI Skill Multiplies Intelligence
+### AI Skill Multiplies Context
 
 The **sruja-architecture skill** enhances all four layers:
 
@@ -245,7 +245,7 @@ The **sruja-architecture skill** enhances all four layers:
 | Semantic | `sruja analyze` | Patterns and trade-offs |
 | Intent | `sruja drift` | Multi-perspective review |
 
-Install the skill to unlock AI-powered architecture intelligence:
+Install the skill to unlock AI-powered context engineering:
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture

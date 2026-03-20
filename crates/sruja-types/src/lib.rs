@@ -11,7 +11,7 @@
 //! user-defined kinds via `kind "Label"`; when converting from DSL to a graph (e.g.
 //! in sruja-diff's `program_to_graph`), DSL kinds are mapped to these enum values
 //! or to a suitable default. Consumers (scan, graph, diff, report) should use these
-//! types as the single source of truth for kind identity in architecture intelligence.
+//! types as the single source of truth for kind identity in context engineering.
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;

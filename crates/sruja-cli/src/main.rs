@@ -14,7 +14,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
-     about = "Sruja – Architecture intelligence for the AI era. Architecture-as-code with deterministic CLI primitives for skill-driven discovery",
+     about = "Sruja – Context engineering for the AI era. Architecture-as-code with deterministic CLI primitives for evidence-backed discovery",
     long_about = None,
     after_help = "Stable: sruja quickstart -r .  |  sruja sync -r .  |  sruja status -r .  |  sruja lint  |  sruja drift -r .  |  sruja publish -r . -o repo.bundle.json  |  sruja compose -i <dir> -o system.index.json"
 )]

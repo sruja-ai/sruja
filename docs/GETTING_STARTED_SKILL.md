@@ -1,6 +1,6 @@
 # Getting Started with Sruja Skills
 
-**Architecture intelligence for the AI era—no DSL learning required.**
+**Context engineering for the AI era—no DSL learning required.**
 
 Your AI analyzes your code, generates architecture files, and keeps them in sync. You just need to know what to ask for.
 

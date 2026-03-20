@@ -1,6 +1,6 @@
 //! Graph persistence and management for CLI
 //!
-//! Provides knowledge graph storage and retrieval for architecture intelligence.
+//! Provides knowledge graph storage and retrieval for context engineering.
 
 use sruja_graph::KnowledgeGraph;
 use sruja_scan::ScanGraph;

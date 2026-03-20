@@ -12,7 +12,7 @@ use std::{collections::HashSet, path::PathBuf};
 
 use super::CliError;
 use crate::utils::architecture_path;
-use sruja_diff::{Violation, ViolationKind};
+use sruja_diff::{SourceRef, Violation, ViolationKind};
 use sruja_scan::scan_repo;
 
 /// Path segments that indicate non-production content (docs, evaluation, book, build artifacts).
@@ -87,8 +87,12 @@ pub struct CheckOutput {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ViolationSummary {
     pub kind: String,
+    pub severity: String,
+    pub fingerprint: String,
     pub location: Option<String>,
     pub message: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<SourceRef>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -113,6 +117,26 @@ fn kind_slug(kind: ViolationKind) -> &'static str {
 fn fingerprint_violation(v: &Violation) -> String {
     let location = v.location.clone().unwrap_or_default();
     format!("{}|{}|{}", kind_slug(v.kind), location, v.message)
+}
+
+fn severity_slug(v: &Violation) -> &'static str {
+    match v.severity {
+        sruja_diff::Severity::Error => "error",
+        sruja_diff::Severity::Warning => "warning",
+        sruja_diff::Severity::Info => "info",
+    }
+}
+
+fn primary_source_for_annotations(v: &Violation) -> Option<SourceRef> {
+    v.sources
+        .iter()
+        .find(|s| {
+            s.file
+                .as_deref()
+                .is_some_and(|p| !path_looks_non_production(p))
+        })
+        .or_else(|| v.sources.first())
+        .cloned()
 }
 
 fn resolve_repo_relative(repo_root: &Path, path: &str) -> PathBuf {
@@ -140,8 +164,11 @@ fn categorize_violations(violations: &[sruja_diff::Violation]) -> Vec<ViolationS
                 .as_deref()
                 .or_else(|| v.sources.first().and_then(|s| s.detail.as_deref()))
                 .unwrap_or("unknown");
+            let fingerprint = fingerprint_violation(v);
             ViolationSummary {
                 kind: kind_slug(v.kind).to_string(),
+                severity: severity_slug(v).to_string(),
+                fingerprint,
                 location: v.location.clone(),
                 message: match v.kind {
                     ViolationKind::OrphanComponent | ViolationKind::UndocumentedComponent => {
@@ -163,6 +190,7 @@ fn categorize_violations(violations: &[sruja_diff::Violation]) -> Vec<ViolationS
                         format!("{} - pattern mismatch", location)
                     }
                 },
+                sources: v.sources.clone(),
             }
         })
         .collect()
@@ -391,16 +419,39 @@ pub async fn check(
                     .replace('\n', "%0A")
                     .replace('\r', "%0D")
             );
-            if output.has_drift {
-                let drift_msg = format!(
-                    "Drift detected ({} violation(s)). Review and update repo.sruja if intentional.",
-                    output.violations_count
-                );
-                let escaped = drift_msg
+
+            for v in &filtered_violations {
+                let sev = match v.severity {
+                    sruja_diff::Severity::Error => "error",
+                    sruja_diff::Severity::Warning => "warning",
+                    sruja_diff::Severity::Info => "notice",
+                };
+                let title = format!("Sruja {}", kind_slug(v.kind));
+                let message = format!("{} ({})", v.message, fingerprint_violation(v));
+
+                let escaped_title = title
                     .replace('%', "%25")
                     .replace('\n', "%0A")
                     .replace('\r', "%0D");
-                println!("::warning file={}::title=Sruja Drift::{}", file, escaped);
+                let escaped_message = message
+                    .replace('%', "%25")
+                    .replace('\n', "%0A")
+                    .replace('\r', "%0D");
+
+                if let Some(src) = primary_source_for_annotations(v) {
+                    let src_file = src.file.as_deref().unwrap_or(file);
+                    if let Some(line) = src.line {
+                        println!(
+                            "::{sev} file={src_file},line={line}::title={escaped_title}::{escaped_message}"
+                        );
+                    } else {
+                        println!(
+                            "::{sev} file={src_file}::title={escaped_title}::{escaped_message}"
+                        );
+                    }
+                } else {
+                    println!("::{sev} file={file}::title={escaped_title}::{escaped_message}");
+                }
             }
         }
         _ => {
@@ -424,7 +475,17 @@ pub async fn check(
             } else {
                 println!("Violations found:");
                 for v in &output.violations {
-                    println!("  - [{}] {}", v.kind, v.message);
+                    println!("  - [{}:{}] {}", v.severity, v.kind, v.message);
+                    let evidence: Vec<String> = v
+                        .sources
+                        .iter()
+                        .filter(|s| s.file.is_some() || s.detail.is_some())
+                        .map(|s| s.display_string())
+                        .collect();
+                    if !evidence.is_empty() {
+                        println!("    Evidence: {}", evidence.join(", "));
+                    }
+                    println!("    Fingerprint: {}", v.fingerprint);
                 }
                 println!();
             }

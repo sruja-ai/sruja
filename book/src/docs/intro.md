@@ -5,7 +5,7 @@ weight: 0
 
 # Introduction
 
-**Architecture intelligence for the AI era.**
+**Context engineering for the AI era.**
 
 Sruja uses AI to analyze your code and generate architecture as code—so it never drifts from reality.
 
