@@ -11,6 +11,25 @@ mod utils;
 
 use clap::{Parser, Subcommand};
 
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum ContextIntent {
+    AddFeature,
+    Refactor,
+    FixBug,
+    AddTest,
+}
+
+impl ContextIntent {
+    fn as_str(&self) -> &'static str {
+        match self {
+            ContextIntent::AddFeature => "add-feature",
+            ContextIntent::Refactor => "refactor",
+            ContextIntent::FixBug => "fix-bug",
+            ContextIntent::AddTest => "add-test",
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
@@ -307,6 +326,15 @@ enum Commands {
         /// Output file (defaults to stdout)
         #[arg(long, short = 'o')]
         output: Option<String>,
+        /// Optional file focus for task-scoped context (relative to repo root or absolute path)
+        #[arg(long)]
+        file: Option<String>,
+        /// Optional intent hint for task-scoped context
+        #[arg(long)]
+        intent: Option<ContextIntent>,
+        /// Max dependency traversal depth when --file is provided (0 = none, 1 = direct neighbors)
+        #[arg(long, default_value_t = 2)]
+        depth: usize,
     },
     /// Analyze runtime traces (spans) for emergent cycles and hotspots
     Runtime {
@@ -559,7 +587,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             repo,
             format,
             output,
-        } => commands::context_export(&repo, &format, output.as_deref()).await,
+            file,
+            intent,
+            depth,
+        } => {
+            commands::context_export(
+                &repo,
+                &format,
+                output.as_deref(),
+                file.as_deref(),
+                intent.as_ref().map(ContextIntent::as_str),
+                depth,
+            )
+            .await
+        }
         Commands::Runtime { cmd } => match cmd {
             RuntimeCommand::Analyze { traces, format } => {
                 commands::runtime_analyze(&traces, &format).await

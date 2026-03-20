@@ -497,3 +497,87 @@ fn generate_prompt_only_writes_file() {
     assert!(content.contains("SKILL (follow these rules):"));
     assert!(content.contains("REPO CONTEXT"));
 }
+
+#[test]
+fn init_fails_when_repo_not_found() {
+    let (success, _stdout, stderr) =
+        run_sruja(&["init", "-r", "/nonexistent/path/that/does/not/exist"]);
+
+    assert!(!success, "init should fail for nonexistent repo");
+    assert!(stderr.contains("Repository not found") || stderr.contains("not found"));
+}
+
+#[test]
+fn impact_fails_when_node_not_found() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, _stdout, stderr) = run_sruja(&[
+        "impact",
+        "nonexistent_node_xyz",
+        "-r",
+        repo_str,
+        "--depth",
+        "1",
+        "-f",
+        "json",
+    ]);
+
+    assert!(!success, "impact should fail for nonexistent node");
+    assert!(stderr.contains("No node found") || stderr.contains("not found"));
+}
+
+#[test]
+fn validate_fails_on_invalid_dsl() {
+    let repo = create_test_repo();
+    write_file(
+        repo.path(),
+        "arch.sruja",
+        "This is not valid DSL syntax !!!",
+    );
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+
+    let (success, _stdout, _stderr) = run_sruja(&["validate", &path_str]);
+
+    assert!(!success, "validate should fail on invalid DSL");
+}
+
+#[test]
+fn export_json_handles_missing_file() {
+    let (success, _stdout, _stderr) = run_sruja(&["export", "json", "/nonexistent/file.sruja"]);
+
+    assert!(!success, "export should fail for missing file");
+}
+
+#[test]
+fn fmt_check_exits_zero_on_already_formatted_file() {
+    let repo = create_test_repo();
+    write_file(
+        repo.path(),
+        "arch.sruja",
+        r#"system = kind "System"
+App = system "App" {
+  description "Test"
+}
+"#,
+    );
+    let path_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+
+    let (success, _stdout, _stderr) = run_sruja(&["fmt", "--check", &path_str]);
+
+    assert!(
+        success,
+        "fmt --check should succeed on already formatted file"
+    );
+}

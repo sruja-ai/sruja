@@ -32,12 +32,12 @@ pub type PolicyId = String;
 /// Unique identifier for a requirement in the architecture.
 pub type RequirementId = String;
 
-/// Error type for parsing NodeKind from string
+/// Error type for parsing `NodeKind` from string
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[error("Unknown NodeKind: '{0}'")]
 pub struct ParseNodeKindError(pub String);
 
-/// Error type for parsing EdgeKind from string
+/// Error type for parsing `EdgeKind` from string
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
 #[error("Unknown EdgeKind: '{0}'")]
 pub struct ParseEdgeKindError(pub String);
@@ -66,6 +66,7 @@ pub enum NodeKind {
 }
 
 impl NodeKind {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             NodeKind::System => "system",
@@ -130,6 +131,7 @@ pub enum EdgeKind {
 }
 
 impl EdgeKind {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             EdgeKind::DependsOn => "depends_on",

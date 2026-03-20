@@ -6,6 +6,36 @@ use tower_lsp::lsp_types::*;
 /// Find word boundaries at a position in a line
 pub fn word_bounds(line: &str, pos: usize) -> (usize, usize) {
     let pos = pos.min(line.len());
+
+    if let Some(arrow_idx) = line.find("->") {
+        if pos >= arrow_idx && pos <= arrow_idx + 1 {
+            let mut left_end = arrow_idx;
+            while left_end > 0
+                && line
+                    .chars()
+                    .nth(left_end.saturating_sub(1))
+                    .unwrap_or(' ')
+                    .is_whitespace()
+            {
+                left_end = left_end.saturating_sub(1);
+            }
+
+            let mut left_start = left_end;
+            while left_start > 0
+                && is_ident_char(line.chars().nth(left_start - 1).unwrap_or(' '))
+            {
+                left_start -= 1;
+            }
+
+            let mut end = arrow_idx + 2;
+            while end < line.len() && line.chars().nth(end).unwrap_or(' ').is_whitespace() {
+                end += 1;
+            }
+
+            return (left_start, end);
+        }
+    }
+
     let mut start = pos;
     while start > 0 && is_ident_char(line.chars().nth(start - 1).unwrap_or(' ')) {
         start -= 1;
@@ -56,7 +86,14 @@ pub fn last_token(s: &str) -> String {
     while j > 0 && is_ident_char(s.chars().nth(j - 1).unwrap_or(' ')) {
         j -= 1;
     }
-    s[j..i].trim().to_string()
+    let token = s[j..i].trim().to_string();
+    if token.chars().all(|c| c == '-') {
+        return String::new();
+    }
+    token
+        .rsplit_once('.')
+        .map(|(_, last)| last.to_string())
+        .unwrap_or(token)
 }
 
 /// Resolve doc path (relative to workspace root) to a file URL.
@@ -169,7 +206,13 @@ pub fn get_hover(
     // Check if hovering over an arrow (relation)
     if let Some(arrow_idx) = line_text.find("->") {
         if character >= arrow_idx && character < arrow_idx + 2 {
-            let (left_start, left_end) = word_bounds(line_text, arrow_idx);
+            let mut left_pos = arrow_idx;
+            while left_pos > 0
+                && !is_ident_char(line_text.chars().nth(left_pos - 1).unwrap_or(' '))
+            {
+                left_pos -= 1;
+            }
+            let (left_start, left_end) = word_bounds(line_text, left_pos);
             let left = line_text[left_start..left_end].trim();
 
             let mut right_pos = arrow_idx + 2;
@@ -932,5 +975,96 @@ app -> web "HTTP"
         let (elements, relations) = collect_elements(&program);
         assert_eq!(elements.len(), 0);
         assert_eq!(relations.len(), 0);
+    }
+
+    #[test]
+    fn test_resolve_doc_uri_relative_path() {
+        let doc_uri = Url::parse("file:///workspace/repo.sruja").unwrap();
+        let result = resolve_doc_uri(&doc_uri, "docs/App.md");
+        assert!(result.is_some());
+        let resolved = result.unwrap();
+        assert!(resolved.as_str().ends_with("docs/App.md"));
+    }
+
+    #[test]
+    fn test_resolve_doc_uri_empty_path() {
+        let doc_uri = Url::parse("file:///workspace/repo.sruja").unwrap();
+        let result = resolve_doc_uri(&doc_uri, "");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_resolve_doc_uri_whitespace_path() {
+        let doc_uri = Url::parse("file:///workspace/repo.sruja").unwrap();
+        let result = resolve_doc_uri(&doc_uri, "   ");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_element_hover_with_doc() {
+        let program = create_test_program(
+            r#"
+app = system "My App" {
+  description "Test app"
+  doc "docs/App.md"
+}
+"#,
+        );
+
+        let hover = find_element_hover(&program, "app");
+        assert!(hover.is_some());
+        let (kind, title, doc) = hover.unwrap();
+        assert_eq!(kind, "system");
+        assert_eq!(title, "My App");
+        assert!(doc.is_some());
+        assert_eq!(doc.unwrap(), "docs/App.md");
+    }
+
+    #[test]
+    fn test_find_element_hover_partial_match() {
+        let program = create_test_program(
+            r#"
+Root = system "Root" {
+  description "Root system"
+
+  App = container "My App" {
+    technology "Node.js"
+    description "Test"
+  }
+}
+"#,
+        );
+
+        let hover = find_element_hover(&program, "App");
+        assert!(hover.is_some());
+        let (kind, title, _doc) = hover.unwrap();
+        assert_eq!(kind, "container");
+        assert_eq!(title, "My App");
+    }
+
+    #[test]
+    fn test_last_token_various_inputs() {
+        assert_eq!(last_token("app = system"), "system");
+        assert_eq!(last_token("app = system "), "system");
+        assert_eq!(last_token("app ="), "app");
+        assert_eq!(last_token("app"), "app");
+        assert_eq!(last_token(""), "");
+        assert_eq!(last_token("  "), "");
+        assert_eq!(last_token("->"), "");
+        assert_eq!(last_token("App.Web"), "Web");
+    }
+
+    #[test]
+    fn test_word_bounds_with_dots() {
+        let line = "App.Web.container";
+        let bounds = word_bounds(line, 4);
+        assert_eq!(bounds, (0, 17));
+    }
+
+    #[test]
+    fn test_word_bounds_at_delimiter() {
+        let line = "app -> web";
+        let bounds = word_bounds(line, 5);
+        assert_eq!(bounds, (0, 7));
     }
 }

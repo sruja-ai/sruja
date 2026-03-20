@@ -68,6 +68,31 @@ Sruja = system "Sruja Platform" {
       description "lint, export, and other subcommands"
       technology "Rust, crates/sruja-cli"
     }
+
+    Quickstart = component "Quickstart" {
+      description "Zero-setup architecture inventory and health signals for a repo"
+      technology "Rust, crates/sruja-cli"
+    }
+
+    Sync = component "Sync" {
+      description "Refresh evidence and write .sruja/context.json"
+      technology "Rust, crates/sruja-cli"
+    }
+
+    Drift = component "Drift" {
+      description "Detect architectural drift and violations"
+      technology "Rust, crates/sruja-cli"
+    }
+
+    ContextExport = component "Context Export" {
+      description "Export task-scoped architecture context for AI tools (file + intent + blast radius)"
+      technology "Rust, crates/sruja-cli"
+    }
+
+    Impact = component "Impact" {
+      description "Blast-radius analysis for a target node (upstream + downstream)"
+      technology "Rust, crates/sruja-cli"
+    }
   }
 
   Diagnostics = container "Diagnostics" {
@@ -267,6 +292,23 @@ Sruja = system "Sruja Platform" {
   CLI.Commands -> Export "Generates exports"
   CLI.Commands -> Diagnostics "Emits"
 
+  CLI.Quickstart -> Scan "Scans repository"
+  CLI.Quickstart -> Diff "Computes drift signals"
+  CLI.Quickstart -> Diagnostics "Emits"
+
+  CLI.Sync -> Scan "Refreshes evidence"
+  CLI.Sync -> Diff "Runs drift"
+  CLI.Sync -> Diagnostics "Emits"
+
+  CLI.Drift -> Diff "Computes drift"
+  CLI.Drift -> Diagnostics "Emits"
+
+  CLI.ContextExport -> Scan "Builds task context"
+  CLI.ContextExport -> Diagnostics "Emits"
+
+  CLI.Impact -> Scan "Builds graph"
+  CLI.Impact -> Diagnostics "Emits"
+
   Language.Parser -> Engine "Validates AST"
   Language.AST -> Export "Exports"
   Engine -> Diagnostics "Reports via"
@@ -314,7 +356,7 @@ Architect -> Sruja.CLI "Uses"
 Architect -> Sruja.VSCode "Writes DSL"
 Architect -> Sruja.Book "Reads docs"
 
-Developer -> Sruja.CLI "Runs lint/compile"
+Developer -> Sruja.CLI "Runs quickstart/sync/context/drift"
 Developer -> Sruja.VSCode "Writes code"
 Developer -> CratesIo "Installs CLI from"
 Developer -> VSCodeMarketplace "Installs extension from"
@@ -388,6 +430,15 @@ CICDFlow = flow "CI/CD Verification" {
   step Sruja.CLI -> Sruja.Engine "Runs lint"
   step Sruja.CLI -> Sruja.Export "Runs export json"
   step Sruja.CLI -> Sruja.Export "Generates artifacts"
+}
+
+DailyDevFlow = flow "Daily Development Loop" {
+  step Developer -> Sruja.CLI.Sync "Runs: sruja sync -r ."
+  step Sruja.CLI.Sync -> Sruja.Scan "Scans repo"
+  step Sruja.CLI.Sync -> Sruja.Diff "Detects drift"
+  step Developer -> Sruja.CLI.ContextExport "Runs: sruja context -r . --file <file> --intent <intent> -f json"
+  step Sruja.CLI.ContextExport -> Sruja.Scan "Builds task-scoped context"
+  step Developer -> Sruja.CLI.Drift "Runs: sruja drift -r . --violations-only"
 }
 
 ReleaseFlow = flow "Release & Distribution" {

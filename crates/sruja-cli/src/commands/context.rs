@@ -14,6 +14,26 @@ struct AiContext {
     layers: Vec<LayerInfo>,
     boundaries: Vec<BoundaryRule>,
     forbidden_patterns: Vec<String>,
+    focus: Option<FocusContext>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct FocusContext {
+    file: String,
+    intent: Option<String>,
+    depth: usize,
+    matched_nodes: Vec<FocusNode>,
+    blast_radius: Option<sruja_scan::BlastRadiusResult>,
+    suggested_checks: Vec<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct FocusNode {
+    id: String,
+    kind: NodeKind,
+    label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -43,6 +63,9 @@ pub async fn context_export(
     repo_root: &str,
     format: &str,
     output: Option<&str>,
+    file: Option<&str>,
+    intent: Option<&str>,
+    depth: usize,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -53,7 +76,7 @@ pub async fn context_export(
     }
 
     let graph = scan_repo(repo_path)?;
-    let context = build_ai_context(&graph, repo_root);
+    let context = build_ai_context(&graph, repo_root, file, intent, depth)?;
 
     let content = match format {
         "cursor-rules" => format_cursor_rules(&context),
@@ -78,7 +101,13 @@ pub async fn context_export(
     Ok(())
 }
 
-fn build_ai_context(graph: &Graph, repo: &str) -> AiContext {
+fn build_ai_context(
+    graph: &Graph,
+    repo: &str,
+    file: Option<&str>,
+    intent: Option<&str>,
+    depth: usize,
+) -> Result<AiContext, CliError> {
     let modules = graph
         .nodes
         .iter()
@@ -109,7 +138,11 @@ fn build_ai_context(graph: &Graph, repo: &str) -> AiContext {
         "UI components should not directly call database layers".to_string(),
     ];
 
-    AiContext {
+    let focus = file
+        .map(|f| build_focus_context(graph, repo, f, intent, depth))
+        .transpose()?;
+
+    Ok(AiContext {
         repo: repo.to_string(),
         summary: ContextSummary {
             total_modules: modules,
@@ -120,7 +153,147 @@ fn build_ai_context(graph: &Graph, repo: &str) -> AiContext {
         layers,
         boundaries,
         forbidden_patterns,
+        focus,
+    })
+}
+
+fn build_focus_context(
+    graph: &Graph,
+    repo_root: &str,
+    file: &str,
+    intent: Option<&str>,
+    depth: usize,
+) -> Result<FocusContext, CliError> {
+    let repo_path = Path::new(repo_root);
+    let repo_canon = repo_path
+        .canonicalize()
+        .unwrap_or_else(|_| repo_path.to_path_buf());
+
+    let requested_path = Path::new(file);
+    let absolute = if requested_path.is_absolute() {
+        requested_path.to_path_buf()
+    } else {
+        repo_path.join(requested_path)
+    };
+
+    let absolute_canon = absolute.canonicalize().unwrap_or(absolute.clone());
+    let rel = absolute_canon
+        .strip_prefix(&repo_canon)
+        .ok()
+        .map(|p| p.to_string_lossy().to_string());
+
+    let absolute_str = absolute.to_string_lossy().to_string();
+    let absolute_canon_str = absolute_canon.to_string_lossy().to_string();
+    let mut candidates: Vec<String> = vec![absolute_str, absolute_canon_str];
+    if let Some(r) = &rel {
+        candidates.push(r.clone());
     }
+
+    let mut matched: Vec<&sruja_scan::Node> = graph
+        .nodes
+        .iter()
+        .filter(|n| {
+            n.path
+                .as_ref()
+                .is_some_and(|p| path_matches_any(p, &candidates))
+        })
+        .collect();
+
+    matched.sort_by(|a, b| {
+        score_path_match(a.path.as_deref(), &candidates)
+            .cmp(&score_path_match(b.path.as_deref(), &candidates))
+            .reverse()
+            .then_with(|| a.id.cmp(&b.id))
+    });
+
+    let matched_nodes: Vec<FocusNode> = matched
+        .iter()
+        .take(10)
+        .map(|n| FocusNode {
+            id: n.id.clone(),
+            kind: n.kind,
+            label: n.label.clone(),
+            path: n.path.clone(),
+        })
+        .collect();
+
+    let blast_target = matched
+        .iter()
+        .find(|n| !n.id.contains('#'))
+        .or_else(|| matched.first())
+        .map(|n| n.id.as_str());
+
+    let blast_radius = blast_target
+        .filter(|_| depth > 0)
+        .map(|id| graph.blast_radius(id, depth));
+
+    let suggested_checks = suggested_checks(intent);
+
+    Ok(FocusContext {
+        file: file.to_string(),
+        intent: intent.map(|s| s.to_string()),
+        depth,
+        matched_nodes,
+        blast_radius,
+        suggested_checks,
+    })
+}
+
+fn path_matches_any(node_path: &str, candidates: &[String]) -> bool {
+    candidates.iter().any(|c| path_matches(node_path, c))
+}
+
+fn path_matches(node_path: &str, candidate: &str) -> bool {
+    if node_path == candidate {
+        return true;
+    }
+    let node_norm = node_path.replace('\\', "/");
+    let cand_norm = candidate.replace('\\', "/");
+    node_norm.ends_with(&cand_norm)
+}
+
+fn score_path_match(node_path: Option<&str>, candidates: &[String]) -> usize {
+    let Some(p) = node_path else {
+        return 0;
+    };
+    if candidates.iter().any(|c| p == c) {
+        return 3;
+    }
+    if candidates
+        .iter()
+        .any(|c| p.replace('\\', "/").ends_with(&c.replace('\\', "/")))
+    {
+        return 2;
+    }
+    1
+}
+
+fn suggested_checks(intent: Option<&str>) -> Vec<String> {
+    let mut checks = vec![
+        "cargo fmt --all".to_string(),
+        "cargo clippy -- -D warnings".to_string(),
+        "cargo test --workspace".to_string(),
+        "sruja drift -r .".to_string(),
+    ];
+
+    match intent {
+        Some("add-test") => {
+            checks.insert(0, "cargo test -p <crate> <test_name>".to_string());
+        }
+        Some("fix-bug") => {
+            checks.insert(0, "cargo test --workspace".to_string());
+        }
+        Some("refactor") => {
+            checks.insert(0, "cargo test --workspace".to_string());
+        }
+        Some("add-feature") => {
+            checks.insert(0, "cargo test --workspace".to_string());
+        }
+        _ => {}
+    }
+
+    checks.dedup();
+    checks
 }
 
 fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
@@ -273,6 +446,22 @@ fn format_cursor_rules(context: &AiContext) -> String {
     rules.push_str("3. If adding a new dependency, verify it does not violate boundaries\n");
     rules.push_str("4. Run `sruja drift -r .` after changes to verify architecture health\n");
 
+    if let Some(focus) = &context.focus {
+        rules.push_str("\n## Current Task Focus\n\n");
+        rules.push_str(&format!("- File: {}\n", focus.file));
+        if let Some(intent) = &focus.intent {
+            rules.push_str(&format!("- Intent: {}\n", intent));
+        }
+        if let Some(br) = &focus.blast_radius {
+            rules.push_str(&format!(
+                "- Blast radius: {} upstream, {} downstream (depth {})\n",
+                br.upstream.len(),
+                br.downstream.len(),
+                focus.depth
+            ));
+        }
+    }
+
     rules
 }
 
@@ -313,6 +502,14 @@ fn format_copilot_instructions(context: &AiContext) -> String {
 
     instructions.push_str("## Before Committing\n");
     instructions.push_str("Run: `sruja drift -r .` to check for architectural violations.\n");
+
+    if let Some(focus) = &context.focus {
+        instructions.push_str("\n## Current Task Focus\n\n");
+        instructions.push_str(&format!("- File: {}\n", focus.file));
+        if let Some(intent) = &focus.intent {
+            instructions.push_str(&format!("- Intent: {}\n", intent));
+        }
+    }
 
     instructions
 }
@@ -368,5 +565,72 @@ fn format_markdown(context: &AiContext) -> String {
         md.push('\n');
     }
 
+    if let Some(focus) = &context.focus {
+        md.push_str("## Current Task Focus\n\n");
+        md.push_str(&format!("- File: {}\n", focus.file));
+        if let Some(intent) = &focus.intent {
+            md.push_str(&format!("- Intent: {}\n", intent));
+        }
+        if let Some(br) = &focus.blast_radius {
+            md.push_str(&format!(
+                "- Blast radius: {} upstream, {} downstream (depth {})\n",
+                br.upstream.len(),
+                br.downstream.len(),
+                focus.depth
+            ));
+        }
+        if !focus.suggested_checks.is_empty() {
+            md.push_str("\n### Suggested checks\n\n");
+            for c in &focus.suggested_checks {
+                md.push_str(&format!("- `{}`\n", c));
+            }
+            md.push('\n');
+        }
+    }
+
     md
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn node(id: &str, kind: NodeKind, path: Option<&str>) -> sruja_scan::Node {
+        sruja_scan::Node {
+            id: id.to_string(),
+            kind,
+            label: id.to_string(),
+            technology: None,
+            path: path.map(|p| p.to_string()),
+            metadata: HashMap::new(),
+        }
+    }
+
+    fn edge(source: &str, target: &str) -> sruja_scan::Edge {
+        sruja_scan::Edge {
+            source: source.to_string(),
+            target: target.to_string(),
+            kind: sruja_scan::EdgeKind::Calls,
+            evidence: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn focus_context_matches_relative_path_suffix() {
+        let graph = Graph {
+            metadata: HashMap::new(),
+            nodes: vec![
+                node("module:src", NodeKind::Module, Some("src")),
+                node("src_lib_rs", NodeKind::Module, Some("/repo/src/lib.rs")),
+            ],
+            edges: vec![edge("module:src", "src_lib_rs")],
+        };
+
+        let focus = build_focus_context(&graph, "/repo", "src/lib.rs", Some("fix-bug"), 2)
+            .expect("focus context should build");
+        assert_eq!(focus.file, "src/lib.rs");
+        assert!(focus.matched_nodes.iter().any(|n| n.id == "src_lib_rs"));
+        assert!(focus.blast_radius.is_some());
+    }
 }

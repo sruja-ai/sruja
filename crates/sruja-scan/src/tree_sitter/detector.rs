@@ -111,6 +111,52 @@ mod tests {
     }
 
     #[test]
+    fn detect_language_csharp_ruby_php() {
+        assert_eq!(
+            detect_language(Path::new("Program.cs")),
+            Some(Language::CSharp)
+        );
+        assert_eq!(detect_language(Path::new("app.rb")), Some(Language::Ruby));
+        assert_eq!(detect_language(Path::new("index.php")), Some(Language::Php));
+    }
+
+    #[test]
+    fn detect_language_kotlin_scala() {
+        assert_eq!(
+            detect_language(Path::new("Main.kt")),
+            Some(Language::Kotlin)
+        );
+        assert_eq!(
+            detect_language(Path::new("build.gradle.kts")),
+            Some(Language::Kotlin)
+        );
+        assert_eq!(
+            detect_language(Path::new("App.scala")),
+            Some(Language::Scala)
+        );
+        assert_eq!(
+            detect_language(Path::new("Script.sc")),
+            Some(Language::Scala)
+        );
+    }
+
+    #[test]
+    fn detect_language_c_cpp() {
+        assert_eq!(detect_language(Path::new("main.c")), Some(Language::C));
+        assert_eq!(detect_language(Path::new("header.h")), Some(Language::C));
+        assert_eq!(detect_language(Path::new("main.cpp")), Some(Language::Cpp));
+        assert_eq!(detect_language(Path::new("impl.cc")), Some(Language::Cpp));
+        assert_eq!(
+            detect_language(Path::new("header.hpp")),
+            Some(Language::Cpp)
+        );
+        assert_eq!(
+            detect_language(Path::new("header.hxx")),
+            Some(Language::Cpp)
+        );
+    }
+
+    #[test]
     fn detect_language_unknown_returns_none() {
         assert_eq!(detect_language(Path::new("file.txt")), None);
         assert_eq!(detect_language(Path::new("README")), None);
@@ -126,5 +172,22 @@ mod tests {
     #[test]
     fn is_source_file_false_for_unknown() {
         assert!(!is_source_file(Path::new("data.json")));
+    }
+
+    #[test]
+    fn language_display() {
+        assert_eq!(Language::TypeScript.to_string(), "TypeScript");
+        assert_eq!(Language::JavaScript.to_string(), "JavaScript");
+        assert_eq!(Language::Python.to_string(), "Python");
+        assert_eq!(Language::Go.to_string(), "Go");
+        assert_eq!(Language::Rust.to_string(), "Rust");
+        assert_eq!(Language::Java.to_string(), "Java");
+        assert_eq!(Language::CSharp.to_string(), "C#");
+        assert_eq!(Language::Ruby.to_string(), "Ruby");
+        assert_eq!(Language::Php.to_string(), "PHP");
+        assert_eq!(Language::Kotlin.to_string(), "Kotlin");
+        assert_eq!(Language::Scala.to_string(), "Scala");
+        assert_eq!(Language::C.to_string(), "C");
+        assert_eq!(Language::Cpp.to_string(), "C++");
     }
 }

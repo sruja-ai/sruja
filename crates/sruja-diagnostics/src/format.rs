@@ -1,5 +1,7 @@
 //! Formatting diagnostics for user-facing output.
 
+use std::fmt::Write;
+
 use crate::types::Diagnostic;
 
 fn escape_github_actions_message(input: &str) -> String {
@@ -52,23 +54,19 @@ pub fn format_github_actions_annotation(d: &Diagnostic) -> String {
 /// ```
 #[must_use]
 pub fn format_diagnostic(d: &Diagnostic) -> String {
-    // Pre-allocate capacity to reduce allocations
     let mut output = String::with_capacity(128 + d.context.len() * 20 + d.suggestions.len() * 40);
 
-    // Header: [E001] Error: Message
-    output.push_str(&format!("[{}] {}: {}\n", d.code, d.severity, d.message));
-    output.push_str(&format!("  --> {}\n", d.location));
+    let _ = writeln!(output, "[{}] {}: {}", d.code, d.severity, d.message);
+    let _ = writeln!(output, "  --> {}", d.location);
 
-    // Context snippet
     if !d.context.is_empty() {
         output.push('\n');
         for line in &d.context {
-            output.push_str(&format!("  | {}\n", line));
+            let _ = writeln!(output, "  | {line}");
         }
         output.push('\n');
     }
 
-    // Suggestions
     if !d.suggestions.is_empty() {
         output.push_str("  = Help: ");
         output.push_str(&d.suggestions.join("\n          "));

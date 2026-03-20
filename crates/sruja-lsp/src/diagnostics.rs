@@ -304,4 +304,26 @@ mod tests {
         assert_eq!(lsp_diags[0].range.start.line, 0);
         assert_eq!(lsp_diags[0].range.start.character, 0);
     }
+
+    #[test]
+    fn test_convert_diagnostics_multiline_context() {
+        let diags = vec![create_test_diagnostic(
+            Severity::Error,
+            5,
+            10,
+            "Error with context",
+            "E001",
+            vec![
+                "  1 | app = system \"App\" {".to_string(),
+                "  2 |   invalid_token_here".to_string(),
+                "  3 | }".to_string(),
+            ],
+        )];
+
+        let lsp_diags = convert_diagnostics_to_lsp(&diags);
+        assert_eq!(lsp_diags.len(), 1);
+
+        let lsp_diag = &lsp_diags[0];
+        assert!(lsp_diag.range.end.character > lsp_diag.range.start.character);
+    }
 }

@@ -14,6 +14,7 @@ pub enum Severity {
 }
 
 impl Severity {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Severity::Error => "error",
@@ -33,7 +34,7 @@ impl std::str::FromStr for Severity {
             "warning" => Ok(Severity::Warning),
             "info" => Ok(Severity::Info),
             "hint" => Ok(Severity::Hint),
-            _ => Err(format!("Unknown Severity: {}", s)),
+            _ => Err(format!("Unknown Severity: {s}")),
         }
     }
 }
