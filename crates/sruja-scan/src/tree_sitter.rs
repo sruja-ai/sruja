@@ -17,10 +17,10 @@ use crate::ScanError;
 use rayon::prelude::*;
 
 use self::detector::Language;
-use self::languages::ParsedFile;
 use crate::scan_scope::should_exclude_with_config;
 
 pub use detector::detect_language;
+pub use languages::{Definition, DefinitionKind, ParsedFile};
 
 #[derive(Clone)]
 pub struct ScanConfig {
@@ -259,6 +259,10 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
 }
 
 fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
+    build_walker_internal(repo_root, config)
+}
+
+pub fn build_walker_internal(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
     let mut builder = ignore::WalkBuilder::new(repo_root);
     builder
         .hidden(false)
@@ -285,7 +289,7 @@ fn file_to_id(repo_root: &Path, file_path: &Path) -> String {
         .to_string()
 }
 
-fn parse_file(path: &Path, content: &str, language: Language) -> Option<ParsedFile> {
+pub fn parse_file(path: &Path, content: &str, language: Language) -> Option<ParsedFile> {
     match language {
         Language::TypeScript | Language::JavaScript => languages::typescript::parse(path, content),
         Language::Python => languages::python::parse(path, content),

@@ -346,12 +346,21 @@ enum Commands {
         /// Print repo context summary (structure, technologies, suggested areas) for contextual questions
         #[arg(long)]
         context: bool,
+        /// Generate a repository map with tree-sitter signatures for top files (for LLM context)
+        #[arg(long)]
+        repomap: bool,
         /// Path to repository (for --context; default current dir)
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
         /// Output format for --context: text (default) or json (machine-readable for agents)
         #[arg(long, default_value = "text")]
         format: String,
+        /// Maximum number of files to include in repomap (default: 100)
+        #[arg(long, default_value_t = 100)]
+        max_files: usize,
+        /// Maximum tokens for repomap (default: 5000)
+        #[arg(long, default_value_t = 5000)]
+        max_tokens: usize,
     },
     /// Component knowledge: list doc links, show doc for an element, or find gaps
     Knowledge {
@@ -608,10 +617,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         Commands::Discover {
             context,
+            repomap,
             repo,
             format,
+            max_files,
+            max_tokens,
         } => {
-            if context {
+            if repomap {
+                commands::discover_repomap_cmd(&repo, max_files, max_tokens).await
+            } else if context {
                 commands::discover_context(&repo, &format).await
             } else {
                 commands::discover_questions()

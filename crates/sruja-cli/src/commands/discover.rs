@@ -8,7 +8,7 @@ use std::path::Path;
 
 use sruja_scan::scan_repo;
 use sruja_scan::scan_scope::resolve_scan_scope;
-use sruja_scan::Graph;
+use sruja_scan::{generate_repomap_from_graph, Graph, RepoMapOptions};
 
 use super::CliError;
 use crate::context_detection::{
@@ -78,17 +78,24 @@ pub fn discover_context_string(repo: &str) -> Result<String, CliError> {
     }
 
     let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    discover_context_string_from_graph(repo, repo_path, &graph)
+}
+
+/// Build repo context summary from a pre-scanned graph (includes actual structure).
+pub fn discover_context_string_from_graph(
+    repo: &str,
+    repo_path: &Path,
+    graph: &Graph,
+) -> Result<String, CliError> {
     let languages = detect_languages(repo_path);
     let primary_language = languages
         .first()
         .map(|(l, _)| l.as_str())
         .unwrap_or("Unknown");
     let framework = detect_framework(repo_path, primary_language);
-    let context = build_repo_context(repo_path, &graph);
-    let (is_monolith, is_microservices) = detect_architecture_style(&graph);
+    let context = build_repo_context(repo_path, graph);
+    let (is_monolith, is_microservices) = detect_architecture_style(graph);
 
-    // Suggested areas: first segment of *repo-relative* paths (e.g. lib/, routes/, services/auth/).
-    // Node paths from scan are often absolute; derive stable relative paths so suggestions are meaningful.
     let repo_prefix = repo_path
         .canonicalize()
         .ok()
@@ -162,6 +169,59 @@ pub fn discover_context_string(repo: &str) -> Result<String, CliError> {
         "**Suggested areas (from paths):** {}\n",
         areas_str
     ));
+
+    out.push_str("\n## Key Components\n\n");
+
+    let mut file_nodes: Vec<_> = graph.nodes.iter().filter(|n| n.path.is_some()).collect();
+
+    let mut incoming_count: std::collections::HashMap<&str, usize> =
+        std::collections::HashMap::new();
+    for edge in &graph.edges {
+        *incoming_count.entry(&edge.target).or_default() += 1;
+    }
+
+    file_nodes.sort_by(|a, b| {
+        let a_count = incoming_count.get(a.id.as_str()).copied().unwrap_or(0);
+        let b_count = incoming_count.get(b.id.as_str()).copied().unwrap_or(0);
+        b_count.cmp(&a_count)
+    });
+
+    let top_files = file_nodes.iter().take(20);
+    for node in top_files {
+        if let Some(ref path) = node.path {
+            let rel_path = if let Some(ref prefix) = repo_prefix {
+                path.replace('\\', "/")
+                    .strip_prefix(prefix)
+                    .or_else(|| path.strip_prefix(&format!("{}/", prefix)))
+                    .unwrap_or(path.as_str())
+                    .trim_start_matches('/')
+                    .to_string()
+            } else {
+                path.clone()
+            };
+            let import_count = incoming_count.get(node.id.as_str()).copied().unwrap_or(0);
+            out.push_str(&format!(
+                "- `{}` ({}, {} imports)\n",
+                rel_path,
+                node.kind.as_str(),
+                import_count
+            ));
+        }
+    }
+
+    out.push_str("\n## Exported Interfaces\n\n");
+
+    let export_nodes: Vec<_> = graph
+        .nodes
+        .iter()
+        .filter(|n| n.id.contains('#'))
+        .take(30)
+        .collect();
+
+    for node in export_nodes {
+        out.push_str(&format!("- `{}` ({})\n", node.label, node.kind.as_str()));
+    }
+
     out.push_str("\nUse this context to derive 2–5 questions tailored to this repo (see skill: contextual discovery).\n");
     Ok(out)
 }
@@ -270,5 +330,42 @@ pub async fn discover_context(repo: &str, format: &str) -> Result<(), CliError> 
     }
     let s = discover_context_string(repo)?;
     println!("{}", s);
+    Ok(())
+}
+
+/// Generate a repository map with tree-sitter signatures for top files.
+pub fn discover_repomap(
+    repo: &str,
+    max_files: usize,
+    max_tokens: usize,
+) -> Result<String, CliError> {
+    let repo_path = Path::new(repo);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo),
+        )));
+    }
+
+    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+
+    let options = RepoMapOptions {
+        max_files,
+        max_tokens,
+        include_signatures: true,
+    };
+
+    generate_repomap_from_graph(repo_path, &graph, &options)
+        .map_err(|e| CliError::Scan(e.to_string()))
+}
+
+/// Print repository map for LLM context.
+pub async fn discover_repomap_cmd(
+    repo: &str,
+    max_files: usize,
+    max_tokens: usize,
+) -> Result<(), CliError> {
+    let repomap = discover_repomap(repo, max_files, max_tokens)?;
+    println!("{}", repomap);
     Ok(())
 }

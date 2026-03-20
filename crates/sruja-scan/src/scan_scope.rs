@@ -8,6 +8,11 @@
 //! - intent flows
 //! - context detection
 //! - tree-sitter walker
+//!
+//! Supports reading exclusion patterns from:
+//! - DEFAULT_EXCLUDE_PATTERNS (hardcoded safe defaults)
+//! - .gitignore (repo-specific git ignore rules)
+//! - .srujaignore (Sruja-specific scan exclusions)
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -64,6 +69,67 @@ pub const DEFAULT_EXCLUDE_PATTERNS: &[&str] = &[
     "spec/",
 ];
 
+/// Read exclusion patterns from a .gitignore or .srujaignore file.
+pub fn read_ignore_file(path: &Path) -> Vec<String> {
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|content| {
+            content
+                .lines()
+                .filter_map(|line| {
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with('#') {
+                        None
+                    } else {
+                        Some(line.to_string())
+                    }
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Load all ignore patterns from a repository root.
+/// Returns patterns from .gitignore and .srujaignore files.
+pub fn load_ignore_patterns(repo_root: &Path) -> Vec<String> {
+    let mut patterns = Vec::new();
+
+    if let Some(gitignore) = find_gitignore(repo_root) {
+        patterns.extend(read_ignore_file(&gitignore));
+    }
+
+    let srujaignore = repo_root.join(".srujaignore");
+    if srujaignore.exists() {
+        patterns.extend(read_ignore_file(&srujaignore));
+    }
+
+    patterns
+}
+
+/// Find the nearest .gitignore file, walking up the directory tree.
+fn find_gitignore(start: &Path) -> Option<std::path::PathBuf> {
+    let mut current = start;
+    loop {
+        let gitignore = current.join(".gitignore");
+        if gitignore.exists() {
+            return Some(gitignore);
+        }
+        match current.parent() {
+            Some(parent) => current = parent,
+            None => return None,
+        }
+    }
+}
+
+/// Merge default patterns with user-defined ignore patterns.
+pub fn merge_ignore_patterns(default: &[&str], user: &[String]) -> Vec<String> {
+    let mut merged: Vec<String> = default.iter().map(|s| s.to_string()).collect();
+    merged.extend(user.iter().cloned());
+    merged.sort();
+    merged.dedup();
+    merged
+}
+
 /// Scan scope metadata for skill-facing JSON outputs.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ScanScope {
@@ -77,8 +143,11 @@ pub struct ScanScope {
     /// Total number of files scanned (included).
     pub total_files: usize,
 
-    /// Patterns used for exclusion
+    /// Patterns used for exclusion (defaults + user-defined from .gitignore/.srujaignore)
     pub exclude_patterns: Vec<String>,
+
+    /// User-defined patterns loaded from .gitignore and .srujaignore
+    pub user_patterns: Vec<String>,
 }
 
 impl Default for ScanScope {
@@ -91,24 +160,38 @@ impl Default for ScanScope {
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),
+            user_patterns: Vec::new(),
         }
     }
 }
 
 /// Resolve scan scope for a repository.
 ///
-/// Walks the repo, applies default exclude patterns, and populates
+/// Walks the repo, applies default exclude patterns plus patterns from
+/// .gitignore and .srujaignore files, and populates
 /// `ScanScope::included`, `excluded`, and `total_files` for skill-facing JSON.
 pub fn resolve_scan_scope(repo_root: &Path) -> (ScanConfig, ScanScope) {
     let config = ScanConfig::default();
-    let scope = build_scope_from_walk(repo_root);
+    let user_patterns = load_ignore_patterns(repo_root);
+    let scope = build_scope_from_walk_with_patterns(repo_root, &user_patterns);
+    (config, scope)
+}
+
+/// Resolve scan scope with custom user patterns.
+pub fn resolve_scan_scope_with_patterns(
+    repo_root: &Path,
+    user_patterns: &[String],
+) -> (ScanConfig, ScanScope) {
+    let config = ScanConfig::default();
+    let scope = build_scope_from_walk_with_patterns(repo_root, user_patterns);
     (config, scope)
 }
 
 /// Walk repo and classify paths to build ScanScope metadata.
 /// - included: top-level segment of any dir that contains at least one scanned file.
 /// - excluded: full relative path of each directory we skipped (did not descend into).
-fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
+fn build_scope_from_walk_with_patterns(repo_root: &Path, user_patterns: &[String]) -> ScanScope {
+    let merged_patterns = merge_ignore_patterns(DEFAULT_EXCLUDE_PATTERNS, user_patterns);
     let mut included_top_level: HashSet<String> = HashSet::new();
     let mut excluded_rel_paths: HashSet<String> = HashSet::new();
     let mut total_files = 0usize;
@@ -116,6 +199,7 @@ fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
     fn walk(
         dir: &Path,
         repo_root: &Path,
+        patterns: &[String],
         included_top_level: &mut HashSet<String>,
         excluded_rel_paths: &mut HashSet<String>,
         total_files: &mut usize,
@@ -141,7 +225,7 @@ fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
                 .and_then(|r| r.split('/').next().map(String::from));
 
             if path.is_dir() {
-                if should_exclude(&path) {
+                if should_exclude_with_patterns(&path, patterns) {
                     if let Some(ref r) = rel {
                         excluded_rel_paths.insert(r.clone());
                     }
@@ -150,11 +234,12 @@ fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
                 walk(
                     &path,
                     repo_root,
+                    patterns,
                     included_top_level,
                     excluded_rel_paths,
                     total_files,
                 );
-            } else if !should_exclude(&path) {
+            } else if !should_exclude_with_patterns(&path, patterns) {
                 *total_files += 1;
                 if let Some(ref seg) = first_seg {
                     included_top_level.insert(seg.clone());
@@ -166,6 +251,7 @@ fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
     walk(
         repo_root,
         repo_root,
+        &merged_patterns,
         &mut included_top_level,
         &mut excluded_rel_paths,
         &mut total_files,
@@ -180,11 +266,44 @@ fn build_scope_from_walk(repo_root: &Path) -> ScanScope {
         included,
         excluded,
         total_files,
-        exclude_patterns: DEFAULT_EXCLUDE_PATTERNS
-            .iter()
-            .map(|s| s.to_string())
-            .collect(),
+        exclude_patterns: merged_patterns,
+        user_patterns: user_patterns.to_vec(),
     }
+}
+
+/// Check if a path should be excluded based on a list of patterns.
+fn should_exclude_with_patterns(path: &Path, patterns: &[String]) -> bool {
+    let path_str = path.to_string_lossy();
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+    for pattern in patterns {
+        if pattern.starts_with('*') {
+            let rest = pattern.trim_start_matches('*');
+            if let Some((mid, suffix)) = rest.split_once('*') {
+                if !suffix.is_empty() && file_name.ends_with(suffix) && file_name.contains(mid) {
+                    return true;
+                }
+            } else if file_name.ends_with(rest) {
+                return true;
+            }
+        } else if pattern.ends_with('/') {
+            if path_str.contains(pattern.trim_end_matches('/')) {
+                return true;
+            }
+        } else if pattern.ends_with('*') && !pattern.starts_with('*') {
+            let prefix = pattern.trim_end_matches('*');
+            if file_name.starts_with(prefix) {
+                return true;
+            }
+        } else if file_name == *pattern
+            || path_str.contains(&format!("/{}", pattern))
+            || path_str == *pattern
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// Check if a path should be excluded based on default patterns.

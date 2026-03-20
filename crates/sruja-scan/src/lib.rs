@@ -6,6 +6,7 @@
 mod cargo;
 pub mod graph;
 pub mod npm;
+pub mod repomap;
 pub mod scan_scope;
 pub mod tree_sitter;
 
@@ -17,8 +18,9 @@ pub use graph::{
     BlastRadiusDirection, BlastRadiusNode, BlastRadiusResult, Edge, EdgeEvidence, EdgeKind, Graph,
     Node, NodeKind,
 };
+pub use repomap::{generate_repomap, generate_repomap_from_graph, RepoMapOptions};
 pub use scan_scope::{should_exclude_with_config, ScanScope, DEFAULT_EXCLUDE_PATTERNS};
-pub use tree_sitter::{scan_with_tree_sitter, ScanConfig};
+pub use tree_sitter::{detect_language, parse_file, scan_with_tree_sitter, ScanConfig};
 
 #[derive(Debug, Error)]
 pub enum ScanError {
