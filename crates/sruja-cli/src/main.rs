@@ -331,7 +331,7 @@ enum Commands {
         /// Path to repository root
         #[arg(long, short = 'r', action = clap::ArgAction::Append)]
         repo: Vec<String>,
-        /// Output format (cursor-rules, copilot-instructions, markdown, json)
+        /// Output format (cursor-rules, copilot-instructions, markdown, repomap, json, for-ai)
         #[arg(long, short = 'f', default_value = "cursor-rules")]
         format: String,
         /// Output file (defaults to stdout)

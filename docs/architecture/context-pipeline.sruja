@@ -138,7 +138,7 @@ ContextProvisioningSystem = system "Context Provisioning System" {
     description "Command-line interface for context export and traceability"
     technology "Go, cmd/sruja"
     ContextExportCmd = component "Context Export Command" {
-      description "Exports context from DSL in the requested format"
+      description "Exports repo context for AI tools in the requested format"
     }
     TraceCmd = component "Trace Command" {
       description "Creates and queries traceability links between DSL and code"
@@ -237,10 +237,8 @@ ContextProvisioningSystem.ContextFormatter -> ContextProvisioningSystem.LSPInteg
 
 // Stories/Flows
 ExportContext = flow "Export Context for System" {
-  step Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context export --system=OrderService --format=markdown"
+  step Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context -r . --file <path> --intent <add-feature|refactor|fix-bug|add-test> -f markdown"
   step ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "formats context"
-  step ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.DSLParser "parses DSL"
-  step ContextProvisioningSystem.DSLParser -> ContextProvisioningSystem.JSONExport "exports to JSON"
 }
 
 UseContextWithAI = flow "Use Context with AI Assistant" {
