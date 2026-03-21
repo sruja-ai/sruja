@@ -4,7 +4,13 @@
 
 **Not a diagram language—architecture context that stays in sync.** Sruja helps your AI coding workflow by generating and maintaining architecture as code, plus evidence-backed context (graph, drift, violations) so changes stay grounded in your real codebase. You validate, version-control, and enforce it; export to Mermaid when you need a diagram.
 
-*(Official positioning: [docs/MESSAGING.md](docs/MESSAGING.md).)*
+**Try it in 60 seconds (no AI required):**
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+sruja quickstart -r . --generate-baseline
+sruja lint repo.sruja
+```
 
 ---
 
@@ -23,27 +29,30 @@
 
 ---
 
-## Quick Start (3 minutes)
+## Quick Start
 
-### Step 1: Install the AI skill
+### Option A: Deterministic quickstart (recommended for evaluation)
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+sruja quickstart -r . --generate-baseline
+```
+
+This scans your repo, prints an inventory + structural health report, and writes a draft `repo.sruja` baseline you can version-control.
+
+### Option B: Generate and maintain architecture with AI (recommended for ongoing use)
+
+Install the skill:
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate Sruja architecture. The skill uses structural analysis (discover, sync, drift) under the hood—and will guide you to install the Sruja CLI when you first use it if needed.
+This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate Sruja architecture. The skill uses structural analysis (discover, sync, drift) under the hood.
 
 **Supported editors:** Cursor, GitHub Copilot, Claude, Continue.dev, and any editor with [skills.sh](https://skills.sh) support.
 
-### Step 2: Install the CLI (when the skill needs it)
-
-The skill runs `sruja discover`, `sruja lint`, and `sruja drift` for you. When you use the skill, it will ask you to install the CLI if it’s not present. You can also install it now:
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-```
-
-### Step 3: Generate architecture with AI
+Generate architecture with AI:
 
 In your AI editor, paste this prompt:
 
@@ -59,7 +68,7 @@ Your AI will:
 3. Generate a `repo.sruja` file
 4. Run `sruja lint` and fix any validation errors so you see **concrete value in the first run** (real errors/warnings and a clean, valid architecture)
 
-### Step 4: Validate and export
+### Validate and export
 
 ```bash
 # Check for errors
