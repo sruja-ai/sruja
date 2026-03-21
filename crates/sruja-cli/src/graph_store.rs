@@ -59,6 +59,9 @@ pub fn build_and_save_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     let mut kg = KnowledgeGraph::new();
     sruja_graph::merge_scan_into_graph(&mut kg, &scan_graph, &repo.display().to_string());
 
+    let commit_sha = get_current_commit_sha(repo);
+    kg.metadata.commit_sha = commit_sha;
+
     save_graph(repo, &kg)?;
 
     Ok(kg)
@@ -77,28 +80,53 @@ pub fn save_graph(repo: &Path, graph: &KnowledgeGraph) -> Result<(), CliError> {
 }
 
 /// Check if graph is stale (code changed since last build)
-fn is_graph_stale(repo: &Path, _graph: &KnowledgeGraph) -> Result<bool, CliError> {
-    // Get current commit SHA
-    let current_sha = get_current_commit_sha(repo);
-
-    // Get last analyzed commit from graph metadata
-    // For now, just check if graph file is older than any source file
+fn is_graph_stale(repo: &Path, graph: &KnowledgeGraph) -> Result<bool, CliError> {
     let graph_path = repo.join(GRAPH_FILE);
 
     if !graph_path.exists() {
         return Ok(true);
     }
 
-    let graph_metadata = std::fs::metadata(&graph_path).map_err(|e| CliError::Io(e))?;
-    let graph_modified = graph_metadata.modified().map_err(|e| CliError::Io(e))?;
+    let current_sha = get_current_commit_sha(repo);
 
-    // Check if any source files are newer than graph
-    // Simple heuristic: check if last commit is newer than graph file
-    if let Some(sha) = current_sha {
-        // If we have commit info, store it in graph metadata later
-        // For now, always rebuild to ensure freshness
-        // TODO: Implement proper staleness check with commit SHA tracking
-        return Ok(true);
+    match (&current_sha, &graph.metadata.commit_sha) {
+        (Some(current), Some(stored)) => {
+            if current != stored {
+                return Ok(true);
+            }
+            Ok(false)
+        }
+        (Some(_), None) => Ok(true),
+        (None, _) => {
+            let graph_metadata = std::fs::metadata(&graph_path).map_err(|e| CliError::Io(e))?;
+            let graph_modified = graph_metadata.modified().map_err(|e| CliError::Io(e))?;
+
+            check_source_files_newer(repo, graph_modified)
+        }
+    }
+}
+
+fn check_source_files_newer(
+    repo: &Path,
+    graph_modified: std::time::SystemTime,
+) -> Result<bool, CliError> {
+    let source_dirs = ["src", "lib", "app", "packages", "crates"];
+
+    for dir in source_dirs {
+        let dir_path = repo.join(dir);
+        if dir_path.exists() && dir_path.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(&dir_path) {
+                for entry in entries.flatten() {
+                    if let Ok(metadata) = entry.metadata() {
+                        if let Ok(modified) = metadata.modified() {
+                            if modified > graph_modified {
+                                return Ok(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(false)

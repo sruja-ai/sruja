@@ -50,7 +50,7 @@ fn is_ident_char(c: char) -> bool {
 }
 
 /// Collect elements from a program for quick lookup
-fn collect_elements(
+pub fn collect_elements(
     program: &Program,
 ) -> (std::collections::HashMap<String, ElementDef>, Vec<Relation>) {
     let mut elements = std::collections::HashMap::new();
@@ -151,7 +151,11 @@ pub fn find_relation_hover(program: &Program, from: &str, to: &str) -> Option<(S
         if (rel_from == from || rel_from.ends_with(&format!(".{}", from)))
             && (rel_to == to || rel_to.ends_with(&format!(".{}", to)))
         {
-            let verb = String::new(); // TODO: Extract verb from relation
+            let verb = rel
+                .label
+                .as_ref()
+                .and_then(|l| l.split_whitespace().next().map(|s| s.to_string()))
+                .unwrap_or_default();
             let label = rel.label.clone().unwrap_or_default();
             return Some((verb, label));
         }

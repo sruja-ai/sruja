@@ -21,6 +21,7 @@ pub struct GraphMetadata {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub version: String,
+    pub commit_sha: Option<String>,
 }
 
 impl Default for GraphMetadata {
@@ -32,6 +33,7 @@ impl Default for GraphMetadata {
             created_at: now,
             updated_at: now,
             version: "1.0.0".to_string(),
+            commit_sha: None,
         }
     }
 }

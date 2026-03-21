@@ -352,13 +352,59 @@ impl LanguageServer for SrujaLanguageServer {
         }))
     }
 
-    async fn code_action(&self, _params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
-        // TODO: Implement code actions (quick fixes)
-        // This will provide quick fixes for common errors like:
-        // - Create missing elements
-        // - Add missing descriptions
-        // - Fix duplicate IDs
-        Ok(None)
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let uri = params.text_document.uri.clone();
+        let doc = match self.workspace.get_document(&uri).await {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+
+        let text = doc.text.clone();
+        let parser = Parser::new(uri.to_string());
+        let program = match parser.parse(&text) {
+            Ok(p) => p,
+            Err(_) => return Ok(None),
+        };
+
+        let mut actions: Vec<CodeActionOrCommand> = Vec::new();
+
+        for diag in &params.context.diagnostics {
+            if let Some(NumberOrString::String(code)) = &diag.code {
+                let line = diag.range.start.line as usize;
+                let character = diag.range.start.character as usize;
+
+                match code.as_str() {
+                    "E302" => {
+                        if let Some(action) =
+                            create_add_description_action(&uri, &doc, line, character)
+                        {
+                            actions.push(CodeActionOrCommand::CodeAction(action));
+                        }
+                    }
+                    "E202" => {
+                        if let Some(action) =
+                            create_missing_element_action(&uri, &doc, &program, line, character)
+                        {
+                            actions.push(CodeActionOrCommand::CodeAction(action));
+                        }
+                    }
+                    "E205" => {
+                        if let Some(action) =
+                            create_add_relation_action(&uri, &doc, &program, line, character)
+                        {
+                            actions.push(CodeActionOrCommand::CodeAction(action));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if actions.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(actions))
+        }
     }
 }
 
@@ -375,4 +421,225 @@ pub async fn run_stdio() -> Result<()> {
     let (service, socket) = create_lsp_service();
     Server::new(stdin, stdout, socket).serve(service).await;
     Ok(())
+}
+
+fn create_add_description_action(
+    uri: &Url,
+    doc: &crate::workspace::Document,
+    line: usize,
+    _character: usize,
+) -> Option<CodeAction> {
+    let line_text = doc.get_line(line)?;
+    let trimmed = line_text.trim();
+
+    let kind_prefix = [
+        "system",
+        "container",
+        "component",
+        "database",
+        "datastore",
+        "queue",
+        "person",
+    ]
+    .iter()
+    .find(|prefix| trimmed.starts_with(*prefix))?;
+
+    let rest = trimmed.strip_prefix(kind_prefix)?.trim();
+    let name_end = rest
+        .find(|c: char| c.is_whitespace() || c == '{')
+        .unwrap_or(rest.len());
+    let element_name = &rest[..name_end];
+
+    let insert_pos = line_text.find('{')?;
+    let indent = "  ".repeat(line_text.len() - line_text.trim_start().len() + 1);
+    let new_text = format!("\n{}description \"TODO: Add description\"", indent);
+
+    Some(CodeAction {
+        title: format!("Add description to '{}'", element_name),
+        kind: Some(CodeActionKind::QUICKFIX),
+        diagnostics: None,
+        edit: Some(WorkspaceEdit {
+            changes: Some({
+                let mut map = std::collections::HashMap::new();
+                map.insert(
+                    uri.clone(),
+                    vec![TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: line as u32,
+                                character: insert_pos as u32 + 1,
+                            },
+                            end: Position {
+                                line: line as u32,
+                                character: insert_pos as u32 + 1,
+                            },
+                        },
+                        new_text,
+                    }],
+                );
+                map
+            }),
+            document_changes: None,
+            change_annotations: None,
+        }),
+        command: None,
+        is_preferred: Some(true),
+        disabled: None,
+        data: None,
+    })
+}
+
+fn create_missing_element_action(
+    uri: &Url,
+    doc: &crate::workspace::Document,
+    program: &sruja_language::ast::Program,
+    line: usize,
+    _character: usize,
+) -> Option<CodeAction> {
+    let line_text = doc.get_line(line)?;
+
+    let missing_name = extract_identifier_from_error(line_text)?;
+
+    let (elements, _) = crate::features::collect_elements(program);
+    if elements.contains_key(&missing_name) {
+        return None;
+    }
+
+    let last_line = doc.lines().len();
+    let last_non_empty = (0..last_line).rev().find(|&i| {
+        doc.get_line(i)
+            .map(|l| !l.trim().is_empty())
+            .unwrap_or(false)
+    })?;
+
+    let insert_line = last_non_empty + 1;
+    let new_text = format!(
+        "\n\n{} = system \"{}\" {{\n  description \"TODO: Add description\"\n}}",
+        missing_name, missing_name
+    );
+
+    Some(CodeAction {
+        title: format!("Create missing element '{}'", missing_name),
+        kind: Some(CodeActionKind::QUICKFIX),
+        diagnostics: None,
+        edit: Some(WorkspaceEdit {
+            changes: Some({
+                let mut map = std::collections::HashMap::new();
+                map.insert(
+                    uri.clone(),
+                    vec![TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: insert_line as u32,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: insert_line as u32,
+                                character: 0,
+                            },
+                        },
+                        new_text,
+                    }],
+                );
+                map
+            }),
+            document_changes: None,
+            change_annotations: None,
+        }),
+        command: None,
+        is_preferred: Some(true),
+        disabled: None,
+        data: None,
+    })
+}
+
+fn create_add_relation_action(
+    uri: &Url,
+    doc: &crate::workspace::Document,
+    program: &sruja_language::ast::Program,
+    line: usize,
+    _character: usize,
+) -> Option<CodeAction> {
+    let line_text = doc.get_line(line)?;
+
+    let trimmed = line_text.trim();
+    let kind_prefix = [
+        "system",
+        "container",
+        "component",
+        "database",
+        "datastore",
+        "queue",
+        "person",
+    ]
+    .iter()
+    .find(|prefix| trimmed.starts_with(*prefix))?;
+
+    let rest = trimmed.strip_prefix(kind_prefix)?.trim();
+    let name_end = rest
+        .find(|c: char| c.is_whitespace() || c == '{' || c == '"')
+        .unwrap_or(rest.len());
+    let element_name = rest[..name_end].trim_matches('"').to_string();
+
+    let (elements, _) = crate::features::collect_elements(program);
+    let target = elements.keys().next()?;
+
+    let last_line = doc.lines().len();
+    let last_non_empty = (0..last_line).rev().find(|&i| {
+        doc.get_line(i)
+            .map(|l| !l.trim().is_empty())
+            .unwrap_or(false)
+    })?;
+
+    let insert_line = last_non_empty + 1;
+    let new_text = format!("\n{} -> {} \"uses\"", element_name, target);
+
+    Some(CodeAction {
+        title: format!("Add relation from '{}' to '{}'", element_name, target),
+        kind: Some(CodeActionKind::QUICKFIX),
+        diagnostics: None,
+        edit: Some(WorkspaceEdit {
+            changes: Some({
+                let mut map = std::collections::HashMap::new();
+                map.insert(
+                    uri.clone(),
+                    vec![TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: insert_line as u32,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: insert_line as u32,
+                                character: 0,
+                            },
+                        },
+                        new_text,
+                    }],
+                );
+                map
+            }),
+            document_changes: None,
+            change_annotations: None,
+        }),
+        command: None,
+        is_preferred: Some(false),
+        disabled: None,
+        data: None,
+    })
+}
+
+fn extract_identifier_from_error(line: &str) -> Option<String> {
+    if let Some(arrow_idx) = line.find("->") {
+        let right_side = &line[arrow_idx + 2..];
+        let trimmed = right_side.trim();
+        let end = trimmed
+            .find(|c: char| c.is_whitespace() || c == '"')
+            .unwrap_or(trimmed.len());
+        let ident = &trimmed[..end];
+        if !ident.is_empty() {
+            return Some(ident.to_string());
+        }
+    }
+    None
 }

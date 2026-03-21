@@ -249,10 +249,10 @@ mod tests {
 
         let lsp_diag = &lsp_diags[0];
         assert!(lsp_diag.code.is_some());
-        if let Some(NumberOrString::String(code)) = &lsp_diag.code {
-            assert_eq!(code, "CUSTOM_CODE_123");
-        } else {
-            panic!("Expected String code");
+        match &lsp_diag.code {
+            Some(NumberOrString::String(code)) => assert_eq!(code, "CUSTOM_CODE_123"),
+            Some(NumberOrString::Number(n)) => panic!("Expected String code, got Number: {}", n),
+            None => panic!("Expected String code, got None"),
         }
     }
 
