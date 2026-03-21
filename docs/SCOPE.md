@@ -1,7 +1,5 @@
 # Product scope
 
-**Strategy:** For context engineering direction, module decisions, and execution plan, see [docs/internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md](internal/architecture-lab/AI_FIRST_MODULE_ANALYSIS_FINAL.md).
-
 Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagramming product. We ship:
 
 1. **Rust parser** (`sruja-language`) – core DSL parsing
