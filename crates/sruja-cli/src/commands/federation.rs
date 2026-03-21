@@ -88,8 +88,11 @@ fn infer_repo_id(repo_path: &Path) -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-/// Publish current repo to a bundle file: metadata, DSL snapshot, context, truth state.
-pub async fn publish(repo_root: &str, output_path: &str) -> Result<(), CliError> {
+pub async fn publish(
+    repo_root: &str,
+    repo_id_override: Option<&str>,
+    output_path: &str,
+) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
@@ -142,7 +145,10 @@ pub async fn publish(repo_root: &str, output_path: &str) -> Result<(), CliError>
         .map(|s| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
 
-    let repo_id = infer_repo_id(repo_path);
+    let repo_id = repo_id_override
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| infer_repo_id(repo_path));
     let bundle = RepoBundle {
         schema_version: REPO_BUNDLE_SCHEMA_VERSION,
         repo_id: repo_id.clone(),
@@ -244,32 +250,24 @@ pub struct RepoEntry {
     pub git_commit: Option<String>,
 }
 
-/// Bundle filename suffix: exact "repo.bundle.json" or "*.repo.bundle.json".
 fn is_bundle_filename(name: &str) -> bool {
     name == "repo.bundle.json" || name.ends_with(".repo.bundle.json")
 }
 
-/// Collect paths: if input is a file, use it; if dir, find all repo.bundle.json and *.repo.bundle.json inside.
-fn collect_bundle_paths(input: &str) -> Result<Vec<PathBuf>, CliError> {
-    let p = Path::new(input);
-    if !p.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Input not found: {}", input),
-        )));
-    }
-    if p.is_file() {
-        return Ok(vec![p.to_path_buf()]);
-    }
+fn collect_bundle_paths_in_dir(dir: &Path, recursive: bool) -> Result<Vec<PathBuf>, CliError> {
     let mut out = Vec::new();
-    for e in fs::read_dir(p).map_err(|e| {
+    for e in fs::read_dir(dir).map_err(|e| {
         CliError::Io(std::io::Error::new(
             e.kind(),
-            format!("Failed to read dir {}: {}", input, e),
+            format!("Failed to read dir {}: {}", dir.display(), e),
         ))
     })? {
         let e = e.map_err(CliError::Io)?;
         let path = e.path();
+        if path.is_dir() && recursive {
+            out.extend(collect_bundle_paths_in_dir(&path, recursive)?);
+            continue;
+        }
         if path.is_file()
             && path
                 .file_name()
@@ -279,16 +277,45 @@ fn collect_bundle_paths(input: &str) -> Result<Vec<PathBuf>, CliError> {
             out.push(path);
         }
     }
-    out.sort(); // stable order for compose
     Ok(out)
 }
 
-/// Compose one or more repo bundles into a single system index.
-pub async fn compose(input: &str, output_path: &str) -> Result<(), CliError> {
-    let paths = collect_bundle_paths(input)?;
+fn collect_bundle_paths(inputs: &[String], recursive: bool) -> Result<Vec<PathBuf>, CliError> {
+    if inputs.is_empty() {
+        return Err(CliError::Validation(
+            "No inputs provided. Pass at least one -i <bundle-or-dir>.".to_string(),
+        ));
+    }
+
+    let mut out = Vec::new();
+    for input in inputs {
+        let p = Path::new(input);
+        if !p.exists() {
+            return Err(CliError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Input not found: {}", input),
+            )));
+        }
+        if p.is_file() {
+            out.push(p.to_path_buf());
+            continue;
+        }
+        out.extend(collect_bundle_paths_in_dir(p, recursive)?);
+    }
+    out.sort(); // stable order for compose
+    out.dedup();
+    Ok(out)
+}
+
+pub async fn compose(
+    inputs: &[String],
+    recursive: bool,
+    output_path: &str,
+) -> Result<(), CliError> {
+    let paths = collect_bundle_paths(inputs, recursive)?;
     if paths.is_empty() {
         return Err(CliError::Validation(
-            "No bundle files found. Provide a path to a repo.bundle.json (or *.repo.bundle.json) file, or a directory containing such files.".to_string(),
+            "No bundle files found. Provide a path to a repo.bundle.json (or *.repo.bundle.json) file, or a directory containing such files. Tip: use --recursive when bundles are nested in subdirectories.".to_string(),
         ));
     }
 

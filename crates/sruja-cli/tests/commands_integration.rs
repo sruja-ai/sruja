@@ -446,19 +446,56 @@ fn baseline_and_check_json_succeeds() {
 fn publish_and_compose_succeeds() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());
+    write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
     let repo_str = repo.path().to_str().expect("utf-8");
 
-    let bundle = repo
-        .path()
-        .join("repo.bundle.json")
-        .to_str()
-        .expect("utf-8")
-        .to_string();
+    let bundles_dir = repo.path().join("bundles");
+    let nested_dir = bundles_dir.join("nested");
+    std::fs::create_dir_all(&nested_dir).expect("create bundles/nested");
 
-    let (pub_success, _pub_stdout, pub_stderr) =
-        run_sruja(&["publish", "-r", repo_str, "-o", &bundle]);
+    let bundle_a_path = bundles_dir.join("a.repo.bundle.json");
+    let bundle_a = bundle_a_path.to_str().expect("utf-8").to_string();
+    let (pub_success, _pub_stdout, pub_stderr) = run_sruja(&[
+        "publish",
+        "-r",
+        repo_str,
+        "--repo-id",
+        "repo-a",
+        "-o",
+        &bundle_a,
+    ]);
     assert!(pub_success, "publish should succeed: stderr={}", pub_stderr);
-    assert!(std::path::Path::new(&bundle).exists());
+    assert!(bundle_a_path.exists());
+
+    let bundle_a_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&bundle_a_path).expect("read bundle"))
+            .expect("bundle must be valid JSON");
+    assert_eq!(
+        bundle_a_json
+            .get("repo_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
+        "repo-a",
+        "repo_id should be overridden"
+    );
+
+    let bundle_b_path = nested_dir.join("b.repo.bundle.json");
+    let bundle_b = bundle_b_path.to_str().expect("utf-8").to_string();
+    let (pub_success_b, _pub_stdout_b, pub_stderr_b) = run_sruja(&[
+        "publish",
+        "-r",
+        repo_str,
+        "--repo-id",
+        "repo-b",
+        "-o",
+        &bundle_b,
+    ]);
+    assert!(
+        pub_success_b,
+        "publish (2) should succeed: stderr={}",
+        pub_stderr_b
+    );
+    assert!(bundle_b_path.exists());
 
     let index = repo
         .path()
@@ -466,14 +503,85 @@ fn publish_and_compose_succeeds() {
         .to_str()
         .expect("utf-8")
         .to_string();
-    let (compose_success, _compose_stdout, compose_stderr) =
-        run_sruja(&["compose", "-i", &bundle, "-o", &index]);
+    let bundles_dir_str = bundles_dir.to_str().expect("utf-8");
+    let (compose_success, _compose_stdout, compose_stderr) = run_sruja(&[
+        "compose",
+        "-i",
+        bundles_dir_str,
+        "--recursive",
+        "-o",
+        &index,
+    ]);
     assert!(
         compose_success,
         "compose should succeed: stderr={}",
         compose_stderr
     );
     assert!(std::path::Path::new(&index).exists());
+
+    let index_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&index).expect("read index"))
+            .expect("index must be valid JSON");
+    let repos = index_json
+        .get("repos")
+        .and_then(|v| v.as_array())
+        .expect("repos must be array");
+    assert!(
+        repos
+            .iter()
+            .any(|r| r.get("repo_id").and_then(|v| v.as_str()) == Some("repo-a")),
+        "system index must include repo-a"
+    );
+    assert!(
+        repos
+            .iter()
+            .any(|r| r.get("repo_id").and_then(|v| v.as_str()) == Some("repo-b")),
+        "system index must include repo-b"
+    );
+    let nodes = index_json
+        .get("nodes")
+        .and_then(|v| v.as_array())
+        .expect("nodes must be array");
+    assert!(
+        nodes.iter().any(|n| {
+            n.get("canonical_id")
+                .and_then(|v| v.as_str())
+                .is_some_and(|id| id.starts_with("repo-a::"))
+        }),
+        "nodes should include canonical ids for repo-a"
+    );
+    assert!(
+        nodes.iter().any(|n| {
+            n.get("canonical_id")
+                .and_then(|v| v.as_str())
+                .is_some_and(|id| id.starts_with("repo-b::"))
+        }),
+        "nodes should include canonical ids for repo-b"
+    );
+
+    let index2 = repo
+        .path()
+        .join("system2.index.json")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+    let nested_dir_str = nested_dir.to_str().expect("utf-8");
+    let (compose2_success, _compose2_stdout, compose2_stderr) = run_sruja(&[
+        "compose",
+        "-i",
+        &bundle_a,
+        "-i",
+        nested_dir_str,
+        "--recursive",
+        "-o",
+        &index2,
+    ]);
+    assert!(
+        compose2_success,
+        "compose (multi -i) should succeed: stderr={}",
+        compose2_stderr
+    );
+    assert!(std::path::Path::new(&index2).exists());
 }
 
 #[test]

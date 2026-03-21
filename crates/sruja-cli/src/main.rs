@@ -289,15 +289,18 @@ enum Commands {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
+        #[arg(long)]
+        repo_id: Option<String>,
         /// Output path for bundle (default: repo.bundle.json)
         #[arg(long, short = 'o', default_value = "repo.bundle.json")]
         output: String,
     },
     /// Compose one or more repo bundles into system.index.json
     Compose {
-        /// Input: path to a repo.bundle.json file or directory containing repo.bundle.json files
-        #[arg(long, short = 'i')]
-        input: String,
+        #[arg(long, short = 'i', action = clap::ArgAction::Append)]
+        input: Vec<String>,
+        #[arg(long)]
+        recursive: bool,
         /// Output path for system index (default: system.index.json)
         #[arg(long, short = 'o', default_value = "system.index.json")]
         output: String,
@@ -593,8 +596,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             violations_baseline,
         } => commands::check(&path, &format, violations_baseline.as_deref()).await,
         Commands::Baseline { repo, output } => commands::baseline(&repo, &output).await,
-        Commands::Publish { repo, output } => commands::publish(&repo, &output).await,
-        Commands::Compose { input, output } => commands::compose(&input, &output).await,
+        Commands::Publish {
+            repo,
+            repo_id,
+            output,
+        } => commands::publish(&repo, repo_id.as_deref(), &output).await,
+        Commands::Compose {
+            input,
+            recursive,
+            output,
+        } => commands::compose(&input, recursive, &output).await,
         Commands::Intent { cmd } => match cmd {
             IntentCommand::Check {
                 repo,
