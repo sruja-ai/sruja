@@ -198,26 +198,10 @@ fn build_architecture_context(
     intent: Option<&str>,
     depth: usize,
 ) -> Result<ArchitectureContext, CliError> {
-    let modules = graph
-        .nodes
-        .iter()
-        .filter(|n| n.kind == NodeKind::Module)
-        .count();
-    let services = graph
-        .nodes
-        .iter()
-        .filter(|n| n.kind == NodeKind::Service)
-        .count();
-    let databases = graph
-        .nodes
-        .iter()
-        .filter(|n| n.kind == NodeKind::Database)
-        .count();
-    let external_apis = graph
-        .nodes
-        .iter()
-        .filter(|n| n.kind == NodeKind::ExternalApi)
-        .count();
+    let modules = count_kind(graph, NodeKind::Module);
+    let services = count_kind(graph, NodeKind::Service);
+    let databases = count_kind(graph, NodeKind::Database);
+    let external_apis = count_kind(graph, NodeKind::ExternalApi);
 
     let layers = infer_layers(graph);
     let boundaries = infer_boundaries(graph);
@@ -245,6 +229,10 @@ fn build_architecture_context(
         forbidden_patterns,
         focus,
     })
+}
+
+fn count_kind(graph: &Graph, kind: NodeKind) -> usize {
+    graph.nodes.iter().filter(|n| n.kind == kind).count()
 }
 
 fn build_focus_context(
@@ -278,6 +266,11 @@ fn build_focus_context(
     if let Some(r) = &rel {
         candidates.push(r.clone());
     }
+    for c in &mut candidates {
+        *c = normalize_path(c);
+    }
+    candidates.sort();
+    candidates.dedup();
 
     let mut matched: Vec<&sruja_scan::Node> = graph
         .nodes
@@ -329,37 +322,34 @@ fn build_focus_context(
     })
 }
 
-fn path_matches_any(node_path: &str, candidates: &[String]) -> bool {
-    candidates.iter().any(|c| path_matches(node_path, c))
+fn normalize_path(path: &str) -> String {
+    path.replace('\\', "/")
 }
 
-fn path_matches(node_path: &str, candidate: &str) -> bool {
-    if node_path == candidate {
+fn path_matches_any(node_path: &str, candidates: &[String]) -> bool {
+    let node_norm = normalize_path(node_path);
+    if candidates.contains(&node_norm) {
         return true;
     }
-    let node_norm = node_path.replace('\\', "/");
-    let cand_norm = candidate.replace('\\', "/");
-    node_norm.ends_with(&cand_norm)
+    candidates.iter().any(|c| node_norm.ends_with(c))
 }
 
 fn score_path_match(node_path: Option<&str>, candidates: &[String]) -> usize {
     let Some(p) = node_path else {
         return 0;
     };
-    if candidates.iter().any(|c| p == c) {
+    let p_norm = normalize_path(p);
+    if candidates.contains(&p_norm) {
         return 3;
     }
-    if candidates
-        .iter()
-        .any(|c| p.replace('\\', "/").ends_with(&c.replace('\\', "/")))
-    {
+    if candidates.iter().any(|c| p_norm.ends_with(c)) {
         return 2;
     }
     1
 }
 
 fn suggested_checks(intent: Option<&str>) -> Vec<String> {
-    let mut checks = vec![
+    let mut checks: Vec<String> = vec![
         "cargo fmt --all".to_string(),
         "cargo clippy -- -D warnings".to_string(),
         "cargo test --workspace".to_string(),
@@ -382,8 +372,11 @@ fn suggested_checks(intent: Option<&str>) -> Vec<String> {
         _ => {}
     }
 
-    checks.dedup();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     checks
+        .into_iter()
+        .filter(|c| seen.insert(c.clone()))
+        .collect()
 }
 
 fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
@@ -399,7 +392,7 @@ fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
         }
     }
 
-    layer_counts
+    let mut layers: Vec<LayerInfo> = layer_counts
         .into_iter()
         .map(|(name, count)| {
             let can_depend_on = match name.as_str() {
@@ -416,7 +409,9 @@ fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
                 can_depend_on,
             }
         })
-        .collect()
+        .collect();
+    layers.sort_by(|a, b| a.name.cmp(&b.name));
+    layers
 }
 
 fn infer_layer_from_path(path: &str) -> String {
@@ -445,11 +440,12 @@ fn infer_layer_from_path(path: &str) -> String {
 fn infer_boundaries(graph: &Graph) -> Vec<BoundaryRule> {
     let mut boundaries = Vec::new();
 
-    let services: Vec<_> = graph
+    let mut services: Vec<_> = graph
         .nodes
         .iter()
         .filter(|n| n.kind == NodeKind::Service)
         .collect();
+    services.sort_by(|a, b| a.id.cmp(&b.id));
 
     if services.len() > 1 {
         for s1 in &services {
@@ -674,6 +670,8 @@ fn format_copilot_instructions(context: &ArchitectureContext) -> String {
     if !context.layers.is_empty() {
         let layer_names: Vec<_> = context.layers.iter().map(|l| l.name.clone()).collect();
         instructions.push_str(&format!("Layers found: {}\n", layer_names.join(", ")));
+    } else {
+        instructions.push_str("No layers detected.\n");
     }
 
     instructions
@@ -926,9 +924,9 @@ fn repomap_kind(kind: NodeKind) -> &'static str {
 fn repomap_relative_path(path: &str, repo_prefix: Option<&str>) -> Option<String> {
     let normalized = path.replace('\\', "/");
     let rel = if let Some(prefix) = repo_prefix {
+        let prefix = prefix.trim_end_matches('/');
         normalized
             .strip_prefix(prefix)
-            .or_else(|| normalized.strip_prefix(&format!("{}/", prefix)))
             .unwrap_or(normalized.as_str())
             .trim_start_matches('/')
             .to_string()
@@ -995,6 +993,173 @@ mod tests {
             kind: sruja_scan::EdgeKind::Calls,
             evidence: Vec::new(),
         }
+    }
+
+    #[test]
+    fn score_path_match_prefers_exact_then_suffix() {
+        let candidates = vec![
+            normalize_path("/repo/src/lib.rs"),
+            normalize_path("src/lib.rs"),
+        ];
+        assert_eq!(score_path_match(Some("/repo/src/lib.rs"), &candidates), 3);
+        assert_eq!(
+            score_path_match(Some("C:\\repo\\src\\lib.rs"), &candidates),
+            2
+        );
+        assert_eq!(score_path_match(Some("other/file.rs"), &candidates), 1);
+        assert_eq!(score_path_match(None, &candidates), 0);
+    }
+
+    #[test]
+    fn suggested_checks_are_unique_and_intent_specific() {
+        let checks = suggested_checks(Some("add-test"));
+        assert!(checks.iter().any(|c| c.contains("cargo test -p <crate>")));
+        let unique: std::collections::HashSet<_> = checks.iter().collect();
+        assert_eq!(checks.len(), unique.len());
+    }
+
+    #[test]
+    fn infer_layer_from_path_classifies_common_folders() {
+        assert_eq!(infer_layer_from_path("src/api/routes.rs"), "api");
+        assert_eq!(infer_layer_from_path("src/services/user.rs"), "services");
+        assert_eq!(infer_layer_from_path("src/db/schema.sql"), "data");
+        assert_eq!(infer_layer_from_path("src/models/user.rs"), "models");
+        assert_eq!(infer_layer_from_path("src/utils/mod.rs"), "utils");
+        assert_eq!(infer_layer_from_path("src/components/button.tsx"), "ui");
+    }
+
+    #[test]
+    fn infer_layers_is_deterministic_and_counts_only_modules_with_paths() {
+        let graph = Graph {
+            metadata: HashMap::new(),
+            nodes: vec![
+                node("m1", NodeKind::Module, Some("src/api/mod.rs")),
+                node("m2", NodeKind::Module, Some("src/services/mod.rs")),
+                node("m3", NodeKind::Module, None),
+                node("svc", NodeKind::Service, Some("src/main.rs")),
+            ],
+            edges: vec![],
+        };
+        let layers = infer_layers(&graph);
+        let names: Vec<&str> = layers.iter().map(|l| l.name.as_str()).collect();
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(names, sorted);
+        let api_count = layers.iter().find(|l| l.name == "api").unwrap().modules;
+        let svc_count = layers
+            .iter()
+            .find(|l| l.name == "services")
+            .unwrap()
+            .modules;
+        assert_eq!(api_count, 1);
+        assert_eq!(svc_count, 1);
+    }
+
+    #[test]
+    fn infer_boundaries_adds_service_isolation_and_ui_rule() {
+        let graph = Graph {
+            metadata: HashMap::new(),
+            nodes: vec![
+                node("b", NodeKind::Service, Some("b/main.rs")),
+                node("a", NodeKind::Service, Some("a/main.rs")),
+            ],
+            edges: vec![],
+        };
+        let rules = infer_boundaries(&graph);
+        assert!(rules
+            .iter()
+            .any(|r| r.from == "a" && r.to == "b" && !r.allowed));
+        assert!(rules
+            .iter()
+            .any(|r| r.from == "b" && r.to == "a" && !r.allowed));
+        assert!(rules
+            .iter()
+            .any(|r| r.from == "ui" && r.to == "data" && !r.allowed));
+    }
+
+    #[test]
+    fn repomap_relative_path_handles_prefix_and_windows_separators() {
+        assert_eq!(
+            repomap_relative_path("/repo/src/lib.rs", Some("/repo")).as_deref(),
+            Some("src/lib.rs")
+        );
+        assert_eq!(
+            repomap_relative_path("C:\\repo\\src\\lib.rs", Some("C:/repo")).as_deref(),
+            Some("src/lib.rs")
+        );
+        assert_eq!(
+            repomap_relative_path("./src/lib.rs", None).as_deref(),
+            Some("src/lib.rs")
+        );
+        assert_eq!(repomap_relative_path("/repo", Some("/repo")), None);
+    }
+
+    #[test]
+    fn repomap_top_neighbors_orders_by_pagerank_then_id() {
+        let n1 = node("a", NodeKind::Module, Some("a.rs"));
+        let n2 = node("b", NodeKind::Module, Some("b.rs"));
+        let node_by_id: std::collections::HashMap<&str, &sruja_scan::Node> = vec![&n1, &n2]
+            .into_iter()
+            .map(|n| (n.id.as_str(), n))
+            .collect();
+        let neighbors: std::collections::HashSet<&str> = ["a", "b"].into_iter().collect();
+        let mut scores: std::collections::HashMap<String, crate::selection::ComponentImportance> =
+            std::collections::HashMap::new();
+        let mut a_score = crate::selection::ComponentImportance::default();
+        a_score.pagerank = 0.1;
+        let mut b_score = crate::selection::ComponentImportance::default();
+        b_score.pagerank = 0.9;
+        scores.insert("a".to_string(), a_score);
+        scores.insert("b".to_string(), b_score);
+
+        let ordered = repomap_top_neighbors(&neighbors, &node_by_id, &scores, 10);
+        assert_eq!(ordered, vec!["b".to_string(), "a".to_string()]);
+    }
+
+    #[test]
+    fn copilot_instructions_always_include_key_rule_newlines() {
+        let context = ArchitectureContext {
+            repo: "/repo".to_string(),
+            summary: ContextSummary {
+                total_modules: 1,
+                total_services: 0,
+                total_databases: 0,
+                total_external_apis: 0,
+            },
+            layers: Vec::new(),
+            boundaries: Vec::new(),
+            forbidden_patterns: Vec::new(),
+            focus: None,
+        };
+
+        let out = format_copilot_instructions(&context);
+        assert!(out.contains("1. **Respect layers**: No layers detected.\n"));
+        assert!(out.contains("\n2. **No cross-service imports**:"));
+        assert!(out.contains("\n3. **UI -> Services -> Data**:"));
+    }
+
+    #[test]
+    fn copilot_instructions_include_layer_names_when_present() {
+        let context = ArchitectureContext {
+            repo: "/repo".to_string(),
+            summary: ContextSummary {
+                total_modules: 2,
+                total_services: 0,
+                total_databases: 0,
+                total_external_apis: 0,
+            },
+            layers: vec![LayerInfo {
+                name: "api".to_string(),
+                modules: 2,
+                can_depend_on: vec!["services".to_string()],
+            }],
+            boundaries: Vec::new(),
+            forbidden_patterns: Vec::new(),
+            focus: None,
+        };
+
+        let out = format_copilot_instructions(&context);
+        assert!(out.contains("Layers found: api\n"));
     }
 
     #[test]
