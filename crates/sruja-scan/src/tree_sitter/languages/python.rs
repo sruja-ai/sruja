@@ -99,17 +99,36 @@ fn extract_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<Str
 
 fn extract_from_import(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     let mut found_from = false;
+    let mut relative_prefix: Option<String> = None;
+    let mut module: Option<String> = None;
     for i in 0..node.child_count() {
         if let Some(child) = node.child(i as u32) {
             if child.kind() == "from" {
                 found_from = true;
-            } else if child.kind() == "dotted_name" && found_from {
-                if let Ok(name) = child.utf8_text(content.as_bytes()) {
-                    imports.push(name.to_string());
+            } else if found_from {
+                if child.kind() == "import" {
                     break;
+                }
+                if child.kind() == "relative_import" {
+                    if let Ok(prefix) = child.utf8_text(content.as_bytes()) {
+                        relative_prefix = Some(prefix.to_string());
+                    }
+                } else if child.kind() == "dotted_name" && module.is_none() {
+                    if let Ok(name) = child.utf8_text(content.as_bytes()) {
+                        module = Some(name.to_string());
+                    }
                 }
             }
         }
+    }
+    if let Some(prefix) = relative_prefix {
+        if let Some(module) = module {
+            imports.push(format!("{}{}", prefix, module));
+        } else {
+            imports.push(prefix);
+        }
+    } else if let Some(module) = module {
+        imports.push(module);
     }
 }
 

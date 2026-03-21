@@ -149,12 +149,8 @@ fn extract_use_path(node: &tree_sitter::Node, content: &str, imports: &mut Vec<S
 
     if kind == "scoped_identifier" || kind == "identifier" || kind == "scoped_use_list" {
         if let Ok(path) = node.utf8_text(content.as_bytes()) {
-            let cleaned = path
-                .replace("crate::", "")
-                .replace("super::", "")
-                .replace("self::", "");
-            if !cleaned.is_empty() && !cleaned.starts_with('{') {
-                imports.push(cleaned);
+            if !path.is_empty() && !path.starts_with('{') {
+                imports.push(path.to_string());
             }
         }
 
