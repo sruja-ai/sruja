@@ -150,6 +150,8 @@ pub struct ElementDump {
     pub technology: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub knowledge: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]

@@ -282,6 +282,8 @@ pub struct ElementDefBody {
     pub technology: Option<String>,
     /// Path to component knowledge markdown (relative to workspace root).
     pub doc: Option<String>,
+    /// ID linking to code knowledge graph (.sruja/knowledge/<id>.json)
+    pub knowledge: Option<String>,
     pub metadata: Vec<MetaEntry>,
     pub constraints: Vec<ConstraintEntry>,
     pub conventions: Vec<ConventionEntry>,
@@ -313,6 +315,8 @@ pub enum ElementDefBodyItem {
     Technology(String),
     /// Doc path to component knowledge file (e.g. ".sruja/knowledge/<id>.md").
     Doc(String),
+    /// ID linking to code knowledge graph (.sruja/knowledge/<id>.json)
+    Knowledge(String),
     Metadata(MetadataBlock),
     Constraints(ConstraintsBlock),
     Conventions(ConventionsBlock),

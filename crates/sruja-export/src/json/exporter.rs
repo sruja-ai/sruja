@@ -149,6 +149,7 @@ impl Exporter {
             let description = self.extract_description(elem);
             let technology = self.extract_technology(elem);
             let doc = self.extract_doc(elem);
+            let knowledge = self.extract_knowledge(elem);
             let tags = self.extract_tags(elem);
             let metadata = self.extract_metadata(elem);
 
@@ -165,6 +166,7 @@ impl Exporter {
                 description,
                 technology,
                 doc,
+                knowledge,
                 tags,
                 links: vec![],
                 metadata,
@@ -269,6 +271,14 @@ impl Exporter {
             .body
             .as_ref()
             .and_then(|body| body.doc.clone())
+    }
+
+    /// Extract knowledge graph ID from element body
+    fn extract_knowledge(&self, elem: &sruja_language::ElementDef) -> Option<String> {
+        elem.assignment
+            .body
+            .as_ref()
+            .and_then(|body| body.knowledge.clone())
     }
 
     /// Extract tags from element body

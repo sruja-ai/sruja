@@ -318,6 +318,7 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
             ElementDefBodyItem::Description(d) => body.description = Some(d),
             ElementDefBodyItem::Technology(t) => body.technology = Some(t),
             ElementDefBodyItem::Doc(d) => body.doc = Some(d),
+            ElementDefBodyItem::Knowledge(k) => body.knowledge = Some(k),
             ElementDefBodyItem::Metadata(m) => body.metadata = m.entries,
             ElementDefBodyItem::Slo(s) => body.slo = Some(*s),
             ElementDefBodyItem::ElementDef(e) => body.items.push(ElementDefBodyItem::ElementDef(e)),
@@ -373,6 +374,10 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
                 preceded(ws1, parse_string),
             ),
             ElementDefBodyItem::Doc,
+        ),
+        map(
+            preceded(tag("knowledge"), preceded(ws1, parse_string)),
+            ElementDefBodyItem::Knowledge,
         ),
         map(parse_metadata_block, ElementDefBodyItem::Metadata),
         map(parse_slo_block, |s| ElementDefBodyItem::Slo(Box::new(s))),
