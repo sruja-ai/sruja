@@ -513,4 +513,77 @@ mod tests {
         let rankings = pagerank(&graph, 1);
         assert!(!rankings.is_empty());
     }
+
+    #[test]
+    fn resolve_import_matches_by_substring() {
+        let mut files: HashMap<String, String> = HashMap::new();
+        files.insert("src/foo/bar.rs".to_string(), "src/foo/bar.rs".to_string());
+        files.insert("src/baz/qux.rs".to_string(), "src/baz/qux.rs".to_string());
+
+        let resolved = resolve_import("foo/bar", &files, "src/main.rs");
+        assert_eq!(resolved.as_deref(), Some("src/foo/bar.rs"));
+    }
+
+    #[test]
+    fn resolve_import_prefers_relative_resolution_for_dot_imports() {
+        let mut files: HashMap<String, String> = HashMap::new();
+        files.insert("src/a/mod.rs".to_string(), "src/a/mod.rs".to_string());
+        files.insert("src/b/util.rs".to_string(), "src/b/util.rs".to_string());
+
+        let resolved = resolve_import("../b/util", &files, "src/a/mod.rs");
+        assert_eq!(resolved.as_deref(), Some("src/b/util.rs"));
+    }
+
+    #[test]
+    fn build_import_graph_resolves_imports_into_canonical_paths() {
+        let files = vec![
+            (
+                "src/a/mod.rs".to_string(),
+                ParsedFile {
+                    name: "mod".to_string(),
+                    path: "src/a/mod.rs".to_string(),
+                    imports: vec!["../b/util".to_string()],
+                    exports: Vec::new(),
+                    definitions: Vec::new(),
+                },
+            ),
+            (
+                "src/b/util.rs".to_string(),
+                ParsedFile {
+                    name: "util".to_string(),
+                    path: "src/b/util.rs".to_string(),
+                    imports: Vec::new(),
+                    exports: Vec::new(),
+                    definitions: Vec::new(),
+                },
+            ),
+        ];
+
+        let graph = build_import_graph(&files);
+        let targets = graph.get("src/a/mod.rs").expect("source present");
+        assert_eq!(targets, &vec!["src/b/util.rs".to_string()]);
+    }
+
+    #[test]
+    fn build_directory_tree_groups_files_by_folders() {
+        let file_ranks = vec![
+            FileRank {
+                path: "src/a/mod.rs".to_string(),
+                score: 1.0,
+                parsed: None,
+            },
+            FileRank {
+                path: "src/b/util.rs".to_string(),
+                score: 1.0,
+                parsed: None,
+            },
+        ];
+
+        let tree = build_directory_tree(&file_ranks);
+        assert!(tree.children.contains_key("src"));
+
+        let src = tree.children.get("src").expect("src dir");
+        assert!(src.children.contains_key("a"));
+        assert!(src.children.contains_key("b"));
+    }
 }

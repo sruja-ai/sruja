@@ -81,7 +81,12 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             let Ok(s) = std::fs::read_to_string(&manifest_path) else {
                 continue;
             };
-            let pkg: PackageJson = serde_json::from_str(&s).unwrap_or_default();
+            let Ok(pkg) = serde_json::from_str::<PackageJson>(&s) else {
+                continue;
+            };
+            if pkg.name.is_none() {
+                continue;
+            }
             out.push((p.clone(), pkg));
         }
         out
@@ -97,7 +102,10 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
         .collect();
 
     for (rel_base, pkg) in &packages {
-        let name = pkg.name.as_deref().unwrap_or("(anonymous)").to_string();
+        let Some(name) = pkg.name.as_deref() else {
+            continue;
+        };
+        let name = name.to_string();
         let id = format!("npm:{}", name);
         let rel_path = rel_base
             .strip_prefix(repo_root)
@@ -251,6 +259,74 @@ mod tests {
         let graph = scan_npm_repo(root).expect("scan");
         assert_eq!(graph.nodes.len(), 1);
         assert_eq!(graph.nodes[0].id, "npm:root");
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn resolve_workspace_globs_dedups_and_supports_glob_and_single_path() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path();
+        std::fs::create_dir_all(root.join("packages/a")).expect("mkdir");
+        std::fs::create_dir_all(root.join("packages/b")).expect("mkdir");
+        std::fs::write(root.join("packages/a/package.json"), r#"{"name":"a"}"#).expect("write a");
+        std::fs::write(root.join("packages/b/package.json"), r#"{"name":"b"}"#).expect("write b");
+
+        let paths =
+            resolve_workspace_globs(root, &["packages/*".to_string(), "packages/a".to_string()]);
+        assert_eq!(paths.len(), 2);
+        assert!(paths.iter().any(|p| p.ends_with("packages/a")));
+        assert!(paths.iter().any(|p| p.ends_with("packages/b")));
+    }
+
+    #[test]
+    fn scan_npm_repo_with_invalid_workspace_package_json_skips_package() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path();
+
+        std::fs::create_dir_all(root.join("packages/a")).expect("mkdir");
+        std::fs::create_dir_all(root.join("packages/b")).expect("mkdir");
+
+        std::fs::write(
+            root.join("package.json"),
+            r#"{"name":"root","workspaces":["packages/*"]}"#,
+        )
+        .expect("write root");
+
+        std::fs::write(root.join("packages/a/package.json"), "not valid json").expect("write a");
+        std::fs::write(root.join("packages/b/package.json"), r#"{"name":"b"}"#).expect("write b");
+
+        let graph = scan_npm_repo(root).expect("scan");
+
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].id, "npm:b");
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn scan_npm_repo_with_workspace_package_missing_name_skips_package() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let root = temp.path();
+
+        std::fs::create_dir_all(root.join("packages/a")).expect("mkdir");
+        std::fs::create_dir_all(root.join("packages/b")).expect("mkdir");
+
+        std::fs::write(
+            root.join("package.json"),
+            r#"{"name":"root","workspaces":["packages/*"]}"#,
+        )
+        .expect("write root");
+
+        std::fs::write(
+            root.join("packages/a/package.json"),
+            r#"{"dependencies":{}}"#,
+        )
+        .expect("write a");
+        std::fs::write(root.join("packages/b/package.json"), r#"{"name":"b"}"#).expect("write b");
+
+        let graph = scan_npm_repo(root).expect("scan");
+
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].id, "npm:b");
         assert!(graph.edges.is_empty());
     }
 }
