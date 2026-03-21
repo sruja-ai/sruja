@@ -83,3 +83,66 @@ fn lint_nonexistent_file_fails() {
         stderr
     );
 }
+
+#[test]
+fn lint_baseline_ignores_existing_issues_but_fails_on_new_ones() {
+    let repo = create_test_repo();
+    write_file(
+        repo.path(),
+        "bad.sruja",
+        r#"person = kind "Person"
+system = kind "System"
+
+User = person "User"
+App = system "App" { description "App" }
+User -> NonExistent "uses"
+"#,
+    );
+
+    let file_path = repo.path().join("bad.sruja");
+    let file_str = file_path.to_str().expect("utf-8");
+    let baseline_path = repo.path().join("lint.baseline.json");
+    let baseline_str = baseline_path.to_str().expect("utf-8");
+
+    let (baseline_success, _stdout, baseline_stderr) =
+        run_sruja(&["lint", file_str, "--write-baseline", baseline_str]);
+    assert!(
+        baseline_success,
+        "lint --write-baseline should succeed: stderr={}",
+        baseline_stderr
+    );
+    assert!(
+        baseline_path.exists(),
+        "baseline file should be written: {}",
+        baseline_str
+    );
+
+    let (ok_success, _stdout, ok_stderr) =
+        run_sruja(&["lint", file_str, "--baseline", baseline_str]);
+    assert!(
+        ok_success,
+        "lint should ignore existing issues when baseline is provided: stderr={}",
+        ok_stderr
+    );
+
+    write_file(
+        repo.path(),
+        "bad.sruja",
+        r#"person = kind "Person"
+system = kind "System"
+
+User = person "User"
+App = system "App" { description "App" }
+User -> NonExistent "uses"
+App -> AnotherMissing "calls"
+"#,
+    );
+
+    let (new_success, _stdout, new_stderr) =
+        run_sruja(&["lint", file_str, "--baseline", baseline_str]);
+    assert!(
+        !new_success,
+        "lint should fail when new issues are introduced: stderr={}",
+        new_stderr
+    );
+}

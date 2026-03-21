@@ -41,6 +41,19 @@ impl CliError {
             diagnostics,
         }
     }
+
+    #[must_use]
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            CliError::Io(_) => 2,
+            CliError::Parse { .. } => 3,
+            CliError::Validation(_) => 4,
+            CliError::Export(_) => 5,
+            CliError::Json(_) => 6,
+            CliError::Scan(_) => 7,
+            CliError::Drift(_) => 8,
+        }
+    }
 }
 
 impl From<sruja_scan::ScanError> for CliError {

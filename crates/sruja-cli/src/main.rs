@@ -76,6 +76,12 @@ enum Commands {
         /// Output format: text (default), json, github-actions
         #[arg(long, default_value = "text")]
         format: String,
+        /// Optional baseline JSON (ignore existing diagnostics; fail only on new ones)
+        #[arg(long)]
+        baseline: Option<String>,
+        /// Write a baseline JSON snapshot of current diagnostics (exits 0 if parsing succeeds)
+        #[arg(long)]
+        write_baseline: Option<String>,
     },
     /// Export a Sruja file to various formats
     Export {
@@ -491,7 +497,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             depth,
             format,
         } => commands::impact(&repo, &target, depth, &format).await,
-        Commands::Lint { file, format } => commands::lint(&file, &format).await,
+        Commands::Lint {
+            file,
+            format,
+            baseline,
+            write_baseline,
+        } => {
+            commands::lint(
+                &file,
+                &format,
+                baseline.as_deref(),
+                write_baseline.as_deref(),
+            )
+            .await
+        }
         Commands::Export {
             format,
             file,
@@ -672,7 +691,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(()) => Ok(()),
         Err(e) => {
             eprintln!("Error: {}", e);
-            std::process::exit(1);
+            std::process::exit(e.exit_code());
         }
     }
 }

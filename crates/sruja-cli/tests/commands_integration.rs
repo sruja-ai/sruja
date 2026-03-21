@@ -166,6 +166,104 @@ fn validate_succeeds_on_valid_file() {
 }
 
 #[test]
+fn diff_json_reports_elements_and_relations() {
+    let repo = create_test_repo();
+    write_file(
+        repo.path(),
+        "a.sruja",
+        r#"system = kind "System"
+container = kind "Container"
+
+App = system "App" {
+  description "App"
+  Api = container "API" {
+    technology "Rust"
+    description "API"
+  }
+}
+"#,
+    );
+    write_file(
+        repo.path(),
+        "b.sruja",
+        r#"system = kind "System"
+container = kind "Container"
+
+App = system "App" {
+  description "App"
+  Api = container "API" {
+    technology "Go"
+    description "API"
+  }
+  Worker = container "Worker" {
+    technology "Go"
+    description "Jobs"
+  }
+  Api -> Worker "calls"
+}
+"#,
+    );
+
+    let a = repo.path().join("a.sruja");
+    let b = repo.path().join("b.sruja");
+    let a_str = a.to_str().expect("utf-8");
+    let b_str = b.to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&["diff", a_str, b_str, "--format", "json"]);
+    assert!(success, "diff should succeed: stderr={}", stderr);
+
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("added_elements").is_some());
+    assert!(parsed.get("removed_elements").is_some());
+    assert!(parsed.get("changed_elements").is_some());
+    assert!(parsed.get("added_relations").is_some());
+    assert!(parsed.get("removed_relations").is_some());
+
+    let added_elements = parsed
+        .get("added_elements")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        added_elements
+            .iter()
+            .any(|e| e.as_str() == Some("App.Worker")),
+        "should report added element App.Worker: added_elements={:?} stdout={}",
+        added_elements,
+        stdout
+    );
+
+    let changed_elements = parsed
+        .get("changed_elements")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        changed_elements
+            .iter()
+            .any(|c| c.get("id").and_then(|v| v.as_str()) == Some("App.Api")),
+        "should report changed element App.Api: changed_elements={:?} stdout={}",
+        changed_elements,
+        stdout
+    );
+
+    let added_relations = parsed
+        .get("added_relations")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        added_relations.iter().any(|r| {
+            r.get("from").and_then(|v| v.as_str()) == Some("App.Api")
+                && r.get("to").and_then(|v| v.as_str()) == Some("App.Worker")
+        }),
+        "should report added relation Api -> Worker: added_relations={:?} stdout={}",
+        added_relations,
+        stdout
+    );
+}
+
+#[test]
 fn scan_succeeds_on_repo_with_cargo_toml() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());

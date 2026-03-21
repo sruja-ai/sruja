@@ -17,6 +17,23 @@ use crate::modules::validation::enrich_diagnostics_with_source;
 
 use super::CliError;
 
+#[derive(
+    Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+struct LintBaselineEntry {
+    code: String,
+    file: String,
+    line: u32,
+    column: u32,
+    message: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct LintBaseline {
+    schema_version: u32,
+    entries: Vec<LintBaselineEntry>,
+}
+
 /// Machine-readable diagnostic for JSON output.
 #[derive(serde::Serialize)]
 struct LintDiagnostic {
@@ -25,6 +42,10 @@ struct LintDiagnostic {
     message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     location: Option<LintLocation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    suggestions: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    context: Vec<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -40,9 +61,20 @@ struct LintOutput {
     error_count: usize,
     warning_count: usize,
     diagnostics: Vec<LintDiagnostic>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baseline: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_error_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_warning_count: Option<usize>,
 }
 
-pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
+pub async fn lint(
+    file: &str,
+    format: &str,
+    baseline: Option<&str>,
+    write_baseline: Option<&str>,
+) -> Result<(), CliError> {
     let github = matches!(format, "github" | "github-actions");
     let content = fs::read_to_string(file)?;
     let parser = Parser::new(file.to_string());
@@ -52,7 +84,7 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
         Err(mut diagnostics) => {
             enrich_diagnostics_with_source(&content, &mut diagnostics);
             if format == "json" {
-                let out = lint_diagnostics_to_json(file, &diagnostics, false);
+                let out = lint_diagnostics_to_json(&diagnostics, false);
                 println!(
                     "{}",
                     serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?
@@ -87,17 +119,37 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
     let validator = Validator::with_default_rules();
     let mut diagnostics = validator.validate_sync(&program);
     enrich_diagnostics_with_source(&content, &mut diagnostics);
+    sort_diagnostics(&mut diagnostics);
+
+    if let Some(out_path) = write_baseline {
+        write_lint_baseline(out_path, &diagnostics)?;
+        if format == "json" {
+            let mut out = lint_diagnostics_to_json(&diagnostics, true);
+            out.baseline = Some(out_path.to_string());
+            out.total_error_count = Some(out.error_count);
+            out.total_warning_count = Some(out.warning_count);
+            out.error_count = 0;
+            out.warning_count = 0;
+            out.diagnostics.clear();
+            println!("{}", serde_json::to_string(&out)?);
+        } else {
+            println!("Wrote baseline: {}", out_path);
+        }
+        return Ok(());
+    }
+
+    let (filtered_diagnostics, total_error_count, total_warning_count) =
+        apply_lint_baseline(baseline, &diagnostics)?;
 
     if format == "json" {
-        let error_count = diagnostics
+        let error_count = filtered_diagnostics
             .iter()
             .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
             .count();
-        let _warning_count = diagnostics
-            .iter()
-            .filter(|d| d.severity == sruja_diagnostics::Severity::Warning)
-            .count();
-        let out = lint_diagnostics_to_json(file, &diagnostics, error_count == 0);
+        let mut out = lint_diagnostics_to_json(&filtered_diagnostics, error_count == 0);
+        out.baseline = baseline.map(|s| s.to_string());
+        out.total_error_count = Some(total_error_count);
+        out.total_warning_count = Some(total_warning_count);
         println!(
             "{}",
             serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?
@@ -112,11 +164,11 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
     }
 
     if github {
-        let error_count = diagnostics
+        let error_count = filtered_diagnostics
             .iter()
             .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
             .count();
-        for diag in &diagnostics {
+        for diag in &filtered_diagnostics {
             println!("{}", format_github_actions_annotation(diag));
         }
         if error_count > 0 {
@@ -128,7 +180,7 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
         return Ok(());
     }
 
-    if diagnostics.is_empty() {
+    if filtered_diagnostics.is_empty() {
         println!("✓ No issues found");
         return Ok(());
     }
@@ -136,7 +188,7 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    for diag in diagnostics {
+    for diag in filtered_diagnostics {
         match diag.severity {
             sruja_diagnostics::Severity::Error => errors.push(diag),
             sruja_diagnostics::Severity::Warning => warnings.push(diag),
@@ -173,11 +225,7 @@ pub async fn lint(file: &str, format: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-fn lint_diagnostics_to_json(
-    _file: &str,
-    diagnostics: &[sruja_diagnostics::Diagnostic],
-    ok: bool,
-) -> LintOutput {
+fn lint_diagnostics_to_json(diagnostics: &[sruja_diagnostics::Diagnostic], ok: bool) -> LintOutput {
     let error_count = diagnostics
         .iter()
         .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
@@ -205,6 +253,8 @@ fn lint_diagnostics_to_json(
                 severity: severity.to_string(),
                 message: d.message.clone(),
                 location: Some(location),
+                suggestions: d.suggestions.clone(),
+                context: d.context.clone(),
             }
         })
         .collect();
@@ -213,7 +263,102 @@ fn lint_diagnostics_to_json(
         error_count,
         warning_count,
         diagnostics,
+        baseline: None,
+        total_error_count: None,
+        total_warning_count: None,
     }
+}
+
+fn sort_diagnostics(diagnostics: &mut [sruja_diagnostics::Diagnostic]) {
+    diagnostics.sort_by(|a, b| {
+        (
+            a.location.file.as_str(),
+            a.location.line,
+            a.location.column,
+            a.code.as_str(),
+            a.message.as_str(),
+        )
+            .cmp(&(
+                b.location.file.as_str(),
+                b.location.line,
+                b.location.column,
+                b.code.as_str(),
+                b.message.as_str(),
+            ))
+    });
+}
+
+fn apply_lint_baseline(
+    baseline: Option<&str>,
+    diagnostics: &[sruja_diagnostics::Diagnostic],
+) -> Result<(Vec<sruja_diagnostics::Diagnostic>, usize, usize), CliError> {
+    let total_error_count = diagnostics
+        .iter()
+        .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
+        .count();
+    let total_warning_count = diagnostics
+        .iter()
+        .filter(|d| d.severity == sruja_diagnostics::Severity::Warning)
+        .count();
+
+    let Some(baseline_path) = baseline else {
+        return Ok((diagnostics.to_vec(), total_error_count, total_warning_count));
+    };
+
+    let baseline_content = fs::read_to_string(baseline_path)?;
+    let baseline: LintBaseline = serde_json::from_str(&baseline_content)?;
+
+    let set: std::collections::HashSet<LintBaselineEntry> = baseline.entries.into_iter().collect();
+    let filtered = diagnostics
+        .iter()
+        .filter(|d| {
+            let key_v1 = LintBaselineEntry {
+                code: d.code.clone(),
+                file: d.location.file.clone(),
+                line: d.location.line,
+                column: d.location.column,
+                message: None,
+            };
+            let key_v2 = LintBaselineEntry {
+                code: d.code.clone(),
+                file: d.location.file.clone(),
+                line: d.location.line,
+                column: d.location.column,
+                message: Some(d.message.clone()),
+            };
+            !(set.contains(&key_v2) || set.contains(&key_v1))
+        })
+        .cloned()
+        .collect();
+
+    Ok((filtered, total_error_count, total_warning_count))
+}
+
+fn write_lint_baseline(
+    out_path: &str,
+    diagnostics: &[sruja_diagnostics::Diagnostic],
+) -> Result<(), CliError> {
+    let mut entries: Vec<LintBaselineEntry> = diagnostics
+        .iter()
+        .map(|d| LintBaselineEntry {
+            code: d.code.clone(),
+            file: d.location.file.clone(),
+            line: d.location.line,
+            column: d.location.column,
+            message: Some(d.message.clone()),
+        })
+        .collect();
+    entries.sort();
+    entries.dedup();
+
+    let baseline = LintBaseline {
+        schema_version: 1,
+        entries,
+    };
+
+    let json = serde_json::to_string_pretty(&baseline)?;
+    fs::write(out_path, json)?;
+    Ok(())
 }
 
 pub async fn export(
@@ -443,6 +588,65 @@ fn print_tree_node(
 }
 
 pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError> {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+    struct ElementSnapshot {
+        kind: String,
+        title: String,
+        description: Option<String>,
+        technology: Option<String>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+    struct ElementChange {
+        id: String,
+        before: ElementSnapshot,
+        after: ElementSnapshot,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
+    struct RelationSnapshot {
+        from: String,
+        to: String,
+        label: Option<String>,
+        description: Option<String>,
+        technology: Option<String>,
+        tags: Vec<String>,
+    }
+
+    fn element_snapshot(elem: &sruja_language::ElementDef) -> ElementSnapshot {
+        let title = elem
+            .assignment
+            .title
+            .clone()
+            .unwrap_or_else(|| elem.assignment.name.clone());
+        let (description, technology) = elem
+            .assignment
+            .body
+            .as_ref()
+            .map(|b| (b.description.clone(), b.technology.clone()))
+            .unwrap_or((None, None));
+
+        ElementSnapshot {
+            kind: elem.assignment.kind.to_string(),
+            title,
+            description,
+            technology,
+        }
+    }
+
+    fn relation_snapshot(rel: &sruja_language::Relation) -> RelationSnapshot {
+        let mut tags = rel.tags.clone();
+        tags.sort();
+        RelationSnapshot {
+            from: rel.from.as_string(),
+            to: rel.to.as_string(),
+            label: rel.label.clone(),
+            description: rel.description.clone(),
+            technology: rel.technology.clone(),
+            tags,
+        }
+    }
+
     let content1 = fs::read_to_string(file1)?;
     let content2 = fs::read_to_string(file2)?;
 
@@ -479,11 +683,12 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
         }
     };
 
-    let (elems1, _) = sruja_language::collect_elements(&program1);
-    let (elems2, _) = sruja_language::collect_elements(&program2);
+    let (elems1, rels1) = sruja_language::collect_elements(&program1);
+    let (elems2, rels2) = sruja_language::collect_elements(&program2);
 
     let mut added: Vec<String> = Vec::new();
     let mut removed: Vec<String> = Vec::new();
+    let mut changed: Vec<ElementChange> = Vec::new();
 
     for fqn in elems2.keys() {
         if !elems1.contains_key(fqn) {
@@ -497,10 +702,40 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
         }
     }
 
+    for (fqn, e1) in &elems1 {
+        if let Some(e2) = elems2.get(fqn) {
+            let before = element_snapshot(e1);
+            let after = element_snapshot(e2);
+            if before != after {
+                changed.push(ElementChange {
+                    id: fqn.clone(),
+                    before,
+                    after,
+                });
+            }
+        }
+    }
+
+    added.sort();
+    removed.sort();
+    changed.sort_by(|a, b| a.id.cmp(&b.id));
+
+    use std::collections::BTreeSet;
+    let set1: BTreeSet<RelationSnapshot> = rels1.iter().map(relation_snapshot).collect();
+    let set2: BTreeSet<RelationSnapshot> = rels2.iter().map(relation_snapshot).collect();
+
+    let mut added_relations: Vec<RelationSnapshot> = set2.difference(&set1).cloned().collect();
+    let mut removed_relations: Vec<RelationSnapshot> = set1.difference(&set2).cloned().collect();
+    added_relations.sort();
+    removed_relations.sort();
+
     if format == "json" {
         let output = serde_json::json!({
-            "added": added,
-            "removed": removed
+            "added_elements": added,
+            "removed_elements": removed,
+            "changed_elements": changed,
+            "added_relations": added_relations,
+            "removed_relations": removed_relations
         });
         println!("{}", serde_json::to_string_pretty(&output)?);
     } else {
@@ -516,7 +751,40 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
                 println!("  - {}", fqn);
             }
         }
-        if added.is_empty() && removed.is_empty() {
+        if !changed.is_empty() {
+            println!("Changed elements:");
+            for c in &changed {
+                println!("  ~ {}", c.id);
+            }
+        }
+        if !added_relations.is_empty() {
+            println!("Added relations:");
+            for r in &added_relations {
+                let label = r.label.as_deref().unwrap_or("");
+                if label.is_empty() {
+                    println!("  + {} -> {}", r.from, r.to);
+                } else {
+                    println!("  + {} -> {} \"{}\"", r.from, r.to, label);
+                }
+            }
+        }
+        if !removed_relations.is_empty() {
+            println!("Removed relations:");
+            for r in &removed_relations {
+                let label = r.label.as_deref().unwrap_or("");
+                if label.is_empty() {
+                    println!("  - {} -> {}", r.from, r.to);
+                } else {
+                    println!("  - {} -> {} \"{}\"", r.from, r.to, label);
+                }
+            }
+        }
+        if added.is_empty()
+            && removed.is_empty()
+            && changed.is_empty()
+            && added_relations.is_empty()
+            && removed_relations.is_empty()
+        {
             println!("No differences found");
         }
     }

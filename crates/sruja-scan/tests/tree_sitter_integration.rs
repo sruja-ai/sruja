@@ -66,10 +66,10 @@ pub mod b { pub fn g() { super::a::f(); } }
     let g2 = sruja_scan::scan_repo(repo.path()).expect("scan should succeed");
     assert_eq!(g1, g2);
 
-    let node_ids: std::collections::HashSet<&str> = g1.nodes.iter().map(|n| n.id.as_str()).collect();
-    assert!(
-        g1.edges
-            .iter()
-            .all(|e| node_ids.contains(e.source.as_str()) && node_ids.contains(e.target.as_str()))
-    );
+    let node_ids: std::collections::HashSet<&str> =
+        g1.nodes.iter().map(|n| n.id.as_str()).collect();
+    assert!(g1
+        .edges
+        .iter()
+        .all(|e| node_ids.contains(e.source.as_str()) && node_ids.contains(e.target.as_str())));
 }
