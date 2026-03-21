@@ -329,8 +329,8 @@ enum Commands {
     /// Export architecture context for AI tools (Cursor, Copilot, Claude)
     Context {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
+        #[arg(long, short = 'r', action = clap::ArgAction::Append)]
+        repo: Vec<String>,
         /// Output format (cursor-rules, copilot-instructions, markdown, json)
         #[arg(long, short = 'f', default_value = "cursor-rules")]
         format: String,
@@ -401,8 +401,8 @@ enum Commands {
     /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
     Generate {
         /// Path to repository
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
+        #[arg(long, short = 'r', action = clap::ArgAction::Append)]
+        repo: Vec<String>,
         /// Path to skill file (SKILL.md); else SRUJA_SKILL_PATH or ./SKILL.md or ./skills/sruja-architecture/SKILL.md
         #[arg(long)]
         skill_path: Option<String>,

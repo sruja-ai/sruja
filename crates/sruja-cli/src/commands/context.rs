@@ -9,13 +9,20 @@ use super::CliError;
 use crate::selection::compute_all_centrality;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct AiContext {
+struct ArchitectureContext {
     repo: String,
     summary: ContextSummary,
     layers: Vec<LayerInfo>,
     boundaries: Vec<BoundaryRule>,
     forbidden_patterns: Vec<String>,
     focus: Option<FocusContext>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct MultiRepoArchitectureContext {
+    repos: Vec<ArchitectureContext>,
+    combined_summary: ContextSummary,
+    cross_repo_rules: Vec<String>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -76,7 +83,7 @@ pub async fn context_string(
     }
 
     let graph = scan_repo(repo_path)?;
-    let context = build_ai_context(&graph, repo_root, file, intent, depth)?;
+    let context = build_architecture_context(&graph, repo_root, file, intent, depth)?;
 
     match format {
         "cursor-rules" => Ok(format_cursor_rules(&context)),
@@ -91,15 +98,88 @@ pub async fn context_string(
     }
 }
 
+pub async fn context_string_multi(
+    repo_roots: &[String],
+    format: &str,
+    file: Option<&str>,
+    intent: Option<&str>,
+    depth: usize,
+) -> Result<String, CliError> {
+    let repos: Vec<String> = if repo_roots.is_empty() {
+        vec![".".to_string()]
+    } else {
+        repo_roots.to_vec()
+    };
+
+    if repos.len() == 1 {
+        return context_string(&repos[0], format, file, intent, depth).await;
+    }
+
+    let mut contexts: Vec<ArchitectureContext> = Vec::with_capacity(repos.len());
+    let mut repomaps: Vec<String> = Vec::new();
+    for repo_root in &repos {
+        let repo_path = Path::new(repo_root);
+        if !repo_path.exists() {
+            return Err(CliError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Repository not found: {}", repo_root),
+            )));
+        }
+        let graph = scan_repo(repo_path)?;
+        let context = build_architecture_context(&graph, repo_root, file, intent, depth)?;
+        if format == "repomap" {
+            repomaps.push(format_repomap(&context, &graph));
+        }
+        contexts.push(context);
+    }
+
+    if format == "repomap" {
+        return Ok(repomaps.join("\n\n---\n\n"));
+    }
+
+    let combined_summary = ContextSummary {
+        total_modules: contexts.iter().map(|c| c.summary.total_modules).sum(),
+        total_services: contexts.iter().map(|c| c.summary.total_services).sum(),
+        total_databases: contexts.iter().map(|c| c.summary.total_databases).sum(),
+        total_external_apis: contexts.iter().map(|c| c.summary.total_external_apis).sum(),
+    };
+
+    let cross_repo_rules = vec![
+        "Treat each repo as a hard boundary: avoid cross-repo imports; integrate via API/events"
+            .to_string(),
+        "If a change spans repos, update contracts (OpenAPI/SDK) and bump versions together"
+            .to_string(),
+        "Run checks in every touched repo (format, lint/typecheck, unit tests, integration tests)"
+            .to_string(),
+    ];
+
+    let multi = MultiRepoArchitectureContext {
+        repos: contexts,
+        combined_summary,
+        cross_repo_rules,
+    };
+
+    match format {
+        "cursor-rules" => Ok(format_cursor_rules_multi(&multi)),
+        "copilot-instructions" => Ok(format_copilot_instructions_multi(&multi)),
+        "markdown" => Ok(format_markdown_multi(&multi)),
+        "json" | "for-ai" => Ok(serde_json::to_string_pretty(&multi)?),
+        _ => Err(CliError::Validation(format!(
+            "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, repomap, json, for-ai",
+            format
+        ))),
+    }
+}
+
 pub async fn context_export(
-    repo_root: &str,
+    repo_roots: &[String],
     format: &str,
     output: Option<&str>,
     file: Option<&str>,
     intent: Option<&str>,
     depth: usize,
 ) -> Result<(), CliError> {
-    let content = context_string(repo_root, format, file, intent, depth).await?;
+    let content = context_string_multi(repo_roots, format, file, intent, depth).await?;
 
     if let Some(path) = output {
         fs::write(path, &content)?;
@@ -111,13 +191,13 @@ pub async fn context_export(
     Ok(())
 }
 
-fn build_ai_context(
+fn build_architecture_context(
     graph: &Graph,
     repo: &str,
     file: Option<&str>,
     intent: Option<&str>,
     depth: usize,
-) -> Result<AiContext, CliError> {
+) -> Result<ArchitectureContext, CliError> {
     let modules = graph
         .nodes
         .iter()
@@ -152,7 +232,7 @@ fn build_ai_context(
         .map(|f| build_focus_context(graph, repo, f, intent, depth))
         .transpose()?;
 
-    Ok(AiContext {
+    Ok(ArchitectureContext {
         repo: repo.to_string(),
         summary: ContextSummary {
             total_modules: modules,
@@ -397,7 +477,108 @@ fn infer_boundaries(graph: &Graph) -> Vec<BoundaryRule> {
     boundaries
 }
 
-fn format_cursor_rules(context: &AiContext) -> String {
+fn format_cursor_rules_multi(context: &MultiRepoArchitectureContext) -> String {
+    let mut out = String::new();
+    out.push_str("# Sruja Architecture Context (Multi-Repo)\n\n");
+    out.push_str("This file is auto-generated by `sruja context -f cursor-rules -r <repo>...`\n\n");
+    out.push_str("## Combined Summary\n\n");
+    out.push_str(&format!(
+        "- Repos: {}\n- Modules: {}\n- Services: {}\n- Databases: {}\n- External APIs: {}\n\n",
+        context.repos.len(),
+        context.combined_summary.total_modules,
+        context.combined_summary.total_services,
+        context.combined_summary.total_databases,
+        context.combined_summary.total_external_apis
+    ));
+
+    if !context.cross_repo_rules.is_empty() {
+        out.push_str("## Cross-Repo Rules\n\n");
+        for rule in &context.cross_repo_rules {
+            out.push_str(&format!("- {}\n", rule));
+        }
+        out.push('\n');
+    }
+
+    for repo in &context.repos {
+        out.push_str("## Repo\n\n");
+        out.push_str(&format!("- Path: {}\n\n", repo.repo));
+        out.push_str(&format_cursor_rules(repo));
+        out.push_str("\n---\n\n");
+    }
+
+    out
+}
+
+fn format_copilot_instructions_multi(context: &MultiRepoArchitectureContext) -> String {
+    let mut out = String::new();
+    out.push_str("# Architecture Context for GitHub Copilot (Multi-Repo)\n\n");
+    out.push_str("Generated by `sruja context -f copilot-instructions -r <repo>...`\n\n");
+    out.push_str("## Combined Summary\n\n");
+    out.push_str(&format!(
+        "Repos: {}. Total modules: {}. Total services: {}. Total databases: {}.\n\n",
+        context.repos.len(),
+        context.combined_summary.total_modules,
+        context.combined_summary.total_services,
+        context.combined_summary.total_databases
+    ));
+
+    if !context.cross_repo_rules.is_empty() {
+        out.push_str("## Cross-Repo Rules\n\n");
+        for rule in &context.cross_repo_rules {
+            out.push_str(&format!("- {}\n", rule));
+        }
+        out.push('\n');
+    }
+
+    for repo in &context.repos {
+        out.push_str("## Repo\n\n");
+        out.push_str(&format!("Path: {}\n\n", repo.repo));
+        out.push_str(&format_copilot_instructions(repo));
+        out.push_str("\n---\n\n");
+    }
+
+    out
+}
+
+fn format_markdown_multi(context: &MultiRepoArchitectureContext) -> String {
+    let mut out = String::new();
+    out.push_str("# Architecture Context (Multi-Repo)\n\n");
+    out.push_str("| Type | Count |\n|------|-------|\n");
+    out.push_str(&format!("| Repos | {} |\n", context.repos.len()));
+    out.push_str(&format!(
+        "| Modules | {} |\n",
+        context.combined_summary.total_modules
+    ));
+    out.push_str(&format!(
+        "| Services | {} |\n",
+        context.combined_summary.total_services
+    ));
+    out.push_str(&format!(
+        "| Databases | {} |\n",
+        context.combined_summary.total_databases
+    ));
+    out.push_str(&format!(
+        "| External APIs | {} |\n\n",
+        context.combined_summary.total_external_apis
+    ));
+
+    if !context.cross_repo_rules.is_empty() {
+        out.push_str("## Cross-Repo Rules\n\n");
+        for rule in &context.cross_repo_rules {
+            out.push_str(&format!("- {}\n", rule));
+        }
+        out.push('\n');
+    }
+
+    for repo in &context.repos {
+        out.push_str("---\n\n");
+        out.push_str(&format_markdown(repo));
+    }
+
+    out
+}
+
+fn format_cursor_rules(context: &ArchitectureContext) -> String {
     let mut rules = String::new();
     rules.push_str("# Sruja Architecture Context\n\n");
     rules.push_str("This file is auto-generated by `sruja context export -f cursor-rules`\n\n");
@@ -475,7 +656,7 @@ fn format_cursor_rules(context: &AiContext) -> String {
     rules
 }
 
-fn format_copilot_instructions(context: &AiContext) -> String {
+fn format_copilot_instructions(context: &ArchitectureContext) -> String {
     let mut instructions = String::new();
     instructions.push_str("# Architecture Context for GitHub Copilot\n\n");
     instructions.push_str("Generated by `sruja context export -f copilot-instructions`\n\n");
@@ -524,7 +705,7 @@ fn format_copilot_instructions(context: &AiContext) -> String {
     instructions
 }
 
-fn format_markdown(context: &AiContext) -> String {
+fn format_markdown(context: &ArchitectureContext) -> String {
     let mut md = String::new();
     md.push_str("# Architecture Context\n\n");
     md.push_str(&format!(
@@ -601,7 +782,7 @@ fn format_markdown(context: &AiContext) -> String {
     md
 }
 
-fn format_repomap(context: &AiContext, graph: &Graph) -> String {
+fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
     let mut out = String::new();
     out.push_str("# Sruja Repomap\n\n");
     out.push_str(&format!("Repo: {}\n", context.repo));
@@ -846,8 +1027,9 @@ mod tests {
             edges: vec![edge("svc", "db"), edge("svc", "mod")],
         };
 
-        let context = build_ai_context(&graph, "/repo", Some("src/lib.rs"), Some("fix-bug"), 1)
-            .expect("ai context should build");
+        let context =
+            build_architecture_context(&graph, "/repo", Some("src/lib.rs"), Some("fix-bug"), 1)
+                .expect("architecture context should build");
         let repomap = format_repomap(&context, &graph);
         assert!(repomap.contains("# Sruja Repomap"));
         assert!(repomap.contains("## Top Nodes"));

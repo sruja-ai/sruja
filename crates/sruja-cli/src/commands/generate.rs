@@ -44,7 +44,7 @@ fn resolve_skill_path(skill_path: Option<&str>) -> Option<std::path::PathBuf> {
 
 /// Generate a prompt file containing skill + repo context for use with any LLM.
 pub fn generate_prompt(
-    repo: &str,
+    repo_roots: &[String],
     skill_path: Option<&str>,
     output_path: Option<&str>,
 ) -> Result<(), CliError> {
@@ -66,7 +66,22 @@ pub fn generate_prompt(
         ))
     })?;
 
-    let context = discover_context_string(repo)?;
+    let repos: Vec<String> = if repo_roots.is_empty() {
+        vec![".".to_string()]
+    } else {
+        repo_roots.to_vec()
+    };
+
+    let mut contexts: Vec<String> = Vec::with_capacity(repos.len());
+    for repo in &repos {
+        let context = discover_context_string(repo)?;
+        if repos.len() == 1 {
+            contexts.push(context);
+        } else {
+            contexts.push(format!("Repo: {}\n\n{}", repo, context));
+        }
+    }
+    let context = contexts.join("\n\n---\n\n");
 
     let prompt = format!(
         "{}{}{}{}",

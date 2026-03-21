@@ -386,6 +386,45 @@ fn sync_writes_context_and_graph() {
 }
 
 #[test]
+fn context_multi_repo_json_includes_combined_summary_and_repos() {
+    let repo_a = create_test_repo();
+    write_minimal_cargo_repo(repo_a.path());
+    let repo_a_str = repo_a.path().to_str().expect("utf-8");
+
+    let repo_b = create_test_repo();
+    write_minimal_cargo_repo(repo_b.path());
+    let repo_b_str = repo_b.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) =
+        run_sruja(&["context", "-r", repo_a_str, "-r", repo_b_str, "-f", "json"]);
+
+    assert!(
+        success,
+        "context multi-repo should succeed: stderr={}",
+        stderr
+    );
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+
+    let repos = parsed
+        .get("repos")
+        .and_then(|v| v.as_array())
+        .expect("repos must be array");
+    assert_eq!(repos.len(), 2, "expected 2 repos in context output");
+
+    let combined = parsed
+        .get("combined_summary")
+        .expect("combined_summary must exist");
+    assert!(
+        combined
+            .get("total_modules")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0)
+            > 0,
+        "combined summary should include modules"
+    );
+}
+
+#[test]
 fn review_json_succeeds_without_baseline() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());
