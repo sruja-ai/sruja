@@ -5,6 +5,19 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.23.0...sruja-v0.24.0) (2026-03-21)
+
+
+### Features
+
+* add knowledge field to link elements to code graphs ([7b01747](https://github.com/sruja-ai/sruja/commit/7b01747570b7a7a1527bcd743de9d7cd9f24076f))
+* **extension:** sequence diagram preview for scenarios/flows ([d9db0ab](https://github.com/sruja-ai/sruja/commit/d9db0ab7cb2f700038a70064963d88659065235f))
+
+
+### Bug Fixes
+
+* implement LSP code actions, graph staleness check, and improve error handling ([94ff3d6](https://github.com/sruja-ai/sruja/commit/94ff3d6d4e7658cc7615d126af561fd5a75db992))
+
 ## [0.23.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.22.1...sruja-v0.23.0) (2026-03-20)
 
 
