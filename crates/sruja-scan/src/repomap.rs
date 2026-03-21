@@ -52,22 +52,11 @@ pub fn generate_repomap(
         .canonicalize()
         .unwrap_or_else(|_| repo_root.to_path_buf());
 
-    let (collected, mut diagnostics) = collect_files(repo_root, &config, &repo_canon);
-
-    let parsed_files: Vec<(String, ParsedFile)> = collected
-        .iter()
-        .filter_map(|(path, content)| {
-            let rel_path = rel_path(repo_root, &repo_canon, path);
-
-            detect_language(path)
-                .and_then(|lang| parse_file(path, content, lang))
-                .map(|parsed| (rel_path, parsed))
-        })
-        .collect();
+    let (parsed_files, mut diagnostics) = collect_parsed_files(repo_root, &config, &repo_canon);
 
     let (import_graph, unresolved_imports_by_file) = build_import_graph(&parsed_files);
     diagnostics.unresolved_imports_by_file = unresolved_imports_by_file;
-    let rankings = pagerank(&import_graph, parsed_files.len());
+    let rankings = pagerank(&import_graph);
 
     let mut file_ranks: Vec<FileRank> = parsed_files
         .iter()
@@ -108,13 +97,13 @@ pub fn generate_repomap(
     Ok(output)
 }
 
-fn collect_files(
+fn collect_parsed_files(
     repo_root: &Path,
     config: &ScanConfig,
     repo_canon: &Path,
-) -> (Vec<(std::path::PathBuf, String)>, RepoMapDiagnostics) {
+) -> (Vec<(String, ParsedFile)>, RepoMapDiagnostics) {
     let walker = crate::tree_sitter::build_walker_internal(repo_root, config);
-    let mut out = Vec::new();
+    let mut out: Vec<(String, ParsedFile)> = Vec::new();
     let mut diagnostics = RepoMapDiagnostics::default();
 
     for entry in walker {
@@ -124,7 +113,7 @@ fn collect_files(
             continue;
         }
 
-        let Some(_) = detect_language(path) else {
+        let Some(lang) = detect_language(path) else {
             continue;
         };
         diagnostics.language_files_seen += 1;
@@ -146,33 +135,15 @@ fn collect_files(
             continue;
         }
 
-        out.push((path.to_path_buf(), content));
-    }
+        diagnostics.collected_files += 1;
 
-    diagnostics.collected_files = out.len();
-
-    let parsed_files: Vec<String> = out
-        .iter()
-        .filter_map(|(path, content)| {
-            let rel = rel_path(repo_root, repo_canon, path);
-            detect_language(path)
-                .and_then(|lang| parse_file(path, content, lang))
-                .map(|_| rel)
-        })
-        .collect();
-    let parsed_set: HashSet<String> = parsed_files.into_iter().collect();
-    for (path, content) in &out {
         let rel = rel_path(repo_root, repo_canon, path);
-        if parsed_set.contains(&rel) {
-            continue;
-        }
-        if detect_language(path)
-            .and_then(|lang| parse_file(path, content, lang))
-            .is_none()
-        {
-            diagnostics.parse_failed.push(rel);
+        match parse_file(path, &content, lang) {
+            Some(parsed) => out.push((rel, parsed)),
+            None => diagnostics.parse_failed.push(rel),
         }
     }
+
     diagnostics.parse_failed.sort();
     diagnostics.parse_failed.dedup();
 
@@ -490,40 +461,48 @@ fn rust_candidates(
     out
 }
 
-fn pagerank(graph: &HashMap<String, Vec<String>>, node_count: usize) -> HashMap<String, f64> {
-    if node_count == 0 {
+fn pagerank(graph: &HashMap<String, Vec<String>>) -> HashMap<String, f64> {
+    if graph.is_empty() {
         return HashMap::new();
     }
 
     let damping = 0.85;
     let iterations = 20;
 
-    let all_nodes: HashSet<&String> = graph.keys().chain(graph.values().flatten()).collect();
-    let n = all_nodes.len().max(1);
+    let mut nodes: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for (source, targets) in graph {
+        nodes.insert(source.clone());
+        for target in targets {
+            nodes.insert(target.clone());
+        }
+    }
+    let nodes: Vec<String> = nodes.into_iter().collect();
+    let n = nodes.len().max(1);
 
-    let mut scores: HashMap<&str, f64> = all_nodes
-        .iter()
-        .map(|&k: &&String| (k.as_str(), 1.0 / n as f64))
-        .collect();
+    let mut scores: HashMap<String, f64> =
+        nodes.iter().map(|k| (k.clone(), 1.0 / n as f64)).collect();
 
-    let mut incoming: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut incoming: HashMap<String, Vec<String>> = HashMap::new();
     for (source, targets) in graph {
         for target in targets {
             incoming
-                .entry(target.as_str())
+                .entry(target.clone())
                 .or_default()
-                .push(source.as_str());
+                .push(source.clone());
         }
+    }
+    for preds in incoming.values_mut() {
+        preds.sort();
+        preds.dedup();
     }
 
     for _ in 0..iterations {
-        let mut new_scores: HashMap<&str, f64> = HashMap::new();
-
-        for &node in &all_nodes {
+        let mut new_scores: HashMap<String, f64> = HashMap::new();
+        for node in &nodes {
             let mut score = (1.0 - damping) / n as f64;
 
-            if let Some(predecessors) = incoming.get(node.as_str()) {
-                for &pred in predecessors {
+            if let Some(predecessors) = incoming.get(node) {
+                for pred in predecessors {
                     let pred_score = scores.get(pred).copied().unwrap_or(0.0);
                     let out_degree = graph
                         .get(pred)
@@ -533,16 +512,13 @@ fn pagerank(graph: &HashMap<String, Vec<String>>, node_count: usize) -> HashMap<
                 }
             }
 
-            new_scores.insert(node.as_str(), score);
+            new_scores.insert(node.clone(), score);
         }
 
         scores = new_scores;
     }
 
     scores
-        .into_iter()
-        .map(|(k, v)| (k.to_string(), v))
-        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -720,16 +696,8 @@ pub fn generate_repomap_from_graph(
     repo_prefixes.sort_by_key(|p| std::cmp::Reverse(p.len()));
     repo_prefixes.dedup();
 
-    let (collected, mut diagnostics) = collect_files(repo_root, &config, &repo_canon);
-    let parsed_map: HashMap<String, ParsedFile> = collected
-        .iter()
-        .filter_map(|(path, content)| {
-            let rel_path = rel_path(repo_root, &repo_canon, path);
-            detect_language(path)
-                .and_then(|lang| parse_file(path, content, lang))
-                .map(|parsed| (rel_path, parsed))
-        })
-        .collect();
+    let (parsed_files, mut diagnostics) = collect_parsed_files(repo_root, &config, &repo_canon);
+    let parsed_map: HashMap<String, ParsedFile> = parsed_files.iter().cloned().collect();
 
     let mut best_by_path: HashMap<String, f64> = HashMap::new();
     for node in &graph.nodes {
@@ -765,10 +733,6 @@ pub fn generate_repomap_from_graph(
     });
     file_ranks.truncate(options.max_files);
 
-    let parsed_files: Vec<(String, ParsedFile)> = parsed_map
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
     let (import_graph, unresolved_imports_by_file) = build_import_graph(&parsed_files);
     diagnostics.unresolved_imports_by_file = unresolved_imports_by_file;
 
@@ -1212,7 +1176,7 @@ mod tests {
     #[test]
     fn test_pagerank_empty() {
         let graph: HashMap<String, Vec<String>> = HashMap::new();
-        let rankings = pagerank(&graph, 0);
+        let rankings = pagerank(&graph);
         assert!(rankings.is_empty());
     }
 
@@ -1220,8 +1184,29 @@ mod tests {
     fn test_pagerank_single_node() {
         let mut graph: HashMap<String, Vec<String>> = HashMap::new();
         graph.insert("a.rs".to_string(), vec![]);
-        let rankings = pagerank(&graph, 1);
+        let rankings = pagerank(&graph);
         assert!(!rankings.is_empty());
+    }
+
+    #[test]
+    fn pagerank_is_deterministic_across_insertion_orders() {
+        let mut g1: HashMap<String, Vec<String>> = HashMap::new();
+        g1.insert(
+            "a.rs".to_string(),
+            vec!["b.rs".to_string(), "c.rs".to_string()],
+        );
+        g1.insert("b.rs".to_string(), vec!["c.rs".to_string()]);
+
+        let mut g2: HashMap<String, Vec<String>> = HashMap::new();
+        g2.insert("b.rs".to_string(), vec!["c.rs".to_string()]);
+        g2.insert(
+            "a.rs".to_string(),
+            vec!["c.rs".to_string(), "b.rs".to_string()],
+        );
+
+        let r1 = pagerank(&g1);
+        let r2 = pagerank(&g2);
+        assert_eq!(r1, r2);
     }
 
     #[test]

@@ -66,7 +66,6 @@ pub fn scan_repo_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
         match npm::scan_npm_repo(repo_root) {
             Ok(g) => return Ok(g),
             Err(e) => {
-                eprintln!("[sruja-scan] npm scan failed: {}", e);
                 last_error = Some(e);
             }
         }
@@ -76,7 +75,6 @@ pub fn scan_repo_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
         match cargo::scan_cargo_repo(repo_root) {
             Ok(g) => return Ok(g),
             Err(e) => {
-                eprintln!("[sruja-scan] cargo scan failed: {}", e);
                 last_error = Some(e);
             }
         }

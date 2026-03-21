@@ -4,7 +4,7 @@
 //! NodeKind and EdgeKind are from sruja_types; scan only uses a subset of variants.
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub use sruja_types::{EdgeKind, NodeKind};
 
@@ -79,6 +79,99 @@ impl Graph {
             metadata: HashMap::new(),
             nodes: Vec::new(),
             edges: Vec::new(),
+        }
+    }
+
+    pub fn canonicalize(&mut self) {
+        fn node_kind_rank(kind: NodeKind) -> u8 {
+            match kind {
+                NodeKind::System => 100,
+                NodeKind::Service => 90,
+                NodeKind::Container => 80,
+                NodeKind::Component => 70,
+                NodeKind::Frontend => 60,
+                NodeKind::ExternalApi => 50,
+                NodeKind::Database => 40,
+                NodeKind::Queue => 30,
+                NodeKind::Module => 10,
+            }
+        }
+
+        fn merge_node(base: &mut Node, other: Node) {
+            if node_kind_rank(other.kind) > node_kind_rank(base.kind) {
+                base.kind = other.kind;
+            }
+            if (base.label.is_empty() || base.label == base.id)
+                && !other.label.is_empty()
+                && other.label != other.id
+            {
+                base.label = other.label;
+            }
+            if base.technology.is_none() {
+                base.technology = other.technology;
+            }
+            if base.path.is_none() {
+                base.path = other.path;
+            }
+            for (k, v) in other.metadata {
+                base.metadata.entry(k).or_insert(v);
+            }
+        }
+
+        let mut nodes_by_id: BTreeMap<String, Node> = BTreeMap::new();
+        self.nodes.sort_by(|a, b| {
+            (a.id.as_str(), a.kind.as_str(), a.label.as_str()).cmp(&(
+                b.id.as_str(),
+                b.kind.as_str(),
+                b.label.as_str(),
+            ))
+        });
+        for node in self.nodes.drain(..) {
+            nodes_by_id
+                .entry(node.id.clone())
+                .and_modify(|existing| merge_node(existing, node.clone()))
+                .or_insert(node);
+        }
+        self.nodes = nodes_by_id.into_values().collect();
+
+        let node_set: HashSet<String> = self.nodes.iter().map(|n| n.id.clone()).collect();
+
+        fn evidence_sort_key(
+            e: &EdgeEvidence,
+        ) -> (&str, &Option<String>, &Option<u32>, &Option<String>) {
+            (e.rule.as_str(), &e.file, &e.line, &e.detail)
+        }
+
+        let mut merged: BTreeMap<(String, String, String), Vec<EdgeEvidence>> = BTreeMap::new();
+        for mut edge in self.edges.drain(..) {
+            if !node_set.contains(&edge.source) || !node_set.contains(&edge.target) {
+                continue;
+            }
+            edge.evidence
+                .sort_by(|a, b| evidence_sort_key(a).cmp(&evidence_sort_key(b)));
+            edge.evidence.dedup();
+
+            let key = (
+                edge.source.clone(),
+                edge.target.clone(),
+                edge.kind.as_str().to_string(),
+            );
+            merged.entry(key).or_default().extend(edge.evidence);
+        }
+
+        self.edges = Vec::with_capacity(merged.len());
+        for ((source, target, kind_str), mut evidence) in merged {
+            let Ok(kind) = kind_str.parse::<EdgeKind>() else {
+                continue;
+            };
+            evidence.sort_by(|a, b| evidence_sort_key(a).cmp(&evidence_sort_key(b)));
+            evidence.dedup();
+            self.edges.push(Edge {
+                source,
+                target,
+                kind,
+                evidence,
+            });
         }
     }
 
@@ -191,6 +284,64 @@ mod tests {
             kind: EdgeKind::Calls,
             evidence: Vec::new(),
         }
+    }
+
+    #[test]
+    fn canonicalize_drops_dangling_edges() {
+        let mut graph = Graph {
+            metadata: HashMap::new(),
+            nodes: vec![node("a")],
+            edges: vec![edge("a", "missing")],
+        };
+
+        graph.canonicalize();
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn canonicalize_merges_duplicate_edges_and_evidence() {
+        let mut graph = Graph {
+            metadata: HashMap::new(),
+            nodes: vec![node("a"), node("b")],
+            edges: vec![
+                Edge {
+                    source: "a".into(),
+                    target: "b".into(),
+                    kind: EdgeKind::Calls,
+                    evidence: vec![EdgeEvidence {
+                        rule: "r2".into(),
+                        file: None,
+                        line: None,
+                        detail: None,
+                    }],
+                },
+                Edge {
+                    source: "a".into(),
+                    target: "b".into(),
+                    kind: EdgeKind::Calls,
+                    evidence: vec![
+                        EdgeEvidence {
+                            rule: "r1".into(),
+                            file: None,
+                            line: None,
+                            detail: None,
+                        },
+                        EdgeEvidence {
+                            rule: "r2".into(),
+                            file: None,
+                            line: None,
+                            detail: None,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        graph.canonicalize();
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].evidence.len(), 2);
+        assert_eq!(graph.edges[0].evidence[0].rule, "r1");
+        assert_eq!(graph.edges[0].evidence[1].rule, "r2");
     }
 
     #[test]

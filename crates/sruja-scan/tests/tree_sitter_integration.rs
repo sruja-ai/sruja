@@ -41,3 +41,35 @@ pub mod bar { pub fn baz() {} }
         "minimal Rust repo should produce at least one node"
     );
 }
+
+#[test]
+fn scan_is_deterministic_and_has_no_dangling_edges() {
+    let repo = TempDir::new().expect("temp dir");
+    write_file(
+        repo.path(),
+        "Cargo.toml",
+        r#"[package]
+name = "fixture"
+version = "0.1.0"
+edition = "2021"
+"#,
+    );
+    write_file(
+        repo.path(),
+        "src/lib.rs",
+        r#"pub mod a { pub fn f() {} }
+pub mod b { pub fn g() { super::a::f(); } }
+"#,
+    );
+
+    let g1 = sruja_scan::scan_repo(repo.path()).expect("scan should succeed");
+    let g2 = sruja_scan::scan_repo(repo.path()).expect("scan should succeed");
+    assert_eq!(g1, g2);
+
+    let node_ids: std::collections::HashSet<&str> = g1.nodes.iter().map(|n| n.id.as_str()).collect();
+    assert!(
+        g1.edges
+            .iter()
+            .all(|e| node_ids.contains(e.source.as_str()) && node_ids.contains(e.target.as_str()))
+    );
+}

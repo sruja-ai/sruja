@@ -115,6 +115,7 @@ pub(crate) fn scan_cargo_repo(repo_root: &Path) -> Result<Graph, ScanError> {
     }
 
     let Some(resolve) = metadata.resolve else {
+        graph.canonicalize();
         return Ok(graph);
     };
 
@@ -148,6 +149,7 @@ pub(crate) fn scan_cargo_repo(repo_root: &Path) -> Result<Graph, ScanError> {
         }
     }
 
+    graph.canonicalize();
     Ok(graph)
 }
 
