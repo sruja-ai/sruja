@@ -87,6 +87,7 @@ interface SrujaWasmModule {
   sruja_get_diagnostics(dsl: string, filename?: string | null): string;
   sruja_dsl_to_markdown(dsl: string): string;
   sruja_dsl_to_mermaid(dsl: string, config_json?: string | null): string;
+  sruja_dsl_to_sequence_diagram(dsl: string, config_json?: string | null): string;
   sruja_get_elements(dsl: string, filename?: string | null): string;
   sruja_get_document_symbols(dsl: string, filename?: string | null): string;
   init_panic_hook(): void;
@@ -193,6 +194,26 @@ export async function getMermaidFromWasm(
     return mod.sruja_dsl_to_mermaid(dsl, configJson ?? null);
   } catch (e) {
     console.error("[Sruja] Failed to get Mermaid from WASM:", e);
+    return null;
+  }
+}
+
+/**
+ * Export a single scenario/flow to a Mermaid sequence diagram using WASM.
+ * Returns null if WASM not ready or on error.
+ */
+export async function getSequenceDiagramFromWasm(
+  context: vscode.ExtensionContext,
+  dsl: string,
+  configJson?: string | null
+): Promise<string | null> {
+  const mod = await initWasm(context);
+  if (!mod) return null;
+
+  try {
+    return mod.sruja_dsl_to_sequence_diagram(dsl, configJson ?? null);
+  } catch (e) {
+    console.error("[Sruja] Failed to get sequence diagram from WASM:", e);
     return null;
   }
 }

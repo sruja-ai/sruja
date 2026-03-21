@@ -8,9 +8,11 @@ use serde_json::json;
 use sruja_engine::Validator;
 use sruja_export::json::Exporter as JsonExporter;
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
+use sruja_export::mermaid::{flow_to_sequence_diagram, scenario_to_sequence_diagram};
 use sruja_export::mermaid::exporter::MermaidConfig;
 use sruja_export::mermaid::MermaidExporter;
 use sruja_language::Parser;
+use sruja_language::TopLevelItem;
 use wasm_bindgen::prelude::*;
 
 /// Initialize panic hook for better error messages in WASM
@@ -127,6 +129,78 @@ pub fn sruja_dsl_to_mermaid(dsl: &str, config_json: Option<String>) -> Result<St
 
     let exporter = MermaidExporter::new(mermaid_config);
     Ok(exporter.export(&program))
+}
+
+#[wasm_bindgen]
+pub fn sruja_dsl_to_sequence_diagram(
+    dsl: &str,
+    config_json: Option<String>,
+) -> Result<String, JsValue> {
+    let parser = Parser::new("input.sruja".to_string());
+    let program = parser
+        .parse(dsl)
+        .map_err(|e| JsValue::from_str(&format!("Parse error: {:?}", e)))?;
+
+    let mut kind: String = "scenario".to_string();
+    let mut id: Option<String> = None;
+    if let Some(config_str) = config_json {
+        if let Ok(config) = serde_json::from_str::<serde_json::Value>(&config_str) {
+            if let Some(k) = config.get("kind").and_then(|v| v.as_str()) {
+                kind = k.to_string();
+            }
+            if let Some(target) = config.get("id").and_then(|v| v.as_str()) {
+                if !target.trim().is_empty() {
+                    id = Some(target.to_string());
+                }
+            }
+        }
+    }
+
+    let Some(target_id) = id else {
+        return Ok(String::new());
+    };
+
+    let want_flow = kind.trim().eq_ignore_ascii_case("flow");
+
+    for item in &program.items {
+        match item {
+            TopLevelItem::Flow(flow) if want_flow && flow.id == target_id => {
+                return Ok(flow_to_sequence_diagram(&flow.id, &flow.title, &flow.steps));
+            }
+            TopLevelItem::Scenario(scenario) if !want_flow && scenario.id == target_id => {
+                return Ok(scenario_to_sequence_diagram(
+                    &scenario.id,
+                    &scenario.title,
+                    &scenario.steps,
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    if want_flow {
+        for item in &program.items {
+            if let TopLevelItem::Scenario(scenario) = item {
+                if scenario.id == target_id {
+                    return Ok(scenario_to_sequence_diagram(
+                        &scenario.id,
+                        &scenario.title,
+                        &scenario.steps,
+                    ));
+                }
+            }
+        }
+    } else {
+        for item in &program.items {
+            if let TopLevelItem::Flow(flow) = item {
+                if flow.id == target_id {
+                    return Ok(flow_to_sequence_diagram(&flow.id, &flow.title, &flow.steps));
+                }
+            }
+        }
+    }
+
+    Ok(String::new())
 }
 
 /// DOT export was removed. Use Mermaid export instead.

@@ -122,6 +122,14 @@
         "title": "Sruja: Open Focused Diagram Preview (at element)"
       },
       {
+        "command": "sruja.openSequenceDiagramPreview",
+        "title": "Sruja: Open Sequence Diagram Preview"
+      },
+      {
+        "command": "sruja.openSequenceDiagramPreviewAt",
+        "title": "Sruja: Open Sequence Diagram Preview (at scenario/flow)"
+      },
+      {
         "command": "sruja.openComponentKnowledge",
         "title": "Sruja: Open component knowledge"
       },
@@ -197,6 +205,10 @@
           "when": "editorLangId == sruja"
         },
         {
+          "command": "sruja.openSequenceDiagramPreview",
+          "when": "editorLangId == sruja"
+        },
+        {
           "command": "sruja.openComponentKnowledge",
           "when": "editorLangId == sruja"
         }
@@ -210,6 +222,11 @@
         },
         {
           "command": "sruja.openDiagramPreview",
+          "when": "editorLangId == sruja",
+          "group": "navigation"
+        },
+        {
+          "command": "sruja.openSequenceDiagramPreview",
           "when": "editorLangId == sruja",
           "group": "navigation"
         },

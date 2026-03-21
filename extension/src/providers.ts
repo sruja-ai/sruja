@@ -326,6 +326,41 @@ function findFocusableElementsByBlockParsing(document: vscode.TextDocument): Arr
   return out;
 }
 
+function findScenarioAndFlowDefsByLineParsing(
+  document: vscode.TextDocument
+): Array<{ id: string; kind: "scenario" | "flow"; range: vscode.Range }> {
+  const assignRe = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(scenario|story|flow)\b/;
+  const keywordRe = /^\s*(scenario|story|flow)\s+([A-Za-z_][A-Za-z0-9_]*)\b/;
+  const out: Array<{ id: string; kind: "scenario" | "flow"; range: vscode.Range }> = [];
+
+  for (let i = 0; i < document.lineCount; i++) {
+    const line = document.lineAt(i).text;
+    const m1 = assignRe.exec(line);
+    if (m1) {
+      const id = m1[1];
+      const k = m1[2];
+      out.push({
+        id,
+        kind: k === "flow" ? "flow" : "scenario",
+        range: new vscode.Range(new vscode.Position(i, 0), new vscode.Position(i, 0)),
+      });
+      continue;
+    }
+    const m2 = keywordRe.exec(line);
+    if (m2) {
+      const k = m2[1];
+      const id = m2[2];
+      out.push({
+        id,
+        kind: k === "flow" ? "flow" : "scenario",
+        range: new vscode.Range(new vscode.Position(i, 0), new vscode.Position(i, 0)),
+      });
+    }
+  }
+
+  return out;
+}
+
 export class SrujaDiagramCodeLensProvider implements vscode.CodeLensProvider {
   constructor(_context: vscode.ExtensionContext) {}
 
@@ -359,6 +394,25 @@ export class SrujaDiagramCodeLensProvider implements vscode.CodeLensProvider {
           title: `Open focused diagram (L${element.viewLevel})`,
           command: "sruja.openFocusedDiagramPreviewAt",
           arguments: [args],
+        })
+      );
+    }
+
+    const seqDefs = findScenarioAndFlowDefsByLineParsing(document);
+    if (token.isCancellationRequested) return lenses;
+    for (const def of seqDefs) {
+      const lensRange = new vscode.Range(def.range.start, def.range.start);
+      lenses.push(
+        new vscode.CodeLens(lensRange, {
+          title: "Open sequence diagram",
+          command: "sruja.openSequenceDiagramPreviewAt",
+          arguments: [
+            {
+              docUri: document.uri.toString(),
+              kind: def.kind,
+              id: def.id,
+            },
+          ],
         })
       );
     }

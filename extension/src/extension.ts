@@ -14,7 +14,14 @@ import {
   resolveDocUri,
   docUriExists,
 } from "./providers";
-import { exportMarkdownFromWasm, getDiagnosticsFromWasm, getMermaidFromWasm, getElementsFromWasm } from "./wasm";
+import {
+  exportMarkdownFromWasm,
+  getDiagnosticsFromWasm,
+  getMermaidFromWasm,
+  getSequenceDiagramFromWasm,
+  getElementsFromWasm,
+  getDocumentSymbolsFromWasm,
+} from "./wasm";
 import { getSrujaLspPath } from "./config";
 import { runCli } from "./cliRunner";
 import { parseJsonSafe } from "./safeJson";
@@ -528,6 +535,7 @@ export function activate(context: vscode.ExtensionContext): void {
         { label: "Run validation", command: "sruja.runValidation" },
         { label: "Open Diagram Preview", command: "sruja.openDiagramPreview" },
         { label: "Open Focused Diagram Preview", command: "sruja.openFocusedDiagramPreview" },
+        { label: "Open Sequence Diagram Preview", command: "sruja.openSequenceDiagramPreview" },
         { label: "Export architecture to Markdown", command: "sruja.exportMarkdown" },
         { label: "Open Markdown Preview", command: "sruja.openMarkdownPreview" },
         { label: "Open component knowledge", command: "sruja.openComponentKnowledge" },
@@ -884,6 +892,60 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
     }),
+    vscode.commands.registerCommand("sruja.openSequenceDiagramPreviewAt", async (arg?: unknown) => {
+      const parsed =
+        typeof arg === "object" && arg !== null
+          ? (arg as { docUri?: string; kind?: unknown; id?: unknown })
+          : undefined;
+
+      const docUriRaw = typeof parsed?.docUri === "string" ? parsed.docUri : undefined;
+      const kindRaw = typeof parsed?.kind === "string" ? parsed.kind : "scenario";
+      const kind = kindRaw.toLowerCase() === "flow" ? "flow" : "scenario";
+      const id = typeof parsed?.id === "string" ? parsed.id : undefined;
+
+      let doc: vscode.TextDocument | undefined;
+      if (docUriRaw) {
+        try {
+          doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(docUriRaw));
+        } catch {
+          doc = undefined;
+        }
+      } else {
+        doc = vscode.window.activeTextEditor?.document;
+      }
+
+      if (!doc || doc.languageId !== "sruja") {
+        vscode.window.showWarningMessage("Open a .sruja file to open sequence diagram preview.");
+        return;
+      }
+      if (!id || !id.trim()) {
+        vscode.window.showWarningMessage("No scenario/flow ID provided.");
+        return;
+      }
+
+      const configJson = JSON.stringify({ kind, id });
+      const mermaid = await getSequenceDiagramFromWasm(context, doc.getText(), configJson);
+      if (mermaid === null || mermaid.trim() === "") {
+        vscode.window.showErrorMessage(
+          `Could not render sequence diagram for ${kind} "${id}". Ensure the file parses and Sruja WASM is available.`
+        );
+        return;
+      }
+
+      if (diagramPreviewPanel) {
+        diagramPreviewPanel.dispose();
+      }
+      diagramPreviewPanel = vscode.window.createWebviewPanel(
+        "srujaDiagramPreview",
+        `Sruja – Context engineering for the AI era. – Sequence Diagram – ${kind}: ${id}`,
+        vscode.ViewColumn.Beside,
+        { enableScripts: true }
+      );
+      diagramPreviewPanel.onDidDispose(() => {
+        diagramPreviewPanel = undefined;
+      });
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+    }),
     vscode.commands.registerCommand("sruja.openFocusedDiagramPreviewAt", async (arg?: unknown) => {
       const parsed =
         typeof arg === "object" && arg !== null
@@ -1004,6 +1066,53 @@ export function activate(context: vscode.ExtensionContext): void {
         diagramPreviewPanel = undefined;
       });
       diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+    }),
+    vscode.commands.registerCommand("sruja.openSequenceDiagramPreview", async () => {
+      const editor = vscode.window.activeTextEditor;
+      const doc = editor?.document;
+      if (!doc || doc.languageId !== "sruja") {
+        vscode.window.showWarningMessage("Open a .sruja file to open sequence diagram preview.");
+        return;
+      }
+
+      const symbols = await getDocumentSymbolsFromWasm(context, doc.getText(), doc.uri.fsPath);
+      if (!symbols) {
+        vscode.window.showWarningMessage(
+          "Could not list scenarios/flows. Ensure the file parses and Sruja WASM is available."
+        );
+        return;
+      }
+
+      type ScenarioFlowPick = vscode.QuickPickItem & { seqKind: "scenario" | "flow"; id: string };
+
+      const items: ScenarioFlowPick[] = symbols
+        .filter((s) => s.kind === "scenario" || s.kind === "flow")
+        .map((s) => ({
+          label: s.name,
+          description: s.kind === "flow" ? "Flow" : "Scenario",
+          seqKind: s.kind === "flow" ? ("flow" as const) : ("scenario" as const),
+          id: s.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      if (items.length === 0) {
+        vscode.window.showInformationMessage("No scenarios or flows found in this file.");
+        return;
+      }
+
+      const picked = isTest
+        ? items[0]
+        : await vscode.window.showQuickPick<ScenarioFlowPick>(items, {
+            placeHolder: "Choose a scenario or flow to render as a sequence diagram",
+            matchOnDescription: true,
+          });
+      if (!picked) return;
+
+      await vscode.commands.executeCommand("sruja.openSequenceDiagramPreviewAt", {
+        docUri: doc.uri.toString(),
+        kind: picked.seqKind,
+        id: picked.id,
+      });
     }),
     vscode.commands.registerCommand("sruja.markdownPreview", openMarkdownPreview),
     vscode.commands.registerCommand("sruja.openMarkdownPreview", openMarkdownPreview),
