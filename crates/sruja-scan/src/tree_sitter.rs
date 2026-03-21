@@ -52,6 +52,24 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         .canonicalize()
         .unwrap_or_else(|_| repo_root.to_path_buf());
 
+    #[derive(Default)]
+    struct ScanDiagnostics {
+        language_files_seen: usize,
+        collected_files: usize,
+        read_failed: usize,
+        skipped_large: usize,
+        parse_failed: usize,
+        read_failed_examples: Vec<String>,
+        skipped_large_examples: Vec<String>,
+        parse_failed_examples: Vec<String>,
+    }
+
+    fn push_example(examples: &mut Vec<String>, s: String) {
+        if examples.len() < 3 {
+            examples.push(s);
+        }
+    }
+
     let go_module_path: Option<String> = std::fs::read_to_string(repo_root.join("go.mod"))
         .ok()
         .and_then(|content| {
@@ -62,9 +80,10 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         });
 
     // 1. Walk and collect eligible (path, content, language).
-    let collected: Vec<(PathBuf, String, Language)> = {
+    let (collected, diagnostics): (Vec<(PathBuf, String, Language)>, ScanDiagnostics) = {
         let walker = build_walker(repo_root, config);
         let mut out = Vec::new();
+        let mut diagnostics = ScanDiagnostics::default();
         for entry in walker {
             let entry = entry.map_err(|e| ScanError::Walk(e.to_string()))?;
             let path = entry.path();
@@ -72,14 +91,31 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 continue;
             }
             if let Some(language) = detect_language(path) {
-                if let Ok(content) = std::fs::read_to_string(path) {
-                    if content.len() <= config.max_file_size {
-                        out.push((path.to_path_buf(), content, language));
+                diagnostics.language_files_seen += 1;
+                match std::fs::read_to_string(path) {
+                    Ok(content) => {
+                        if content.len() <= config.max_file_size {
+                            diagnostics.collected_files += 1;
+                            out.push((path.to_path_buf(), content, language));
+                        } else {
+                            diagnostics.skipped_large += 1;
+                            push_example(
+                                &mut diagnostics.skipped_large_examples,
+                                rel_path(repo_root, &repo_canon, path),
+                            );
+                        }
+                    }
+                    Err(_) => {
+                        diagnostics.read_failed += 1;
+                        push_example(
+                            &mut diagnostics.read_failed_examples,
+                            rel_path(repo_root, &repo_canon, path),
+                        );
                     }
                 }
             }
         }
-        out
+        (out, diagnostics)
     };
 
     // 2. Build file_path_to_id from paths so resolve_import_improved works in merge.
@@ -97,13 +133,34 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         .collect();
 
     // 3. Parallel parse; keep content for merge (infer_node_kind needs it).
-    let parsed: Vec<(PathBuf, String, Language, ParsedFile)> = collected
+    enum ParseOutcome {
+        Ok(PathBuf, String, Language, ParsedFile),
+        Err(String),
+    }
+
+    let outcomes: Vec<ParseOutcome> = collected
         .par_iter()
-        .filter_map(|(path, content, language)| {
-            parse_file(path.as_path(), content, *language)
-                .map(|p| (path.clone(), content.clone(), *language, p))
+        .map(|(path, content, language)| {
+            parse_file(path.as_path(), content, *language).map_or_else(
+                || ParseOutcome::Err(rel_path(repo_root, &repo_canon, path.as_path())),
+                |p| ParseOutcome::Ok(path.clone(), content.clone(), *language, p),
+            )
         })
         .collect();
+
+    let mut parsed: Vec<(PathBuf, String, Language, ParsedFile)> = Vec::new();
+    let mut diagnostics = diagnostics;
+    for outcome in outcomes {
+        match outcome {
+            ParseOutcome::Ok(path, content, language, parsed_file) => {
+                parsed.push((path, content, language, parsed_file));
+            }
+            ParseOutcome::Err(rel) => {
+                diagnostics.parse_failed += 1;
+                push_example(&mut diagnostics.parse_failed_examples, rel);
+            }
+        }
+    }
 
     // 4. Single-threaded merge: same logic as before.
     let mut nodes: Vec<Node> = Vec::new();
@@ -252,7 +309,49 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
     });
 
     Ok(Graph {
-        metadata: HashMap::new(),
+        metadata: {
+            let mut metadata: HashMap<String, String> = HashMap::new();
+            metadata.insert(
+                "scan.language_files_seen".to_string(),
+                diagnostics.language_files_seen.to_string(),
+            );
+            metadata.insert(
+                "scan.collected_files".to_string(),
+                diagnostics.collected_files.to_string(),
+            );
+            metadata.insert("scan.parsed_files".to_string(), parsed.len().to_string());
+            metadata.insert(
+                "scan.read_failed".to_string(),
+                diagnostics.read_failed.to_string(),
+            );
+            metadata.insert(
+                "scan.skipped_large".to_string(),
+                diagnostics.skipped_large.to_string(),
+            );
+            metadata.insert(
+                "scan.parse_failed".to_string(),
+                diagnostics.parse_failed.to_string(),
+            );
+            if !diagnostics.read_failed_examples.is_empty() {
+                metadata.insert(
+                    "scan.read_failed_examples".to_string(),
+                    diagnostics.read_failed_examples.join(", "),
+                );
+            }
+            if !diagnostics.skipped_large_examples.is_empty() {
+                metadata.insert(
+                    "scan.skipped_large_examples".to_string(),
+                    diagnostics.skipped_large_examples.join(", "),
+                );
+            }
+            if !diagnostics.parse_failed_examples.is_empty() {
+                metadata.insert(
+                    "scan.parse_failed_examples".to_string(),
+                    diagnostics.parse_failed_examples.join(", "),
+                );
+            }
+            metadata
+        },
         nodes,
         edges,
     })
@@ -265,10 +364,11 @@ fn build_walker(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
 pub fn build_walker_internal(repo_root: &Path, config: &ScanConfig) -> ignore::Walk {
     let mut builder = ignore::WalkBuilder::new(repo_root);
     builder
-        .hidden(false)
+        .hidden(true)
         .git_ignore(true)
         .git_global(true)
         .git_exclude(true);
+    builder.add_custom_ignore_filename(".srujaignore");
 
     let config_clone = config.clone();
     builder.filter_entry(move |e| {
@@ -277,6 +377,17 @@ pub fn build_walker_internal(repo_root: &Path, config: &ScanConfig) -> ignore::W
     });
 
     builder.build()
+}
+
+fn rel_path(repo_root: &Path, repo_canon: &Path, path: &Path) -> String {
+    let rel = path
+        .strip_prefix(repo_canon)
+        .or_else(|_| path.strip_prefix(repo_root))
+        .unwrap_or(path);
+    rel.to_string_lossy()
+        .replace('\\', "/")
+        .trim_start_matches('/')
+        .to_string()
 }
 
 fn file_to_id(repo_root: &Path, file_path: &Path) -> String {
@@ -303,6 +414,60 @@ pub fn parse_file(path: &Path, content: &str, language: Language) -> Option<Pars
         Language::Scala => languages::scala::parse(path, content),
         Language::C => languages::c::parse(path, content),
         Language::Cpp => languages::cpp::parse(path, content),
+    }
+}
+
+#[cfg(test)]
+mod scan_diagnostics_tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn walker_honors_srujaignore() {
+        let dir = tempdir().expect("tempdir");
+        let repo_root = dir.path();
+        std::fs::create_dir_all(repo_root.join("src")).expect("mkdir src");
+        std::fs::create_dir_all(repo_root.join("ignored")).expect("mkdir ignored");
+        std::fs::write(repo_root.join(".srujaignore"), "ignored\n").expect("write .srujaignore");
+        std::fs::write(repo_root.join("src/main.rs"), "fn main() {}\n").expect("write keep");
+        std::fs::write(repo_root.join("ignored/bad.rs"), "fn bad() {}\n").expect("write ignored");
+
+        let config = ScanConfig::default();
+        let walker = build_walker_internal(repo_root, &config);
+        let mut files: Vec<String> = Vec::new();
+        for entry in walker {
+            let Ok(entry) = entry else { continue };
+            let path = entry.path();
+            if path.is_file() {
+                files.push(
+                    path.strip_prefix(repo_root)
+                        .unwrap_or(path)
+                        .to_string_lossy()
+                        .replace('\\', "/"),
+                );
+            }
+        }
+
+        assert!(files.contains(&"src/main.rs".to_string()));
+        assert!(!files.iter().any(|p| p.contains("ignored/bad.rs")));
+    }
+
+    #[test]
+    fn scan_attaches_basic_diagnostics_metadata() {
+        let dir = tempdir().expect("tempdir");
+        let repo_root = dir.path();
+        std::fs::create_dir_all(repo_root.join("src")).expect("mkdir src");
+        std::fs::write(repo_root.join("src/main.rs"), "fn main() {}\n").expect("write file");
+
+        let config = ScanConfig::default();
+        let graph = scan_with_tree_sitter(repo_root, &config).expect("scan");
+
+        assert!(graph.metadata.contains_key("scan.language_files_seen"));
+        assert!(graph.metadata.contains_key("scan.collected_files"));
+        assert!(graph.metadata.contains_key("scan.parsed_files"));
+        assert!(graph.metadata.contains_key("scan.read_failed"));
+        assert!(graph.metadata.contains_key("scan.skipped_large"));
+        assert!(graph.metadata.contains_key("scan.parse_failed"));
     }
 }
 

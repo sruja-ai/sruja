@@ -81,10 +81,9 @@ pub fn generate_repomap(
         })
         .collect();
 
-    file_ranks.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+    file_ranks.sort_by(|a, b| match b.score.partial_cmp(&a.score) {
+        Some(std::cmp::Ordering::Equal) | None => a.path.cmp(&b.path),
+        Some(o) => o,
     });
     file_ranks.truncate(options.max_files);
 
@@ -718,7 +717,7 @@ pub fn generate_repomap_from_graph(
             .trim_end_matches('/')
             .to_string(),
     ];
-    repo_prefixes.sort_by(|a, b| b.len().cmp(&a.len()));
+    repo_prefixes.sort_by_key(|p| std::cmp::Reverse(p.len()));
     repo_prefixes.dedup();
 
     let (collected, mut diagnostics) = collect_files(repo_root, &config, &repo_canon);
@@ -760,10 +759,9 @@ pub fn generate_repomap_from_graph(
         })
         .collect();
 
-    file_ranks.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+    file_ranks.sort_by(|a, b| match b.score.partial_cmp(&a.score) {
+        Some(std::cmp::Ordering::Equal) | None => a.path.cmp(&b.path),
+        Some(o) => o,
     });
     file_ranks.truncate(options.max_files);
 
@@ -896,7 +894,7 @@ impl TokenBudget {
     }
 
     fn estimate_tokens(s: &str) -> usize {
-        (s.len() + 3) / 4
+        s.len().div_ceil(4)
     }
 
     fn push_str(&mut self, out: &mut String, s: &str) -> bool {
@@ -1067,9 +1065,7 @@ fn render_diagnostics(
     let _ = budget.push_str(output, "\n");
 }
 
-fn fan_in_out(
-    import_graph: &HashMap<String, Vec<String>>,
-) -> (Vec<(String, usize)>, Vec<(String, usize)>) {
+fn fan_in_out(import_graph: &HashMap<String, Vec<String>>) -> (FanoutList, FanoutList) {
     let mut out_counts: HashMap<&str, usize> = HashMap::new();
     let mut in_counts: HashMap<&str, usize> = HashMap::new();
     for (src, targets) in import_graph {
@@ -1083,17 +1079,19 @@ fn fan_in_out(
         .filter(|(_, c)| *c >= 15)
         .map(|(k, v)| (k.to_string(), v))
         .collect();
-    fan_out.sort_by(|a, b| b.1.cmp(&a.1));
+    fan_out.sort_by_key(|item| std::cmp::Reverse(item.1));
 
     let mut fan_in: Vec<(String, usize)> = in_counts
         .into_iter()
         .filter(|(_, c)| *c >= 15)
         .map(|(k, v)| (k.to_string(), v))
         .collect();
-    fan_in.sort_by(|a, b| b.1.cmp(&a.1));
+    fan_in.sort_by_key(|item| std::cmp::Reverse(item.1));
 
     (fan_out, fan_in)
 }
+
+type FanoutList = Vec<(String, usize)>;
 
 fn format_fanout(label: &str, items: &[(String, usize)]) -> Option<String> {
     let top: Vec<String> = items
@@ -1112,12 +1110,68 @@ fn find_dependency_cycles(
     graph: &HashMap<String, Vec<String>>,
     max_cycles: usize,
 ) -> Vec<Vec<String>> {
-    let mut index: usize = 0;
-    let mut stack: Vec<String> = Vec::new();
-    let mut on_stack: HashSet<String> = HashSet::new();
-    let mut indices: HashMap<String, usize> = HashMap::new();
-    let mut lowlink: HashMap<String, usize> = HashMap::new();
-    let mut sccs: Vec<Vec<String>> = Vec::new();
+    struct Tarjan<'a> {
+        graph: &'a HashMap<String, Vec<String>>,
+        index: usize,
+        stack: Vec<String>,
+        on_stack: HashSet<String>,
+        indices: HashMap<String, usize>,
+        lowlink: HashMap<String, usize>,
+        sccs: Vec<Vec<String>>,
+    }
+
+    impl<'a> Tarjan<'a> {
+        fn new(graph: &'a HashMap<String, Vec<String>>) -> Self {
+            Self {
+                graph,
+                index: 0,
+                stack: Vec::new(),
+                on_stack: HashSet::new(),
+                indices: HashMap::new(),
+                lowlink: HashMap::new(),
+                sccs: Vec::new(),
+            }
+        }
+
+        fn strongconnect(&mut self, v: String) {
+            self.indices.insert(v.clone(), self.index);
+            self.lowlink.insert(v.clone(), self.index);
+            self.index += 1;
+            self.stack.push(v.clone());
+            self.on_stack.insert(v.clone());
+
+            if let Some(targets) = self.graph.get(&v) {
+                for w in targets {
+                    if !self.indices.contains_key(w) {
+                        self.strongconnect(w.clone());
+                        let v_low = *self.lowlink.get(&v).unwrap_or(&0);
+                        let w_low = *self.lowlink.get(w).unwrap_or(&0);
+                        self.lowlink.insert(v.clone(), v_low.min(w_low));
+                    } else if self.on_stack.contains(w) {
+                        let v_low = *self.lowlink.get(&v).unwrap_or(&0);
+                        let w_idx = *self.indices.get(w).unwrap_or(&0);
+                        self.lowlink.insert(v.clone(), v_low.min(w_idx));
+                    }
+                }
+            }
+
+            let v_idx = *self.indices.get(&v).unwrap_or(&0);
+            let v_low = *self.lowlink.get(&v).unwrap_or(&0);
+            if v_low == v_idx {
+                let mut scc: Vec<String> = Vec::new();
+                while let Some(w) = self.stack.pop() {
+                    self.on_stack.remove(&w);
+                    scc.push(w.clone());
+                    if w == v {
+                        break;
+                    }
+                }
+                if scc.len() >= 2 {
+                    self.sccs.push(scc);
+                }
+            }
+        }
+    }
 
     let mut nodes: HashSet<String> = HashSet::new();
     for (src, targets) in graph {
@@ -1127,81 +1181,17 @@ fn find_dependency_cycles(
         }
     }
 
-    fn strongconnect(
-        v: String,
-        graph: &HashMap<String, Vec<String>>,
-        index: &mut usize,
-        stack: &mut Vec<String>,
-        on_stack: &mut HashSet<String>,
-        indices: &mut HashMap<String, usize>,
-        lowlink: &mut HashMap<String, usize>,
-        sccs: &mut Vec<Vec<String>>,
-    ) {
-        indices.insert(v.clone(), *index);
-        lowlink.insert(v.clone(), *index);
-        *index += 1;
-        stack.push(v.clone());
-        on_stack.insert(v.clone());
-
-        if let Some(targets) = graph.get(&v) {
-            for w in targets {
-                if !indices.contains_key(w) {
-                    strongconnect(
-                        w.clone(),
-                        graph,
-                        index,
-                        stack,
-                        on_stack,
-                        indices,
-                        lowlink,
-                        sccs,
-                    );
-                    let v_low = *lowlink.get(&v).unwrap_or(&0);
-                    let w_low = *lowlink.get(w).unwrap_or(&0);
-                    lowlink.insert(v.clone(), v_low.min(w_low));
-                } else if on_stack.contains(w) {
-                    let v_low = *lowlink.get(&v).unwrap_or(&0);
-                    let w_idx = *indices.get(w).unwrap_or(&0);
-                    lowlink.insert(v.clone(), v_low.min(w_idx));
-                }
-            }
-        }
-
-        let v_idx = *indices.get(&v).unwrap_or(&0);
-        let v_low = *lowlink.get(&v).unwrap_or(&0);
-        if v_low == v_idx {
-            let mut scc: Vec<String> = Vec::new();
-            while let Some(w) = stack.pop() {
-                on_stack.remove(&w);
-                scc.push(w.clone());
-                if w == v {
-                    break;
-                }
-            }
-            if scc.len() >= 2 {
-                sccs.push(scc);
-            }
-        }
-    }
-
     let mut nodes_vec: Vec<String> = nodes.into_iter().collect();
     nodes_vec.sort();
+    let mut tarjan = Tarjan::new(graph);
     for v in nodes_vec {
-        if !indices.contains_key(&v) {
-            strongconnect(
-                v,
-                graph,
-                &mut index,
-                &mut stack,
-                &mut on_stack,
-                &mut indices,
-                &mut lowlink,
-                &mut sccs,
-            );
+        if !tarjan.indices.contains_key(&v) {
+            tarjan.strongconnect(v);
         }
     }
 
-    sccs.sort_by(|a, b| b.len().cmp(&a.len()));
+    let mut sccs = tarjan.sccs;
+    sccs.sort_by_key(|scc| std::cmp::Reverse(scc.len()));
     sccs.truncate(max_cycles);
     sccs
 }
