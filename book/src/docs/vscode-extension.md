@@ -136,6 +136,15 @@ The extension provides a complete LSP implementation with the following features
 - Right-click on a `.sruja` file → "Preview Sruja Architecture"
 - Or use the command palette: `Cmd+Shift+P` → "Sruja: Preview Architecture"
 
+#### Register MCP Server (Cursor)
+
+- Registers the Sruja MCP server with Cursor so Cursor can call Sruja tools (repomap, context, drift)
+- Requires the Sruja CLI (configure `sruja.lsp.path` if needed)
+
+**Usage**:
+
+- Command palette: `Cmd+Shift+P` → "Sruja: Register MCP Server (Cursor)"
+
 ## Keyboard Shortcuts
 
 | Feature                   | Mac                  | Windows/Linux         |
@@ -204,7 +213,7 @@ If you encounter issues with the extension:
 
 The extension uses **WebAssembly (WASM)** for all LSP functionality, which means:
 
-- ✅ **No CLI dependency** - Works without installing the Sruja CLI
+- ✅ **No CLI dependency for core language features** - Diagnostics, hover, completion, formatting, etc. work without installing the Sruja CLI
 - ✅ **Fast** - WASM provides near-native performance
 - ✅ **Portable** - Same code runs in browser and VS Code
 - ✅ **Self-contained** - All functionality bundled in the extension

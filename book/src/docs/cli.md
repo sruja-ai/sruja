@@ -96,16 +96,26 @@ sruja discover                          # Question bank only
 
 ### Commands that back the AI skill (and CI)
 
-The **sruja-architecture skill** is the primary way to get value; it runs discovery and drift under the hood. These CLI commands power the skill and are also used in CI or scripting. We do not promote running them as the main user entry point.
+The **sruja-architecture skill** is the primary way to get value; it runs discovery and drift under the hood. These CLI commands power the skill and are also useful to run directly (CI, automation, power users).
 
 | Command | Purpose |
 |---------|---------|
 | **`sruja discover --context -r <path> --format json`** | Evidence for the skill: repo structure, technologies, modules (skill runs this) |
 | **`sruja sync -r <path>`** | Refresh `.sruja/context.json` (summary) and `.sruja/graph.json` (full graph); skill uses these for evidence |
 | **`sruja drift -r <path> -a repo.sruja`** | Declared vs actual; skill uses for refinement; CI for gates |
-| **`sruja why "question" -r <path>`** | Answer "why" questions with evidence from the graph |
 | **`sruja context -r <path>`** | Export architecture context for AI tools |
 | **`sruja quickstart -r <path>`** | Structural overview (optional; used by skill/CI, not promoted as primary) |
+| **`sruja status -r <path>`** | Show baseline + health + truth status (reviewed / drifted / unknown) |
+| **`sruja review -r <path>`** | Review workflow: refresh evidence, detect drift, propose updates/open questions |
+| **`sruja impact <target> -r <path>`** | Blast radius analysis (upstream dependents + downstream dependencies) |
+| **`sruja why "question" -r <path>`** | Ask architecture questions with deterministic evidence from the knowledge graph |
+| **`sruja check -r <path> -f github-actions`** | CI-focused drift check output |
+| **`sruja baseline -r <path>`** | Snapshot current violations to ignore them in CI (`sruja check --baseline ...`) |
+| **`sruja intent check -r <path> -i <intent_dir>`** | Compare declared architectural intent vs actual implementation |
+| **`sruja compliance -r <path> -a repo.sruja -i <intent_dir>`** | Structural drift + intent + policy violations (exit 1 if non-compliant) |
+| **`sruja publish -r <path> -o repo.bundle.json`** | Export repo truth + evidence for federation |
+| **`sruja compose -i <bundle.json> -o system.index.json`** | Compose repo bundles into a system index |
+| **`sruja mcp`** | Start MCP stdio server (for tool-based clients) |
 | **`sruja scan <path> --output graph.json`** | Raw graph JSON (scripting / advanced) |
 | **`sruja runtime analyze -t <trace_file>`** | Runtime traces (optional) |
 
@@ -114,6 +124,46 @@ The **sruja-architecture skill** is the primary way to get value; it runs discov
 ```bash
 sruja discover --context -r . --format json
 sruja drift -r . -a repo.sruja
+sruja impact Shop.WebApp -r .
 sruja why "why did we choose PostgreSQL?" -r .
 sruja context -r . -f markdown -o .cursor/rules/architecture.md
+```
+
+### Repo workflow (recommended)
+
+Use these when you want “architecture health” and “keep it in sync” workflows in a repo.
+
+```bash
+# First look (no files required)
+sruja quickstart -r .
+
+# Create/refresh evidence used by agents and drift checks
+sruja sync -r .
+
+# Compare declared (repo.sruja) vs actual implementation
+sruja drift -r . -a repo.sruja
+
+# Summarize repo truth status and health
+sruja status -r .
+
+# Review workflow: refresh evidence + drift + suggested updates/questions
+sruja review -r .
+```
+
+### CI workflow
+
+```bash
+# Snapshot current violations (one-time)
+sruja baseline -r . -o .sruja/violations.baseline.json
+
+# CI check that ignores existing issues and reports only new ones
+sruja check -r . --baseline .sruja/violations.baseline.json -f github-actions
+```
+
+### MCP (optional)
+
+If your editor/tooling supports MCP, Sruja can run as an MCP stdio server:
+
+```bash
+sruja mcp
 ```

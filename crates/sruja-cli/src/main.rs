@@ -5,6 +5,7 @@
 mod commands;
 mod compliance;
 mod context_detection;
+mod graph_store;
 mod modules;
 pub mod selection;
 mod utils;
@@ -65,6 +66,17 @@ enum Commands {
         /// Max traversal depth (0 = none, 1 = direct neighbors)
         #[arg(long, default_value_t = 3)]
         depth: usize,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Ask an architecture question with deterministic evidence from the knowledge graph
+    Why {
+        /// Question to ask (e.g. "why did we choose PostgreSQL?")
+        question: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
@@ -500,6 +512,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             depth,
             format,
         } => commands::impact(&repo, &target, depth, &format).await,
+        Commands::Why {
+            question,
+            repo,
+            format,
+        } => commands::why(&repo, &question, &format).await,
         Commands::Lint {
             file,
             format,

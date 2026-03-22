@@ -3,7 +3,6 @@
 //! Provides knowledge graph storage and retrieval for context engineering.
 
 use sruja_graph::KnowledgeGraph;
-use sruja_scan::ScanGraph;
 use std::path::Path;
 use std::process::Command;
 
@@ -46,7 +45,7 @@ pub fn load_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
         ))
     })?;
 
-    let graph: KnowledgeGraph = serde_json::from_str(&json).map_err(|e| CliError::Json(e))?;
+    let graph: KnowledgeGraph = serde_json::from_str(&json)?;
 
     Ok(graph)
 }
@@ -70,11 +69,11 @@ pub fn build_and_save_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
 /// Save knowledge graph to disk
 pub fn save_graph(repo: &Path, graph: &KnowledgeGraph) -> Result<(), CliError> {
     let sruja_dir = repo.join(".sruja");
-    std::fs::create_dir_all(&sruja_dir).map_err(|e| CliError::Io(e))?;
+    std::fs::create_dir_all(&sruja_dir)?;
 
-    let json = serde_json::to_string_pretty(graph).map_err(|e| CliError::Json(e))?;
+    let json = serde_json::to_string_pretty(graph)?;
 
-    std::fs::write(sruja_dir.join("graph.json"), json).map_err(|e| CliError::Io(e))?;
+    std::fs::write(sruja_dir.join("graph.json"), json)?;
 
     Ok(())
 }
@@ -98,8 +97,8 @@ fn is_graph_stale(repo: &Path, graph: &KnowledgeGraph) -> Result<bool, CliError>
         }
         (Some(_), None) => Ok(true),
         (None, _) => {
-            let graph_metadata = std::fs::metadata(&graph_path).map_err(|e| CliError::Io(e))?;
-            let graph_modified = graph_metadata.modified().map_err(|e| CliError::Io(e))?;
+            let graph_metadata = std::fs::metadata(&graph_path)?;
+            let graph_modified = graph_metadata.modified()?;
 
             check_source_files_newer(repo, graph_modified)
         }

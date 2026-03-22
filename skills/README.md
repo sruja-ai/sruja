@@ -2,7 +2,7 @@
 
 This directory contains skills for **AI code editors** (Cursor, Codex, and others) and the [skills.sh](https://skills.sh) ecosystem. Install a skill so your AI assistant generates valid Sruja DSL and applies architectural patterns.
 
-**No MCP server** — editor integration is **skills + CLI** only. There is no `sruja mcp` in this repo.
+Editor integration is **skills + CLI**. Sruja also ships an optional MCP stdio server (`sruja mcp`) for tool-based clients (e.g. Cursor), but most users do not need MCP to use the skills.
 
 **Versioning:** Skills do not have a separate version field. They follow the **Sruja repo release version** (Git tag / GitHub Release). When updating a skill CHANGELOG, note that it aligns with repo version X.Y.Z. See [.github/workflows/README.md](../.github/workflows/README.md#version-consistency-release-please) for how crates, extension, and skills stay consistent.
 

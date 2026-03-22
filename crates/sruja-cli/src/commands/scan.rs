@@ -990,11 +990,11 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     );
     println!(
         "  3. {}",
-        "Run 'sruja scan -r . -o architecture.json' to save the graph".white()
+        "Run 'sruja scan . --output sruja.graph.json' to save the inferred graph".white()
     );
     println!(
         "  4. {}",
-        "Run 'sruja why \"your question\" -r .' to explore architecture decisions".white()
+        "Run 'sruja impact <node> -r .' to explore change risk (blast radius)".white()
     );
     println!();
     println!("{}", "═".repeat(70).truecolor(100, 100, 100));
