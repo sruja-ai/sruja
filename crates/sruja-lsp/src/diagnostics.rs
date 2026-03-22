@@ -30,13 +30,12 @@ pub fn convert_diagnostics_to_lsp(
                 let line_idx = if d.context.len() > 1 { 1 } else { 0 };
                 if let Some(line_text) = d.context.get(line_idx) {
                     let start_col_usize = start_char as usize;
-                    if start_col_usize < line_text.len() {
+                    let chars: Vec<char> = line_text.chars().collect();
+                    if start_col_usize < chars.len() {
                         let mut estimated_end = start_col_usize;
                         // Find word boundary or next delimiter
-                        while estimated_end < line_text.len()
-                            && estimated_end < start_col_usize + 50
-                        {
-                            let c = line_text.chars().nth(estimated_end).unwrap_or(' ');
+                        while estimated_end < chars.len() && estimated_end < start_col_usize + 50 {
+                            let c = chars[estimated_end];
                             if matches!(
                                 c,
                                 ' ' | '\t'

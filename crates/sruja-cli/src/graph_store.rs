@@ -41,8 +41,8 @@ pub fn load_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
 
     let json = std::fs::read_to_string(&graph_path).map_err(|e| {
         CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Failed to read graph file: {}", e),
+            e.kind(),
+            format!("Failed to read graph file {}: {}", graph_path.display(), e),
         ))
     })?;
 
@@ -135,13 +135,8 @@ fn check_source_files_newer(
 /// Get current commit short SHA
 fn get_current_commit_sha(repo: &Path) -> Option<String> {
     let output = Command::new("git")
-        .args([
-            "-C",
-            repo.as_os_str().to_str().unwrap_or("."),
-            "rev-parse",
-            "--short=7",
-            "HEAD",
-        ])
+        .current_dir(repo)
+        .args(["rev-parse", "--short=7", "HEAD"])
         .output()
         .ok()?;
 

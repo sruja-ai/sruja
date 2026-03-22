@@ -71,7 +71,7 @@ pub fn sruja_incremental_parse(
     _context_lines: u32,
     filename: Option<String>,
 ) -> Result<String, JsValue> {
-    let start = std::time::Instant::now();
+    let start_ms = js_sys::Date::now();
     let filename = filename.unwrap_or_else(|| "input.sruja".to_string());
     let parser = Parser::new(filename.clone());
     let program = parser.parse(dsl).map_err(|e| {
@@ -94,7 +94,7 @@ pub fn sruja_incremental_parse(
         .export(&program)
         .map_err(|e| JsValue::from_str(&format!("Export error: {}", e)))?;
 
-    let elapsed_ms = start.elapsed().as_millis() as u64;
+    let elapsed_ms = (js_sys::Date::now() - start_ms).max(0.0).round() as u64;
     let result = json!({
         "updated_ast": serde_json::from_str::<serde_json::Value>(&model_json)
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
@@ -840,8 +840,6 @@ mod wasm_tests {
     use super::*;
     use wasm_bindgen_test::*;
 
-    // Default is Node; use wasm-pack test --node in CI.
-
     #[wasm_bindgen_test]
     fn dsl_to_model_valid() {
         let dsl = r#"S = system "My System" { description "A system" }"#;
@@ -885,7 +883,14 @@ mod wasm_tests {
         );
     }
 
-    // sruja_incremental_parse is not tested here: it uses std::time::Instant::now(),
-    // which panics on wasm32-unknown-unknown ("time not implemented on this platform").
-    // The API is covered indirectly by sruja_dsl_to_model; full incremental tests would need a WASM-safe timing shim.
+    #[wasm_bindgen_test]
+    fn incremental_parse_returns_expected_shape() {
+        let dsl = r#"S = system "S" { description "S" }"#;
+        let out = sruja_incremental_parse(dsl, 0, 0, "{}", 0, None).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&out).expect("valid JSON");
+        assert!(v.get("updated_ast").is_some());
+        assert!(v.get("changed_elements").is_some());
+        assert!(v.get("changed_ranges").is_some());
+        assert!(v.get("parsing_time_ms").is_some());
+    }
 }
