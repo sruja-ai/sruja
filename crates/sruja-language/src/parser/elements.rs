@@ -72,7 +72,7 @@ pub(crate) fn parse_element_def(input: &str) -> IResult<&str, ElementDef> {
     let (input, _) = ws0(input)?;
     let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, tag_refs) = many0(parse_tag_ref).parse(input)?;
+    let (input, tag_refs) = many0(preceded(ws0, parse_tag_ref)).parse(input)?;
     let (input, _) = ws0(input)?;
 
     let (input, body) = if input.trim_start().starts_with('{') {
@@ -140,7 +140,7 @@ pub(crate) fn parse_element_def_unassigned(input: &str) -> IResult<&str, Element
     let (input, _) = ws1(input)?;
     let (input, title) = parse_string(input)?;
     let (input, _) = ws0(input)?;
-    let (input, tag_refs) = many0(parse_tag_ref).parse(input)?;
+    let (input, tag_refs) = many0(preceded(ws0, parse_tag_ref)).parse(input)?;
     let (input, _) = ws0(input)?;
 
     let (input, body) = if input.trim_start().starts_with('{') {

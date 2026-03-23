@@ -11,16 +11,21 @@ Policies define architectural rules, standards, and constraints that your system
 ## Syntax
 
 ```sruja
-<!-- partial -->
-PolicyID = policy "Description" {
-  category "category-name"
-  enforcement "required" // "required" | "recommended" | "optional"
-  description "Detailed description"
-  metadata {
-    // Additional metadata
-  }
+PolicyID = policy "Short policy statement" {
+  category "security"
+  enforcement "required"
+  description "Explain intent, scope, and rationale. Rules below are what get evaluated."
+  rule deny edge from { kind "external_api" } to { kind "database" }
 }
 ```
+
+## Writing strong policies
+
+- Make the title a testable statement ("DBs must be encrypted at rest")
+- Set `category` so policies can be grouped (security, compliance, performance, data, observability)
+- Pick `enforcement` based on impact (`required` for must-fix, `recommended` for should-fix, `optional` for guidance)
+- Encode enforcement using `rule ...` entries so `sruja lint` can evaluate them
+- Use `except ...` to record deliberate exceptions instead of relying on tribal knowledge
 
 ## Simple Policy
 
@@ -40,9 +45,14 @@ view index {
 - **`ID`**: Unique identifier for the policy (e.g., `SecurityPolicy`, `GDPR_Compliance`)
 - **`Description`**: Human-readable description of the policy
 - **`category`** (optional): Policy category (e.g., "security", "compliance", "performance")
-- **`enforcement`** (optional): Enforcement level ("required", "recommended", "optional")
+- **`enforcement`** (optional): Enforcement level (`required` | `recommended` | `optional`). Synonyms are accepted: `error`/`warn`/`info`.
 - **`description`** (optional): Detailed description within the policy body
-- **`metadata`** (optional): Additional metadata key-value pairs
+- **Defaults**: `category` defaults to `general`, `enforcement` defaults to `warn`
+
+## Editor and CI integration
+
+- The VS Code extension surfaces policy nodes in the outline and shows lint violations as diagnostics.
+- CI and CLI checks (lint/drift/compliance) treat `enforcement` as severity (`required` → error, `recommended` → warning, `optional` → info).
 
 ## Example: Security Policies
 

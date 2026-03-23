@@ -339,7 +339,12 @@ pub fn extract_tags(elem: &ElementDef) -> Vec<String> {
                     tags.extend(
                         value
                             .split(',')
-                            .map(|t| t.trim().to_string())
+                            .map(|t| {
+                                t.trim()
+                                    .trim_start_matches('@')
+                                    .trim_start_matches('#')
+                                    .to_string()
+                            })
                             .filter(|t| !t.is_empty()),
                     );
                 }

@@ -88,22 +88,28 @@ pub(crate) fn parse_string_array(input: &str) -> IResult<&str, Vec<String>> {
 }
 
 pub(crate) fn parse_kv_string(input: &str) -> IResult<&str, (String, String)> {
+    use nom::branch::alt;
     let (input, key) = parse_identifier(input)?;
     let (input, _) = ws1(input)?;
-    let (input, value) = parse_string(input)?;
+    let (input, value) = alt((parse_string, parse_identifier)).parse(input)?;
     Ok((input, (key, value)))
 }
 
 pub(crate) fn parse_tag_ref(input: &str) -> IResult<&str, String> {
-    let (input, _) = char('#').parse(input)?;
+    use nom::branch::alt;
+    let (input, prefix) = alt((char('#'), char('@'))).parse(input)?;
     let (input, ident) = parse_identifier(input)?;
-    Ok((input, format!("#{}", ident)))
+    Ok((input, format!("{}{}", prefix, ident)))
 }
 
 pub(crate) fn parse_tag_array(input: &str) -> IResult<&str, Vec<String>> {
+    use nom::branch::alt;
     delimited(
         preceded(ws0, char('[')),
-        separated_list0(preceded(ws0, char(',')), preceded(ws0, parse_identifier)),
+        separated_list0(
+            preceded(ws0, char(',')),
+            preceded(ws0, alt((parse_tag_ref, parse_identifier))),
+        ),
         preceded(ws0, char(']')),
     )
     .parse(input)

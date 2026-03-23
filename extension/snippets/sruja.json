@@ -67,6 +67,56 @@
     ],
     "description": "Define a policy with one rule"
   },
+  "ADR": {
+    "prefix": ["adr", "adr {}"],
+    "body": [
+      "${1:ADR001} = adr \"${2:Decision title}\" {",
+      "  status \"${3:proposed}\"",
+      "  context \"${4:Why we need this decision}\"",
+      "  decision \"${5:What we decided}\"",
+      "  consequences \"${6:Tradeoffs and follow-ups}\"",
+      "}",
+      "$0"
+    ],
+    "description": "Define an ADR (architecture decision record)"
+  },
+  "Scenario": {
+    "prefix": ["scenario", "scenario {}"],
+    "body": [
+      "${1:LoginFlow} = scenario \"${2:User Login}\" \"${3:Optional description}\" {",
+      "  step ${4:User} -> ${5:WebApp} \"${6:Credentials}\" [#${7:auth}] order 1",
+      "  step ${5:WebApp} -> ${8:DB} \"${9:Verify}\" [#${10:read}] order 2",
+      "}",
+      "$0"
+    ],
+    "description": "Define a scenario with ordered steps"
+  },
+  "Scenario (block form)": {
+    "prefix": ["scenario block", "scenario steps []"],
+    "body": [
+      "${1:LoginFlow} = scenario {",
+      "  title \"${2:User Login}\"",
+      "  description \"${3:Optional description}\"",
+      "  steps [",
+      "    step ${4:User} -> ${5:WebApp} \"${6:Credentials}\" [#${7:auth}] order 1",
+      "    step ${5:WebApp} -> ${8:DB} \"${9:Verify}\" [#${10:read}] order 2",
+      "  ]",
+      "}",
+      "$0"
+    ],
+    "description": "Define a scenario using block form (title/description/steps)"
+  },
+  "Flow": {
+    "prefix": ["flow", "flow {}"],
+    "body": [
+      "${1:UserOnboarding} = flow \"${2:Onboarding}\" \"${3:Optional description}\" {",
+      "  step ${4:User} -> ${5:WebApp} \"${6:Start}\" [#${7:ui}] order 1",
+      "  step ${5:WebApp} -> ${8:Email} \"${9:Send link}\" [#${10:async}] order 2",
+      "}",
+      "$0"
+    ],
+    "description": "Define a flow with ordered steps"
+  },
   "Policy rule: deny edge": {
     "prefix": ["rule deny", "deny edge", "rule deny edge"],
     "body": [

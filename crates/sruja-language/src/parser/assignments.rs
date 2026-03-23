@@ -180,15 +180,17 @@ pub(crate) fn parse_flow_assignment(input: &str) -> IResult<&str, Flow> {
     let (input, _) = ws0(input)?;
     let (input, title) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
+    let (input, description) = opt(parse_string).parse(input)?;
+    let (input, _) = ws0(input)?;
     let (input, steps) = opt(parse_flow_body).parse(input)?;
 
     Ok((
         input,
         Flow {
             location: SourceLocation::new(String::new(), 0, 0),
-            id,
-            title: title.unwrap_or_default(),
-            description: None,
+            id: id.clone(),
+            title: title.unwrap_or_else(|| id.clone()),
+            description,
             steps: steps.unwrap_or_default(),
         },
     ))
@@ -335,6 +337,10 @@ pub(crate) fn parse_scenario_body(input: &str) -> IResult<&str, Vec<ScenarioStep
 }
 
 pub(crate) fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
+    use nom::branch::alt;
+    use nom::character::complete::digit1;
+    use nom::combinator::map;
+
     let (input, _) = opt(preceded(tag("step"), ws1)).parse(input)?;
     let (input, from) = parse_qualified_ident(input)?;
     let (input, _) = preceded(ws0, tag("->")).parse(input)?;
@@ -343,10 +349,16 @@ pub(crate) fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
     let (input, _) = ws0(input)?;
     let (input, description) = opt(parse_string).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, tags) = opt(parse_tag_array).parse(input)?;
+    let (input, tags) = opt(alt((parse_string_array, parse_tag_array))).parse(input)?;
     let (input, _) = ws0(input)?;
-    let (input, order_raw) =
-        opt(preceded(tag("order"), preceded(ws1, parse_string))).parse(input)?;
+    let (input, order_raw) = opt(preceded(
+        tag("order"),
+        preceded(
+            ws1,
+            alt((parse_string, map(digit1, |s: &str| s.to_string()))),
+        ),
+    ))
+    .parse(input)?;
 
     let order = order_raw.as_deref().and_then(|s| s.parse::<usize>().ok());
 
@@ -373,12 +385,15 @@ pub(crate) fn parse_flow(input: &str) -> IResult<&str, Flow> {
     let (input, _) = ws0(input)?;
     let (input, steps) = opt(parse_flow_body).parse(input)?;
 
+    let out_id = id.unwrap_or_default();
+    let out_title = title.unwrap_or_else(|| out_id.clone());
+
     Ok((
         input,
         Flow {
             location: SourceLocation::new(String::new(), 0, 0),
-            id: id.unwrap_or_default(),
-            title: title.unwrap_or_default(),
+            id: out_id,
+            title: out_title,
             description,
             steps: steps.unwrap_or_default(),
         },
@@ -396,6 +411,10 @@ pub(crate) fn parse_flow_body(input: &str) -> IResult<&str, Vec<ScenarioStep>> {
 }
 
 fn parse_flow_step(input: &str) -> IResult<&str, ScenarioStep> {
+    use nom::branch::alt;
+    use nom::character::complete::digit1;
+    use nom::combinator::map;
+
     let (input, _) = opt(preceded(tag("step"), ws1)).parse(input)?;
     let (input, from) = parse_qualified_ident(input)?;
     let (input, _) = preceded(ws0, tag("->")).parse(input)?;
@@ -403,6 +422,19 @@ fn parse_flow_step(input: &str) -> IResult<&str, ScenarioStep> {
     let (input, to) = parse_qualified_ident(input)?;
     let (input, _) = ws0(input)?;
     let (input, description) = opt(parse_string).parse(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, tags) = opt(alt((parse_string_array, parse_tag_array))).parse(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, order_raw) = opt(preceded(
+        tag("order"),
+        preceded(
+            ws1,
+            alt((parse_string, map(digit1, |s: &str| s.to_string()))),
+        ),
+    ))
+    .parse(input)?;
+
+    let order = order_raw.as_deref().and_then(|s| s.parse::<usize>().ok());
 
     Ok((
         input,
@@ -410,8 +442,8 @@ fn parse_flow_step(input: &str) -> IResult<&str, ScenarioStep> {
             from: Some(from),
             to: Some(to),
             description,
-            tags: Vec::new(),
-            order: None,
+            tags: tags.unwrap_or_default(),
+            order,
         },
     ))
 }
@@ -599,10 +631,10 @@ fn parse_policy_block(input: &str) -> IResult<&str, PolicyBlockResult> {
         many0(preceded(
             ws,
             alt((
-                map(parse_kv_string, |(k, v)| PolicyBlockEntry::Kv(k, v)),
                 map(parse_policy_rule_line, |r| {
                     PolicyBlockEntry::Rule(Box::new(r))
                 }),
+                map(parse_kv_string, |(k, v)| PolicyBlockEntry::Kv(k, v)),
             )),
         )),
         preceded(ws0, char('}')),

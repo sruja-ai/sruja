@@ -4,22 +4,38 @@
   "scopeName": "source.sruja",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#tags" },
     { "include": "#keywords" },
     { "include": "#relations" },
-    { "include": "#strings" },
+    { "include": "#operators" },
+    { "include": "#numbers" },
     { "include": "#identifiers" }
   ],
   "repository": {
     "comments": {
-      "patterns": [{
-        "name": "comment.line.sruja",
-        "match": "//.*$"
-      }]
+      "patterns": [
+        {
+          "name": "comment.line.sruja",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.sruja",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
     },
     "keywords": {
       "patterns": [{
         "name": "keyword.control.sruja",
         "match": "\\b(system|container|component|person|database|datastore|queue|relation|description|technology|tags|metadata|requirement|adr|policy|category|enforcement|rule|deny|require|edge|from|to|except|message|suggest|on|key|value|meta|scenario|story|flow|step|view|include|exclude|of|recursive|source|id|aliases|owner|domain|criticality)\\b"
+      }]
+    },
+    "tags": {
+      "patterns": [{
+        "name": "entity.name.tag.sruja",
+        "match": "[@#][A-Za-z_][A-Za-z0-9_-]*\\b"
       }]
     },
     "relations": {
@@ -28,12 +44,33 @@
         "match": "->"
       }]
     },
-    "strings": {
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.assignment.sruja",
+          "match": "="
+        }
+      ]
+    },
+    "numbers": {
       "patterns": [{
-        "name": "string.quoted.double.sruja",
-        "begin": "\"",
-        "end": "\""
+        "name": "constant.numeric.sruja",
+        "match": "\\b\\d+\\b"
       }]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.sruja",
+          "begin": "\"",
+          "end": "\""
+        },
+        {
+          "name": "string.quoted.single.sruja",
+          "begin": "'",
+          "end": "'"
+        }
+      ]
     },
     "identifiers": {
       "patterns": [{

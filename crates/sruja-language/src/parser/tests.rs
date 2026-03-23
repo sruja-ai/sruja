@@ -7,7 +7,9 @@ mod tests {
         assignments::parse_scenario,
         elements::parse_element_def,
         import::parse_import,
-        primitives::{line_to_byte_offset, parse_identifier, parse_string},
+        primitives::{
+            line_to_byte_offset, parse_identifier, parse_string, parse_tag_array, parse_tag_ref,
+        },
         relations::{parse_qualified_ident, parse_relation},
     };
     use crate::Parser;
@@ -31,6 +33,27 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_tag_ref() {
+        assert_eq!(parse_tag_ref("#api"), Ok(("", "#api".to_string())));
+        assert_eq!(parse_tag_ref("@pii"), Ok(("", "@pii".to_string())));
+    }
+
+    #[test]
+    fn test_parse_tag_array() {
+        let result = parse_tag_array(r#"[#api, @pii, internal]"#);
+        assert!(result.is_ok());
+        let (_, tags) = result.unwrap();
+        assert_eq!(
+            tags,
+            vec![
+                "#api".to_string(),
+                "@pii".to_string(),
+                "internal".to_string()
+            ]
+        );
+    }
+
+    #[test]
     fn test_parse_qualified_ident() {
         let result = parse_qualified_ident("System.Container");
         assert!(result.is_ok());
@@ -47,6 +70,18 @@ mod tests {
         assert_eq!(elem.assignment.name, "MySystem");
         assert_eq!(elem.assignment.kind, ElementKind::System);
         assert_eq!(elem.assignment.title, Some("My System".to_string()));
+    }
+
+    #[test]
+    fn test_parse_element_def_with_tags() {
+        let input = r#"MySystem = system "My System" #core @external"#;
+        let result = parse_element_def(input);
+        assert!(result.is_ok());
+        let (_, elem) = result.unwrap();
+        assert_eq!(
+            elem.assignment.tag_refs,
+            vec!["#core".to_string(), "@external".to_string()]
+        );
     }
 
     #[test]
@@ -126,6 +161,20 @@ mod tests {
         assert_eq!(scenario.id, "LoginFlow");
         assert_eq!(scenario.title, "User Login".to_string());
         assert_eq!(scenario.steps.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_scenario_step_tags_and_order() {
+        let input = r#"scenario LoginFlow "User Login" {
+            step User -> WebApp "Credentials" [#auth, @pii] order 1
+        }"#;
+        let result = parse_scenario(input);
+        assert!(result.is_ok());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.steps.len(), 1);
+        let step = &scenario.steps[0];
+        assert_eq!(step.tags, vec!["#auth".to_string(), "@pii".to_string()]);
+        assert_eq!(step.order, Some(1));
     }
 
     #[test]
