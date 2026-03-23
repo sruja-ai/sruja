@@ -4,7 +4,10 @@
 mod tests {
     use crate::ast::{ElementKind, TopLevelItem};
     use crate::parser::{
-        assignments::parse_scenario,
+        assignments::{
+            parse_adr_assignment, parse_flow_assignment, parse_policy_assignment,
+            parse_requirement_assignment, parse_scenario, parse_scenario_assignment,
+        },
         elements::parse_element_def,
         import::parse_import,
         primitives::{
@@ -175,6 +178,92 @@ mod tests {
         let step = &scenario.steps[0];
         assert_eq!(step.tags, vec!["#auth".to_string(), "@pii".to_string()]);
         assert_eq!(step.order, Some(1));
+    }
+
+    #[test]
+    fn test_parse_flow_assignment_title_description_and_steps() {
+        let input = r#"Login = flow "Login Flow" "Successful login" {
+            User -> Web "open"
+            Web -> DB "read" [#sql] order 2
+        }"#;
+        let result = parse_flow_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, flow) = result.unwrap();
+        assert_eq!(flow.id, "Login");
+        assert_eq!(flow.title, "Login Flow");
+        assert_eq!(flow.description, Some("Successful login".to_string()));
+        assert_eq!(flow.steps.len(), 2);
+        assert_eq!(flow.steps[1].tags, vec!["#sql".to_string()]);
+        assert_eq!(flow.steps[1].order, Some(2));
+    }
+
+    #[test]
+    fn test_parse_scenario_assignment_with_block_body_steps_array() {
+        let input = r#"HappyPath = scenario "Checkout" {
+            description "User checks out"
+            steps [
+                User -> Web "browse"
+                Web -> DB "load" order "10"
+            ]
+        }"#;
+        let result = parse_scenario_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.id, "HappyPath");
+        assert_eq!(scenario.title, "Checkout");
+        assert_eq!(scenario.description, Some("User checks out".to_string()));
+        assert_eq!(scenario.steps.len(), 2);
+        assert_eq!(scenario.steps[1].order, Some(10));
+    }
+
+    #[test]
+    fn test_parse_requirement_assignment_with_details_and_metadata_ignored() {
+        let input = r#"R1 = requirement functional "Users can log in" {
+            description "Must support SSO"
+            tags [#auth, @pii]
+            metadata {
+                owner "team-auth"
+            }
+        }"#;
+        let result = parse_requirement_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, req) = result.unwrap();
+        assert_eq!(req.id, "R1");
+        assert_eq!(req.r#type, "functional");
+        assert_eq!(req.title, "Users can log in");
+        assert_eq!(req.description, Some("Must support SSO".to_string()));
+        assert_eq!(req.tags, vec!["#auth".to_string(), "@pii".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_adr_assignment_title_defaults_to_id() {
+        let input = r#"ADR_1 = adr { status "accepted" }"#;
+        let result = parse_adr_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, adr) = result.unwrap();
+        assert_eq!(adr.id, "ADR_1");
+        assert_eq!(adr.title, "ADR_1");
+        assert_eq!(adr.status, Some("accepted".to_string()));
+    }
+
+    #[test]
+    fn test_parse_policy_assignment_block_kvs_and_rules() {
+        let input = r#"P = policy "Security" {
+            category "security"
+            enforcement "deny"
+            description "Policy description"
+            rule require tags on { kind "container" } tags [#tier1] message "msg" suggest "s1"
+            rule deny edge from { id "A" } to { id "B" } message "no"
+        }"#;
+        let result = parse_policy_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.id, "P");
+        assert_eq!(policy.title, "Security");
+        assert_eq!(policy.category, "security");
+        assert_eq!(policy.enforcement, "deny");
+        assert_eq!(policy.description, Some("Policy description".to_string()));
+        assert_eq!(policy.rules.len(), 2);
     }
 
     #[test]

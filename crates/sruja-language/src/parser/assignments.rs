@@ -336,7 +336,7 @@ pub(crate) fn parse_scenario_body(input: &str) -> IResult<&str, Vec<ScenarioStep
     .parse(input)
 }
 
-pub(crate) fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
+fn parse_step_line(input: &str) -> IResult<&str, ScenarioStep> {
     use nom::branch::alt;
     use nom::character::complete::digit1;
     use nom::combinator::map;
@@ -372,6 +372,10 @@ pub(crate) fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
             order,
         },
     ))
+}
+
+pub(crate) fn parse_scenario_step(input: &str) -> IResult<&str, ScenarioStep> {
+    parse_step_line(input)
 }
 
 pub(crate) fn parse_flow(input: &str) -> IResult<&str, Flow> {
@@ -411,41 +415,7 @@ pub(crate) fn parse_flow_body(input: &str) -> IResult<&str, Vec<ScenarioStep>> {
 }
 
 fn parse_flow_step(input: &str) -> IResult<&str, ScenarioStep> {
-    use nom::branch::alt;
-    use nom::character::complete::digit1;
-    use nom::combinator::map;
-
-    let (input, _) = opt(preceded(tag("step"), ws1)).parse(input)?;
-    let (input, from) = parse_qualified_ident(input)?;
-    let (input, _) = preceded(ws0, tag("->")).parse(input)?;
-    let (input, _) = ws0(input)?;
-    let (input, to) = parse_qualified_ident(input)?;
-    let (input, _) = ws0(input)?;
-    let (input, description) = opt(parse_string).parse(input)?;
-    let (input, _) = ws0(input)?;
-    let (input, tags) = opt(alt((parse_string_array, parse_tag_array))).parse(input)?;
-    let (input, _) = ws0(input)?;
-    let (input, order_raw) = opt(preceded(
-        tag("order"),
-        preceded(
-            ws1,
-            alt((parse_string, map(digit1, |s: &str| s.to_string()))),
-        ),
-    ))
-    .parse(input)?;
-
-    let order = order_raw.as_deref().and_then(|s| s.parse::<usize>().ok());
-
-    Ok((
-        input,
-        ScenarioStep {
-            from: Some(from),
-            to: Some(to),
-            description,
-            tags: tags.unwrap_or_default(),
-            order,
-        },
-    ))
+    parse_step_line(input)
 }
 
 pub(crate) fn parse_requirement(input: &str) -> IResult<&str, Requirement> {
@@ -518,10 +488,7 @@ fn parse_requirement_field(input: &str) -> IResult<&str, RequirementField> {
             ),
             RequirementField::Tags,
         ),
-        map(
-            preceded(tag("metadata"), preceded(ws0, parse_metadata_block)),
-            |_| RequirementField::Ignored,
-        ),
+        map(parse_metadata_block, |_| RequirementField::Ignored),
     ))
     .parse(input)
 }
