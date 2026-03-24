@@ -20,6 +20,42 @@ use crate::mermaid::views::{collect_views, resolve_view, ResolvedView};
 use super::escape::{escape_heading, escape_inline};
 use super::options::MarkdownOptions;
 
+fn write_mermaid_block(out: &mut String, heading: Option<&str>, mermaid: &str) {
+    if mermaid.is_empty() {
+        return;
+    }
+    if let Some(h) = heading {
+        out.push_str(h);
+        out.push_str("\n\n");
+    }
+    out.push_str("```mermaid\n");
+    out.push_str(mermaid);
+    if !mermaid.ends_with('\n') {
+        out.push('\n');
+    }
+    out.push_str("```\n\n");
+}
+
+fn write_inline_paragraph_if(out: &mut String, value: Option<&str>) {
+    let Some(v) = value else {
+        return;
+    };
+    if v.is_empty() {
+        return;
+    }
+    out.push_str(&format!("{}\n\n", escape_inline(v)));
+}
+
+fn write_technology_if(out: &mut String, value: Option<&str>) {
+    let Some(v) = value else {
+        return;
+    };
+    if v.is_empty() {
+        return;
+    }
+    out.push_str(&format!("**Technology:** {}\n\n", escape_inline(v)));
+}
+
 /// Write element metadata as Markdown key-value lines when options.include_metadata is true.
 fn write_element_metadata_if(
     out: &mut String,
@@ -270,14 +306,7 @@ impl MarkdownExporter {
         if self.options.include_mermaid_diagrams && !resolved.elements.is_empty() {
             let mermaid = MermaidExporter::new(self.options.mermaid_config.clone())
                 .export_from_resolved_view(resolved);
-            if !mermaid.is_empty() {
-                out.push_str("```mermaid\n");
-                out.push_str(&mermaid);
-                if !mermaid.ends_with('\n') {
-                    out.push('\n');
-                }
-                out.push_str("```\n\n");
-            }
+            write_mermaid_block(&mut out, None, &mermaid);
         }
         if self.options.include_metadata && !resolved.elements.is_empty() {
             out.push_str("#### Elements in this view\n\n");
@@ -324,14 +353,7 @@ impl MarkdownExporter {
             if self.options.include_mermaid_diagrams {
                 let mermaid = MermaidExporter::new(self.options.mermaid_config.clone())
                     .export_from_resolved_view(&resolved);
-                if !mermaid.is_empty() {
-                    out.push_str("```mermaid\n");
-                    out.push_str(&mermaid);
-                    if !mermaid.ends_with('\n') {
-                        out.push('\n');
-                    }
-                    out.push_str("```\n\n");
-                }
+                write_mermaid_block(out, None, &mermaid);
             }
         }
     }
@@ -458,15 +480,7 @@ impl MarkdownExporter {
                 ..self.options.mermaid_config.clone()
             };
             let mermaid = MermaidExporter::new(config).export(program);
-            if !mermaid.is_empty() {
-                out.push_str("### Context diagram (L1)\n\n");
-                out.push_str("```mermaid\n");
-                out.push_str(&mermaid);
-                if !mermaid.ends_with('\n') {
-                    out.push('\n');
-                }
-                out.push_str("```\n\n");
-            }
+            write_mermaid_block(out, Some("### Context diagram (L1)"), &mermaid);
         }
     }
 
@@ -489,12 +503,8 @@ impl MarkdownExporter {
                 .unwrap_or_else(|| sys.assignment.name.clone());
             out.push_str(&format!("### {}\n\n", escape_heading(&title)));
             if let Some(body) = &sys.assignment.body {
-                if let Some(desc) = &body.description {
-                    out.push_str(&format!("{}\n\n", escape_inline(desc)));
-                }
-                if let Some(tech) = &body.technology {
-                    out.push_str(&format!("**Technology:** {}\n\n", escape_inline(tech)));
-                }
+                write_inline_paragraph_if(out, body.description.as_deref());
+                write_technology_if(out, body.technology.as_deref());
                 write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
             }
             // L2: system + its containers
@@ -505,15 +515,7 @@ impl MarkdownExporter {
                     ..self.options.mermaid_config.clone()
                 };
                 let mermaid = MermaidExporter::new(config).export(program);
-                if !mermaid.is_empty() {
-                    out.push_str("#### Container diagram (L2)\n\n");
-                    out.push_str("```mermaid\n");
-                    out.push_str(&mermaid);
-                    if !mermaid.ends_with('\n') {
-                        out.push('\n');
-                    }
-                    out.push_str("```\n\n");
-                }
+                write_mermaid_block(out, Some("#### Container diagram (L2)"), &mermaid);
             }
             // Containers of this system (direct children that are container-level)
             let sys_segment_count = sys_fqn.split('.').count();
@@ -535,12 +537,8 @@ impl MarkdownExporter {
                     .unwrap_or_else(|| container_elem.assignment.name.clone());
                 out.push_str(&format!("##### {}\n\n", escape_heading(&container_title)));
                 if let Some(body) = &container_elem.assignment.body {
-                    if let Some(desc) = &body.description {
-                        out.push_str(&format!("{}\n\n", escape_inline(desc)));
-                    }
-                    if let Some(tech) = &body.technology {
-                        out.push_str(&format!("**Technology:** {}\n\n", escape_inline(tech)));
-                    }
+                    write_inline_paragraph_if(out, body.description.as_deref());
+                    write_technology_if(out, body.technology.as_deref());
                     write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
                 }
                 // L3: container + its components
@@ -551,15 +549,7 @@ impl MarkdownExporter {
                         ..self.options.mermaid_config.clone()
                     };
                     let mermaid = MermaidExporter::new(config).export(program);
-                    if !mermaid.is_empty() {
-                        out.push_str("###### Component diagram (L3)\n\n");
-                        out.push_str("```mermaid\n");
-                        out.push_str(&mermaid);
-                        if !mermaid.ends_with('\n') {
-                            out.push('\n');
-                        }
-                        out.push_str("```\n\n");
-                    }
+                    write_mermaid_block(out, Some("###### Component diagram (L3)"), &mermaid);
                 }
             }
         }
@@ -578,9 +568,7 @@ impl MarkdownExporter {
                 .unwrap_or_else(|| person.assignment.name.clone());
             out.push_str(&format!("### {}\n\n", escape_heading(&title)));
             if let Some(body) = &person.assignment.body {
-                if let Some(desc) = &body.description {
-                    out.push_str(&format!("{}\n\n", escape_inline(desc)));
-                }
+                write_inline_paragraph_if(out, body.description.as_deref());
                 write_element_metadata_if(out, self.options.include_metadata, &body.metadata);
             }
         }
@@ -754,14 +742,7 @@ impl MarkdownExporter {
             }
             if self.options.include_mermaid_diagrams && !steps.is_empty() {
                 let seq = scenario_to_sequence_diagram(id, title, steps);
-                if !seq.is_empty() {
-                    out.push_str("```mermaid\n");
-                    out.push_str(&seq);
-                    if !seq.ends_with('\n') {
-                        out.push('\n');
-                    }
-                    out.push_str("```\n\n");
-                }
+                write_mermaid_block(out, None, &seq);
             }
         }
     }
@@ -796,12 +777,7 @@ impl MarkdownExporter {
             }
             if self.options.include_mermaid_diagrams && !fl.relationships.is_empty() {
                 let diagram = feedback_loop_to_diagram(fl);
-                out.push_str("```mermaid\n");
-                out.push_str(&diagram);
-                if !diagram.ends_with('\n') {
-                    out.push('\n');
-                }
-                out.push_str("```\n\n");
+                write_mermaid_block(out, None, &diagram);
             }
         }
     }
@@ -844,12 +820,7 @@ impl MarkdownExporter {
             }
             if self.options.include_mermaid_diagrams && !cl.relationships.is_empty() {
                 let diagram = causal_loop_to_diagram(cl);
-                out.push_str("```mermaid\n");
-                out.push_str(&diagram);
-                if !diagram.ends_with('\n') {
-                    out.push('\n');
-                }
-                out.push_str("```\n\n");
+                write_mermaid_block(out, None, &diagram);
             }
         }
     }
