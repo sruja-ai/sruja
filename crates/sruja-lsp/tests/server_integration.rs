@@ -7,8 +7,8 @@
 use sruja_language::Parser;
 use sruja_lsp::diagnostics::convert_diagnostics_to_lsp;
 use sruja_lsp::features::{
-    collect_elements, find_definition, find_element_hover, find_references, get_completion,
-    get_document_symbols, get_hover, word_bounds,
+    find_element_hover, find_references, get_completion, get_document_symbols, get_hover,
+    word_bounds,
 };
 use sruja_lsp::workspace::Document;
 use tower_lsp::lsp_types::*;

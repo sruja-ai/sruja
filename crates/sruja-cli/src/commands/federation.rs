@@ -207,6 +207,14 @@ pub struct SystemIndexNode {
     pub repo_id: String,
     /// Local element ID within that repo.
     pub local_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub criticality: Option<sruja_types::Criticality>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<sruja_types::SourceBinding>,
 }
 
 /// Edge in system index.
@@ -359,6 +367,10 @@ pub async fn compose(
                             technology: n.technology.clone(),
                             repo_id: repo_id.to_string(),
                             local_id: n.id.clone(),
+                            owner: n.owner.clone(),
+                            domain: n.domain.clone(),
+                            criticality: n.criticality,
+                            sources: n.sources.clone(),
                         })
                         .collect();
                     let es: Vec<SystemIndexEdge> = g

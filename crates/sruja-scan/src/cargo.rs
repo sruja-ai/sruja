@@ -91,6 +91,12 @@ pub(crate) fn scan_cargo_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             technology: Some("Rust".to_string()),
             path: Some(rel_manifest.to_string_lossy().to_string()),
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         // Preserve a hint for later heuristics without encoding policy here.
@@ -320,6 +326,12 @@ mod tests {
             technology: Some("Rust".to_string()),
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         let deps = vec![CargoDependency {
@@ -349,6 +361,12 @@ mod tests {
             technology: Some("Rust".to_string()),
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         let deps = vec![CargoDependency {
@@ -379,6 +397,12 @@ mod tests {
             technology: Some("Rust".to_string()),
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         let deps = vec![
@@ -419,6 +443,12 @@ mod tests {
             technology: Some("Rust".to_string()),
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         let deps = vec![CargoDependency {
@@ -448,6 +478,12 @@ mod tests {
             technology: Some("Rust".to_string()),
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         let deps = vec![CargoDependency {

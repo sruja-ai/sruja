@@ -347,6 +347,12 @@ mod tests {
                 technology: None,
                 path: Some(format!("src/domain{}/mod.rs", i % 3)),
                 metadata: Default::default(),
+                canonical_id: None,
+                aliases: Vec::new(),
+                owner: None,
+                domain: None,
+                criticality: None,
+                sources: Vec::new(),
             })
             .collect();
 

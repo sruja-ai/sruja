@@ -100,6 +100,12 @@ mod tests {
             technology: None,
             path: path.map(|p| p.to_string()),
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         }
     }
 

@@ -18,6 +18,7 @@ sruja-language = { path = "../sruja-language" }
 sruja-engine = { path = "../sruja-engine" }
 sruja-export = { path = "../sruja-export" }
 sruja-scan = { path = "../sruja-scan" }
+sruja-types = { path = "../sruja-types" }
 sruja-diff = { path = "../sruja-diff" }
 sruja-graph = { path = "../sruja-graph" }
 sruja-intent = { path = "../sruja-intent" }

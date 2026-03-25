@@ -45,6 +45,12 @@ struct CrossRepoElement {
     #[serde(skip_serializing_if = "Option::is_none")]
     technology: Option<String>,
     repo_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    criticality: Option<sruja_types::Criticality>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -74,12 +80,18 @@ struct FocusContext {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct FocusNode {
-    id: String,
-    kind: NodeKind,
-    label: String,
+pub struct FocusNode {
+    pub id: String,
+    pub kind: NodeKind,
+    pub label: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    path: Option<String>,
+    pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub criticality: Option<sruja_types::Criticality>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -342,6 +354,9 @@ fn build_system_context(repo_root: &str) -> Option<SystemContext> {
                 label: node.label.clone(),
                 technology: node.technology.clone(),
                 repo_id: node.repo_id.clone(),
+                owner: node.owner.clone(),
+                domain: node.domain.clone(),
+                criticality: node.criticality,
             });
         }
     }
@@ -376,10 +391,15 @@ fn format_system_context_markdown(ctx: &SystemContext) -> String {
     if !ctx.cross_repo_elements.is_empty() {
         md.push_str("### Cross-Repo Dependencies\n\n");
         for el in &ctx.cross_repo_elements {
-            md.push_str(&format!(
-                "- **{}** ({} in `{}`)\n",
-                el.label, el.kind, el.repo_id
-            ));
+            let mut line = format!("- **{}** ({} in `{}`)", el.label, el.kind, el.repo_id);
+            if let Some(owner) = &el.owner {
+                line.push_str(&format!(" [owner={}]", owner));
+            }
+            if let Some(crit) = &el.criticality {
+                line.push_str(&format!(" [criticality={}]", crit));
+            }
+            line.push('\n');
+            md.push_str(&line);
         }
         md.push('\n');
     }
@@ -471,6 +491,9 @@ fn build_focus_context(
             kind: n.kind,
             label: n.label.clone(),
             path: n.path.clone(),
+            owner: n.owner.clone(),
+            domain: n.domain.clone(),
+            criticality: n.criticality,
         })
         .collect();
 
@@ -1033,11 +1056,20 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
             .as_deref()
             .and_then(|p| repomap_relative_path(p, repo_prefix.as_deref()));
 
-        if let Some(p) = &path {
-            out.push_str(&format!("- {}: {} ({}) [pr={:.3}]\n", kind, n.label, p, pr));
+        let mut line = if let Some(p) = &path {
+            format!("- {}: {} ({})", kind, n.label, p)
         } else {
-            out.push_str(&format!("- {}: {} [pr={:.3}]\n", kind, n.label, pr));
+            format!("- {}: {}", kind, n.label)
+        };
+
+        if let Some(owner) = &n.owner {
+            line.push_str(&format!(" [owner={}]", owner));
         }
+        if let Some(crit) = &n.criticality {
+            line.push_str(&format!(" [criticality={}]", crit));
+        }
+        line.push_str(&format!(" [pr={:.3}]\n", pr));
+        out.push_str(&line);
 
         let deps = outgoing
             .get(n.id.as_str())
@@ -1071,16 +1103,20 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
                     .path
                     .as_deref()
                     .and_then(|p| repomap_relative_path(p, repo_prefix.as_deref()));
-                if let Some(p) = path {
-                    out.push_str(&format!(
-                        "- {}: {} ({})\n",
-                        repomap_kind(n.kind),
-                        n.label,
-                        p
-                    ));
+                let mut line = if let Some(p) = path {
+                    format!("- {}: {} ({})", repomap_kind(n.kind), n.label, p)
                 } else {
-                    out.push_str(&format!("- {}: {}\n", repomap_kind(n.kind), n.label));
+                    format!("- {}: {}", repomap_kind(n.kind), n.label)
+                };
+
+                if let Some(owner) = &n.owner {
+                    line.push_str(&format!(" [owner={}]", owner));
                 }
+                if let Some(crit) = &n.criticality {
+                    line.push_str(&format!(" [criticality={:?}]", crit));
+                }
+                line.push('\n');
+                out.push_str(&line);
             }
         }
     }
@@ -1172,6 +1208,12 @@ mod tests {
             technology: None,
             path: path.map(|p| p.to_string()),
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         }
     }
 

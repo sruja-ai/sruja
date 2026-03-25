@@ -1526,6 +1526,7 @@ dependencies = [
  "sruja-language",
  "sruja-report",
  "sruja-scan",
+ "sruja-types",
  "tempfile",
  "thiserror",
  "tokio",
@@ -1613,6 +1614,7 @@ dependencies = [
  "nom",
  "serde",
  "sruja-diagnostics",
+ "sruja-types",
  "thiserror",
 ]
 

@@ -456,6 +456,12 @@ mod tests {
                     technology: None,
                     path: Some(path.into()),
                     metadata: Default::default(),
+                    canonical_id: None,
+                    aliases: Vec::new(),
+                    owner: None,
+                    domain: None,
+                    criticality: None,
+                    sources: Vec::new(),
                 })
                 .collect(),
             edges: edges
@@ -529,6 +535,12 @@ mod tests {
                         technology: None,
                         path: Some(path),
                         metadata: Default::default(),
+                        canonical_id: None,
+                        aliases: Vec::new(),
+                        owner: None,
+                        domain: None,
+                        criticality: None,
+                        sources: Vec::new(),
                     }
                 })
                 .collect(),

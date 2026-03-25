@@ -120,6 +120,12 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             technology: Some("Node.js".to_string()),
             path: Some(path_str),
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         for (dep_name, _) in pkg

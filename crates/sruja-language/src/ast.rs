@@ -3,7 +3,6 @@
 //! This module defines the Abstract Syntax Tree structures that represent
 //! parsed Sruja DSL code.
 
-use serde::{Deserialize, Serialize};
 use sruja_diagnostics::SourceLocation;
 use std::collections::HashMap;
 
@@ -158,122 +157,7 @@ impl std::fmt::Display for ElementKind {
     }
 }
 
-/// Criticality level for an element
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Criticality {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
-impl Criticality {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Criticality::Low => "low",
-            Criticality::Medium => "medium",
-            Criticality::High => "high",
-            Criticality::Critical => "critical",
-        }
-    }
-}
-
-impl std::fmt::Display for Criticality {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl std::str::FromStr for Criticality {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "low" => Ok(Criticality::Low),
-            "medium" | "med" => Ok(Criticality::Medium),
-            "high" => Ok(Criticality::High),
-            "critical" => Ok(Criticality::Critical),
-            _ => Err(format!("Unknown criticality: {}", s)),
-        }
-    }
-}
-
-/// Source kind for external resource bindings
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SourceKind {
-    OpenApi,
-    AsyncApi,
-    Kubernetes,
-    Dockerfile,
-    Terraform,
-    Docs,
-    Readme,
-    Proto,
-    Config,
-    GraphQL,
-    Helm,
-    Custom(String),
-}
-
-impl SourceKind {
-    pub fn as_str(&self) -> &str {
-        match self {
-            SourceKind::OpenApi => "openapi",
-            SourceKind::AsyncApi => "asyncapi",
-            SourceKind::Kubernetes => "kubernetes",
-            SourceKind::Dockerfile => "dockerfile",
-            SourceKind::Terraform => "terraform",
-            SourceKind::Docs => "docs",
-            SourceKind::Readme => "readme",
-            SourceKind::Proto => "proto",
-            SourceKind::Config => "config",
-            SourceKind::GraphQL => "graphql",
-            SourceKind::Helm => "helm",
-            SourceKind::Custom(s) => s,
-        }
-    }
-
-    pub fn parse(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "openapi" => SourceKind::OpenApi,
-            "asyncapi" => SourceKind::AsyncApi,
-            "kubernetes" | "k8s" => SourceKind::Kubernetes,
-            "dockerfile" | "docker" => SourceKind::Dockerfile,
-            "terraform" | "tf" => SourceKind::Terraform,
-            "docs" | "doc" => SourceKind::Docs,
-            "readme" => SourceKind::Readme,
-            "proto" | "protobuf" => SourceKind::Proto,
-            "config" => SourceKind::Config,
-            "graphql" | "gql" => SourceKind::GraphQL,
-            "helm" => SourceKind::Helm,
-            _ => SourceKind::Custom(s.to_string()),
-        }
-    }
-}
-
-impl std::str::FromStr for SourceKind {
-    type Err = std::convert::Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(SourceKind::parse(s))
-    }
-}
-
-impl std::fmt::Display for SourceKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-/// Source binding linking element to external resource
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SourceBinding {
-    pub kind: SourceKind,
-    pub path: String,
-    pub description: Option<String>,
-}
+pub use sruja_types::{Criticality, SourceBinding, SourceKind};
 
 /// Element definition body containing nested items
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

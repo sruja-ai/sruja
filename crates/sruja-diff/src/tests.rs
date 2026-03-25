@@ -22,6 +22,12 @@ mod tests {
             technology: None,
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         }
     }
 

@@ -321,6 +321,12 @@ Security = policy "No external API to database" {
             technology: None,
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         });
         scan_graph.nodes.push(sruja_scan::Node {
             id: "db".to_string(),
@@ -329,6 +335,12 @@ Security = policy "No external API to database" {
             technology: None,
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "ext".to_string(),

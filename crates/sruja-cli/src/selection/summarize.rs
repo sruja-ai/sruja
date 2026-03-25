@@ -108,6 +108,12 @@ mod tests {
             kind: NodeKind::Module,
             technology: None,
             metadata: Default::default(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         let result = summarize_large_component(&node, temp.path(), false).await;
@@ -132,6 +138,12 @@ mod tests {
             kind: NodeKind::Module,
             technology: None,
             metadata: Default::default(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
 
         let result = summarize_large_component(&node, temp.path(), false).await;
@@ -155,6 +167,12 @@ mod tests {
             kind: NodeKind::Module,
             technology: None,
             metadata: Default::default(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
         let result = summarize_large_component(&node, temp.path(), false).await;
         match result {
@@ -173,6 +191,12 @@ mod tests {
             kind: NodeKind::Module,
             technology: None,
             metadata: Default::default(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
         let result = summarize_large_component(&node, temp.path(), false).await;
         match result {
@@ -194,6 +218,12 @@ mod tests {
             kind: NodeKind::Module,
             technology: None,
             metadata: Default::default(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
         let result = summarize_large_component(&node, temp.path(), false).await;
         match result {

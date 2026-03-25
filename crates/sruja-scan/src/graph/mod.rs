@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
-pub use sruja_types::{EdgeKind, NodeKind};
+pub use sruja_types::{Criticality, EdgeKind, NodeKind, SourceBinding};
 
 pub mod centrality;
 pub use centrality::{compute_all_centrality, ComponentImportance};
@@ -22,6 +22,24 @@ pub struct Node {
     pub path: Option<String>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub metadata: HashMap<String, String>,
+    /// Canonical ID for cross-system reference
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub canonical_id: Option<String>,
+    /// Aliases for this element
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aliases: Vec<String>,
+    /// Owner team or individual
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    /// Business domain
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    /// Criticality level
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub criticality: Option<Criticality>,
+    /// Source bindings to external resources
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<SourceBinding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,6 +136,34 @@ impl Graph {
             }
             for (k, v) in other.metadata {
                 base.metadata.entry(k).or_insert(v);
+            }
+
+            // Merge architecture index fields
+            if base.canonical_id.is_none() {
+                base.canonical_id = other.canonical_id;
+            }
+            if !other.aliases.is_empty() {
+                for alias in other.aliases {
+                    if !base.aliases.contains(&alias) {
+                        base.aliases.push(alias);
+                    }
+                }
+            }
+            if base.owner.is_none() {
+                base.owner = other.owner;
+            }
+            if base.domain.is_none() {
+                base.domain = other.domain;
+            }
+            if base.criticality.is_none() {
+                base.criticality = other.criticality;
+            }
+            if !other.sources.is_empty() {
+                for source in other.sources {
+                    if !base.sources.contains(&source) {
+                        base.sources.push(source);
+                    }
+                }
             }
         }
 
@@ -277,6 +323,12 @@ mod tests {
             technology: None,
             path: None,
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         }
     }
 

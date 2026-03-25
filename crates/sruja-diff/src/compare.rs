@@ -306,6 +306,12 @@ mod tests {
             kind,
             technology: None,
             metadata: Default::default(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         }
     }
 

@@ -189,6 +189,12 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                     technology: Some(language.to_string()),
                     path: Some(parent_module.clone()),
                     metadata: HashMap::new(),
+                    canonical_id: None,
+                    aliases: Vec::new(),
+                    owner: None,
+                    domain: None,
+                    criticality: None,
+                    sources: Vec::new(),
                 },
             );
         }
@@ -200,6 +206,12 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             technology: Some(language.to_string()),
             path: Some(path.to_string_lossy().to_string()),
             metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
         };
         nodes.push(node);
 
@@ -248,6 +260,12 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 technology: Some(language.to_string()),
                 path: Some(path.to_string_lossy().to_string()),
                 metadata: HashMap::new(),
+                canonical_id: None,
+                aliases: Vec::new(),
+                owner: None,
+                domain: None,
+                criticality: None,
+                sources: Vec::new(),
             });
             edges.push(Edge {
                 source: file_id.clone(),

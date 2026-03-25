@@ -268,7 +268,7 @@ mod tests {
         std::fs::create_dir_all(repo_path.join("src")).unwrap();
         std::fs::write(repo_path.join("src/app.js"), "console.log('hello')").unwrap();
 
-        let first = build_and_save_graph(repo_path).unwrap();
+        let _first = build_and_save_graph(repo_path).unwrap();
         let second = load_or_build_graph(repo_path);
 
         assert!(second.is_ok());
