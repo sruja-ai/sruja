@@ -24,6 +24,24 @@ export class Range {
       this.end = endOrStartChar as Position;
     }
   }
+
+  contains(pos: Position): boolean {
+    const afterStart =
+      pos.line > this.start.line || (pos.line === this.start.line && pos.character >= this.start.character);
+    const beforeEnd =
+      pos.line < this.end.line || (pos.line === this.end.line && pos.character <= this.end.character);
+    return afterStart && beforeEnd;
+  }
+}
+
+export class Selection extends Range {
+  anchor: Position;
+  active: Position;
+  constructor(anchor: Position, active: Position) {
+    super(anchor, active);
+    this.anchor = anchor;
+    this.active = active;
+  }
 }
 
 export class MarkdownString {
@@ -131,21 +149,47 @@ export const languages = {
   registerDocumentSymbolProvider: () => {},
   registerCodeActionsProvider: () => {},
   createDiagnosticCollection: () => new DiagnosticCollection(),
+  getDiagnostics: (_uri?: Uri) => [],
 };
 
 export const workspace = {
-  onDidOpenTextDocument: () => {},
-  onDidSaveTextDocument: () => {},
-  onDidChangeTextDocument: () => {},
-  onDidCloseTextDocument: () => {},
+  onDidOpenTextDocument: () => ({ dispose: () => {} }),
+  onDidSaveTextDocument: () => ({ dispose: () => {} }),
+  onDidChangeTextDocument: () => ({ dispose: () => {} }),
+  onDidCloseTextDocument: () => ({ dispose: () => {} }),
   textDocuments: [],
   workspaceFolders: [],
   getConfiguration: () => ({ get: () => '' }),
+  getWorkspaceFolder: (_uri: Uri) => undefined,
+  openTextDocument: async (uri: Uri) => ({
+    uri,
+    languageId: "plaintext",
+    version: 1,
+    lineCount: 0,
+    getText: () => "",
+    lineAt: () => ({ text: "" }),
+    getWordRangeAtPosition: () => undefined,
+  }),
   fs: {
     readFile: async () => Buffer.from(''),
     writeFile: async () => {},
+    stat: async () => ({ size: 0, mtime: 0 }),
+    createDirectory: async () => {},
   },
 };
+
+export const ProgressLocation = {
+  Notification: 0,
+};
+
+export enum ViewColumn {
+  One = 1,
+  Beside = 2,
+}
+
+export enum TextEditorRevealType {
+  InCenter = 0,
+}
 
 export const window = {
   createOutputChannel: () => ({ append: () => {}, appendLine: () => {}, clear: () => {}, show: () => {} }),
@@ -153,14 +197,41 @@ export const window = {
   showWarningMessage: async () => {},
   showErrorMessage: async () => {},
   showQuickPick: async () => undefined,
-  showTextDocument: async () => {},
-  createWebviewPanel: () => ({ webview: { html: '' } }),
+  showTextDocument: async () => ({ selection: undefined, revealRange: () => {} }),
+  withProgress: async (_options: unknown, task: (progress: unknown) => unknown) => task({ report: () => {} }),
+  createWebviewPanel: () => {
+    let onDispose: (() => void) | undefined;
+    const panel: any = {
+      webview: {
+        html: "",
+        options: {},
+        cspSource: "vscode-resource:",
+        onDidReceiveMessage: (handler: (message: any) => any) => {
+          panel.__onDidReceiveMessage = handler;
+        },
+      },
+      onDidDispose: (cb: () => void) => {
+        onDispose = cb;
+      },
+      dispose: () => {
+        onDispose?.();
+      },
+    };
+    return panel;
+  },
+  visibleTextEditors: [],
   activeTextEditor: undefined,
 };
 
 export const commands = {
   registerCommand: () => {},
   executeCommand: async () => {},
+};
+
+export const env = {
+  clipboard: {
+    writeText: async () => {},
+  },
 };
 
 export class CancellationToken {
