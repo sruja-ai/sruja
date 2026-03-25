@@ -61,7 +61,10 @@ export function resolveDocUri(
   if (!docPath || !docPath.trim()) return undefined;
   const folder = vscode.workspace.getWorkspaceFolder(document.uri);
   if (!folder) return undefined;
-  const absolute = path.resolve(folder.uri.fsPath, docPath.trim());
+  const root = folder.uri.fsPath;
+  const absolute = path.resolve(root, docPath.trim());
+  const rel = path.relative(root, absolute);
+  if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) return undefined;
   return vscode.Uri.file(absolute);
 }
 
@@ -110,7 +113,7 @@ export class SrujaDefinitionProvider implements vscode.DefinitionProvider {
   ): Promise<vscode.LocationLink[] | undefined> {
     if (document.languageId !== "sruja") return undefined;
 
-    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
     if (token.isCancellationRequested || !elements) return undefined;
 
     const wordRange = document.getWordRangeAtPosition(position);
@@ -175,7 +178,7 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
   ): Promise<vscode.Hover | undefined> {
     if (document.languageId !== "sruja") return undefined;
 
-    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
     if (token.isCancellationRequested || !elements) return undefined;
 
     const wordRange = document.getWordRangeAtPosition(position);
@@ -258,7 +261,7 @@ export class SrujaDocumentSymbolProvider implements vscode.DocumentSymbolProvide
   ): Promise<vscode.DocumentSymbol[] | undefined> {
     if (document.languageId !== "sruja") return undefined;
 
-    const symbols = await getDocumentSymbolsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    const symbols = await getDocumentSymbolsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
     if (token.isCancellationRequested || !symbols) return undefined;
 
     // Convert Sruja symbols to VS Code document symbols (WASM uses 1-based line/character)
@@ -567,7 +570,7 @@ export class SrujaCodeActionProvider implements vscode.CodeActionProvider {
   ): Promise<vscode.CodeAction[]> {
     if (document.languageId !== "sruja") return [];
     
-    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
     if (token.isCancellationRequested || !elements) return [];
 
     const actions: vscode.CodeAction[] = [];
@@ -613,7 +616,7 @@ export class SrujaCompletionItemProvider implements vscode.CompletionItemProvide
     // Element IDs for relationships
     const linePrefix = document.lineAt(position).text.substring(0, position.character);
     if (linePrefix.includes("->") || linePrefix.includes("=")) {
-      const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+      const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
       if (token.isCancellationRequested || !elements) return items;
 
       for (const el of elements) {
@@ -641,7 +644,7 @@ export class SrujaRenameProvider implements vscode.RenameProvider {
     newName: string,
     token: vscode.CancellationToken
   ): Promise<vscode.WorkspaceEdit | undefined> {
-    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
     if (token.isCancellationRequested || !elements) return undefined;
 
     const wordRange = document.getWordRangeAtPosition(position);
@@ -652,17 +655,18 @@ export class SrujaRenameProvider implements vscode.RenameProvider {
     if (!element) return undefined;
 
     const edit = new vscode.WorkspaceEdit();
-    const text = document.getText();
-    
-    // Find all occurrences of the full ID or the local ID depending on context
-    // For now, we perform a simple global replacement of the ID in the document
-    // ensuring we don't catch partial matches (e.g., 'S1' in 'S11')
-    const fullId = element.id;
-    const matches = findWholeWordOccurrences(text, fullId);
-    for (const idx of matches) {
-      const startPos = document.positionAt(idx);
-      const endPos = document.positionAt(idx + fullId.length);
-      edit.replace(document.uri, new vscode.Range(startPos, endPos), newName);
+    const files = await vscode.workspace.findFiles("**/*.sruja", "**/{.git,node_modules,target,dist,out}/**");
+
+    for (const fileUri of files) {
+      if (token.isCancellationRequested) return undefined;
+      const doc = await vscode.workspace.openTextDocument(fileUri);
+      const text = doc.getText();
+      const matches = findWholeWordOccurrences(text, element.id);
+      for (const idx of matches) {
+        const startPos = doc.positionAt(idx);
+        const endPos = doc.positionAt(idx + element.id.length);
+        edit.replace(fileUri, new vscode.Range(startPos, endPos), newName);
+      }
     }
 
     return edit;
@@ -682,7 +686,7 @@ export class SrujaReferenceProvider implements vscode.ReferenceProvider {
     _context: vscode.ReferenceContext,
     token: vscode.CancellationToken
   ): Promise<vscode.Location[] | undefined> {
-    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
     if (token.isCancellationRequested || !elements) return undefined;
 
     const wordRange = document.getWordRangeAtPosition(position);
@@ -693,13 +697,18 @@ export class SrujaReferenceProvider implements vscode.ReferenceProvider {
     if (!element) return undefined;
 
     const locations: vscode.Location[] = [];
-    const text = document.getText();
-    const fullId = element.id;
-    const matches = findWholeWordOccurrences(text, fullId);
-    for (const idx of matches) {
-      const startPos = document.positionAt(idx);
-      const endPos = document.positionAt(idx + fullId.length);
-      locations.push(new vscode.Location(document.uri, new vscode.Range(startPos, endPos)));
+    const files = await vscode.workspace.findFiles("**/*.sruja", "**/{.git,node_modules,target,dist,out}/**");
+
+    for (const fileUri of files) {
+      if (token.isCancellationRequested) return undefined;
+      const doc = await vscode.workspace.openTextDocument(fileUri);
+      const text = doc.getText();
+      const matches = findWholeWordOccurrences(text, element.id);
+      for (const idx of matches) {
+        const startPos = doc.positionAt(idx);
+        const endPos = doc.positionAt(idx + element.id.length);
+        locations.push(new vscode.Location(fileUri, new vscode.Range(startPos, endPos)));
+      }
     }
 
     return locations;

@@ -6,6 +6,7 @@ interface SrujaMarkdownDocument extends vscode.CustomDocument {
 }
 
 export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorProvider<SrujaMarkdownDocument> {
+  public static readonly viewType = "sruja.markdownPreview";
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<SrujaMarkdownDocument>>();
   onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
@@ -45,16 +46,14 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
     const updatePreview = async (): Promise<void> => {
       if (disposed) return;
       try {
-        const editor = vscode.window.visibleTextEditors.find(
-          (e) => e.document.uri.toString() === document.uri.toString()
-        );
-        const dsl = editor?.document.getText() ?? "";
+        const inMemoryDoc = vscode.workspace.textDocuments.find((d) => d.uri.toString() === document.uri.toString());
+        const dsl = inMemoryDoc?.getText() ?? Buffer.from(await vscode.workspace.fs.readFile(document.uri)).toString("utf8");
         if (!dsl) return;
 
         const md = await exportMarkdownFromWasm(this.context, dsl);
         if (disposed) return;
         if (md) {
-          webviewPanel.webview.html = this.getMarkdownHtml(md);
+          webviewPanel.webview.html = this.getMarkdownHtml(webviewPanel.webview, md);
         } else {
           webviewPanel.webview.html = this.getErrorHtml("Failed to generate markdown.");
         }
@@ -89,7 +88,9 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
     });
   }
 
-  private getMarkdownHtml(markdown: string): string {
+  private getMarkdownHtml(webview: vscode.Webview, markdown: string): string {
+    const n = Date.now().toString(16);
+    const nonce = n + n;
     const mermaidBlocks: string[] = [];
     const markdownWithPlaceholders = markdown.replace(
       /```mermaid\n([\s\S]*?)```/g,
@@ -100,11 +101,12 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
     );
     const escapedMarkdown = JSON.stringify(markdownWithPlaceholders);
     const escapedMermaidBlocks = JSON.stringify(mermaidBlocks);
+    const csp = `default-src 'none'; img-src ${webview.cspSource} https:; style-src ${webview.cspSource} 'unsafe-inline' https://cdn.jsdelivr.net; script-src ${webview.cspSource} 'nonce-${nonce}' https://cdn.jsdelivr.net;`;
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://cdn.jsdelivr.net;">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>Sruja Markdown Preview</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
@@ -122,7 +124,7 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
 </head>
 <body>
   <div id="content">Loading...</div>
-  <script>
+  <script nonce="${nonce}">
     try {
       const md = ${escapedMarkdown};
       const mermaidBlocks = ${escapedMermaidBlocks};

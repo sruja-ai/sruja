@@ -96,10 +96,51 @@ interface SrujaWasmModule {
 let wasmModule: SrujaWasmModule | null = null;
 let wasmInitPromise: Promise<SrujaWasmModule | null> | null = null;
 
+/**
+ * Cache for WASM results to avoid redundant parsing.
+ * Keyed by document URI and version.
+ */
+class WasmCache<T> {
+  private cache = new Map<string, { version: number; data: T }>();
+
+  get(uri: string, version: number): T | undefined {
+    const entry = this.cache.get(uri);
+    if (entry && entry.version === version) {
+      return entry.data;
+    }
+    return undefined;
+  }
+
+  set(uri: string, version: number, data: T): void {
+    this.cache.set(uri, { version, data });
+  }
+
+  delete(uri: string): void {
+    this.cache.delete(uri);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+const elementsCache = new WasmCache<SrujaElement[]>();
+const symbolsCache = new WasmCache<SrujaDocumentSymbol[]>();
+
 /** Reset module state for tests. Only use in test code. */
 export function resetWasmForTesting(): void {
   wasmModule = null;
   wasmInitPromise = null;
+  elementsCache.clear();
+  symbolsCache.clear();
+}
+
+/**
+ * Invalidate cache for a specific URI.
+ */
+export function invalidateWasmCache(uri: string): void {
+  elementsCache.delete(uri);
+  symbolsCache.delete(uri);
 }
 
 function wasmDir(context: vscode.ExtensionContext): string {
@@ -304,14 +345,25 @@ function parseJsonArray<T>(json: string, guard?: (item: unknown) => item is T): 
 export async function getElementsFromWasm(
   context: vscode.ExtensionContext,
   dsl: string,
-  filename?: string
+  filename?: string,
+  uri?: string,
+  version?: number
 ): Promise<SrujaElement[] | null> {
+  if (uri && version !== undefined) {
+    const cached = elementsCache.get(uri, version);
+    if (cached) return cached;
+  }
+
   const mod = await initWasm(context);
   if (!mod) return null;
 
   try {
     const json = mod.sruja_get_elements(dsl, filename ?? null);
-    return parseJsonArray<SrujaElement>(json, isSrujaElement);
+    const elements = parseJsonArray<SrujaElement>(json, isSrujaElement);
+    if (elements && uri && version !== undefined) {
+      elementsCache.set(uri, version, elements);
+    }
+    return elements;
   } catch (e) {
     console.error("[Sruja] Failed to get elements from WASM:", e, "File:", filename);
     return null;
@@ -325,14 +377,25 @@ export async function getElementsFromWasm(
 export async function getDocumentSymbolsFromWasm(
   context: vscode.ExtensionContext,
   dsl: string,
-  filename?: string
+  filename?: string,
+  uri?: string,
+  version?: number
 ): Promise<SrujaDocumentSymbol[] | null> {
+  if (uri && version !== undefined) {
+    const cached = symbolsCache.get(uri, version);
+    if (cached) return cached;
+  }
+
   const mod = await initWasm(context);
   if (!mod) return null;
 
   try {
     const json = mod.sruja_get_document_symbols(dsl, filename ?? null);
-    return parseJsonArray<SrujaDocumentSymbol>(json, isSrujaDocumentSymbol);
+    const symbols = parseJsonArray<SrujaDocumentSymbol>(json, isSrujaDocumentSymbol);
+    if (symbols && uri && version !== undefined) {
+      symbolsCache.set(uri, version, symbols);
+    }
+    return symbols;
   } catch (e) {
     console.error("[Sruja] Failed to get document symbols from WASM:", e, "File:", filename);
     return null;
