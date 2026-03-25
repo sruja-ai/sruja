@@ -5,6 +5,7 @@ use std::path::Path;
 
 use sruja_scan::{scan_repo, Graph, NodeKind};
 
+use super::federation::{find_system_index, infer_repo_id, load_system_index};
 use super::CliError;
 use sruja_scan::graph::compute_all_centrality;
 
@@ -16,6 +17,43 @@ struct ArchitectureContext {
     boundaries: Vec<BoundaryRule>,
     forbidden_patterns: Vec<String>,
     focus: Option<FocusContext>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    system_context: Option<SystemContext>,
+}
+
+/// Cross-repo system context derived from system.index.json.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct SystemContext {
+    index_path: String,
+    total_repos: usize,
+    total_nodes: usize,
+    total_edges: usize,
+    total_conflicts: usize,
+    /// Systems/containers/databases from OTHER repos that interact with this repo.
+    cross_repo_elements: Vec<CrossRepoElement>,
+    /// Cross-repo edges involving this repo.
+    cross_repo_edges: Vec<CrossRepoEdge>,
+    /// Conflicts involving this repo.
+    conflicts: Vec<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct CrossRepoElement {
+    canonical_id: String,
+    kind: String,
+    label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    technology: Option<String>,
+    repo_id: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct CrossRepoEdge {
+    source: String,
+    target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    label: Option<String>,
+    repo_id: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -239,6 +277,8 @@ fn build_architecture_context(
         .map(|f| build_focus_context(graph, repo, f, intent, depth, max_tokens))
         .transpose()?;
 
+    let system_context = build_system_context(repo);
+
     Ok(ArchitectureContext {
         repo: repo.to_string(),
         summary: ContextSummary {
@@ -251,11 +291,121 @@ fn build_architecture_context(
         boundaries,
         forbidden_patterns,
         focus,
+        system_context,
     })
 }
 
 fn count_kind(graph: &Graph, kind: NodeKind) -> usize {
     graph.nodes.iter().filter(|n| n.kind == kind).count()
+}
+
+fn build_system_context(repo_root: &str) -> Option<SystemContext> {
+    let root = Path::new(repo_root);
+    let index_path = find_system_index(root)?;
+    let index = load_system_index(&index_path).ok()?;
+    let current_repo_id = infer_repo_id(root);
+
+    let mut cross_repo_elements = Vec::new();
+    let mut cross_repo_edges = Vec::new();
+    let mut conflicts = Vec::new();
+
+    // Find elements from OTHER repos that are linked to this repo
+    let current_repo_prefix = format!("{}::", current_repo_id);
+    let mut relevant_canonical_ids = std::collections::HashSet::new();
+
+    for edge in &index.edges {
+        let is_source_current = edge.source.starts_with(&current_repo_prefix);
+        let is_target_current = edge.target.starts_with(&current_repo_prefix);
+
+        if is_source_current || is_target_current {
+            cross_repo_edges.push(CrossRepoEdge {
+                source: edge.source.clone(),
+                target: edge.target.clone(),
+                label: edge.label.clone(),
+                repo_id: edge.repo_id.clone(),
+            });
+
+            if !is_source_current {
+                relevant_canonical_ids.insert(edge.source.as_str());
+            }
+            if !is_target_current {
+                relevant_canonical_ids.insert(edge.target.as_str());
+            }
+        }
+    }
+
+    for node in &index.nodes {
+        if relevant_canonical_ids.contains(node.canonical_id.as_str()) {
+            cross_repo_elements.push(CrossRepoElement {
+                canonical_id: node.canonical_id.clone(),
+                kind: node.kind.clone(),
+                label: node.label.clone(),
+                technology: node.technology.clone(),
+                repo_id: node.repo_id.clone(),
+            });
+        }
+    }
+
+    for conflict in &index.conflicts {
+        if conflict.repos.contains(&current_repo_id) {
+            conflicts.push(format!("{}: {}", conflict.key, conflict.message));
+        }
+    }
+
+    Some(SystemContext {
+        index_path: index_path.to_string_lossy().to_string(),
+        total_repos: index.repos.len(),
+        total_nodes: index.nodes.len(),
+        total_edges: index.edges.len(),
+        total_conflicts: index.conflicts.len(),
+        cross_repo_elements,
+        cross_repo_edges,
+        conflicts,
+    })
+}
+
+fn format_system_context_markdown(ctx: &SystemContext) -> String {
+    let mut md = String::new();
+    md.push_str("\n## Multi-Repo System Context\n\n");
+    md.push_str(&format!(
+        "Composed architecture from **{} repositories**.\n",
+        ctx.total_repos
+    ));
+    md.push_str(&format!("Index source: `{}`\n\n", ctx.index_path));
+
+    if !ctx.cross_repo_elements.is_empty() {
+        md.push_str("### Cross-Repo Dependencies\n\n");
+        for el in &ctx.cross_repo_elements {
+            md.push_str(&format!(
+                "- **{}** ({} in `{}`)\n",
+                el.label, el.kind, el.repo_id
+            ));
+        }
+        md.push('\n');
+    }
+
+    if !ctx.cross_repo_edges.is_empty() {
+        md.push_str("### Key Relationships\n\n");
+        for edge in &ctx.cross_repo_edges {
+            md.push_str(&format!(
+                "- `{}` -> `{}` {}\n",
+                edge.source,
+                edge.target,
+                edge.label.as_deref().unwrap_or("")
+            ));
+        }
+        md.push('\n');
+    }
+
+    if !ctx.conflicts.is_empty() {
+        md.push_str("### ⚠ Architectural Conflicts\n\n");
+        for c in &ctx.conflicts {
+            md.push_str(&format!("- {}\n", c));
+        }
+        md.push('\n');
+    }
+
+    md
 }
 
 fn build_focus_context(
@@ -676,6 +826,10 @@ fn format_cursor_rules(context: &ArchitectureContext) -> String {
         }
     }
 
+    if let Some(system) = &context.system_context {
+        rules.push_str(&format_system_context_markdown(system));
+    }
+
     rules
 }
 
@@ -728,6 +882,10 @@ fn format_copilot_instructions(context: &ArchitectureContext) -> String {
         if let Some(intent) = &focus.intent {
             instructions.push_str(&format!("- Intent: {}\n", intent));
         }
+    }
+
+    if let Some(system) = &context.system_context {
+        instructions.push_str(&format_system_context_markdown(system));
     }
 
     instructions
@@ -798,13 +956,10 @@ fn format_markdown(context: &ArchitectureContext) -> String {
                 focus.depth
             ));
         }
-        if !focus.suggested_checks.is_empty() {
-            md.push_str("\n### Suggested checks\n\n");
-            for c in &focus.suggested_checks {
-                md.push_str(&format!("- `{}`\n", c));
-            }
-            md.push('\n');
-        }
+    }
+
+    if let Some(system) = &context.system_context {
+        md.push_str(&format_system_context_markdown(system));
     }
 
     md
@@ -928,12 +1083,16 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
                 }
             }
         }
+    }
 
-        if let Some(br) = &focus.blast_radius {
+    if let Some(system) = &context.system_context {
+        out.push_str("\n## System Context\n\n");
+        out.push_str(&format!("Index: {}\n", system.index_path));
+        out.push_str(&format!("Repos: {}\n", system.total_repos));
+        for el in &system.cross_repo_elements {
             out.push_str(&format!(
-                "\nBlast radius: {} upstream, {} downstream\n",
-                br.upstream.len(),
-                br.downstream.len()
+                "- {} ({}): owned by {}\n",
+                el.label, el.kind, el.repo_id
             ));
         }
     }
@@ -1160,6 +1319,7 @@ mod tests {
             boundaries: Vec::new(),
             forbidden_patterns: Vec::new(),
             focus: None,
+            system_context: None,
         };
 
         let out = format_copilot_instructions(&context);
@@ -1186,6 +1346,7 @@ mod tests {
             boundaries: Vec::new(),
             forbidden_patterns: Vec::new(),
             focus: None,
+            system_context: None,
         };
 
         let out = format_copilot_instructions(&context);

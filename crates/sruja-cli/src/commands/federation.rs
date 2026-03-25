@@ -59,7 +59,7 @@ fn git_commit_short(repo_path: &Path) -> Option<String> {
 }
 
 /// Infer repo_id from directory name or git remote.
-fn infer_repo_id(repo_path: &Path) -> String {
+pub fn infer_repo_id(repo_path: &Path) -> String {
     if let Ok(canonical) = repo_path.canonicalize() {
         if let Some(name) = canonical.file_name().and_then(|n| n.to_str()) {
             if !name.is_empty() && name != "." {
@@ -447,4 +447,72 @@ pub async fn compose(
         index.conflicts.len()
     );
     Ok(())
+}
+
+/// Find system.index.json by walking up from a start directory.
+///
+/// Checks the start directory and each parent for `system.index.json` or
+/// `.sruja/system.index.json`. Returns the first match found.
+pub fn find_system_index(start_path: &Path) -> Option<PathBuf> {
+    let start = if start_path.is_file() {
+        start_path.parent()?
+    } else {
+        start_path
+    };
+
+    let mut current = start;
+    loop {
+        let index_path = current.join("system.index.json");
+        if index_path.is_file() {
+            return Some(index_path);
+        }
+        let sruja_index = current.join(".sruja").join("system.index.json");
+        if sruja_index.is_file() {
+            return Some(sruja_index);
+        }
+        match current.parent() {
+            Some(p) if p != current => current = p,
+            _ => break,
+        }
+    }
+    None
+}
+
+/// Load and deserialize a system index from a file path.
+pub fn load_system_index(path: &Path) -> Result<SystemIndex, CliError> {
+    let content = fs::read_to_string(path).map_err(|e| {
+        CliError::Io(std::io::Error::new(
+            e.kind(),
+            format!("Failed to read system index {}: {}", path.display(), e),
+        ))
+    })?;
+    serde_json::from_str(&content).map_err(|e| {
+        CliError::Validation(format!("Invalid system index {}: {}", path.display(), e))
+    })
+}
+
+/// Extract a filtered slice of the system index: only elements of matched kinds.
+pub fn filter_system_index_by_kind(index: &SystemIndex, kind: &str) -> SystemIndex {
+    let kind_lower = kind.to_lowercase();
+    let nodes: Vec<SystemIndexNode> = index
+        .nodes
+        .iter()
+        .filter(|n| n.kind.to_lowercase() == kind_lower)
+        .cloned()
+        .collect();
+    let node_ids: std::collections::HashSet<&str> =
+        nodes.iter().map(|n| n.canonical_id.as_str()).collect();
+    let edges: Vec<SystemIndexEdge> = index
+        .edges
+        .iter()
+        .filter(|e| node_ids.contains(e.source.as_str()) || node_ids.contains(e.target.as_str()))
+        .cloned()
+        .collect();
+    SystemIndex {
+        schema_version: index.schema_version,
+        repos: index.repos.clone(),
+        nodes,
+        edges,
+        conflicts: index.conflicts.clone(),
+    }
 }

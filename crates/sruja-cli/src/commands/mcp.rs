@@ -275,6 +275,29 @@ fn tool_definitions() -> Vec<Value> {
                 "required": ["source", "target"]
             }
         }),
+        json!({
+            "name": "sruja_get_system_context",
+            "title": "Sruja System Context",
+            "description": "Get the full multi-repo system architecture from the composed system.index.json. Returns all systems, containers, components, databases, their relationships, and cross-repo conflicts.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Start path to search for system.index.json (walks up to find it, defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_list_elements",
+            "title": "Sruja List Elements",
+            "description": "List architectural elements from the composed system index, filtered by kind (system, container, component, database, queue, person). Returns elements across all federated repos with their canonical IDs and lineage.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Start path to search for system.index.json (defaults to .)" },
+                    "kind": { "type": "string", "description": "Element kind to filter by: system, container, component, database, queue, person. If omitted, returns all elements." }
+                }
+            }
+        }),
     ]
 }
 
@@ -338,6 +361,80 @@ async fn run_tool(name: &str, arguments: &Value) -> Result<String, CliError> {
 
             add_relationship(&repo, source, target, label, technology).await?;
             Ok(format!("Added relationship {} -> {}", source, target))
+        }
+        "sruja_get_system_context" => {
+            let start = std::path::Path::new(&repo);
+            match super::federation::find_system_index(start) {
+                Some(index_path) => {
+                    let index = super::federation::load_system_index(&index_path)?;
+                    let summary = format!(
+                        "System index: {} repos, {} nodes, {} edges, {} conflicts\nSource: {}\n\n",
+                        index.repos.len(),
+                        index.nodes.len(),
+                        index.edges.len(),
+                        index.conflicts.len(),
+                        index_path.display()
+                    );
+                    let json = serde_json::to_string_pretty(&index)
+                        .map_err(|e| CliError::Validation(e.to_string()))?;
+                    Ok(format!("{}{}", summary, json))
+                }
+                None => Ok("No system.index.json found. Run `sruja compose` to create a multi-repo system index.".to_string()),
+            }
+        }
+        "sruja_list_elements" => {
+            let start = std::path::Path::new(&repo);
+            match super::federation::find_system_index(start) {
+                Some(index_path) => {
+                    let index = super::federation::load_system_index(&index_path)?;
+                    let filtered = match arguments.get("kind").and_then(|v| v.as_str()) {
+                        Some(kind) => super::federation::filter_system_index_by_kind(&index, kind),
+                        None => index,
+                    };
+                    let kind_label = arguments
+                        .get("kind")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("all");
+                    let mut out = format!(
+                        "Found {} {} element(s) across {} repo(s)\n\n",
+                        filtered.nodes.len(),
+                        kind_label,
+                        filtered.repos.len()
+                    );
+                    for node in &filtered.nodes {
+                        out.push_str(&format!(
+                            "- [{}] {} ({}){}\n  repo: {}\n",
+                            node.kind,
+                            node.label,
+                            node.canonical_id,
+                            node.technology
+                                .as_ref()
+                                .map(|t| format!(" [{}]", t))
+                                .unwrap_or_default(),
+                            node.repo_id
+                        ));
+                    }
+                    if !filtered.edges.is_empty() {
+                        out.push_str(&format!("\n{} relationship(s):\n", filtered.edges.len()));
+                        for edge in &filtered.edges {
+                            out.push_str(&format!(
+                                "  {} -> {} {}\n",
+                                edge.source,
+                                edge.target,
+                                edge.label.as_deref().unwrap_or("")
+                            ));
+                        }
+                    }
+                    if !filtered.conflicts.is_empty() {
+                        out.push_str(&format!("\n⚠ {} conflict(s):\n", filtered.conflicts.len()));
+                        for c in &filtered.conflicts {
+                            out.push_str(&format!("  {}: {}\n", c.key, c.message));
+                        }
+                    }
+                    Ok(out)
+                }
+                None => Ok("No system.index.json found. Run `sruja compose` to create a multi-repo system index.".to_string()),
+            }
         }
         _ => Err(CliError::Validation(format!("Unknown tool: {name}"))),
     }
