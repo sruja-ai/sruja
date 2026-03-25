@@ -12,6 +12,33 @@ import {
 } from "./wasm";
 import { extractMissingFieldName, getDiagnosticCodeValue } from "./lintParser";
 
+function isWordChar(ch: string | undefined): boolean {
+  if (!ch) return false;
+  return /[A-Za-z0-9_]/.test(ch);
+}
+
+function findWholeWordOccurrences(text: string, needle: string): number[] {
+  if (!needle) return [];
+  const first = needle[0];
+  const last = needle[needle.length - 1];
+
+  const out: number[] = [];
+  let fromIndex = 0;
+  while (fromIndex <= text.length - needle.length) {
+    const idx = text.indexOf(needle, fromIndex);
+    if (idx === -1) break;
+
+    const startBoundary = idx === 0 || isWordChar(text[idx - 1]) !== isWordChar(first);
+    const endIdx = idx + needle.length;
+    const endBoundary = endIdx === text.length || isWordChar(text[endIdx]) !== isWordChar(last);
+
+    if (startBoundary && endBoundary) out.push(idx);
+    fromIndex = idx + needle.length;
+  }
+
+  return out;
+}
+
 export interface ElementRange {
   start: { line: number; character: number };
   end: { line: number; character: number };
@@ -631,25 +658,11 @@ export class SrujaRenameProvider implements vscode.RenameProvider {
     // For now, we perform a simple global replacement of the ID in the document
     // ensuring we don't catch partial matches (e.g., 'S1' in 'S11')
     const fullId = element.id;
-    const localId = fullId.split('.').pop() || fullId;
-
-    // Use regex to find all occurrences of the ID as a whole word
-    // We escape dots in the ID for regex
-    const escapedFullId = fullId.replace(/\./g, '\\.');
-    const regex = new RegExp(`\\b${escapedFullId}\\b`, 'g');
-    
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      const startPos = document.positionAt(match.index);
-      const endPos = document.positionAt(match.index + fullId.length);
+    const matches = findWholeWordOccurrences(text, fullId);
+    for (const idx of matches) {
+      const startPos = document.positionAt(idx);
+      const endPos = document.positionAt(idx + fullId.length);
       edit.replace(document.uri, new vscode.Range(startPos, endPos), newName);
-    }
-
-    // If the local name was used in the definition, update that too if it's different
-    if (fullId !== localId) {
-       const localRegex = new RegExp(`\\b${localId}\\b`, 'g');
-       // This is trickier as localId might be common. We only replace it if it's part of the element definition or a specific reference.
-       // For a robust implementation we'd need a full AST, but global replacement of fullId is safer and covers most relations.
     }
 
     return edit;
@@ -682,13 +695,10 @@ export class SrujaReferenceProvider implements vscode.ReferenceProvider {
     const locations: vscode.Location[] = [];
     const text = document.getText();
     const fullId = element.id;
-    const escapedFullId = fullId.replace(/\./g, '\\.');
-    const regex = new RegExp(`\\b${escapedFullId}\\b`, 'g');
-
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      const startPos = document.positionAt(match.index);
-      const endPos = document.positionAt(match.index + fullId.length);
+    const matches = findWholeWordOccurrences(text, fullId);
+    for (const idx of matches) {
+      const startPos = document.positionAt(idx);
+      const endPos = document.positionAt(idx + fullId.length);
       locations.push(new vscode.Location(document.uri, new vscode.Range(startPos, endPos)));
     }
 
