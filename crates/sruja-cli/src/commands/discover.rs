@@ -6,11 +6,10 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use sruja_scan::scan_repo;
 use sruja_scan::scan_scope::resolve_scan_scope;
 use sruja_scan::{generate_repomap_from_graph, Graph, RepoMapOptions};
 
-use super::CliError;
+use super::{scan_repo_cached, CliError};
 use crate::context_detection::{
     build_repo_context, detect_architecture_style, detect_framework, detect_languages,
 };
@@ -77,7 +76,7 @@ pub fn discover_context_string(repo: &str) -> Result<String, CliError> {
         )));
     }
 
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph = scan_repo_cached(repo_path)?;
     discover_context_string_from_graph(repo, repo_path, &graph)
 }
 
@@ -235,7 +234,7 @@ pub fn discover_context_json(repo: &str) -> Result<DiscoverContextJson, CliError
             format!("Repository not found: {}", repo),
         )));
     }
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph = scan_repo_cached(repo_path)?;
     discover_context_json_from_graph(repo, repo_path, &graph)
 }
 
@@ -347,7 +346,7 @@ pub fn discover_repomap(
         )));
     }
 
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph = scan_repo_cached(repo_path)?;
 
     let options = RepoMapOptions {
         max_files,

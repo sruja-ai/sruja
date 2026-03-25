@@ -3,11 +3,52 @@
 use std::fs;
 use std::path::Path;
 
-use sruja_scan::{scan_repo, Graph, NodeKind};
+use sruja_scan::{Graph, NodeKind};
 
 use super::federation::{find_system_index, infer_repo_id, load_system_index};
-use super::CliError;
-use sruja_scan::graph::compute_all_centrality;
+use super::{scan_repo_cached, CliError};
+use sruja_scan::graph::{compute_all_centrality, ComponentImportance};
+use std::collections::HashMap;
+
+struct TokenBudget {
+    max_tokens: usize,
+    used_tokens: usize,
+    truncated: bool,
+}
+
+impl TokenBudget {
+    fn new(max_tokens: usize) -> Self {
+        Self {
+            max_tokens: max_tokens.max(1),
+            used_tokens: 0,
+            truncated: false,
+        }
+    }
+
+    fn estimate_tokens(s: &str) -> usize {
+        s.len().div_ceil(4)
+    }
+
+    fn push_str(&mut self, out: &mut String, s: &str) -> bool {
+        if self.truncated {
+            return false;
+        }
+        let t = Self::estimate_tokens(s);
+        if self.used_tokens.saturating_add(t) > self.max_tokens {
+            self.truncated = true;
+            return false;
+        }
+        out.push_str(s);
+        self.used_tokens = self.used_tokens.saturating_add(t);
+        true
+    }
+
+    fn finish(&mut self, out: &mut String) {
+        if self.truncated {
+            out.push_str("\n[Context truncated due to token limits]\n");
+        }
+    }
+}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct ArchitectureContext {
@@ -19,6 +60,8 @@ struct ArchitectureContext {
     focus: Option<FocusContext>,
     #[serde(skip_serializing_if = "Option::is_none")]
     system_context: Option<SystemContext>,
+    #[serde(skip)]
+    max_tokens: usize,
 }
 
 /// Cross-repo system context derived from system.index.json.
@@ -133,13 +176,7 @@ pub async fn context_string(
         )));
     }
 
-    let graph_path = repo_path.join(".sruja").join("graph.json");
-    let graph = if graph_path.exists() {
-        let content = std::fs::read_to_string(&graph_path)?;
-        serde_json::from_str(&content)?
-    } else {
-        scan_repo(repo_path)?
-    };
+    let graph = scan_repo_cached(repo_path)?;
 
     let context = build_architecture_context(&graph, repo_root, file, intent, depth, max_tokens)?;
 
@@ -185,13 +222,7 @@ pub async fn context_string_multi(
             )));
         }
 
-        let graph_path = repo_path.join(".sruja").join("graph.json");
-        let graph = if graph_path.exists() {
-            let content = std::fs::read_to_string(&graph_path)?;
-            serde_json::from_str(&content)?
-        } else {
-            scan_repo(repo_path)?
-        };
+        let graph = scan_repo_cached(repo_path)?;
 
         let context =
             build_architecture_context(&graph, repo_root, file, intent, depth, max_tokens)?;
@@ -285,8 +316,10 @@ fn build_architecture_context(
         "UI components should not directly call database layers".to_string(),
     ];
 
+    let centrality = compute_all_centrality(graph);
+
     let focus = file
-        .map(|f| build_focus_context(graph, repo, f, intent, depth, max_tokens))
+        .map(|f| build_focus_context(graph, repo, f, intent, depth, max_tokens, &centrality))
         .transpose()?;
 
     let system_context = build_system_context(repo);
@@ -304,6 +337,7 @@ fn build_architecture_context(
         forbidden_patterns,
         focus,
         system_context,
+        max_tokens,
     })
 }
 
@@ -435,6 +469,7 @@ fn build_focus_context(
     intent: Option<&str>,
     depth: usize,
     _max_tokens: usize,
+    centrality: &HashMap<String, ComponentImportance>,
 ) -> Result<FocusContext, CliError> {
     let repo_path = Path::new(repo_root);
     let repo_canon = repo_path
@@ -477,9 +512,20 @@ fn build_focus_context(
         .collect();
 
     matched.sort_by(|a, b| {
-        score_path_match(a.path.as_deref(), &candidates)
-            .cmp(&score_path_match(b.path.as_deref(), &candidates))
+        let a_score = score_path_match(a.path.as_deref(), &candidates);
+        let b_score = score_path_match(b.path.as_deref(), &candidates);
+
+        let a_centrality = centrality.get(&a.id).map(|s| s.pagerank).unwrap_or(0.0);
+        let b_centrality = centrality.get(&b.id).map(|s| s.pagerank).unwrap_or(0.0);
+
+        a_score
+            .cmp(&b_score)
             .reverse()
+            .then_with(|| {
+                b_centrality
+                    .partial_cmp(&a_centrality)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .then_with(|| a.id.cmp(&b.id))
     });
 
@@ -503,9 +549,25 @@ fn build_focus_context(
         .or_else(|| matched.first())
         .map(|n| n.id.as_str());
 
-    let blast_radius = blast_target
+    let mut blast_radius = blast_target
         .filter(|_| depth > 0)
         .map(|id| graph.blast_radius(id, depth));
+
+    if let Some(ref mut br) = blast_radius {
+        let sort_blast = |nodes: &mut Vec<sruja_scan::BlastRadiusNode>| {
+            nodes.sort_by(|a, b| {
+                let a_c = centrality.get(&a.id).map(|s| s.pagerank).unwrap_or(0.0);
+                let b_c = centrality.get(&b.id).map(|s| s.pagerank).unwrap_or(0.0);
+                a.depth
+                    .cmp(&b.depth)
+                    .then_with(|| b_c.partial_cmp(&a_c).unwrap_or(std::cmp::Ordering::Equal))
+                    .then_with(|| a.id.cmp(&b.id))
+            });
+            nodes.truncate(20); // Limit blast radius size in context
+        };
+        sort_blast(&mut br.upstream);
+        sort_blast(&mut br.downstream);
+    }
 
     let suggested_checks = suggested_checks(intent);
 
@@ -735,265 +797,341 @@ fn format_copilot_instructions_multi(context: &MultiRepoArchitectureContext) -> 
 
 fn format_markdown_multi(context: &MultiRepoArchitectureContext) -> String {
     let mut out = String::new();
-    out.push_str("# Architecture Context (Multi-Repo)\n\n");
-    out.push_str("| Type | Count |\n|------|-------|\n");
-    out.push_str(&format!("| Repos | {} |\n", context.repos.len()));
-    out.push_str(&format!(
-        "| Modules | {} |\n",
-        context.combined_summary.total_modules
-    ));
-    out.push_str(&format!(
-        "| Services | {} |\n",
-        context.combined_summary.total_services
-    ));
-    out.push_str(&format!(
-        "| Databases | {} |\n",
-        context.combined_summary.total_databases
-    ));
-    out.push_str(&format!(
-        "| External APIs | {} |\n\n",
-        context.combined_summary.total_external_apis
-    ));
+    let mut budget = TokenBudget::new(10000); // Default high limit for multi-repo
+
+    budget.push_str(&mut out, "# Architecture Context (Multi-Repo)\n\n");
+    budget.push_str(&mut out, "| Type | Count |\n|------|-------|\n");
+    budget.push_str(&mut out, &format!("| Repos | {} |\n", context.repos.len()));
+    budget.push_str(
+        &mut out,
+        &format!("| Modules | {} |\n", context.combined_summary.total_modules),
+    );
+    budget.push_str(
+        &mut out,
+        &format!(
+            "| Services | {} |\n",
+            context.combined_summary.total_services
+        ),
+    );
+    budget.push_str(
+        &mut out,
+        &format!(
+            "| Databases | {} |\n",
+            context.combined_summary.total_databases
+        ),
+    );
+    budget.push_str(
+        &mut out,
+        &format!(
+            "| External APIs | {} |\n\n",
+            context.combined_summary.total_external_apis
+        ),
+    );
 
     if !context.cross_repo_rules.is_empty() {
-        out.push_str("## Cross-Repo Rules\n\n");
+        budget.push_str(&mut out, "## Cross-Repo Rules\n\n");
         for rule in &context.cross_repo_rules {
-            out.push_str(&format!("- {}\n", rule));
+            budget.push_str(&mut out, &format!("- {}\n", rule));
         }
-        out.push('\n');
+        budget.push_str(&mut out, "\n");
     }
 
     for repo in &context.repos {
-        out.push_str("---\n\n");
-        out.push_str(&format_markdown(repo));
+        budget.push_str(&mut out, "---\n\n");
+        budget.push_str(&mut out, &format_markdown(repo));
     }
 
+    budget.finish(&mut out);
     out
 }
 
 fn format_cursor_rules(context: &ArchitectureContext) -> String {
-    let mut rules = String::new();
-    rules.push_str("# Sruja Architecture Context\n\n");
-    rules.push_str(&format!(
-        "This file is auto-generated by `sruja context -r {} -f cursor-rules`\n\n",
-        context.repo
-    ));
-    rules.push_str("## Architecture Overview\n\n");
-    rules.push_str(&format!(
-        "- Modules: {}\n- Services: {}\n- Databases: {}\n- External APIs: {}\n\n",
-        context.summary.total_modules,
-        context.summary.total_services,
-        context.summary.total_databases,
-        context.summary.total_external_apis
-    ));
+    let mut out = String::new();
+    let mut budget = TokenBudget::new(context.max_tokens);
+
+    budget.push_str(&mut out, "# Sruja Architecture Context\n\n");
+    budget.push_str(
+        &mut out,
+        &format!(
+            "This file is auto-generated by `sruja context -r {} -f cursor-rules`\n\n",
+            context.repo
+        ),
+    );
+    budget.push_str(&mut out, "## Architecture Overview\n\n");
+    budget.push_str(
+        &mut out,
+        &format!(
+            "- Modules: {}\n- Services: {}\n- Databases: {}\n- External APIs: {}\n\n",
+            context.summary.total_modules,
+            context.summary.total_services,
+            context.summary.total_databases,
+            context.summary.total_external_apis
+        ),
+    );
 
     if !context.layers.is_empty() {
-        rules.push_str("## Layers\n\n");
+        budget.push_str(&mut out, "## Layers\n\n");
         for layer in &context.layers {
-            rules.push_str(&format!(
-                "### {} ({} modules)\n",
-                layer.name.to_uppercase().replace("_", " "),
-                layer.modules
-            ));
+            budget.push_str(
+                &mut out,
+                &format!(
+                    "### {} ({} modules)\n",
+                    layer.name.to_uppercase().replace("_", " "),
+                    layer.modules
+                ),
+            );
             if !layer.can_depend_on.is_empty() {
-                rules.push_str(&format!(
-                    "Can depend on: {}\n\n",
-                    layer.can_depend_on.join(", ")
-                ));
+                budget.push_str(
+                    &mut out,
+                    &format!("Can depend on: {}\n\n", layer.can_depend_on.join(", ")),
+                );
             } else {
-                rules.push_str("No external dependencies allowed.\n\n");
+                budget.push_str(&mut out, "No external dependencies allowed.\n\n");
             }
         }
     }
 
     if !context.boundaries.is_empty() {
-        rules.push_str("## Boundary Rules\n\n");
+        budget.push_str(&mut out, "## Boundary Rules\n\n");
         for boundary in &context.boundaries {
             if !boundary.allowed {
-                rules.push_str(&format!(
-                    "- **{} -> {}**: {}\n",
-                    boundary.from, boundary.to, boundary.reason
-                ));
+                budget.push_str(
+                    &mut out,
+                    &format!(
+                        "- **{} -> {}**: {}\n",
+                        boundary.from, boundary.to, boundary.reason
+                    ),
+                );
             }
         }
-        rules.push('\n');
+        budget.push_str(&mut out, "\n");
     }
 
     if !context.forbidden_patterns.is_empty() {
-        rules.push_str("## Forbidden Patterns\n\n");
+        budget.push_str(&mut out, "## Forbidden Patterns\n\n");
         for pattern in &context.forbidden_patterns {
-            rules.push_str(&format!("- {}\n", pattern));
+            budget.push_str(&mut out, &format!("- {}\n", pattern));
         }
-        rules.push('\n');
+        budget.push_str(&mut out, "\n");
     }
 
-    rules.push_str("## When suggesting code\n\n");
-    rules.push_str("1. Respect layer boundaries - check imports before suggesting\n");
-    rules.push_str("2. Use existing patterns in the codebase\n");
-    rules.push_str("3. If adding a new dependency, verify it does not violate boundaries\n");
-    rules.push_str("4. Run `sruja drift -r .` after changes to verify architecture health\n");
+    budget.push_str(&mut out, "## When suggesting code\n\n");
+    budget.push_str(
+        &mut out,
+        "1. Respect layer boundaries - check imports before suggesting\n",
+    );
+    budget.push_str(&mut out, "2. Use existing patterns in the codebase\n");
+    budget.push_str(
+        &mut out,
+        "3. If adding a new dependency, verify it does not violate boundaries\n",
+    );
+    budget.push_str(
+        &mut out,
+        "4. Run `sruja drift -r .` after changes to verify architecture health\n",
+    );
 
     if let Some(focus) = &context.focus {
-        rules.push_str("\n## Current Task Focus\n\n");
-        rules.push_str(&format!("- File: {}\n", focus.file));
+        budget.push_str(&mut out, "\n## Current Task Focus\n\n");
+        budget.push_str(&mut out, &format!("- File: {}\n", focus.file));
         if let Some(intent) = &focus.intent {
-            rules.push_str(&format!("- Intent: {}\n", intent));
+            budget.push_str(&mut out, &format!("- Intent: {}\n", intent));
         }
         if let Some(br) = &focus.blast_radius {
-            rules.push_str(&format!(
-                "- Blast radius: {} upstream, {} downstream (depth {})\n",
-                br.upstream.len(),
-                br.downstream.len(),
-                focus.depth
-            ));
+            budget.push_str(
+                &mut out,
+                &format!(
+                    "- Blast radius: {} upstream, {} downstream (depth {})\n",
+                    br.upstream.len(),
+                    br.downstream.len(),
+                    focus.depth
+                ),
+            );
         }
     }
 
     if let Some(system) = &context.system_context {
-        rules.push_str(&format_system_context_markdown(system));
+        budget.push_str(&mut out, &format_system_context_markdown(system));
     }
 
-    rules
+    budget.finish(&mut out);
+    out
 }
 
 fn format_copilot_instructions(context: &ArchitectureContext) -> String {
-    let mut instructions = String::new();
-    instructions.push_str("# Architecture Context for GitHub Copilot\n\n");
-    instructions.push_str(&format!(
-        "Generated by `sruja context -r {} -f copilot-instructions`\n\n",
-        context.repo
-    ));
+    let mut out = String::new();
+    let mut budget = TokenBudget::new(context.max_tokens);
 
-    instructions.push_str("## Summary\n");
-    instructions.push_str(&format!(
-        "This codebase has {} modules, {} services, {} databases.\n\n",
-        context.summary.total_modules,
-        context.summary.total_services,
-        context.summary.total_databases
-    ));
+    budget.push_str(&mut out, "# Architecture Context for GitHub Copilot\n\n");
+    budget.push_str(
+        &mut out,
+        &format!(
+            "Generated by `sruja context -r {} -f copilot-instructions`\n\n",
+            context.repo
+        ),
+    );
 
-    instructions.push_str("## Key Rules\n\n");
-    instructions.push_str("1. **Respect layers**: ");
+    budget.push_str(&mut out, "## Summary\n");
+    budget.push_str(
+        &mut out,
+        &format!(
+            "This codebase has {} modules, {} services, {} databases.\n\n",
+            context.summary.total_modules,
+            context.summary.total_services,
+            context.summary.total_databases
+        ),
+    );
+
+    budget.push_str(&mut out, "## Key Rules\n\n");
+    budget.push_str(&mut out, "1. **Respect layers**: ");
     if !context.layers.is_empty() {
         let layer_names: Vec<_> = context.layers.iter().map(|l| l.name.clone()).collect();
-        instructions.push_str(&format!("Layers found: {}\n", layer_names.join(", ")));
+        budget.push_str(
+            &mut out,
+            &format!("Layers found: {}\n", layer_names.join(", ")),
+        );
     } else {
-        instructions.push_str("No layers detected.\n");
+        budget.push_str(&mut out, "No layers detected.\n");
     }
 
-    instructions
-        .push_str("2. **No cross-service imports**: Services should communicate via API/event\n");
-    instructions.push_str("3. **UI -> Services -> Data**: Follow this flow, never skip layers\n\n");
+    budget.push_str(
+        &mut out,
+        "2. **No cross-service imports**: Services should communicate via API/event\n",
+    );
+    budget.push_str(
+        &mut out,
+        "3. **UI -> Services -> Data**: Follow this flow, never skip layers\n\n",
+    );
 
     if !context.boundaries.is_empty() {
-        instructions.push_str("## Forbidden Dependencies\n");
-        for boundary in context.boundaries.iter().filter(|b| !b.allowed).take(5) {
-            instructions.push_str(&format!(
-                "- {} -> {} is not allowed\n",
-                boundary.from, boundary.to
-            ));
+        budget.push_str(&mut out, "## Forbidden Dependencies\n");
+        for boundary in context.boundaries.iter().filter(|b| !b.allowed).take(10) {
+            budget.push_str(
+                &mut out,
+                &format!("- {} -> {} is not allowed\n", boundary.from, boundary.to),
+            );
         }
-        instructions.push('\n');
+        budget.push_str(&mut out, "\n");
     }
 
-    instructions.push_str("## Before Committing\n");
-    instructions.push_str("Run: `sruja drift -r .` to check for architectural violations.\n");
+    budget.push_str(&mut out, "## Before Committing\n");
+    budget.push_str(
+        &mut out,
+        "Run: `sruja drift -r .` to check for architectural violations.\n",
+    );
 
     if let Some(focus) = &context.focus {
-        instructions.push_str("\n## Current Task Focus\n\n");
-        instructions.push_str(&format!("- File: {}\n", focus.file));
+        budget.push_str(&mut out, "\n## Current Task Focus\n\n");
+        budget.push_str(&mut out, &format!("- File: {}\n", focus.file));
         if let Some(intent) = &focus.intent {
-            instructions.push_str(&format!("- Intent: {}\n", intent));
+            budget.push_str(&mut out, &format!("- Intent: {}\n", intent));
         }
     }
 
     if let Some(system) = &context.system_context {
-        instructions.push_str(&format_system_context_markdown(system));
+        budget.push_str(&mut out, &format_system_context_markdown(system));
     }
 
-    instructions
+    budget.finish(&mut out);
+    out
 }
 
 fn format_markdown(context: &ArchitectureContext) -> String {
-    let mut md = String::new();
-    md.push_str("# Architecture Context\n\n");
-    md.push_str(&format!(
-        "> Generated by `sruja context -r {} -f markdown` for {}\n\n",
-        context.repo, context.repo
-    ));
+    let mut out = String::new();
+    let mut budget = TokenBudget::new(context.max_tokens);
 
-    md.push_str("## Overview\n\n");
-    md.push_str("| Type | Count |\n|------|-------|\n");
-    md.push_str(&format!(
-        "| Modules | {} |\n",
-        context.summary.total_modules
-    ));
-    md.push_str(&format!(
-        "| Services | {} |\n",
-        context.summary.total_services
-    ));
-    md.push_str(&format!(
-        "| Databases | {} |\n",
-        context.summary.total_databases
-    ));
-    md.push_str(&format!(
-        "| External APIs | {} |\n\n",
-        context.summary.total_external_apis
-    ));
+    budget.push_str(&mut out, "# Architecture Context\n\n");
+    budget.push_str(
+        &mut out,
+        &format!(
+            "> Generated by `sruja context -r {} -f markdown` for {}\n\n",
+            context.repo, context.repo
+        ),
+    );
+
+    budget.push_str(&mut out, "## Overview\n\n");
+    budget.push_str(&mut out, "| Type | Count |\n|------|-------|\n");
+    budget.push_str(
+        &mut out,
+        &format!("| Modules | {} |\n", context.summary.total_modules),
+    );
+    budget.push_str(
+        &mut out,
+        &format!("| Services | {} |\n", context.summary.total_services),
+    );
+    budget.push_str(
+        &mut out,
+        &format!("| Databases | {} |\n", context.summary.total_databases),
+    );
+    budget.push_str(
+        &mut out,
+        &format!(
+            "| External APIs | {} |\n\n",
+            context.summary.total_external_apis
+        ),
+    );
 
     if !context.layers.is_empty() {
-        md.push_str("## Layers\n\n");
+        budget.push_str(&mut out, "## Layers\n\n");
         for layer in &context.layers {
-            md.push_str(&format!(
-                "### {}\n\n**Can depend on:** {}\n\n**Modules:** {}\n\n",
-                layer.name,
-                if layer.can_depend_on.is_empty() {
-                    "None".to_string()
-                } else {
-                    layer.can_depend_on.join(", ")
-                },
-                layer.modules
-            ));
+            budget.push_str(
+                &mut out,
+                &format!(
+                    "### {}\n\n**Can depend on:** {}\n\n**Modules:** {}\n\n",
+                    layer.name,
+                    if layer.can_depend_on.is_empty() {
+                        "None".to_string()
+                    } else {
+                        layer.can_depend_on.join(", ")
+                    },
+                    layer.modules
+                ),
+            );
         }
     }
 
     if !context.forbidden_patterns.is_empty() {
-        md.push_str("## Rules to Follow\n\n");
+        budget.push_str(&mut out, "## Rules to Follow\n\n");
         for pattern in &context.forbidden_patterns {
-            md.push_str(&format!("- {}\n", pattern));
+            budget.push_str(&mut out, &format!("- {}\n", pattern));
         }
-        md.push('\n');
+        budget.push_str(&mut out, "\n");
     }
 
     if let Some(focus) = &context.focus {
-        md.push_str("## Current Task Focus\n\n");
-        md.push_str(&format!("- File: {}\n", focus.file));
+        budget.push_str(&mut out, "## Current Task Focus\n\n");
+        budget.push_str(&mut out, &format!("- File: {}\n", focus.file));
         if let Some(intent) = &focus.intent {
-            md.push_str(&format!("- Intent: {}\n", intent));
+            budget.push_str(&mut out, &format!("- Intent: {}\n", intent));
         }
         if let Some(br) = &focus.blast_radius {
-            md.push_str(&format!(
-                "- Blast radius: {} upstream, {} downstream (depth {})\n",
-                br.upstream.len(),
-                br.downstream.len(),
-                focus.depth
-            ));
+            budget.push_str(
+                &mut out,
+                &format!(
+                    "- Blast radius: {} upstream, {} downstream (depth {})\n",
+                    br.upstream.len(),
+                    br.downstream.len(),
+                    focus.depth
+                ),
+            );
         }
     }
 
     if let Some(system) = &context.system_context {
-        md.push_str(&format_system_context_markdown(system));
+        budget.push_str(&mut out, &format_system_context_markdown(system));
     }
 
-    md
+    budget.finish(&mut out);
+    out
 }
 
 fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
     let mut out = String::new();
-    out.push_str("# Sruja Repomap\n\n");
-    out.push_str(&format!("Repo: {}\n", context.repo));
-    out.push_str(&format!("Nodes: {}\n", graph.nodes.len()));
-    out.push_str(&format!("Edges: {}\n", graph.edges.len()));
+    let mut budget = TokenBudget::new(context.max_tokens);
+
+    budget.push_str(&mut out, "# Sruja Repomap\n\n");
+    budget.push_str(&mut out, &format!("Repo: {}\n", context.repo));
+    budget.push_str(&mut out, &format!("Nodes: {}\n", graph.nodes.len()));
+    budget.push_str(&mut out, &format!("Edges: {}\n", graph.edges.len()));
 
     let scores = compute_all_centrality(graph);
     let node_by_id: std::collections::HashMap<&str, &sruja_scan::Node> =
@@ -1019,7 +1157,7 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
         .ok()
         .and_then(|p| p.to_str().map(|s| s.replace('\\', "/")));
 
-    out.push_str("\n## Top Nodes\n\n");
+    budget.push_str(&mut out, "\n## Top Nodes\n\n");
 
     let mut ranked: Vec<(&sruja_scan::Node, f64)> = graph
         .nodes
@@ -1039,7 +1177,7 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
             .then_with(|| a.id.cmp(&b.id))
     });
 
-    let top_limit = 30usize;
+    let top_limit = 50usize;
     for (n, pr) in ranked
         .into_iter()
         .filter(|(n, _)| {
@@ -1066,17 +1204,20 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
             line.push_str(&format!(" [owner={}]", owner));
         }
         if let Some(crit) = &n.criticality {
-            line.push_str(&format!(" [criticality={}]", crit));
+            line.push_str(&format!(" [criticality={:?}]", crit));
         }
         line.push_str(&format!(" [pr={:.3}]\n", pr));
-        out.push_str(&line);
+
+        if !budget.push_str(&mut out, &line) {
+            break;
+        }
 
         let deps = outgoing
             .get(n.id.as_str())
             .map(|s| repomap_top_neighbors(s, &node_by_id, &scores, 5))
             .unwrap_or_default();
         if !deps.is_empty() {
-            out.push_str(&format!("  deps: {}\n", deps.join(", ")));
+            budget.push_str(&mut out, &format!("  deps: {}\n", deps.join(", ")));
         }
 
         let used_by = incoming
@@ -1084,20 +1225,20 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
             .map(|s| repomap_top_neighbors(s, &node_by_id, &scores, 5))
             .unwrap_or_default();
         if !used_by.is_empty() {
-            out.push_str(&format!("  used_by: {}\n", used_by.join(", ")));
+            budget.push_str(&mut out, &format!("  used_by: {}\n", used_by.join(", ")));
         }
     }
 
     if let Some(focus) = &context.focus {
-        out.push_str("\n## Focus\n\n");
-        out.push_str(&format!("- File: {}\n", focus.file));
+        budget.push_str(&mut out, "\n## Focus\n\n");
+        budget.push_str(&mut out, &format!("- File: {}\n", focus.file));
         if let Some(intent) = &focus.intent {
-            out.push_str(&format!("- Intent: {}\n", intent));
+            budget.push_str(&mut out, &format!("- Intent: {}\n", intent));
         }
-        out.push_str(&format!("- Depth: {}\n", focus.depth));
+        budget.push_str(&mut out, &format!("- Depth: {}\n", focus.depth));
 
         if !focus.matched_nodes.is_empty() {
-            out.push_str("\nMatched nodes:\n");
+            budget.push_str(&mut out, "\nMatched nodes:\n");
             for n in &focus.matched_nodes {
                 let path = n
                     .path
@@ -1116,23 +1257,24 @@ fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
                     line.push_str(&format!(" [criticality={:?}]", crit));
                 }
                 line.push('\n');
-                out.push_str(&line);
+                budget.push_str(&mut out, &line);
             }
         }
     }
 
     if let Some(system) = &context.system_context {
-        out.push_str("\n## System Context\n\n");
-        out.push_str(&format!("Index: {}\n", system.index_path));
-        out.push_str(&format!("Repos: {}\n", system.total_repos));
+        budget.push_str(&mut out, "\n## System Context\n\n");
+        budget.push_str(&mut out, &format!("Index: {}\n", system.index_path));
+        budget.push_str(&mut out, &format!("Repos: {}\n", system.total_repos));
         for el in &system.cross_repo_elements {
-            out.push_str(&format!(
-                "- {} ({}): owned by {}\n",
-                el.label, el.kind, el.repo_id
-            ));
+            budget.push_str(
+                &mut out,
+                &format!("- {} ({}): owned by {}\n", el.label, el.kind, el.repo_id),
+            );
         }
     }
 
+    budget.finish(&mut out);
     out
 }
 
@@ -1366,6 +1508,7 @@ mod tests {
             forbidden_patterns: Vec::new(),
             focus: None,
             system_context: None,
+            max_tokens: 10000,
         };
 
         let out = format_copilot_instructions(&context);
@@ -1393,6 +1536,7 @@ mod tests {
             forbidden_patterns: Vec::new(),
             focus: None,
             system_context: None,
+            max_tokens: 10000,
         };
 
         let out = format_copilot_instructions(&context);
@@ -1410,8 +1554,17 @@ mod tests {
             edges: vec![edge("module:src", "src_lib_rs")],
         };
 
-        let focus = build_focus_context(&graph, "/repo", "src/lib.rs", Some("fix-bug"), 2, 10000)
-            .expect("focus context should build");
+        let centrality = compute_all_centrality(&graph);
+        let focus = build_focus_context(
+            &graph,
+            "/repo",
+            "src/lib.rs",
+            Some("fix-bug"),
+            2,
+            10000,
+            &centrality,
+        )
+        .expect("focus context should build");
         assert_eq!(focus.file, "src/lib.rs");
         assert!(focus.matched_nodes.iter().any(|n| n.id == "src_lib_rs"));
         assert!(focus.blast_radius.is_some());

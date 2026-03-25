@@ -74,3 +74,13 @@ mod runtime;
 
 pub use context::context_export;
 pub use runtime::runtime_analyze;
+
+pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
+    let graph_path = repo_path.join(".sruja").join("graph.json");
+    if graph_path.exists() {
+        let content = std::fs::read_to_string(&graph_path)?;
+        Ok(serde_json::from_str(&content)?)
+    } else {
+        Ok(sruja_scan::scan_repo(repo_path)?)
+    }
+}
