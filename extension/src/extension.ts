@@ -11,6 +11,10 @@ import {
   SrujaDocumentSymbolProvider,
   SrujaDiagramCodeLensProvider,
   SrujaCodeActionProvider,
+  SrujaCompletionItemProvider,
+  SrujaRenameProvider,
+  SrujaReferenceProvider,
+  SrujaDocumentFormattingEditProvider,
   resolveDocUri,
   docUriExists,
 } from "./providers";
@@ -21,6 +25,7 @@ import {
   getSequenceDiagramFromWasm,
   getElementsFromWasm,
   getDocumentSymbolsFromWasm,
+  wasmRangeToVscodeRange,
 } from "./wasm";
 import { getSrujaLspPath } from "./config";
 import { runCli } from "./cliRunner";
@@ -466,8 +471,45 @@ async function registerMcpServer(): Promise<void> {
   const next = { ...base, mcpServers };
   const jsonText = JSON.stringify(next, null, 2) + "\n";
   await vscode.workspace.fs.writeFile(cursorConfigUri, Buffer.from(jsonText, "utf8"));
+}
 
-  vscode.window.showInformationMessage(`Sruja MCP server registered in ${path.relative(folder.uri.fsPath, cursorConfigUri.fsPath)}.`);
+async function jumpToElementInActiveEditor(context: vscode.ExtensionContext, elementId: string) {
+  const active = pickActiveSrujaDoc();
+  if (!active) return;
+  const elements = await getElementsFromWasm(context, active.getText(), active.uri.fsPath);
+  if (!elements) return;
+  const element = elements.find(e => e.id === elementId || e.id.endsWith(`.${elementId}`));
+  if (element) {
+    const editor = await vscode.window.showTextDocument(active, { viewColumn: vscode.ViewColumn.One });
+    const range = wasmRangeToVscodeRange(element.range);
+    editor.selection = new vscode.Selection(range.start, range.start);
+    editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+  }
+}
+
+function createDiagramPanel(context: vscode.ExtensionContext, title: string): vscode.WebviewPanel {
+  if (diagramPreviewPanel) {
+    diagramPreviewPanel.dispose();
+  }
+  diagramPreviewPanel = vscode.window.createWebviewPanel(
+    "srujaDiagramPreview",
+    title,
+    vscode.ViewColumn.Beside,
+    { enableScripts: true }
+  );
+  diagramPreviewPanel.onDidDispose(() => {
+    diagramPreviewPanel = undefined;
+  });
+  diagramPreviewPanel.webview.onDidReceiveMessage(
+    async (message) => {
+      if (message.command === 'jumpToElement' && message.elementId) {
+        await jumpToElementInActiveEditor(context, message.elementId);
+      }
+    },
+    undefined,
+    context.subscriptions
+  );
+  return diagramPreviewPanel;
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -620,11 +662,35 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerCodeLensProvider("sruja", diagramCodeLensProvider)
   );
 
-  const codeActionProvider = new SrujaCodeActionProvider();
+  const codeActionProvider = new SrujaCodeActionProvider(context);
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider("sruja", codeActionProvider, {
       providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
     })
+  );
+  
+  // Register completion provider
+  const completionProvider = new SrujaCompletionItemProvider(context);
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider("sruja", completionProvider, "->", ".", "=")
+  );
+
+  // Register rename provider
+  const renameProvider = new SrujaRenameProvider(context);
+  context.subscriptions.push(
+    vscode.languages.registerRenameProvider("sruja", renameProvider)
+  );
+
+  // Register reference provider
+  const referenceProvider = new SrujaReferenceProvider(context);
+  context.subscriptions.push(
+    vscode.languages.registerReferenceProvider("sruja", referenceProvider)
+  );
+
+  // Register document formatting provider
+  const formattingProvider = new SrujaDocumentFormattingEditProvider();
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider("sruja", formattingProvider)
   );
 
   // Register custom editor for markdown preview (shows "Open Preview" button in editor title)
@@ -878,18 +944,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         return;
       }
-      if (diagramPreviewPanel) {
-        diagramPreviewPanel.dispose();
-      }
-      diagramPreviewPanel = vscode.window.createWebviewPanel(
-        "srujaDiagramPreview",
-         "Sruja – Context engineering for the AI era. – Diagram Preview",
-        vscode.ViewColumn.Beside,
-        { enableScripts: true }
-      );
-      diagramPreviewPanel.onDidDispose(() => {
-        diagramPreviewPanel = undefined;
-      });
+      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview");
       diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
     }),
     vscode.commands.registerCommand("sruja.openSequenceDiagramPreviewAt", async (arg?: unknown) => {
@@ -932,18 +987,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      if (diagramPreviewPanel) {
-        diagramPreviewPanel.dispose();
-      }
-      diagramPreviewPanel = vscode.window.createWebviewPanel(
-        "srujaDiagramPreview",
-        `Sruja – Context engineering for the AI era. – Sequence Diagram – ${kind}: ${id}`,
-        vscode.ViewColumn.Beside,
-        { enableScripts: true }
-      );
-      diagramPreviewPanel.onDidDispose(() => {
-        diagramPreviewPanel = undefined;
-      });
+      diagramPreviewPanel = createDiagramPanel(context, `Sruja – Context engineering for the AI era. – Sequence Diagram – ${kind}: ${id}`);
       diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
     }),
     vscode.commands.registerCommand("sruja.openFocusedDiagramPreviewAt", async (arg?: unknown) => {
@@ -982,19 +1026,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      if (diagramPreviewPanel) {
-        diagramPreviewPanel.dispose();
-      }
       const titleSuffix = targetId ? ` – L${viewLevel}: ${targetId}` : ` – L${viewLevel}`;
-      diagramPreviewPanel = vscode.window.createWebviewPanel(
-        "srujaDiagramPreview",
-        "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix,
-        vscode.ViewColumn.Beside,
-        { enableScripts: true }
-      );
-      diagramPreviewPanel.onDidDispose(() => {
-        diagramPreviewPanel = undefined;
-      });
+      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix);
       diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
     }),
     vscode.commands.registerCommand("sruja.openFocusedDiagramPreview", async () => {

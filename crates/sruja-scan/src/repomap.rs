@@ -680,7 +680,7 @@ pub fn generate_repomap_from_graph(
         .canonicalize()
         .unwrap_or_else(|_| repo_root.to_path_buf());
 
-    let node_rankings = pagerank_from_graph(graph);
+    let centralities = crate::graph::centrality::compute_all_centrality(graph);
     let mut repo_prefixes = vec![
         repo_root
             .to_string_lossy()
@@ -708,7 +708,11 @@ pub fn generate_repomap_from_graph(
         if rel_path.is_empty() {
             continue;
         }
-        let score = node_rankings.get(&node.id).copied().unwrap_or(0.0);
+        let score = if let Some(c) = centralities.get(&node.id) {
+            (c.pagerank * 0.4) + (c.betweenness_centrality * 0.4) + (c.degree_centrality * 0.2)
+        } else {
+            0.0
+        };
         best_by_path
             .entry(rel_path)
             .and_modify(|s| *s = s.max(score))
@@ -754,62 +758,6 @@ pub fn generate_repomap_from_graph(
     budget.finish(&mut output);
 
     Ok(output)
-}
-
-fn pagerank_from_graph(graph: &Graph) -> HashMap<String, f64> {
-    let n = graph.nodes.len();
-    if n == 0 {
-        return HashMap::new();
-    }
-
-    let damping = 0.85;
-    let iterations = 20;
-
-    let mut incoming: HashMap<String, Vec<String>> = HashMap::new();
-    let mut outgoing: HashMap<String, Vec<String>> = HashMap::new();
-
-    for edge in &graph.edges {
-        outgoing
-            .entry(edge.source.clone())
-            .or_default()
-            .push(edge.target.clone());
-        incoming
-            .entry(edge.target.clone())
-            .or_default()
-            .push(edge.source.clone());
-    }
-
-    let n_f64 = n as f64;
-    let mut scores: HashMap<String, f64> = graph
-        .nodes
-        .iter()
-        .map(|n| (n.id.clone(), 1.0 / n_f64))
-        .collect();
-
-    for _ in 0..iterations {
-        let mut new_scores: HashMap<String, f64> = HashMap::new();
-
-        for node in &graph.nodes {
-            let mut score = (1.0 - damping) / n as f64;
-
-            if let Some(predecessors) = incoming.get(&node.id) {
-                for pred in predecessors {
-                    let pred_score = scores.get(pred).copied().unwrap_or(0.0);
-                    let out_degree = outgoing
-                        .get(pred)
-                        .map(|v| v.len().max(1) as f64)
-                        .unwrap_or(1.0);
-                    score += damping * pred_score / out_degree;
-                }
-            }
-
-            new_scores.insert(node.id.clone(), score);
-        }
-
-        scores = new_scores;
-    }
-
-    scores
 }
 
 fn rel_path(repo_root: &Path, repo_canon: &Path, path: &Path) -> String {

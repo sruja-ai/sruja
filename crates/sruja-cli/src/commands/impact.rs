@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use super::CliError;
-use crate::selection::{compute_all_centrality, ComponentImportance};
+use sruja_scan::graph::{compute_all_centrality, ComponentImportance};
 
 #[derive(Debug, Clone, Serialize)]
 struct NodeSummary {

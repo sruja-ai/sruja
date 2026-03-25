@@ -486,19 +486,258 @@ function buildAddMissingFieldQuickFix(
   return action;
 }
 
+function buildSpellingCorrectionQuickFix(
+  document: vscode.TextDocument,
+  diagnostic: vscode.Diagnostic,
+  elements: SrujaElement[]
+): vscode.CodeAction[] {
+  const code = getDiagnosticCodeValue(diagnostic);
+  if (code !== "E202") return [];
+
+  const wordRange = diagnostic.range;
+  const word = document.getText(wordRange).trim();
+  if (!word) return [];
+
+  // Suggest elements that are similar to the misspelled word
+  const suggestions = elements
+    .filter(e => {
+      const id = e.id;
+      // Simple similarity check: contains or very close length
+      return id.toLowerCase().includes(word.toLowerCase()) || 
+             word.toLowerCase().includes(id.toLowerCase());
+    })
+    .slice(0, 3);
+
+  return suggestions.map(s => {
+    const action = new vscode.CodeAction(
+      `Replace with "${s.id}"`,
+      vscode.CodeActionKind.QuickFix
+    );
+    action.diagnostics = [diagnostic];
+    action.edit = new vscode.WorkspaceEdit();
+    action.edit.replace(document.uri, wordRange, s.id);
+    return action;
+  });
+}
+
 export class SrujaCodeActionProvider implements vscode.CodeActionProvider {
-  provideCodeActions(
+  constructor(private context: vscode.ExtensionContext) {}
+
+  async provideCodeActions(
     document: vscode.TextDocument,
     _range: vscode.Range,
     context: vscode.CodeActionContext,
-    _token: vscode.CancellationToken
-  ): vscode.CodeAction[] {
+    token: vscode.CancellationToken
+  ): Promise<vscode.CodeAction[]> {
     if (document.languageId !== "sruja") return [];
+    
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    if (token.isCancellationRequested || !elements) return [];
+
     const actions: vscode.CodeAction[] = [];
     for (const d of context.diagnostics) {
-      const quickFix = buildAddMissingFieldQuickFix(document, d);
-      if (quickFix) actions.push(quickFix);
+      const missingFieldFix = buildAddMissingFieldQuickFix(document, d);
+      if (missingFieldFix) actions.push(missingFieldFix);
+
+      const spellingFixes = buildSpellingCorrectionQuickFix(document, d, elements);
+      actions.push(...spellingFixes);
     }
     return actions;
+  }
+}
+
+/**
+ * Completion Item Provider
+ * Provides completions for keywords and existing element IDs
+ */
+export class SrujaCompletionItemProvider implements vscode.CompletionItemProvider {
+  constructor(private context: vscode.ExtensionContext) {}
+
+  async provideCompletionItems(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    token: vscode.CancellationToken
+  ): Promise<vscode.CompletionItem[] | undefined> {
+    if (document.languageId !== "sruja") return undefined;
+
+    const items: vscode.CompletionItem[] = [];
+
+    // Keywords
+    const keywords = [
+      "system", "container", "component", "database", "person", "software",
+      "story", "flow", "scenario", "architecture", "description",
+      "technology", "doc", "external"
+    ];
+
+    for (const kw of keywords) {
+      const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
+      items.push(item);
+    }
+
+    // Element IDs for relationships
+    const linePrefix = document.lineAt(position).text.substring(0, position.character);
+    if (linePrefix.includes("->") || linePrefix.includes("=")) {
+      const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+      if (token.isCancellationRequested || !elements) return items;
+
+      for (const el of elements) {
+        const item = new vscode.CompletionItem(el.id, vscode.CompletionItemKind.Variable);
+        item.detail = el.kind;
+        if (el.title) item.documentation = el.title;
+        items.push(item);
+      }
+    }
+
+    return items;
+  }
+}
+
+/**
+ * Rename Provider
+ * Allows renaming an element and updating all references
+ */
+export class SrujaRenameProvider implements vscode.RenameProvider {
+  constructor(private context: vscode.ExtensionContext) {}
+
+  async provideRenameEdits(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    newName: string,
+    token: vscode.CancellationToken
+  ): Promise<vscode.WorkspaceEdit | undefined> {
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    if (token.isCancellationRequested || !elements) return undefined;
+
+    const wordRange = document.getWordRangeAtPosition(position);
+    if (!wordRange) return undefined;
+
+    const oldName = document.getText(wordRange).trim();
+    const element = elements.find(e => e.id === oldName || e.id.endsWith(`.${oldName}`));
+    if (!element) return undefined;
+
+    const edit = new vscode.WorkspaceEdit();
+    const text = document.getText();
+    
+    // Find all occurrences of the full ID or the local ID depending on context
+    // For now, we perform a simple global replacement of the ID in the document
+    // ensuring we don't catch partial matches (e.g., 'S1' in 'S11')
+    const fullId = element.id;
+    const localId = fullId.split('.').pop() || fullId;
+
+    // Use regex to find all occurrences of the ID as a whole word
+    // We escape dots in the ID for regex
+    const escapedFullId = fullId.replace(/\./g, '\\.');
+    const regex = new RegExp(`\\b${escapedFullId}\\b`, 'g');
+    
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const startPos = document.positionAt(match.index);
+      const endPos = document.positionAt(match.index + fullId.length);
+      edit.replace(document.uri, new vscode.Range(startPos, endPos), newName);
+    }
+
+    // If the local name was used in the definition, update that too if it's different
+    if (fullId !== localId) {
+       const localRegex = new RegExp(`\\b${localId}\\b`, 'g');
+       // This is trickier as localId might be common. We only replace it if it's part of the element definition or a specific reference.
+       // For a robust implementation we'd need a full AST, but global replacement of fullId is safer and covers most relations.
+    }
+
+    return edit;
+  }
+}
+
+/**
+ * Reference Provider
+ * Finds all usages of an element ID
+ */
+export class SrujaReferenceProvider implements vscode.ReferenceProvider {
+  constructor(private context: vscode.ExtensionContext) {}
+
+  async provideReferences(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    _context: vscode.ReferenceContext,
+    token: vscode.CancellationToken
+  ): Promise<vscode.Location[] | undefined> {
+    const elements = await getElementsFromWasm(this.context, document.getText(), document.uri.fsPath);
+    if (token.isCancellationRequested || !elements) return undefined;
+
+    const wordRange = document.getWordRangeAtPosition(position);
+    if (!wordRange) return undefined;
+
+    const word = document.getText(wordRange).trim();
+    const element = elements.find(e => e.id === word || e.id.endsWith(`.${word}`));
+    if (!element) return undefined;
+
+    const locations: vscode.Location[] = [];
+    const text = document.getText();
+    const fullId = element.id;
+    const escapedFullId = fullId.replace(/\./g, '\\.');
+    const regex = new RegExp(`\\b${escapedFullId}\\b`, 'g');
+
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const startPos = document.positionAt(match.index);
+      const endPos = document.positionAt(match.index + fullId.length);
+      locations.push(new vscode.Location(document.uri, new vscode.Range(startPos, endPos)));
+    }
+
+    return locations;
+  }
+}
+
+/**
+ * Document Formatting Edit Provider
+ * Standardizes indentation and spacing
+ */
+export class SrujaDocumentFormattingEditProvider implements vscode.DocumentFormattingEditProvider {
+  provideDocumentFormattingEdits(
+    document: vscode.TextDocument,
+    _options: vscode.FormattingOptions,
+    _token: vscode.CancellationToken
+  ): vscode.TextEdit[] {
+    const edits: vscode.TextEdit[] = [];
+    let indentLevel = 0;
+    const tabSize = 2;
+
+    for (let i = 0; i < document.lineCount; i++) {
+      const line = document.lineAt(i);
+      const text = line.text.trim();
+      
+      if (text.length === 0) continue;
+
+      // Adjust indent level BEFORE formatting for closing brace
+      if (text.startsWith("}")) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+
+      const expectedIndent = " ".repeat(indentLevel * tabSize);
+      
+      // Basic rule: replace line with formatted version (indent + trimmed text)
+      // and ensure space around ->
+      let formattedText = text;
+      if (text.includes("->")) {
+        formattedText = text.replace(/\s*->\s*/, " -> ");
+      }
+      if (text.includes(" = ")) {
+         // already has spaces
+      } else if (text.includes("=")) {
+         formattedText = formattedText.replace(/\s*=\s*/, " = ");
+      }
+
+      const newText = expectedIndent + formattedText;
+
+      if (newText !== line.text) {
+        edits.push(vscode.TextEdit.replace(line.range, newText));
+      }
+
+      // Adjust indent level AFTER formatting for opening brace
+      if (text.endsWith("{") || text.includes("{") && !text.includes("}")) {
+        indentLevel++;
+      }
+    }
+
+    return edits;
   }
 }

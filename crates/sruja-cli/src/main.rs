@@ -257,6 +257,15 @@ enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
+    /// Watch a directory for changes, continuously re-evaluating architecture
+    Watch {
+        /// Path to repository root (defaults to current directory)
+        #[arg(long, short = 'r', default_value = ".")]
+        path: String,
+        /// Clear screen between runs
+        #[arg(long)]
+        clear: bool,
+    },
     /// Refresh evidence (write .sruja/context.json) and run drift
     Sync {
         /// Path to repository root (defaults to current directory)
@@ -358,6 +367,9 @@ enum Commands {
         /// Max dependency traversal depth when --file is provided (0 = none, 1 = direct neighbors)
         #[arg(long, default_value_t = 2)]
         depth: usize,
+        /// Max tokens to output (approximate)
+        #[arg(long, default_value_t = 10000)]
+        max_tokens: usize,
     },
     /// Analyze runtime traces (spans) for emergent cycles and hotspots
     Runtime {
@@ -605,6 +617,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
         Commands::Init { path, prompt } => commands::init(&path, prompt).await,
         Commands::Status { path, format } => commands::status(&path, &format).await,
+        Commands::Watch { path, clear } => commands::watch(&path, clear).await,
         Commands::Sync { path, format } => commands::sync(&path, &format).await,
         Commands::Review { path, format } => commands::review(&path, &format).await,
         Commands::Check {
@@ -649,6 +662,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             file,
             intent,
             depth,
+            max_tokens,
         } => {
             commands::context_export(
                 &repo,
@@ -657,6 +671,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 file.as_deref(),
                 intent.as_ref().map(ContextIntent::as_str),
                 depth,
+                max_tokens,
             )
             .await
         }

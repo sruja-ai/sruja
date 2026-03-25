@@ -125,7 +125,6 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         ))
     })?;
 
-    // Store full graph for progressive discovery (Tier 2/3); no information loss for large or multi-repo.
     let graph_path = dot_sruja.join("graph.json");
     fs::write(
         &graph_path,
@@ -154,6 +153,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
                     .map_err(|e| CliError::Validation(e.to_string()))?
             );
         }
+        "quiet" => {}
         _ => {
             eprintln!("Wrote {}", context_path);
             eprintln!("Wrote {}", graph_path.display());

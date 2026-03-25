@@ -6,7 +6,7 @@ use std::path::Path;
 use sruja_scan::{scan_repo, Graph, NodeKind};
 
 use super::CliError;
-use crate::selection::compute_all_centrality;
+use sruja_scan::graph::compute_all_centrality;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct ArchitectureContext {
@@ -73,6 +73,7 @@ pub async fn context_string(
     file: Option<&str>,
     intent: Option<&str>,
     depth: usize,
+    max_tokens: usize,
 ) -> Result<String, CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -82,8 +83,15 @@ pub async fn context_string(
         )));
     }
 
-    let graph = scan_repo(repo_path)?;
-    let context = build_architecture_context(&graph, repo_root, file, intent, depth)?;
+    let graph_path = repo_path.join(".sruja").join("graph.json");
+    let graph = if graph_path.exists() {
+        let content = std::fs::read_to_string(&graph_path)?;
+        serde_json::from_str(&content)?
+    } else {
+        scan_repo(repo_path)?
+    };
+
+    let context = build_architecture_context(&graph, repo_root, file, intent, depth, max_tokens)?;
 
     match format {
         "cursor-rules" => Ok(format_cursor_rules(&context)),
@@ -104,6 +112,7 @@ pub async fn context_string_multi(
     file: Option<&str>,
     intent: Option<&str>,
     depth: usize,
+    max_tokens: usize,
 ) -> Result<String, CliError> {
     let repos: Vec<String> = if repo_roots.is_empty() {
         vec![".".to_string()]
@@ -112,7 +121,7 @@ pub async fn context_string_multi(
     };
 
     if repos.len() == 1 {
-        return context_string(&repos[0], format, file, intent, depth).await;
+        return context_string(&repos[0], format, file, intent, depth, max_tokens).await;
     }
 
     let mut contexts: Vec<ArchitectureContext> = Vec::with_capacity(repos.len());
@@ -125,8 +134,17 @@ pub async fn context_string_multi(
                 format!("Repository not found: {}", repo_root),
             )));
         }
-        let graph = scan_repo(repo_path)?;
-        let context = build_architecture_context(&graph, repo_root, file, intent, depth)?;
+
+        let graph_path = repo_path.join(".sruja").join("graph.json");
+        let graph = if graph_path.exists() {
+            let content = std::fs::read_to_string(&graph_path)?;
+            serde_json::from_str(&content)?
+        } else {
+            scan_repo(repo_path)?
+        };
+
+        let context =
+            build_architecture_context(&graph, repo_root, file, intent, depth, max_tokens)?;
         if format == "repomap" {
             repomaps.push(format_repomap(&context, &graph));
         }
@@ -178,8 +196,9 @@ pub async fn context_export(
     file: Option<&str>,
     intent: Option<&str>,
     depth: usize,
+    max_tokens: usize,
 ) -> Result<(), CliError> {
-    let content = context_string_multi(repo_roots, format, file, intent, depth).await?;
+    let content = context_string_multi(repo_roots, format, file, intent, depth, max_tokens).await?;
 
     if let Some(path) = output {
         fs::write(path, &content)?;
@@ -197,6 +216,7 @@ fn build_architecture_context(
     file: Option<&str>,
     intent: Option<&str>,
     depth: usize,
+    max_tokens: usize,
 ) -> Result<ArchitectureContext, CliError> {
     let modules = count_kind(graph, NodeKind::Module);
     let services = count_kind(graph, NodeKind::Service);
@@ -204,7 +224,10 @@ fn build_architecture_context(
     let external_apis = count_kind(graph, NodeKind::ExternalApi);
 
     let layers = infer_layers(graph);
-    let boundaries = infer_boundaries(graph);
+
+    let max_boundary_rules = if max_tokens < 3000 { 5 } else { 30 };
+    let mut boundaries = infer_boundaries(graph);
+    boundaries.truncate(max_boundary_rules);
 
     let forbidden_patterns = vec![
         "Avoid direct database access from routes/handlers - use a service layer".to_string(),
@@ -213,7 +236,7 @@ fn build_architecture_context(
     ];
 
     let focus = file
-        .map(|f| build_focus_context(graph, repo, f, intent, depth))
+        .map(|f| build_focus_context(graph, repo, f, intent, depth, max_tokens))
         .transpose()?;
 
     Ok(ArchitectureContext {
@@ -241,6 +264,7 @@ fn build_focus_context(
     file: &str,
     intent: Option<&str>,
     depth: usize,
+    _max_tokens: usize,
 ) -> Result<FocusContext, CliError> {
     let repo_path = Path::new(repo_root);
     let repo_canon = repo_path
@@ -1179,7 +1203,7 @@ mod tests {
             edges: vec![edge("module:src", "src_lib_rs")],
         };
 
-        let focus = build_focus_context(&graph, "/repo", "src/lib.rs", Some("fix-bug"), 2)
+        let focus = build_focus_context(&graph, "/repo", "src/lib.rs", Some("fix-bug"), 2, 10000)
             .expect("focus context should build");
         assert_eq!(focus.file, "src/lib.rs");
         assert!(focus.matched_nodes.iter().any(|n| n.id == "src_lib_rs"));
@@ -1198,9 +1222,15 @@ mod tests {
             edges: vec![edge("svc", "db"), edge("svc", "mod")],
         };
 
-        let context =
-            build_architecture_context(&graph, "/repo", Some("src/lib.rs"), Some("fix-bug"), 1)
-                .expect("architecture context should build");
+        let context = build_architecture_context(
+            &graph,
+            "/repo",
+            Some("src/lib.rs"),
+            Some("fix-bug"),
+            1,
+            10000,
+        )
+        .expect("architecture context should build");
         let repomap = format_repomap(&context, &graph);
         assert!(repomap.contains("# Sruja Repomap"));
         assert!(repomap.contains("## Top Nodes"));

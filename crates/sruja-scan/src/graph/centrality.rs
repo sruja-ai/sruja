@@ -2,8 +2,8 @@
 //!
 //! Implements multiple centrality measures to identify architecturally important components.
 
+use crate::Graph;
 use serde::{Deserialize, Serialize};
-use sruja_scan::Graph;
 use std::collections::HashMap;
 
 /// Multi-dimensional importance score for a component
@@ -336,7 +336,7 @@ fn compute_eigenvector_centrality(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
+    use crate::{Edge, EdgeKind, Graph, Node, NodeKind};
 
     fn make_test_graph() -> Graph {
         Graph {

@@ -8,6 +8,9 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub use sruja_types::{EdgeKind, NodeKind};
 
+pub mod centrality;
+pub use centrality::{compute_all_centrality, ComponentImportance};
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     pub id: String,

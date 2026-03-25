@@ -3,18 +3,17 @@
 //! Selects components based on architectural importance rather than simple percentage.
 //! Goal: Enable answering architecture questions with minimal component selection.
 
-mod centrality;
 pub mod question_coverage;
 mod risk;
 mod roles;
 mod score;
 pub mod summarize;
 
-pub use centrality::{compute_all_centrality, ComponentImportance};
 pub use question_coverage::{evaluate_question_coverage, refine_for_questions};
 pub use risk::{compute_dependency_risk, DependencyRisk};
 pub use roles::{detect_architectural_role, ArchitecturalRole};
 pub use score::{compute_aqs, ArchitectureQualityScore};
+pub use sruja_scan::graph::{compute_all_centrality, ComponentImportance};
 pub use summarize::{summarize_large_component, ComponentSummary};
 
 use sruja_scan::{Graph, Node};
@@ -293,7 +292,7 @@ impl<'a> Selector<'a> {
     }
 
     fn compute_metrics(&mut self) {
-        self.centrality_scores = centrality::compute_all_centrality(self.graph);
+        self.centrality_scores = compute_all_centrality(self.graph);
 
         for node in &self.graph.nodes {
             let role = roles::detect_architectural_role(node, self.graph);

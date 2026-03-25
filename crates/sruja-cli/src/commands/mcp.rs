@@ -242,6 +242,39 @@ fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "name": "sruja_add_element",
+            "title": "Sruja Add Element",
+            "description": "Add a new element (system, container, component, database, person) to the architecture.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "id": { "type": "string", "description": "Unique ID for the element (e.g. MySystem.Api)" },
+                    "kind": { "type": "string", "description": "Kind: system, container, component, database, person" },
+                    "title": { "type": "string", "description": "Human-readable title" },
+                    "description": { "type": "string", "description": "Description of the element" },
+                    "technology": { "type": "string", "description": "Technology used (for containers/components)" }
+                },
+                "required": ["id", "kind", "title"]
+            }
+        }),
+        json!({
+            "name": "sruja_add_relationship",
+            "title": "Sruja Add Relationship",
+            "description": "Add a new relationship between two elements.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "source": { "type": "string", "description": "Source element ID" },
+                    "target": { "type": "string", "description": "Target element ID" },
+                    "label": { "type": "string", "description": "Relationship label (e.g. HTTPS, SQL)" },
+                    "technology": { "type": "string", "description": "Technology used (optional)" }
+                },
+                "required": ["source", "target"]
+            }
+        }),
     ]
 }
 
@@ -259,7 +292,8 @@ async fn run_tool(name: &str, arguments: &Value) -> Result<String, CliError> {
             Ok(repomap)
         }
         "sruja_get_architecture_context" => {
-            let content = super::context::context_string(&repo, "markdown", None, None, 2).await?;
+            let content =
+                super::context::context_string(&repo, "markdown", None, None, 2, 10000).await?;
             Ok(content)
         }
         "sruja_check_drift" => {
@@ -271,8 +305,165 @@ async fn run_tool(name: &str, arguments: &Value) -> Result<String, CliError> {
                 super::scan::drift_json_string(&repo, architecture.as_deref(), false).await?;
             Ok(content)
         }
+        "sruja_add_element" => {
+            let id = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing id".into()))?;
+            let kind = arguments
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing kind".into()))?;
+            let title = arguments
+                .get("title")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing title".into()))?;
+            let description = arguments.get("description").and_then(|v| v.as_str());
+            let technology = arguments.get("technology").and_then(|v| v.as_str());
+
+            add_element(&repo, id, kind, title, description, technology).await?;
+            Ok(format!("Added {} {} to architecture", kind, id))
+        }
+        "sruja_add_relationship" => {
+            let source = arguments
+                .get("source")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing source".into()))?;
+            let target = arguments
+                .get("target")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing target".into()))?;
+            let label = arguments.get("label").and_then(|v| v.as_str());
+            let technology = arguments.get("technology").and_then(|v| v.as_str());
+
+            add_relationship(&repo, source, target, label, technology).await?;
+            Ok(format!("Added relationship {} -> {}", source, target))
+        }
         _ => Err(CliError::Validation(format!("Unknown tool: {name}"))),
     }
+}
+
+async fn add_element(
+    repo: &str,
+    id: &str,
+    kind: &str,
+    title: &str,
+    description: Option<&str>,
+    technology: Option<&str>,
+) -> Result<(), CliError> {
+    validate_ident(id, "id")?;
+    validate_ident(kind, "kind")?;
+    let target_file = find_best_sruja_file(repo)?;
+    let mut content = tokio::fs::read_to_string(&target_file)
+        .await
+        .unwrap_or_default();
+
+    if !content.ends_with('\n') && !content.is_empty() {
+        content.push('\n');
+    }
+
+    content.push('\n');
+    content.push_str(&format!(
+        "{} = {} \"{}\"",
+        id,
+        kind,
+        escape_dsl_string(title)?
+    ));
+
+    if description.is_some() || technology.is_some() {
+        content.push_str(" {\n");
+        if let Some(tech) = technology {
+            content.push_str(&format!("  technology \"{}\"\n", escape_dsl_string(tech)?));
+        }
+        if let Some(desc) = description {
+            content.push_str(&format!("  description \"{}\"\n", escape_dsl_string(desc)?));
+        }
+        content.push_str("}\n");
+    } else {
+        content.push('\n');
+    }
+
+    tokio::fs::write(&target_file, content).await?;
+    Ok(())
+}
+
+async fn add_relationship(
+    repo: &str,
+    source: &str,
+    target: &str,
+    label: Option<&str>,
+    technology: Option<&str>,
+) -> Result<(), CliError> {
+    validate_ident(source, "source")?;
+    validate_ident(target, "target")?;
+    let target_file = find_best_sruja_file(repo)?;
+    let mut content = tokio::fs::read_to_string(&target_file)
+        .await
+        .unwrap_or_default();
+
+    if !content.ends_with('\n') && !content.is_empty() {
+        content.push('\n');
+    }
+
+    content.push('\n');
+    let mut rel = format!("{} -> {}", source, target);
+    if let Some(l) = label {
+        rel.push_str(&format!(" \"{}\"", escape_dsl_string(l)?));
+    }
+    if let Some(t) = technology {
+        rel.push_str(&format!(" [technology=\"{}\"]", escape_dsl_string(t)?));
+    }
+    rel.push('\n');
+    content.push_str(&rel);
+
+    tokio::fs::write(&target_file, content).await?;
+    Ok(())
+}
+
+fn validate_ident(value: &str, field: &str) -> Result<(), CliError> {
+    if value.is_empty() {
+        return Err(CliError::Validation(format!("Missing {}", field)));
+    }
+    if value.trim() != value {
+        return Err(CliError::Validation(format!(
+            "Invalid {}: leading/trailing whitespace",
+            field
+        )));
+    }
+    if value
+        .chars()
+        .any(|c| c.is_whitespace() || c == '"' || c == '{' || c == '}' || c == '\\')
+    {
+        return Err(CliError::Validation(format!(
+            "Invalid {}: contains forbidden characters",
+            field
+        )));
+    }
+    Ok(())
+}
+
+fn escape_dsl_string(value: &str) -> Result<String, CliError> {
+    if value.chars().any(|c| c == '\n' || c == '\r') {
+        return Err(CliError::Validation(
+            "Invalid string: contains newline".into(),
+        ));
+    }
+    Ok(value.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+fn find_best_sruja_file(repo: &str) -> Result<String, CliError> {
+    let path = std::path::Path::new(repo);
+    let repo_sruja = path.join("repo.sruja");
+    if repo_sruja.exists() {
+        return Ok(repo_sruja.to_string_lossy().to_string());
+    }
+
+    let files = crate::modules::file_operations::collect_sruja_files(path)?;
+    if let Some(first) = files.first() {
+        return Ok(first.clone());
+    }
+
+    Ok(repo_sruja.to_string_lossy().to_string())
 }
 
 #[cfg(test)]

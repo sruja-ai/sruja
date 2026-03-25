@@ -21,6 +21,7 @@ mod sources;
 mod status;
 mod sync_cmd;
 mod version;
+mod watch;
 mod why;
 
 pub use check::{baseline, check};
@@ -43,6 +44,7 @@ pub use sources::sources;
 pub use status::status;
 pub use sync_cmd::sync;
 pub use version::version;
+pub use watch::watch;
 pub use why::why;
 mod context;
 mod runtime;
