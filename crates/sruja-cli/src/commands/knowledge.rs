@@ -3,7 +3,7 @@
 use std::io;
 use std::path::Path;
 
-use sruja_language::{collect_elements, Parser};
+use sruja_language::collect_elements;
 
 use crate::commands::error::CliError;
 use crate::utils::architecture_path::resolve_architecture_path;
@@ -36,17 +36,7 @@ pub async fn knowledge(cmd: crate::KnowledgeCommand) -> Result<(), CliError> {
     match cmd {
         KC::List { repo, architecture } => {
             let baseline = resolve_baseline(&repo, architecture.as_deref())?;
-            let content = std::fs::read_to_string(&baseline)?;
-            let parser = Parser::new(baseline.display().to_string());
-            let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-                file: baseline.display().to_string(),
-                message: diags
-                    .iter()
-                    .map(|d| d.message.as_str())
-                    .collect::<Vec<_>>()
-                    .join("; "),
-                diagnostics: diags,
-            })?;
+            let (_content, program) = crate::commands::parse_sruja_file(&baseline)?;
             let (elements, _) = collect_elements(&program);
             let repo_path = Path::new(&repo)
                 .canonicalize()
@@ -73,17 +63,7 @@ pub async fn knowledge(cmd: crate::KnowledgeCommand) -> Result<(), CliError> {
             architecture,
         } => {
             let baseline = resolve_baseline(&repo, architecture.as_deref())?;
-            let content = std::fs::read_to_string(&baseline)?;
-            let parser = Parser::new(baseline.display().to_string());
-            let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-                file: baseline.display().to_string(),
-                message: diags
-                    .iter()
-                    .map(|d| d.message.as_str())
-                    .collect::<Vec<_>>()
-                    .join("; "),
-                diagnostics: diags,
-            })?;
+            let (_content, program) = crate::commands::parse_sruja_file(&baseline)?;
             let (elements, _) = collect_elements(&program);
             let elem = elements.get(&element_id).or_else(|| {
                 elements
@@ -98,8 +78,10 @@ pub async fn knowledge(cmd: crate::KnowledgeCommand) -> Result<(), CliError> {
             {
                 Some(p) => p,
                 None => {
-                    eprintln!("Element '{}' has no doc link. Add doc \".sruja/knowledge/...\" to the element.", element_id);
-                    std::process::exit(1);
+                    return Err(CliError::Validation(format!(
+                        "Element '{}' has no doc link. Add doc \".sruja/knowledge/...\" to the element.",
+                        element_id
+                    )));
                 }
             };
             let repo_path = Path::new(&repo)
@@ -107,25 +89,17 @@ pub async fn knowledge(cmd: crate::KnowledgeCommand) -> Result<(), CliError> {
                 .unwrap_or_else(|_| Path::new(&repo).to_path_buf());
             let full = repo_path.join(&doc_path);
             if !full.exists() {
-                eprintln!("Knowledge file not found: {}", full.display());
-                std::process::exit(1);
+                return Err(CliError::Validation(format!(
+                    "Knowledge file not found: {}",
+                    full.display()
+                )));
             }
             let text = std::fs::read_to_string(&full)?;
             print!("{}", text);
         }
         KC::Gaps { repo, architecture } => {
             let baseline = resolve_baseline(&repo, architecture.as_deref())?;
-            let content = std::fs::read_to_string(&baseline)?;
-            let parser = Parser::new(baseline.display().to_string());
-            let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-                file: baseline.display().to_string(),
-                message: diags
-                    .iter()
-                    .map(|d| d.message.as_str())
-                    .collect::<Vec<_>>()
-                    .join("; "),
-                diagnostics: diags,
-            })?;
+            let (_content, program) = crate::commands::parse_sruja_file(&baseline)?;
             let (elements, _) = collect_elements(&program);
             let gaps: Vec<_> = elements
                 .iter()

@@ -25,6 +25,8 @@ pub enum CliError {
     #[error("Drift error: {0}")]
     #[allow(dead_code)]
     Drift(String),
+    #[error("Violations detected (--fail-on matched)")]
+    FailOnViolations,
 }
 
 impl CliError {
@@ -52,6 +54,7 @@ impl CliError {
             CliError::Json(_) => 6,
             CliError::Scan(_) => 7,
             CliError::Drift(_) => 8,
+            CliError::FailOnViolations => 1,
         }
     }
 }

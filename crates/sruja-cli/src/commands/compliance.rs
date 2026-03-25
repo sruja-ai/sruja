@@ -7,7 +7,6 @@ use sruja_intent::{
     compare::{DriftKind, DriftReport as IntentDriftReport},
     IntentContext, IntentModel,
 };
-use sruja_language::Parser;
 use sruja_report::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
 use sruja_scan::scan_repo;
 
@@ -55,17 +54,7 @@ pub async fn compliance(
                 format!("Architecture file not found: {}", arch_path.display()),
             )));
         }
-        let content = std::fs::read_to_string(arch_path)?;
-        let parser = Parser::new(arch_path.to_string_lossy().to_string());
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: arch_path.to_string_lossy().to_string(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
+        let (_content, program) = super::parse_sruja_file(arch_path)?;
         let proposed = program_to_graph(&program);
         let diff_result = compare_graphs(&scan_graph, &proposed);
         (diff_result.violations, diff_result.summary.health_score)
@@ -153,7 +142,7 @@ pub async fn compliance(
     }
 
     if report.status == ComplianceStatus::NonCompliant {
-        std::process::exit(1);
+        return Err(CliError::FailOnViolations);
     }
     Ok(())
 }

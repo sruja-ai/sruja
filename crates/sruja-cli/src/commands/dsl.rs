@@ -10,7 +10,6 @@ use sruja_export::dsl::DslPrinter;
 use sruja_export::json::exporter::{ExportError as JsonExportError, Exporter as JsonExporter};
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
 use sruja_export::mermaid::exporter::{MermaidConfig, MermaidExporter};
-use sruja_language::Parser;
 
 use crate::modules::collect_sruja_files;
 use crate::modules::validation::enrich_diagnostics_with_source;
@@ -77,7 +76,7 @@ pub async fn lint(
 ) -> Result<(), CliError> {
     let github = matches!(format, "github" | "github-actions");
     let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
+    let parser = sruja_language::Parser::new(file.to_string());
 
     let program = match parser.parse(&content) {
         Ok(program) => program,
@@ -370,23 +369,7 @@ pub async fn export(
     view_name: Option<&str>,
     all_views: bool,
 ) -> Result<(), CliError> {
-    let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(program) => program,
-        Err(mut diagnostics) => {
-            enrich_diagnostics_with_source(&content, &mut diagnostics);
-            for diag in &diagnostics {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file.to_string(),
-                message: format!("Parsing failed with {} errors", diagnostics.len()),
-                diagnostics,
-            });
-        }
-    };
+    let (_, program) = super::parse_sruja_file(file)?;
 
     match format {
         "json" => {
@@ -438,26 +421,7 @@ pub async fn export(
 }
 
 pub async fn fmt(file: &str, check: bool) -> Result<(), CliError> {
-    let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(program) => program,
-        Err(mut diagnostics) => {
-            enrich_diagnostics_with_source(&content, &mut diagnostics);
-            for diag in &diagnostics {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file.to_string(),
-                message: format!(
-                    "Formatting failed: file has {} parse errors",
-                    diagnostics.len()
-                ),
-                diagnostics,
-            });
-        }
-    };
+    let (content, program) = super::parse_sruja_file(file)?;
 
     let printer = DslPrinter::new();
     let formatted = printer.print(&program);
@@ -481,23 +445,7 @@ pub async fn fmt(file: &str, check: bool) -> Result<(), CliError> {
 }
 
 pub async fn list_elements(file: &str) -> Result<(), CliError> {
-    let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(program) => program,
-        Err(mut diagnostics) => {
-            enrich_diagnostics_with_source(&content, &mut diagnostics);
-            for diag in &diagnostics {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file.to_string(),
-                message: format!("Parsing failed with {} errors", diagnostics.len()),
-                diagnostics,
-            });
-        }
-    };
+    let (_, program) = super::parse_sruja_file(file)?;
 
     let (elements, _relations) = sruja_language::collect_elements(&program);
 
@@ -516,23 +464,7 @@ pub async fn list_elements(file: &str) -> Result<(), CliError> {
 }
 
 pub async fn tree(file: &str) -> Result<(), CliError> {
-    let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(program) => program,
-        Err(mut diagnostics) => {
-            enrich_diagnostics_with_source(&content, &mut diagnostics);
-            for diag in &diagnostics {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file.to_string(),
-                message: format!("Parsing failed with {} errors", diagnostics.len()),
-                diagnostics,
-            });
-        }
-    };
+    let (_, program) = super::parse_sruja_file(file)?;
 
     let (elements, _relations) = sruja_language::collect_elements(&program);
 
@@ -647,42 +579,8 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
         }
     }
 
-    let content1 = fs::read_to_string(file1)?;
-    let content2 = fs::read_to_string(file2)?;
-
-    let parser1 = Parser::new(file1.to_string());
-    let parser2 = Parser::new(file2.to_string());
-
-    let program1 = match parser1.parse(&content1) {
-        Ok(p) => p,
-        Err(mut diags) => {
-            enrich_diagnostics_with_source(&content1, &mut diags);
-            for diag in &diags {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file1.to_string(),
-                message: "Failed to parse first file".to_string(),
-                diagnostics: diags,
-            });
-        }
-    };
-
-    let program2 = match parser2.parse(&content2) {
-        Ok(p) => p,
-        Err(mut diags) => {
-            enrich_diagnostics_with_source(&content2, &mut diags);
-            for diag in &diags {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file2.to_string(),
-                message: "Failed to parse second file".to_string(),
-                diagnostics: diags,
-            });
-        }
-    };
-
+    let (_content1, program1) = super::parse_sruja_file(file1)?;
+    let (_content2, program2) = super::parse_sruja_file(file2)?;
     let (elems1, rels1) = sruja_language::collect_elements(&program1);
     let (elems2, rels2) = sruja_language::collect_elements(&program2);
 
@@ -794,23 +692,7 @@ pub async fn diff(file1: &str, file2: &str, format: &str) -> Result<(), CliError
 
 pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result<(), CliError> {
     let file_path = file.unwrap_or("architecture.sruja");
-    let content = fs::read_to_string(file_path)?;
-    let parser = Parser::new(file_path.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(p) => p,
-        Err(mut diags) => {
-            enrich_diagnostics_with_source(&content, &mut diags);
-            for diag in &diags {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file_path.to_string(),
-                message: format!("Parsing failed with {} errors", diags.len()),
-                diagnostics: diags,
-            });
-        }
-    };
+    let (_content, program) = super::parse_sruja_file(file_path)?;
 
     let (elements, relations) = sruja_language::collect_elements(&program);
 
@@ -934,31 +816,13 @@ pub async fn validate(
         return validate_files(&files, constraints, fail_on_violations, format_json).await;
     }
 
-    let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(program) => program,
-        Err(mut diagnostics) => {
-            if !format_json {
-                enrich_diagnostics_with_source(&content, &mut diagnostics);
-            }
-            for diag in &diagnostics {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file.to_string(),
-                message: format!("Parsing failed with {} errors", diagnostics.len()),
-                diagnostics,
-            });
-        }
-    };
+    let (content, program) = super::parse_sruja_file(file)?;
 
     let validator = Validator::with_default_rules();
 
     for constraint_path in &constraints {
         let constraint_content = fs::read_to_string(constraint_path)?;
-        let constraint_parser = Parser::new(constraint_path.clone());
+        let constraint_parser = sruja_language::Parser::new(constraint_path.clone());
 
         if let Ok(constraint_program) = constraint_parser.parse(&constraint_content) {
             let constraint_diagnostics = validator.validate_sync(&constraint_program);
@@ -1077,22 +941,7 @@ pub async fn validate_files(
 }
 
 async fn validate_single_file(file: &str, _constraints: &[String]) -> Result<(), CliError> {
-    let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(program) => program,
-        Err(diagnostics) => {
-            for diag in &diagnostics {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: file.to_string(),
-                message: format!("Parsing failed with {} errors", diagnostics.len()),
-                diagnostics,
-            });
-        }
-    };
+    let (_content, program) = super::parse_sruja_file(file)?;
 
     let validator = Validator::with_default_rules();
     let diagnostics = validator.validate_sync(&program);
@@ -1113,26 +962,8 @@ async fn validate_single_file(file: &str, _constraints: &[String]) -> Result<(),
 }
 
 pub async fn compile(file: &str) -> Result<(), CliError> {
-    let content = fs::read_to_string(file)?;
-    let parser = Parser::new(file.to_string());
-
-    let program = match parser.parse(&content) {
-        Ok(program) => {
-            println!("✓ Parsing successful");
-            program
-        }
-        Err(mut diagnostics) => {
-            enrich_diagnostics_with_source(&content, &mut diagnostics);
-            for diag in &diagnostics {
-                eprintln!("{}", format_diagnostic(diag));
-            }
-            return Err(CliError::Parse {
-                file: String::new(),
-                message: format!("Compilation failed with {} errors", diagnostics.len()),
-                diagnostics,
-            });
-        }
-    };
+    let (content, program) = super::parse_sruja_file(file)?;
+    println!("✓ Parsing successful");
 
     let validator = Validator::with_default_rules();
     let mut diagnostics = validator.validate_sync(&program);

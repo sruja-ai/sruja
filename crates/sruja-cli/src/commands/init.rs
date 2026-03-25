@@ -45,7 +45,7 @@ pub async fn init(repo_root: &str, generate_prompt_file: bool) -> Result<(), Cli
     if generate_prompt_file {
         let prompt_path = dot_sruja.join("init_prompt.txt");
         let repo_roots = vec![repo_root.to_string()];
-        generate_prompt(&repo_roots, None, Some(prompt_path.to_str().unwrap()))?;
+        generate_prompt(&repo_roots, None, Some(&prompt_path.to_string_lossy()))?;
         eprintln!();
         eprintln!("Next steps:");
         eprintln!(

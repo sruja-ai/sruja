@@ -416,7 +416,7 @@ pub async fn drift(
         }
 
         if should_fail_on_violations(fail_on, &diff_result.violations) {
-            std::process::exit(1);
+            return Err(CliError::FailOnViolations);
         }
     } else {
         let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
@@ -434,7 +434,7 @@ pub async fn drift(
         }
 
         if should_fail_on_violations(fail_on, &drift_result.violations) {
-            std::process::exit(1);
+            return Err(CliError::FailOnViolations);
         }
     }
 
@@ -1286,7 +1286,7 @@ pub async fn quickstart(
     }
 
     if should_fail_on_violations(fail_on, &drift_report.violations) {
-        std::process::exit(1);
+        return Err(CliError::FailOnViolations);
     }
 
     Ok(())
@@ -1492,7 +1492,7 @@ pub async fn drift_pr(
 
     // Exit with non-zero so CI fails when this PR introduces new violations
     if !result.new_violations.is_empty() {
-        std::process::exit(1);
+        return Err(CliError::FailOnViolations);
     }
 
     Ok(())
