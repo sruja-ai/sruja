@@ -17,18 +17,19 @@ pub fn program_to_graph(program: &Program) -> Graph {
         let label = a.title.as_deref().unwrap_or(&a.name).to_string();
         let technology = a.body.as_ref().and_then(|b| b.technology.as_ref()).cloned();
 
-        let (canonical_id, aliases, owner, domain, criticality, sources) = if let Some(body) = &a.body {
-            (
-                body.canonical_id.clone(),
-                body.aliases.clone(),
-                body.owner.clone(),
-                body.domain.clone(),
-                body.criticality,
-                body.sources.clone(),
-            )
-        } else {
-            (None, Vec::new(), None, None, None, Vec::new())
-        };
+        let (canonical_id, aliases, owner, domain, criticality, sources) =
+            if let Some(body) = &a.body {
+                (
+                    body.canonical_id.clone(),
+                    body.aliases.clone(),
+                    body.owner.clone(),
+                    body.domain.clone(),
+                    body.criticality,
+                    body.sources.clone(),
+                )
+            } else {
+                (None, Vec::new(), None, None, None, Vec::new())
+            };
 
         nodes.push(Node {
             id: fqn.clone(),

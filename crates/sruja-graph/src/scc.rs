@@ -353,7 +353,7 @@ mod tests {
         ];
         let result = analyzer.analyze(&nodes, &edges);
 
-        assert!(result.condensation_dag.len() > 0);
+        assert!(!result.condensation_dag.is_empty());
     }
 
     #[test]

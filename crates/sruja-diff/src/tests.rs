@@ -1,7 +1,7 @@
 //! Tests for graph comparison and drift detection.
 
 #[cfg(test)]
-mod tests {
+mod cases {
     use crate::types::{
         DiffResult, DiffSummary, EdgeDiff, HealthScorePenalties, NodeDiff, Severity, SourceRef,
         TruthStatus, Violation, ViolationKind,

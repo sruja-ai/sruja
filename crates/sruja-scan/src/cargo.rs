@@ -334,7 +334,7 @@ mod tests {
             sources: Vec::new(),
         };
 
-        let deps = vec![CargoDependency {
+        let deps = [CargoDependency {
             name: "sqlx".to_string(),
         }];
 
@@ -369,7 +369,7 @@ mod tests {
             sources: Vec::new(),
         };
 
-        let deps = vec![CargoDependency {
+        let deps = [CargoDependency {
             name: "reqwest".to_string(),
         }];
 
@@ -405,7 +405,7 @@ mod tests {
             sources: Vec::new(),
         };
 
-        let deps = vec![
+        let deps = [
             CargoDependency {
                 name: "serde".to_string(),
             },
@@ -451,7 +451,7 @@ mod tests {
             sources: Vec::new(),
         };
 
-        let deps = vec![CargoDependency {
+        let deps = [CargoDependency {
             name: "Diesel".to_string(),
         }];
 
@@ -486,7 +486,7 @@ mod tests {
             sources: Vec::new(),
         };
 
-        let deps = vec![CargoDependency {
+        let deps = [CargoDependency {
             name: "HYPER".to_string(),
         }];
 

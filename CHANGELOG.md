@@ -149,7 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add path-based filtering to workflows for monorepo efficiency ([6504908](https://github.com/sruja-ai/sruja/commit/65049089e0839b50b73dab23dffea8c75dfb6af8))
 * add quickstart --generate-baseline flag ([9f42ee7](https://github.com/sruja-ai/sruja/commit/9f42ee7fc20961000b7d330434ced84e9a93c59c))
 * Add release candidate workflow for testing before production ([9ca7df5](https://github.com/sruja-ai/sruja/commit/9ca7df567985aa076467bbca2e424876874138e2))
-* add Rust coverage to Codecov, simplify sruja-report, improve ValidatorBuilder ([a167b24](https://github.com/sruja-ai/sruja/commit/a167b2401dc3153bc9015cdfa5fe8759cfe211cb))
+* add Rust coverage to Codecov, simplify compliance reporting, improve ValidatorBuilder ([a167b24](https://github.com/sruja-ai/sruja/commit/a167b2401dc3153bc9015cdfa5fe8759cfe211cb))
 * architecture intelligence, new crates, CLI refactor ([bef699f](https://github.com/sruja-ai/sruja/commit/bef699fb3fb0e941b172c4069cfae81aec80cdef))
 * **architecture-agent,evaluation,docs:** app-focused discovery loop and CLI tests ([8c7e7d4](https://github.com/sruja-ai/sruja/commit/8c7e7d48f6beb6e19b843c2a6f298f79637c86ac))
 * **architecture:** restore sruja WASM, vscode extension and LSP for IDE architecture drafting ([c6b55e3](https://github.com/sruja-ai/sruja/commit/c6b55e391539170ea775eb3772414552d2971350))
@@ -344,7 +344,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-* add Rust coverage to Codecov, simplify sruja-report, improve ValidatorBuilder ([a167b24](https://github.com/sruja-ai/sruja/commit/a167b2401dc3153bc9015cdfa5fe8759cfe211cb))
+* add Rust coverage to Codecov, simplify compliance reporting, improve ValidatorBuilder ([a167b24](https://github.com/sruja-ai/sruja/commit/a167b2401dc3153bc9015cdfa5fe8759cfe211cb))
 
 ## [0.16.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.15.1...sruja-v0.16.0) (2026-03-14)
 

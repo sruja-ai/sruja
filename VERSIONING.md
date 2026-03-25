@@ -92,8 +92,14 @@ All components in the Sruja workspace share the same version number:
 
 - `sruja-cli`
 - `sruja-language`
+- `sruja-diagnostics`
+- `sruja-engine`
+- `sruja-export`
+- `sruja-scan`
+- `sruja-diff`
+- `sruja-graph`
+- `sruja-intent`
 - `sruja-wasm`
-- `sruja-lsp`
 - VS Code extension
 
 This is verified by CI on every pull request.

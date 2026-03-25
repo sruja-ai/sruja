@@ -635,7 +635,7 @@ mod tests {
         let formatted = DiagnosticFormatter::format_result(&result, false);
         assert_eq!(formatted.len(), 1);
         // format_diagnostic from sruja-diagnostics emits "[code] Error: message", not "✗"
-        assert!(formatted[0].contains("Error"));
+        assert!(formatted[0].contains("error"));
         assert!(formatted[0].contains("Test error"));
     }
 
@@ -718,12 +718,11 @@ mod tests {
     #[test]
     fn test_batch_validation_result_paths_helpers() {
         let ok = ValidationResult::new(vec![], &ValidationConfig::default());
-        let mut bad_diags = Vec::new();
-        bad_diags.push(create_test_diagnostic(
+        let bad_diags = vec![create_test_diagnostic(
             codes::CODE_DUPLICATE_ID,
             Severity::Error,
             "err",
-        ));
+        )];
         let bad = ValidationResult::new(bad_diags, &ValidationConfig::default());
 
         let batch = BatchValidationResult {

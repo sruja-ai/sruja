@@ -50,7 +50,7 @@ struct CrossRepoElement {
     #[serde(skip_serializing_if = "Option::is_none")]
     domain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    criticality: Option<sruja_types::Criticality>,
+    criticality: Option<sruja_language::ast::Criticality>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -91,7 +91,7 @@ pub struct FocusNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub criticality: Option<sruja_types::Criticality>,
+    pub criticality: Option<sruja_language::ast::Criticality>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -1336,10 +1336,14 @@ mod tests {
         let neighbors: std::collections::HashSet<&str> = ["a", "b"].into_iter().collect();
         let mut scores: std::collections::HashMap<String, crate::selection::ComponentImportance> =
             std::collections::HashMap::new();
-        let mut a_score = crate::selection::ComponentImportance::default();
-        a_score.pagerank = 0.1;
-        let mut b_score = crate::selection::ComponentImportance::default();
-        b_score.pagerank = 0.9;
+        let a_score = crate::selection::ComponentImportance {
+            pagerank: 0.1,
+            ..Default::default()
+        };
+        let b_score = crate::selection::ComponentImportance {
+            pagerank: 0.9,
+            ..Default::default()
+        };
         scores.insert("a".to_string(), a_score);
         scores.insert("b".to_string(), b_score);
 

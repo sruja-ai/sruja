@@ -175,34 +175,34 @@ Sruja = system "Sruja Platform" {
   }
 
   Report = container "Reports" {
-    technology "Rust, crates/sruja-report"
-    description "Compliance and report generation utilities"
+    technology "Rust, crates/sruja-cli"
+    description "Compliance report DTOs and rendering (inlined into the CLI)"
     tags ["context"]
   }
 
-  LSP = container "LSP / IDE Support" {
-    technology "Rust, crates/sruja-lsp"
-    description "Language Server Protocol server for IDE integration"
+  LSP = container "IDE Support" {
+    technology "TypeScript (extension/), WASM (crates/sruja-wasm)"
+    description "VS Code language features and preview powered by the WASM build (no standalone Rust LSP server crate)"
     tags ["lsp", "ide"]
 
     DiagnosticsAdapter = component "Diagnostics Adapter" {
       description "Error and warning reporting"
-      technology "Rust, crates/sruja-lsp"
+      technology "TypeScript, WASM"
     }
 
     Completion = component "Completion" {
       description "Code completion support"
-      technology "Rust, crates/sruja-lsp"
+      technology "TypeScript"
     }
 
     Hover = component "Hover" {
       description "Hover information"
-      technology "Rust, crates/sruja-lsp"
+      technology "TypeScript"
     }
 
     Definition = component "Definition" {
       description "Go to definition support"
-      technology "Rust, crates/sruja-lsp"
+      technology "TypeScript"
     }
   }
 

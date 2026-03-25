@@ -8,7 +8,7 @@ repository.workspace = true
 description = "Architecture Knowledge Graph for Sruja"
 
 [dependencies]
-sruja-types = { path = "../sruja-types" }
+sruja-language = { path = "../sruja-language" }
 sruja-scan = { path = "../sruja-scan" }
 serde = { workspace = true }
 serde_json = { workspace = true }

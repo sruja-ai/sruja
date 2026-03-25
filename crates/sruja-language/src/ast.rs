@@ -157,7 +157,265 @@ impl std::fmt::Display for ElementKind {
     }
 }
 
-pub use sruja_types::{Criticality, SourceBinding, SourceKind};
+/// Error type for parsing `NodeKind` from string
+#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
+#[error("Unknown NodeKind: '{0}'")]
+pub struct ParseNodeKindError(pub String);
+
+/// Error type for parsing `EdgeKind` from string
+#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
+#[error("Unknown EdgeKind: '{0}'")]
+pub struct ParseEdgeKindError(pub String);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NodeKind {
+    /// A top-level system or subsystem that groups related services.
+    System,
+    /// A deployable unit of functionality that can run independently.
+    Service,
+    /// A grouping of components within a service.
+    Container,
+    /// A modular unit of code with a specific responsibility.
+    Component,
+    /// A data storage system.
+    Database,
+    /// A message queue or streaming platform.
+    Queue,
+    /// An external API or service outside the system boundary.
+    ExternalApi,
+    /// A user-facing application or interface.
+    Frontend,
+    /// A generic module or package.
+    Module,
+}
+
+impl NodeKind {
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NodeKind::System => "system",
+            NodeKind::Service => "service",
+            NodeKind::Container => "container",
+            NodeKind::Component => "component",
+            NodeKind::Database => "database",
+            NodeKind::Queue => "queue",
+            NodeKind::ExternalApi => "external_api",
+            NodeKind::Frontend => "frontend",
+            NodeKind::Module => "module",
+        }
+    }
+}
+
+impl std::fmt::Display for NodeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for NodeKind {
+    type Err = ParseNodeKindError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "system" => Ok(NodeKind::System),
+            "service" => Ok(NodeKind::Service),
+            "container" => Ok(NodeKind::Container),
+            "component" => Ok(NodeKind::Component),
+            "database" => Ok(NodeKind::Database),
+            "queue" => Ok(NodeKind::Queue),
+            "external_api" | "externalapi" => Ok(NodeKind::ExternalApi),
+            "frontend" => Ok(NodeKind::Frontend),
+            "module" => Ok(NodeKind::Module),
+            _ => Err(ParseNodeKindError(s.to_string())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EdgeKind {
+    /// Indicates that the source node depends on the target node for functionality.
+    DependsOn,
+    /// Indicates that the source node makes calls to the target node.
+    Calls,
+    /// Indicates that the source node reads data from the target node.
+    ReadsFrom,
+    /// Indicates that the source node writes data to the target node.
+    WritesTo,
+    /// Indicates that the source node publishes events to the target node.
+    PublishesTo,
+    /// Indicates that the source node subscribes to events from the target node.
+    SubscribesTo,
+    /// Indicates that the source node owns or manages the target node.
+    Owns,
+    /// Indicates that the source node contains or encompasses the target node.
+    Contains,
+    /// Indicates that the source node uses the target node in some way.
+    Uses,
+}
+
+impl EdgeKind {
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EdgeKind::DependsOn => "depends_on",
+            EdgeKind::Calls => "calls",
+            EdgeKind::ReadsFrom => "reads_from",
+            EdgeKind::WritesTo => "writes_to",
+            EdgeKind::PublishesTo => "publishes_to",
+            EdgeKind::SubscribesTo => "subscribes_to",
+            EdgeKind::Owns => "owns",
+            EdgeKind::Contains => "contains",
+            EdgeKind::Uses => "uses",
+        }
+    }
+}
+
+impl std::fmt::Display for EdgeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for EdgeKind {
+    type Err = ParseEdgeKindError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "depends_on" => Ok(EdgeKind::DependsOn),
+            "calls" => Ok(EdgeKind::Calls),
+            "reads_from" => Ok(EdgeKind::ReadsFrom),
+            "writes_to" => Ok(EdgeKind::WritesTo),
+            "publishes_to" => Ok(EdgeKind::PublishesTo),
+            "subscribes_to" => Ok(EdgeKind::SubscribesTo),
+            "owns" => Ok(EdgeKind::Owns),
+            "contains" => Ok(EdgeKind::Contains),
+            "uses" => Ok(EdgeKind::Uses),
+            _ => Err(ParseEdgeKindError(s.to_string())),
+        }
+    }
+}
+
+/// Criticality level for an element
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Criticality {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+impl Criticality {
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Criticality::Low => "low",
+            Criticality::Medium => "medium",
+            Criticality::High => "high",
+            Criticality::Critical => "critical",
+        }
+    }
+}
+
+impl std::fmt::Display for Criticality {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for Criticality {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "low" => Ok(Criticality::Low),
+            "medium" | "med" => Ok(Criticality::Medium),
+            "high" => Ok(Criticality::High),
+            "critical" => Ok(Criticality::Critical),
+            _ => Err(format!("Unknown criticality: {s}")),
+        }
+    }
+}
+
+/// Source kind for external resource bindings
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceKind {
+    OpenApi,
+    AsyncApi,
+    Kubernetes,
+    Dockerfile,
+    Terraform,
+    Docs,
+    Readme,
+    Proto,
+    Config,
+    GraphQL,
+    Helm,
+    Custom(String),
+}
+
+impl SourceKind {
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        match self {
+            SourceKind::OpenApi => "openapi",
+            SourceKind::AsyncApi => "asyncapi",
+            SourceKind::Kubernetes => "kubernetes",
+            SourceKind::Dockerfile => "dockerfile",
+            SourceKind::Terraform => "terraform",
+            SourceKind::Docs => "docs",
+            SourceKind::Readme => "readme",
+            SourceKind::Proto => "proto",
+            SourceKind::Config => "config",
+            SourceKind::GraphQL => "graphql",
+            SourceKind::Helm => "helm",
+            SourceKind::Custom(s) => s,
+        }
+    }
+
+    #[must_use]
+    pub fn parse(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "openapi" => SourceKind::OpenApi,
+            "asyncapi" => SourceKind::AsyncApi,
+            "kubernetes" | "k8s" => SourceKind::Kubernetes,
+            "dockerfile" | "docker" => SourceKind::Dockerfile,
+            "terraform" | "tf" => SourceKind::Terraform,
+            "docs" | "doc" => SourceKind::Docs,
+            "readme" => SourceKind::Readme,
+            "proto" | "protobuf" => SourceKind::Proto,
+            "config" => SourceKind::Config,
+            "graphql" | "gql" => SourceKind::GraphQL,
+            "helm" => SourceKind::Helm,
+            _ => SourceKind::Custom(s.to_string()),
+        }
+    }
+}
+
+impl std::str::FromStr for SourceKind {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(SourceKind::parse(s))
+    }
+}
+
+impl std::fmt::Display for SourceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Source binding linking element to external resource
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SourceBinding {
+    pub kind: SourceKind,
+    pub path: String,
+    pub description: Option<String>,
+}
 
 /// Element definition body containing nested items
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

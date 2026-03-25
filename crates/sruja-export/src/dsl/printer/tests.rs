@@ -36,7 +36,7 @@ fn normalize_model_json(mut model: Value) -> Value {
     }
 
     if let Some(Value::Array(relations)) = obj.get_mut("relations") {
-        relations.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+        relations.sort_by_key(|a| a.to_string());
     }
 
     if let Some(Value::Object(sruja)) = obj.get_mut("sruja") {
@@ -51,7 +51,7 @@ fn normalize_model_json(mut model: Value) -> Value {
                     req_obj.remove("description");
                 }
             }
-            requirements.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+            requirements.sort_by_key(|a| a.to_string());
         }
     }
 

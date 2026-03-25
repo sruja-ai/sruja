@@ -14,7 +14,7 @@ The platform consists of several key components working together:
 1.  **Parser & engine**: Rust crates for parsing, validation, and export (sruja-language, sruja-engine, sruja-export).
 2.  **CLI**: Command-line interface for local development and CI/CD (sruja-cli).
 3.  **WASM**: Rust core compiled to WebAssembly for the docs book and VS Code (sruja-wasm).
-4.  **LSP**: Language server for VS Code (sruja-lsp).
+4.  **VS Code extension**: Editor integration powered by the WASM build (extension/ + sruja-wasm).
 5.  **Docs**: This site—built with mdBook from the `book/` directory.
 
 ## Architecture Diagram
@@ -67,7 +67,7 @@ Sruja = system "Sruja Platform" {
 
 	Language = container "Language Service" {
 		technology "Rust"
-		description "Parser and AST (crates/sruja-language); LSP (crates/sruja-lsp)"
+		description "Parser and AST (crates/sruja-language)"
 	}
 
 	WASM = container "WASM Module" {
@@ -93,8 +93,8 @@ Sruja = system "Sruja Platform" {
 	WASM -> Language "embeds"
 	WASM -> Engine "embeds"
 
-	VSCode -> Language "uses LSP"
-	VSCode -> WASM "uses for LSP and preview"
+	VSCode -> Language "parses/validates via WASM"
+	VSCode -> WASM "uses for preview"
 
 	Book -> WASM "uses for diagram blocks"
 }

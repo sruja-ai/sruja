@@ -3,16 +3,19 @@
 use serde::{Deserialize, Serialize};
 
 /// Severity level of a diagnostic.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
-#[non_exhaustive]
+#[derive(Default)]
 pub enum Severity {
     /// Error that prevents compilation or execution
+    #[default]
     Error,
     /// Warning about potential issues
     Warning,
     /// Informational message
     Info,
+    /// Hint for improvements
+    Hint,
 }
 
 impl Severity {
@@ -24,6 +27,21 @@ impl Severity {
             Severity::Error => "Error",
             Severity::Warning => "Warning",
             Severity::Info => "Info",
+            Severity::Hint => "Hint",
+        }
+    }
+}
+
+impl std::str::FromStr for Severity {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "error" => Ok(Severity::Error),
+            "warning" => Ok(Severity::Warning),
+            "info" => Ok(Severity::Info),
+            "hint" => Ok(Severity::Hint),
+            _ => Err(format!("Unknown Severity: {s}")),
         }
     }
 }

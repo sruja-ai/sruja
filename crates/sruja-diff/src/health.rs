@@ -301,7 +301,7 @@ mod tests {
     fn health_grade_label_and_description() {
         assert_eq!(HealthGrade::Critical.label(), "Critical");
         assert_eq!(HealthGrade::Excellent.label(), "Excellent");
-        assert!(HealthGrade::Critical.description().len() > 0);
+        assert!(!HealthGrade::Critical.description().is_empty());
     }
 
     #[test]

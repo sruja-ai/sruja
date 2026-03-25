@@ -17,6 +17,7 @@ pub fn format_github_actions_annotation(d: &Diagnostic) -> String {
         crate::types::Severity::Error => "error",
         crate::types::Severity::Warning => "warning",
         crate::types::Severity::Info => "notice",
+        crate::types::Severity::Hint => "notice",
     };
     let file = if d.location.file.is_empty() {
         "unknown"

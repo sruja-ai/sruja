@@ -58,8 +58,8 @@ pub type RequirementId = String;
 pub type SessionId = String;
 pub type MessageId = String;
 
-/// Re-export shared node/edge kinds from sruja-types for a single source of truth.
-pub use sruja_types::{EdgeKind, NodeKind};
+/// Re-export shared node/edge kinds from sruja-language for a single source of truth.
+pub use sruja_language::ast::{EdgeKind, NodeKind};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArchitectureNode {

@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide covers development for the Rust-only Sruja repo (CLI, LSP, engine, export, WASM).
+This guide covers development for the Rust Sruja repo (CLI, engine, export, WASM) and the VS Code extension.
 
 ## Quick Start
 
@@ -33,7 +33,7 @@ See `docs/RUN_GUIDE.md` and `demo/README.md` for the end-to-end demo flow.
 
 ```bash
 make wasm        # web target → crates/sruja-wasm/pkg/
-make wasm-nodejs # nodejs target (for future LSP/extension)
+make wasm-nodejs # nodejs target
 ```
 
 ## Project layout
@@ -44,20 +44,17 @@ make wasm-nodejs # nodejs target (for future LSP/extension)
 | **sruja-language** | Parser and AST |
 | **sruja-engine** | Validation rules |
 | **sruja-export** | Markdown, Mermaid, JSON export |
-| **sruja-lsp** | LSP server (VS Code extension) |
 | **sruja-wasm** | WASM build for browser/Node |
 | **sruja-diagnostics** | Diagnostic types |
 | **sruja-graph** | Knowledge graph, centrality, coupling |
 | **sruja-scan** | Repo scanning (multi-language tree-sitter) |
 | **sruja-diff** | Drift detection |
 | **sruja-intent** | Intent vs. reality comparison |
-| **sruja-report** | Compliance and reporting |
-| **sruja-types** | Shared types |
 | **book/** | mdBook documentation |
 
 ## VS Code extension
 
-The extension in `extension/` provides syntax highlighting and LSP integration for `.sruja` files.
+The extension in `extension/` provides syntax highlighting and language features for `.sruja` files, powered by WASM.
 
 ## Skills and evaluation
 

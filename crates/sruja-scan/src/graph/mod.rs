@@ -1,12 +1,12 @@
 //! Inferred architecture graph schema.
 //!
 //! This is the minimal, repo-scoped graph used for deterministic diffing and review grounding.
-//! NodeKind and EdgeKind are from sruja_types; scan only uses a subset of variants.
+//! NodeKind and EdgeKind are from sruja-language; scan only uses a subset of variants.
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
-pub use sruja_types::{Criticality, EdgeKind, NodeKind, SourceBinding};
+pub use sruja_language::ast::{Criticality, EdgeKind, NodeKind, SourceBinding};
 
 pub mod centrality;
 pub use centrality::{compute_all_centrality, ComponentImportance};

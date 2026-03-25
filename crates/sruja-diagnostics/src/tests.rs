@@ -490,7 +490,7 @@ fn test_basic_error_reporter_capacity() {
         let diag = Diagnostic::new(
             "E001",
             Severity::Error,
-            &format!("Error {}", i),
+            format!("Error {}", i),
             SourceLocation::new("test.sruja".to_string(), i as u32, i as u32),
         );
         reporter.report_owned(diag);

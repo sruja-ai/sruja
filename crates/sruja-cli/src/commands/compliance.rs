@@ -2,12 +2,12 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::report::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
 use sruja_diff::{compare_graphs, detect_architectural_drift, program_to_graph};
 use sruja_intent::{
     compare::{DriftKind, DriftReport as IntentDriftReport},
     IntentContext, IntentModel,
 };
-use sruja_report::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
 use sruja_scan::scan_repo;
 
 use super::CliError;

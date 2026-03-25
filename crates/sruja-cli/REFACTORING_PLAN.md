@@ -10,7 +10,7 @@
   - `commands/analyze.rs` – complexity, semantic, comprehensive analyze
   - `commands/runtime.rs` – trace loading and runtime analyze
   - `commands/intent.rs` – intent check and propose
-- **Unified types**: `NodeKind`/`EdgeKind` live in `sruja-types`; `sruja-graph` and `sruja-scan` use or re-export them where appropriate.
+- **Unified types**: `NodeKind`/`EdgeKind` live in `sruja-language` (`ast`); `sruja-graph` and `sruja-scan` use or re-export them where appropriate.
 - **Dependency consistency**: `sruja-intent` uses workspace `thiserror`.
 
 ## Future (optional)

@@ -212,9 +212,9 @@ pub struct SystemIndexNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub criticality: Option<sruja_types::Criticality>,
+    pub criticality: Option<sruja_language::ast::Criticality>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub sources: Vec<sruja_types::SourceBinding>,
+    pub sources: Vec<sruja_language::ast::SourceBinding>,
 }
 
 /// Edge in system index.

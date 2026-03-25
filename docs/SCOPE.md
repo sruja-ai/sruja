@@ -6,8 +6,8 @@ Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagra
 2. **CLI** (`sruja-cli`) – validate, export, scan, quickstart, why, drift, analyze (structural/semantic/intent/runtime)
 3. **WASM** (`sruja-wasm`) – browser/Node export and parsing
 4. **mdBook** (`book/`) – **this is the website** (no separate Astro/React site)
-5. **VS Code extension** (`extension/`) – edit, preview, LSP
-6. **Context engineering** – CLI: quickstart, drift, why, analyze, context; sruja-graph, sruja-scan, sruja-diff, sruja-intent, sruja-report.
+5. **VS Code extension** (`extension/`) – edit, preview, language features (WASM-powered)
+6. **Context engineering** – CLI: quickstart, drift, why, analyze, context; sruja-graph, sruja-scan, sruja-diff, sruja-intent.
 
 Nothing else is in scope (no designer app, no storybook, no social-publish, no separate website app).
 
@@ -18,20 +18,17 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | Item | Role |
 |------|------|
 | **crates/sruja-language** | Parser + AST |
-| **crates/sruja-diagnostics** | Errors/locations (used by language, LSP) |
+| **crates/sruja-diagnostics** | Errors/locations (used by language, engine, CLI, WASM) |
 | **crates/sruja-export** | DOT/Mermaid/Markdown/JSON export (CLI + WASM) |
 | **crates/sruja-cli** | CLI (lint, validate, export, scan, quickstart, why, drift, complexity, semantic, analyze, intent, runtime) |
 | **crates/sruja-wasm** | WASM bindings for browser/Node |
-| **crates/sruja-lsp** | LSP server (used by VS Code extension) |
 | **crates/sruja-engine** | Validation rules |
 | **crates/sruja-graph** | Knowledge graph, centrality, coupling |
 | **crates/sruja-scan** | Repo scanning (multi-language tree-sitter) |
 | **crates/sruja-diff** | Drift detection (code vs. intent) |
 | **crates/sruja-intent** | Intent vs. reality comparison |
-| **crates/sruja-report** | Compliance and reporting |
-| **crates/sruja-types** | Shared types |
 | **book/** | mdBook source; build output = deployed website |
-| **extension/** | VS Code extension (preview, LSP, snippets) |
+| **extension/** | VS Code extension (preview, language features, snippets) |
 | **book/valid-examples/** | Canonical example `.sruja` files (rendered in the book). |
 
 ## What is out of scope

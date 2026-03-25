@@ -9,7 +9,6 @@ description = "Parser and AST implementation for Sruja DSL"
 
 [dependencies]
 sruja-diagnostics = { path = "../sruja-diagnostics" }
-sruja-types = { path = "../sruja-types" }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 nom = { version = "8", features = ["std"] }

@@ -404,18 +404,28 @@ mod tests {
 
     #[test]
     fn test_aqs_grade() {
-        let mut aqs = ArchitectureQualityScore::default();
-
-        aqs.overall = 0.95;
+        let aqs = ArchitectureQualityScore {
+            overall: 0.95,
+            ..Default::default()
+        };
         assert_eq!(aqs.grade(), "A");
 
-        aqs.overall = 0.85;
+        let aqs = ArchitectureQualityScore {
+            overall: 0.85,
+            ..Default::default()
+        };
         assert_eq!(aqs.grade(), "B");
 
-        aqs.overall = 0.75;
+        let aqs = ArchitectureQualityScore {
+            overall: 0.75,
+            ..Default::default()
+        };
         assert_eq!(aqs.grade(), "C");
 
-        aqs.overall = 0.55;
+        let aqs = ArchitectureQualityScore {
+            overall: 0.55,
+            ..Default::default()
+        };
         assert_eq!(aqs.grade(), "F");
     }
 

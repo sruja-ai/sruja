@@ -10,7 +10,7 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 |-------|-----------|----------|--------|
 | sruja-diff | convert.rs, source_ref.rs | P0 | Core comparison pipeline; convert used by tests.rs indirectly |
 | sruja-diff | drift.rs | P0 | Drift detection; covered partially by drift_e2e, no unit tests |
-| sruja-report | compliance.rs | P1 | Covered by report_test.rs; optional inline unit tests |
+| sruja-cli | commands/compliance.rs, report.rs | P1 | Compliance/report DTOs are inlined into the CLI; add unit tests if needed |
 | sruja-diagnostics | format.rs | P0 | format_diagnostic has doc-test; add unit tests |
 | sruja-diagnostics | types.rs, codes.rs, reporter.rs | P1 | DTOs/codes; add serde or invariant tests if needed |
 | sruja-engine | rules/simplicity.rs | P1 | Rule returns empty; test name + empty program |
@@ -22,7 +22,6 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 | sruja-intent | parser/mod.rs, model/mod.rs | P2 | Parser has adr tests; module wiring |
 | sruja-language | parser/* (elements, primitives, etc.) | P2 | Parser tests.rs + example_files cover many paths |
 | sruja-cli | config.rs, views.rs, commands/* | P2 | E2E covers commands; config/views unit tests |
-| sruja-lsp | server.rs | P2 | server_integration tests; optional unit |
 | sruja-wasm | lib.rs | P2 | WASM target; browser or wasm-bindgen-test |
 
 ---
@@ -44,10 +43,10 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 3. **sruja-diagnostics format.rs**
    - Add unit tests for `format_diagnostic`: with/without context, with/without suggestions, severity and code in output.
 
-### Phase 2: Report, engine, export (P1)
+### Phase 2: CLI compliance, engine, export (P1)
 
-4. **sruja-report compliance.rs**
-   - Already covered by report_test.rs (ComplianceReport::from_parts, status, serde). Optional: add inline `#[cfg(test)]` tests for remediation_checklist content and boundary-only case.
+4. **sruja-cli compliance**
+   - Add unit tests for ComplianceReport::from_parts (status, remediation_checklist, boundary-only case) and for the compliance command output shaping if needed.
 
 5. **sruja-engine rules/simplicity.rs**
    - Test rule name, and that empty program returns empty diagnostics; non-empty program returns empty (current behavior).
@@ -70,7 +69,7 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 11. **sruja-cli** config – **Done** (get_builtin_views, empty yaml, get_view, AnalysisDepth, ThresholdConfig).
 12. **sruja-scan** cargo.rs – **Done** (missing Cargo.toml, invalid Cargo.toml → error).
 14. **sruja-language** parser submodules – optional (parser/tests.rs, example_files).
-15. **sruja-lsp** server – optional unit tests for request handling.
+15. **VS Code extension** – optional TypeScript tests for diagnostics/preview wiring.
 
 ---
 
@@ -81,7 +80,7 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 3. sruja-diff: source_ref.rs — **Done** (test_drift_cycle_violation_includes_source_refs_when_edges_have_evidence in tests.rs).
 4. sruja-diagnostics: format.rs unit tests — **Done** (code/severity/message, location, context, suggestions).
 5. sruja-engine: simplicity.rs unit tests — **Done** (rule name, empty program, non-empty program).
-6. sruja-report: compliance — **Skipped** (already covered by report_test.rs).
+6. sruja-cli: compliance — optional.
 7. sruja-export: json exporter unit tests — **Done** (empty export/compact, compact valid JSON, with_extended).
 8. sruja-scan: npm unit tests — **Done** (invalid JSON and missing file error paths in npm.rs).
 9. sruja-diff: drift.rs unit tests — **Done** (find_circular_dependencies, find_orphan_modules).
@@ -111,14 +110,12 @@ The remaining ~10% gap is in areas that require significant test infrastructure.
 | Area | Current coverage | Blocker | Infrastructure / effort |
 |------|------------------|--------|-------------------------|
 | **CLI command handlers** | ~0% | Many handlers have no dedicated tests | **Integration tests**: temp repos, `Command::cargo_bin("sruja")`, stdout/stderr capture, golden or snapshot output. Some E2E exist (e.g. `lint_e2e`, `drift_e2e`, `quickstart_e2e`); extend pattern to all commands. |
-| **LSP server** | 0% | Async LSP protocol | **Async test harness**: mock `ClientSocket` / LSP client, tokio runtime, message builders, document lifecycle. See `crates/sruja-lsp/tests/server_integration.rs` (placeholder). |
 | **WASM bindings** | 0% in `cargo test` | Different target | **wasm-pack test**: `wasm32-unknown-unknown`, `wasm-bindgen-test` in `sruja-wasm`, `wasm-pack test --node`. Already documented in `docs/WASM_TESTING.md`; CI job to run it. Excluded from `cargo llvm-cov` by design. |
 | **Tree-sitter language parsers** | 30–40% | Language-specific ASTs | **Fixtures**: per-language sample files (Rust, Go, Java, Python, etc.) in `sruja-scan` tests, and tests that parse them and assert on key nodes. Detector and language modules in `crates/sruja-scan/src/tree_sitter/`. |
 
 ### Recommendations
 
 - **CLI**: Add integration tests incrementally per command (e.g. one test per `sruja <cmd>`), reusing existing E2E helpers and temp dirs.
-- **LSP**: Introduce a small async test util (e.g. in-tree mock client or use of `tower-lsp` test patterns) before adding request/response tests.
 - **WASM**: Run `wasm-pack test --node` in CI; keep excluding from main coverage report (see `scripts/coverage.sh` and `docs/WASM_TESTING.md`).
 - **Tree-sitter**: Add `tests/fixtures/<lang>/` with minimal valid files and tests that exercise `detector` and each language parser.
 

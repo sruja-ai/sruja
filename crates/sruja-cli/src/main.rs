@@ -7,6 +7,7 @@ mod compliance;
 mod context_detection;
 mod graph_store;
 mod modules;
+mod report;
 pub mod selection;
 mod utils;
 

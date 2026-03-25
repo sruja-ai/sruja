@@ -1,7 +1,7 @@
 //! Parser unit tests.
 
 #[cfg(test)]
-mod tests {
+mod cases {
     use crate::ast::{ElementKind, TopLevelItem};
     use crate::parser::{
         assignments::{

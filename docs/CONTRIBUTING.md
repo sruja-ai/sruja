@@ -12,7 +12,7 @@ This step-by-step guide walks you through making your first contribution, even i
 
 - 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
 - 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
-- 📐 **Stack**: Rust (CLI, LSP, engine, export), mdBook (docs). VS Code extension connects to the Rust LSP.
+- 📐 **Stack**: Rust (CLI, language, engine, export, scan/diff/graph/intent, WASM), mdBook (docs), VS Code extension (TypeScript, WASM-powered language features).
 - 💬 **Get Help**:[GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
 ## Project Overview
@@ -20,11 +20,11 @@ This step-by-step guide walks you through making your first contribution, even i
 Sruja is a Rust-focused repo containing:
 
 - **Language and CLI**: Parser, validator, export; CLI via `crates/sruja-cli`
-- **LSP**: `crates/sruja-lsp` – Language Server (for future VS Code extension integration)
 - **Book**: mdBook documentation in `book/`
 - **Examples**: Canonical book-backed examples in `book/valid-examples/`
+- **VS Code extension**: editor integration in `extension/`
 
-The **VS Code extension** will be reimplemented to integrate with the Rust LSP (diagnostics, syntax highlighting, symbol navigation, go to definition, markdown export). No Node/TypeScript app code remains.
+The **VS Code extension** integrates directly with the WASM build for parsing/validation/preview (no standalone Rust LSP server crate).
 
 ### ⚠️ Important: Deployment Repositories
 

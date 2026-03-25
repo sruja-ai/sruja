@@ -170,7 +170,7 @@ mod tests {
         assert_eq!(main_node.description, Some("src/main.ts".to_string()));
 
         // Verify edge conversion
-        let edge = kg.edges.iter().next().expect("edge should exist");
+        let edge = kg.edges.first().expect("edge should exist");
         assert_eq!(edge.source, "module.main");
         assert_eq!(edge.target, "module.utils");
         assert_eq!(edge.kind, EdgeKind::Calls);
@@ -199,7 +199,7 @@ mod tests {
         let mut kg = KnowledgeGraph::new();
 
         // Test all node kind conversions
-        let test_cases = vec![
+        let test_cases = [
             NodeKind::Service,
             NodeKind::Module,
             NodeKind::Database,

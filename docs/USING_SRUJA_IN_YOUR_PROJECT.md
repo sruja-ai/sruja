@@ -126,12 +126,12 @@ Use `--locked` so the install matches the lockfile in the Sruja repo for reprodu
 
 ```yaml
       - name: Architecture drift check
-        run: sruja quickstart -r . -f json > sruja-report.json || true
+        run: sruja quickstart -r . -f json > sruja-drift-report.json || true
       - name: Upload drift report
         uses: actions/upload-artifact@v4
         with:
           name: sruja-drift-report
-          path: sruja-report.json
+          path: sruja-drift-report.json
 ```
 
 **Optional – export docs in CI:**
