@@ -192,6 +192,15 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
       }
     }
 
+    {
+      const args = [{ docUri: document.uri.toString(), elementId: element.id }];
+      const cmdUri = vscode.Uri.parse(
+        `command:sruja.openDocsThreadAt?${encodeURIComponent(JSON.stringify(args))}`
+      );
+      markdown.appendMarkdown(`*Docs & refs:* [Open thread](${cmdUri})\n\n`);
+      markdown.isTrusted = true;
+    }
+
     const viewLevel = elementKindToViewLevel(element.kind);
     if (viewLevel !== 1) {
       const args = [{ docUri: document.uri.toString(), viewLevel, targetId: element.id }];

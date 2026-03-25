@@ -134,6 +134,14 @@
         "title": "Sruja: Open component knowledge"
       },
       {
+        "command": "sruja.openDocsThread",
+        "title": "Sruja: Open Docs & References Thread"
+      },
+      {
+        "command": "sruja.openDocsThreadAt",
+        "title": "Sruja: Open Docs & References Thread (at element)"
+      },
+      {
         "command": "sruja.openSkillsOverview",
         "title": "Sruja: Open Skills Overview"
       },
@@ -211,6 +219,10 @@
         {
           "command": "sruja.openComponentKnowledge",
           "when": "editorLangId == sruja"
+        },
+        {
+          "command": "sruja.openDocsThread",
+          "when": "editorLangId == sruja"
         }
       ],
       "editor/title": [
@@ -232,6 +244,11 @@
         },
         {
           "command": "sruja.openComponentKnowledge",
+          "when": "editorLangId == sruja",
+          "group": "navigation"
+        },
+        {
+          "command": "sruja.openDocsThread",
           "when": "editorLangId == sruja",
           "group": "navigation"
         },

@@ -39,6 +39,43 @@ const DIAGNOSTIC_COLLECTION_ID = "sruja";
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
 let markdownPreviewPanel: vscode.WebviewPanel | undefined;
 let diagramPreviewPanel: vscode.WebviewPanel | undefined;
+let docsThreadPanel: vscode.WebviewPanel | undefined;
+
+type DocsThreadRef = {
+  uri: string;
+  rel: string;
+  line: number;
+  character: number;
+  lineText: string | null;
+};
+
+type DocsThreadDoc = {
+  path: string;
+  uri: string;
+  exists: boolean;
+  isMarkdown: boolean;
+  previewText: string | null;
+  omittedLines: number;
+};
+
+type DocsThreadEntry = {
+  key: string;
+  sourceUri: string;
+  elementId: string;
+  kind: string;
+  title: string | null;
+  parentId: string | null;
+  range: { startLine: number; startCharacter: number; endLine: number; endCharacter: number };
+  doc: DocsThreadDoc | null;
+  refs: DocsThreadRef[];
+  createdAtMs: number;
+};
+
+const docsThreadState: { followCursor: boolean; entries: DocsThreadEntry[]; lastPushedKey: string } = {
+  followCursor: true,
+  entries: [],
+  lastPushedKey: "",
+};
 
 function getLspPath(): string | undefined {
   return vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
@@ -125,6 +162,15 @@ function truncateLines(text: string, maxLines: number, maxChars: number): { body
   const sliced = lines.slice(0, maxLines).map((l) => (l.length > maxChars ? l.slice(0, maxChars) : l));
   const omittedLines = Math.max(0, lines.length - sliced.length);
   return { body: sliced.join("\n").trimEnd(), omittedLines };
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function pickActiveSrujaDoc(): vscode.TextDocument | undefined {
@@ -512,6 +558,384 @@ function createDiagramPanel(context: vscode.ExtensionContext, title: string): vs
   return diagramPreviewPanel;
 }
 
+function nonce(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let out = "";
+  for (let i = 0; i < 16; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+function formatRelPath(uri: vscode.Uri): string {
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  if (folder && uri.scheme === "file") {
+    return path.relative(folder.uri.fsPath, uri.fsPath);
+  }
+  return toFsPathOrUri(uri);
+}
+
+async function readDocPreview(
+  sourceDoc: vscode.TextDocument,
+  docPath: string
+): Promise<DocsThreadDoc | null> {
+  const resolved = resolveDocUri(docPath, sourceDoc);
+  if (!resolved) {
+    return {
+      path: docPath,
+      uri: "",
+      exists: false,
+      isMarkdown: docPath.toLowerCase().endsWith(".md"),
+      previewText: null,
+      omittedLines: 0,
+    };
+  }
+  const exists = await docUriExists(resolved);
+  if (!exists) {
+    return {
+      path: docPath,
+      uri: resolved.toString(),
+      exists: false,
+      isMarkdown: resolved.fsPath.toLowerCase().endsWith(".md"),
+      previewText: null,
+      omittedLines: 0,
+    };
+  }
+  try {
+    const raw = await vscode.workspace.fs.readFile(resolved);
+    const text = Buffer.from(raw).toString("utf8");
+    const { body, omittedLines } = truncateLines(text, 40, 2000);
+    return {
+      path: docPath,
+      uri: resolved.toString(),
+      exists: true,
+      isMarkdown: resolved.fsPath.toLowerCase().endsWith(".md"),
+      previewText: body,
+      omittedLines,
+    };
+  } catch {
+    return {
+      path: docPath,
+      uri: resolved.toString(),
+      exists: true,
+      isMarkdown: resolved.fsPath.toLowerCase().endsWith(".md"),
+      previewText: null,
+      omittedLines: 0,
+    };
+  }
+}
+
+function renderDocsThreadHtml(webview: vscode.Webview): string {
+  const n = nonce();
+  const entries = docsThreadState.entries;
+  const followLabel = docsThreadState.followCursor ? "Following cursor" : "Not following";
+
+  const entryHtml = entries
+    .map((e, idx) => {
+      const docBlock = (() => {
+        if (!e.doc) return "";
+        const existsText = e.doc.exists ? "" : " (missing)";
+        const openButton = e.doc.uri
+          ? `<button class="btn" data-action="openDoc" data-uri="${escapeHtml(e.doc.uri)}">${
+              e.doc.isMarkdown ? "Open preview" : "Open file"
+            }</button>`
+          : "";
+        const preview =
+          e.doc.previewText === null
+            ? ""
+            : `<pre class="docPreview">${escapeHtml(e.doc.previewText)}${
+                e.doc.omittedLines > 0 ? `\n… (${e.doc.omittedLines} more lines)` : ""
+              }</pre>`;
+        return `<div class="section">
+  <div class="sectionTitle">Docs</div>
+  <div class="row"><span class="muted">${escapeHtml(e.doc.path)}${existsText}</span>${openButton}</div>
+  ${preview}
+</div>`;
+      })();
+
+      const refsBlock = (() => {
+        if (e.refs.length === 0) {
+          return `<div class="section"><div class="sectionTitle">References</div><div class="muted">No matches in this file.</div></div>`;
+        }
+        const items = e.refs
+          .slice(0, 50)
+          .map((r) => {
+            const where = `${r.rel}:${r.line + 1}:${r.character + 1}`;
+            const preview = r.lineText ? ` — ${r.lineText.trim()}` : "";
+            return `<button class="ref" data-action="openLocation" data-uri="${escapeHtml(
+              r.uri
+            )}" data-line="${r.line}" data-character="${r.character}">${escapeHtml(where + preview)}</button>`;
+          })
+          .join("");
+        return `<div class="section"><div class="sectionTitle">References</div><div class="refs">${items}</div></div>`;
+      })();
+
+      const where = `${formatRelPath(vscode.Uri.parse(e.sourceUri))}:${e.range.startLine + 1}:${e.range.startCharacter + 1}`;
+      const title = e.title ? ` — ${e.title}` : "";
+      const parent = e.parentId ? `<div class="muted">Parent: ${escapeHtml(e.parentId)}</div>` : "";
+      return `<div class="card" data-key="${escapeHtml(e.key)}">
+  <div class="cardHeader">
+    <div class="titleRow">
+      <button class="element" data-action="openLocation" data-uri="${escapeHtml(
+        e.sourceUri
+      )}" data-line="${e.range.startLine}" data-character="${e.range.startCharacter}">${escapeHtml(
+        `${e.elementId}${title}`
+      )}</button>
+      <span class="pill">${escapeHtml(e.kind)}</span>
+      <span class="muted">#${idx + 1}</span>
+    </div>
+    ${parent}
+    <div class="muted">${escapeHtml(where)}</div>
+  </div>
+  ${docBlock}
+  ${refsBlock}
+</div>`;
+    })
+    .join("\n");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${n}';" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sruja Docs & References</title>
+    <style>
+      body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); padding: 10px; }
+      .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+      .btn { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+      .btn.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+      .muted { color: var(--vscode-descriptionForeground); }
+      .pill { background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 8px; border-radius: 999px; font-size: 0.9em; }
+      .card { border: 1px solid var(--vscode-panel-border); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+      .cardHeader { display: flex; flex-direction: column; gap: 4px; }
+      .titleRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .element { background: none; border: none; padding: 0; color: var(--vscode-textLink-foreground); cursor: pointer; font-weight: 600; text-align: left; }
+      .element:hover { text-decoration: underline; }
+      .section { margin-top: 10px; }
+      .sectionTitle { font-weight: 600; margin-bottom: 6px; }
+      .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .docPreview { white-space: pre-wrap; background: var(--vscode-textBlockQuote-background); padding: 8px; border-radius: 8px; border: 1px solid var(--vscode-panel-border); }
+      .refs { display: flex; flex-direction: column; gap: 6px; }
+      .ref { background: none; border: 1px solid var(--vscode-panel-border); border-radius: 8px; padding: 6px 8px; text-align: left; cursor: pointer; color: var(--vscode-foreground); }
+      .ref:hover { background: var(--vscode-list-hoverBackground); }
+      .empty { padding: 20px 10px; border: 1px dashed var(--vscode-panel-border); border-radius: 10px; }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button class="btn secondary" data-action="toggleFollow">${escapeHtml(followLabel)}</button>
+      <button class="btn secondary" data-action="pop">Pop</button>
+      <button class="btn secondary" data-action="clear">Clear</button>
+    </div>
+    ${
+      entries.length === 0
+        ? `<div class="empty muted">Move the cursor inside an element, or run “Sruja: Open Docs & References Thread”.</div>`
+        : entryHtml
+    }
+    <script nonce="${n}">
+      const vscode = acquireVsCodeApi();
+      document.body.addEventListener("click", (e) => {
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        const action = target.dataset.action;
+        if (!action) return;
+        if (action === "toggleFollow") {
+          vscode.postMessage({ type: "toggleFollow" });
+          return;
+        }
+        if (action === "clear") {
+          vscode.postMessage({ type: "clear" });
+          return;
+        }
+        if (action === "pop") {
+          vscode.postMessage({ type: "pop" });
+          return;
+        }
+        if (action === "openDoc") {
+          const uri = target.dataset.uri;
+          if (uri) vscode.postMessage({ type: "openDoc", uri });
+          return;
+        }
+        if (action === "openLocation") {
+          const uri = target.dataset.uri;
+          const line = Number(target.dataset.line ?? "0");
+          const character = Number(target.dataset.character ?? "0");
+          if (uri) vscode.postMessage({ type: "openLocation", uri, line, character });
+          return;
+        }
+      });
+    </script>
+  </body>
+</html>`;
+}
+
+function createDocsThreadPanel(context: vscode.ExtensionContext): vscode.WebviewPanel {
+  if (docsThreadPanel) {
+    docsThreadPanel.dispose();
+  }
+  docsThreadPanel = vscode.window.createWebviewPanel(
+    "srujaDocsThread",
+    "Sruja – Docs & References",
+    vscode.ViewColumn.Beside,
+    { enableScripts: true, retainContextWhenHidden: true }
+  );
+  docsThreadPanel.onDidDispose(() => {
+    docsThreadPanel = undefined;
+  });
+  docsThreadPanel.webview.onDidReceiveMessage(
+    async (message) => {
+      if (!message || typeof message !== "object") return;
+      const type = (message as { type?: unknown }).type;
+      if (type === "toggleFollow") {
+        docsThreadState.followCursor = !docsThreadState.followCursor;
+        if (docsThreadPanel) docsThreadPanel.webview.html = renderDocsThreadHtml(docsThreadPanel.webview);
+        return;
+      }
+      if (type === "clear") {
+        docsThreadState.entries = [];
+        docsThreadState.lastPushedKey = "";
+        if (docsThreadPanel) docsThreadPanel.webview.html = renderDocsThreadHtml(docsThreadPanel.webview);
+        return;
+      }
+      if (type === "pop") {
+        docsThreadState.entries.pop();
+        docsThreadState.lastPushedKey = docsThreadState.entries.at(-1)?.key ?? "";
+        if (docsThreadPanel) docsThreadPanel.webview.html = renderDocsThreadHtml(docsThreadPanel.webview);
+        return;
+      }
+      if (type === "openDoc") {
+        const uriRaw = (message as { uri?: unknown }).uri;
+        if (typeof uriRaw !== "string") return;
+        const uri = vscode.Uri.parse(uriRaw);
+        const isMarkdown = uri.fsPath.toLowerCase().endsWith(".md");
+        if (isMarkdown) {
+          await vscode.workspace.openTextDocument(uri);
+          await vscode.commands.executeCommand("markdown.showPreviewToSide", uri);
+        } else {
+          const doc = await vscode.workspace.openTextDocument(uri);
+          await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false });
+        }
+        return;
+      }
+      if (type === "openLocation") {
+        const uriRaw = (message as { uri?: unknown }).uri;
+        const line = (message as { line?: unknown }).line;
+        const character = (message as { character?: unknown }).character;
+        if (typeof uriRaw !== "string") return;
+        const pos = new vscode.Position(
+          typeof line === "number" ? line : 0,
+          typeof character === "number" ? character : 0
+        );
+        const uri = vscode.Uri.parse(uriRaw);
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const editor = await vscode.window.showTextDocument(doc, { preserveFocus: false });
+        editor.selection = new vscode.Selection(pos, pos);
+        editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+        return;
+      }
+    },
+    undefined,
+    context.subscriptions
+  );
+  docsThreadPanel.webview.html = renderDocsThreadHtml(docsThreadPanel.webview);
+  return docsThreadPanel;
+}
+
+async function pushDocsThreadEntryForElement(
+  context: vscode.ExtensionContext,
+  doc: vscode.TextDocument,
+  element: { id: string; kind: string; title: string | null; doc?: string | null; range: { start: { line: number; character: number }; end: { line: number; character: number } } }
+): Promise<void> {
+  if (!docsThreadPanel) return;
+  const range = wasmRangeToVscodeRange(element.range);
+  const key = `${doc.uri.toString()}::${element.id}`;
+  if (key === docsThreadState.lastPushedKey) return;
+
+  const parentId = (() => {
+    const dot = element.id.lastIndexOf(".");
+    return dot === -1 ? null : element.id.slice(0, dot);
+  })();
+
+  const docInfo = element.doc ? await readDocPreview(doc, element.doc) : null;
+
+  let refs: DocsThreadRef[] = [];
+  try {
+    const locations = await vscode.commands.executeCommand<vscode.Location[]>(
+      "vscode.executeReferenceProvider",
+      doc.uri,
+      range.start
+    );
+    const locs = Array.isArray(locations) ? locations : [];
+    refs = locs.map((loc) => {
+      const uri = loc.uri.toString();
+      const rel = formatRelPath(loc.uri);
+      const line = loc.range.start.line;
+      const character = loc.range.start.character;
+      const lineText =
+        loc.uri.toString() === doc.uri.toString() && line >= 0 && line < doc.lineCount
+          ? doc.lineAt(line).text
+          : null;
+      return { uri, rel, line, character, lineText };
+    });
+  } catch {
+    refs = [];
+  }
+
+  const entry: DocsThreadEntry = {
+    key,
+    sourceUri: doc.uri.toString(),
+    elementId: element.id,
+    kind: element.kind,
+    title: element.title,
+    parentId,
+    range: {
+      startLine: range.start.line,
+      startCharacter: range.start.character,
+      endLine: range.end.line,
+      endCharacter: range.end.character,
+    },
+    doc: docInfo,
+    refs,
+    createdAtMs: Date.now(),
+  };
+
+  docsThreadState.entries.push(entry);
+  docsThreadState.lastPushedKey = key;
+  docsThreadPanel.webview.html = renderDocsThreadHtml(docsThreadPanel.webview);
+}
+
+async function pushDocsThreadEntryFromActiveEditor(context: vscode.ExtensionContext): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  const doc = editor?.document;
+  if (!editor || !doc || doc.languageId !== "sruja") return;
+
+  const elements = await getElementsFromWasm(context, doc.getText(), doc.uri.fsPath);
+  if (!elements?.length) return;
+
+  const pos = editor.selection.active;
+
+  const byRange = elements
+    .map((e) => ({ e, r: wasmRangeToVscodeRange(e.range) }))
+    .filter(({ r }) => r.contains(pos))
+    .sort((a, b) => {
+      const aLen = (a.r.end.line - a.r.start.line) * 10_000 + (a.r.end.character - a.r.start.character);
+      const bLen = (b.r.end.line - b.r.start.line) * 10_000 + (b.r.end.character - b.r.start.character);
+      return aLen - bLen;
+    })
+    .at(0)?.e;
+
+  const picked = byRange
+    ? byRange
+    : (() => {
+        const wordRange = doc.getWordRangeAtPosition(pos);
+        const word = wordRange ? doc.getText(wordRange).trim() : "";
+        if (!word) return undefined;
+        return elements.find((e) => e.id === word || e.id.endsWith(`.${word}`));
+      })();
+
+  if (!picked) return;
+  await pushDocsThreadEntryForElement(context, doc, picked);
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const isTest = context.extensionMode === vscode.ExtensionMode.Test;
   diagnosticCollection = vscode.languages.createDiagnosticCollection(DIAGNOSTIC_COLLECTION_ID);
@@ -564,6 +988,18 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         diagnosticCollection?.delete(doc.uri);
       }
+    })
+  );
+
+  let selectionDebounce: ReturnType<typeof setTimeout> | undefined;
+  context.subscriptions.push(
+    vscode.window.onDidChangeTextEditorSelection((e) => {
+      if (!docsThreadPanel || !docsThreadState.followCursor) return;
+      if (e.textEditor.document.languageId !== "sruja") return;
+      if (selectionDebounce) clearTimeout(selectionDebounce);
+      selectionDebounce = setTimeout(() => {
+        pushDocsThreadEntryFromActiveEditor(context).catch(() => undefined);
+      }, 200);
     })
   );
 
@@ -877,6 +1313,35 @@ export function activate(context: vscode.ExtensionContext): void {
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Export to Markdown failed: ${msg}`);
       }
+    }),
+    vscode.commands.registerCommand("sruja.openDocsThread", async () => {
+      docsThreadState.followCursor = true;
+      createDocsThreadPanel(context);
+      await pushDocsThreadEntryFromActiveEditor(context);
+    }),
+    vscode.commands.registerCommand("sruja.openDocsThreadAt", async (arg?: unknown) => {
+      docsThreadState.followCursor = true;
+      createDocsThreadPanel(context);
+
+      const parsed =
+        typeof arg === "object" && arg !== null
+          ? (arg as { docUri?: unknown; elementId?: unknown })
+          : undefined;
+      const docUriRaw = typeof parsed?.docUri === "string" ? parsed.docUri : undefined;
+      const elementId = typeof parsed?.elementId === "string" ? parsed.elementId : undefined;
+
+      if (docUriRaw && elementId) {
+        const uri = vscode.Uri.parse(docUriRaw);
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const elements = await getElementsFromWasm(context, doc.getText(), doc.uri.fsPath);
+        const element = elements?.find((e) => e.id === elementId || e.id.endsWith(`.${elementId}`));
+        if (element) {
+          await pushDocsThreadEntryForElement(context, doc, element);
+          return;
+        }
+      }
+
+      await pushDocsThreadEntryFromActiveEditor(context);
     }),
     vscode.commands.registerCommand("sruja.openComponentKnowledge", async (docUriArg?: string) => {
       async function openDocInSplit(uri: vscode.Uri): Promise<void> {
