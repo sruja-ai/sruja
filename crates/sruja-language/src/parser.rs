@@ -338,6 +338,7 @@ impl Parser {
         existing_ast: &Program,
         context_lines: usize,
     ) -> Result<IncrementalParseResult, Vec<Diagnostic>> {
+        #[cfg(not(target_arch = "wasm32"))]
         let start = std::time::Instant::now();
 
         // Find the line numbers for the change range (0-based)
@@ -363,7 +364,10 @@ impl Parser {
                 let (changed_elements, changed_ranges) =
                     merge::analyze_changes(existing_ast, &merged_ast);
 
+                #[cfg(not(target_arch = "wasm32"))]
                 let elapsed = start.elapsed().as_millis() as u64;
+                #[cfg(target_arch = "wasm32")]
+                let elapsed = 0;
 
                 Ok(IncrementalParseResult {
                     updated_ast: merged_ast,
