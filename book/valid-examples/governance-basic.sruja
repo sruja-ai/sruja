@@ -26,3 +26,10 @@ NoExtToDb = policy "External APIs must not call databases" {
   category "architecture"
   rule deny edge from { kind "external_api" } to { kind "database" }
 }
+
+R1 -> shop "Defines core capability"
+R2 -> shop "Quality goals"
+R3 -> shop.DB_Choice "Constrains decision"
+R4 -> shop "Performance constraint"
+R5 -> shop "Security requirement"
+shop.DB_Choice -> shop "Documents"

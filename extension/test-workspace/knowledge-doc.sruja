@@ -1,10 +1,20 @@
 person = kind "Person"
+system = kind "System"
 container = kind "Container"
 
-User = person "User"
-
-PaymentService = container "Payment Service" {
-  technology "Node.js"
-  description "Handles payment processing"
-  doc ".sruja/knowledge/PaymentService.md"
+User = person "User" {
+  description "Initiates payments"
 }
+
+Payments = system "Payments" {
+  description "Payment processing capability"
+
+  PaymentService = container "Payment Service" {
+    technology "Node.js"
+    description "Handles payment processing"
+    doc ".sruja/knowledge/PaymentService.md"
+  }
+}
+
+User -> Payments "Uses"
+User -> Payments.PaymentService "Pays via"

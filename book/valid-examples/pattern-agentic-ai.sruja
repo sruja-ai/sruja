@@ -54,7 +54,8 @@ commerce = system "E-commerce" {
 
   ordersDB = database "Orders Database" {
     technology "PostgreSQL"
-    description "Canonical source of order and payment state"
+    description "Canonical source of order and payment state (shared read-only for agentic investigations)"
+    metadata { shared "true" }
   }
 
   shippingAPI = container "Shipping Integration" {
@@ -135,7 +136,7 @@ agentic = system "Agentic Platform" {
       technology "Go"
       metadata { tags ["R1"] }
     }
-    slo { availability { target "99.9%" window "30d" } }
+    slo { availability { target "99.9%" window "30 days" } }
   }
 
   planner = container "Planning Agent Service" {
@@ -233,6 +234,12 @@ agentic = system "Agentic Platform" {
     description "Decouples planning from execution"
   }
 
+  aPI.requestHandler -> orchestrator "Submit task"
+  orchestrator.plannerRouter -> planner "Route to planning agent"
+  orchestrator.plannerRouter -> planner.toTPlanner "Escalate complex cases"
+  planner.toolSelector -> tools "Invoke tool"
+  executor.traceEmitter -> monitor "Send traces"
+
   aPI.requestHandler -> orchestrator.plannerRouter "Dispatch task"
   orchestrator.plannerRouter -> planner.reActPlanner "Request plan"
   planner.toolSelector -> tools.webBrowser "Search"
@@ -275,12 +282,21 @@ external = system "External Services" {
 }
 
 customer -> commerce.shopFrontend "Places orders"
+customer -> commerce "Shops"
 commerce.shopFrontend -> commerce.orderAPI "Create order"
 commerce.orderAPI -> commerce.shippingAPI "Shipping quote"
 commerce.orderAPI -> commerce.ordersDB "Persist order"
+commerce.orderAPI.ordersRead -> commerce.ordersDB "Read order"
+commerce.orderAPI.ordersWrite -> commerce.ordersDB "Write order"
 customer -> support.ticketing "Submits ticket"
+customer -> support "Requests support"
 supportAgent -> support.ticketing "Works tickets"
 supportAgent -> agentic.aPI "Approves actions"
+supportAgent -> agentic "Uses automation"
+support.ticketing -> support.cRM "Lookup customer"
+agentic.aPI -> support.ticketing.ticketAPI "Ticket CRUD"
+agentic.aPI -> support.email "Notify customer"
+agentic -> external "Calls third-party APIs"
 
 agentic.aPI -> support.ticketing "Create/update tickets"
 agentic.tools.databaseQuery -> commerce.ordersDB "Read order state"
@@ -296,6 +312,11 @@ R1 = requirement functional "Automate triage and investigation for top 5 issue t
 R2 = requirement performance "Reduce average resolution time by 40%"
 R3 = requirement security "Mask PII in prompts and logs"
 R4 = requirement constraint "Refunds over $100 require human approval"
+
+R1 -> agentic.aPI.requestHandler "Satisfied by"
+R2 -> agentic.monitor.metricsCollector "Measured by"
+R3 -> agentic.orchestrator.safetyGate "Enforced by"
+R4 -> agentic.monitor.policyEngine "Evaluated by"
 
 ADR001 = adr "Adopt ReAct for planning" {
   status "accepted"
@@ -380,6 +401,10 @@ LostPackage = scenario "Handle not received order" {
   step agentic.aPI -> support.ticketing "Add tracking info"
 }
 
+TicketTriage -> support "describes"
+RefundInvestigation -> support "describes"
+LostPackage -> support "describes"
+
 TriageFlow = flow "Data flow for triage" {
   step agentic.planner -> agentic.tools.databaseQuery "Order lookup"
   step agentic.tools.databaseQuery -> agentic.planner "Order details"
@@ -388,4 +413,3 @@ TriageFlow = flow "Data flow for triage" {
   step agentic.planner -> agentic.tools.emailSender "Email"
   step agentic.tools.emailSender -> support.email "Send"
 }
-

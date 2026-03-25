@@ -1,12 +1,26 @@
 import { * } from 'sruja.ai/stdlib'
 
-User = person "User"
+User = person "User" {
+  description "Uses the system"
+}
 App = system "App" {
-  Web = container "Web"
-  API = container "API"
-  DB = database "DB"
+  description "Example system demonstrating core element types"
+
+  Web = container "Web" {
+    technology "React"
+    description "User-facing web UI"
+  }
+  API = container "API" {
+    technology "Node.js"
+    description "Backend API"
+  }
+  DB = database "DB" {
+    technology "PostgreSQL"
+    description "Persistent storage"
+  }
 }
 User -> App.Web "Uses"
+User -> App "Uses"
 App.Web -> App.API "Calls"
 App.API -> App.DB "Reads/Writes"
 

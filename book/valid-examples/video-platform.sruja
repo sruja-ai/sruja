@@ -1,21 +1,35 @@
 import { * } from 'sruja.ai/stdlib'
 
 YouTube = system "Video Platform" {
-  WebApp = container "Web App"
-  API = container "API Server"
+  description "Video upload, transcoding, and playback platform"
+
+  WebApp = container "Web App" {
+    technology "React"
+    description "User-facing web application"
+  }
+  API = container "API Server" {
+    technology "Go"
+    description "Backend API for video metadata and upload"
+  }
 
   Transcoder = container "Transcoding Service" {
+    technology "FFmpeg"
     description "Converts raw video to HLS format"
     scale { min 50 }
   }
 
   S3 = database "Blob Storage" {
+    technology "S3-compatible object storage"
     description "Stores raw and processed video files"
   }
 
-  MetadataDB = database "Metadata DB"
+  MetadataDB = database "Metadata DB" {
+    technology "PostgreSQL"
+    description "Stores video metadata, encoding status, and playlists"
+  }
 
   CDNEdge = container "CDN Edge Cache" {
+    technology "Cloudflare / Akamai"
     description "Edge cache serving video chunks"
   }
 
@@ -26,6 +40,11 @@ YouTube = system "Video Platform" {
   Transcoder -> S3 "Reads/Writes"
   Transcoder -> MetadataDB "Updates status"
 }
+
+User = person "Viewer"
+
+User -> YouTube "Watches videos"
+YouTube.CDNEdge -> YouTube.S3 "Fetch chunks (cache miss)"
 
 deployment GlobalInfra "Global Infrastructure" {
   node OriginDC "Origin Data Center" {
@@ -42,8 +61,6 @@ deployment GlobalInfra "Global Infrastructure" {
     node Asia "Asia Edge"
   }
 }
-
-User = person "Viewer"
 
 scenario WatchVideo "User watches a video" {
   User -> WebApp "Get Video Page"

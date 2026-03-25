@@ -1,6 +1,12 @@
 import { * } from 'sruja.ai/stdlib'
 
+Customer = person "Customer" {
+  description "Browses products and places orders"
+}
+
 Platform = system "E-Commerce Platform" {
+  description "E-commerce storefront and core backend services"
+
   WebApp = container "Storefront & Admin" {
     technology "Next.js, TypeScript"
     description "The user-facing application."
@@ -19,3 +25,5 @@ Platform = system "E-Commerce Platform" {
   WebApp -> API "JSON/HTTPS"
   API -> Database "SQL/TCP"
 }
+
+Customer -> Platform "Uses"

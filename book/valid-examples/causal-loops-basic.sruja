@@ -105,3 +105,6 @@ GrowthUnderinvestment = causal_loop "Growth and Underinvestment" {
 customerDemand -> demand "drives"
 demand -> inventoryLevel "inventory depletion"
 
+ProductivityLoop -> pressure "Loop variable"
+InventoryLoop -> inventoryLevel "Loop variable"
+GrowthUnderinvestment -> systemQuality "Loop variable"

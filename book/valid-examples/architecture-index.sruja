@@ -102,12 +102,15 @@ Commerce.Checkout -> Commerce.Payments "processes payment via"
 Commerce.Payments -> Commerce.PrimaryDB "persists to"
 Commerce.Payments -> StripeAPI "charges via"
 Commerce.Checkout -> Commerce.OrderEvents "publishes to"
+Commerce -> StripeAPI "Integrates with"
 
 // ============================================
 // Governance
 // ============================================
 
 R1 = requirement availability "99.9% uptime for payment processing"
+
+R1 -> Commerce.Payments "Targets"
 
 ADR001 = adr "Use Stripe for payments" {
   status "accepted"

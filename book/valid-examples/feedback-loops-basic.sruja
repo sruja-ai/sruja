@@ -21,6 +21,7 @@ ecommerce = system "E-Commerce System" {
 
   database = database "PostgreSQL Database" {
     technology "PostgreSQL 14"
+    description "Stores orders, customers, and inventory"
   }
 }
 
@@ -62,3 +63,5 @@ QualityControlLoop = feedback "B1: Quality Control Loop" {
   ecommerce.api -> ecommerce.database "optimizes"
 }
 
+GrowthLoop -> ecommerce "describes"
+QualityControlLoop -> ecommerce "describes"

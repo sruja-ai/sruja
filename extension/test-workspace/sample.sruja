@@ -1,2 +1,12 @@
 person = kind "Person"
-User = person "User"
+system = kind "System"
+
+User = person "User" {
+  description "Uses the app"
+}
+
+App = system "App" {
+  description "Example system for extension tests"
+}
+
+User -> App "Uses"

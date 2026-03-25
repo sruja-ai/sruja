@@ -4,6 +4,12 @@ container = kind "Container"
 
 User = person "User" {}
 App = system "My App" {
-  Web = container "Web Server" { technology "Node.js" }
+  description "Example application for getting started"
+
+  Web = container "Web Server" {
+    technology "Node.js"
+    description "Serves the web UI"
+  }
 }
 User -> App.Web "visits"
+User -> App "uses"

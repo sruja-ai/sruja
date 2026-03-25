@@ -310,20 +310,6 @@
           "command": "sruja.openDocsThread",
           "group": "3_knowledge"
         }
-      ],
-      "editor/title": [
-        {
-          "command": "sruja.openDiagramPreview",
-          "when": "editorLangId == sruja",
-          "group": "navigation",
-          "icon": "$(graph)"
-        },
-        {
-          "command": "sruja.markdownPreview",
-          "when": "editorLangId == sruja",
-          "group": "navigation",
-          "icon": "$(open-preview)"
-        }
       ]
     },
     "viewsContainers": {

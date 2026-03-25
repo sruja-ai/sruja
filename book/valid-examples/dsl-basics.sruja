@@ -1,15 +1,27 @@
 import { * } from 'sruja.ai/stdlib'
 
 Shop = system "Shop API" {
+  description "Backend services for a simple shop"
+
   WebApp = container "Web" {
+    technology "Node.js"
     description "Gateway layer"
   }
-  CatalogSvc = container "Catalog"
-  MainDB = database "Database"
+  CatalogSvc = container "Catalog" {
+    technology "Node.js"
+    description "Catalog APIs"
+  }
+  MainDB = database "Database" {
+    technology "PostgreSQL"
+    description "Catalog and order data"
+  }
 }
 
-User = person "User"
+User = person "User" {
+  description "Browses products and places orders"
+}
 
+User -> Shop "Uses"
 User -> Shop.WebApp "Uses"
 Shop.WebApp -> Shop.CatalogSvc "Routes"
 Shop.CatalogSvc -> Shop.MainDB "Reads/Writes"
