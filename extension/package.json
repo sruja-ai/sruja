@@ -53,6 +53,10 @@
     "languages": [
       {
         "id": "sruja",
+        "icon": {
+          "light": "./sruja-logo.png",
+          "dark": "./sruja-logo.png"
+        },
         "aliases": [
           "Sruja",
           "sruja"
@@ -99,168 +103,240 @@
     "commands": [
       {
         "command": "sruja.commandCenter",
-        "title": "Sruja: Command Center"
+        "title": "Sruja: Command Center",
+        "icon": "$(terminal)",
+        "shortTitle": "Command Center"
       },
       {
         "command": "sruja.runValidation",
-        "title": "Sruja: Run validation (check after AI/edit)"
+        "title": "Sruja: Run validation (check after AI/edit)",
+        "icon": "$(check-all)",
+        "shortTitle": "Validate"
       },
       {
         "command": "sruja.exportMarkdown",
-        "title": "Sruja: Export architecture to Markdown"
+        "title": "Sruja: Export architecture to Markdown",
+        "icon": "$(markdown)",
+        "shortTitle": "Export"
       },
       {
         "command": "sruja.openDiagramPreview",
-        "title": "Sruja: Open Diagram Preview"
+        "title": "Sruja: Open Diagram Preview",
+        "icon": "$(graph)",
+        "shortTitle": "Diagram"
       },
       {
         "command": "sruja.openFocusedDiagramPreview",
-        "title": "Sruja: Open Focused Diagram Preview"
+        "title": "Sruja: Open Focused Diagram Preview",
+        "icon": "$(filter)",
+        "shortTitle": "Focused Diagram"
       },
       {
         "command": "sruja.openFocusedDiagramPreviewAt",
-        "title": "Sruja: Open Focused Diagram Preview (at element)"
+        "title": "Sruja: Open Focused Diagram Preview (at element)",
+        "icon": "$(filter)",
+        "shortTitle": "Focus Here"
       },
       {
         "command": "sruja.openSequenceDiagramPreview",
-        "title": "Sruja: Open Sequence Diagram Preview"
+        "title": "Sruja: Open Sequence Diagram Preview",
+        "icon": "$(list-tree)",
+        "shortTitle": "Sequence"
       },
       {
         "command": "sruja.openSequenceDiagramPreviewAt",
-        "title": "Sruja: Open Sequence Diagram Preview (at scenario/flow)"
+        "title": "Sruja: Open Sequence Diagram Preview (at scenario/flow)",
+        "icon": "$(list-tree)",
+        "shortTitle": "Sequence Here"
       },
       {
         "command": "sruja.openComponentKnowledge",
-        "title": "Sruja: Open component knowledge"
+        "title": "Sruja: Open component knowledge",
+        "icon": "$(book)",
+        "shortTitle": "Docs"
       },
       {
         "command": "sruja.openDocsThread",
-        "title": "Sruja: Open Docs & References Thread"
+        "title": "Sruja: Open Docs & References Thread",
+        "icon": "$(references)",
+        "shortTitle": "Thread"
       },
       {
         "command": "sruja.openDocsThreadAt",
-        "title": "Sruja: Open Docs & References Thread (at element)"
+        "title": "Sruja: Open Docs & References Thread (at element)",
+        "icon": "$(references)",
+        "shortTitle": "Thread Here"
       },
       {
         "command": "sruja.openSkillsOverview",
-        "title": "Sruja: Open Skills Overview"
+        "title": "Sruja: Open Skills Overview",
+        "icon": "$(folder-library)",
+        "shortTitle": "Skills"
       },
       {
         "command": "sruja.openAgentGuide",
-        "title": "Sruja: Open Agent Guide (AGENTS.md)"
+        "title": "Sruja: Open Agent Guide (AGENTS.md)",
+        "icon": "$(file-text)",
+        "shortTitle": "Agent Guide"
       },
       {
         "command": "sruja.listRules",
-        "title": "Sruja: List Rules…"
+        "title": "Sruja: List Rules…",
+        "icon": "$(list-unordered)",
+        "shortTitle": "Rules"
       },
       {
         "command": "sruja.copyRuleForAI",
-        "title": "Sruja: Copy Rule for AI"
+        "title": "Sruja: Copy Rule for AI",
+        "icon": "$(file-code)",
+        "shortTitle": "Copy Rule"
       },
       {
         "command": "sruja.copyAgentGuideForAI",
-        "title": "Sruja: Copy Agent Guide for AI"
+        "title": "Sruja: Copy Agent Guide for AI",
+        "icon": "$(file-text)",
+        "shortTitle": "Copy Guide"
       },
       {
         "command": "sruja.runDrift",
-        "title": "Sruja: Run drift (architecture health)"
+        "title": "Sruja: Run drift (architecture health)",
+        "icon": "$(pulse)",
+        "shortTitle": "Drift"
       },
       {
         "command": "sruja.refreshContext",
-        "title": "Sruja: Refresh repo context"
+        "title": "Sruja: Refresh repo context",
+        "icon": "$(sync)",
+        "shortTitle": "Refresh Context"
       },
       {
         "command": "sruja.status",
-        "title": "Sruja: Status"
+        "title": "Sruja: Status",
+        "icon": "$(info)",
+        "shortTitle": "Status"
       },
       {
         "command": "sruja.review",
-        "title": "Sruja: Review architecture update"
+        "title": "Sruja: Review architecture update",
+        "icon": "$(eye)",
+        "shortTitle": "Review"
       },
       {
         "command": "sruja.markdownPreview",
-        "title": "Sruja: Markdown Preview"
+        "title": "Sruja: Markdown Preview",
+        "icon": "$(open-preview)",
+        "shortTitle": "Preview"
       },
       {
         "command": "sruja.openMarkdownPreview",
-        "title": "Sruja: Open Markdown Preview"
+        "title": "Sruja: Open Markdown Preview",
+        "icon": "$(open-preview)",
+        "shortTitle": "Preview"
       },
       {
         "command": "sruja.copyContextPackForAI",
-        "title": "Sruja: Copy Context Pack for AI"
+        "title": "Sruja: Copy Context Pack for AI",
+        "icon": "$(copy)",
+        "shortTitle": "Copy Context"
       },
       {
         "command": "sruja.registerMcpServer",
-        "title": "Sruja: Register MCP Server (Cursor)"
+        "title": "Sruja: Register MCP Server (Cursor)",
+        "icon": "$(plug)",
+        "shortTitle": "MCP"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "sruja.editorSubmenu",
+        "label": "Sruja",
+        "icon": "$(terminal)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "sruja.commandCenter",
+        "key": "ctrl+shift+s",
+        "mac": "cmd+shift+s",
+        "when": "editorLangId == sruja"
+      },
+      {
+        "command": "sruja.runValidation",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorLangId == sruja"
+      },
+      {
+        "command": "sruja.openDiagramPreview",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
+        "when": "editorLangId == sruja"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "sruja.runValidation",
+          "submenu": "sruja.editorSubmenu",
+          "group": "sruja",
           "when": "editorLangId == sruja"
+        }
+      ],
+      "sruja.editorSubmenu": [
+        {
+          "command": "sruja.runValidation",
+          "group": "1_validate"
         },
         {
           "command": "sruja.exportMarkdown",
-          "when": "editorLangId == sruja"
+          "group": "1_validate"
         },
         {
           "command": "sruja.openDiagramPreview",
-          "when": "editorLangId == sruja"
+          "group": "2_diagram"
         },
         {
           "command": "sruja.openFocusedDiagramPreview",
-          "when": "editorLangId == sruja"
+          "group": "2_diagram"
         },
         {
           "command": "sruja.openSequenceDiagramPreview",
-          "when": "editorLangId == sruja"
+          "group": "2_diagram"
         },
         {
           "command": "sruja.openComponentKnowledge",
-          "when": "editorLangId == sruja"
+          "group": "3_knowledge"
         },
         {
           "command": "sruja.openDocsThread",
-          "when": "editorLangId == sruja"
+          "group": "3_knowledge"
         }
       ],
       "editor/title": [
         {
-          "command": "sruja.exportMarkdown",
-          "when": "editorLangId == sruja",
-          "group": "navigation",
-          "icon": "$(preview)"
-        },
-        {
           "command": "sruja.openDiagramPreview",
           "when": "editorLangId == sruja",
-          "group": "navigation"
-        },
-        {
-          "command": "sruja.openSequenceDiagramPreview",
-          "when": "editorLangId == sruja",
-          "group": "navigation"
-        },
-        {
-          "command": "sruja.openComponentKnowledge",
-          "when": "editorLangId == sruja",
-          "group": "navigation"
-        },
-        {
-          "command": "sruja.openDocsThread",
-          "when": "editorLangId == sruja",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "$(graph)"
         },
         {
           "command": "sruja.markdownPreview",
           "when": "editorLangId == sruja",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "$(open-preview)"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sruja-view",
+          "title": "Sruja",
+          "icon": "sruja-logo.png"
         }
       ]
     },
     "views": {
-      "explorer": [
+      "sruja-view": [
         {
           "id": "srujaSkillsView",
           "name": "Sruja Skills"

@@ -1009,32 +1009,42 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("sruja.commandCenter", async () => {
-      const items: { label: string; detail?: string; command: string }[] = [
-        { label: "Run validation", command: "sruja.runValidation" },
-        { label: "Open Diagram Preview", command: "sruja.openDiagramPreview" },
-        { label: "Open Focused Diagram Preview", command: "sruja.openFocusedDiagramPreview" },
-        { label: "Open Sequence Diagram Preview", command: "sruja.openSequenceDiagramPreview" },
-        { label: "Export architecture to Markdown", command: "sruja.exportMarkdown" },
-        { label: "Open Markdown Preview", command: "sruja.openMarkdownPreview" },
-        { label: "Open component knowledge", command: "sruja.openComponentKnowledge" },
-        { label: "Open Skills Overview", command: "sruja.openSkillsOverview" },
-        { label: "Open Agent Guide (AGENTS.md)", command: "sruja.openAgentGuide" },
-        { label: "List Rules…", command: "sruja.listRules" },
-        { label: "Copy Rule for AI", command: "sruja.copyRuleForAI" },
-        { label: "Copy Agent Guide for AI", command: "sruja.copyAgentGuideForAI" },
-        { label: "Copy Context Pack for AI", command: "sruja.copyContextPackForAI" },
-        { label: "Run drift (architecture health)", command: "sruja.runDrift" },
-        { label: "Refresh repo context", command: "sruja.refreshContext" },
-        { label: "Status", command: "sruja.status" },
-        { label: "Review architecture update", command: "sruja.review" },
+      const items: (vscode.QuickPickItem & { command?: string })[] = [
+        { label: "Diagrams & Previews", kind: vscode.QuickPickItemKind.Separator },
+        { label: "$(graph) Open Diagram Preview", detail: "Full architecture diagram", command: "sruja.openDiagramPreview" },
+        { label: "$(filter) Open Focused Diagram Preview", detail: "Filtered by level and element", command: "sruja.openFocusedDiagramPreview" },
+        { label: "$(list-tree) Open Sequence Diagram Preview", detail: "Render a scenario or flow", command: "sruja.openSequenceDiagramPreview" },
+        { label: "$(open-preview) Open Markdown Preview", detail: "Live rendered markdown", command: "sruja.openMarkdownPreview" },
+
+        { label: "Validation & Export", kind: vscode.QuickPickItemKind.Separator },
+        { label: "$(check-all) Run Validation", detail: "Check .sruja file for lint errors", command: "sruja.runValidation" },
+        { label: "$(markdown) Export architecture to Markdown", detail: "Generate markdown from DSL", command: "sruja.exportMarkdown" },
+
+        { label: "Knowledge & Docs", kind: vscode.QuickPickItemKind.Separator },
+        { label: "$(book) Open component knowledge", detail: "Open linked doc for element under cursor", command: "sruja.openComponentKnowledge" },
+        { label: "$(references) Open Docs & References Thread", detail: "Browse element docs and cross-references", command: "sruja.openDocsThread" },
+
+        { label: "AI & Skills", kind: vscode.QuickPickItemKind.Separator },
+        { label: "$(copy) Copy Context Pack for AI", detail: "Copy architecture snapshot to clipboard", command: "sruja.copyContextPackForAI" },
+        { label: "$(file-code) Copy Rule for AI", detail: "Copy a skill rule to clipboard", command: "sruja.copyRuleForAI" },
+        { label: "$(file-text) Copy Agent Guide for AI", detail: "Copy AGENTS.md to clipboard", command: "sruja.copyAgentGuideForAI" },
+        { label: "$(folder-library) Open Skills Overview", detail: "Browse skills and rules", command: "sruja.openSkillsOverview" },
+        { label: "$(file-text) Open Agent Guide (AGENTS.md)", detail: "Open AGENTS.md in editor", command: "sruja.openAgentGuide" },
+        { label: "$(list-unordered) List Rules…", detail: "Browse and open a rule file", command: "sruja.listRules" },
+
+        { label: "Context Engineering (CLI)", kind: vscode.QuickPickItemKind.Separator },
+        { label: "$(pulse) Run drift (architecture health)", detail: "Check architecture health vs. reality", command: "sruja.runDrift" },
+        { label: "$(sync) Refresh repo context", detail: "Rebuild context.json for AI", command: "sruja.refreshContext" },
+        { label: "$(info) Status", detail: "Show repo truth status", command: "sruja.status" },
+        { label: "$(eye) Review architecture update", detail: "Review pending architecture changes", command: "sruja.review" },
+
+        { label: "Integrations", kind: vscode.QuickPickItemKind.Separator },
+        { label: "$(plug) Register MCP Server (Cursor)", detail: "Register Sruja as MCP server in Cursor", command: "sruja.registerMcpServer" },
       ];
       const pick = isTest
-        ? items[0]
-        : await vscode.window.showQuickPick(
-          items.map((i) => ({ label: i.label, detail: i.detail, item: i })),
-          { placeHolder: "Sruja Command Center" }
-        ).then((p) => p?.item);
-      if (!pick) return;
+        ? items[1] // skip separator
+        : await vscode.window.showQuickPick(items, { placeHolder: "Sruja Command Center" });
+      if (!pick || !pick.command) return;
       await vscode.commands.executeCommand(pick.command);
     }),
     vscode.commands.registerCommand("sruja.runValidation", async () => {
@@ -1616,26 +1626,31 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("sruja.openMarkdownPreview", openMarkdownPreview),
     vscode.commands.registerCommand("sruja.registerMcpServer", registerMcpServer),
     vscode.commands.registerCommand("sruja.runDrift", async () => {
-      const channel = getCliOutputChannel();
-      channel.clear();
-      channel.show(true);
-      channel.appendLine("Running sruja drift -r . ...");
-      try {
-        const { stdout, stderr, code } = await runCliInWorkspace(["drift", "-r", "."]);
-        channel.append(stdout);
-        if (stderr) channel.append(stderr);
-        channel.appendLine("");
-        if (code !== 0) {
-          channel.appendLine(`(exit code ${code})`);
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "Sruja: Running drift…", cancellable: false },
+        async () => {
+          const channel = getCliOutputChannel();
+          channel.clear();
+          channel.show(true);
+          channel.appendLine("Running sruja drift -r . ...");
+          try {
+            const { stdout, stderr, code } = await runCliInWorkspace(["drift", "-r", "."]);
+            channel.append(stdout);
+            if (stderr) channel.append(stderr);
+            channel.appendLine("");
+            if (code !== 0) {
+              channel.appendLine(`(exit code ${code})`);
+            }
+            channel.appendLine("--- Done ---");
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            channel.appendLine(`Error: ${msg}`);
+            vscode.window.showErrorMessage(
+              "Sruja drift failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
+            );
+          }
         }
-        channel.appendLine("--- Done ---");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        channel.appendLine(`Error: ${msg}`);
-        vscode.window.showErrorMessage(
-          "Sruja drift failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
-        );
-      }
+      );
     }),
     vscode.commands.registerCommand("sruja.refreshContext", async () => {
       const folder = vscode.workspace.workspaceFolders?.[0];
@@ -1643,100 +1658,115 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("Open a workspace folder to refresh repo context.");
         return;
       }
-      const channel = getCliOutputChannel();
-      channel.show(true);
-      channel.appendLine("Refreshing repo context (sruja sync -r . -f json) ...");
-      try {
-        const { stdout, stderr, code } = await runCliInWorkspace([
-          "sync",
-          "-r",
-          ".",
-          "-f",
-          "json",
-        ]);
-        if (stderr) channel.append(stderr);
-        if (code !== 0) {
-          channel.append(stdout);
-          vscode.window.showErrorMessage("Sruja sync failed. Is the CLI on PATH or set sruja.lsp.path?");
-          return;
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "Sruja: Refreshing repo context…", cancellable: false },
+        async () => {
+          const channel = getCliOutputChannel();
+          channel.show(true);
+          channel.appendLine("Refreshing repo context (sruja sync -r . -f json) ...");
+          try {
+            const { stdout, stderr, code } = await runCliInWorkspace([
+              "sync",
+              "-r",
+              ".",
+              "-f",
+              "json",
+            ]);
+            if (stderr) channel.append(stderr);
+            if (code !== 0) {
+              channel.append(stdout);
+              vscode.window.showErrorMessage("Sruja sync failed. Is the CLI on PATH or set sruja.lsp.path?");
+              return;
+            }
+            const contextPath = path.join(folder.uri.fsPath, ".sruja", "context.json");
+            channel.appendLine(`Context written to ${contextPath}`);
+            const parsed = parseJsonSafe<{ context_path?: string; truth_status?: string }>(stdout);
+            if (parsed.ok && parsed.value.context_path) {
+              channel.appendLine(`Baseline/truth: ${parsed.value.truth_status ?? "unknown"}`);
+            }
+            channel.appendLine("--- Done ---");
+            vscode.window.showInformationMessage("Sruja: Repo context updated.");
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            channel.appendLine(`Error: ${msg}`);
+            vscode.window.showErrorMessage("Sruja refresh context failed: " + msg);
+          }
         }
-        const contextPath = path.join(folder.uri.fsPath, ".sruja", "context.json");
-        channel.appendLine(`Context written to ${contextPath}`);
-        const parsed = parseJsonSafe<{ context_path?: string; truth_status?: string }>(stdout);
-        if (parsed.ok && parsed.value.context_path) {
-          channel.appendLine(`Baseline/truth: ${parsed.value.truth_status ?? "unknown"}`);
-        }
-        channel.appendLine("--- Done ---");
-        vscode.window.showInformationMessage("Sruja: Repo context updated.");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        channel.appendLine(`Error: ${msg}`);
-        vscode.window.showErrorMessage("Sruja refresh context failed: " + msg);
-      }
+      );
     }),
     vscode.commands.registerCommand("sruja.status", async () => {
-      const channel = getCliOutputChannel();
-      channel.show(true);
-      channel.appendLine("Running sruja status -r . --format json ...");
-      try {
-        const { stdout, stderr, code } = await runCliInWorkspace([
-          "status",
-          "-r",
-          ".",
-          "--format",
-          "json",
-        ]);
-        if (stderr) channel.append(stderr);
-        if (code !== 0) {
-          channel.append(stdout);
-          channel.appendLine("--- Status failed ---");
-          return;
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "Sruja: Fetching status…", cancellable: false },
+        async () => {
+          const channel = getCliOutputChannel();
+          channel.show(true);
+          channel.appendLine("Running sruja status -r . --format json ...");
+          try {
+            const { stdout, stderr, code } = await runCliInWorkspace([
+              "status",
+              "-r",
+              ".",
+              "--format",
+              "json",
+            ]);
+            if (stderr) channel.append(stderr);
+            if (code !== 0) {
+              channel.append(stdout);
+              channel.appendLine("--- Status failed ---");
+              return;
+            }
+            const parsed = parseJsonSafe<StatusJson>(stdout);
+            if (!parsed.ok) {
+              channel.appendLine(`Parse error: ${parsed.error}`);
+              return;
+            }
+            for (const line of formatStatusLines(parsed.value)) {
+              channel.appendLine(line);
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            channel.appendLine(`Error: ${msg}`);
+            vscode.window.showErrorMessage("Sruja status failed. Is the CLI on PATH or set sruja.lsp.path?");
+          }
         }
-        const parsed = parseJsonSafe<StatusJson>(stdout);
-        if (!parsed.ok) {
-          channel.appendLine(`Parse error: ${parsed.error}`);
-          return;
-        }
-        for (const line of formatStatusLines(parsed.value)) {
-          channel.appendLine(line);
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        channel.appendLine(`Error: ${msg}`);
-        vscode.window.showErrorMessage("Sruja status failed. Is the CLI on PATH or set sruja.lsp.path?");
-      }
+      );
     }),
     vscode.commands.registerCommand("sruja.review", async () => {
-      const channel = getCliOutputChannel();
-      channel.show(true);
-      channel.appendLine("Running sruja review -r . --format json ...");
-      try {
-        const { stdout, stderr, code } = await runCliInWorkspace([
-          "review",
-          "-r",
-          ".",
-          "--format",
-          "json",
-        ]);
-        if (stderr) channel.append(stderr);
-        if (code !== 0) {
-          channel.append(stdout);
-          channel.appendLine("--- Review failed ---");
-          return;
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "Sruja: Reviewing architecture update…", cancellable: false },
+        async () => {
+          const channel = getCliOutputChannel();
+          channel.show(true);
+          channel.appendLine("Running sruja review -r . --format json ...");
+          try {
+            const { stdout, stderr, code } = await runCliInWorkspace([
+              "review",
+              "-r",
+              ".",
+              "--format",
+              "json",
+            ]);
+            if (stderr) channel.append(stderr);
+            if (code !== 0) {
+              channel.append(stdout);
+              channel.appendLine("--- Review failed ---");
+              return;
+            }
+            const parsed = parseJsonSafe<ReviewJson>(stdout);
+            if (!parsed.ok) {
+              channel.appendLine(`Parse error: ${parsed.error}`);
+              return;
+            }
+            for (const line of formatReviewLines(parsed.value)) {
+              channel.appendLine(line);
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            channel.appendLine(`Error: ${msg}`);
+            vscode.window.showErrorMessage("Sruja review failed. Is the CLI on PATH or set sruja.lsp.path?");
+          }
         }
-        const parsed = parseJsonSafe<ReviewJson>(stdout);
-        if (!parsed.ok) {
-          channel.appendLine(`Parse error: ${parsed.error}`);
-          return;
-        }
-        for (const line of formatReviewLines(parsed.value)) {
-          channel.appendLine(line);
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        channel.appendLine(`Error: ${msg}`);
-        vscode.window.showErrorMessage("Sruja review failed. Is the CLI on PATH or set sruja.lsp.path?");
-      }
+      );
     }),
   );
 }
