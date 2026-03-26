@@ -2,10 +2,20 @@ import * as vscode from "vscode";
 import { parseJsonSafe } from "./safeJson";
 
 export async function registerMcpServer(getSrujaPath: () => string): Promise<void> {
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  if (!folder) {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) {
     vscode.window.showWarningMessage("Open a workspace folder to register the MCP server.");
     return;
+  }
+
+  let folder = folders[0];
+  if (folders.length > 1) {
+    const picked = await vscode.window.showQuickPick(
+      folders.map((f) => ({ label: f.name, folder: f })),
+      { placeHolder: "Select workspace folder to register Sruja MCP server" }
+    );
+    if (!picked) return;
+    folder = picked.folder;
   }
 
   const serverName = "sruja";

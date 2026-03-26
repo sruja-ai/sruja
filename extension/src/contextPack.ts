@@ -12,11 +12,11 @@ import { getElementsFromWasm, getMermaidFromWasm } from "./wasm";
 import { parseJsonSafe } from "./safeJson";
 
 export async function buildContextPack(context: vscode.ExtensionContext): Promise<string> {
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  const rootPath = folder?.uri.fsPath;
-
   const editor = vscode.window.activeTextEditor;
   const activeDoc = editor?.document;
+  const folder = activeDoc ? vscode.workspace.getWorkspaceFolder(activeDoc.uri) : vscode.workspace.workspaceFolders?.[0];
+  const rootPath = folder?.uri.fsPath;
+
   const activePath = activeDoc ? toFsPathOrUri(activeDoc.uri) : undefined;
   const activeRel = rootPath && activeDoc?.uri.scheme === "file" ? path.relative(rootPath, activeDoc.uri.fsPath) : activePath;
 
