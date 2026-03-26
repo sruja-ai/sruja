@@ -75,6 +75,41 @@ fn export_mermaid_succeeds_on_valid_file() {
 }
 
 #[test]
+fn discover_explain_text_highlights_reasoning() {
+    let repo = create_test_repo();
+    write_file(
+        repo.path(),
+        "package.json",
+        r#"{"dependencies":{"express":"4.18.0"}}"#,
+    );
+    write_file(
+        repo.path(),
+        "src/server.ts",
+        r#"
+import { query } from "./db";
+export function start() { return query(); }
+"#,
+    );
+    write_file(
+        repo.path(),
+        "src/db.ts",
+        r#"export function query() { return []; }"#,
+    );
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&["discover", "--explain", "-r", repo_str]);
+
+    assert!(
+        success,
+        "discover --explain should succeed: stderr={}",
+        stderr
+    );
+    assert!(stdout.contains("# Sruja Discovery Explanation"));
+    assert!(stdout.contains("Why Sruja Thinks That"));
+    assert!(stdout.contains("Next Steps"));
+}
+
+#[test]
 fn fmt_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);

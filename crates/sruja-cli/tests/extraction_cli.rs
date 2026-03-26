@@ -79,6 +79,47 @@ fn discover_context_format_json_returns_valid_schema() {
 }
 
 #[test]
+fn discover_explain_format_json_returns_valid_schema() {
+    let temp = create_test_repo();
+    write_file(
+        temp.path(),
+        "package.json",
+        r#"{"dependencies":{"express":"4.18.0"}}"#,
+    );
+    write_file(
+        temp.path(),
+        "src/server.ts",
+        r#"
+import { query } from "./db";
+export function start() { return query(); }
+"#,
+    );
+    write_file(
+        temp.path(),
+        "src/db.ts",
+        r#"export function query() { return []; }"#,
+    );
+
+    let repo_str = temp.path().to_str().expect("path utf-8");
+    let (success, stdout, stderr) =
+        run_sruja(&["discover", "--explain", "-r", repo_str, "--format", "json"]);
+
+    assert!(
+        success,
+        "discover --explain --format json should succeed: stderr={}",
+        stderr
+    );
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim())
+        .expect("discover explanation output must be valid JSON");
+    let obj = parsed.as_object().expect("root must be object");
+    assert!(obj.contains_key("context"), "must have 'context'");
+    assert!(obj.contains_key("reasoning"), "must have 'reasoning'");
+    assert!(obj.contains_key("key_elements"), "must have 'key_elements'");
+    assert!(obj.contains_key("confidence"), "must have 'confidence'");
+    assert!(obj.contains_key("next_steps"), "must have 'next_steps'");
+}
+
+#[test]
 fn lint_on_temp_sruja_file() {
     let temp = create_test_repo();
     let minimal = r#"person = kind "Person"

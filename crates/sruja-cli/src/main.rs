@@ -382,13 +382,16 @@ enum Commands {
         /// Print repo context summary (structure, technologies, suggested areas) for contextual questions
         #[arg(long)]
         context: bool,
+        /// Explain what the scanner discovered, why it inferred that shape, and what to review next
+        #[arg(long)]
+        explain: bool,
         /// Generate a repository map with tree-sitter signatures for top files (for LLM context)
         #[arg(long)]
         repomap: bool,
         /// Path to repository (for --context; default current dir)
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
-        /// Output format for --context: text (default) or json (machine-readable for agents)
+        /// Output format for --context/--explain: text (default) or json (machine-readable for agents)
         #[arg(long, default_value = "text")]
         format: String,
         /// Maximum number of files to include in repomap (default: 100)
@@ -683,6 +686,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         Commands::Discover {
             context,
+            explain,
             repomap,
             repo,
             format,
@@ -691,6 +695,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             if repomap {
                 commands::discover_repomap_cmd(&repo, max_files, max_tokens).await
+            } else if explain {
+                commands::discover_explain(&repo, &format).await
             } else if context {
                 commands::discover_context(&repo, &format).await
             } else {

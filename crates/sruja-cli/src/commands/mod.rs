@@ -26,7 +26,7 @@ mod why;
 
 pub use check::{baseline, check};
 pub use compliance::compliance;
-pub use discover::{discover_context, discover_questions, discover_repomap_cmd};
+pub use discover::{discover_context, discover_explain, discover_questions, discover_repomap_cmd};
 pub use dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
 };

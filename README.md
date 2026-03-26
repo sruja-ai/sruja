@@ -181,6 +181,9 @@ In your AI editor, use the **sruja-architecture skill**. It runs discovery and d
 # Evidence for the skill (or CI)
 sruja discover --context -r . --format json
 
+# Plain-English explanation of what Sruja found and why
+sruja discover --explain -r .
+
 # Validate
 sruja lint repo.sruja
 
@@ -319,6 +322,7 @@ Copy the error output and paste it to your AI with: "Fix these lint errors."
 
 - Check your language is supported (see table above)
 - Make sure you're in the correct directory
+- Run `sruja discover --explain -r .` to see what Sruja inferred and where confidence is lower
 - Try: `sruja quickstart -r .` to see what's being detected
 - Open an issue if something obvious is missing
 

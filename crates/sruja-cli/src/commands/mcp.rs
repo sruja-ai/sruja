@@ -231,6 +231,18 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_explain_discovery",
+            "title": "Sruja Discovery Explanation",
+            "description": "Explain what Sruja discovered in the repo, why it inferred that shape, and what to review next.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "format": { "type": "string", "description": "Output format: text (default) or json" }
+                }
+            }
+        }),
+        json!({
             "name": "sruja_check_drift",
             "title": "Sruja Drift Check",
             "description": "Detect architectural drift in the codebase (returns JSON with violations and suggestions).",
@@ -318,6 +330,20 @@ async fn run_tool(name: &str, arguments: &Value) -> Result<String, CliError> {
             let content =
                 super::context::context_string(&repo, "markdown", None, None, 2, 10000).await?;
             Ok(content)
+        }
+        "sruja_explain_discovery" => {
+            let format = arguments
+                .get("format")
+                .and_then(|v| v.as_str())
+                .unwrap_or("text");
+            match format {
+                "json" => super::discover::discover_explanation_json(&repo),
+                "text" => super::discover::discover_explanation_string(&repo),
+                _ => Err(CliError::Validation(format!(
+                    "Unknown format: {}. Use: text or json",
+                    format
+                ))),
+            }
         }
         "sruja_check_drift" => {
             let architecture = arguments
@@ -606,6 +632,7 @@ mod tests {
 
         assert!(names.contains(&"sruja_get_repomap".to_string()));
         assert!(names.contains(&"sruja_get_architecture_context".to_string()));
+        assert!(names.contains(&"sruja_explain_discovery".to_string()));
         assert!(names.contains(&"sruja_check_drift".to_string()));
     }
 
@@ -623,5 +650,37 @@ mod tests {
         .await
         .expect("repomap");
         assert!(out.contains("# Repository Map"));
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_discovery_explanation_returns_summary() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).expect("src");
+        fs::write(
+            dir.path().join("package.json"),
+            r#"{"dependencies":{"express":"4.18.0"}}"#,
+        )
+        .expect("package");
+        fs::write(
+            src.join("server.ts"),
+            "import { query } from './db';\nexport function start() { return query(); }\n",
+        )
+        .expect("server");
+        fs::write(
+            src.join("db.ts"),
+            "export function query() { return []; }\n",
+        )
+        .expect("db");
+
+        let out = run_tool(
+            "sruja_explain_discovery",
+            &json!({ "path": dir.path().to_string_lossy() }),
+        )
+        .await
+        .expect("discovery explanation");
+
+        assert!(out.contains("# Sruja Discovery Explanation"));
+        assert!(out.contains("Why Sruja Thinks That"));
     }
 }
