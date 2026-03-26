@@ -191,14 +191,14 @@ describe("parseLintJson", () => {
 
 describe("getDiagramPreviewHtml", () => {
   it("embeds mermaid code in script and div", () => {
-    const html = getDiagramPreviewHtml("graph TD A-->B");
+    const html = getDiagramPreviewHtml("graph TD A-->B", "file:///test.sruja");
     expect(html).toContain("<div id=\"diagram\" class=\"mermaid\">");
     expect(html).toContain("graph TD A-->B");
     expect(html).toContain("mermaid.run");
   });
 
   it("embeds mermaid safely when input has no backticks", () => {
-    const html = getDiagramPreviewHtml("graph LR A-->B");
+    const html = getDiagramPreviewHtml("graph LR A-->B", "file:///test.sruja");
     expect(html).toContain("graph LR A-->B");
   });
 });

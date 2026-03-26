@@ -44,7 +44,7 @@ describe("registerContextEngineeringCommands", () => {
     const cb = registered.get("sruja.refreshContext");
     if (!cb) throw new Error("Command not registered: sruja.refreshContext");
     await cb();
-    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith("Open a workspace folder to refresh repo context.");
+    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith("Select a workspace folder to refresh repo context.");
   });
 
   it("runDrift shows error when no workspace folder", async () => {

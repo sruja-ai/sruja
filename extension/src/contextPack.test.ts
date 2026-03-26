@@ -36,6 +36,13 @@ describe("buildContextPack", () => {
       writeFile: jest.fn(),
       createDirectory: jest.fn(),
     };
+    (vscode.workspace as any).getWorkspaceFolder = (uri: vscode.Uri) => {
+      if (uri.fsPath.startsWith("/ws")) {
+        const folders = (vscode.workspace as any).workspaceFolders;
+        return folders && folders.length > 0 ? folders[0] : undefined;
+      }
+      return undefined;
+    };
   });
 
   it("renders basic pack when no workspace and no sruja open", async () => {
