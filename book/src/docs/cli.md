@@ -134,21 +134,28 @@ sruja context -r . -f markdown -o .cursor/rules/architecture.md
 Use these when you want “architecture health” and “keep it in sync” workflows in a repo.
 
 ```bash
+# First-time setup
+sruja start -r . --prompt
+
 # First look (no files required)
-sruja quickstart -r .
+sruja overview -r .
 
-# Create/refresh evidence used by agents and drift checks
-sruja sync -r .
+# Day-to-day review
+sruja daily -r .
 
-# Compare declared (repo.sruja) vs actual implementation
-sruja drift -r . -a repo.sruja
+# Quick repo health check
+sruja doctor -r .
 
-# Summarize repo truth status and health
-sruja status -r .
-
-# Review workflow: refresh evidence + drift + suggested updates/questions
-sruja review -r .
+# Keep feedback live while coding
+sruja watch -r .
 ```
+
+Aliases:
+
+- `start` = `init`
+- `daily` = `review`
+- `overview` = `quickstart`
+- `doctor` = `status`
 
 ### CI workflow
 

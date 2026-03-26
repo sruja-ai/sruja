@@ -56,11 +56,20 @@ pub async fn init(repo_root: &str, generate_prompt_file: bool) -> Result<(), Cli
             "  2. Save the model output as repo.sruja (or architecture.sruja) in the repo root."
         );
         eprintln!("  3. Run: sruja lint repo.sruja");
+        eprintln!("  4. Day-to-day, run: sruja daily -r {}", repo_root);
     } else if baseline_path.is_none() {
         eprintln!();
         eprintln!("Next steps:");
-        eprintln!("  Run: sruja init -r . --prompt  to generate a prompt, then use sruja-architecture to create repo.sruja.");
+        eprintln!(
+            "  Run: sruja start -r {} --prompt to generate a prompt, then use sruja-architecture to create repo.sruja.",
+            repo_root
+        );
         eprintln!("  Or create repo.sruja (or architecture.sruja) manually and run: sruja lint repo.sruja");
+    } else {
+        eprintln!();
+        eprintln!("Daily loop:");
+        eprintln!("  sruja daily -r {}", repo_root);
+        eprintln!("  sruja watch -r {}", repo_root);
     }
 
     Ok(())

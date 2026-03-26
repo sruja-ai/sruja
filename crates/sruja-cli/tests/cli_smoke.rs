@@ -20,7 +20,9 @@ fn test_cli_help() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("--help");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Usage:"));
+        .stdout(predicate::str::contains("Usage:"))
+        .stdout(predicate::str::contains("daily"))
+        .stdout(predicate::str::contains("start"));
     Ok(())
 }
 

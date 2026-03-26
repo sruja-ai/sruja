@@ -110,6 +110,52 @@ export function start() { return query(); }
 }
 
 #[test]
+fn daily_alias_refreshes_context_and_prints_next_steps() {
+    let repo = create_test_repo();
+    write_file(
+        repo.path(),
+        "src/app.ts",
+        r#"
+import { helper } from "./helper";
+export function app() { return helper(); }
+"#,
+    );
+    write_file(
+        repo.path(),
+        "src/helper.ts",
+        r#"export function helper() { return "ok"; }"#,
+    );
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&["daily", "-r", repo_str]);
+
+    assert!(success, "daily should succeed: stderr={}", stderr);
+
+    let out = format!("{} {}", stdout, stderr);
+    assert!(
+        out.contains("Next steps:"),
+        "daily output should include next steps. stdout={} stderr={}",
+        stdout,
+        stderr
+    );
+    assert!(
+        out.contains("sruja start -r") || out.contains("sruja watch -r"),
+        "daily output should include workflow guidance. stdout={} stderr={}",
+        stdout,
+        stderr
+    );
+
+    assert!(
+        repo.path().join(".sruja/context.json").exists(),
+        "daily should refresh .sruja/context.json"
+    );
+    assert!(
+        repo.path().join(".sruja/graph.json").exists(),
+        "daily should refresh .sruja/graph.json"
+    );
+}
+
+#[test]
 fn fmt_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);

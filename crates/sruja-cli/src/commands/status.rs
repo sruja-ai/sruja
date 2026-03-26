@@ -34,17 +34,24 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
             if let Some(ref base) = out.baseline {
                 println!("Baseline: {}", base);
             } else {
-                println!("No baseline (repo.sruja / architecture.sruja). Run: sruja init");
+                println!("No baseline (repo.sruja / architecture.sruja)");
+                println!("Start here: sruja start -r {} --prompt", repo_root);
+                println!("Quick repo overview: sruja overview -r {}", repo_root);
             }
             println!(
                 "Truth: {} ({} violation(s))",
                 out.truth_status, out.violations_count
             );
             if let Some(score) = out.health_score {
-                println!("Health score: {}/100", score);
+                println!("Structural health score: {}/100", score);
             }
             if let Some(ref ts) = out.context_updated_at {
-                println!("Last context: {}", ts);
+                println!("Last evidence refresh: {}", ts);
+            } else if out.baseline.is_some() {
+                println!("Last evidence refresh: not generated yet");
+            }
+            if out.baseline.is_some() {
+                println!("Daily review: sruja daily -r {}", repo_root);
             }
         }
     }

@@ -68,6 +68,30 @@ Your AI will:
 3. Generate a `repo.sruja` file
 4. Run `sruja lint` and fix any validation errors so you see **concrete value in the first run** (real errors/warnings and a clean, valid architecture)
 
+### Daily developer loop
+
+Use the friendlier workflow aliases if you want Sruja to feel like a daily repo assistant instead of a long command list:
+
+```bash
+# First-time repo setup
+sruja start -r . --prompt
+
+# Day-to-day review: refresh evidence and see what changed
+sruja daily -r .
+
+# Keep feedback live while you code
+sruja watch -r .
+
+# Quick repo health check
+sruja doctor -r .
+```
+
+Aliases:
+- `start` = `init`
+- `daily` = `review`
+- `overview` = `quickstart`
+- `doctor` = `status`
+
 ### Validate and export
 
 ```bash

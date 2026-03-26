@@ -3,10 +3,10 @@
 use std::fs;
 use std::path::Path;
 
-use super::CliError;
+use super::{scan_repo_cached, CliError};
 use crate::utils::architecture_path;
 use sruja_diff::{SourceRef, Violation, ViolationKind};
-use sruja_scan::{is_path_production_relevant as scan_prod_relevant, scan_repo};
+use sruja_scan::is_path_production_relevant as scan_prod_relevant;
 
 fn is_production_relevant(v: &sruja_diff::Violation) -> bool {
     let paths: Vec<&str> = v
@@ -178,27 +178,57 @@ fn generate_open_questions(violations: &[sruja_diff::Violation]) -> Vec<String> 
     questions
 }
 
+fn baseline_path_hint(baseline_path: Option<&Path>) -> String {
+    baseline_path
+        .and_then(|path| path.to_str())
+        .unwrap_or("repo.sruja")
+        .to_string()
+}
+
 fn generate_suggestions(
+    repo_root: &str,
+    baseline_path: Option<&Path>,
     truth_status: &str,
     violations: &[sruja_diff::Violation],
-    has_baseline: bool,
 ) -> Vec<String> {
     let mut suggestions = Vec::new();
+    let baseline_hint = baseline_path_hint(baseline_path);
 
-    if !has_baseline {
+    if baseline_path.is_none() {
+        suggestions.push(format!("Start here: sruja start -r {} --prompt", repo_root));
+        suggestions.push(format!(
+            "Optional first look: sruja overview -r {}",
+            repo_root
+        ));
         suggestions.push(
-            "Run: Use sruja-architecture skill to generate repo.sruja from evidence".to_string(),
+            "Use the generated prompt with the sruja-architecture skill, save the result as repo.sruja, then run: sruja lint repo.sruja".to_string(),
         );
-    } else if truth_status == "drifted" {
-        suggestions.push(
-            "Review drift findings and update repo.sruja if architecture changed intentionally"
-                .to_string(),
-        );
-        suggestions.push(
-            "Or refactor code to match existing architecture if drift is unintentional".to_string(),
-        );
+        suggestions.push(format!(
+            "Once a baseline exists, make this your daily check: sruja daily -r {}",
+            repo_root
+        ));
+        return suggestions;
+    }
+
+    if truth_status == "drifted" {
+        suggestions.push(format!(
+            "Review drift in detail: sruja drift -r {} -a {}",
+            repo_root, baseline_hint
+        ));
+        suggestions.push(format!(
+            "If the change is intentional, update the baseline and validate it with: sruja lint {}",
+            baseline_hint
+        ));
     } else if truth_status == "reviewed" {
-        suggestions.push("Architecture is in sync - no action needed".to_string());
+        suggestions.push(format!(
+            "Architecture is in sync. Keep this in your normal loop: sruja daily -r {}",
+            repo_root
+        ));
+    } else {
+        suggestions.push(format!(
+            "Refresh evidence and review changes with: sruja daily -r {}",
+            repo_root
+        ));
     }
 
     let has_god = violations
@@ -210,6 +240,11 @@ fn generate_suggestions(
                 .to_string(),
         );
     }
+
+    suggestions.push(format!(
+        "While coding, keep architecture feedback live with: sruja watch -r {}",
+        repo_root
+    ));
 
     suggestions
 }
@@ -226,7 +261,9 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
     let has_baseline = baseline_path.is_some();
 
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    // Review is the day-to-day workflow, so refresh cached evidence first.
+    super::sync_cmd::sync(repo_root, "quiet").await?;
+    let graph = scan_repo_cached(repo_path)?;
 
     let (truth_status, violations, health_score) = if let Some(ref baseline) = baseline_path {
         let content = fs::read_to_string(baseline)?;
@@ -313,7 +350,12 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
     let (new_components, missing_components, drifted_dependencies) =
         categorize_violations(&active_violations);
     let open_questions = generate_open_questions(&active_violations);
-    let suggestions = generate_suggestions(&truth_status, &active_violations, has_baseline);
+    let suggestions = generate_suggestions(
+        repo_root,
+        baseline_path.as_deref(),
+        &truth_status,
+        &active_violations,
+    );
 
     let summarize = |vs: &[Violation]| -> Vec<ViolationSummary> {
         vs.iter()
@@ -369,7 +411,7 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
                 output.truth_status, output.violations_count
             );
             if let Some(score) = output.health_score {
-                println!("Health score: {}/100", score);
+                println!("Structural health score: {}/100", score);
             }
             println!();
 
@@ -406,7 +448,7 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
             }
 
             if !output.suggestions.is_empty() {
-                println!("Suggestions:");
+                println!("Next steps:");
                 for s in &output.suggestions {
                     println!("  > {}", s);
                 }

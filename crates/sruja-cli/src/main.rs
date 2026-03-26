@@ -35,9 +35,21 @@ impl ContextIntent {
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
-     about = "Sruja – Context engineering for the AI era. Architecture-as-code with deterministic CLI primitives for evidence-backed discovery",
+    about = "Architecture-as-code CLI for keeping repo context, drift checks, and AI guidance in sync",
     long_about = None,
-    after_help = "Stable: sruja quickstart -r .  |  sruja sync -r .  |  sruja status -r .  |  sruja lint  |  sruja drift -r .  |  sruja publish -r . -o repo.bundle.json  |  sruja compose -i <dir> -o system.index.json"
+    after_help = r#"Start Here:
+  sruja start -r . --prompt   Set up .sruja/ and generate an AI-ready prompt
+  sruja overview -r .         Get a quick structural read of the repo
+
+Daily Loop:
+  sruja daily -r .            Refresh evidence and review what changed
+  sruja watch -r .            Keep architecture feedback live while coding
+  sruja doctor -r .           Quick truth + health check
+
+Docs & CI:
+  sruja lint repo.sruja
+  sruja export markdown repo.sruja
+  sruja check -r . -f github-actions"#
 )]
 struct Cli {
     #[command(subcommand)]
@@ -225,7 +237,8 @@ enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Quickstart: Get immediate architecture insights (zero-key, deterministic)
+    /// Quick repo overview with immediate architecture insights
+    #[command(visible_alias = "overview")]
     Quickstart {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', default_value = ".")]
@@ -240,7 +253,8 @@ enum Commands {
         #[arg(long)]
         fail_on: Option<String>,
     },
-    /// Initialize Sruja in a repo: create .sruja/, run quickstart, optionally generate prompt for baseline
+    /// Set up Sruja in a repo and print the next best steps
+    #[command(visible_alias = "start")]
     Init {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', default_value = ".")]
@@ -249,7 +263,8 @@ enum Commands {
         #[arg(long)]
         prompt: bool,
     },
-    /// Show repo health, baseline, and truth status (reviewed / drifted / unknown)
+    /// Quick repo health check: baseline, truth status, and last evidence refresh
+    #[command(visible_alias = "doctor")]
     Status {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', default_value = ".")]
@@ -258,7 +273,7 @@ enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Watch a directory for changes, continuously re-evaluating architecture
+    /// Keep architecture feedback live while you code
     Watch {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', default_value = ".")]
@@ -276,7 +291,8 @@ enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Review: refresh evidence, detect drift, propose updates or open questions
+    /// Daily review: refresh evidence, detect drift, and suggest next actions
+    #[command(visible_alias = "daily")]
     Review {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', default_value = ".")]
