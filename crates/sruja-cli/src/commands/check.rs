@@ -13,47 +13,7 @@ use std::{collections::HashSet, path::PathBuf};
 use super::CliError;
 use crate::utils::architecture_path;
 use sruja_diff::{SourceRef, Violation, ViolationKind};
-use sruja_scan::scan_repo;
-
-/// Path segments that indicate non-production content (docs, evaluation, book, build artifacts).
-const NON_PRODUCTION_SEGMENTS: &[&str] = &[
-    "book",
-    "books",
-    "evaluation",
-    "docs",
-    "documentation",
-    "benchmark",
-    "bench",
-    "perf",
-    "target",
-    "node_modules",
-    "dist",
-    "build",
-    ".next",
-    "out",
-    "vendor",
-    "third_party",
-    "fixtures",
-    "__mocks__",
-    "test_data",
-];
-
-fn path_looks_non_production(path: &str) -> bool {
-    let normalized = path.replace('\\', "/");
-    let lower = normalized.to_lowercase();
-    for seg in NON_PRODUCTION_SEGMENTS {
-        if lower.contains(&format!("/{}/", seg))
-            || lower.starts_with(&format!("{}/", seg))
-            || lower.ends_with(&format!("/{}", seg))
-        {
-            return true;
-        }
-    }
-    if lower.ends_with(".md") || lower.ends_with(".rst") {
-        return true;
-    }
-    false
-}
+use sruja_scan::{is_path_production_relevant as scan_prod_relevant, scan_repo};
 
 /// True if this violation should be reported in check (PR signal). Excludes violations
 /// whose only evidence is under non-production paths (book/, evaluation/, docs/, etc.).
@@ -67,7 +27,7 @@ fn is_production_relevant(v: &Violation) -> bool {
     if paths.is_empty() {
         return true;
     }
-    let has_production = paths.iter().any(|p| !path_looks_non_production(p));
+    let has_production = paths.iter().any(|p| scan_prod_relevant(p));
     has_production
 }
 
@@ -130,11 +90,7 @@ fn severity_slug(v: &Violation) -> &'static str {
 fn primary_source_for_annotations(v: &Violation) -> Option<SourceRef> {
     v.sources
         .iter()
-        .find(|s| {
-            s.file
-                .as_deref()
-                .is_some_and(|p| !path_looks_non_production(p))
-        })
+        .find(|s| s.file.as_deref().is_some_and(scan_prod_relevant))
         .or_else(|| v.sources.first())
         .cloned()
 }

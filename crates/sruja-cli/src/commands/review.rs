@@ -6,7 +6,21 @@ use std::path::Path;
 use super::CliError;
 use crate::utils::architecture_path;
 use sruja_diff::ViolationKind;
-use sruja_scan::scan_repo;
+use sruja_scan::{is_path_production_relevant as scan_prod_relevant, scan_repo};
+
+fn is_production_relevant(v: &sruja_diff::Violation) -> bool {
+    let paths: Vec<&str> = v
+        .sources
+        .iter()
+        .filter_map(|s| s.file.as_deref())
+        .chain(v.location.as_deref())
+        .collect();
+    if paths.is_empty() {
+        return true;
+    }
+    let has_production = paths.iter().any(|p| scan_prod_relevant(p));
+    has_production
+}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ReviewOutput {
@@ -198,6 +212,11 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
             Some(drift.health_score),
         )
     };
+
+    let violations: Vec<_> = violations
+        .into_iter()
+        .filter(is_production_relevant)
+        .collect();
 
     let has_drift = truth_status == "drifted" || (!has_baseline && !violations.is_empty());
     let (new_components, missing_components, drifted_dependencies) =

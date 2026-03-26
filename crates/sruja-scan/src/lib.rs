@@ -19,7 +19,9 @@ pub use graph::{
     Node, NodeKind,
 };
 pub use repomap::{generate_repomap, generate_repomap_from_graph, RepoMapOptions};
-pub use scan_scope::{should_exclude_with_config, ScanScope, DEFAULT_EXCLUDE_PATTERNS};
+pub use scan_scope::{
+    is_path_production_relevant, should_exclude_with_config, ScanScope, DEFAULT_EXCLUDE_PATTERNS,
+};
 pub use tree_sitter::{detect_language, parse_file, scan_with_tree_sitter, ScanConfig};
 
 #[derive(Debug, Error)]

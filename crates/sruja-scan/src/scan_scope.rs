@@ -56,6 +56,9 @@ pub const DEFAULT_EXCLUDE_PATTERNS: &[&str] = &[
     ".gitignore",
     ".env*",
     "*.log",
+    "book",
+    "site",
+    "website",
     // Test files
     "*test*.rs",
     "*test*.js",
@@ -304,6 +307,42 @@ fn should_exclude_with_patterns(path: &Path, patterns: &[String]) -> bool {
     }
 
     false
+}
+
+/// Check if a path reflects production-relevant code.
+///
+/// Excludes paths that match non-production segments (docs, evaluation, book, etc.)
+/// and documentation-only files (.md, .rst).
+///
+/// Used to filter drift/violations so PR signals are focused on core logic.
+pub fn is_path_production_relevant(path: &str) -> bool {
+    let normalized = path.replace('\\', "/");
+    let lower = normalized.to_lowercase();
+
+    // Check against non-production directory segments
+    // We look for the segment as a standalone component in the path
+    for seg in DEFAULT_EXCLUDE_PATTERNS {
+        // Only check directory or explicit file patterns from the exclude list
+        if seg.contains('*') {
+            continue;
+        }
+
+        let s = seg.trim_end_matches('/');
+        if lower.contains(&format!("/{}/", s))
+            || lower.starts_with(&format!("{}/", s))
+            || lower.ends_with(&format!("/{}", s))
+            || lower == *s
+        {
+            return false;
+        }
+    }
+
+    // Exclude documentation files explicitly
+    if lower.ends_with(".md") || lower.ends_with(".rst") {
+        return false;
+    }
+
+    true
 }
 
 /// Check if a path should be excluded based on default patterns.
@@ -636,5 +675,26 @@ mod tests {
             Path::new("/project/style.min.css"),
             &config
         ));
+    }
+
+    #[test]
+    fn test_is_path_production_relevant() {
+        assert!(is_path_production_relevant("src/main.rs"));
+        assert!(is_path_production_relevant("crates/sruja-cli/src/main.rs"));
+
+        assert!(!is_path_production_relevant("docs/index.md"));
+        assert!(!is_path_production_relevant("book/summary.md"));
+        assert!(!is_path_production_relevant("evaluation/perf.log"));
+        assert!(!is_path_production_relevant("target/debug/sruja"));
+        assert!(!is_path_production_relevant("node_modules/lodash/index.js"));
+
+        // Nested patterns
+        assert!(!is_path_production_relevant("src/docs/api.md"));
+        assert!(!is_path_production_relevant("src/tests/unit.rs"));
+        assert!(!is_path_production_relevant("src/test_data/fixture.json"));
+
+        // File extensions
+        assert!(!is_path_production_relevant("README.md"));
+        assert!(!is_path_production_relevant("ARCHITECTURE.rst"));
     }
 }
