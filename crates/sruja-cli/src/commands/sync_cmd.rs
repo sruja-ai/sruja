@@ -6,7 +6,9 @@ use std::path::Path;
 use super::discover::{discover_context_json_from_graph, discover_explanation_json};
 use super::CliError;
 use crate::utils::architecture_path;
+use sruja_diff::{Severity, Violation, ViolationKind};
 use sruja_scan::scan_repo;
+use std::collections::HashSet;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct SyncOutput {
@@ -36,6 +38,51 @@ fn git_commit_short(repo_path: &Path) -> Option<String> {
 
 /// Context.json schema version for machine consumers.
 const CONTEXT_SCHEMA_VERSION: u32 = 1;
+
+#[derive(Debug, serde::Serialize)]
+struct ViolationSummary {
+    kind: String,
+    severity: String,
+    fingerprint: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    location: Option<String>,
+    message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    confidence: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    evidence_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    production_relevant: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baseline_delta: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    suppressed: Option<bool>,
+}
+
+fn kind_slug(kind: ViolationKind) -> &'static str {
+    match kind {
+        ViolationKind::OrphanComponent => "orphan-component",
+        ViolationKind::UndocumentedComponent => "undocumented-component",
+        ViolationKind::LayerViolation => "layer-violation",
+        ViolationKind::CircularDependency => "circular-dependency",
+        ViolationKind::GodModule => "god-module",
+        ViolationKind::MissingDependency => "missing-dependency",
+        ViolationKind::PatternMismatch => "pattern-mismatch",
+    }
+}
+
+fn severity_slug(v: &Violation) -> &'static str {
+    match v.severity {
+        Severity::Error => "error",
+        Severity::Warning => "warning",
+        Severity::Info => "info",
+    }
+}
+
+fn fingerprint_violation(v: &Violation) -> String {
+    let location = v.location.clone().unwrap_or_default();
+    format!("{}|{}|{}", kind_slug(v.kind), location, v.message)
+}
 
 /// Refresh evidence and drift: write .sruja/context.json (with timestamp, git_commit, baseline_path, truth_status), then run drift.
 pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
@@ -118,6 +165,61 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .map(serde_json::Value::String)
         .unwrap_or(serde_json::Value::Null);
 
+    // Add normalized violations with shared metadata, split by baseline suppression if baseline file exists.
+    let violations: Vec<Violation> = violations
+        .into_iter()
+        .map(|mut v| {
+            v.production_relevant = Some(true);
+            if v.evidence_count.is_none() {
+                v.evidence_count = Some(v.sources.len());
+            }
+            v
+        })
+        .collect();
+    let baseline_fp_path = repo_path.join(".sruja").join("violations.baseline.json");
+    let baseline_set: Option<HashSet<String>> = if baseline_fp_path.exists() {
+        let txt = fs::read_to_string(&baseline_fp_path)?;
+        let base: super::check::ViolationBaseline =
+            serde_json::from_str(&txt).map_err(|e| CliError::Validation(e.to_string()))?;
+        Some(base.fingerprints.into_iter().collect())
+    } else {
+        None
+    };
+    let (active, suppressed): (Vec<Violation>, Vec<Violation>) = if let Some(ref set) = baseline_set {
+        violations
+            .into_iter()
+            .map(|mut v| {
+                let sup = set.contains(&fingerprint_violation(&v));
+                v.suppressed = Some(sup);
+                v.baseline_delta = Some(if sup { "baseline" } else { "new" }.to_string());
+                v
+            })
+            .partition(|v| v.suppressed != Some(true))
+    } else {
+        (violations, Vec::new())
+    };
+    let map_summary = |v: &Violation| ViolationSummary {
+        kind: kind_slug(v.kind).to_string(),
+        severity: severity_slug(v).to_string(),
+        fingerprint: fingerprint_violation(v),
+        location: v.location.clone(),
+        message: v.message.clone(),
+        confidence: v.confidence,
+        evidence_count: v.evidence_count,
+        production_relevant: v.production_relevant,
+        baseline_delta: v.baseline_delta.clone(),
+        suppressed: v.suppressed,
+    };
+    let active_summ: Vec<ViolationSummary> = active.iter().map(map_summary).collect();
+    let suppressed_summ: Vec<ViolationSummary> = suppressed.iter().map(map_summary).collect();
+
+    value["violations"] =
+        serde_json::to_value(&active_summ).map_err(|e| CliError::Validation(e.to_string()))?;
+    value["suppressed_violations"] =
+        serde_json::to_value(&suppressed_summ).map_err(|e| CliError::Validation(e.to_string()))?;
+    value["suppressed_count"] =
+        serde_json::Value::Number((suppressed_summ.len() as u64).into());
+
     let path = dot_sruja.join("context.json");
     let context_path = path.display().to_string();
     fs::write(
@@ -146,7 +248,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     let output = SyncOutput {
         truth_status: truth_status.clone(),
         baseline: baseline.clone(),
-        violations_count: violations.len(),
+        violations_count: active_summ.len(),
         health_score,
         context_path: context_path.clone(),
     };
@@ -171,16 +273,16 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
             eprintln!(
                 "Truth: {} ({} violation(s))",
                 truth_status,
-                violations.len()
+                active.len()
             );
             if let Some(score) = health_score {
                 eprintln!("Health score: {}/100", score);
             }
 
-            if !violations.is_empty() {
+            if !active.is_empty() {
                 eprintln!();
                 eprintln!("Violations:");
-                for v in &violations {
+                for v in &active {
                     eprintln!("  - {:?}", v);
                 }
             }

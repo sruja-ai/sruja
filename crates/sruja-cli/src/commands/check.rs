@@ -31,6 +31,10 @@ fn is_production_relevant(v: &Violation) -> bool {
     has_production
 }
 
+fn is_usize_zero(v: &usize) -> bool {
+    *v == 0
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct CheckOutput {
     pub truth_status: String,
@@ -38,8 +42,12 @@ pub struct CheckOutput {
     pub violations_baseline: Option<String>,
     pub has_drift: bool,
     pub violations_count: usize,
+    #[serde(default, skip_serializing_if = "is_usize_zero")]
+    pub suppressed_count: usize,
     pub health_score: Option<u8>,
     pub violations: Vec<ViolationSummary>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suppressed_violations: Vec<ViolationSummary>,
     pub open_questions: Vec<String>,
     pub suggestions: Vec<String>,
 }
@@ -51,6 +59,16 @@ pub struct ViolationSummary {
     pub fingerprint: String,
     pub location: Option<String>,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub production_relevant: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_delta: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suppressed: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceRef>,
 }
@@ -146,6 +164,11 @@ fn categorize_violations(violations: &[sruja_diff::Violation]) -> Vec<ViolationS
                         format!("{} - pattern mismatch", location)
                     }
                 },
+                confidence: v.confidence,
+                evidence_count: v.evidence_count,
+                production_relevant: v.production_relevant,
+                baseline_delta: v.baseline_delta.clone(),
+                suppressed: v.suppressed,
                 sources: v.sources.clone(),
             }
         })
@@ -328,16 +351,34 @@ pub async fn check(
             (truth_status.to_string(), filtered, health_score)
         };
 
-    let filtered_violations: Vec<Violation> = if let Some(ref set) = baseline_filter_set {
-        filtered_violations
-            .into_iter()
-            .filter(|v| !set.contains(&fingerprint_violation(v)))
-            .collect()
-    } else {
-        filtered_violations
-    };
+    let filtered_violations: Vec<Violation> = filtered_violations
+        .into_iter()
+        .map(|mut v| {
+            v.production_relevant = Some(true);
+            if v.evidence_count.is_none() {
+                v.evidence_count = Some(v.sources.len());
+            }
+            v
+        })
+        .collect();
 
-    let violations = categorize_violations(&filtered_violations);
+    let (active_violations, suppressed_violations): (Vec<Violation>, Vec<Violation>) =
+        if let Some(ref set) = baseline_filter_set {
+            filtered_violations
+                .into_iter()
+                .map(|mut v| {
+                    let suppressed = set.contains(&fingerprint_violation(&v));
+                    v.suppressed = Some(suppressed);
+                    v.baseline_delta = Some(if suppressed { "baseline" } else { "new" }.to_string());
+                    v
+                })
+                .partition(|v| v.suppressed != Some(true))
+        } else {
+            (filtered_violations, Vec::new())
+        };
+
+    let violations = categorize_violations(&active_violations);
+    let suppressed_violations = categorize_violations(&suppressed_violations);
     let has_drift = !violations.is_empty();
     let open_questions = generate_open_questions(&violations);
     let suggestions = generate_suggestions(&violations, baseline_path.as_deref(), &truth_status);
@@ -348,8 +389,10 @@ pub async fn check(
         violations_baseline: violations_baseline.map(|s| s.to_string()),
         has_drift,
         violations_count: violations.len(),
+        suppressed_count: suppressed_violations.len(),
         health_score,
         violations,
+        suppressed_violations,
         open_questions,
         suggestions,
     };
@@ -376,7 +419,7 @@ pub async fn check(
                     .replace('\r', "%0D")
             );
 
-            for v in &filtered_violations {
+            for v in &active_violations {
                 let sev = match v.severity {
                     sruja_diff::Severity::Error => "error",
                     sruja_diff::Severity::Warning => "warning",

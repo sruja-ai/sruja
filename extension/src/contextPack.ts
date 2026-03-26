@@ -75,12 +75,46 @@ export async function buildContextPack(context: vscode.ExtensionContext): Promis
   const omittedFiles = Math.max(0, totalFilesWithDiags - topFiles.length);
 
   let contextJsonLine: string | undefined;
+  let findingsLines: string[] = [];
   if (folder) {
     try {
       const summary = await readContextJsonSummary(folder);
       const parts = [`path=${summary.path}`, `size=${summary.size}B`];
       if (summary.truthStatus) parts.push(`truth=${summary.truthStatus}`);
       contextJsonLine = `- context.json ${parts.join(" ")}`;
+      if (summary.findings && summary.findings.length > 0) {
+        const rank = (f: Finding) => {
+          const sev = f.severity === "error" ? 3 : f.severity === "warning" ? 2 : f.severity === "info" ? 1 : 0;
+          const newness = f.baseline_delta === "new" ? 1 : 0;
+          const evidence = typeof f.evidence_count === "number" ? f.evidence_count : 0;
+          const sup = f.suppressed ? 0 : 1;
+          return [sup, sev, newness, evidence];
+        };
+        const top = [...summary.findings]
+          .sort((a, b) => {
+            const ra = rank(a);
+            const rb = rank(b);
+            for (let i = 0; i < ra.length; i++) {
+              if (rb[i] !== ra[i]) return rb[i] - ra[i];
+            }
+            return 0;
+          })
+          .slice(0, 12);
+        findingsLines.push("## Findings");
+        findingsLines.push("");
+        for (const f of top) {
+          const sev = f.severity ?? "info";
+          const tag = f.suppressed ? "suppressed" : f.baseline_delta ?? "";
+          const where = f.location ? ` @ ${f.location}` : "";
+          const ev = typeof f.evidence_count === "number" ? ` evidence=${f.evidence_count}` : "";
+          const msg = (f.message ?? "").replace(/\s+/g, " ").trim();
+          findingsLines.push(`- [${sev}${tag ? " " + tag : ""}] ${msg}${where}${ev}`);
+        }
+        if (summary.findings.length > top.length) {
+          findingsLines.push(`- ... (${summary.findings.length - top.length} more)`);
+        }
+        findingsLines.push("");
+      }
     } catch {
       contextJsonLine = undefined;
     }
@@ -219,6 +253,10 @@ export async function buildContextPack(context: vscode.ExtensionContext): Promis
   lines.push("");
   lines.push(skillsLine);
   if (contextJsonLine) lines.push(contextJsonLine);
+  if (findingsLines.length > 0) {
+    lines.push("");
+    lines.push(...findingsLines);
+  }
   if (skillsDetailLines.length > 0) {
     lines.push("");
     lines.push("### Skills");
@@ -274,11 +312,22 @@ function groupDiagnosticsByFile(
   return out.sort((a, b) => (b.errors - a.errors) || (b.warnings - a.warnings) || a.rel.localeCompare(b.rel));
 }
 
+type Finding = {
+  severity?: string;
+  baseline_delta?: string;
+  evidence_count?: number;
+  suppressed?: boolean;
+  message?: string;
+  location?: string;
+  fingerprint?: string;
+};
+
 async function readContextJsonSummary(folder: vscode.WorkspaceFolder): Promise<{
   path: string;
   size: number;
   mtimeMs: number;
   truthStatus?: string;
+  findings?: Finding[];
 }> {
   const contextUri = vscode.Uri.joinPath(folder.uri, ".sruja", "context.json");
   const stat = await vscode.workspace.fs.stat(contextUri);
@@ -287,14 +336,23 @@ async function readContextJsonSummary(folder: vscode.WorkspaceFolder): Promise<{
     size: number;
     mtimeMs: number;
     truthStatus?: string;
+    findings?: Finding[];
   };
   if (stat.size > 512_000) return summary;
   try {
     const raw = await vscode.workspace.fs.readFile(contextUri);
     const text = Buffer.from(raw).toString("utf8");
-    const parsed = parseJsonSafe<{ truth_status?: string }>(text);
+    const parsed = parseJsonSafe<{ truth_status?: string; violations?: Finding[]; suppressed_violations?: Finding[] }>(text);
     if (parsed.ok && typeof parsed.value.truth_status === "string") {
       summary.truthStatus = parsed.value.truth_status;
+    }
+    if (parsed.ok) {
+      const active = Array.isArray(parsed.value.violations) ? parsed.value.violations : [];
+      const suppressed = Array.isArray(parsed.value.suppressed_violations) ? parsed.value.suppressed_violations : [];
+      const all: Finding[] = [];
+      for (const f of active) all.push({ ...f, suppressed: false });
+      for (const f of suppressed) all.push({ ...f, suppressed: true });
+      summary.findings = all;
     }
   } catch {
     return summary;

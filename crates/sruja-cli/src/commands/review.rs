@@ -5,7 +5,7 @@ use std::path::Path;
 
 use super::CliError;
 use crate::utils::architecture_path;
-use sruja_diff::ViolationKind;
+use sruja_diff::{SourceRef, Violation, ViolationKind};
 use sruja_scan::{is_path_production_relevant as scan_prod_relevant, scan_repo};
 
 fn is_production_relevant(v: &sruja_diff::Violation) -> bool {
@@ -22,6 +22,10 @@ fn is_production_relevant(v: &sruja_diff::Violation) -> bool {
     has_production
 }
 
+fn is_usize_zero(v: &usize) -> bool {
+    *v == 0
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ReviewOutput {
     pub truth_status: String,
@@ -29,11 +33,63 @@ pub struct ReviewOutput {
     pub has_drift: bool,
     pub violations_count: usize,
     pub health_score: Option<u8>,
+    #[serde(default, skip_serializing_if = "is_usize_zero")]
+    pub suppressed_count: usize,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub violations: Vec<ViolationSummary>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suppressed_violations: Vec<ViolationSummary>,
     pub new_components: Vec<String>,
     pub missing_components: Vec<String>,
     pub drifted_dependencies: Vec<String>,
     pub open_questions: Vec<String>,
     pub suggestions: Vec<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ViolationSummary {
+    pub kind: String,
+    pub severity: String,
+    pub fingerprint: String,
+    pub location: Option<String>,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub production_relevant: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_delta: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suppressed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<SourceRef>,
+}
+
+fn kind_slug(kind: ViolationKind) -> &'static str {
+    match kind {
+        ViolationKind::OrphanComponent => "orphan-component",
+        ViolationKind::UndocumentedComponent => "undocumented-component",
+        ViolationKind::LayerViolation => "layer-violation",
+        ViolationKind::CircularDependency => "circular-dependency",
+        ViolationKind::GodModule => "god-module",
+        ViolationKind::MissingDependency => "missing-dependency",
+        ViolationKind::PatternMismatch => "pattern-mismatch",
+    }
+}
+
+fn severity_slug(v: &Violation) -> &'static str {
+    match v.severity {
+        sruja_diff::Severity::Error => "error",
+        sruja_diff::Severity::Warning => "warning",
+        sruja_diff::Severity::Info => "info",
+    }
+}
+
+fn fingerprint_violation(v: &Violation) -> String {
+    let location = v.location.clone().unwrap_or_default();
+    format!("{}|{}|{}", kind_slug(v.kind), location, v.message)
 }
 
 fn categorize_violations(
@@ -213,23 +269,77 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
         )
     };
 
-    let violations: Vec<_> = violations
+    let mut violations: Vec<_> = violations
         .into_iter()
         .filter(is_production_relevant)
         .collect();
 
-    let has_drift = truth_status == "drifted" || (!has_baseline && !violations.is_empty());
+    // Mark production_relevant/evidence_count and split by baseline suppression if baseline fingerprints exist.
+    for v in &mut violations {
+        v.production_relevant = Some(true);
+        if v.evidence_count.is_none() {
+            v.evidence_count = Some(v.sources.len());
+        }
+    }
+
+    let violations_baseline_path = repo_path.join(".sruja").join("violations.baseline.json");
+    let baseline_set: Option<std::collections::HashSet<String>> = if violations_baseline_path.exists() {
+        let content = fs::read_to_string(&violations_baseline_path)?;
+        let baseline: super::check::ViolationBaseline =
+            serde_json::from_str(&content).map_err(|e| CliError::Validation(e.to_string()))?;
+        Some(baseline.fingerprints.into_iter().collect())
+    } else {
+        None
+    };
+
+    let (active_violations, suppressed_violations): (Vec<Violation>, Vec<Violation>) =
+        if let Some(ref set) = baseline_set {
+            violations
+                .into_iter()
+                .map(|mut v| {
+                    let suppressed = set.contains(&fingerprint_violation(&v));
+                    v.suppressed = Some(suppressed);
+                    v.baseline_delta = Some(if suppressed { "baseline" } else { "new" }.to_string());
+                    v
+                })
+                .partition(|v| v.suppressed != Some(true))
+        } else {
+            (violations, Vec::new())
+        };
+
+    let has_drift = truth_status == "drifted" || (!has_baseline && !active_violations.is_empty());
     let (new_components, missing_components, drifted_dependencies) =
-        categorize_violations(&violations);
-    let open_questions = generate_open_questions(&violations);
-    let suggestions = generate_suggestions(&truth_status, &violations, has_baseline);
+        categorize_violations(&active_violations);
+    let open_questions = generate_open_questions(&active_violations);
+    let suggestions = generate_suggestions(&truth_status, &active_violations, has_baseline);
+
+    let summarize = |vs: &[Violation]| -> Vec<ViolationSummary> {
+        vs.iter()
+            .map(|v| ViolationSummary {
+                kind: kind_slug(v.kind).to_string(),
+                severity: severity_slug(v).to_string(),
+                fingerprint: fingerprint_violation(v),
+                location: v.location.clone(),
+                message: v.message.clone(),
+                confidence: v.confidence,
+                evidence_count: v.evidence_count,
+                production_relevant: v.production_relevant,
+                baseline_delta: v.baseline_delta.clone(),
+                suppressed: v.suppressed,
+                sources: v.sources.clone(),
+            })
+            .collect()
+    };
 
     let output = ReviewOutput {
         truth_status: truth_status.clone(),
         baseline: baseline_path.and_then(|p| p.to_str().map(String::from)),
         has_drift,
-        violations_count: violations.len(),
+        violations_count: active_violations.len(),
         health_score,
+        suppressed_count: suppressed_violations.len(),
+        violations: summarize(&active_violations),
+        suppressed_violations: summarize(&suppressed_violations),
         new_components,
         missing_components,
         drifted_dependencies,
