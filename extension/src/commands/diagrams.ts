@@ -1,12 +1,7 @@
 import * as vscode from "vscode";
-import {
-  getElementsFromWasm,
-  getMermaidFromWasm,
-  getSequenceDiagramFromWasm,
-  getDocumentSymbolsFromWasm,
-  wasmRangeToVscodeRange,
-} from "../wasm";
+import { getMermaidFromWasm, getElementsFromWasm, wasmRangeToVscodeRange, getSequenceDiagramFromWasm, getDocumentSymbolsFromWasm } from "../wasm";
 import { escapeMermaidForScript, getDiagramPreviewHtml } from "../diagramPreview";
+import { findElementById } from "../elementLookup";
 import { pickActiveSrujaDoc } from "../utils";
 
 let diagramPreviewPanel: vscode.WebviewPanel | undefined;
@@ -31,7 +26,8 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
       }
 
       diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview");
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+      const escapedMermaid = escapeMermaidForScript(mermaid);
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
     }),
 
     vscode.commands.registerCommand("sruja.openFocusedDiagramPreviewAt", async (arg?: unknown) => {
@@ -72,7 +68,8 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
 
       const titleSuffix = targetId ? ` – L${viewLevel}: ${targetId}` : ` – L${viewLevel}`;
       diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix);
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+      const escapedMermaid = escapeMermaidForScript(mermaid);
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
     }),
 
     vscode.commands.registerCommand("sruja.openFocusedDiagramPreview", async () => {
@@ -132,7 +129,8 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
 
       const titleSuffix = targetId ? ` – ${levelPick.label}: ${targetId}` : ` – ${levelPick.label}`;
       diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix);
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+      const escapedMermaid = escapeMermaidForScript(mermaid);
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
     }),
 
     vscode.commands.registerCommand("sruja.openSequenceDiagramPreview", async () => {
@@ -223,7 +221,8 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
       }
 
       diagramPreviewPanel = createDiagramPanel(context, `Sruja – Context engineering for the AI era. – Sequence Diagram – ${kind}: ${id}`);
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapeMermaidForScript(mermaid));
+      const escapedMermaid = escapeMermaidForScript(mermaid);
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
     })
   );
 }
@@ -244,7 +243,7 @@ function createDiagramPanel(context: vscode.ExtensionContext, title: string): vs
   diagramPreviewPanel.webview.onDidReceiveMessage(
     async (message) => {
       if (message.command === 'jumpToElement' && message.elementId) {
-        await jumpToElementInActiveEditor(context, message.elementId);
+        await jumpToElementInDocument(context, message.elementId, message.sourceUri);
       }
     },
     undefined,
@@ -253,14 +252,24 @@ function createDiagramPanel(context: vscode.ExtensionContext, title: string): vs
   return diagramPreviewPanel;
 }
 
-async function jumpToElementInActiveEditor(context: vscode.ExtensionContext, elementId: string) {
-  const active = pickActiveSrujaDoc();
-  if (!active) return;
-  const elements = await getElementsFromWasm(context, active.getText(), active.uri.fsPath, active.uri.toString(), active.version);
+async function jumpToElementInDocument(context: vscode.ExtensionContext, elementId: string, sourceUri?: string) {
+  let doc: vscode.TextDocument | undefined;
+  if (sourceUri) {
+    try {
+      doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(sourceUri));
+    } catch {
+      doc = pickActiveSrujaDoc();
+    }
+  } else {
+    doc = pickActiveSrujaDoc();
+  }
+  
+  if (!doc) return;
+  const elements = await getElementsFromWasm(context, doc.getText(), doc.uri.fsPath, doc.uri.toString(), doc.version);
   if (!elements) return;
-  const element = elements.find(e => e.id === elementId || e.id.endsWith(`.${elementId}`));
+  const element = findElementById(elements, elementId);
   if (element) {
-    const editor = await vscode.window.showTextDocument(active, { viewColumn: vscode.ViewColumn.One });
+    const editor = await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One });
     const range = wasmRangeToVscodeRange(element.range);
     editor.selection = new vscode.Selection(range.start, range.start);
     editor.revealRange(range, vscode.TextEditorRevealType.InCenter);

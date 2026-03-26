@@ -6,6 +6,7 @@ use std::path::Path;
 use sruja_diagnostics::{format_diagnostic, format_github_actions_annotation};
 use sruja_engine::Validator;
 use sruja_export::context::ContextExporter;
+use sruja_export::d2::{D2Config, D2Exporter};
 use sruja_export::dsl::DslPrinter;
 use sruja_export::json::exporter::{ExportError as JsonExportError, Exporter as JsonExporter};
 use sruja_export::markdown::{MarkdownExporter, MarkdownOptions};
@@ -385,6 +386,15 @@ pub async fn export(
             });
             let mmd = exporter.export(&program);
             println!("{}", mmd);
+        }
+        "d2" => {
+            let exporter = D2Exporter::new(D2Config {
+                direction: "right".to_string(),
+                view_level,
+                target_id: target.map(|s| s.to_string()),
+            });
+            let d2 = exporter.export(&program);
+            println!("{}", d2);
         }
         "markdown" => {
             let mut options = MarkdownOptions::default();

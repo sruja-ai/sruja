@@ -13,12 +13,33 @@ function getCliOutputChannel(): vscode.OutputChannel {
   return cliOutputChannel;
 }
 
-async function runCliInWorkspace(getSrujaPath: () => string, args: string[]): Promise<{ stdout: string; stderr: string; code: number }> {
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  if (!folder) {
-    throw new Error("No workspace folder open. Open a folder to run context engineering.");
+async function getTargetWorkspaceFolder(): Promise<vscode.WorkspaceFolder | undefined> {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) return undefined;
+  if (folders.length === 1) return folders[0];
+
+  // Try to use the folder of the active document
+  const activeEditor = vscode.window.activeTextEditor;
+  if (activeEditor) {
+    const folder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+    if (folder) return folder;
   }
-  return runCli(getSrujaPath(), args, folder.uri.fsPath);
+
+  // Ask the user to pick a folder
+  const picked = await vscode.window.showQuickPick(
+    folders.map((f) => ({ label: f.name, folder: f })),
+    { placeHolder: "Select workspace folder for Sruja action" }
+  );
+  return picked?.folder;
+}
+
+async function runCliInWorkspace(getSrujaPath: () => string, args: string[]): Promise<{ stdout: string; stderr: string; code: number; folder?: vscode.WorkspaceFolder }> {
+  const folder = await getTargetWorkspaceFolder();
+  if (!folder) {
+    throw new Error("No workspace folder selected.");
+  }
+  const res = await runCli(getSrujaPath(), args, folder.uri.fsPath);
+  return { ...res, folder };
 }
 
 export function registerContextEngineeringCommands(context: vscode.ExtensionContext, getSrujaPath: () => string) {
@@ -52,9 +73,9 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
     }),
 
     vscode.commands.registerCommand("sruja.refreshContext", async () => {
-      const folder = vscode.workspace.workspaceFolders?.[0];
-      if (!folder) {
-        vscode.window.showWarningMessage("Open a workspace folder to refresh repo context.");
+      const targetFolder = await getTargetWorkspaceFolder();
+      if (!targetFolder) {
+        vscode.window.showWarningMessage("Select a workspace folder to refresh repo context.");
         return;
       }
       await vscode.window.withProgress(
@@ -77,6 +98,8 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
               vscode.window.showErrorMessage("Sruja sync failed. Is the CLI on PATH or set sruja.lsp.path?");
               return;
             }
+            const folder = (await runCliInWorkspace(getSrujaPath, ["status"])).folder; // Should not happen as we just ran it, but for type safety if we didn't pass folder back
+            if (!folder) return;
             const contextPath = path.join(folder.uri.fsPath, ".sruja", "context.json");
             channel.appendLine(`Context written to ${contextPath}`);
             const parsed = parseJsonSafe<{ context_path?: string; truth_status?: string }>(stdout);

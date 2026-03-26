@@ -11,6 +11,7 @@ import {
   SrujaElement,
 } from "./wasm";
 import { extractMissingFieldName, getDiagnosticCodeValue } from "./lintParser";
+import { findElementById, findAllElementsById } from "./elementLookup";
 
 function isWordChar(ch: string | undefined): boolean {
   if (!ch) return false;
@@ -85,7 +86,7 @@ export function buildDefinitionLinks(
   wordRange: ElementRange,
   elements: SrujaElement[]
 ): DefinitionResult[] | undefined {
-  const element = elements.find(e => e.id === word || e.id.endsWith(`.${word}`));
+  const element = findElementById(elements, word);
   if (!element) return undefined;
 
   return [{
@@ -129,7 +130,7 @@ export class SrujaDefinitionProvider implements vscode.DefinitionProvider {
     );
     if (!links) return undefined;
 
-    const element = elements.find((e) => e.id === word || e.id.endsWith(`.${word}`));
+    const element = findElementById(elements, word);
     const originStart = new vscode.Position(wordRange.start.line, wordRange.start.character);
     const originEnd = new vscode.Position(wordRange.end.line, wordRange.end.character);
     const originRange = new vscode.Range(originStart, originEnd);
@@ -188,7 +189,7 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
     if (!word) return undefined;
 
     // Find element matching the word
-    const element = elements.find(e => e.id === word || e.id.endsWith(`.${word}`));
+    const element = findElementById(elements, word);
     if (!element) return undefined;
 
     // Build hover markdown
@@ -651,7 +652,7 @@ export class SrujaRenameProvider implements vscode.RenameProvider {
     if (!wordRange) return undefined;
 
     const oldName = document.getText(wordRange).trim();
-    const element = elements.find(e => e.id === oldName || e.id.endsWith(`.${oldName}`));
+    const element = findElementById(elements, oldName);
     if (!element) return undefined;
 
     const edit = new vscode.WorkspaceEdit();
@@ -693,7 +694,7 @@ export class SrujaReferenceProvider implements vscode.ReferenceProvider {
     if (!wordRange) return undefined;
 
     const word = document.getText(wordRange).trim();
-    const element = elements.find(e => e.id === word || e.id.endsWith(`.${word}`));
+    const element = findElementById(elements, word);
     if (!element) return undefined;
 
     const locations: vscode.Location[] = [];

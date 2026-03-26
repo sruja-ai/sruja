@@ -12,19 +12,18 @@ import {
   SrujaReferenceProvider,
   SrujaDocumentFormattingEditProvider,
 } from "./providers";
-import {
-  getDiagnosticsFromWasm,
-} from "./wasm";
 import { getSrujaLspPath } from "./config";
 import { SrujaMarkdownPreviewEditorProvider } from "./markdownPreviewEditor";
 import { registerDiagramCommands } from "./commands/diagrams";
 import { registerContextEngineeringCommands } from "./commands/contextEngineering";
 import { registerSkillCommands } from "./commands/skills";
 import { registerKnowledgeCommands, pushDocsThreadEntryFromActiveEditor } from "./commands/knowledge";
+import { registerCommandCenter } from "./commands/commandCenter";
+import { registerValidationCommands } from "./commands/validation";
+import { registerExportCommands } from "./commands/export";
 import { buildContextPack } from "./contextPack";
 import { registerMcpServer } from "./mcpServer";
-
-let diagnosticCollection: vscode.DiagnosticCollection | undefined;
+import { updateDiagnostics, getDiagnosticCollection } from "./diagnostics";
 
 function getLspPath(): string | undefined {
   return vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
@@ -34,44 +33,10 @@ function getSrujaPath(): string {
   return getSrujaLspPath(getLspPath());
 }
 
-/** Return true if the document is still open in the workspace. */
-function isDocumentStillOpen(uri: vscode.Uri): boolean {
-  return vscode.workspace.textDocuments.some((d) => d.uri.toString() === uri.toString());
-}
-
-async function updateDiagnostics(
-  context: vscode.ExtensionContext,
-  doc: vscode.TextDocument
-): Promise<void> {
-  if (doc.languageId !== "sruja" || doc.uri.scheme !== "file") return;
-  if (!diagnosticCollection) return;
-
-  const uri = doc.uri;
-  const filename = doc.uri.fsPath;
-
-  const setDiagsIfDocOpen = (diags: vscode.Diagnostic[]) => {
-    if (isDocumentStillOpen(uri)) diagnosticCollection?.set(uri, diags);
-  };
-
-  try {
-    const diags = await getDiagnosticsFromWasm(context, doc.getText(), filename);
-    setDiagsIfDocOpen(diags);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    setDiagsIfDocOpen([
-      new vscode.Diagnostic(
-        new vscode.Range(0, 0, 0, 0),
-        `Sruja lint failed: ${message}`,
-        vscode.DiagnosticSeverity.Warning
-      ),
-    ]);
-  }
-}
-
 export function activate(context: vscode.ExtensionContext) {
   const isTest = context.extensionMode === vscode.ExtensionMode.Test;
 
-  diagnosticCollection = vscode.languages.createDiagnosticCollection("sruja");
+  const diagnosticCollection = getDiagnosticCollection();
   context.subscriptions.push(diagnosticCollection);
 
   // Register Modular Commands
@@ -79,6 +44,9 @@ export function activate(context: vscode.ExtensionContext) {
   registerContextEngineeringCommands(context, getSrujaPath);
   registerSkillCommands(context, isTest);
   registerKnowledgeCommands(context);
+  registerCommandCenter(context);
+  registerValidationCommands(context, updateDiagnostics);
+  registerExportCommands(context);
 
   // Register Language Providers
   context.subscriptions.push(

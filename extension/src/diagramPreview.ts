@@ -16,7 +16,7 @@ export function escapeMermaidForScript(mermaid: string): string {
 /**
  * Build the webview HTML for the diagram preview. Pass already-escaped mermaid code.
  */
-export function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
+export function getDiagramPreviewHtml(mermaidCodeEscaped: string, sourceUri: string): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -37,8 +37,9 @@ export function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
   <script>
     (function() {
       const vscode = acquireVsCodeApi();
-      var code = \`${mermaidCodeEscaped}\`;
-      var el = document.getElementById('diagram');
+      const code = \`${mermaidCodeEscaped}\`;
+      const sourceUri = \`${sourceUri}\`;
+      const el = document.getElementById('diagram');
       el.textContent = code;
       
       mermaid.initialize({ 
@@ -53,14 +54,14 @@ export function getDiagramPreviewHtml(mermaidCodeEscaped: string): string {
         nodes.forEach(node => {
           node.addEventListener('click', () => {
              // Try to find the element ID from the node text or ID
-             // Mermaid nodes often have an id like 'flowchart-COMPONENT_ID-...'
              const nodeId = node.id || '';
              const match = nodeId.match(/flowchart-([^-]+)-/) || nodeId.match(/node-([^-]+)-/);
              let elementId = match ? match[1] : node.textContent.trim();
              
              vscode.postMessage({
                command: 'jumpToElement',
-               elementId: elementId
+               elementId: elementId,
+               sourceUri: sourceUri
              });
           });
         });

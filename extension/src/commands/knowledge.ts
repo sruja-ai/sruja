@@ -1,9 +1,7 @@
 import * as vscode from "vscode";
-import {
-  getElementsFromWasm,
-  wasmRangeToVscodeRange,
-} from "../wasm";
+import { getElementsFromWasm, wasmRangeToVscodeRange } from "../wasm";
 import { resolveDocUri, docUriExists } from "../providers";
+import { findElementById } from "../elementLookup";
 import {
   docsThreadState,
   renderDocsThreadHtml,
@@ -59,7 +57,7 @@ export function registerKnowledgeCommands(context: vscode.ExtensionContext) {
       const wordRange = doc.getWordRangeAtPosition(position);
       const word = wordRange ? doc.getText(wordRange).trim() : "";
       if (!word) return;
-      const element = elements.find((e) => e.id === word || e.id.endsWith(`.${word}`));
+      const element = findElementById(elements, word);
       if (!element?.doc) {
         vscode.window.showInformationMessage(`Element "${word}" has no doc link. Add doc ".sruja/knowledge/..." to the element in the DSL.`);
         return;
@@ -93,7 +91,7 @@ export function registerKnowledgeCommands(context: vscode.ExtensionContext) {
         const uri = vscode.Uri.parse(docUriRaw);
         const doc = await vscode.workspace.openTextDocument(uri);
         const elements = await getElementsFromWasm(context, doc.getText(), doc.uri.fsPath, doc.uri.toString(), doc.version);
-        const element = elements?.find((e) => e.id === elementId || e.id.endsWith(`.${elementId}`));
+        const element = elements ? findElementById(elements, elementId) : undefined;
         if (element) {
           await pushDocsThreadEntryForElement(context, doc, element);
           return;
