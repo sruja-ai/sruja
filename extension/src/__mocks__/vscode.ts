@@ -161,15 +161,33 @@ export const workspace = {
   workspaceFolders: [],
   getConfiguration: () => ({ get: () => '' }),
   getWorkspaceFolder: (_uri: Uri) => undefined,
-  openTextDocument: async (uri: Uri) => ({
-    uri,
-    languageId: "plaintext",
-    version: 1,
-    lineCount: 0,
-    getText: () => "",
-    lineAt: () => ({ text: "" }),
-    getWordRangeAtPosition: () => undefined,
-  }),
+  openTextDocument: async (arg: any) => {
+    if (arg && typeof arg === "object" && "content" in arg) {
+      const content = String((arg as any).content ?? "");
+      const languageId = String((arg as any).language ?? "plaintext");
+      const uri = Uri.file("/untitled");
+      return {
+        uri,
+        languageId,
+        version: 1,
+        lineCount: 0,
+        getText: () => content,
+        lineAt: () => ({ text: "" }),
+        getWordRangeAtPosition: () => undefined,
+      };
+    }
+
+    const uri = arg as Uri;
+    return {
+      uri,
+      languageId: "plaintext",
+      version: 1,
+      lineCount: 0,
+      getText: () => "",
+      lineAt: () => ({ text: "" }),
+      getWordRangeAtPosition: () => undefined,
+    };
+  },
   fs: {
     readFile: async () => Buffer.from(''),
     writeFile: async () => {},

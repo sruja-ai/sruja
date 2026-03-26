@@ -59,7 +59,7 @@ describe("SrujaMarkdownPreviewEditorProvider", () => {
 
     await provider.resolveCustomEditor(doc, panel, new CancellationToken() as any);
     expect(panel.webview.html).toContain("marked.parse");
-    expect(panel.webview.html).toContain("MERMAID0");
+    expect(panel.webview.html).toContain("mermaid-placeholder");
   });
 
   it("renders error HTML when export returns null", async () => {
@@ -81,4 +81,3 @@ describe("SrujaMarkdownPreviewEditorProvider", () => {
     expect(panel.webview.html).toContain("Failed to generate markdown.");
   });
 });
-
