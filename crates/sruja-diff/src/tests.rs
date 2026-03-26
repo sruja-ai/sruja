@@ -221,6 +221,13 @@ mod cases {
             location: None,
             suggestion: None,
             sources: vec![],
+            confidence: None,
+            evidence_count: Some(0),
+            production_relevant: None,
+            baseline_delta: None,
+            suppressed: None,
+            rule_id: None,
+            rationale: None,
         }];
         let penalties = HealthScorePenalties::default();
         let score = calculate_health_score_from_violations(&violations, penalties);
@@ -269,6 +276,13 @@ mod cases {
                 location: Some("mod_x".to_string()),
                 suggestion: None,
                 sources: vec![],
+                confidence: None,
+                evidence_count: Some(0),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
             },
             Violation {
                 kind: ViolationKind::LayerViolation,
@@ -277,6 +291,13 @@ mod cases {
                 location: None,
                 suggestion: None,
                 sources: vec![],
+                confidence: None,
+                evidence_count: Some(0),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
             },
         ];
         let penalties = HealthScorePenalties::default();
@@ -438,6 +459,13 @@ DB = database "Primary DB"
                 location: None,
                 suggestion: None,
                 sources: vec![],
+                confidence: None,
+                evidence_count: Some(0),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
             }],
             truth_status: TruthStatus::Drifted,
             ..no_issues

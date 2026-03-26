@@ -8,7 +8,7 @@ use crate::types::{
     TruthStatus, Violation, ViolationKind,
 };
 use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub fn compare_graphs(actual: &Graph, proposed: &Graph) -> DiffResult {
     let node_diff = compare_nodes(&actual.nodes, &proposed.nodes);
@@ -44,12 +44,110 @@ pub fn compare_graphs(actual: &Graph, proposed: &Graph) -> DiffResult {
 }
 
 fn compare_nodes(actual: &[Node], proposed: &[Node]) -> NodeDiff {
-    let actual_ids: HashSet<&str> = actual.iter().map(|n| n.id.as_str()).collect();
-    let proposed_ids: HashSet<&str> = proposed.iter().map(|n| n.id.as_str()).collect();
+    let mut actual_by_id: HashMap<&str, &Node> = HashMap::new();
+    let mut actual_by_canonical: HashMap<&str, &Node> = HashMap::new();
+    let mut actual_by_alias: HashMap<&str, &Node> = HashMap::new();
+    let mut alias_dupes: HashSet<&str> = HashSet::new();
+    let mut actual_by_source: HashMap<String, &Node> = HashMap::new();
+    let mut source_dupes: HashSet<String> = HashSet::new();
+
+    for n in actual {
+        actual_by_id.insert(n.id.as_str(), n);
+        if let Some(ref cid) = n.canonical_id {
+            actual_by_canonical.insert(cid.as_str(), n);
+        }
+    }
+    for n in actual {
+        for a in &n.aliases {
+            let key = a.as_str();
+            if actual_by_alias.contains_key(key) {
+                alias_dupes.insert(key);
+            } else {
+                actual_by_alias.insert(key, n);
+            }
+        }
+        for s in &n.sources {
+            let key = format!("{}:{}", s.kind.as_str().to_lowercase(), s.path.to_lowercase());
+            if actual_by_source.contains_key(&key) {
+                source_dupes.insert(key.clone());
+            } else {
+                actual_by_source.insert(key.clone(), n);
+            }
+        }
+    }
+
+    let mut used_actual: HashSet<String> = HashSet::new();
+    let mut matches: Vec<(String, String)> = Vec::new();
+
+    for pn in proposed {
+        let mut matched_id: Option<String> = None;
+        if let Some(ref cid) = pn.canonical_id {
+            if let Some(an) = actual_by_canonical.get(cid.as_str()) {
+                if !used_actual.contains(&an.id) {
+                    matched_id = Some(an.id.clone());
+                }
+            }
+        }
+        if matched_id.is_none() {
+            for alias in &pn.aliases {
+                let key = alias.as_str();
+                if !alias_dupes.contains(key) {
+                    if let Some(an) = actual_by_alias.get(key) {
+                        if !used_actual.contains(&an.id) {
+                            matched_id = Some(an.id.clone());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if matched_id.is_none() {
+            for s in &pn.sources {
+                let key = format!("{}:{}", s.kind.as_str().to_lowercase(), s.path.to_lowercase());
+                if !source_dupes.contains(&key) {
+                    if let Some(an) = actual_by_source.get(&key) {
+                        if !used_actual.contains(&an.id) {
+                            matched_id = Some(an.id.clone());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if matched_id.is_none() {
+            if let Some(an) = actual_by_id.get(pn.id.as_str()) {
+                if !used_actual.contains(&an.id) {
+                    matched_id = Some(an.id.clone());
+                }
+            }
+        }
+
+        if let Some(aid) = matched_id {
+            used_actual.insert(aid.clone());
+            matches.push((pn.id.clone(), aid));
+        }
+    }
+
+    let matched: Vec<NodeMatch> = matches
+        .iter()
+        .filter_map(|(pid, aid)| {
+            let pn = proposed.iter().find(|n| n.id == *pid)?;
+            let an = actual.iter().find(|n| n.id == *aid)?;
+            Some(NodeMatch {
+                proposal_id: pid.clone(),
+                actual_id: aid.clone(),
+                similarity: calculate_similarity(&pn.label, &an.label),
+                kind_match: pn.kind == an.kind,
+            })
+        })
+        .collect();
+
+    let matched_proposed_ids: HashSet<&str> = matches.iter().map(|(p, _)| p.as_str()).collect();
+    let matched_actual_ids: HashSet<&str> = matches.iter().map(|(_, a)| a.as_str()).collect();
 
     let added: Vec<DiffNode> = proposed
         .iter()
-        .filter(|n| !actual_ids.contains(n.id.as_str()))
+        .filter(|n| !matched_proposed_ids.contains(n.id.as_str()))
         .map(|n| DiffNode {
             id: n.id.clone(),
             kind: n.kind,
@@ -61,27 +159,13 @@ fn compare_nodes(actual: &[Node], proposed: &[Node]) -> NodeDiff {
 
     let removed: Vec<DiffNode> = actual
         .iter()
-        .filter(|n| !proposed_ids.contains(n.id.as_str()))
+        .filter(|n| !matched_actual_ids.contains(n.id.as_str()))
         .map(|n| DiffNode {
             id: n.id.clone(),
             kind: n.kind,
             label: n.label.clone(),
             technology: n.technology.clone(),
             description: None,
-        })
-        .collect();
-
-    let matched: Vec<NodeMatch> = proposed
-        .iter()
-        .filter(|n| actual_ids.contains(n.id.as_str()))
-        .map(|pn| {
-            let actual_node = actual.iter().find(|an| an.id == pn.id).unwrap();
-            NodeMatch {
-                proposal_id: pn.id.clone(),
-                actual_id: actual_node.id.clone(),
-                similarity: calculate_similarity(&pn.label, &actual_node.label),
-                kind_match: pn.kind == actual_node.kind,
-            }
         })
         .collect();
 
@@ -155,7 +239,14 @@ fn detect_violations(
                         "Add a data access service between {} and {}",
                         src.label, tgt.label
                     )),
-                    sources,
+                    sources: sources.clone(),
+                    confidence: None,
+                    evidence_count: Some(sources.len()),
+                    production_relevant: None,
+                    baseline_delta: None,
+                    suppressed: None,
+                    rule_id: None,
+                    rationale: None,
                 });
             }
         }
@@ -176,7 +267,14 @@ fn detect_violations(
                     "Define how '{}' interacts with other components",
                     node.label
                 )),
-                sources,
+                sources: sources.clone(),
+                confidence: None,
+                evidence_count: Some(sources.len()),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
             });
         }
     }
@@ -193,7 +291,14 @@ fn detect_violations(
                     "Specify the technology for '{}' (e.g., Node.js, Go, Python)",
                     node.label
                 )),
-                sources,
+                sources: sources.clone(),
+                confidence: None,
+                evidence_count: Some(sources.len()),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
             });
         }
     }

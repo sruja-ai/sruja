@@ -71,7 +71,7 @@ impl SourceRef {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Violation {
     pub kind: ViolationKind,
     pub severity: Severity,
@@ -81,6 +81,20 @@ pub struct Violation {
     /// Source references (file, line) so findings can be traced back to code or docs.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceRef>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub production_relevant: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_delta: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suppressed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rationale: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

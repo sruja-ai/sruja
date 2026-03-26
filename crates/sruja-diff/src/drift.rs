@@ -33,7 +33,14 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
                 "Consider introducing an interface or event-based communication to break the cycle"
                     .to_string(),
             ),
-            sources,
+            sources: sources.clone(),
+            confidence: None,
+            evidence_count: Some(sources.len()),
+            production_relevant: None,
+            baseline_delta: None,
+            suppressed: None,
+            rule_id: None,
+            rationale: None,
         });
     }
 
@@ -48,7 +55,14 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
             suggestion: Some(
                 "Consider if this module is still needed or if it should be connected to the rest of the system".to_string(),
             ),
-            sources,
+            sources: sources.clone(),
+            confidence: None,
+            evidence_count: Some(sources.len()),
+            production_relevant: None,
+            baseline_delta: None,
+            suppressed: None,
+            rule_id: None,
+            rationale: None,
         });
     }
 
@@ -66,7 +80,14 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
             suggestion: Some(
                 "Consider adding a service layer to abstract this dependency".to_string(),
             ),
-            sources,
+            sources: sources.clone(),
+            confidence: None,
+            evidence_count: Some(sources.len()),
+            production_relevant: None,
+            baseline_delta: None,
+            suppressed: None,
+            rule_id: None,
+            rationale: None,
         });
     }
 
@@ -84,7 +105,14 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
             suggestion: Some(
                 "Consider splitting this module into smaller, focused components to reduce regression risk".to_string(),
             ),
-            sources,
+            sources: sources.clone(),
+            confidence: None,
+            evidence_count: Some(sources.len()),
+            production_relevant: None,
+            baseline_delta: None,
+            suppressed: None,
+            rule_id: None,
+            rationale: None,
         });
     }
 

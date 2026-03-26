@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use super::discover::discover_context_json_from_graph;
+use super::discover::{discover_context_json_from_graph, discover_explanation_json};
 use super::CliError;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;
@@ -59,8 +59,14 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
 
     // Scan once and reuse for context + drift/baseline-compare to avoid redundant work.
     let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
-    let ctx = discover_context_json_from_graph(repo_root, repo_path, &graph)?;
-    let mut value = serde_json::to_value(&ctx).map_err(|e| CliError::Validation(e.to_string()))?;
+    let mut value = match discover_explanation_json(repo_root) {
+        Ok(json) => serde_json::from_str::<serde_json::Value>(&json)
+            .map_err(|e| CliError::Validation(e.to_string()))?,
+        Err(_) => {
+            let ctx = discover_context_json_from_graph(repo_root, repo_path, &graph)?;
+            serde_json::to_value(&ctx).map_err(|e| CliError::Validation(e.to_string()))?
+        }
+    };
 
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
     let baseline = baseline_path
