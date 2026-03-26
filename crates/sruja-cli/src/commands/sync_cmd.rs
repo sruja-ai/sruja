@@ -185,7 +185,8 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     } else {
         None
     };
-    let (active, suppressed): (Vec<Violation>, Vec<Violation>) = if let Some(ref set) = baseline_set {
+    let (active, suppressed): (Vec<Violation>, Vec<Violation>) = if let Some(ref set) = baseline_set
+    {
         violations
             .into_iter()
             .map(|mut v| {
@@ -217,8 +218,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         serde_json::to_value(&active_summ).map_err(|e| CliError::Validation(e.to_string()))?;
     value["suppressed_violations"] =
         serde_json::to_value(&suppressed_summ).map_err(|e| CliError::Validation(e.to_string()))?;
-    value["suppressed_count"] =
-        serde_json::Value::Number((suppressed_summ.len() as u64).into());
+    value["suppressed_count"] = serde_json::Value::Number((suppressed_summ.len() as u64).into());
 
     let path = dot_sruja.join("context.json");
     let context_path = path.display().to_string();
@@ -270,11 +270,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
             } else {
                 eprintln!("No baseline (repo.sruja not found)");
             }
-            eprintln!(
-                "Truth: {} ({} violation(s))",
-                truth_status,
-                active.len()
-            );
+            eprintln!("Truth: {} ({} violation(s))", truth_status, active.len());
             if let Some(score) = health_score {
                 eprintln!("Health score: {}/100", score);
             }

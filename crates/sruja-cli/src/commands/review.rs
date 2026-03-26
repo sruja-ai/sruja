@@ -283,14 +283,15 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
     }
 
     let violations_baseline_path = repo_path.join(".sruja").join("violations.baseline.json");
-    let baseline_set: Option<std::collections::HashSet<String>> = if violations_baseline_path.exists() {
-        let content = fs::read_to_string(&violations_baseline_path)?;
-        let baseline: super::check::ViolationBaseline =
-            serde_json::from_str(&content).map_err(|e| CliError::Validation(e.to_string()))?;
-        Some(baseline.fingerprints.into_iter().collect())
-    } else {
-        None
-    };
+    let baseline_set: Option<std::collections::HashSet<String>> =
+        if violations_baseline_path.exists() {
+            let content = fs::read_to_string(&violations_baseline_path)?;
+            let baseline: super::check::ViolationBaseline =
+                serde_json::from_str(&content).map_err(|e| CliError::Validation(e.to_string()))?;
+            Some(baseline.fingerprints.into_iter().collect())
+        } else {
+            None
+        };
 
     let (active_violations, suppressed_violations): (Vec<Violation>, Vec<Violation>) =
         if let Some(ref set) = baseline_set {
@@ -299,7 +300,8 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
                 .map(|mut v| {
                     let suppressed = set.contains(&fingerprint_violation(&v));
                     v.suppressed = Some(suppressed);
-                    v.baseline_delta = Some(if suppressed { "baseline" } else { "new" }.to_string());
+                    v.baseline_delta =
+                        Some(if suppressed { "baseline" } else { "new" }.to_string());
                     v
                 })
                 .partition(|v| v.suppressed != Some(true))

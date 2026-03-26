@@ -9,6 +9,7 @@ pub struct D2Config {
     pub direction: String,
     pub view_level: u8,
     pub target_id: Option<String>,
+    pub link_template: Option<String>,
 }
 
 impl Default for D2Config {
@@ -17,6 +18,7 @@ impl Default for D2Config {
             direction: "right".to_string(),
             view_level: 3,
             target_id: None,
+            link_template: None,
         }
     }
 }
@@ -130,6 +132,20 @@ impl D2Exporter {
             }
         }
 
+        let loc = &elem.location;
+        if !loc.file.is_empty() && loc.line > 0 && loc.column > 0 {
+            let template = self
+                .config
+                .link_template
+                .as_deref()
+                .unwrap_or("vscode://file/{file}:{line}:{column}");
+            let link = template
+                .replace("{file}", &loc.file)
+                .replace("{line}", &loc.line.to_string())
+                .replace("{column}", &loc.column.to_string());
+            out.push_str(&format!("{indent}{INDENT2}link: \"{link}\"\n"));
+        }
+
         if let Some(kids) = children.get(fqn) {
             out.push('\n');
             for child in kids {
@@ -151,12 +167,30 @@ impl D2Exporter {
         let to = sanitize_id(&rel.to.as_string());
         let label = rel.label.as_ref().or(rel.description.as_ref());
 
-        if let Some(l) = label {
+        let mut base = if let Some(l) = label {
             let one_line = l.lines().next().unwrap_or("").replace('"', "\\\"");
-            out.push_str(&format!("{from} -> {to}: \"{one_line}\"\n"));
+            format!("{from} -> {to}: \"{one_line}\"")
         } else {
-            out.push_str(&format!("{from} -> {to}\n"));
+            format!("{from} -> {to}")
+        };
+
+        let loc = &rel.location;
+        if !loc.file.is_empty() && loc.line > 0 && loc.column > 0 {
+            let template = self
+                .config
+                .link_template
+                .as_deref()
+                .unwrap_or("vscode://file/{file}:{line}:{column}");
+            let link = template
+                .replace("{file}", &loc.file)
+                .replace("{line}", &loc.line.to_string())
+                .replace("{column}", &loc.column.to_string());
+
+            base.push_str(&format!(" {{\n{INDENT2}link: \"{link}\"\n}}"));
         }
+
+        out.push_str(&base);
+        out.push('\n');
     }
 }
 

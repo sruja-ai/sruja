@@ -43,7 +43,7 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
     }
 
     let disposed = false;
-    const updatePreview = async (): Promise<void> => {
+    const updatePreview = async (isInitial = false): Promise<void> => {
       if (disposed) return;
       try {
         const inMemoryDoc = vscode.workspace.textDocuments.find((d) => d.uri.toString() === document.uri.toString());
@@ -53,7 +53,11 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
         const md = await exportMarkdownFromWasm(this.context, dsl);
         if (disposed) return;
         if (md) {
-          webviewPanel.webview.html = this.getMarkdownHtml(webviewPanel.webview, md);
+          if (isInitial) {
+            webviewPanel.webview.html = this.getMarkdownHtml(webviewPanel.webview, md);
+          } else {
+            webviewPanel.webview.postMessage({ type: "update", markdown: md });
+          }
         } else {
           webviewPanel.webview.html = this.getErrorHtml("Failed to generate markdown.");
         }
@@ -64,7 +68,7 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
       }
     };
 
-    await updatePreview();
+    await updatePreview(true);
 
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
     const changeSub = vscode.workspace.onDidChangeTextDocument((e) => {
@@ -91,17 +95,8 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
   private getMarkdownHtml(webview: vscode.Webview, markdown: string): string {
     const n = Date.now().toString(16);
     const nonce = n + n;
-    const mermaidBlocks: string[] = [];
-    const markdownWithPlaceholders = markdown.replace(
-      /```mermaid\n([\s\S]*?)```/g,
-      (_match, code: string) => {
-        mermaidBlocks.push(code.trim());
-        return `\n\n<!--MERMAID${mermaidBlocks.length - 1}-->\n\n`;
-      }
-    );
-    const escapedMarkdown = JSON.stringify(markdownWithPlaceholders);
-    const escapedMermaidBlocks = JSON.stringify(mermaidBlocks);
     const csp = `default-src 'none'; img-src ${webview.cspSource} https:; style-src ${webview.cspSource} 'unsafe-inline' https://cdn.jsdelivr.net; script-src ${webview.cspSource} 'nonce-${nonce}' https://cdn.jsdelivr.net;`;
+
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -111,42 +106,100 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 16px; max-width: 900px; margin: 0 auto; line-height: 1.6; }
-    h1, h2, h3 { margin-top: 1.5em; }
-    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
-    pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    body { 
+      font-family: var(--vscode-font-family); 
+      font-weight: var(--vscode-font-weight);
+      font-size: var(--vscode-font-size);
+      color: var(--vscode-editor-foreground);
+      background-color: var(--vscode-editor-background);
+      padding: 16px; 
+      max-width: 900px; 
+      margin: 0 auto; 
+      line-height: 1.6; 
+    }
+    h1, h2, h3 { color: var(--vscode-descriptionForeground); margin-top: 1.5em; border-bottom: 1px solid var(--vscode-textSeparator-foreground); padding-bottom: 0.3em; }
+    code { 
+      background: var(--vscode-textCodeBlock-background); 
+      padding: 2px 6px; 
+      border-radius: 3px; 
+      font-family: var(--vscode-editor-font-family);
+    }
+    pre { 
+      background: var(--vscode-textCodeBlock-background); 
+      padding: 12px; 
+      border-radius: 6px; 
+      overflow-x: auto; 
+      border: 1px solid var(--vscode-textSeparator-foreground);
+    }
     pre code { background: none; padding: 0; }
     table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
-    th { background: #f4f4f4; }
-    .mermaid { margin: 1em 0; }
+    th, td { border: 1px solid var(--vscode-textSeparator-foreground); padding: 8px 12px; text-align: left; }
+    th { background: var(--vscode-textCodeBlock-background); }
+    blockquote { border-left: 4px solid var(--vscode-textLink-foreground); padding-left: 16px; color: var(--vscode-descriptionForeground); margin: 1em 0; }
+    .mermaid { margin: 2em 0; display: flex; justify-content: center; }
   </style>
 </head>
-<body>
+<body class="vscode-body">
   <div id="content">Loading...</div>
   <script nonce="${nonce}">
-    try {
-      const md = ${escapedMarkdown};
-      const mermaidBlocks = ${escapedMermaidBlocks};
-      var html = marked.parse(md);
-      for (var i = 0; i < mermaidBlocks.length; i++) {
-        var placeholder = '<!--MERMAID' + i + '-->';
-        var mermaidDiv = '<div class="mermaid">' + mermaidBlocks[i] + '</div>';
-        html = html.replace(placeholder, mermaidDiv);
+    (function() {
+      const content = document.getElementById('content');
+      
+      function getTheme() {
+        return document.body.classList.contains('vscode-light') ? 'default' : 'dark';
       }
-      document.getElementById('content').innerHTML = html;
-      mermaid.initialize({ startOnLoad: false, theme: 'default' });
-      mermaid.run({ querySelector: '.mermaid' }).catch(function(err) {
-        console.error('Mermaid error:', err);
-        document.querySelectorAll('.mermaid').forEach(function(el) {
-          var errText = 'Diagram error: ' + (err && err.message ? err.message : String(err));
-          el.innerHTML = '<p style="color:#c00">' + errText + '</p>';
+
+      function initMermaid() {
+        mermaid.initialize({ 
+          startOnLoad: false, 
+          theme: getTheme(),
+          flowchart: { useMaxWidth: false, htmlLabels: true }
         });
+      }
+
+      function renderMarkdown(markdown) {
+        try {
+          const mermaidBlocks = [];
+          const mdWithPlaceholders = markdown.replace(
+            /\`\`\`mermaid\\n([\\s\\S]*?)\`\`\`/g,
+            (match, code) => {
+              mermaidBlocks.push(code.trim());
+              return '\\n\\n<div class="mermaid-placeholder" data-index="' + (mermaidBlocks.length - 1) + '"></div>\\n\\n';
+            }
+          );
+
+          content.innerHTML = marked.parse(mdWithPlaceholders);
+
+          document.querySelectorAll('.mermaid-placeholder').forEach(el => {
+            const idx = el.getAttribute('data-index');
+            el.className = 'mermaid';
+            el.textContent = mermaidBlocks[idx];
+          });
+
+          if (mermaidBlocks.length > 0) {
+            mermaid.run({ querySelector: '.mermaid' }).catch(err => console.error('Mermaid error:', err));
+          }
+        } catch (e) {
+          content.innerHTML = '<p style="color:var(--vscode-errorForeground)">Error parsing markdown: ' + e.message + '</p>';
+        }
+      }
+
+      initMermaid();
+      renderMarkdown(${JSON.stringify(markdown)});
+
+      window.addEventListener('message', event => {
+        const message = event.data;
+        if (message.type === 'update') {
+          renderMarkdown(message.markdown);
+        }
       });
-    } catch(e) {
-      console.error('Markdown preview error:', e);
-      document.getElementById('content').innerHTML = '<p style="color:#c00">Error: ' + (e.message || String(e)) + '</p>';
-    }
+
+      const observer = new MutationObserver(() => {
+        initMermaid();
+        mermaid.run({ querySelector: '.mermaid' });
+      });
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    })();
   </script>
 </body>
 </html>`;

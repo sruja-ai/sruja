@@ -392,6 +392,7 @@ pub async fn export(
                 direction: "right".to_string(),
                 view_level,
                 target_id: target.map(|s| s.to_string()),
+                link_template: None,
             });
             let d2 = exporter.export(&program);
             println!("{}", d2);

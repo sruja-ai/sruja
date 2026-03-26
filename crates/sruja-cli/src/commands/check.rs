@@ -369,7 +369,8 @@ pub async fn check(
                 .map(|mut v| {
                     let suppressed = set.contains(&fingerprint_violation(&v));
                     v.suppressed = Some(suppressed);
-                    v.baseline_delta = Some(if suppressed { "baseline" } else { "new" }.to_string());
+                    v.baseline_delta =
+                        Some(if suppressed { "baseline" } else { "new" }.to_string());
                     v
                 })
                 .partition(|v| v.suppressed != Some(true))

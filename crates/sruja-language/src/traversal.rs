@@ -325,6 +325,92 @@ pub fn find_definition_line(source: &str, identifier: &str) -> Option<(u32, u32)
     None
 }
 
+fn is_unset_location(loc: &SourceLocation) -> bool {
+    loc.line == 0 && loc.column == 0
+}
+
+pub fn populate_locations(program: &mut Program, source: &str, filename: &str) {
+    for item in &mut program.items {
+        match item {
+            TopLevelItem::ElementDef(elem) => populate_element_locations(elem, source, filename),
+            TopLevelItem::Relation(rel) => populate_relation_location(rel, source, filename),
+            TopLevelItem::Requirement(req) => {
+                if is_unset_location(&req.location) {
+                    if let Some((line, col)) = find_definition_line(source, &req.id) {
+                        req.location = SourceLocation::new(filename.to_string(), line + 1, col + 1);
+                    }
+                }
+            }
+            TopLevelItem::View(view) => {
+                if is_unset_location(&view.location) {
+                    if let Some((line, col)) = find_view_definition_line(source, &view.id) {
+                        view.location =
+                            SourceLocation::new(filename.to_string(), line + 1, col + 1);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn populate_element_locations(elem: &mut ElementDef, source: &str, filename: &str) {
+    if is_unset_location(&elem.location) {
+        if let Some((line, col)) = find_definition_line(source, &elem.assignment.name) {
+            elem.location = SourceLocation::new(filename.to_string(), line + 1, col + 1);
+            if is_unset_location(&elem.assignment.location) {
+                elem.assignment.location = elem.location.clone();
+            }
+        }
+    }
+
+    if let Some(body) = &mut elem.assignment.body {
+        for item in &mut body.items {
+            match item {
+                ElementDefBodyItem::ElementDef(nested) => {
+                    populate_element_locations(nested, source, filename);
+                }
+                ElementDefBodyItem::Relation(rel) => {
+                    populate_relation_location(rel, source, filename);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+fn populate_relation_location(rel: &mut Relation, source: &str, filename: &str) {
+    if !is_unset_location(&rel.location) {
+        return;
+    }
+
+    let from = rel.from.as_string();
+    let to = rel.to.as_string();
+    let pattern = format!("{} -> {}", from, to);
+
+    for (line_idx, line) in source.lines().enumerate() {
+        if let Some(pos) = line.find(&pattern) {
+            rel.location = SourceLocation::new(
+                filename.to_string(),
+                (line_idx + 1) as u32,
+                (pos + 1) as u32,
+            );
+            return;
+        }
+    }
+}
+
+fn find_view_definition_line(source: &str, identifier: &str) -> Option<(u32, u32)> {
+    for (line_idx, line) in source.lines().enumerate() {
+        if line.contains("view") && line.contains(identifier) {
+            if let Some(pos) = line.find(identifier) {
+                return Some((line_idx as u32, pos as u32));
+            }
+        }
+    }
+    None
+}
+
 /// Get element location from various AST types
 pub trait HasLocation {
     fn location(&self) -> &SourceLocation;

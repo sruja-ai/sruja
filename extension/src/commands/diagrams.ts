@@ -5,6 +5,10 @@ import { findElementById } from "../elementLookup";
 import { pickActiveSrujaDoc } from "../utils";
 
 let diagramPreviewPanel: vscode.WebviewPanel | undefined;
+let currentDocUri: string | undefined;
+let currentConfigJson: string | undefined;
+let changeSubscription: vscode.Disposable | undefined;
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function registerDiagramCommands(context: vscode.ExtensionContext, isTest: boolean) {
   context.subscriptions.push(
@@ -16,8 +20,10 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
         return;
       }
 
-      const configJson = JSON.stringify({ viewLevel: 1 });
-      const mermaid = await getMermaidFromWasm(context, doc.getText(), configJson);
+      currentConfigJson = JSON.stringify({ viewLevel: 1 });
+      currentDocUri = doc.uri.toString();
+      
+      const mermaid = await getMermaidFromWasm(context, doc.getText(), currentConfigJson);
       if (mermaid === null || mermaid.trim() === "") {
         vscode.window.showErrorMessage(
           "Sruja WASM could not load or diagram is empty. Run npm run copy:assets if developing, or reinstall the extension."
@@ -25,9 +31,11 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
         return;
       }
 
-      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview");
+      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Diagram Preview");
       const escapedMermaid = escapeMermaidForScript(mermaid);
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, currentDocUri);
+      
+      setupLiveUpdateListener(context);
     }),
 
     vscode.commands.registerCommand("sruja.openFocusedDiagramPreviewAt", async (arg?: unknown) => {
@@ -57,8 +65,10 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
         return;
       }
 
-      const configJson = JSON.stringify({ viewLevel, targetId });
-      const mermaid = await getMermaidFromWasm(context, doc.getText(), configJson);
+      currentConfigJson = JSON.stringify({ viewLevel, targetId });
+      currentDocUri = doc.uri.toString();
+
+      const mermaid = await getMermaidFromWasm(context, doc.getText(), currentConfigJson);
       if (mermaid === null || mermaid.trim() === "") {
         vscode.window.showErrorMessage(
           "Sruja WASM could not load or diagram is empty. Run npm run copy:assets if developing, or reinstall the extension."
@@ -67,9 +77,11 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
       }
 
       const titleSuffix = targetId ? ` – L${viewLevel}: ${targetId}` : ` – L${viewLevel}`;
-      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix);
+      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Diagram Preview" + titleSuffix);
       const escapedMermaid = escapeMermaidForScript(mermaid);
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, currentDocUri);
+      
+      setupLiveUpdateListener(context);
     }),
 
     vscode.commands.registerCommand("sruja.openFocusedDiagramPreview", async () => {
@@ -118,8 +130,10 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
         targetId = picked.id;
       }
 
-      const configJson = JSON.stringify({ viewLevel: levelPick.level, targetId });
-      const mermaid = await getMermaidFromWasm(context, doc.getText(), configJson);
+      currentConfigJson = JSON.stringify({ viewLevel: levelPick.level, targetId });
+      currentDocUri = doc.uri.toString();
+
+      const mermaid = await getMermaidFromWasm(context, doc.getText(), currentConfigJson);
       if (mermaid === null || mermaid.trim() === "") {
         vscode.window.showErrorMessage(
           "Sruja WASM could not load or diagram is empty. Run npm run copy:assets if developing, or reinstall the extension."
@@ -128,9 +142,11 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
       }
 
       const titleSuffix = targetId ? ` – ${levelPick.label}: ${targetId}` : ` – ${levelPick.label}`;
-      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Context engineering for the AI era. – Diagram Preview" + titleSuffix);
+      diagramPreviewPanel = createDiagramPanel(context, "Sruja – Diagram Preview" + titleSuffix);
       const escapedMermaid = escapeMermaidForScript(mermaid);
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, currentDocUri);
+      
+      setupLiveUpdateListener(context);
     }),
 
     vscode.commands.registerCommand("sruja.openSequenceDiagramPreview", async () => {
@@ -211,8 +227,10 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
         return;
       }
 
-      const configJson = JSON.stringify({ kind, id });
-      const mermaid = await getSequenceDiagramFromWasm(context, doc.getText(), configJson);
+      currentConfigJson = JSON.stringify({ kind, id });
+      currentDocUri = doc.uri.toString();
+
+      const mermaid = await getSequenceDiagramFromWasm(context, doc.getText(), currentConfigJson);
       if (mermaid === null || mermaid.trim() === "") {
         vscode.window.showErrorMessage(
           `Could not render sequence diagram for ${kind} "${id}". Ensure the file parses and Sruja WASM is available.`
@@ -220,11 +238,47 @@ export function registerDiagramCommands(context: vscode.ExtensionContext, isTest
         return;
       }
 
-      diagramPreviewPanel = createDiagramPanel(context, `Sruja – Context engineering for the AI era. – Sequence Diagram – ${kind}: ${id}`);
+      diagramPreviewPanel = createDiagramPanel(context, `Sruja – Sequence Diagram – ${kind}: ${id}`);
       const escapedMermaid = escapeMermaidForScript(mermaid);
-      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, doc.uri.toString());
+      diagramPreviewPanel.webview.html = getDiagramPreviewHtml(escapedMermaid, currentDocUri);
+      
+      setupLiveUpdateListener(context);
     })
   );
+}
+
+function setupLiveUpdateListener(context: vscode.ExtensionContext) {
+  if (changeSubscription) {
+    changeSubscription.dispose();
+  }
+  changeSubscription = vscode.workspace.onDidChangeTextDocument(async (e) => {
+    if (e.document.uri.toString() === currentDocUri && diagramPreviewPanel) {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        if (!diagramPreviewPanel || !currentConfigJson) return;
+
+        try {
+          let mermaid: string | null;
+          const config = JSON.parse(currentConfigJson);
+          if (config.kind && config.id) {
+            mermaid = await getSequenceDiagramFromWasm(
+              context,
+              e.document.getText(),
+              currentConfigJson!
+            );
+          } else {
+            mermaid = await getMermaidFromWasm(context, e.document.getText(), currentConfigJson!);
+          }
+
+          if (mermaid && diagramPreviewPanel) {
+            diagramPreviewPanel.webview.postMessage({ command: "update", code: mermaid });
+          }
+        } catch (err) {
+          console.error("Failed to update diagram:", err);
+        }
+      }, 500);
+    }
+  });
 }
 
 function createDiagramPanel(context: vscode.ExtensionContext, title: string): vscode.WebviewPanel {
@@ -239,6 +293,12 @@ function createDiagramPanel(context: vscode.ExtensionContext, title: string): vs
   );
   diagramPreviewPanel.onDidDispose(() => {
     diagramPreviewPanel = undefined;
+    currentDocUri = undefined;
+    currentConfigJson = undefined;
+    if (changeSubscription) {
+      changeSubscription.dispose();
+      changeSubscription = undefined;
+    }
   });
   diagramPreviewPanel.webview.onDidReceiveMessage(
     async (message) => {

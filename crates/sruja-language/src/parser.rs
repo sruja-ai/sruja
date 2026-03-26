@@ -210,7 +210,7 @@ impl Parser {
     /// Parse source code into a Program AST
     pub fn parse(&self, input: &str) -> Result<Program, Vec<Diagnostic>> {
         match parse_program(input) {
-            Ok((remaining, program)) => {
+            Ok((remaining, mut program)) => {
                 let trimmed = remaining.trim();
                 if !trimmed.is_empty() {
                     let preview = if trimmed.len() > 100 {
@@ -248,6 +248,9 @@ impl Parser {
                         d
                     }]);
                 }
+
+                crate::traversal::populate_locations(&mut program, input, &self.filename);
+
                 Ok(program)
             }
             Err(e) => {

@@ -67,7 +67,11 @@ fn compare_nodes(actual: &[Node], proposed: &[Node]) -> NodeDiff {
             }
         }
         for s in &n.sources {
-            let key = format!("{}:{}", s.kind.as_str().to_lowercase(), s.path.to_lowercase());
+            let key = format!(
+                "{}:{}",
+                s.kind.as_str().to_lowercase(),
+                s.path.to_lowercase()
+            );
             if actual_by_source.contains_key(&key) {
                 source_dupes.insert(key.clone());
             } else {
@@ -103,7 +107,11 @@ fn compare_nodes(actual: &[Node], proposed: &[Node]) -> NodeDiff {
         }
         if matched_id.is_none() {
             for s in &pn.sources {
-                let key = format!("{}:{}", s.kind.as_str().to_lowercase(), s.path.to_lowercase());
+                let key = format!(
+                    "{}:{}",
+                    s.kind.as_str().to_lowercase(),
+                    s.path.to_lowercase()
+                );
                 if !source_dupes.contains(&key) {
                     if let Some(an) = actual_by_source.get(&key) {
                         if !used_actual.contains(&an.id) {
