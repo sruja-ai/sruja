@@ -1,17 +1,23 @@
 # Documentation (docs/)
 
-**Policy:** This directory contains only **implemented** features.
+**Policy:** This directory contains only **implemented** features and implementation-aligned documentation.
+
+Sruja is documented here as **architecture-as-code plus context engineering for AI-assisted SDLC workflows**. The docs explain both the DSL and the retrieval pipeline that helps editors, skills, and AI tools work from reviewed architecture truth instead of guesses.
 
 ---
 
 ## Start Here
 
 ```bash
-# 1. Install the skill (CLI when the skill needs it—it will guide you)
+# 1. Install the skill
 npx skills add sruja-ai/sruja --skill sruja-architecture
 
-# 2. In your AI editor: "Use sruja-architecture. Run sruja discover..."
-# 3. Install CLI if prompted: curl -fsSL https://sruja.ai/install.sh | bash
+# 2. Refresh repo context when you want fresh evidence
+sruja sync -r .
+
+# 3. In your AI editor:
+# "Use sruja-architecture. Gather evidence (prefer .sruja/context.json when present),
+# generate or update repo.sruja, then run sruja lint and fix."
 ```
 
 **Full guide:** [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)
@@ -22,11 +28,13 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 
 | Doc | Purpose |
 |-----|---------|
-| [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** – Install, use, workflows, [single repo / monorepo / multi-repo](GETTING_STARTED_SKILL.md#using-sruja-in-your-project-single-repo-monorepo-multi-repo) |
-| [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) | **Multi-repo federation** – Step-by-step guide to test and deploy federation across repos |
+| [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** – Install, use, and operate the architecture/context-engineering workflow |
+| [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) | **Multi-repo federation** – Step-by-step guide for `repo.bundle.json` and `system.index.json` |
+| [FEDERATION.md](FEDERATION.md) | Retrieval order, artifact shapes, and multi-repo composition rules |
+| [architecture/README.md](architecture/README.md) | Sruja’s own architecture models: platform, context pipeline, and development workflow |
 | [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) | DSL reference |
-| [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) | Language design principles |
-| [RUN_GUIDE.md](RUN_GUIDE.md) | Build, run, demo |
+| [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) | Language and modeling principles |
+| [RUN_GUIDE.md](RUN_GUIDE.md) | Build, run, and demo commands |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Development guide |
 | [CODING_GUIDELINES.md](CODING_GUIDELINES.md) | Coding standards |
@@ -43,3 +51,4 @@ npx skills add sruja-ai/sruja --skill sruja-architecture
 |---------|------------|
 | **User** | [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) |
 | **Contributor** | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| **Architecture reviewer** | [architecture/README.md](architecture/README.md) |

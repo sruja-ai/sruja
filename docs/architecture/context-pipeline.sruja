@@ -1,274 +1,257 @@
-// Architecture model for Sruja AI-Assisted Development Pipeline
-// This models the context provisioning system that provides architectural
-// context to AI coding assistants
+// docs/architecture/context-pipeline.sruja
+// Context engineering architecture for the current Sruja implementation
 
-// Element kinds
 person = kind "Person"
 system = kind "System"
 container = kind "Container"
 component = kind "Component"
 
-// Overview
 overview {
-  summary "Sruja Context Provisioning System"
-  audience "Developers using AI coding assistants"
-  scope "Context extraction and formatting for AI assistants"
+  summary "Sruja context engineering pipeline"
+  audience "Developers using Sruja with AI coding assistants"
+  scope "Reviewed repo truth, scanned evidence, task-scoped context, and editor workflows"
 }
 
-// Actors
-Developer = person "Developer"
-
-// Main System
-ContextProvisioningSystem = system "Context Provisioning System" {
-  description "System that extracts and formats architectural context from Sruja DSL for AI coding assistants"
-  
-  // Existing components that we leverage
-  DSLParser = container "DSL Parser" {
-    description "Existing parser that processes .sruja files into AST"
-    technology "Go, pkg/language"
-    Lexer = component "Lexer" {
-      description "Tokenizes the DSL input stream"
-    }
-    Parser = component "Parser" {
-      description "Parses tokens into an AST"
-    }
-    ASTBuilder = component "AST Builder" {
-      description "Builds the AST structures used by downstream stages"
-    }
-  }
-  
-  JSONExport = container "JSON Export" {
-    description "Existing export system that converts AST to JSON"
-    technology "Go, pkg/export/json"
-    JSONConverter = component "JSON Converter" {
-      description "Serializes the model to JSON"
-    }
-    SchemaValidator = component "Schema Validator" {
-      description "Validates exported JSON against a schema"
-    }
-  }
-  
-  // New components for context provisioning
-  PIMExtractor = container "PIM Extractor" {
-    description "Extracts Platform Independent Model from JSON for AI context"
-    technology "Go, pkg/context"
-    PIMBuilder = component "PIM Builder" {
-      description "Builds a platform-independent representation from JSON"
-    }
-    AbstractionLayer = component "Abstraction Layer" {
-      description "Removes platform-specific details from extracted models"
-    }
-    PIMValidator = component "PIM Validator" {
-      description "Validates extracted PIM structure and constraints"
-    }
-  }
-  
-  ContextFormatter = container "Context Formatter" {
-    description "Formats PIM into various formats for different AI assistants"
-    technology "Go, pkg/context"
-    
-    FormatRouter = component "Format Router" {
-      description "Routes formatted output based on target assistant and format"
-    }
-    MarkdownFormatter = component "Markdown Formatter" {
-      description "Formats context as Markdown for Copilot/Cursor"
-    }
-    JSONFormatter = component "JSON Formatter" {
-      description "Formats context as structured JSON"
-    }
-    PromptFormatter = component "Prompt Formatter" {
-      description "Formats context as prompt-ready text for ChatGPT/Claude"
-    }
-    TokenOptimizer = component "Token Optimizer" {
-      description "Optimizes context for token limits"
-    }
-  }
-  
-  TraceabilityManager = container "Traceability Manager" {
-    description "Tracks connections between DSL elements, AI prompts, and generated code"
-    technology "Go, pkg/traceability"
-    LinkStore = component "Link Store" {
-      description "Stores traceability links in JSON format"
-    }
-    LinkQuery = component "Link Query" {
-      description "Queries traceability links by DSL element or code file"
-    }
-    ImpactAnalyzer = component "Impact Analyzer" {
-      description "Analyzes impact of architecture changes on code"
-    }
-  }
-  
-  OptionalAIAssistant = container "Optional AI Assistant" {
-    description "Optional AI features for DSL authoring (not code generation)"
-    technology "Go, pkg/ai"
-    LLMClient = component "LLM Client" {
-      description "Abstracts LLM provider (OpenAI, Anthropic, local)"
-    }
-    DSLTranslator = component "DSL Translator" {
-      description "Translates natural language to DSL"
-    }
-    ArchitectureAdvisor = component "Architecture Advisor" {
-      description "Suggests architecture improvements"
-    }
-  }
-  
-  ValidationEngine = container "Validation Engine" {
-    description "Enhanced validation for PIM and architecture quality"
-    technology "Go, pkg/validation"
-    EnhancedPIMValidator = component "Enhanced PIM Validator" {
-      description "Validates PIM with additional architecture quality rules"
-    }
-    QualityChecker = component "Quality Checker" {
-      description "Computes quality signals for context completeness and consistency"
-    }
-  }
-  
-  LSPIntegration = container "LSP Integration" {
-    description "Provides context via Language Server Protocol for IDE integration"
-    technology "Go, pkg/lsp"
-    ContextProvider = component "Context Provider" {
-      description "Serves formatted context to IDE features"
-    }
-    HoverEnhancer = component "Hover Enhancer" {
-      description "Enriches hover content with architecture context"
-    }
-  }
-  
-  CLI = container "CLI" {
-    description "Command-line interface for context export and traceability"
-    technology "Go, cmd/sruja"
-    ContextExportCmd = component "Context Export Command" {
-      description "Exports repo context for AI tools in the requested format"
-    }
-    TraceCmd = component "Trace Command" {
-      description "Creates and queries traceability links between DSL and code"
-    }
-    OptionalAICmd = component "Optional AI Command" {
-      description "Runs optional AI-assisted DSL authoring helpers"
-    }
-  }
+Developer = person "Developer" {
+  description "Uses Sruja to keep architecture truth in sync with code and AI-assisted changes"
 }
 
-// External systems
 AICodingAssistants = system "AI Coding Assistants" {
-  description "External AI coding assistants (GitHub Copilot, Cursor, ChatGPT, Claude, etc.)"
+  description "External assistants that consume Sruja context during coding and review"
+
+  Cursor = container "Cursor / VS Code AI" {
+    technology "Editor extension"
+    description "Editor-native assistant that consumes markdown context and focused diagrams"
+  }
+
   Copilot = container "GitHub Copilot" {
-    description "GitHub Copilot AI coding assistant"
-    technology "VS Code Extension"
+    technology "Editor extension"
+    description "Editor-native assistant that consumes copied context packs and markdown summaries"
   }
-  Cursor = container "Cursor AI" {
-    description "Cursor AI coding assistant with IDE integration"
-    technology "VS Code Extension"
-  }
+
   ChatGPT = container "ChatGPT" {
-    description "OpenAI ChatGPT for code generation"
-    technology "OpenAI"
+    technology "Web or API"
+    description "General-purpose assistant that can consume exported markdown or JSON context"
   }
+
   Claude = container "Claude" {
-    description "Anthropic Claude for code generation"
-    technology "Anthropic"
+    technology "Web or API"
+    description "General-purpose assistant that can consume exported markdown or JSON context"
   }
 }
 
 DeveloperWorkspace = system "Developer Workspace" {
-  description "Developer codebase where code is generated with AI assistance"
-  Codebase = container "Codebase" {
-    description "Application and infrastructure code"
-    technology "Multi-language repository"
+  description "Repository where architecture truth, docs, and code evolve together"
+
+  Repo = container "Repository" {
+    technology "Multi-language codebase"
+    description "Working tree that contains code, repo.sruja, docs, skills, and generated context artifacts"
   }
 }
 
-// Internal relationships
-ContextProvisioningSystem.DSLParser.Lexer -> ContextProvisioningSystem.DSLParser.Parser "Tokenizes input"
-ContextProvisioningSystem.DSLParser.Parser -> ContextProvisioningSystem.DSLParser.ASTBuilder "Builds AST"
-ContextProvisioningSystem.DSLParser.ASTBuilder -> ContextProvisioningSystem.JSONExport.JSONConverter "AST to JSON"
-ContextProvisioningSystem.DSLParser -> ContextProvisioningSystem.JSONExport "Feeds export"
-ContextProvisioningSystem.JSONExport.JSONConverter -> ContextProvisioningSystem.JSONExport.SchemaValidator "Validates JSON"
-ContextProvisioningSystem.JSONExport.JSONConverter -> ContextProvisioningSystem.PIMExtractor.PIMBuilder "JSON to PIM"
-ContextProvisioningSystem.JSONExport -> ContextProvisioningSystem.PIMExtractor "Feeds extraction"
-ContextProvisioningSystem.PIMExtractor.PIMBuilder -> ContextProvisioningSystem.PIMExtractor.AbstractionLayer "Removes platform details"
-ContextProvisioningSystem.PIMExtractor.AbstractionLayer -> ContextProvisioningSystem.PIMExtractor.PIMValidator "Validates PIM structure"
-ContextProvisioningSystem.PIMExtractor.PIMValidator -> ContextProvisioningSystem.ContextFormatter.FormatRouter "Routes PIM by format"
-ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "Markdown format"
-ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.ContextFormatter.JSONFormatter "JSON format"
-ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.ContextFormatter.PromptFormatter "Prompt format"
-ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "Optimizes markdown tokens"
-ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.ContextFormatter.JSONFormatter "Optimizes JSON tokens"
-ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.ContextFormatter.PromptFormatter "Optimizes prompt tokens"
-ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.LinkQuery "Queries links"
-ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.ImpactAnalyzer "Requests impact analysis"
-ContextProvisioningSystem.TraceabilityManager.LinkStore -> ContextProvisioningSystem.TraceabilityManager.LinkQuery "Provides links"
-ContextProvisioningSystem.TraceabilityManager.LinkQuery -> ContextProvisioningSystem.TraceabilityManager.ImpactAnalyzer "Provides link relationships"
-ContextProvisioningSystem.OptionalAIAssistant.LLMClient -> ContextProvisioningSystem.OptionalAIAssistant.DSLTranslator "Provides LLM access"
-ContextProvisioningSystem.OptionalAIAssistant.LLMClient -> ContextProvisioningSystem.OptionalAIAssistant.ArchitectureAdvisor "Provides LLM access"
-ContextProvisioningSystem.PIMExtractor.PIMValidator -> ContextProvisioningSystem.ValidationEngine.EnhancedPIMValidator "Validates PIM"
-ContextProvisioningSystem.ValidationEngine.EnhancedPIMValidator -> ContextProvisioningSystem.ValidationEngine.QualityChecker "Checks quality metrics"
-ContextProvisioningSystem.ContextFormatter.FormatRouter -> ContextProvisioningSystem.LSPIntegration.ContextProvider "Provides formatted context"
-ContextProvisioningSystem.LSPIntegration.ContextProvider -> ContextProvisioningSystem.LSPIntegration.HoverEnhancer "Enhances hover with context"
-ContextProvisioningSystem.ContextFormatter.TokenOptimizer -> ContextProvisioningSystem.CLI.ContextExportCmd "Exports context"
-ContextProvisioningSystem.OptionalAIAssistant.DSLTranslator -> ContextProvisioningSystem.CLI.OptionalAICmd "Provides AI features"
-ContextProvisioningSystem.PIMExtractor -> ContextProvisioningSystem.ContextFormatter "PIM to format"
-ContextProvisioningSystem.ContextFormatter -> ContextProvisioningSystem.TraceabilityManager "Tracks context exports"
-ContextProvisioningSystem.ValidationEngine -> ContextProvisioningSystem.ContextFormatter "Validated PIM"
+ContextEngineering = system "Sruja Context Engineering" {
+  description "Runtime and editor workflow that turns repo truth plus code evidence into usable AI context"
 
-// User interactions - See stories for detailed workflows
+  RepoTruth = container "Repo Truth" {
+    technology "Sruja DSL, repo.sruja"
+    description "Reviewed architecture truth committed with the repository"
 
-// Context flow to AI assistants
-ContextProvisioningSystem.ContextFormatter -> AICodingAssistants "Provides context"
-ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> AICodingAssistants.Copilot "Markdown context"
-ContextProvisioningSystem.ContextFormatter.MarkdownFormatter -> AICodingAssistants.Cursor "Markdown context"
-ContextProvisioningSystem.ContextFormatter.PromptFormatter -> AICodingAssistants.ChatGPT "Prompt context"
-ContextProvisioningSystem.ContextFormatter.PromptFormatter -> AICodingAssistants.Claude "Prompt context"
-ContextProvisioningSystem.LSPIntegration.ContextProvider -> AICodingAssistants.Cursor "IDE context"
+    BaselineModel = component "Baseline Model" {
+      description "Reviewed Sruja model used as the truth source for drift and review"
+    }
 
-// Code generation flow
-Developer -> AICodingAssistants.Copilot "Uses context to generate code"
-Developer -> AICodingAssistants.Cursor "Uses context to generate code"
-AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "Generated code"
-AICodingAssistants.Cursor -> DeveloperWorkspace.Codebase "Generated code"
-ContextProvisioningSystem.OptionalAIAssistant -> ContextProvisioningSystem "provides AI features"
-ContextProvisioningSystem -> DeveloperWorkspace "provides context to workspace"
+    KnowledgeLinks = component "Knowledge Links" {
+      description "Element-linked docs, ADR references, and knowledge files opened from the editor"
+    }
+  }
 
-// Traceability flow
-Developer -> ContextProvisioningSystem.TraceabilityManager.LinkStore "Links code to DSL"
-DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.LinkStore "Tracks code files"
-Developer -> ContextProvisioningSystem.CLI "runs commands"
-ContextProvisioningSystem.ContextFormatter -> ContextProvisioningSystem.LSPIntegration "provides formatted context"
+  EvidencePipeline = container "Evidence Pipeline" {
+    technology "Rust, crates/sruja-scan + crates/sruja-graph"
+    description "Scans source code and manifests to build evidence for context engineering"
 
-// Stories/Flows
-ExportContext = flow "Export Context for System" {
-  step Developer -> ContextProvisioningSystem.CLI.ContextExportCmd "runs: sruja context -r . --file <path> --intent <add-feature|refactor|fix-bug|add-test> -f markdown"
-  step ContextProvisioningSystem.CLI.ContextExportCmd -> ContextProvisioningSystem.ContextFormatter.MarkdownFormatter "formats context"
+    RepositoryScanner = component "Repository Scanner" {
+      description "Discovers components, dependencies, and structural signals from code and manifests"
+    }
+
+    RepoMap = component "Repo Map" {
+      description "Builds concise repository summaries for discovery prompts and AI workflows"
+    }
+
+    DependencyGraph = component "Dependency Graph" {
+      description "Produces graph data used for drift, impact, and task-scoped context slicing"
+    }
+  }
+
+  Analysis = container "Analysis and Drift" {
+    technology "Rust, crates/sruja-diff + crates/sruja-intent"
+    description "Compares reviewed truth, scanned evidence, and intent artifacts"
+
+    DriftEngine = component "Drift Engine" {
+      description "Computes reviewed, drifted, or unknown truth status from code evidence and repo truth"
+    }
+
+    IntentComparer = component "Intent Comparer" {
+      description "Cross-checks ADRs and other intent artifacts against the declared architecture"
+    }
+
+    ImpactAnalyzer = component "Impact Analyzer" {
+      description "Computes blast radius and change risk for a target component or boundary"
+    }
+  }
+
+  ContextArtifacts = container "Context Artifacts" {
+    technology "JSON, .sruja/context.json, repo.bundle.json, system.index.json"
+    description "Caches context locally and publishes it for multi-repo retrieval"
+
+    RepoContextCache = component "Repo Context Cache" {
+      description "Stores fresh evidence, truth status, and baseline metadata in .sruja/context.json"
+    }
+
+    RepoBundle = component "Repo Bundle" {
+      description "Publishes baseline truth and evidence to repo.bundle.json for federation"
+    }
+
+    SystemIndex = component "System Index" {
+      description "Composes repo bundles into a federated system-wide index for cross-repo retrieval"
+    }
+  }
+
+  CLI = container "CLI Commands" {
+    technology "Rust, crates/sruja-cli"
+    description "Commands that refresh evidence, review drift, export context, and publish federation artifacts"
+
+    SyncCommand = component "Sync Command" {
+      description "Runs sruja sync -r . to refresh evidence and write .sruja/context.json"
+    }
+
+    StatusCommand = component "Status Command" {
+      description "Runs sruja status -r . to report baseline, truth status, and context freshness"
+    }
+
+    ReviewCommand = component "Review Command" {
+      description "Runs sruja review -r . to summarize drift and suggest repo.sruja updates"
+    }
+
+    ContextExportCommand = component "Context Export Command" {
+      description "Runs sruja context -r . to export task-scoped architecture context for AI tools"
+    }
+
+    PublishCommand = component "Publish Command" {
+      description "Runs sruja publish -r . -o repo.bundle.json for federation"
+    }
+
+    ComposeCommand = component "Compose Command" {
+      description "Runs sruja compose -i <input> -o system.index.json for federated retrieval"
+    }
+  }
+
+  Extension = container "VS Code Extension" {
+    technology "TypeScript, extension/, WASM"
+    description "Editor experience that exposes Sruja context engineering inside VS Code-compatible editors"
+
+    CliBridge = component "CLI Bridge" {
+      description "Invokes sync, status, review, and drift commands from editor commands"
+    }
+
+    ContextPackBuilder = component "Context Pack Builder" {
+      description "Builds a copyable context pack from open files, diagnostics, skills, and cached repo context"
+    }
+
+    DocsThread = component "Docs Thread" {
+      description "Shows linked docs and references for the currently selected architecture element"
+    }
+  }
+
+  AIOutputs = container "AI Context Outputs" {
+    technology "Markdown, JSON, Mermaid"
+    description "Formats architecture context into outputs that AI tools and humans can consume quickly"
+
+    MarkdownContext = component "Markdown Context" {
+      description "Prompt-ready markdown for AI chats, review threads, and copied context packs"
+    }
+
+    JsonContext = component "JSON Context" {
+      description "Structured machine-readable context for tools, automation, and integrations"
+    }
+
+    FocusedDiagrams = component "Focused Diagrams" {
+      description "Mermaid slices and sequence views derived from the reviewed architecture"
+    }
+  }
 }
 
-UseContextWithAI = flow "Use Context with AI Assistant" {
-  step Developer -> AICodingAssistants.Copilot "provides context + code request"
-  step ContextProvisioningSystem -> AICodingAssistants "provides context"
-  step AICodingAssistants.Copilot -> DeveloperWorkspace.Codebase "generates code with architecture awareness"
+ContextEngineering.RepoTruth -> ContextEngineering.Analysis "Provides reviewed truth"
+ContextEngineering.EvidencePipeline -> ContextEngineering.Analysis "Provides fresh evidence"
+ContextEngineering.Analysis -> ContextEngineering.ContextArtifacts "Writes truth state"
+ContextEngineering.ContextArtifacts -> ContextEngineering.AIOutputs "Provides cached and federated context"
+ContextEngineering.Extension -> ContextEngineering.CLI "Invokes repo commands"
+ContextEngineering.CLI -> ContextEngineering.AIOutputs "Exports task-scoped context"
+ContextEngineering.AIOutputs -> AICodingAssistants "Delivers architecture context"
+ContextEngineering -> DeveloperWorkspace "Writes repo context artifacts and editor outputs"
+
+ContextEngineering.RepoTruth.BaselineModel -> ContextEngineering.Analysis.DriftEngine "Defines reviewed architecture"
+ContextEngineering.RepoTruth.KnowledgeLinks -> ContextEngineering.Extension.DocsThread "Provides linked docs"
+
+ContextEngineering.EvidencePipeline.RepositoryScanner -> ContextEngineering.EvidencePipeline.RepoMap "Summarizes repository"
+ContextEngineering.EvidencePipeline.RepositoryScanner -> ContextEngineering.EvidencePipeline.DependencyGraph "Builds dependency graph"
+ContextEngineering.EvidencePipeline.DependencyGraph -> ContextEngineering.Analysis.DriftEngine "Provides fresh evidence"
+ContextEngineering.EvidencePipeline.DependencyGraph -> ContextEngineering.Analysis.ImpactAnalyzer "Provides change graph"
+ContextEngineering.EvidencePipeline.RepoMap -> ContextEngineering.CLI.ContextExportCommand "Provides concise repo summary"
+
+ContextEngineering.Analysis.DriftEngine -> ContextEngineering.ContextArtifacts.RepoContextCache "Updates truth status"
+ContextEngineering.CLI.SyncCommand -> ContextEngineering.EvidencePipeline.RepositoryScanner "Refreshes evidence"
+ContextEngineering.CLI.SyncCommand -> ContextEngineering.Analysis.DriftEngine "Recomputes truth status"
+ContextEngineering.CLI.SyncCommand -> ContextEngineering.ContextArtifacts.RepoContextCache "Writes cache"
+ContextEngineering.CLI.StatusCommand -> ContextEngineering.ContextArtifacts.RepoContextCache "Reads cache"
+ContextEngineering.CLI.ReviewCommand -> ContextEngineering.ContextArtifacts.RepoContextCache "Reads cached evidence"
+ContextEngineering.CLI.ReviewCommand -> ContextEngineering.Analysis.DriftEngine "Summarizes drift"
+ContextEngineering.CLI.ReviewCommand -> ContextEngineering.Analysis.IntentComparer "Checks declared intent"
+ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.RepoTruth.BaselineModel "Reads reviewed DSL"
+ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.EvidencePipeline.DependencyGraph "Slices impacted area"
+ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.Analysis.ImpactAnalyzer "Requests blast radius"
+ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.AIOutputs.MarkdownContext "Formats markdown"
+ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.AIOutputs.JsonContext "Formats json"
+ContextEngineering.CLI.PublishCommand -> ContextEngineering.ContextArtifacts.RepoBundle "Writes bundle"
+ContextEngineering.CLI.ComposeCommand -> ContextEngineering.ContextArtifacts.SystemIndex "Builds system index"
+
+ContextEngineering.ContextArtifacts.RepoContextCache -> ContextEngineering.ContextArtifacts.RepoBundle "Supplies repo context"
+ContextEngineering.RepoTruth.BaselineModel -> ContextEngineering.ContextArtifacts.RepoBundle "Supplies reviewed truth"
+ContextEngineering.ContextArtifacts.RepoBundle -> ContextEngineering.ContextArtifacts.SystemIndex "Feeds federation"
+ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.ContextArtifacts.SystemIndex "Reads federated slice when present"
+
+ContextEngineering.Extension.CliBridge -> ContextEngineering.CLI.SyncCommand "Invokes"
+ContextEngineering.Extension.CliBridge -> ContextEngineering.CLI.StatusCommand "Invokes"
+ContextEngineering.Extension.CliBridge -> ContextEngineering.CLI.ReviewCommand "Invokes"
+ContextEngineering.Extension.ContextPackBuilder -> ContextEngineering.RepoTruth.BaselineModel "Reads active .sruja truth"
+ContextEngineering.Extension.ContextPackBuilder -> ContextEngineering.ContextArtifacts.RepoContextCache "Reads cached repo context"
+ContextEngineering.Extension.ContextPackBuilder -> ContextEngineering.AIOutputs.MarkdownContext "Packages editor context"
+ContextEngineering.Extension.DocsThread -> ContextEngineering.AIOutputs.FocusedDiagrams "Opens focused views"
+
+ContextEngineering.AIOutputs.MarkdownContext -> AICodingAssistants.Cursor "Provides prompt-ready context"
+ContextEngineering.AIOutputs.MarkdownContext -> AICodingAssistants.Copilot "Provides prompt-ready context"
+ContextEngineering.AIOutputs.JsonContext -> AICodingAssistants.ChatGPT "Provides structured context"
+ContextEngineering.AIOutputs.JsonContext -> AICodingAssistants.Claude "Provides structured context"
+ContextEngineering.AIOutputs.FocusedDiagrams -> AICodingAssistants.Cursor "Provides visual architecture slice"
+
+Developer -> DeveloperWorkspace.Repo "Edits code and architecture"
+Developer -> ContextEngineering.CLI.SyncCommand "Runs"
+Developer -> ContextEngineering.CLI.ContextExportCommand "Runs"
+Developer -> ContextEngineering.CLI.PublishCommand "Runs for federation"
+Developer -> ContextEngineering.CLI.ComposeCommand "Runs for federation"
+Developer -> ContextEngineering.Extension.CliBridge "Uses in editor"
+Developer -> ContextEngineering.Extension.ContextPackBuilder "Copies context for AI"
+Developer -> ContextEngineering.Extension.DocsThread "Browses references"
+Developer -> AICodingAssistants.Cursor "Requests architecture-aware changes"
+Developer -> AICodingAssistants.Copilot "Requests architecture-aware changes"
+AICodingAssistants.Cursor -> DeveloperWorkspace.Repo "Suggests code and doc edits"
+AICodingAssistants.Copilot -> DeveloperWorkspace.Repo "Suggests code and doc edits"
+
+view index {
+  title "Context Engineering Overview"
+  include *
 }
 
-TrackTraceability = flow "Track Traceability" {
-  step Developer -> ContextProvisioningSystem.CLI.TraceCmd "links: sruja trace link --element=system.App.container.Web --file=app/web/server.go"
-  step ContextProvisioningSystem.CLI.TraceCmd -> ContextProvisioningSystem.TraceabilityManager.LinkStore "stores traceability link"
-  step DeveloperWorkspace.Codebase -> ContextProvisioningSystem.TraceabilityManager.LinkStore "tracks code file"
+view editor {
+  title "Editor and AI Workflow"
+  include "Developer ContextEngineering.Extension ContextEngineering.CLI ContextEngineering.AIOutputs AICodingAssistants DeveloperWorkspace"
 }
-
-LSPContextProvision = flow "LSP Context Provision" {
-  step Developer -> ContextProvisioningSystem.LSPIntegration.HoverEnhancer "hovers over DSL element"
-  step ContextProvisioningSystem.LSPIntegration.ContextProvider -> AICodingAssistants.Cursor "provides context automatically"
-  step ContextProvisioningSystem.LSPIntegration -> ContextProvisioningSystem "integrates with context system"
-}
-
-// Requirements
-REQ_CONTEXT_EXPORT = requirement functional "System must export architectural context in multiple formats"
-REQ_TOKEN_OPTIMIZATION = requirement performance "Context must be optimized for AI assistant token limits"
-REQ_TRACEABILITY = requirement functional "System must track relationships between DSL elements and generated code"
-REQ_LSP_INTEGRATION = requirement functional "System must provide context via LSP for IDE integration"
-REQ_BACKWARD_COMPAT = requirement constraint "New features must not break existing Sruja functionality"
-
-// Requirement traceability
-REQ_TRACEABILITY -> ContextProvisioningSystem.TraceabilityManager "satisfied by"
-REQ_CONTEXT_EXPORT -> ContextProvisioningSystem.CLI.ContextExportCmd "satisfied by"
-REQ_TOKEN_OPTIMIZATION -> ContextProvisioningSystem.ContextFormatter.TokenOptimizer "satisfied by"
-REQ_LSP_INTEGRATION -> ContextProvisioningSystem.LSPIntegration "satisfied by"
-REQ_BACKWARD_COMPAT -> ContextProvisioningSystem "satisfied by"

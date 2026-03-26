@@ -1,189 +1,168 @@
 // docs/architecture/sruja-development-workflow.sruja
-// Development and build workflow architecture
-// Describes how Sruja is developed, tested, and deployed
+// Development, validation, release, and deployment workflow for the current repo
 
-// Element kinds
 person = kind "Person"
 system = kind "System"
 container = kind "Container"
 component = kind "Component"
 
-// Actors
-Developer = person "Developer" {
-  description "Develops Sruja features and fixes"
+Contributor = person "Contributor" {
+  description "Builds features, updates docs, and validates architecture changes locally"
 }
 
 Maintainer = person "Maintainer" {
-  description "Maintains CI/CD and release processes"
+  description "Owns releases, extension publishing, and production deployments"
+}
+
+GitHub = system "GitHub" {
+  description "Hosts source control, pull requests, releases, and workflow triggers"
+}
+
+OpenVSX = system "Open VSX Registry" {
+  description "Primary public registry for the Sruja VS Code extension"
+}
+
+VSCodeMarketplace = system "VS Code Marketplace" {
+  description "Optional distribution channel for the Sruja VS Code extension"
+}
+
+StagingWebsite = system "Staging Website" {
+  description "Staging deployment target for the mdBook site and bundled WASM assets"
+}
+
+ProductionWebsite = system "Production Website" {
+  description "Production deployment target for the mdBook site served at sruja.ai"
 }
 
 SrujaDevelopment = system "Sruja Development Workflow" {
-  description "How Sruja is developed, tested, and released"
-  tags ["development", "ci-cd", "release"]
+  description "How contributors build, validate, release, and deploy Sruja today"
 
-  // Local Development
-  Local = container "Local Development" {
-    technology "Rust, Node.js, npm"
-    description "Developer local environment"
-    tags ["development"]
+  LocalDevelopment = container "Local Development" {
+    technology "cargo, npm, Makefile, mdBook"
+    description "Local workflow for code changes, docs updates, and validation"
 
-    GitHooks = component "Git Hooks" {
-      description "Pre-commit hooks for validation"
-      technology "Husky, pre-commit"
+    RustToolchain = component "Rust Toolchain" {
+      description "Runs cargo build, cargo test, cargo fmt, and cargo clippy across the Rust workspace"
     }
 
-    LocalBuild = component "Local Build" {
-      description "Building locally before commit"
-      technology "cargo, npm"
+    ExtensionToolchain = component "Extension Toolchain" {
+      description "Compiles the VS Code extension, runs Jest and VS Code tests, and packages VSIX artifacts"
     }
 
-    LocalTests = component "Local Tests" {
-      description "Running tests locally"
-      technology "cargo test, Vitest"
+    BookAndWasm = component "Book and WASM Toolchain" {
+      description "Builds mdBook content, copies WASM assets, and serves the docs site locally"
+    }
+
+    SmokeChecks = component "CLI and Example Smoke Checks" {
+      description "Runs smoke checks for documented commands, examples, and architecture files before review"
     }
   }
 
-  // CI/CD Pipeline
-  CICD = container "CI/CD Pipeline" {
-    technology "GitHub Actions"
-    description "Continuous Integration and Deployment"
-    tags ["ci-cd", "github-actions"]
+  ContinuousIntegration = container "Continuous Integration" {
+    technology "GitHub Actions, cargo, wasm-pack, sruja-cli"
+    description "Automated validation that protects branches and release candidates"
 
-    RustTests = component "Rust Tests" {
-      description "Rust unit tests and coverage"
-      technology "cargo test, cargo clippy"
+    RustCI = component "Rust CI" {
+      description "Runs cargo build, cargo test, cargo fmt --check, and cargo clippy in CI"
     }
 
-    TSTests = component "TypeScript Tests" {
-      description "TypeScript/JavaScript tests"
-      technology "Vitest, Playwright"
+    WasmCI = component "WASM CI" {
+      description "Runs wasm-pack tests for the Node target used by docs and extension flows"
     }
 
-    SecurityScan = component "Security Scanning" {
-      description "Security vulnerability scanning"
-      technology "cargo audit, npm audit, TruffleHog"
+    ArchitectureCI = component "Architecture CI" {
+      description "Lints all .sruja files and validates architecture docs against language rules"
     }
 
-    BuildCheck = component "Build Check" {
-      description "Verifies all packages build"
-      technology "Turbo, cargo build"
+    SkillCI = component "Skill CI" {
+      description "Validates skill markdown, links, cross-references, and example snippets"
     }
 
-    LintCheck = component "Lint Check" {
-      description "Code quality checks"
-      technology "ESLint, cargo clippy"
+    SecurityCI = component "Security CI" {
+      description "Runs cargo audit, dependency review, and secret scanning workflows"
     }
 
-    CoverageCheck = component "Coverage Check" {
-      description "Test coverage validation"
-      technology "Codecov, Codacy"
-    }
-
-    BundleSizeCheck = component "Bundle Size Check" {
-      description "Frontend bundle size monitoring"
-      technology "size-limit"
+    VersionConsistency = component "Version Consistency" {
+      description "Checks Cargo workspace, extension package files, and release metadata stay aligned"
     }
   }
 
-  // Release Process
-  Release = container "Release Process" {
-    technology "cargo, GitHub Actions"
-    description "Automated release and publishing"
-    tags ["release", "publishing"]
+  ReleaseAutomation = container "Release Automation" {
+    technology "GitHub Actions, release-please, cargo, npm"
+    description "Automated release and deployment flows for the CLI, extension, and docs site"
 
-    VersionBump = component "Version Bump" {
-      description "Automatic version bumping"
-      technology "release-please"
+    ReleasePlease = component "Release Please" {
+      description "Creates release PRs and changelog updates from conventional commits"
     }
 
-    BuildArtifacts = component "Build Artifacts" {
-      description "Builds binaries for all platforms"
-      technology "cargo build --release"
+    CLIRelease = component "CLI Release" {
+      description "Builds cross-platform CLI archives and attaches them to GitHub Releases"
     }
 
-    PublishRelease = component "Publish Release" {
-      description "Publishes to GitHub Releases"
-      technology "GitHub Actions"
+    ExtensionRelease = component "Extension Release" {
+      description "Builds and publishes the VS Code extension to Open VSX and optionally Visual Studio Marketplace"
     }
 
-    PublishNPM = component "Publish NPM" {
-      description "Publishes TypeScript packages"
-      technology "npm publish"
+    StagingDeploy = component "Staging Deploy" {
+      description "Builds mdBook plus WASM assets and deploys the site to the staging website"
+    }
+
+    ProductionDeploy = component "Production Deploy" {
+      description "Promotes the mdBook site from main to the production website"
     }
   }
-
-  // Testing Infrastructure
-  Testing = container "Testing Infrastructure" {
-    technology "Rust, Vitest, Playwright"
-    description "Testing tools and infrastructure"
-    tags ["testing"]
-
-    UnitTests = component "Unit Tests" {
-      description "Rust and TypeScript unit tests"
-      technology "cargo test, Vitest"
-    }
-
-    IntegrationTests = component "Integration Tests" {
-      description "End-to-end integration tests"
-      technology "Playwright"
-    }
-
-    PropertyTests = component "Property-Based Tests" {
-      description "Property-based testing for validation"
-      technology "fast-check, Vitest"
-    }
-
-    ExampleTests = component "Example Tests" {
-      description "Validates example .sruja files"
-      technology "cargo, sruja-cli"
-    }
-  }
-
-  // Relationships
-  Local -> CICD "Pushes to"
-  CICD -> CICD.BuildCheck "Runs"
-  CICD -> CICD.SecurityScan "Runs"
-  CICD -> CICD.BundleSizeCheck "Runs"
-  CICD -> CICD.CoverageCheck "Runs"
-  CICD -> CICD.LintCheck "Runs"
-  CICD -> CICD.RustTests "Runs"
-  CICD -> CICD.TSTests "Runs"
-  CICD.RustTests -> Testing "Validates"
-  CICD.TSTests -> Testing "Validates"
-  CICD -> Testing "Triggers"
-  Testing.UnitTests -> Testing "Part of"
-  Testing.IntegrationTests -> Testing "Part of"
-  Testing.PropertyTests -> Testing "Part of"
-  Testing.ExampleTests -> Testing "Part of"
-
-  CICD -> Release "Triggers on tag"
-  Release.VersionBump -> Release.BuildArtifacts "Triggers"
-  Release.BuildArtifacts -> Release.PublishRelease "Publishes"
-  Release.BuildArtifacts -> Release.PublishNPM "Publishes"
-
-  Developer -> SrujaDevelopment "Develops"
-  Developer -> Local "Uses"
-  Developer -> Local.GitHooks "Triggers"
-  Developer -> Local.LocalBuild "Runs"
-  Developer -> Local.LocalTests "Runs"
-
-  Maintainer -> SrujaDevelopment "Maintains"
-  Maintainer -> CICD "Manages"
-  Maintainer -> Release "Manages"
 }
 
-// Views
+SrujaDevelopment.LocalDevelopment -> SrujaDevelopment.ContinuousIntegration "Local validation mirrors CI"
+SrujaDevelopment.ContinuousIntegration -> SrujaDevelopment.ReleaseAutomation "Validated changes can ship"
+
+SrujaDevelopment.LocalDevelopment.RustToolchain -> SrujaDevelopment.LocalDevelopment.ExtensionToolchain "Provides CLI and WASM artifacts"
+SrujaDevelopment.LocalDevelopment.RustToolchain -> SrujaDevelopment.LocalDevelopment.BookAndWasm "Builds shared Rust and WASM outputs"
+SrujaDevelopment.LocalDevelopment.ExtensionToolchain -> SrujaDevelopment.ReleaseAutomation.ExtensionRelease "Mirrors release packaging"
+SrujaDevelopment.LocalDevelopment.BookAndWasm -> SrujaDevelopment.ReleaseAutomation.StagingDeploy "Mirrors deploy build"
+SrujaDevelopment.LocalDevelopment.SmokeChecks -> SrujaDevelopment.ContinuousIntegration.ArchitectureCI "Exercises documented command flows"
+
+Contributor -> SrujaDevelopment.LocalDevelopment.RustToolchain "Runs locally"
+Contributor -> SrujaDevelopment.LocalDevelopment.ExtensionToolchain "Runs locally"
+Contributor -> SrujaDevelopment.LocalDevelopment.BookAndWasm "Runs locally"
+Contributor -> SrujaDevelopment.LocalDevelopment.SmokeChecks "Runs locally"
+Contributor -> SrujaDevelopment "Contributes through this workflow"
+Contributor -> GitHub "Pushes branches and opens pull requests"
+
+GitHub -> SrujaDevelopment.ContinuousIntegration.RustCI "Triggers on push and pull request"
+GitHub -> SrujaDevelopment.ContinuousIntegration.WasmCI "Triggers on push and pull request"
+GitHub -> SrujaDevelopment.ContinuousIntegration.ArchitectureCI "Triggers on push and pull request"
+GitHub -> SrujaDevelopment.ContinuousIntegration.SkillCI "Triggers on push and pull request"
+GitHub -> SrujaDevelopment.ContinuousIntegration.SecurityCI "Triggers on push, pull request, and schedule"
+GitHub -> SrujaDevelopment.ContinuousIntegration.VersionConsistency "Triggers on push and pull request"
+
+SrujaDevelopment.ContinuousIntegration.WasmCI -> SrujaDevelopment.ReleaseAutomation.StagingDeploy "Verifies docs and extension WASM"
+
+GitHub -> SrujaDevelopment.ReleaseAutomation.ReleasePlease "Triggers on main commits"
+SrujaDevelopment.ReleaseAutomation.CLIRelease -> GitHub "Attaches CLI binaries to releases"
+SrujaDevelopment.ReleaseAutomation.ExtensionRelease -> OpenVSX "Publishes extension"
+SrujaDevelopment.ReleaseAutomation.ExtensionRelease -> VSCodeMarketplace "Publishes extension"
+SrujaDevelopment.ReleaseAutomation.StagingDeploy -> StagingWebsite "Deploys mdBook site"
+SrujaDevelopment.ReleaseAutomation.ProductionDeploy -> ProductionWebsite "Deploys mdBook site"
+
+Maintainer -> SrujaDevelopment.ReleaseAutomation.ReleasePlease "Reviews and merges release PRs"
+Maintainer -> SrujaDevelopment.ReleaseAutomation.CLIRelease "Oversees release assets"
+Maintainer -> SrujaDevelopment.ReleaseAutomation.ExtensionRelease "Oversees extension publishing"
+Maintainer -> SrujaDevelopment.ReleaseAutomation.StagingDeploy "Checks staging"
+Maintainer -> SrujaDevelopment.ReleaseAutomation.ProductionDeploy "Promotes production"
+Maintainer -> SrujaDevelopment "Operates this workflow"
+
 view index {
   title "Development Workflow"
   include *
 }
 
-view cicd {
-  title "CI/CD Pipeline"
-  include "SrujaDevelopment.CICD SrujaDevelopment.Testing"
+view ci {
+  title "Continuous Integration"
+  include "Contributor GitHub SrujaDevelopment.ContinuousIntegration SrujaDevelopment.ReleaseAutomation.ReleasePlease"
 }
 
 view release {
-  title "Release Process"
-  include SrujaDevelopment.Release
+  title "Release and Deployment"
+  include "Maintainer GitHub OpenVSX VSCodeMarketplace StagingWebsite ProductionWebsite SrujaDevelopment.ReleaseAutomation"
 }
