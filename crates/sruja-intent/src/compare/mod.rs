@@ -471,6 +471,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
                 sruja_scan::Node {
                     id: "db".to_string(),
@@ -485,6 +486,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
             ],
             edges: vec![sruja_scan::Edge {
@@ -493,6 +495,7 @@ mod tests {
                 kind: EdgeKind::Calls,
                 evidence: vec![],
             }],
+            confidence: None,
         }
     }
 

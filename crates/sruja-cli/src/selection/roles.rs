@@ -512,6 +512,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         }
     }
 
@@ -528,6 +529,7 @@ mod tests {
                 })
                 .collect(),
             metadata: Default::default(),
+            confidence: None,
         }
     }
 

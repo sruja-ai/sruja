@@ -20,6 +20,7 @@ fn make_node(id: &str, kind: NodeKind) -> Node {
         domain: None,
         criticality: None,
         sources: Vec::new(),
+        confidence: None,
     }
 }
 

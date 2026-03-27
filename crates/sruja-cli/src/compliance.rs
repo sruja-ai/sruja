@@ -327,6 +327,7 @@ Security = policy "No external API to database" {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         });
         scan_graph.nodes.push(sruja_scan::Node {
             id: "db".to_string(),
@@ -341,6 +342,7 @@ Security = policy "No external API to database" {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "ext".to_string(),

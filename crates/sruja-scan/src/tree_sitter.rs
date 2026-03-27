@@ -176,6 +176,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             .parent()
             .and_then(|p| p.strip_prefix(repo_root).ok())
             .map(|p| p.to_string_lossy().replace(['/', '\\'], "_"))
+            .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "root".to_string());
 
         let module_id = format!("module:{}", parent_module);
@@ -195,6 +196,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
             );
         }
@@ -212,6 +214,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
         nodes.push(node);
 
@@ -266,6 +269,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 domain: None,
                 criticality: None,
                 sources: Vec::new(),
+                confidence: None,
             });
             edges.push(Edge {
                 source: file_id.clone(),
@@ -366,6 +370,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         },
         nodes,
         edges,
+        confidence: None,
     };
     graph.canonicalize();
     Ok(graph)
@@ -531,6 +536,19 @@ fn infer_node_kind(parsed: &ParsedFile, path: &Path, content: &str) -> NodeKind 
     }
 
     // Path/Name heuristics (conservative - require additional signals)
+    // Check for Next.js specific patterns
+    if is_nextjs_route(&path_str, content) {
+        return NodeKind::ExternalApi;
+    }
+    if is_nextjs_component(&path_str, content) {
+        return NodeKind::Module;
+    }
+
+    // Check for database/repository patterns (e.g. Prisma, Mongoose)
+    if is_database_file(&path_str, &content_lower) {
+        return NodeKind::Database;
+    }
+
     if is_service_directory(&path_str, &content_lower) {
         return NodeKind::Service;
     }
@@ -687,6 +705,32 @@ fn is_main_server_file(parsed: &ParsedFile, _path_str: &str, content_lower: &str
         .any(|indicator| content_lower.contains(indicator))
 }
 
+fn is_database_file(path_str: &str, content_lower: &str) -> bool {
+    // Check for Prisma schema
+    if path_str.ends_with(".prisma") {
+        return true;
+    }
+
+    // Check for ORM/DB patterns in content (Prisma, Mongoose, Sequelize, TypeORM)
+    let db_patterns = [
+        "prisma.client",
+        "@prisma/client",
+        "mongoose.model",
+        "mongoose.schema",
+        "@module sequelize",
+        "sequelize.define",
+        "@entity",                 // TypeORM
+        "@primarygeneratedcolumn", // TypeORM
+        "drizzle-orm",
+    ];
+
+    if db_patterns.iter().any(|p| content_lower.contains(p)) {
+        return true;
+    }
+
+    false
+}
+
 fn is_cli_tool(path_str: &str, content_lower: &str) -> bool {
     // CLI framework patterns
     let cli_patterns = [
@@ -714,6 +758,40 @@ fn is_cli_tool(path_str: &str, content_lower: &str) -> bool {
     has_cli_framework || is_cli_path
 }
 
+fn is_external_api_directory(path_str: &str, name_lower: &str) -> bool {
+    path_str.contains("/external/")
+        || path_str.contains("/thirdparty/")
+        || path_str.contains("/vendor/")
+        || name_lower.ends_with("client")
+        || name_lower.ends_with("gateway")
+}
+
+fn is_nextjs_route(path_str: &str, _content: &str) -> bool {
+    if path_str.contains("/app/") && path_str.ends_with("/route.ts") {
+        return true;
+    }
+    if path_str.contains("/pages/api/") {
+        return true;
+    }
+    false
+}
+
+fn is_nextjs_component(path_str: &str, _content: &str) -> bool {
+    let special_files = [
+        "page.tsx",
+        "layout.tsx",
+        "loading.tsx",
+        "error.tsx",
+        "not-found.tsx",
+    ];
+    if path_str.contains("/app/") && special_files.iter().any(|f| path_str.ends_with(f)) {
+        return true;
+    }
+    if path_str.contains("/pages/") && !path_str.contains("/pages/api/") {
+        return true;
+    }
+    false
+}
 fn is_service_directory(path_str: &str, content_lower: &str) -> bool {
     let patterns = ["/cmd/server", "/internal/server", "/pkg/server"];
 
@@ -760,14 +838,6 @@ fn is_database_directory(path_str: &str, name_lower: &str) -> bool {
         || (name_lower.ends_with("repository") && !name_lower.ends_with("services"))
         || name_lower.ends_with("dao")
         || name_lower.ends_with("schema")
-}
-
-fn is_external_api_directory(path_str: &str, name_lower: &str) -> bool {
-    path_str.contains("/external/")
-        || path_str.contains("/thirdparty/")
-        || path_str.contains("/vendor/")
-        || name_lower.ends_with("client")
-        || name_lower.ends_with("gateway")
 }
 
 /// Common extensions to try when resolving extensionless imports (TypeScript/JavaScript).

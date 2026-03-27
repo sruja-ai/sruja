@@ -354,6 +354,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
                 Node {
                     id: "b".into(),
@@ -368,6 +369,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
                 Node {
                     id: "c".into(),
@@ -382,6 +384,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
             ],
             edges: vec![
@@ -399,6 +402,7 @@ mod tests {
                 },
             ],
             metadata: Default::default(),
+            confidence: None,
         }
     }
 

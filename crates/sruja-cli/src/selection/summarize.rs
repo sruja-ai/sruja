@@ -114,6 +114,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         let result = summarize_large_component(&node, temp.path(), false).await;
@@ -144,6 +145,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         let result = summarize_large_component(&node, temp.path(), false).await;
@@ -173,6 +175,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
         let result = summarize_large_component(&node, temp.path(), false).await;
         match result {
@@ -197,6 +200,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
         let result = summarize_large_component(&node, temp.path(), false).await;
         match result {
@@ -224,6 +228,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
         let result = summarize_large_component(&node, temp.path(), false).await;
         match result {

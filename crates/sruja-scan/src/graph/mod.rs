@@ -40,6 +40,9 @@ pub struct Node {
     /// Source bindings to external resources
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceBinding>,
+    /// Confidence score (0-100)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -68,6 +71,9 @@ pub struct Graph {
     pub metadata: HashMap<String, String>,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    /// Overall graph discovery confidence (0-100)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,7 +106,17 @@ impl Graph {
             metadata: HashMap::new(),
             nodes: Vec::new(),
             edges: Vec::new(),
+            confidence: None,
         }
+    }
+
+    pub fn merge(&mut self, other: Graph) {
+        self.nodes.extend(other.nodes);
+        self.edges.extend(other.edges);
+        for (k, v) in other.metadata {
+            self.metadata.entry(k).or_insert(v);
+        }
+        self.canonicalize();
     }
 
     pub fn canonicalize(&mut self) {
@@ -164,6 +180,9 @@ impl Graph {
                         base.sources.push(source);
                     }
                 }
+            }
+            if base.confidence.is_none() {
+                base.confidence = other.confidence;
             }
         }
 
@@ -360,6 +379,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         }
     }
 
@@ -378,6 +398,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![node("a")],
             edges: vec![edge("a", "missing")],
+            confidence: None,
         };
 
         graph.canonicalize();
@@ -421,6 +442,7 @@ mod tests {
                     ],
                 },
             ],
+            confidence: None,
         };
 
         graph.canonicalize();
@@ -436,6 +458,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![node("a"), node("b"), node("c"), node("d")],
             edges: vec![edge("a", "b"), edge("b", "c"), edge("d", "b")],
+            confidence: None,
         };
 
         let res = graph.blast_radius("b", 2);
@@ -469,6 +492,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![node("a"), node("b")],
             edges: vec![edge("a", "b")],
+            confidence: None,
         };
 
         let res = graph.blast_radius("a", 0);
@@ -487,6 +511,7 @@ mod tests {
                 edge("c", "d"),
                 edge("a", "c"),
             ],
+            confidence: None,
         };
 
         let path = graph.find_path("a", "d").expect("path should exist");

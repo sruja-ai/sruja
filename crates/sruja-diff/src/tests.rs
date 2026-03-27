@@ -28,6 +28,7 @@ mod cases {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         }
     }
 

@@ -113,11 +113,24 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             .join("package.json");
         let path_str = rel_path.to_string_lossy().to_string();
 
+        let mut technology = Some("Node.js".to_string());
+        if let Some(deps) = &pkg.dependencies {
+            if deps.contains_key("next") {
+                technology = Some("Next.js".to_string());
+            } else if deps.contains_key("express") {
+                technology = Some("Express".to_string());
+            } else if deps.contains_key("@nestjs/core") {
+                technology = Some("NestJS".to_string());
+            } else if deps.contains_key("fastify") {
+                technology = Some("Fastify".to_string());
+            }
+        }
+
         let mut node = Node {
             id: id.clone(),
             kind: NodeKind::Module,
             label: name,
-            technology: Some("Node.js".to_string()),
+            technology,
             path: Some(path_str),
             metadata: HashMap::new(),
             canonical_id: None,
@@ -126,6 +139,7 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         for (dep_name, _) in pkg

@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "scan.parsed_files": "2",
+    "scan.parse_failed": "0",
+    "scan.language_files_seen": "2",
+    "scan.skipped_large": "0",
+    "scan.read_failed": "0",
+    "scan.collected_files": "2"
+  },
+  "nodes": [
+    {
+      "id": "index_js",
+      "kind": "service",
+      "label": "index",
+      "technology": "JavaScript",
+      "path": "tests/golden_repos/express-layered/index.js"
+    },
+    {
+      "id": "module:",
+      "kind": "module",
+      "label": "",
+      "technology": "JavaScript",
+      "path": ""
+    },
+    {
+      "id": "module:src_routes",
+      "kind": "module",
+      "label": "src_routes",
+      "technology": "JavaScript",
+      "path": "src_routes"
+    },
+    {
+      "id": "src_routes_health_js",
+      "kind": "service",
+      "label": "health",
+      "technology": "JavaScript",
+      "path": "tests/golden_repos/express-layered/src/routes/health.js"
+    }
+  ],
+  "edges": [
+    {
+      "source": "module:",
+      "target": "index_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "tests/golden_repos/express-layered/index.js",
+          "detail": "module contains this file"
+        }
+      ]
+    },
+    {
+      "source": "module:src_routes",
+      "target": "src_routes_health_js",
+      "kind": "calls",
+      "evidence": [
+        {
+          "rule": "contains",
+          "file": "tests/golden_repos/express-layered/src/routes/health.js",
+          "detail": "module contains this file"
+        }
+      ]
+    }
+  ]
+}

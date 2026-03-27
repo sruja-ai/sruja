@@ -4,6 +4,7 @@
 //! Supports multiple programming languages and can also parse package manifests.
 
 mod cargo;
+pub mod confidence;
 pub mod graph;
 pub mod npm;
 pub mod repomap;
@@ -50,7 +51,17 @@ pub enum ScanError {
 /// - Public interfaces from exports
 pub fn scan_repo(repo_root: &Path) -> Result<Graph, ScanError> {
     let config = ScanConfig::default();
-    scan_with_tree_sitter(repo_root, &config)
+    let mut graph = scan_with_tree_sitter(repo_root, &config)?;
+
+    // Merge manifest data (technology labels, monorepo packages)
+    if let Ok(manifest_graph) = scan_repo_manifests(repo_root) {
+        graph.merge(manifest_graph);
+    }
+
+    // Calculate discovery confidence
+    confidence::ConfidenceScorer::score_graph(&mut graph);
+
+    Ok(graph)
 }
 
 /// Scan a repository with custom configuration.

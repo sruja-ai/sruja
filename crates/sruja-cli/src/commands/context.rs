@@ -1356,6 +1356,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         }
     }
 
@@ -1412,6 +1413,7 @@ mod tests {
                 node("svc", NodeKind::Service, Some("src/main.rs")),
             ],
             edges: vec![],
+            confidence: None,
         };
         let layers = infer_layers(&graph);
         let names: Vec<&str> = layers.iter().map(|l| l.name.as_str()).collect();
@@ -1437,6 +1439,7 @@ mod tests {
                 node("a", NodeKind::Service, Some("a/main.rs")),
             ],
             edges: vec![],
+            confidence: None,
         };
         let rules = infer_boundaries(&graph);
         assert!(rules
@@ -1552,6 +1555,7 @@ mod tests {
                 node("src_lib_rs", NodeKind::Module, Some("/repo/src/lib.rs")),
             ],
             edges: vec![edge("module:src", "src_lib_rs")],
+            confidence: None,
         };
 
         let centrality = compute_all_centrality(&graph);
@@ -1580,6 +1584,7 @@ mod tests {
                 node("mod", NodeKind::Module, Some("/repo/src/lib.rs")),
             ],
             edges: vec![edge("svc", "db"), edge("svc", "mod")],
+            confidence: None,
         };
 
         let context = build_architecture_context(

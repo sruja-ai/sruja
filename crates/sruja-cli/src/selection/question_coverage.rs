@@ -282,6 +282,7 @@ mod tests {
                 domain: None,
                 criticality: None,
                 sources: Vec::new(),
+                confidence: None,
             },
             Node {
                 id: "2".into(),
@@ -296,6 +297,7 @@ mod tests {
                 domain: None,
                 criticality: None,
                 sources: Vec::new(),
+                confidence: None,
             },
         ];
 

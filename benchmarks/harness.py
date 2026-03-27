@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import shutil
 import subprocess
 import time
 import argparse
@@ -93,6 +94,8 @@ def main():
     timestamp = int(time.time())
     run_dir = os.path.join(args.output, f"run_{timestamp}")
     os.makedirs(run_dir, exist_ok=True)
+    work_dir = os.path.join("/tmp", f"sruja_bench_work_{timestamp}")
+    os.makedirs(work_dir, exist_ok=True)
 
     summary = []
 
@@ -122,8 +125,9 @@ def main():
                 print(f"Running mode: {mode}")
                 
                 # Setup specific repo path for this mode/task
-                mode_repo_path = os.path.join(repo_path, f"_{mode}_{task['id']}")
-                run_command(["cp", "-R", repo_path, mode_repo_path])
+                mode_repo_path = os.path.join(work_dir, f"{project_name}_{mode}_{task['id']}")
+                shutil.rmtree(mode_repo_path, ignore_errors=True)
+                shutil.copytree(repo_path, mode_repo_path, symlinks=True)
 
                 prompt = task["description"]
                 if mode == "sruja":

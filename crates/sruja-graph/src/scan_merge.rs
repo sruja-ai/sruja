@@ -105,6 +105,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
                 Node {
                     id: "module.utils".to_string(),
@@ -119,6 +120,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 },
             ],
             edges: vec![Edge {
@@ -132,6 +134,7 @@ mod tests {
                     detail: Some("import { utils } from './utils'".to_string()),
                 }],
             }],
+            confidence: None,
         }
     }
 
@@ -142,6 +145,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![],
             edges: vec![],
+            confidence: None,
         };
 
         let count = merge_scan_into_graph(&mut kg, &scan_graph, ".");
@@ -222,8 +226,10 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 }],
                 edges: vec![],
+                confidence: None,
             };
 
             let count = merge_scan_into_graph(&mut kg, &scan_graph, ".");
@@ -260,6 +266,7 @@ mod tests {
                         domain: None,
                         criticality: None,
                         sources: Vec::new(),
+                        confidence: None,
                     },
                     Node {
                         id: format!("target.{}", i),
@@ -274,6 +281,7 @@ mod tests {
                         domain: None,
                         criticality: None,
                         sources: Vec::new(),
+                        confidence: None,
                     },
                 ],
                 edges: vec![Edge {
@@ -282,6 +290,7 @@ mod tests {
                     kind,
                     evidence: vec![],
                 }],
+                confidence: None,
             };
 
             let count = merge_scan_into_graph(&mut kg, &scan_graph, ".");

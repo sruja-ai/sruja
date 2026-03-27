@@ -462,6 +462,7 @@ mod tests {
                     domain: None,
                     criticality: None,
                     sources: Vec::new(),
+                    confidence: None,
                 })
                 .collect(),
             edges: edges
@@ -474,6 +475,7 @@ mod tests {
                 })
                 .collect(),
             metadata: Default::default(),
+            confidence: None,
         }
     }
 
@@ -541,6 +543,7 @@ mod tests {
                         domain: None,
                         criticality: None,
                         sources: Vec::new(),
+                        confidence: None,
                     }
                 })
                 .collect(),
@@ -554,6 +557,7 @@ mod tests {
                 })
                 .collect(),
             metadata: Default::default(),
+            confidence: None,
         };
 
         let target_node = graph.nodes.iter().find(|n| n.id == "target").unwrap();

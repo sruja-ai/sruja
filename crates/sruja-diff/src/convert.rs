@@ -44,6 +44,7 @@ pub fn program_to_graph(program: &Program) -> Graph {
             domain,
             criticality,
             sources,
+            confidence: None,
         });
     }
 
@@ -70,6 +71,7 @@ pub fn program_to_graph(program: &Program) -> Graph {
         metadata: HashMap::new(),
         nodes,
         edges,
+        confidence: None,
     }
 }
 

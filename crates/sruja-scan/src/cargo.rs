@@ -97,6 +97,7 @@ pub(crate) fn scan_cargo_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         // Preserve a hint for later heuristics without encoding policy here.
@@ -332,6 +333,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         let deps = [CargoDependency {
@@ -367,6 +369,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         let deps = [CargoDependency {
@@ -403,6 +406,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         let deps = [
@@ -449,6 +453,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         let deps = [CargoDependency {
@@ -484,6 +489,7 @@ mod tests {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            confidence: None,
         };
 
         let deps = [CargoDependency {

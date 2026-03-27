@@ -353,6 +353,7 @@ mod tests {
                 domain: None,
                 criticality: None,
                 sources: Vec::new(),
+                confidence: None,
             })
             .collect();
 
@@ -369,6 +370,7 @@ mod tests {
             nodes,
             edges,
             metadata: Default::default(),
+            confidence: None,
         }
     }
 
