@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.25.0...sruja-v0.26.0) (2026-03-27)
+
+
+### Features
+
+* add D2 export and extension command refactor ([520e8f1](https://github.com/sruja-ai/sruja/commit/520e8f16cce3e4acaea19aab37db1f72cb0f5b5c))
+
 ## [0.25.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.24.1...sruja-v0.25.0) (2026-03-25)
 
 
