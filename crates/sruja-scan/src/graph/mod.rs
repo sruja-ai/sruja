@@ -303,6 +303,37 @@ impl Graph {
         out.sort_by(|a, b| (a.depth, a.id.as_str()).cmp(&(b.depth, b.id.as_str())));
         out
     }
+
+    pub fn find_path(&self, source_id: &str, target_id: &str) -> Option<Vec<String>> {
+        let (outgoing, _) = self.build_adjacency();
+        if !outgoing.contains_key(source_id) && !self.nodes.iter().any(|n| n.id == source_id) {
+            return None;
+        }
+
+        let mut visited: HashSet<&str> = HashSet::new();
+        let mut queue: VecDeque<(&str, Vec<String>)> = VecDeque::new();
+
+        visited.insert(source_id);
+        queue.push_back((source_id, vec![source_id.to_string()]));
+
+        while let Some((current, path)) = queue.pop_front() {
+            if current == target_id {
+                return Some(path);
+            }
+
+            if let Some(neighbors) = outgoing.get(current) {
+                for &next in neighbors {
+                    if visited.insert(next) {
+                        let mut next_path = path.clone();
+                        next_path.push(next.to_string());
+                        queue.push_back((next, next_path));
+                    }
+                }
+            }
+        }
+
+        None
+    }
 }
 
 impl Default for Graph {
@@ -443,5 +474,25 @@ mod tests {
         let res = graph.blast_radius("a", 0);
         assert!(res.upstream.is_empty());
         assert!(res.downstream.is_empty());
+    }
+
+    #[test]
+    fn find_path_returns_correct_sequence() {
+        let graph = Graph {
+            metadata: HashMap::new(),
+            nodes: vec![node("a"), node("b"), node("c"), node("d")],
+            edges: vec![
+                edge("a", "b"),
+                edge("b", "c"),
+                edge("c", "d"),
+                edge("a", "c"),
+            ],
+        };
+
+        let path = graph.find_path("a", "d").expect("path should exist");
+        assert_eq!(path, vec!["a", "c", "d"]);
+
+        let no_path = graph.find_path("d", "a");
+        assert!(no_path.is_none());
     }
 }

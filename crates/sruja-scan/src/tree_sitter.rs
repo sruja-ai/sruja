@@ -882,8 +882,36 @@ fn resolve_import_improved(
         }
     }
 
+    if language == Language::Rust {
+        let mut resolved = import_path.replace("::", "/");
+        if resolved.starts_with("crate/") {
+            resolved = resolved.replacen("crate/", "", 1);
+        } else if resolved.starts_with("super/") {
+            if let Some(parent) = from_file.parent().and_then(|p| p.parent()) {
+                if let Ok(rel) = parent.strip_prefix(repo_root) {
+                    resolved = format!(
+                        "{}/{}",
+                        rel.to_string_lossy(),
+                        resolved.replacen("super/", "", 1)
+                    );
+                }
+            }
+        }
+
+        for ext in &[".rs", ""] {
+            let candidate = resolved.clone() + ext;
+            if let Some(id) = file_path_to_id.get(&candidate) {
+                return id.clone();
+            }
+            let src_candidate = format!("src/{}", candidate);
+            if let Some(id) = file_path_to_id.get(&src_candidate) {
+                return id.clone();
+            }
+        }
+    }
+
     import_path
-        .replace(['/', '@', '-', '.'], "_")
+        .replace(['/', '@', '-', '.', ':'], "_")
         .trim_start_matches('_')
         .to_string()
 }

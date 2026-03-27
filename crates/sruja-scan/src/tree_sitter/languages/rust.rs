@@ -125,9 +125,12 @@ fn extract_from_node(
 fn extract_use(node: &tree_sitter::Node, content: &str, imports: &mut Vec<String>) {
     for i in 0..node.child_count() {
         if let Some(child) = node.child(i as u32) {
-            if child.kind() == "use_clause"
-                || child.kind() == "scoped_use_list"
-                || child.kind() == "use_list"
+            let kind = child.kind();
+            if kind == "use_clause"
+                || kind == "scoped_use_list"
+                || kind == "use_list"
+                || kind == "scoped_identifier"
+                || kind == "identifier"
             {
                 extract_use_path(&child, content, imports);
             }
@@ -153,11 +156,11 @@ fn extract_use_path(node: &tree_sitter::Node, content: &str, imports: &mut Vec<S
                 imports.push(path.to_string());
             }
         }
+    }
 
-        for i in 0..node.child_count() {
-            if let Some(child) = node.child(i as u32) {
-                extract_use_path(&child, content, imports);
-            }
+    for i in 0..node.child_count() {
+        if let Some(child) = node.child(i as u32) {
+            extract_use_path(&child, content, imports);
         }
     }
 }

@@ -1,5 +1,8 @@
 use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::sync::Mutex;
 
 use super::CliError;
 
@@ -56,6 +59,7 @@ async fn write_message<W: AsyncWrite + Unpin>(
 struct McpServer {
     initialized: bool,
     client_ready: bool,
+    graph_cache: std::sync::Arc<tokio::sync::Mutex<HashMap<String, sruja_scan::Graph>>>,
 }
 
 impl McpServer {
@@ -63,6 +67,7 @@ impl McpServer {
         Self {
             initialized: false,
             client_ready: false,
+            graph_cache: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         }
     }
 
@@ -185,7 +190,7 @@ impl McpServer {
             .cloned()
             .unwrap_or_else(|| json!({}));
 
-        match run_tool(name, &args).await {
+        match run_tool(name, &args, &self.graph_cache).await {
             Ok(text) => json!({
                 "jsonrpc": "2.0",
                 "id": id,
@@ -310,10 +315,75 @@ fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "name": "sruja_get_neighbors",
+            "title": "Sruja Get Neighbors",
+            "description": "Get immediate upstream and downstream neighbors of a component.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "id": { "type": "string", "description": "Component ID" },
+                    "depth": { "type": "integer", "description": "Search depth (default: 1)", "minimum": 1 }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
+            "name": "sruja_find_path",
+            "title": "Sruja Find Path",
+            "description": "Find the path between two components in the architecture graph.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "source": { "type": "string", "description": "Source component ID" },
+                    "target": { "type": "string", "description": "Target component ID" }
+                },
+                "required": ["source", "target"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_entrypoints",
+            "title": "Sruja Get Entrypoints",
+            "description": "List all entrypoints (External APIs, Systems, or components with no incoming edges) in the codebase.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_data_stores",
+            "title": "Sruja Get Data Stores",
+            "description": "List all data stores (Databases, Queues) discovered in the architecture.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_architecture_summary",
+            "title": "Sruja Architecture Summary",
+            "description": "Get a compact, high-level summary of how the architecture works (layers, boundaries, and key flows).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
     ]
 }
 
-async fn run_tool(name: &str, arguments: &Value) -> Result<String, CliError> {
+async fn run_tool(
+    name: &str,
+    arguments: &Value,
+    graph_cache: &Arc<Mutex<HashMap<String, sruja_scan::Graph>>>,
+) -> Result<String, CliError> {
     let repo = arguments
         .get("path")
         .or_else(|| arguments.get("repo"))
@@ -330,6 +400,120 @@ async fn run_tool(name: &str, arguments: &Value) -> Result<String, CliError> {
             let content =
                 super::context::context_string(&repo, "markdown", None, None, 2, 10000).await?;
             Ok(content)
+        }
+        "sruja_get_architecture_summary" => {
+            let content =
+                super::context::context_string(&repo, "markdown", None, None, 1, 3000).await?;
+            Ok(content)
+        }
+        "sruja_get_neighbors" => {
+            let id = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing id".into()))?;
+            let depth = arguments.get("depth").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let radius = graph.blast_radius(id, depth);
+
+            let mut out = format!("# Neighbors of {}\n\n", id);
+            out.push_str("## Upstream (depend on this)\n");
+            if radius.upstream.is_empty() {
+                out.push_str("- None\n");
+            } else {
+                for n in radius.upstream {
+                    out.push_str(&format!("- {} (depth: {})\n", n.id, n.depth));
+                }
+            }
+
+            out.push_str("\n## Downstream (this depends on)\n");
+            if radius.downstream.is_empty() {
+                out.push_str("- None\n");
+            } else {
+                for n in radius.downstream {
+                    out.push_str(&format!("- {} (depth: {})\n", n.id, n.depth));
+                }
+            }
+            Ok(out)
+        }
+        "sruja_find_path" => {
+            let source = arguments
+                .get("source")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing source".into()))?;
+            let target = arguments
+                .get("target")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing target".into()))?;
+
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            match graph.find_path(source, target) {
+                Some(path) => Ok(format!(
+                    "# Path from {} to {}\n\n{}",
+                    source,
+                    target,
+                    path.join(" -> ")
+                )),
+                None => Ok(format!("No path found from {} to {}", source, target)),
+            }
+        }
+        "sruja_get_entrypoints" => {
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let mut entrypoints = Vec::new();
+
+            let mut has_incoming = HashMap::new();
+            for edge in &graph.edges {
+                *has_incoming.entry(edge.target.as_str()).or_insert(0) += 1;
+            }
+
+            for node in &graph.nodes {
+                let is_high_level = matches!(
+                    node.kind,
+                    sruja_scan::NodeKind::Service
+                        | sruja_scan::NodeKind::ExternalApi
+                        | sruja_scan::NodeKind::System
+                );
+                let no_incoming = has_incoming.get(node.id.as_str()).cloned().unwrap_or(0) == 0;
+
+                if is_high_level || no_incoming {
+                    entrypoints.push(format!("- {} ({})", node.id, node.kind));
+                }
+            }
+
+            if entrypoints.is_empty() {
+                Ok("No clear entrypoints discovered.".to_string())
+            } else {
+                entrypoints.sort();
+                Ok(format!(
+                    "# Architecture Entrypoints\n\n{}",
+                    entrypoints.join("\n")
+                ))
+            }
+        }
+        "sruja_get_data_stores" => {
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let mut stores = Vec::new();
+
+            for node in &graph.nodes {
+                if matches!(
+                    node.kind,
+                    sruja_scan::NodeKind::Database | sruja_scan::NodeKind::Queue
+                ) {
+                    let tech = node
+                        .technology
+                        .as_deref()
+                        .map(|t| format!(" ({})", t))
+                        .unwrap_or_default();
+                    stores.push(format!("- {}: {}{}", node.id, node.kind, tech));
+                }
+            }
+
+            if stores.is_empty() {
+                Ok("No data stores (databases/queues) discovered.".to_string())
+            } else {
+                stores.sort();
+                Ok(format!("# Discovered Data Stores\n\n{}", stores.join("\n")))
+            }
         }
         "sruja_explain_discovery" => {
             let format = arguments
@@ -464,6 +648,20 @@ async fn run_tool(name: &str, arguments: &Value) -> Result<String, CliError> {
         }
         _ => Err(CliError::Validation(format!("Unknown tool: {name}"))),
     }
+}
+
+async fn get_or_scan_graph(
+    cache: &Arc<Mutex<HashMap<String, sruja_scan::Graph>>>,
+    repo_path: &str,
+) -> Result<sruja_scan::Graph, CliError> {
+    let mut cache = cache.lock().await;
+    if let Some(g) = cache.get(repo_path) {
+        return Ok(g.clone());
+    }
+
+    let g = super::scan_repo_cached(std::path::Path::new(repo_path))?;
+    cache.insert(repo_path.to_string(), g.clone());
+    Ok(g)
 }
 
 async fn add_element(
@@ -643,9 +841,11 @@ mod tests {
         fs::create_dir_all(&src).expect("src");
         fs::write(src.join("main.rs"), "fn main() { println!(\"hello\"); }\n").expect("write");
 
+        let cache = Arc::new(Mutex::new(HashMap::new()));
         let out = run_tool(
             "sruja_get_repomap",
             &json!({ "path": dir.path().to_string_lossy() }),
+            &cache,
         )
         .await
         .expect("repomap");
@@ -673,14 +873,67 @@ mod tests {
         )
         .expect("db");
 
+        let cache = Arc::new(Mutex::new(HashMap::new()));
         let out = run_tool(
             "sruja_explain_discovery",
             &json!({ "path": dir.path().to_string_lossy() }),
+            &cache,
         )
         .await
         .expect("discovery explanation");
 
         assert!(out.contains("# Sruja Discovery Explanation"));
         assert!(out.contains("Why Sruja Thinks That"));
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_neighbors_returns_neighbors() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).expect("src");
+        fs::write(src.join("main.rs"), "mod sub;\nfn main() {}\n").expect("main");
+        fs::write(src.join("sub.rs"), "pub fn run() {}\n").expect("sub");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_get_neighbors",
+            &json!({ "path": dir.path().to_string_lossy(), "id": "src_sub_rs" }),
+            &cache,
+        )
+        .await
+        .expect("neighbors");
+
+        assert!(out.contains("# Neighbors of src_sub_rs"));
+        assert!(out.contains("Upstream"));
+        assert!(out.contains("Downstream"));
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_find_path_returns_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).expect("src");
+        fs::write(
+            src.join("main.rs"),
+            "use crate::sub;\nfn main() { sub::run(); }\n",
+        )
+        .expect("main");
+        fs::write(src.join("sub.rs"), "pub fn run() {}\n").expect("sub");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_find_path",
+            &json!({
+                "path": dir.path().to_string_lossy(),
+                "source": "src_main_rs",
+                "target": "src_sub_rs"
+            }),
+            &cache,
+        )
+        .await
+        .expect("path");
+
+        assert!(out.contains("# Path from src_main_rs to src_sub_rs"));
+        assert!(out.contains("src_main_rs -> src_sub_rs"));
     }
 }
