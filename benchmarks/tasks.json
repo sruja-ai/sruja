@@ -1,0 +1,34 @@
+{
+  "sruja": [
+    {
+      "id": "sruja-01-node-kind",
+      "name": "Add EventBus Node Kind",
+      "description": "Add support for a new node kind 'EventBus' to the Sruja scanner. This should involve updating the NodeKind enum in sruja-scan and ensuring it's handled in the graph representation.",
+      "repo_url": "https://github.com/sruja-ai/sruja",
+      "eval_scripts": ["cargo test -p sruja-scan", "cargo check"]
+    },
+    {
+      "id": "sruja-02-lsp-command",
+      "name": "Implement 'Go to Neighbors' LSP Command",
+      "description": "Implement a new custom LSP command 'sruja/getNeighbors' in the sruja-lsp crate that uses the graph to return neighbor information for a given file/component.",
+      "repo_url": "https://github.com/sruja-ai/sruja",
+      "eval_scripts": ["cargo test -p sruja-lsp", "cargo check"]
+    },
+    {
+      "id": "sruja-03-export-jsonl",
+      "name": "Implement JSONL Exporter",
+      "description": "Add a new export format 'jsonl' to the sruja-export crate. It should emit the graph nodes and edges as line-delimited JSON objects.",
+      "repo_url": "https://github.com/sruja-ai/sruja",
+      "eval_scripts": ["cargo test -p sruja-export", "cargo check"]
+    }
+  ],
+  "express": [
+    {
+      "id": "express-01-middleware",
+      "name": "Add Audit Middleware",
+      "description": "Add a middleware that logs all incoming requests to an external 'Auditor' service via HTTP. The middleware should be configurable to exclude sensitive paths.",
+      "repo_url": "https://github.com/expressjs/express",
+      "eval_scripts": ["npm test"]
+    }
+  ]
+}

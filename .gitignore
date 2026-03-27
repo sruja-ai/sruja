@@ -17,6 +17,7 @@ evaluation/real-world-test/run_results/
 evaluation/real-world-test/test-repos/
 evaluation/results/
 evaluation/local-artifacts/
+benchmarks/results/
 
 # Environment variables
 .env
