@@ -262,6 +262,12 @@ enum Commands {
         /// Generate .sruja/init_prompt.txt for use with sruja-architecture skill
         #[arg(long)]
         prompt: bool,
+        /// Automatically detect architecture and generate repo.sruja (the "wow" factor)
+        #[arg(long, short = 'a')]
+        auto: bool,
+        /// Overwrite repo.sruja if it already exists
+        #[arg(long, short = 'f')]
+        force: bool,
     },
     /// Quick repo health check: baseline, truth status, and last evidence refresh
     #[command(visible_alias = "doctor")]
@@ -635,7 +641,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             generate_baseline,
             fail_on,
         } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
-        Commands::Init { path, prompt } => commands::init(&path, prompt).await,
+        Commands::Init {
+            path,
+            prompt,
+            auto,
+            force,
+        } => commands::init(&path, prompt, auto, force).await,
         Commands::Status { path, format } => commands::status(&path, &format).await,
         Commands::Watch { path, clear } => commands::watch(&path, clear).await,
         Commands::Sync { path, format } => commands::sync(&path, &format).await,

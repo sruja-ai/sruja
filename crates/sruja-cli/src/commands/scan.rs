@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use sruja_scan::scan_scope::resolve_scan_scope;
-use sruja_scan::{scan_repo, EdgeKind, Graph, NodeKind};
+use sruja_scan::{is_path_production_relevant, scan_repo, EdgeKind, Graph, NodeKind};
 
 use super::CliError;
 use crate::context_detection::{
@@ -164,21 +164,49 @@ fn qualified_ident_from_id(id: &str) -> sruja_language::QualifiedIdent {
     }
 }
 
+fn path_production_relevant(path: &str) -> bool {
+    let normalized = path
+        .trim_start_matches("./")
+        .trim_start_matches(".\\")
+        .replace('\\', "/");
+    is_path_production_relevant(&normalized)
+}
+
 fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_language::Program {
-    let mut id_map: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
+    let mut nodes = graph
+        .nodes
+        .iter()
+        .filter(|n| match n.path.as_deref() {
+            Some(p) => path_production_relevant(p),
+            None => true,
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let allowed_ids: std::collections::HashSet<&str> =
+        nodes.iter().map(|n| n.id.as_str()).collect();
+    let mut edges = graph
+        .edges
+        .iter()
+        .filter(|e| {
+            allowed_ids.contains(e.source.as_str()) && allowed_ids.contains(e.target.as_str())
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let mut id_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     let mut used: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
-    for node in &graph.nodes {
+    for node in &nodes {
         let mut base = sanitize_identifier(&node.id);
         let n = used.entry(base.clone()).or_insert(0);
         if *n > 0 {
             base = format!("{}_{}", base, *n + 1);
         }
         *n += 1;
-        id_map.insert(node.id.as_str(), base);
+        id_map.insert(node.id.clone(), base);
     }
 
-    let mut nodes = graph.nodes.clone();
     nodes.sort_by(|a, b| {
         let ida = id_map
             .get(a.id.as_str())
@@ -192,6 +220,32 @@ fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_langua
     });
 
     let mut items: Vec<sruja_language::TopLevelItem> = Vec::new();
+    let repo_name = if let Some(parent) = Path::new(filename).parent() {
+        if parent.as_os_str().is_empty() || parent == Path::new(".") {
+            std::env::current_dir()
+                .ok()
+                .and_then(|d| {
+                    d.file_name()
+                        .and_then(|n| n.to_str().map(|s| s.to_string()))
+                })
+                .unwrap_or_else(|| "MySystem".to_string())
+        } else {
+            parent
+                .file_name()
+                .and_then(|n| n.to_str().map(|s| s.to_string()))
+                .unwrap_or_else(|| "MySystem".to_string())
+        }
+    } else {
+        "MySystem".to_string()
+    };
+    let system_name = sanitize_identifier(&repo_name);
+
+    let mut system_body = sruja_language::ElementDefBody {
+        description: Some(format!("The {} system architecture", repo_name)),
+        ..Default::default()
+    };
+    let mut system_items = Vec::new();
+
     for node in &nodes {
         let name = id_map
             .get(node.id.as_str())
@@ -207,11 +261,23 @@ fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_langua
                 .or_else(|| Some("Scanned from repository".to_string())),
             technology: match kind {
                 sruja_language::ElementKind::Container | sruja_language::ElementKind::Database => {
-                    Some(
-                        node.technology
-                            .clone()
-                            .unwrap_or_else(|| "Unknown".to_string()),
-                    )
+                    let mut tech = node
+                        .technology
+                        .clone()
+                        .unwrap_or_else(|| "Unknown".to_string());
+                    if tech == "Unknown" {
+                        if let Some(path) = &node.path {
+                            let normalized = path.replace('\\', "/");
+                            if normalized.contains("package.json") {
+                                tech = "Node.js".to_string();
+                            } else if normalized.ends_with(".rs") {
+                                tech = "Rust".to_string();
+                            } else if normalized.ends_with(".go") {
+                                tech = "Go".to_string();
+                            }
+                        }
+                    }
+                    Some(tech)
                 }
                 _ => node.technology.clone(),
             },
@@ -221,7 +287,10 @@ fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_langua
         let assignment = sruja_language::ElementAssignment {
             location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
             name,
-            kind,
+            kind: match kind {
+                sruja_language::ElementKind::System => sruja_language::ElementKind::Container,
+                k => k,
+            },
             sub_kind,
             title: Some(node.label.clone()),
             tag_refs: Vec::new(),
@@ -231,10 +300,12 @@ fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_langua
             location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
             assignment,
         };
-        items.push(sruja_language::TopLevelItem::ElementDef(Box::new(def)));
+
+        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
+            def,
+        )));
     }
 
-    let mut edges = graph.edges.clone();
     edges.sort_by(|a, b| {
         (a.source.as_str(), a.target.as_str(), a.kind.as_str()).cmp(&(
             b.source.as_str(),
@@ -261,21 +332,52 @@ fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_langua
             technology: None,
             tags: Vec::new(),
         };
-        items.push(sruja_language::TopLevelItem::Relation(rel));
+        system_items.push(sruja_language::ElementDefBodyItem::Relation(rel));
     }
+
+    system_body.items = system_items;
+    let system_def = sruja_language::ElementDef {
+        location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+        assignment: sruja_language::ElementAssignment {
+            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+            name: system_name,
+            kind: sruja_language::ElementKind::System,
+            sub_kind: None,
+            title: Some(repo_name.to_string()),
+            tag_refs: Vec::new(),
+            body: Some(system_body),
+        },
+    };
+    items.push(sruja_language::TopLevelItem::ElementDef(Box::new(
+        system_def,
+    )));
 
     sruja_language::Program::new().with_items(items)
 }
 
-fn write_draft_baseline(repo_root: &Path, graph: &Graph) -> Result<Option<PathBuf>, CliError> {
+pub(crate) fn write_draft_baseline(
+    repo_root: &Path,
+    graph: &Graph,
+    force: bool,
+) -> Result<Option<PathBuf>, CliError> {
     let out_path = repo_root.join("repo.sruja");
-    if out_path.exists() {
+    if out_path.exists() && !force {
         return Ok(None);
     }
     let program = build_draft_program_from_graph(graph, out_path.to_string_lossy().as_ref());
     let printer = sruja_export::DslPrinter::new();
     let dsl = printer.print(&program);
-    fs::write(&out_path, dsl)?;
+    let header = r#"// Sruja Architecture Baseline
+// Generated automatically from codebase analysis.
+//
+// Next Steps:
+// 1. Review the elements and relationships below.
+// 2. Refine the names, descriptions, and technologies.
+// 3. Add 'source' bindings to your OpenAPI/Docs/K8s manifests.
+// 4. Run 'sruja lint repo.sruja' to validate.
+
+"#;
+    fs::write(&out_path, format!("{}{}", header, dsl))?;
     Ok(Some(out_path))
 }
 
@@ -1263,7 +1365,7 @@ pub async fn quickstart(
     };
 
     if generate_baseline {
-        match write_draft_baseline(repo_path, &graph)? {
+        match write_draft_baseline(repo_path, &graph, false)? {
             Some(p) => {
                 eprintln!("📝 Wrote draft baseline: {}", p.to_string_lossy().cyan());
                 eprintln!();

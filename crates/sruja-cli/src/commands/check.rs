@@ -254,13 +254,29 @@ pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
     }
 
     let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
-    let drift = sruja_diff::detect_architectural_drift(&graph);
-    let filtered: Vec<_> = drift
-        .violations
-        .iter()
-        .filter(|v| is_production_relevant(v))
-        .cloned()
-        .collect();
+    let baseline_path = architecture_path::resolve_architecture_path(repo_path);
+
+    let filtered: Vec<sruja_diff::Violation> = if let Some(ref baseline) = baseline_path {
+        let content = fs::read_to_string(baseline)?;
+        let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
+        let program = parser
+            .parse(&content)
+            .map_err(|diags| CliError::parse_with_diagnostics(baseline.to_string_lossy(), diags))?;
+
+        let proposed_graph = sruja_diff::program_to_graph(&program);
+        let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
+        diff.violations
+            .into_iter()
+            .filter(is_production_relevant)
+            .collect()
+    } else {
+        let drift = sruja_diff::detect_architectural_drift(&graph);
+        drift
+            .violations
+            .into_iter()
+            .filter(is_production_relevant)
+            .collect()
+    };
 
     let fingerprints: Vec<String> = filtered.iter().map(fingerprint_violation).collect();
     let now = SystemTime::now()

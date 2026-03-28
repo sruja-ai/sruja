@@ -228,22 +228,28 @@ sruja export mermaid repo.sruja > ARCHITECTURE.mmd
 sruja export json repo.sruja > ARCHITECTURE.json
 ```
 
-### Use in CI/CD
+### Catch Architectural Drift in CI/CD
+
+Prevent architectural decay by running Sruja in your CI/CD pipeline. The `sruja-check` action provides inline Pull Request annotations for any architectural drift.
 
 ```yaml
-# .github/workflows/architecture.yml
-name: Validate Architecture
+# .github/workflows/sruja.yml
+name: Sruja Architectural Check
 on: [push, pull_request]
 
 jobs:
-  validate:
+  sruja:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Install Sruja
-        run: curl -fsSL https://sruja.ai/install.sh | bash
-      - name: Lint
-        run: sruja lint repo.sruja
+      - uses: actions/checkout@v4
+      - name: Sruja Check
+        uses: sruja-ai/sruja-check@v1
+        with:
+          architecture_file: "repo.sruja"
+          violations_baseline: ".sruja/violations.baseline.json"
 ```
+
+This ensures that any new, unmapped component or layer violation is flagged directly on the PR, keeping your architecture documentation and codebase in perfect sync.
 
 ---
 

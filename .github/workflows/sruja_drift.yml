@@ -1,0 +1,31 @@
+name: Sruja Architectural Check
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  sruja-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Sruja CLI
+        run: cargo build --release -p sruja-cli
+
+      - name: Sruja Check (Drift Detection)
+        # Using the local action we just created
+        uses: ./.github/actions/sruja-check
+        with:
+          install_sruja: "false" # Skip install since we just built it locally
+          repo_root: "."
+          architecture_file: "repo.sruja"
+          violations_baseline: ".sruja/violations.baseline.json"

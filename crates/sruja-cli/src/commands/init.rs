@@ -8,8 +8,13 @@ use super::scan::quickstart;
 use super::CliError;
 use crate::utils::architecture_path;
 
-/// Initialize Sruja in the given repo: ensure `.sruja/`, run quickstart, optionally generate prompt.
-pub async fn init(repo_root: &str, generate_prompt_file: bool) -> Result<(), CliError> {
+/// Initialize Sruja in the given repo: ensure `.sruja/`, run quickstart, optionally generate prompt or auto-onboard.
+pub async fn init(
+    repo_root: &str,
+    generate_prompt_file: bool,
+    auto: bool,
+    force: bool,
+) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
     if !repo_path.exists() {
@@ -28,6 +33,30 @@ pub async fn init(repo_root: &str, generate_prompt_file: bool) -> Result<(), Cli
             ))
         })?;
         eprintln!("Created {}", dot_sruja.display());
+    }
+
+    if auto {
+        eprintln!("✨ Running AI discovery to generate baseline...");
+        let graph = sruja_scan::scan_repo(repo_path)?;
+        let baseline = super::scan::write_draft_baseline(repo_path, &graph, force)?;
+
+        if let Some(path) = baseline {
+            eprintln!("✅ Generated baseline: {}", path.display());
+            eprintln!();
+            eprintln!("Next steps:");
+            eprintln!(
+                "  1. Review: Use 'sruja lint {}' to check the architecture.",
+                path.display()
+            );
+            eprintln!(
+                "  2. View: Use 'sruja export mermaid {} --all-views' to visualize.",
+                path.display()
+            );
+            eprintln!("  3. Monitor: Run 'sruja watch' while you code.");
+            return Ok(());
+        } else {
+            eprintln!("⚠️ Baseline already exists. Use --force to overwrite.");
+        }
     }
 
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
@@ -60,11 +89,8 @@ pub async fn init(repo_root: &str, generate_prompt_file: bool) -> Result<(), Cli
     } else if baseline_path.is_none() {
         eprintln!();
         eprintln!("Next steps:");
-        eprintln!(
-            "  Run: sruja start -r {} --prompt to generate a prompt, then use sruja-architecture to create repo.sruja.",
-            repo_root
-        );
-        eprintln!("  Or create repo.sruja (or architecture.sruja) manually and run: sruja lint repo.sruja");
+        eprintln!("  Run: sruja init -a --force to automatically generate a baseline from code.",);
+        eprintln!("  Or create repo.sruja manually and run: sruja lint repo.sruja");
     } else {
         eprintln!();
         eprintln!("Daily loop:");

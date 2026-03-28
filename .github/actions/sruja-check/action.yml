@@ -1,0 +1,64 @@
+name: "Sruja Check"
+description: "Detect architectural drift in codebases using Sruja"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  architecture_file:
+    description: "Path to .sruja architecture file"
+    required: false
+    default: "repo.sruja"
+  violations_baseline:
+    description: "Path to violations baseline JSON (used to ignore old drift)"
+    required: false
+    default: ".sruja/violations.baseline.json"
+  repo_root:
+    description: "Path to the repository root"
+    required: false
+    default: "."
+  install_sruja:
+    description: "Whether to install Sruja CLI (set to false if already in path)"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Rust
+      if: inputs.install_sruja == 'true'
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install Sruja CLI
+      if: inputs.install_sruja == 'true'
+      shell: bash
+      run: |
+        if ! command -v sruja &> /dev/null; then
+          echo "Installing Sruja CLI via cargo..."
+          cargo install --git https://github.com/sruja-ai/sruja --branch main sruja-cli
+        fi
+
+    - name: Run Sruja Check
+      shell: bash
+      run: |
+        SRUJA_BIN="sruja"
+        if [ "${{ inputs.install_sruja }}" != "true" ]; then
+          if [ -x "${{ inputs.repo_root }}/target/release/sruja" ]; then
+            SRUJA_BIN="${{ inputs.repo_root }}/target/release/sruja"
+          elif [ -x "${{ inputs.repo_root }}/target/debug/sruja" ]; then
+            SRUJA_BIN="${{ inputs.repo_root }}/target/debug/sruja"
+          fi
+        fi
+
+        COMMAND="$SRUJA_BIN check -r ${{ inputs.repo_root }} -f github-actions"
+        if [ -n "${{ inputs.architecture_file }}" ] && [ -f "${{ inputs.repo_root }}/${{ inputs.architecture_file }}" ]; then
+           echo "Using architecture file: ${{ inputs.architecture_file }}"
+           # Note: currently check resolves repo.sruja automatically, but we can be explicit if CLI supports it.
+        fi
+
+        if [ -f "${{ inputs.repo_root }}/${{ inputs.violations_baseline }}" ]; then
+           COMMAND="$COMMAND --baseline ${{ inputs.violations_baseline }}"
+        fi
+
+        echo "Executing: $COMMAND"
+        $COMMAND
