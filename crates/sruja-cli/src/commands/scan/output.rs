@@ -1,92 +1,82 @@
-//! Scan and drift commands: scan, drift, quickstart.
-
 use colored::Colorize;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use sruja_scan::scan_scope::resolve_scan_scope;
-use sruja_scan::{is_path_production_relevant, scan_repo, EdgeKind, Graph, NodeKind};
+use crate::commands::CliError;
+use sruja_scan::{is_path_production_relevant, EdgeKind, Graph, NodeKind};
 
-use super::CliError;
-use crate::context_detection::{
-    build_repo_context, detect_architecture_style, detect_framework, detect_languages,
-};
-use crate::utils::architecture_path;
-
-fn should_fail_on_violations(fail_on: Option<&str>, violations: &[sruja_diff::Violation]) -> bool {
-    if let Some(criteria) = fail_on {
-        let criteria_lower = criteria.to_lowercase();
-        let criteria_list: Vec<&str> = criteria_lower.split(',').map(|s| s.trim()).collect();
-
-        for criterion in criteria_list {
-            match criterion {
-                "all" => {
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
-                    {
-                        return true;
-                    }
-                }
-                "cycles" | "circular" => {
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::CircularDependency))
-                    {
-                        return true;
-                    }
-                }
-                "layer-violations" | "layer" => {
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation))
-                    {
-                        return true;
-                    }
-                }
-                "god-modules" | "god" => {
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule))
-                    {
-                        return true;
-                    }
-                }
-                "orphans" => {
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent))
-                    {
-                        return true;
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-    false
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct QuickstartResult {
+    pub repo: String,
+    pub scan_scope: sruja_scan::scan_scope::ScanScope,
+    pub health_score: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub health_breakdown: Option<sruja_diff::HealthScoreBreakdown>,
+    pub inventory: InventorySummary,
+    pub top_findings: Vec<Finding>,
+    pub actionable_fixes: Vec<ActionableFix>,
+    pub truth_status: String,
 }
 
-fn truth_status_from_baseline_compare(
-    scanned: &Graph,
-    baseline_path: &Path,
-) -> Result<sruja_diff::TruthStatus, CliError> {
-    let content = fs::read_to_string(baseline_path)?;
-    let parser = sruja_language::Parser::new(baseline_path.to_string_lossy().as_ref());
-    let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-        file: baseline_path.to_string_lossy().to_string(),
-        message: diags
-            .iter()
-            .map(|d| d.message.as_str())
-            .collect::<Vec<_>>()
-            .join("; "),
-        diagnostics: diags,
-    })?;
-    let proposed_graph = sruja_diff::program_to_graph(&program);
-    Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct InventorySummary {
+    pub modules: usize,
+    pub services: usize,
+    pub databases: usize,
+    pub external_apis: usize,
+    pub total_dependencies: usize,
 }
 
-fn sanitize_identifier(raw: &str) -> String {
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Finding {
+    pub severity: String,
+    pub kind: String,
+    pub message: String,
+    pub evidence: Vec<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ActionableFix {
+    pub priority: String,
+    pub description: String,
+    pub impact: String,
+    pub affected_components: Vec<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct StatusOutput {
+    pub baseline: Option<String>,
+    pub truth_status: String,
+    pub violations_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub health_score: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_updated_at: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct PrDriftResult {
+    pub base_ref: String,
+    pub head_ref: String,
+    pub changed_files: Vec<String>,
+    pub base_health: u8,
+    pub head_health: u8,
+    pub new_violations: Vec<PrViolation>,
+    pub base_violations_count: usize,
+    pub head_violations_count: usize,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct PrViolation {
+    pub severity: String,
+    pub kind: String,
+    pub message: String,
+    pub location: Option<String>,
+    pub suggestion: Option<String>,
+}
+
+pub(crate) fn sanitize_identifier(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len().max(1));
     for (i, ch) in raw.chars().enumerate() {
         let ok = if i == 0 {
@@ -109,7 +99,9 @@ fn sanitize_identifier(raw: &str) -> String {
     }
 }
 
-fn element_kind_for_node(node_kind: NodeKind) -> (sruja_language::ElementKind, Option<String>) {
+pub(crate) fn element_kind_for_node(
+    node_kind: NodeKind,
+) -> (sruja_language::ElementKind, Option<String>) {
     match node_kind {
         NodeKind::System => (sruja_language::ElementKind::System, None),
         NodeKind::Service => (
@@ -135,7 +127,7 @@ fn element_kind_for_node(node_kind: NodeKind) -> (sruja_language::ElementKind, O
     }
 }
 
-fn relation_label_for_edge(edge_kind: EdgeKind) -> &'static str {
+pub(crate) fn relation_label_for_edge(edge_kind: EdgeKind) -> &'static str {
     match edge_kind {
         EdgeKind::ReadsFrom => "reads from",
         EdgeKind::WritesTo => "writes to",
@@ -149,7 +141,7 @@ fn relation_label_for_edge(edge_kind: EdgeKind) -> &'static str {
     }
 }
 
-fn qualified_ident_from_id(id: &str) -> sruja_language::QualifiedIdent {
+pub(crate) fn qualified_ident_from_id(id: &str) -> sruja_language::QualifiedIdent {
     let parts = id
         .split('.')
         .filter(|p| !p.is_empty())
@@ -164,7 +156,7 @@ fn qualified_ident_from_id(id: &str) -> sruja_language::QualifiedIdent {
     }
 }
 
-fn path_production_relevant(path: &str) -> bool {
+pub(crate) fn path_production_relevant(path: &str) -> bool {
     let normalized = path
         .trim_start_matches("./")
         .trim_start_matches(".\\")
@@ -172,19 +164,46 @@ fn path_production_relevant(path: &str) -> bool {
     is_path_production_relevant(&normalized)
 }
 
-fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_language::Program {
+pub(crate) fn build_draft_program_from_graph(
+    graph: &Graph,
+    filename: &str,
+) -> sruja_language::Program {
     let mut nodes = graph
         .nodes
         .iter()
-        .filter(|n| match n.path.as_deref() {
-            Some(p) => path_production_relevant(p),
-            None => true,
+        .filter(|n| {
+            // Filter by production relevance
+            if let Some(p) = n.path.as_deref() {
+                if !path_production_relevant(p) {
+                    return false;
+                }
+            }
+
+            // Filter out low-level noise:
+            // - Symbols starting with lowercase (likely helper functions)
+            // - Very specific internal types if they follow a pattern
+            // - For now, we'll keep mostly "high-level" kinds
+            match n.kind {
+                NodeKind::Service
+                | NodeKind::Database
+                | NodeKind::ExternalApi
+                | NodeKind::Frontend
+                | NodeKind::Container => true,
+                NodeKind::Module => {
+                    // If it looks like a module-level item but not a deeply nested symbol
+                    // Heuristic: skip if it contains common noisy suffixes
+                    let noise = [
+                        "Summary", "Output", "Baseline", "Config", "Options", "Result",
+                    ];
+                    !noise.iter().any(|&s| n.id.ends_with(s))
+                }
+                _ => false, // Skip Raw/Component/etc if too noisy
+            }
         })
         .cloned()
         .collect::<Vec<_>>();
 
-    let allowed_ids: std::collections::HashSet<&str> =
-        nodes.iter().map(|n| n.id.as_str()).collect();
+    let allowed_ids: HashSet<&str> = nodes.iter().map(|n| n.id.as_str()).collect();
     let mut edges = graph
         .edges
         .iter()
@@ -194,8 +213,8 @@ fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_langua
         .cloned()
         .collect::<Vec<_>>();
 
-    let mut id_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    let mut used: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut id_map: HashMap<String, String> = HashMap::new();
+    let mut used: HashMap<String, usize> = HashMap::new();
 
     for node in &nodes {
         let mut base = sanitize_identifier(&node.id);
@@ -355,7 +374,7 @@ fn build_draft_program_from_graph(graph: &Graph, filename: &str) -> sruja_langua
     sruja_language::Program::new().with_items(items)
 }
 
-pub(crate) fn write_draft_baseline(
+pub fn write_draft_baseline(
     repo_root: &Path,
     graph: &Graph,
     force: bool,
@@ -381,14 +400,14 @@ pub(crate) fn write_draft_baseline(
     Ok(Some(out_path))
 }
 
-fn escape_github_actions_message(input: &str) -> String {
+pub(crate) fn escape_github_actions_message(input: &str) -> String {
     input
         .replace('%', "%25")
         .replace('\n', "%0A")
         .replace('\r', "%0D")
 }
 
-fn violation_kind_str(kind: sruja_diff::ViolationKind) -> &'static str {
+pub(crate) fn violation_kind_str(kind: sruja_diff::ViolationKind) -> &'static str {
     match kind {
         sruja_diff::ViolationKind::LayerViolation => "layer-violation",
         sruja_diff::ViolationKind::MissingDependency => "missing-dependency",
@@ -400,7 +419,7 @@ fn violation_kind_str(kind: sruja_diff::ViolationKind) -> &'static str {
     }
 }
 
-fn violation_best_file_line(v: &sruja_diff::Violation) -> (Option<&str>, Option<u32>) {
+pub(crate) fn violation_best_file_line(v: &sruja_diff::Violation) -> (Option<&str>, Option<u32>) {
     if let Some(src) = v.sources.first() {
         if let (Some(ref file), Some(line)) = (&src.file, src.line) {
             return (Some(file.as_str()), Some(line));
@@ -422,7 +441,7 @@ fn violation_best_file_line(v: &sruja_diff::Violation) -> (Option<&str>, Option<
     (None, None)
 }
 
-fn print_violations_github_actions(violations: &[sruja_diff::Violation]) {
+pub(crate) fn print_violations_github_actions(violations: &[sruja_diff::Violation]) {
     for v in violations {
         let level = match v.severity {
             sruja_diff::Severity::Error => "error",
@@ -445,375 +464,7 @@ fn print_violations_github_actions(violations: &[sruja_diff::Violation]) {
     }
 }
 
-pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
-    let pb = indicatif::ProgressBar::new_spinner();
-    pb.set_message("Scanning repository...");
-    pb.enable_steady_tick(std::time::Duration::from_millis(100));
-
-    let graph_result =
-        sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::Scan(e.to_string()));
-    pb.finish_and_clear();
-    let graph = graph_result?;
-
-    let json = serde_json::to_string_pretty(&graph)?;
-
-    if output == "-" {
-        println!("{}", json);
-        return Ok(());
-    }
-
-    fs::write(output, json)?;
-    println!("Wrote {}", output);
-    Ok(())
-}
-
-pub async fn drift(
-    repo_root: &str,
-    architecture_path: Option<&str>,
-    format: &str,
-    _enrich: bool,
-    violations_only: bool,
-    fail_on: Option<&str>,
-) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
-
-    let actual_graph = scan_repo(repo_path)?;
-
-    let resolved = architecture_path::resolve_architecture_path(repo_path);
-    let effective_arch = architecture_path.or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
-
-    if let Some(arch_path) = effective_arch {
-        let arch_file = Path::new(arch_path);
-        if !arch_file.exists() {
-            return Err(CliError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Architecture file not found: {}", arch_path),
-            )));
-        }
-        let content = fs::read_to_string(arch_file)?;
-        let parser = sruja_language::Parser::new(arch_path);
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: arch_path.to_string(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
-        let proposed_graph = sruja_diff::program_to_graph(&program);
-        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
-
-        match format {
-            "json" => {
-                println!("{}", serde_json::to_string_pretty(&diff_result)?);
-            }
-            "github" | "github-actions" => {
-                print_violations_github_actions(&diff_result.violations);
-            }
-            _ => {
-                print_diff_text(&diff_result, violations_only);
-            }
-        }
-
-        if should_fail_on_violations(fail_on, &diff_result.violations) {
-            return Err(CliError::FailOnViolations);
-        }
-    } else {
-        let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
-
-        match format {
-            "json" => {
-                println!("{}", serde_json::to_string_pretty(&drift_result)?);
-            }
-            "github" | "github-actions" => {
-                print_violations_github_actions(&drift_result.violations);
-            }
-            _ => {
-                print_drift_text(&drift_result, violations_only);
-            }
-        }
-
-        if should_fail_on_violations(fail_on, &drift_result.violations) {
-            return Err(CliError::FailOnViolations);
-        }
-    }
-
-    Ok(())
-}
-
-pub async fn drift_json_string(
-    repo_root: &str,
-    architecture_path: Option<&str>,
-    violations_only: bool,
-) -> Result<String, CliError> {
-    let repo_path = Path::new(repo_root);
-
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
-
-    let actual_graph = scan_repo(repo_path)?;
-
-    let resolved = architecture_path::resolve_architecture_path(repo_path);
-    let effective_arch = architecture_path.or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
-
-    if let Some(arch_path) = effective_arch {
-        let arch_file = Path::new(arch_path);
-        if !arch_file.exists() {
-            return Err(CliError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Architecture file not found: {}", arch_path),
-            )));
-        }
-        let content = fs::read_to_string(arch_file)?;
-        let parser = sruja_language::Parser::new(arch_path);
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: arch_path.to_string(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
-        let proposed_graph = sruja_diff::program_to_graph(&program);
-        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
-
-        if !violations_only {
-            return Ok(serde_json::to_string_pretty(&diff_result)?);
-        }
-
-        let value = serde_json::to_value(&diff_result)?;
-        let out = serde_json::json!({
-            "truth_status": value.get("truth_status").cloned().unwrap_or(serde_json::Value::Null),
-            "summary": value.get("summary").cloned().unwrap_or(serde_json::Value::Null),
-            "violations": value.get("violations").cloned().unwrap_or(serde_json::Value::Null)
-        });
-        return Ok(serde_json::to_string_pretty(&out)?);
-    }
-
-    let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
-
-    if !violations_only {
-        return Ok(serde_json::to_string_pretty(&drift_result)?);
-    }
-
-    let value = serde_json::to_value(&drift_result)?;
-    let out = serde_json::json!({
-        "truth_status": value.get("truth_status").cloned().unwrap_or(serde_json::Value::Null),
-        "health_score": value.get("health_score").cloned().unwrap_or(serde_json::Value::Null),
-        "violations": value.get("violations").cloned().unwrap_or(serde_json::Value::Null)
-    });
-    Ok(serde_json::to_string_pretty(&out)?)
-}
-
-/// Result of `sruja status`: baseline path, truth status, and counts for extension/CI.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct StatusOutput {
-    /// Resolved architecture file path, or null if none found.
-    pub baseline: Option<String>,
-    /// "reviewed" | "drifted" | "unknown"
-    pub truth_status: String,
-    pub violations_count: usize,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub health_score: Option<u8>,
-    /// ISO8601 timestamp from .sruja/context.json if present.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub context_updated_at: Option<String>,
-}
-
-/// Compute status without printing: resolve baseline, run drift, return summary.
-pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
-    let repo_path = Path::new(repo_root);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
-
-    let baseline = architecture_path::resolve_architecture_path(repo_path)
-        .and_then(|p| p.to_str().map(String::from));
-
-    let context_updated_at = std::fs::read_to_string(repo_path.join(".sruja/context.json"))
-        .ok()
-        .and_then(|s| {
-            serde_json::from_str::<serde_json::Value>(&s)
-                .ok()
-                .and_then(|v| {
-                    v.get("updated_at")
-                        .and_then(|t| t.as_str())
-                        .map(String::from)
-                })
-        });
-
-    let graph = scan_repo(repo_path)?;
-
-    if let Some(ref arch_path) = baseline {
-        let content = fs::read_to_string(arch_path)?;
-        let parser = sruja_language::Parser::new(arch_path);
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: arch_path.clone(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
-        let proposed = sruja_diff::program_to_graph(&program);
-        let diff = sruja_diff::compare_graphs(&graph, &proposed);
-        let truth_status = match diff.truth_status {
-            sruja_diff::TruthStatus::Reviewed => "reviewed",
-            sruja_diff::TruthStatus::Drifted => "drifted",
-            sruja_diff::TruthStatus::Unknown => "unknown",
-        };
-        return Ok(StatusOutput {
-            baseline: Some(arch_path.clone()),
-            truth_status: truth_status.to_string(),
-            violations_count: diff.violations.len(),
-            health_score: Some(diff.summary.health_score),
-            context_updated_at,
-        });
-    }
-
-    let drift = sruja_diff::detect_architectural_drift(&graph);
-    let truth_status = match drift.truth_status {
-        sruja_diff::TruthStatus::Reviewed => "reviewed",
-        sruja_diff::TruthStatus::Drifted => "drifted",
-        sruja_diff::TruthStatus::Unknown => "unknown",
-    };
-    Ok(StatusOutput {
-        baseline: None,
-        truth_status: truth_status.to_string(),
-        violations_count: drift.violations.len(),
-        health_score: Some(drift.health_score),
-        context_updated_at,
-    })
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct QuickstartResult {
-    pub repo: String,
-    /// Scan scope metadata (what was included/excluded).
-    pub scan_scope: sruja_scan::scan_scope::ScanScope,
-    /// Structural health only (cycles, layers, god modules, orphans).
-    pub health_score: u8,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub health_breakdown: Option<sruja_diff::HealthScoreBreakdown>,
-    pub inventory: InventorySummary,
-    pub top_findings: Vec<Finding>,
-    pub actionable_fixes: Vec<ActionableFix>,
-    /// No DSL baseline in quickstart: always "unknown".
-    pub truth_status: String,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct InventorySummary {
-    pub modules: usize,
-    pub services: usize,
-    pub databases: usize,
-    pub external_apis: usize,
-    pub total_dependencies: usize,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Finding {
-    pub severity: String,
-    pub kind: String,
-    pub message: String,
-    pub evidence: Vec<String>,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct ActionableFix {
-    pub priority: String,
-    pub description: String,
-    pub impact: String,
-    pub affected_components: Vec<String>,
-}
-
-impl QuickstartResult {
-    fn from_drift_report(
-        report: &sruja_diff::DriftReport,
-        graph: &Graph,
-        repo: &str,
-        scan_scope: &sruja_scan::ScanScope,
-    ) -> Self {
-        let external_apis = graph
-            .nodes
-            .iter()
-            .filter(|n| n.kind == NodeKind::ExternalApi)
-            .count();
-
-        let mut all_violations: Vec<_> = report.violations.iter().collect();
-        all_violations.sort_by(|a, b| {
-            let severity_order = |s: &sruja_diff::Severity| match s {
-                sruja_diff::Severity::Error => 0,
-                sruja_diff::Severity::Warning => 1,
-                sruja_diff::Severity::Info => 2,
-            };
-            severity_order(&a.severity).cmp(&severity_order(&b.severity))
-        });
-
-        let top_findings: Vec<Finding> = all_violations
-            .iter()
-            .take(3)
-            .map(|v| {
-                let mut evidence: Vec<String> = v
-                    .location
-                    .as_ref()
-                    .map(|s| vec![s.clone()])
-                    .unwrap_or_default();
-                for s in &v.sources {
-                    evidence.push(sruja_diff::SourceRef::display_string(s));
-                }
-                Finding {
-                    severity: match v.severity {
-                        sruja_diff::Severity::Error => "error".to_string(),
-                        sruja_diff::Severity::Warning => "warning".to_string(),
-                        sruja_diff::Severity::Info => "info".to_string(),
-                    },
-                    kind: format!("{:?}", v.kind),
-                    message: v.message.clone(),
-                    evidence,
-                }
-            })
-            .collect();
-
-        let actionable_fixes = generate_actionable_fixes_from_violations(&report.violations);
-
-        QuickstartResult {
-            repo: repo.to_string(),
-            scan_scope: scan_scope.clone(),
-            health_score: report.health_score,
-            health_breakdown: report.health_breakdown,
-            inventory: InventorySummary {
-                modules: report.total_modules,
-                services: report.total_services,
-                databases: report.total_databases,
-                external_apis,
-                total_dependencies: report.total_dependencies,
-            },
-            top_findings,
-            actionable_fixes,
-            truth_status: "unknown".to_string(),
-        }
-    }
-}
-
-fn generate_actionable_fixes_from_violations(
+pub(crate) fn generate_actionable_fixes_from_violations(
     violations: &[sruja_diff::Violation],
 ) -> Vec<ActionableFix> {
     use sruja_diff::ViolationKind;
@@ -882,7 +533,11 @@ fn generate_actionable_fixes_from_violations(
     fixes
 }
 
-fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, repo: &str) {
+pub(crate) fn print_quickstart_summary(
+    report: &sruja_diff::DriftReport,
+    graph: &Graph,
+    repo: &str,
+) {
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
     println!("{}", "📊 Architecture Inventory".cyan().bold());
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
@@ -964,7 +619,6 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
         println!();
         println!("  {}. {} {}", i + 1, icon, msg);
         if let Some(ref loc) = v.location {
-            // Find actual path or sanitize ID to look like a path
             let display_loc = graph
                 .nodes
                 .iter()
@@ -1030,7 +684,7 @@ fn print_quickstart_summary(report: &sruja_diff::DriftReport, graph: &Graph, rep
     println!("{}", "🗺️  High-Level Domain Map".magenta().bold());
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
 
-    let mut domains: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut domains: HashMap<String, usize> = HashMap::new();
     for node in &graph.nodes {
         let path_str = node.path.as_deref().unwrap_or(&node.id);
         let normalized = path_str.replace(['\\', '_'], "/");
@@ -1194,7 +848,7 @@ pub(crate) fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: 
     println!("{}", "═".repeat(60));
 }
 
-fn print_violation_sources(v: &sruja_diff::Violation) {
+pub(crate) fn print_violation_sources(v: &sruja_diff::Violation) {
     if !v.sources.is_empty() {
         let refs: Vec<String> = v
             .sources
@@ -1290,322 +944,7 @@ pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only
     println!("{}", "═".repeat(60));
 }
 
-pub async fn quickstart(
-    repo_root: &str,
-    format: &str,
-    generate_baseline: bool,
-    fail_on: Option<&str>,
-) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
-
-    eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
-    eprintln!(
-        "{}",
-        "🚀 Sruja Quickstart - Context Engineering".green().bold()
-    );
-    eprintln!("{}", "═".repeat(70).truecolor(100, 100, 100));
-    eprintln!();
-
-    eprintln!("📂 Scanning repository...");
-    let graph = scan_repo(repo_path)?;
-    eprintln!("   ✓ Found {} components", graph.nodes.len());
-    let (_, scan_scope) = resolve_scan_scope(repo_path);
-
-    let languages = detect_languages(repo_path);
-    let primary_language = languages
-        .first()
-        .map(|(l, _)| l.as_str())
-        .unwrap_or("Unknown");
-    let framework = detect_framework(repo_path, primary_language);
-    let (is_monolith, is_microservices) = detect_architecture_style(&graph);
-    let context = build_repo_context(repo_path, &graph);
-
-    eprintln!();
-    eprintln!("📊 Repository Context");
-    eprintln!("   • Primary Language: {}", primary_language.cyan());
-    if let Some(ref fw) = framework {
-        eprintln!("   • Framework: {}", fw.cyan());
-    }
-    if is_microservices {
-        eprintln!("   • Architecture: {}", "Microservices".cyan());
-    } else if is_monolith {
-        eprintln!("   • Architecture: {}", "Monolith".cyan());
-    }
-    if let Some(ref domain) = context.domain {
-        eprintln!("   • Domain: {}", domain.cyan());
-    }
-    eprintln!();
-
-    eprintln!("🔍 Analyzing architecture health...");
-    let drift_report = sruja_diff::detect_architectural_drift(&graph);
-    eprintln!("   ✓ Analysis complete");
-    eprintln!();
-
-    // If a baseline exists, compute truth_status from scan vs DSL.
-    let baseline_path = architecture_path::resolve_architecture_path(repo_path);
-    let truth_status = if let Some(ref p) = baseline_path {
-        match truth_status_from_baseline_compare(&graph, p) {
-            Ok(s) => match s {
-                sruja_diff::TruthStatus::Reviewed => "reviewed",
-                sruja_diff::TruthStatus::Drifted => "drifted",
-                sruja_diff::TruthStatus::Unknown => "unknown",
-            }
-            .to_string(),
-            Err(_) => "unknown".to_string(),
-        }
-    } else {
-        "unknown".to_string()
-    };
-
-    if generate_baseline {
-        match write_draft_baseline(repo_path, &graph, false)? {
-            Some(p) => {
-                eprintln!("📝 Wrote draft baseline: {}", p.to_string_lossy().cyan());
-                eprintln!();
-            }
-            None => {
-                eprintln!("📝 Baseline already exists (repo.sruja). Skipping write.");
-                eprintln!();
-            }
-        }
-    }
-
-    match format {
-        "json" => {
-            let mut output =
-                QuickstartResult::from_drift_report(&drift_report, &graph, repo_root, &scan_scope);
-            output.truth_status = truth_status;
-            println!("{}", serde_json::to_string_pretty(&output)?);
-        }
-        _ => {
-            if baseline_path.is_some() {
-                eprintln!("🧭 Truth (baseline present): {}", truth_status.cyan());
-                eprintln!();
-            }
-            print_quickstart_summary(&drift_report, &graph, repo_root);
-        }
-    }
-
-    if should_fail_on_violations(fail_on, &drift_report.violations) {
-        return Err(CliError::FailOnViolations);
-    }
-
-    Ok(())
-}
-
-/// PR-scoped drift: compare base and head refs to find NEW violations
-pub async fn drift_pr(
-    repo_root: &str,
-    base_ref: Option<&str>,
-    head_ref: Option<&str>,
-    format: &str,
-) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
-
-    let base = base_ref.unwrap_or("origin/main");
-    let head = head_ref.unwrap_or("HEAD");
-
-    eprintln!("🔍 PR-Scoped Drift Detection");
-    eprintln!("   Base: {} | Head: {}", base, head);
-    eprintln!();
-
-    // Check if git is available
-    let git_ok = std::process::Command::new("git")
-        .args(["rev-parse", "--is-inside-work-tree"])
-        .current_dir(repo_path)
-        .output()
-        .ok()
-        .and_then(|o| o.status.success().then_some(()))
-        .is_some();
-
-    if !git_ok {
-        return Err(CliError::Validation(
-            "Not a git repository. PR-scoped drift requires git.".to_string(),
-        ));
-    }
-
-    // Get list of changed files between base and head
-    let changed_files_output = std::process::Command::new("git")
-        .args(["diff", "--name-only", &format!("{}...{}", base, head)])
-        .current_dir(repo_path)
-        .output()
-        .map_err(|e| {
-            CliError::Io(std::io::Error::other(format!(
-                "Failed to get changed files: {}",
-                e
-            )))
-        })?;
-
-    let changed_files: Vec<String> = String::from_utf8_lossy(&changed_files_output.stdout)
-        .lines()
-        .map(|s| s.trim().to_string())
-        .collect();
-
-    if changed_files.is_empty() {
-        eprintln!("✅ No changed files detected between {} in {}", base, head);
-        return Ok(());
-    }
-
-    eprintln!("📝 Changed files: {}", changed_files.len());
-
-    // Head graph: use cache by commit SHA if present (incremental / CI retry)
-    let head_sha_output = std::process::Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .current_dir(repo_path)
-        .output()
-        .ok();
-    let head_sha = head_sha_output
-        .and_then(|o| {
-            o.status
-                .success()
-                .then(|| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        })
-        .unwrap_or_default();
-    let cache_dir = repo_path.join(".sruja").join("cache");
-    let _ = fs::create_dir_all(&cache_dir);
-    let head_cache_path = if !head_sha.is_empty() {
-        cache_dir.join(format!("head_{}.json", head_sha))
-    } else {
-        PathBuf::new() // sentinel: no cache
-    };
-    let head_graph = if !head_cache_path.as_os_str().is_empty() && head_cache_path.exists() {
-        eprintln!(
-            "📂 Using cached head graph ({})",
-            &head_sha[..head_sha.len().min(8)]
-        );
-        let content = fs::read_to_string(&head_cache_path)?;
-        serde_json::from_str(&content).map_err(CliError::Json)?
-    } else {
-        let g = scan_repo(repo_path)?;
-        if !head_cache_path.as_os_str().is_empty() {
-            if let Ok(json) = serde_json::to_string_pretty(&g) {
-                let _ = fs::write(&head_cache_path, json);
-            }
-        }
-        g
-    };
-    let head_drift = sruja_diff::detect_architectural_drift(&head_graph);
-
-    // Base graph: from cache, or checkout base in a temp worktree and scan (so base != head)
-    let cache_filename = base.replace(['/', '.'], "_");
-    let cache_path = cache_dir.join(format!("{}.json", cache_filename));
-    let base_graph = if cache_path.exists() {
-        let content = fs::read_to_string(&cache_path)?;
-        serde_json::from_str(&content).map_err(CliError::Json)?
-    } else {
-        // No cache: checkout base ref in a temp worktree and scan there
-        let worktree_dir =
-            std::env::temp_dir().join(format!("sruja-drift-base-{}", std::process::id()));
-        if worktree_dir.exists() {
-            let _ = fs::remove_dir_all(&worktree_dir);
-        }
-        let status = std::process::Command::new("git")
-            .arg("worktree")
-            .arg("add")
-            .arg("--detach")
-            .arg(worktree_dir.as_path())
-            .arg(base)
-            .current_dir(repo_path)
-            .status()
-            .map_err(|e| {
-                CliError::Io(std::io::Error::other(format!(
-                    "git worktree add failed (is '{}' a valid ref?): {}",
-                    base, e
-                )))
-            })?;
-        if !status.success() {
-            return Err(CliError::Validation(format!(
-                "Could not checkout base ref '{}'. Run a full scan on base and save to .sruja/cache/{}.json, or ensure the ref exists.",
-                base, cache_filename
-            )));
-        }
-        let base_graph = scan_repo(&worktree_dir).map_err(|e| {
-            let _ = std::process::Command::new("git")
-                .arg("worktree")
-                .arg("remove")
-                .arg("--force")
-                .arg(worktree_dir.as_path())
-                .current_dir(repo_path)
-                .status();
-            CliError::Scan(e.to_string())
-        })?;
-        let _ = std::process::Command::new("git")
-            .arg("worktree")
-            .arg("remove")
-            .arg("--force")
-            .arg(worktree_dir.as_path())
-            .current_dir(repo_path)
-            .status();
-        base_graph
-    };
-
-    // Compare: what violations exist in head that don't exist in base
-    let base_drift = sruja_diff::detect_architectural_drift(&base_graph);
-
-    let new_violations: Vec<_> = head_drift
-        .violations
-        .iter()
-        .filter(|hv| {
-            !base_drift.violations.iter().any(|bv| {
-                bv.kind == hv.kind && bv.message == hv.message && bv.location == hv.location
-            })
-        })
-        .collect();
-
-    let result = PrDriftResult {
-        base_ref: base_ref.unwrap_or("origin/main").to_string(),
-        head_ref: head_ref.unwrap_or("HEAD").to_string(),
-        changed_files,
-        base_health: base_drift.health_score,
-        head_health: head_drift.health_score,
-        new_violations: new_violations
-            .iter()
-            .map(|v| PrViolation {
-                severity: format!("{:?}", v.severity),
-                kind: format!("{:?}", v.kind),
-                message: v.message.clone(),
-                location: v.location.clone(),
-                suggestion: v.suggestion.clone(),
-            })
-            .collect(),
-        base_violations_count: base_drift.violations.len(),
-        head_violations_count: head_drift.violations.len(),
-    };
-
-    match format {
-        "json" => {
-            let output = serde_json::to_string_pretty(&result)?;
-            println!("{}", output);
-        }
-        "github-actions" => {
-            print_github_actions_output(&result);
-        }
-        _ => {
-            print_pr_drift_text(&result);
-        }
-    }
-
-    // Exit with non-zero so CI fails when this PR introduces new violations
-    if !result.new_violations.is_empty() {
-        return Err(CliError::FailOnViolations);
-    }
-
-    Ok(())
-}
-fn print_pr_drift_text(result: &PrDriftResult) {
+pub(crate) fn print_pr_drift_text(result: &PrDriftResult) {
     println!("{}", "═".repeat(70));
     println!("🔍 PR-Scoped Drift Detection");
     println!("{}", "═".repeat(70));
@@ -1654,14 +993,21 @@ fn print_pr_drift_text(result: &PrDriftResult) {
         );
         println!("{}", "-".repeat(40));
 
-        for v in &result.new_violations {
+        for (i, v) in result.new_violations.iter().enumerate() {
             let icon = match v.severity.as_str() {
                 "Error" => "❌",
                 "Warning" => "⚠️",
+                "Info" | "Notice" => "ℹ️",
                 _ => "ℹ️",
             };
             println!();
-            println!("  {} [{}] {}", icon, v.severity.to_uppercase(), v.message);
+            println!(
+                "  {}. {} [{}] {}",
+                i + 1,
+                icon,
+                v.severity.to_uppercase(),
+                v.message
+            );
             if let Some(ref loc) = v.location {
                 println!("     📍 {}", loc);
             }
@@ -1685,11 +1031,13 @@ fn print_pr_drift_text(result: &PrDriftResult) {
 
     println!("{}", "═".repeat(70));
 }
-fn print_github_actions_output(result: &PrDriftResult) {
+
+pub(crate) fn print_github_actions_output(result: &PrDriftResult) {
     for v in &result.new_violations {
         let level = match v.severity.as_str() {
             "Error" => "error",
             "Warning" => "warning",
+            "Info" | "Notice" => "notice",
             _ => "notice",
         };
         if let Some(ref loc) = v.location {
@@ -1715,23 +1063,4 @@ fn print_github_actions_output(result: &PrDriftResult) {
             result.head_health
         );
     }
-}
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct PrDriftResult {
-    base_ref: String,
-    head_ref: String,
-    changed_files: Vec<String>,
-    base_health: u8,
-    head_health: u8,
-    new_violations: Vec<PrViolation>,
-    base_violations_count: usize,
-    head_violations_count: usize,
-}
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-struct PrViolation {
-    severity: String,
-    kind: String,
-    message: String,
-    location: Option<String>,
-    suggestion: Option<String>,
 }

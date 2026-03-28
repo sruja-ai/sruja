@@ -1,0 +1,505 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use crate::commands::CliError;
+use crate::utils::architecture_path;
+use sruja_scan::scan_repo;
+
+use super::output::{
+    print_diff_text, print_drift_text, print_github_actions_output, print_pr_drift_text,
+    print_violations_github_actions, PrDriftResult, PrViolation, StatusOutput,
+};
+
+pub(crate) fn should_fail_on_violations(
+    fail_on: Option<&str>,
+    violations: &[sruja_diff::Violation],
+) -> bool {
+    if let Some(criteria) = fail_on {
+        let criteria_lower = criteria.to_lowercase();
+        let criteria_list: Vec<&str> = criteria_lower.split(',').map(|s| s.trim()).collect();
+
+        for criterion in criteria_list {
+            match criterion {
+                "all" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
+                    {
+                        return true;
+                    }
+                }
+                "cycles" | "circular" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::CircularDependency))
+                    {
+                        return true;
+                    }
+                }
+                "layer-violations" | "layer" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation))
+                    {
+                        return true;
+                    }
+                }
+                "god-modules" | "god" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule))
+                    {
+                        return true;
+                    }
+                }
+                "orphans" => {
+                    if violations
+                        .iter()
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent))
+                    {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
+pub(crate) fn truth_status_from_baseline_compare(
+    scanned: &sruja_scan::Graph,
+    baseline_path: &Path,
+) -> Result<sruja_diff::TruthStatus, CliError> {
+    let content = fs::read_to_string(baseline_path)?;
+    let parser = sruja_language::Parser::new(baseline_path.to_string_lossy().as_ref());
+    let program = parser.parse(&content).map_err(|diags| CliError::Parse {
+        file: baseline_path.to_string_lossy().to_string(),
+        message: diags
+            .iter()
+            .map(|d| d.message.as_str())
+            .collect::<Vec<_>>()
+            .join("; "),
+        diagnostics: diags,
+    })?;
+    let proposed_graph = sruja_diff::program_to_graph(&program);
+    Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
+}
+
+pub async fn drift(
+    repo_root: &str,
+    architecture_path: Option<&str>,
+    format: &str,
+    _enrich: bool,
+    violations_only: bool,
+    fail_on: Option<&str>,
+) -> Result<(), CliError> {
+    let repo_path = Path::new(repo_root);
+
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let actual_graph = scan_repo(repo_path)?;
+
+    let resolved = architecture_path::resolve_architecture_path(repo_path);
+    let effective_arch = architecture_path.or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
+
+    if let Some(arch_path) = effective_arch {
+        let arch_file = Path::new(arch_path);
+        if !arch_file.exists() {
+            return Err(CliError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Architecture file not found: {}", arch_path),
+            )));
+        }
+        let content = fs::read_to_string(arch_file)?;
+        let parser = sruja_language::Parser::new(arch_path);
+        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
+            file: arch_path.to_string(),
+            message: diags
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; "),
+            diagnostics: diags,
+        })?;
+        let proposed_graph = sruja_diff::program_to_graph(&program);
+        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
+
+        match format {
+            "json" => {
+                println!("{}", serde_json::to_string_pretty(&diff_result)?);
+            }
+            "github" | "github-actions" => {
+                print_violations_github_actions(&diff_result.violations);
+            }
+            _ => {
+                print_diff_text(&diff_result, violations_only);
+            }
+        }
+
+        if should_fail_on_violations(fail_on, &diff_result.violations) {
+            return Err(CliError::FailOnViolations);
+        }
+    } else {
+        let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
+
+        match format {
+            "json" => {
+                println!("{}", serde_json::to_string_pretty(&drift_result)?);
+            }
+            "github" | "github-actions" => {
+                print_violations_github_actions(&drift_result.violations);
+            }
+            _ => {
+                print_drift_text(&drift_result, violations_only);
+            }
+        }
+
+        if should_fail_on_violations(fail_on, &drift_result.violations) {
+            return Err(CliError::FailOnViolations);
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn drift_json_string(
+    repo_root: &str,
+    architecture_path: Option<&str>,
+    violations_only: bool,
+) -> Result<String, CliError> {
+    let repo_path = Path::new(repo_root);
+
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let actual_graph = scan_repo(repo_path)?;
+
+    let resolved = architecture_path::resolve_architecture_path(repo_path);
+    let effective_arch = architecture_path.or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
+
+    if let Some(arch_path) = effective_arch {
+        let arch_file = Path::new(arch_path);
+        if !arch_file.exists() {
+            return Err(CliError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Architecture file not found: {}", arch_path),
+            )));
+        }
+        let content = fs::read_to_string(arch_file)?;
+        let parser = sruja_language::Parser::new(arch_path);
+        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
+            file: arch_path.to_string(),
+            message: diags
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; "),
+            diagnostics: diags,
+        })?;
+        let proposed_graph = sruja_diff::program_to_graph(&program);
+        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
+
+        if !violations_only {
+            return Ok(serde_json::to_string_pretty(&diff_result)?);
+        }
+
+        let value = serde_json::to_value(&diff_result)?;
+        let out = serde_json::json!({
+            "truth_status": value.get("truth_status").cloned().unwrap_or(serde_json::Value::Null),
+            "summary": value.get("summary").cloned().unwrap_or(serde_json::Value::Null),
+            "violations": value.get("violations").cloned().unwrap_or(serde_json::Value::Null)
+        });
+        return Ok(serde_json::to_string_pretty(&out)?);
+    }
+
+    let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
+
+    if !violations_only {
+        return Ok(serde_json::to_string_pretty(&drift_result)?);
+    }
+
+    let value = serde_json::to_value(&drift_result)?;
+    let out = serde_json::json!({
+        "truth_status": value.get("truth_status").cloned().unwrap_or(serde_json::Value::Null),
+        "health_score": value.get("health_score").cloned().unwrap_or(serde_json::Value::Null),
+        "violations": value.get("violations").cloned().unwrap_or(serde_json::Value::Null)
+    });
+    Ok(serde_json::to_string_pretty(&out)?)
+}
+
+pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
+    let repo_path = Path::new(repo_root);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let baseline = architecture_path::resolve_architecture_path(repo_path)
+        .and_then(|p| p.to_str().map(String::from));
+
+    let context_updated_at = std::fs::read_to_string(repo_path.join(".sruja/context.json"))
+        .ok()
+        .and_then(|s| {
+            serde_json::from_str::<serde_json::Value>(&s)
+                .ok()
+                .and_then(|v| {
+                    v.get("updated_at")
+                        .and_then(|t| t.as_str())
+                        .map(String::from)
+                })
+        });
+
+    let graph = scan_repo(repo_path)?;
+
+    if let Some(ref arch_path) = baseline {
+        let content = fs::read_to_string(arch_path)?;
+        let parser = sruja_language::Parser::new(arch_path);
+        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
+            file: arch_path.clone(),
+            message: diags
+                .iter()
+                .map(|d| d.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; "),
+            diagnostics: diags,
+        })?;
+        let proposed = sruja_diff::program_to_graph(&program);
+        let diff = sruja_diff::compare_graphs(&graph, &proposed);
+        let truth_status = match diff.truth_status {
+            sruja_diff::TruthStatus::Reviewed => "reviewed",
+            sruja_diff::TruthStatus::Drifted => "drifted",
+            sruja_diff::TruthStatus::Unknown => "unknown",
+        };
+        return Ok(StatusOutput {
+            baseline: Some(arch_path.clone()),
+            truth_status: truth_status.to_string(),
+            violations_count: diff.violations.len(),
+            health_score: Some(diff.summary.health_score),
+            context_updated_at,
+        });
+    }
+
+    let drift = sruja_diff::detect_architectural_drift(&graph);
+    let truth_status = match drift.truth_status {
+        sruja_diff::TruthStatus::Reviewed => "reviewed",
+        sruja_diff::TruthStatus::Drifted => "drifted",
+        sruja_diff::TruthStatus::Unknown => "unknown",
+    };
+    Ok(StatusOutput {
+        baseline: None,
+        truth_status: truth_status.to_string(),
+        violations_count: drift.violations.len(),
+        health_score: Some(drift.health_score),
+        context_updated_at,
+    })
+}
+
+pub async fn drift_pr(
+    repo_root: &str,
+    base_ref: Option<&str>,
+    head_ref: Option<&str>,
+    format: &str,
+) -> Result<(), CliError> {
+    let repo_path = Path::new(repo_root);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+
+    let base = base_ref.unwrap_or("origin/main");
+    let head = head_ref.unwrap_or("HEAD");
+
+    eprintln!("🔍 PR-Scoped Drift Detection");
+    eprintln!("   Base: {} | Head: {}", base, head);
+    eprintln!();
+
+    let git_ok = std::process::Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(repo_path)
+        .output()
+        .ok()
+        .and_then(|o| o.status.success().then_some(()))
+        .is_some();
+
+    if !git_ok {
+        return Err(CliError::Validation(
+            "Not a git repository. PR-scoped drift requires git.".to_string(),
+        ));
+    }
+
+    let changed_files_output = std::process::Command::new("git")
+        .args(["diff", "--name-only", &format!("{}...{}", base, head)])
+        .current_dir(repo_path)
+        .output()
+        .map_err(|e| {
+            CliError::Io(std::io::Error::other(format!(
+                "Failed to get changed files: {}",
+                e
+            )))
+        })?;
+
+    let changed_files: Vec<String> = String::from_utf8_lossy(&changed_files_output.stdout)
+        .lines()
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    if changed_files.is_empty() {
+        eprintln!("✅ No changed files detected between {} in {}", base, head);
+        return Ok(());
+    }
+
+    eprintln!("📝 Changed files: {}", changed_files.len());
+
+    let head_sha_output = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(repo_path)
+        .output()
+        .ok();
+    let head_sha = head_sha_output
+        .and_then(|o| {
+            o.status
+                .success()
+                .then(|| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        })
+        .unwrap_or_default();
+    let cache_dir = repo_path.join(".sruja").join("cache");
+    let _ = fs::create_dir_all(&cache_dir);
+    let head_cache_path = if !head_sha.is_empty() {
+        cache_dir.join(format!("head_{}.json", head_sha))
+    } else {
+        PathBuf::new()
+    };
+    let head_graph = if !head_cache_path.as_os_str().is_empty() && head_cache_path.exists() {
+        eprintln!(
+            "📂 Using cached head graph ({})",
+            &head_sha[..head_sha.len().min(8)]
+        );
+        let content = fs::read_to_string(&head_cache_path)?;
+        serde_json::from_str(&content).map_err(CliError::Json)?
+    } else {
+        let g = scan_repo(repo_path)?;
+        if !head_cache_path.as_os_str().is_empty() {
+            if let Ok(json) = serde_json::to_string_pretty(&g) {
+                let _ = fs::write(&head_cache_path, json);
+            }
+        }
+        g
+    };
+    let head_drift = sruja_diff::detect_architectural_drift(&head_graph);
+
+    let cache_filename = base.replace(['/', '.'], "_");
+    let cache_path = cache_dir.join(format!("{}.json", cache_filename));
+    let base_graph = if cache_path.exists() {
+        let content = fs::read_to_string(&cache_path)?;
+        serde_json::from_str(&content).map_err(CliError::Json)?
+    } else {
+        let worktree_dir =
+            std::env::temp_dir().join(format!("sruja-drift-base-{}", std::process::id()));
+        if worktree_dir.exists() {
+            let _ = fs::remove_dir_all(&worktree_dir);
+        }
+        let status = std::process::Command::new("git")
+            .arg("worktree")
+            .arg("add")
+            .arg("--detach")
+            .arg(worktree_dir.as_path())
+            .arg(base)
+            .current_dir(repo_path)
+            .status()
+            .map_err(|e| {
+                CliError::Io(std::io::Error::other(format!(
+                    "git worktree add failed (is '{}' a valid ref?): {}",
+                    base, e
+                )))
+            })?;
+        if !status.success() {
+            return Err(CliError::Validation(format!(
+                "Could not checkout base ref '{}'. Run a full scan on base and save to .sruja/cache/{}.json, or ensure the ref exists.",
+                base, cache_filename
+            )));
+        }
+        let base_graph = scan_repo(&worktree_dir).map_err(|e| {
+            let _ = std::process::Command::new("git")
+                .arg("worktree")
+                .arg("remove")
+                .arg("--force")
+                .arg(worktree_dir.as_path())
+                .current_dir(repo_path)
+                .status();
+            CliError::Scan(e.to_string())
+        })?;
+        let _ = std::process::Command::new("git")
+            .arg("worktree")
+            .arg("remove")
+            .arg("--force")
+            .arg(worktree_dir.as_path())
+            .current_dir(repo_path)
+            .status();
+        base_graph
+    };
+
+    let base_drift = sruja_diff::detect_architectural_drift(&base_graph);
+
+    let new_violations: Vec<_> = head_drift
+        .violations
+        .iter()
+        .filter(|hv| {
+            !base_drift.violations.iter().any(|bv| {
+                bv.kind == hv.kind && bv.message == hv.message && bv.location == hv.location
+            })
+        })
+        .collect();
+
+    let result = PrDriftResult {
+        base_ref: base_ref.unwrap_or("origin/main").to_string(),
+        head_ref: head_ref.unwrap_or("HEAD").to_string(),
+        changed_files,
+        base_health: base_drift.health_score,
+        head_health: head_drift.health_score,
+        new_violations: new_violations
+            .iter()
+            .map(|v| PrViolation {
+                severity: format!("{:?}", v.severity),
+                kind: format!("{:?}", v.kind),
+                message: v.message.clone(),
+                location: v.location.clone(),
+                suggestion: v.suggestion.clone(),
+            })
+            .collect(),
+        base_violations_count: base_drift.violations.len(),
+        head_violations_count: head_drift.violations.len(),
+    };
+
+    match format {
+        "json" => {
+            let output = serde_json::to_string_pretty(&result)?;
+            println!("{}", output);
+        }
+        "github-actions" => {
+            print_github_actions_output(&result);
+        }
+        _ => {
+            print_pr_drift_text(&result);
+        }
+    }
+
+    if !result.new_violations.is_empty() {
+        return Err(CliError::FailOnViolations);
+    }
+
+    Ok(())
+}

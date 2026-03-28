@@ -6,9 +6,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-use sruja_scan::Graph;
+use sruja_scan::{Graph, Node};
 
-use crate::model::{DeclaredBoundary, DeclaredPolicy, IntentModel};
+use crate::model::{
+    DeclaredBoundary, DeclaredPolicy, IntentModel, PolicyRuleContent, PolicySelector,
+};
 
 pub struct DriftDetector {
     #[allow(dead_code)]
@@ -404,9 +406,275 @@ impl DriftDetector {
         drifts
     }
 
-    fn detect_policy_violations(&self, _policy: &DeclaredPolicy, _reality: &Graph) -> Vec<Drift> {
-        Vec::new()
+    fn detect_policy_violations(&self, policy: &DeclaredPolicy, reality: &Graph) -> Vec<Drift> {
+        let mut drifts = Vec::new();
+
+        for rule in &policy.rules {
+            if let Some(ref content) = rule.content {
+                match content {
+                    PolicyRuleContent::DenyEdge {
+                        from,
+                        to,
+                        except,
+                        message,
+                        suggestions,
+                    } => {
+                        for edge in &reality.edges {
+                            let src_opt = reality.nodes.iter().find(|n| n.id == edge.source);
+                            let tgt_opt = reality.nodes.iter().find(|n| n.id == edge.target);
+
+                            if let (Some(src), Some(tgt)) = (src_opt, tgt_opt) {
+                                if node_matches_selector(src, from)
+                                    && node_matches_selector(tgt, to)
+                                {
+                                    // Check exceptions
+                                    let is_except = except.iter().any(|e| {
+                                        node_matches_selector(src, &e.from)
+                                            && node_matches_selector(tgt, &e.to)
+                                    });
+
+                                    if !is_except {
+                                        drifts.push(Drift {
+                                            kind: DriftKind::PolicyViolation,
+                                            severity: Severity::High,
+                                            description: message.clone().unwrap_or_else(|| {
+                                                format!(
+                                                    "Policy '{}' violation: edge {} -> {} is forbidden",
+                                                    policy.name, src.id, tgt.id
+                                                )
+                                            }),
+                                            evidence: vec![Evidence {
+                                                source: "scan".to_string(),
+                                                location: None,
+                                                detail: format!("Forbidden edge detected: {} -> {}", src.id, tgt.id),
+                                            }],
+                                            intent_ref: Some(policy.source_ref.file.clone()),
+                                            suggestion: suggestions.first().cloned().or_else(|| Some("Remove this illegal dependency or update the architecture policy.".to_string())),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    PolicyRuleContent::RequireTags {
+                        selector,
+                        tags,
+                        except,
+                        message,
+                        suggestions,
+                    } => {
+                        for node in &reality.nodes {
+                            if node_matches_selector(node, selector) {
+                                let is_except =
+                                    except.iter().any(|e| node_matches_selector(node, e));
+                                if is_except {
+                                    continue;
+                                }
+
+                                for required_tag in tags {
+                                    // Sruja tags are usually in metadata "tags" as a comma-separated string, or just keys.
+                                    // We'll check for both.
+                                    let has_tag = node.metadata.contains_key(required_tag)
+                                        || node
+                                            .metadata
+                                            .get("tags")
+                                            .map(|t| t.split(',').any(|s| s.trim() == required_tag))
+                                            .unwrap_or(false);
+
+                                    if !has_tag {
+                                        drifts.push(Drift {
+                                            kind: DriftKind::PolicyViolation,
+                                            severity: Severity::Medium,
+                                            description: message.clone().unwrap_or_else(|| {
+                                                format!(
+                                                    "Policy '{}' violation: component '{}' is missing required tag '{}'",
+                                                    policy.name, node.id, required_tag
+                                                )
+                                            }),
+                                            evidence: vec![Evidence {
+                                                source: "scan".to_string(),
+                                                location: None,
+                                                detail: format!("Component {} is missing tag {}", node.id, required_tag),
+                                            }],
+                                            intent_ref: Some(policy.source_ref.file.clone()),
+                                            suggestion: suggestions.first().cloned().or_else(|| Some(format!("Add tag '{}' to {}", required_tag, node.id))),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    PolicyRuleContent::RequireMetadata {
+                        selector,
+                        key,
+                        value,
+                        except,
+                        message,
+                        suggestions,
+                    } => {
+                        for node in &reality.nodes {
+                            if node_matches_selector(node, selector) {
+                                let is_except =
+                                    except.iter().any(|e| node_matches_selector(node, e));
+                                if is_except {
+                                    continue;
+                                }
+
+                                let metadata_value = node.metadata.get(key);
+                                let is_valid = match (metadata_value, value) {
+                                    (Some(mv), Some(rv)) => mv == rv,
+                                    (Some(_), None) => true,
+                                    (None, _) => false,
+                                };
+
+                                if !is_valid {
+                                    drifts.push(Drift {
+                                        kind: DriftKind::PolicyViolation,
+                                        severity: Severity::Medium,
+                                        description: message.clone().unwrap_or_else(|| {
+                                            format!(
+                                                "Policy '{}' violation: component '{}' is missing or has incorrect metadata '{}'",
+                                                policy.name, node.id, key
+                                            )
+                                        }),
+                                        evidence: vec![Evidence {
+                                            source: "scan".to_string(),
+                                            location: None,
+                                            detail: format!("Metadata check failed for {}: key={}", node.id, key),
+                                        }],
+                                        intent_ref: Some(policy.source_ref.file.clone()),
+                                        suggestion: suggestions.first().cloned(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    PolicyRuleContent::RequireSlo {
+                        selector,
+                        except,
+                        message,
+                        suggestions,
+                    } => {
+                        for node in &reality.nodes {
+                            if node_matches_selector(node, selector) {
+                                let is_except =
+                                    except.iter().any(|e| node_matches_selector(node, e));
+                                if is_except {
+                                    continue;
+                                }
+
+                                let has_slo = node
+                                    .metadata
+                                    .keys()
+                                    .any(|k| k.contains("slo") || k.contains("availability"));
+                                if !has_slo {
+                                    drifts.push(Drift {
+                                        kind: DriftKind::PolicyViolation,
+                                        severity: Severity::Medium,
+                                        description: message.clone().unwrap_or_else(|| {
+                                            format!(
+                                                "Policy '{}' violation: component '{}' is missing required SLO metadata",
+                                                policy.name, node.id
+                                            )
+                                        }),
+                                        evidence: vec![Evidence {
+                                            source: "scan".to_string(),
+                                            location: None,
+                                            detail: format!("SLO metadata missing for {}", node.id),
+                                        }],
+                                        intent_ref: Some(policy.source_ref.file.clone()),
+                                        suggestion: suggestions.first().cloned().or_else(|| Some("Define SLO metadata (availability, latency) for this component.".to_string())),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    PolicyRuleContent::Phrase(phrase) => {
+                        // Minimal heuristic for Phrases: "X must not call Y"
+                        if phrase.contains("must not call") || phrase.contains("cannot call") {
+                            let parts: Vec<&str> = if phrase.contains("must not call") {
+                                phrase.split("must not call").collect()
+                            } else {
+                                phrase.split("cannot call").collect()
+                            };
+                            if parts.len() == 2 {
+                                let from_pattern = parts[0].trim();
+                                let to_pattern = parts[1].trim();
+
+                                for edge in &reality.edges {
+                                    if edge.source.contains(from_pattern)
+                                        && edge.target.contains(to_pattern)
+                                    {
+                                        drifts.push(Drift {
+                                            kind: DriftKind::PolicyViolation,
+                                            severity: Severity::High,
+                                            description: format!(
+                                                "Policy '{}' violation: {} -> {} violates phrase '{}'",
+                                                policy.name, edge.source, edge.target, phrase
+                                            ),
+                                            evidence: vec![Evidence {
+                                                source: "scan".to_string(),
+                                                location: None,
+                                                detail: format!("Phrase match: {} -> {}", edge.source, edge.target),
+                                            }],
+                                            intent_ref: Some(policy.source_ref.file.clone()),
+                                            suggestion: Some(format!("Refactor to remove dependency from {} to {}", edge.source, edge.target)),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        drifts
     }
+}
+
+fn node_matches_selector(node: &Node, selector: &PolicySelector) -> bool {
+    if let Some(ref kind) = selector.kind {
+        if format!("{:?}", node.kind).to_lowercase() != kind.to_lowercase() {
+            return false;
+        }
+    }
+    if let Some(ref id) = selector.id {
+        if node.id != *id && !node.id.contains(id) {
+            return false;
+        }
+    }
+    if let Some(ref tech) = selector.technology {
+        if node
+            .technology
+            .as_ref()
+            .map(|t| t.to_lowercase() != tech.to_lowercase())
+            .unwrap_or(true)
+        {
+            return false;
+        }
+    }
+    for tag in &selector.tags {
+        let has_tag = node.metadata.contains_key(tag)
+            || node
+                .metadata
+                .get("tags")
+                .map(|t: &String| t.split(',').any(|s| s.trim() == tag))
+                .unwrap_or(false);
+        if !has_tag {
+            return false;
+        }
+    }
+    for meta in &selector.meta {
+        if let Some(ref val) = meta.value {
+            if node.metadata.get(&meta.key) != Some(val) {
+                return false;
+            }
+        } else if !node.metadata.contains_key(&meta.key) {
+            return false;
+        }
+    }
+    true
 }
 
 impl std::fmt::Display for DriftHealth {
@@ -454,40 +722,30 @@ mod tests {
     use sruja_scan::{EdgeKind, Graph as ScanGraph, NodeKind};
     use std::path::PathBuf;
 
+    fn scan_node(id: &str, label: &str, path: &str) -> sruja_scan::Node {
+        sruja_scan::Node {
+            id: id.to_string(),
+            kind: NodeKind::Module,
+            label: label.to_string(),
+            path: Some(path.to_string()),
+            technology: None,
+            metadata: std::collections::HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
+            confidence: None,
+        }
+    }
+
     fn create_test_graph() -> ScanGraph {
         ScanGraph {
             metadata: std::collections::HashMap::new(),
             nodes: vec![
-                sruja_scan::Node {
-                    id: "api".to_string(),
-                    kind: NodeKind::Module,
-                    label: "API".to_string(),
-                    path: Some("src/api".to_string()),
-                    technology: None,
-                    metadata: std::collections::HashMap::new(),
-                    canonical_id: None,
-                    aliases: Vec::new(),
-                    owner: None,
-                    domain: None,
-                    criticality: None,
-                    sources: Vec::new(),
-                    confidence: None,
-                },
-                sruja_scan::Node {
-                    id: "db".to_string(),
-                    kind: NodeKind::Module,
-                    label: "Database".to_string(),
-                    path: Some("src/db".to_string()),
-                    technology: None,
-                    metadata: std::collections::HashMap::new(),
-                    canonical_id: None,
-                    aliases: Vec::new(),
-                    owner: None,
-                    domain: None,
-                    criticality: None,
-                    sources: Vec::new(),
-                    confidence: None,
-                },
+                scan_node("api", "API", "src/api"),
+                scan_node("db", "Database", "src/db"),
             ],
             edges: vec![sruja_scan::Edge {
                 source: "api".to_string(),

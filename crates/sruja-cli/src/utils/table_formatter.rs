@@ -1,9 +1,7 @@
-#[allow(dead_code)]
 pub struct TableFormatter {
     max_width: usize,
 }
 
-#[allow(dead_code)]
 impl TableFormatter {
     pub fn new(max_width: usize) -> Self {
         Self { max_width }
