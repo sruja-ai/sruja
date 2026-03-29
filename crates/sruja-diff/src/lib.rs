@@ -6,6 +6,7 @@
 mod compare;
 mod convert;
 mod drift;
+mod git_mapper;
 mod health;
 mod source_ref;
 mod types;
@@ -16,11 +17,12 @@ pub use drift::{
     detect_architectural_drift, detect_architectural_drift_with_config, find_circular_dependencies,
     find_orphan_modules,
 };
+pub use git_mapper::map_git_diff;
 pub use health::calculate_health_score_from_violations;
 pub use types::{
-    DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary, DriftConfig, DriftReport, EdgeDiff,
-    HealthScoreBreakdown, HealthScorePenalties, NodeDiff, NodeMatch, Severity, SourceRef,
-    TruthStatus, Violation, ViolationKind,
+    ComponentDiff, DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary, DriftConfig,
+    DriftReport, EdgeDiff, HealthScoreBreakdown, HealthScorePenalties, NodeDiff, NodeMatch,
+    Severity, SourceRef, TruthStatus, Violation, ViolationKind,
 };
 
 #[cfg(test)]

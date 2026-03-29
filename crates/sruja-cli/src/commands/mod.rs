@@ -11,6 +11,7 @@ mod error;
 mod federation;
 mod generate;
 mod impact;
+mod index;
 mod init;
 mod intent;
 mod knowledge;
@@ -29,6 +30,7 @@ pub use compliance::compliance;
 pub use discover::{discover_context, discover_explain, discover_questions, discover_repomap_cmd};
 pub use dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
+    ExportOptions,
 };
 pub use error::CliError;
 
@@ -57,6 +59,7 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
 pub use federation::{compose, publish};
 pub use generate::generate_prompt;
 pub use impact::impact;
+pub use index::index;
 pub use init::init;
 pub use intent::{intent_check, intent_propose};
 pub use knowledge::knowledge;

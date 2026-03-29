@@ -14,6 +14,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
+fastembed = { workspace = true }
+hnsw_rs = { workspace = true }
 
 [dev-dependencies]
 sruja-language = { path = "../sruja-language" }

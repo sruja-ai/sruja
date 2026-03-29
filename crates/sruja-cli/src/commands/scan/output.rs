@@ -65,6 +65,7 @@ pub struct PrDriftResult {
     pub new_violations: Vec<PrViolation>,
     pub base_violations_count: usize,
     pub head_violations_count: usize,
+    pub component_diffs: Vec<sruja_diff::ComponentDiff>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -976,6 +977,27 @@ pub(crate) fn print_pr_drift_text(result: &PrDriftResult) {
         );
     }
     println!();
+
+    if !result.component_diffs.is_empty() {
+        println!("🏗️  Component Impact");
+        println!("{}", "-".repeat(40));
+        for diff in &result.component_diffs {
+            let files = if diff.files_changed.len() == 1 {
+                "file"
+            } else {
+                "files"
+            };
+            println!(
+                "  {} [{} {}, +{}, -{}]",
+                diff.component_id.yellow().bold(),
+                diff.files_changed.len(),
+                files,
+                diff.lines_added.to_string().green(),
+                diff.lines_deleted.to_string().red()
+            );
+        }
+        println!();
+    }
 
     if result.new_violations.is_empty() {
         println!("{}", "-".repeat(40));

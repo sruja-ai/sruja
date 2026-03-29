@@ -175,6 +175,9 @@ pub struct ElementDump {
     pub criticality: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceBindingDump>,
+    /// Hydrated source code content (optional, used for AI context)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hydration: Option<String>,
 }
 
 /// Link dump

@@ -9,6 +9,7 @@ pub mod graph;
 pub mod npm;
 pub mod repomap;
 pub mod scan_scope;
+mod scip_ingest;
 pub mod tree_sitter;
 
 use std::path::Path;
@@ -60,6 +61,11 @@ pub fn scan_repo(repo_root: &Path) -> Result<Graph, ScanError> {
 
     // Calculate discovery confidence
     confidence::ConfidenceScorer::score_graph(&mut graph);
+
+    // 4. Enrich with SCIP if available
+    if let Ok(scip_graph) = scip_ingest::enrich_with_scip(repo_root) {
+        graph.merge(scip_graph);
+    }
 
     Ok(graph)
 }

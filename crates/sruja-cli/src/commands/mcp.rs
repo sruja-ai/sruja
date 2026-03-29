@@ -376,6 +376,34 @@ fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "name": "sruja_get_hydrated_context",
+            "title": "Sruja Hydrated Context",
+            "description": "Get architectural context for a component hydrated with its actual source code and immediate neighbors. Ideal for AI code reviews.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "id": { "type": "string", "description": "Component ID to hydrate" },
+                    "max_tokens": { "type": "integer", "description": "Maximum tokens for the hydrated context (default: 20000)" }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
+            "name": "sruja_semantic_search",
+            "title": "Sruja Semantic Search",
+            "description": "Search for architectural components using natural language (semantic similarity).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "query": { "type": "string", "description": "Search query (e.g. 'payment processing', 'database access')" },
+                    "top_k": { "type": "integer", "description": "Number of results to return (default: 5)" }
+                },
+                "required": ["query"]
+            }
+        }),
     ]
 }
 
@@ -646,6 +674,62 @@ async fn run_tool(
                 None => Ok("No system.index.json found. Run `sruja compose` to create a multi-repo system index.".to_string()),
             }
         }
+        "sruja_get_hydrated_context" => {
+            let id = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing id".into()))?;
+            let max_tokens = arguments
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(20000) as usize;
+
+            get_hydrated_context(&repo, id, max_tokens, graph_cache).await
+        }
+        "sruja_semantic_search" => {
+            let query = arguments
+                .get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::Validation("Missing query".into()))?;
+            let top_k = arguments.get("top_k").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
+
+            let vector_path = std::path::Path::new(&repo)
+                .join(".sruja")
+                .join("vectors.json");
+            if !vector_path.exists() {
+                return Ok("Semantic index not found. Please run `sruja index` first to generate embeddings.".to_string());
+            }
+
+            let index_json = tokio::fs::read_to_string(&vector_path).await?;
+            let index: sruja_export::vector::VectorIndex = serde_json::from_str(&index_json)?;
+
+            let mut searcher = sruja_export::vector::SemanticSearcher::new().map_err(|e| {
+                CliError::Io(std::io::Error::other(format!(
+                    "Failed to init searcher: {}",
+                    e
+                )))
+            })?;
+
+            let results = searcher.search(&index, query, top_k).map_err(|e| {
+                CliError::Io(std::io::Error::other(format!("Search failed: {}", e)))
+            })?;
+
+            let mut out = format!("# Semantic Search Results for: \"{}\"\n\n", query);
+            if results.is_empty() {
+                out.push_str("No matching components found.\n");
+            } else {
+                for (id, score) in results {
+                    let node = index.nodes.iter().find(|n| n.id == id);
+                    let label = node.map(|n| n.label.as_str()).unwrap_or(&id);
+                    let desc = node.map(|n| n.description.as_str()).unwrap_or("");
+                    out.push_str(&format!(
+                        "- **{}** (Score: {:.2})\n  ID: {}\n  Description: {}\n",
+                        label, score, id, desc
+                    ));
+                }
+            }
+            Ok(out)
+        }
         _ => Err(CliError::Validation(format!("Unknown tool: {name}"))),
     }
 }
@@ -739,6 +823,104 @@ async fn add_relationship(
 
     tokio::fs::write(&target_file, content).await?;
     Ok(())
+}
+
+async fn get_hydrated_context(
+    repo: &str,
+    id: &str,
+    max_tokens: usize,
+    graph_cache: &Arc<Mutex<HashMap<String, sruja_scan::Graph>>>,
+) -> Result<String, CliError> {
+    let graph = get_or_scan_graph(graph_cache, repo).await?;
+    let target_node = graph
+        .nodes
+        .iter()
+        .find(|n| n.id == id)
+        .ok_or_else(|| CliError::Validation(format!("Component ID not found: {id}")))?;
+
+    let blast = graph.blast_radius(id, 1);
+    let repo_path = std::path::Path::new(repo);
+
+    let mut out = format!("# Hydrated Architecture Context: {}\n\n", id);
+    out.push_str(&format!("- **Title**: {}\n", target_node.label));
+    out.push_str(&format!("- **Kind**: {}\n", target_node.kind));
+    if let Some(tech) = &target_node.technology {
+        out.push_str(&format!("- **Technology**: {}\n", tech));
+    }
+
+    // Neighbors summary
+    out.push_str("\n## Relationships (Immediate Neighbors)\n");
+    if blast.upstream.is_empty() && blast.downstream.is_empty() {
+        out.push_str("- No direct relationships discovered.\n");
+    } else {
+        for n in &blast.upstream {
+            out.push_str(&format!("- [Upstream] {} (depends on this)\n", n.id));
+        }
+        for n in &blast.downstream {
+            out.push_str(&format!("- [Downstream] (this depends on) -> {}\n", n.id));
+        }
+    }
+
+    out.push_str("\n## Source Implementation Hydration\n\n");
+
+    let mut files_to_hydrate = Vec::new();
+
+    // 1. Add target node sources
+    for s in &target_node.sources {
+        files_to_hydrate.push((target_node.id.clone(), s.path.clone()));
+    }
+    if target_node.sources.is_empty() {
+        if let Some(p) = &target_node.path {
+            files_to_hydrate.push((target_node.id.clone(), p.clone()));
+        }
+    }
+
+    // 2. Add neighbor sources (metadata/interfaces only if possible, but for now just files)
+    for neighbor in blast.upstream.iter().chain(blast.downstream.iter()) {
+        if let Some(n) = graph.nodes.iter().find(|node| node.id == neighbor.id) {
+            for s in &n.sources {
+                files_to_hydrate.push((n.id.clone(), s.path.clone()));
+            }
+            if n.sources.is_empty() {
+                if let Some(p) = &n.path {
+                    files_to_hydrate.push((n.id.clone(), p.clone()));
+                }
+            }
+        }
+    }
+
+    files_to_hydrate.sort_by(|a, b| a.1.cmp(&b.1));
+    files_to_hydrate.dedup_by(|a, b| a.1 == b.1);
+
+    let mut current_chars = 0;
+    let max_chars = max_tokens * 4; // Estimating 4 chars per token
+
+    for (node_id, rel_path) in files_to_hydrate {
+        let full_path = repo_path.join(&rel_path);
+        match tokio::fs::read_to_string(&full_path).await {
+            Ok(content) => {
+                let header = format!("### Component: {} (Path: {})\n\n", node_id, rel_path);
+                if current_chars + header.len() + content.len() > max_chars {
+                    out.push_str(&header);
+                    out.push_str("... [File content truncated due to token budget] ...\n\n");
+                    break;
+                }
+                out.push_str(&header);
+                out.push_str("```\n");
+                out.push_str(&content);
+                out.push_str("\n```\n\n");
+                current_chars += header.len() + content.len();
+            }
+            Err(e) => {
+                out.push_str(&format!(
+                    "### Component: {} (Path: {})\n\n*(Error reading file: {})*\n\n",
+                    node_id, rel_path, e
+                ));
+            }
+        }
+    }
+
+    Ok(out)
 }
 
 fn validate_ident(value: &str, field: &str) -> Result<(), CliError> {

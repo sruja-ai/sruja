@@ -224,3 +224,11 @@ pub struct DriftReport {
     /// No baseline: truth_status is always unknown for structural-only drift.
     pub truth_status: TruthStatus,
 }
+/// Results of mapping a git diff to architectural components.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ComponentDiff {
+    pub component_id: String,
+    pub files_changed: Vec<String>,
+    pub lines_added: usize,
+    pub lines_deleted: usize,
+}
