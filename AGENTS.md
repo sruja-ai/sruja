@@ -151,36 +151,47 @@ npm run test:vscode
 ### Sruja DSL (.sruja files)
 
 **Structure:**
-- **Nested syntax following C4 hierarchy**: Systems at top level, containers nested in systems, components nested in containers
-- Persons and external systems can be at top level
-- Define kinds at the top of file before using them
-- PascalCase for element IDs
-- Double quotes for all string values
+- **Define before use** – Every referenced component must be defined before use in relationships.
+- **Pattern** – `Id = kind "Label" { ... }` (e.g. `API = container "API" { ... }`).
+- **Nested syntax following C4 hierarchy**: Systems at top level, containers nested in systems, components nested in containers.
+- **Flat top-level declarations only** – No `architecture "Name" { }` wrapper.
+- Persons and external systems can be at top level.
+- Define kinds at the top of file before using them.
+- PascalCase for element IDs.
+- Double quotes for all string values.
 
 **Nesting Requirements:**
-- `container`, `component`, `database`, `queue` MUST be nested inside a system
-- `component` MUST be nested inside a container (or system for edge cases)
-- `system` and `person` can be at top level
-- Use dot notation to reference nested elements: `System.Container`, `System.Container.Component`
+- `container`, `component`, `database`, `queue` MUST be nested inside a system.
+- `component` MUST be nested inside a container (or system for edge cases).
+- `system` and `person` can be at top level.
+- Use dot notation to reference nested elements: `System.Container`, `System.Container.Component`.
 
 **Components:**
-- Every component must have a `description` field
-- Containers must have `technology` field
-- Use `person` for human actors only
-- Use `system` for external software (APIs, SaaS)
-- Use `database` (not `datastore`) for data stores
+- Every component must have a `description` field.
+- Containers must have `technology` field (e.g. "PostgreSQL", "React").
+- Use `person` for human actors only.
+- Use `system` for external software (APIs, SaaS).
+- Use `database` (not `datastore`) for data stores.
+- **Unique IDs** – Component IDs must be unique.
 
 **Relationships:**
-- Syntax: `source -> target "label"`
-- Use specific, descriptive labels ("HTTPS", "REST API", "publishes events to")
-- Reference nested components: `System.Container.Component`
-- Avoid circular dependencies
-- No orphan components
+- Syntax: `source -> target "label"`.
+- Use specific, descriptive labels ("HTTPS", "REST API", "publishes events to").
+- Reference nested components: `System.Container.Component`.
+- Avoid circular dependencies between systems.
+- **No orphans** – Every component must participate in at least one relationship.
 
 **Validation:**
 ```bash
 sruja lint file.sruja
 ```
+
+## AI Editor UX: Validation
+
+After **every** code iteration (each time you apply an edit to a `.sruja` file) in VS Code or Cursor:
+
+1. **Run validation in the editor** – Invoke the command **Sruja: Run validation (check after AI/edit)**. This ensures the file stays valid.
+2. **Or save the file** – Saving also triggers validation. For immediate feedback after an AI edit, prefer running the command.
 
 ## Formatting
 
@@ -205,13 +216,14 @@ WASM is used for browser and Node.js targets. LSP provides language server featu
 ## Key Commands for AI Agents
 
 When working on Sruja:
-1. Run `cargo fmt --all` before committing to ensure consistent formatting
-2. Run `make lint` and `cargo test` before committing
-3. For .sruja files, run `sruja lint file.sruja` after changes
-4. Use `cargo clippy -- -D warnings` for strict linting
-5. Build extension with `make build-extension`
-6. Test CLI commands with `make test-cli-smoke`
-7. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`
+1. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
+2. Run `cargo fmt --all` before committing to ensure consistent formatting
+3. Run `make lint` and `cargo test` before committing
+4. For .sruja files, run `sruja lint file.sruja` after changes
+5. Use `cargo clippy -- -D warnings` for strict linting
+6. Build extension with `make build-extension`
+7. Test CLI commands with `make test-cli-smoke`
+8. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`
 
 ## Common Patterns
 

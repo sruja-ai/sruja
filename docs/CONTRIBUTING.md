@@ -12,6 +12,7 @@ This step-by-step guide walks you through making your first contribution, even i
 
 - 🐛 **Find Issues**: [Good First Issues](https://github.com/sruja-ai/sruja/labels/good%20first%20issue)
 - 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
+- 🐕 **Internal Dogfooding**: [Dogfooding Playbook](internal/dogfooding-playbook.md)
 - 📐 **Stack**: Rust (CLI, language, engine, export, scan/diff/graph/intent, WASM), mdBook (docs), VS Code extension (TypeScript, WASM-powered language features).
 - 💬 **Get Help**:[GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
 
