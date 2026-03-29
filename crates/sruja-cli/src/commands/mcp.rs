@@ -8,14 +8,14 @@ use super::CliError;
 
 const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 
-pub async fn mcp() -> Result<(), CliError> {
+pub async fn mcp(root: &str) -> Result<(), CliError> {
     let stdin = io::stdin();
     let mut lines = BufReader::new(stdin).lines();
 
     let stdout = io::stdout();
     let mut out = io::BufWriter::new(stdout);
 
-    let mut server = McpServer::new();
+    let mut server = McpServer::new(root.to_string());
 
     while let Some(line) = lines.next_line().await? {
         let line = line.trim();
@@ -59,14 +59,16 @@ async fn write_message<W: AsyncWrite + Unpin>(
 struct McpServer {
     initialized: bool,
     client_ready: bool,
+    default_repo: String,
     graph_cache: std::sync::Arc<tokio::sync::Mutex<HashMap<String, sruja_scan::Graph>>>,
 }
 
 impl McpServer {
-    fn new() -> Self {
+    fn new(default_repo: String) -> Self {
         Self {
             initialized: false,
             client_ready: false,
+            default_repo,
             graph_cache: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         }
     }
@@ -190,7 +192,7 @@ impl McpServer {
             .cloned()
             .unwrap_or_else(|| json!({}));
 
-        match run_tool(name, &args, &self.graph_cache).await {
+        match run_tool(name, &args, &self.default_repo, &self.graph_cache).await {
             Ok(text) => json!({
                 "jsonrpc": "2.0",
                 "id": id,
@@ -410,13 +412,14 @@ fn tool_definitions() -> Vec<Value> {
 async fn run_tool(
     name: &str,
     arguments: &Value,
+    default_repo: &str,
     graph_cache: &Arc<Mutex<HashMap<String, sruja_scan::Graph>>>,
 ) -> Result<String, CliError> {
     let repo = arguments
         .get("path")
         .or_else(|| arguments.get("repo"))
         .and_then(|v| v.as_str())
-        .unwrap_or(".")
+        .unwrap_or(default_repo)
         .to_string();
 
     match name {
@@ -1002,7 +1005,7 @@ mod tests {
 
     #[test]
     fn mcp_initialize_result_includes_capabilities() {
-        let server = McpServer::new();
+        let server = McpServer::new(".".to_string());
         let resp = server.handle_initialize(
             Some(json!(1)),
             Some(&json!({ "protocolVersion": MCP_PROTOCOL_VERSION })),
@@ -1020,7 +1023,7 @@ mod tests {
 
     #[tokio::test]
     async fn mcp_tools_list_returns_sruja_tools() {
-        let server = McpServer::new();
+        let server = McpServer::new(".".to_string());
         let resp = server.handle_tools_list(json!(1));
         let tools = resp
             .pointer("/result/tools")
@@ -1053,6 +1056,7 @@ mod tests {
         let out = run_tool(
             "sruja_get_repomap",
             &json!({ "path": dir.path().to_string_lossy() }),
+            ".",
             &cache,
         )
         .await
@@ -1085,6 +1089,7 @@ mod tests {
         let out = run_tool(
             "sruja_explain_discovery",
             &json!({ "path": dir.path().to_string_lossy() }),
+            ".",
             &cache,
         )
         .await
@@ -1106,6 +1111,7 @@ mod tests {
         let out = run_tool(
             "sruja_get_neighbors",
             &json!({ "path": dir.path().to_string_lossy(), "id": "src_sub_rs" }),
+            ".",
             &cache,
         )
         .await
@@ -1136,6 +1142,7 @@ mod tests {
                 "source": "src_main_rs",
                 "target": "src_sub_rs"
             }),
+            ".",
             &cache,
         )
         .await
@@ -1143,5 +1150,25 @@ mod tests {
 
         assert!(out.contains("# Path from src_main_rs to src_sub_rs"));
         assert!(out.contains("src_main_rs -> src_sub_rs"));
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_uses_default_root_when_path_is_omitted() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).expect("src");
+        fs::write(src.join("main.rs"), "fn main() { println!(\"hello\"); }\n").expect("write");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_get_repomap",
+            &json!({}),
+            &dir.path().to_string_lossy(),
+            &cache,
+        )
+        .await
+        .expect("repomap");
+
+        assert!(out.contains("# Repository Map"));
     }
 }

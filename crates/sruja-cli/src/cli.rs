@@ -174,7 +174,11 @@ pub enum Commands {
         stdio: bool,
     },
     /// Start MCP server (stdio)
-    Mcp,
+    Mcp {
+        /// Default repository root used when MCP tool calls omit a path
+        #[arg(long, short = 'r', default_value = ".")]
+        root: String,
+    },
     /// Compile a Sruja file
     Compile {
         /// Path to .sruja file
@@ -606,7 +610,7 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
         }
         Commands::Fmt { file, check } => commands::fmt(&file, check).await,
         Commands::Lsp { .. } => commands::lsp().await,
-        Commands::Mcp => commands::mcp().await,
+        Commands::Mcp { root } => commands::mcp(&root).await,
         Commands::Compile { file } => commands::compile(&file).await,
         Commands::Validate {
             file,

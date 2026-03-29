@@ -18,7 +18,9 @@ describe("registerContextEngineeringCommands", () => {
   let registered: Map<string, (...args: any[]) => any>;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     (vscode.workspace as any).workspaceFolders = [];
+    (vscode.window as any).activeTextEditor = undefined;
     (vscode.window as any).showWarningMessage = jest.fn();
     (vscode.window as any).showErrorMessage = jest.fn();
     (vscode.window as any).showInformationMessage = jest.fn();
@@ -58,6 +60,41 @@ describe("registerContextEngineeringCommands", () => {
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
       "Sruja drift failed. Ensure the Sruja CLI is installed and on PATH, or set sruja.lsp.path."
     );
+  });
+
+  it("refreshContext runs sync once in the active workspace folder", async () => {
+    const { runCli } = await import("../cliRunner");
+    (runCli as jest.Mock).mockResolvedValue({
+      stdout: JSON.stringify({ context_path: "/ws-b/.sruja/context.json", truth_status: "fresh" }),
+      stderr: "",
+      code: 0,
+    });
+
+    const folderA = { uri: vscode.Uri.file("/ws-a"), name: "ws-a" };
+    const folderB = { uri: vscode.Uri.file("/ws-b"), name: "ws-b" };
+    (vscode.workspace as any).workspaceFolders = [folderA, folderB];
+    (vscode.workspace as any).getWorkspaceFolder = (uri: vscode.Uri) => {
+      if (uri.fsPath.startsWith("/ws-b")) return folderB;
+      if (uri.fsPath.startsWith("/ws-a")) return folderA;
+      return undefined;
+    };
+    (vscode.window as any).activeTextEditor = {
+      document: { uri: vscode.Uri.file("/ws-b/src/main.ts") },
+    };
+
+    const { registerContextEngineeringCommands } = await import("./contextEngineering");
+    const ctx = new ExtensionContext();
+    registerContextEngineeringCommands(ctx as any, () => "/bin/sruja");
+
+    const cb = registered.get("sruja.refreshContext");
+    if (!cb) throw new Error("Command not registered: sruja.refreshContext");
+    await cb();
+
+    expect(runCli).toHaveBeenCalledTimes(1);
+    expect(runCli).toHaveBeenCalledWith("/bin/sruja", ["sync", "-r", ".", "-f", "json"], "/ws-b");
+    expect(channel.appendLine).toHaveBeenCalledWith("Context written to /ws-b/.sruja/context.json");
+    expect(channel.appendLine).toHaveBeenCalledWith("Baseline/truth: fresh");
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("Sruja: Repo context updated.");
   });
 
   it("status prints formatted lines when CLI returns valid JSON", async () => {

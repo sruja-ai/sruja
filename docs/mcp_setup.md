@@ -48,7 +48,9 @@ Add the following to your `claude_desktop_config.json` (usually at `~/Library/Ap
 3. Click "Add New MCP Server".
 4. Name: `Sruja`
 5. Type: `command`
-6. Command: `sruja mcp`
+6. Command: `sruja mcp --root /absolute/path/to/your/repo`
+
+If you use the VS Code / Cursor extension, you can also run **Sruja: Register MCP Server (Cursor)** and it will write the same scoped command into `.cursor/mcp.json` for the selected workspace folder.
 
 ## 4. Available Tools
 

@@ -33,13 +33,24 @@ async function getTargetWorkspaceFolder(): Promise<vscode.WorkspaceFolder | unde
   return picked?.folder;
 }
 
-async function runCliInWorkspace(getSrujaPath: () => string, args: string[]): Promise<{ stdout: string; stderr: string; code: number; folder?: vscode.WorkspaceFolder }> {
+async function runCliInFolder(
+  getSrujaPath: () => string,
+  folder: vscode.WorkspaceFolder,
+  args: string[]
+): Promise<{ stdout: string; stderr: string; code: number; folder: vscode.WorkspaceFolder }> {
+  const res = await runCli(getSrujaPath(), args, folder.uri.fsPath);
+  return { ...res, folder };
+}
+
+async function runCliInWorkspace(
+  getSrujaPath: () => string,
+  args: string[]
+): Promise<{ stdout: string; stderr: string; code: number; folder: vscode.WorkspaceFolder }> {
   const folder = await getTargetWorkspaceFolder();
   if (!folder) {
     throw new Error("No workspace folder selected.");
   }
-  const res = await runCli(getSrujaPath(), args, folder.uri.fsPath);
-  return { ...res, folder };
+  return runCliInFolder(getSrujaPath, folder, args);
 }
 
 export function registerContextEngineeringCommands(context: vscode.ExtensionContext, getSrujaPath: () => string) {
@@ -85,7 +96,7 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
           channel.show(true);
           channel.appendLine("Refreshing repo context (sruja sync -r . -f json) ...");
           try {
-            const { stdout, stderr, code } = await runCliInWorkspace(getSrujaPath, [
+            const { stdout, stderr, code, folder } = await runCliInFolder(getSrujaPath, targetFolder, [
               "sync",
               "-r",
               ".",
@@ -98,8 +109,6 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
               vscode.window.showErrorMessage("Sruja sync failed. Is the CLI on PATH or set sruja.lsp.path?");
               return;
             }
-            const folder = (await runCliInWorkspace(getSrujaPath, ["status"])).folder; // Should not happen as we just ran it, but for type safety if we didn't pass folder back
-            if (!folder) return;
             const contextPath = path.join(folder.uri.fsPath, ".sruja", "context.json");
             channel.appendLine(`Context written to ${contextPath}`);
             const parsed = parseJsonSafe<{ context_path?: string; truth_status?: string }>(stdout);

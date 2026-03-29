@@ -1,12 +1,12 @@
 ---
 title: "VS Code Extension"
 weight: 15
-summary: "Full-featured Language Server Protocol (LSP) support for Sruja DSL in VS Code."
+summary: "VS Code support for Sruja DSL with bundled WASM validation, previews, and CLI-backed context engineering."
 ---
 
 # VS Code Extension
 
-The Sruja VS Code extension provides comprehensive language support for `.sruja` files with full LSP (Language Server Protocol) features powered by WebAssembly.
+The Sruja VS Code extension provides language support for `.sruja` files with **bundled WebAssembly** for validation, formatting, export, and preview flows. CLI-backed commands such as **refresh context**, **status**, **review**, **drift**, and **MCP registration** work when the Sruja CLI is installed and available on `PATH` or configured via `sruja.lsp.path`.
 
 ## Installation
 
@@ -30,7 +30,7 @@ The Sruja VS Code extension provides comprehensive language support for `.sruja`
 
 The extension provides a complete LSP implementation with the following features:
 
-### ✨ Core LSP Features
+### ✨ Core Editing Features
 
 #### 1. **Diagnostics** (Errors & Warnings)
 
@@ -126,15 +126,19 @@ The extension provides a complete LSP implementation with the following features
 - Color-coded keywords, strings, and identifiers
 - Makes code easier to read and understand
 
-#### Preview Architecture
+#### Architecture Previews
 
-- Generate visual previews of your architecture
-- Opens in VS Code's markdown preview
+- **Open Diagram Preview** renders the active `.sruja` file as Mermaid in a side panel
+- **Open Focused Diagram Preview** renders a sliced view around the selected element
+- **Open Markdown Preview** opens the extension's custom markdown preview
 
 **Usage**:
 
-- Right-click on a `.sruja` file → "Preview Sruja Architecture"
-- Or use the command palette: `Cmd+Shift+P` → "Sruja: Preview Architecture"
+- Command palette: `Cmd+Shift+P` / `Ctrl+Shift+P`
+- Run one of:
+  - `Sruja: Open Diagram Preview`
+  - `Sruja: Open Focused Diagram Preview`
+  - `Sruja: Open Markdown Preview`
 
 #### Register MCP Server (Cursor)
 
@@ -161,11 +165,10 @@ The extension provides a complete LSP implementation with the following features
 
 The extension supports the following settings:
 
-### Formatting Options
+### Available Settings
 
-- `sruja.formatting.enabled` (default: `true`) - Enable automatic formatting
-- `sruja.formatting.tabSize` (default: `2`) - Number of spaces per indentation level
-- `sruja.formatting.insertSpaces` (default: `true`) - Use spaces instead of tabs
+- `sruja.lsp.path` - Optional absolute path to the Sruja CLI binary. This is used for CLI-backed workspace commands such as refresh context, status, review, drift, and MCP registration.
+- `sruja.skills.path` - Optional path to a skills folder for AI rules. If unset, the extension uses the workspace `skills` folder or bundled skills when available.
 
 To configure:
 
@@ -180,20 +183,14 @@ If you encounter issues with the extension:
 ### Check Output Channel
 
 1. Open Output panel: `View → Output`
-2. Select "Sruja WASM LSP" from the dropdown
-3. Check for error messages or initialization issues
-
-### Debug Command
-
-1. Open Command Palette: `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
-2. Run: "Sruja: Debug WASM LSP"
-3. This will test all LSP functions and show results in the output channel
+2. Select **Sruja** from the dropdown
+3. Check for command output and error messages
 
 ### Common Issues
 
 **Extension not working?**
 
-- Check the "Sruja WASM LSP" output channel for errors
+- Check the **Sruja** output channel for errors
 - Ensure WASM files are present (should be installed automatically)
 - Try reloading the window: `Cmd+Shift+P` → "Developer: Reload Window"
 
@@ -201,24 +198,24 @@ If you encounter issues with the extension:
 
 - Check if the file has a `.sruja` extension
 - Verify the language mode is set to "Sruja" (bottom-right of VS Code)
-- Run the debug command to see which functions are failing
+- Run **Sruja: Run validation** on the active file and check the Problems panel
 
 **Rename not working?**
 
 - Make sure you're clicking on a valid symbol (not a keyword)
 - Check the output channel for error messages
-- Try the debug command to test rename functionality
+- Confirm the file is valid first with **Sruja: Run validation**
 
 ## Architecture
 
-The extension uses **WebAssembly (WASM)** for all LSP functionality, which means:
+The extension uses **WebAssembly (WASM)** for core language features, which means:
 
-- ✅ **No CLI dependency for core language features** - Diagnostics, hover, completion, formatting, etc. work without installing the Sruja CLI
+- ✅ **No CLI dependency for core language features** - Diagnostics, hover, completion, formatting, preview, and markdown export work without installing the Sruja CLI
 - ✅ **Fast** - WASM provides near-native performance
 - ✅ **Portable** - Same code runs in browser and VS Code
 - ✅ **Self-contained** - All functionality bundled in the extension
 
-The LSP implementation is powered by the same Rust codebase that runs the CLI, compiled to WASM for use in the extension.
+The extension also bridges into the CLI for workspace-level context engineering: refresh repo context, review, drift, status, and MCP registration.
 
 ## What's Next?
 
