@@ -740,6 +740,31 @@ Analytics.Dashboard -> Analytics.API "GraphQL"
 
 ---
 
+## Deep Discovery and Semantic Analysis (SCIP)
+
+Standard architecture discovery (Tree-sitter) is fast but syntax-only. For high-confidence refactoring and impact analysis, Sruja uses **SCIP (Source Code Intelligence Protocol)** to resolve cross-file symbols accurately.
+
+### When to Use SCIP
+- Complex cross-module refactoring.
+- High-precision "Blast Radius" calculation.
+- Verifying exact call graphs between containers/components.
+
+### How to Generate SCIP Index
+If `index.scip` is missing or stale in the repo root, run the appropriate indexer:
+
+| Environment | Command |
+|-------------|---------|
+| **TypeScript / Node** | `npx @sourcegraph/scip-typescript --infer` |
+| **Rust** | `cargo scip` |
+
+### Workflow for Agents
+1. **Detect language** (look for `package.json` or `Cargo.toml`).
+2. **Generate index** using the command above.
+3. **Scan with Sruja**: `sruja scan . --output sruja.graph.json`.
+4. **Verify Enrichment**: Check `metadata` for `"scip.enriched": "true"`.
+
+---
+
 ## Checklist for Valid Architectures
 
 - [ ] All components have clear purposes and descriptions

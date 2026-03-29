@@ -201,6 +201,7 @@ Do not load `references/AGENTS.md`, `references/REFERENCE.md`, or entire `rules/
 | Impact analysis | `rules/query/impact-analysis.md` |
 | Requirement traceability | `rules/requirements/capture-requirements.md`, `rules/requirements/link-requirements.md`; `references/PROMPTS.md` if needed |
 | Compliance | `rules/query/compliance-check.md` |
+| Deep semantic discovery | `rules/query/scip-discovery.md` |
 | Full design / refactor / patterns | `references/AGENTS.md` |
 
 ## Related References
@@ -232,7 +233,7 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ## Retrieval Order (Architecture-Aware Codegen/Review)
 
 1. Local repo truth — `repo.sruja` (or `architecture.sruja`)
-2. Fresh evidence — `.sruja/context.json`; if missing/stale, run `sruja sync -r .` or suggest **Sruja: Refresh repo context**
+2. Fresh evidence — `.sruja/context.json` (Tree-sitter); if missing/stale, run `sruja sync -r .` or suggest **Sruja: Refresh repo context**. For deep semantic context, check/generate `index.scip` (SCIP) first.
 3. Slice from system index — If `system.index.json` exists, load only impacted slice; use canonical IDs `repo_id::local_id`
 4. Intent and contract refs — ADRs, intent files from repo or bundle
 5. Truth/drift — `.sruja/context.json` or `sruja status -r . --format json`
