@@ -8,6 +8,7 @@ pub mod dsl;
 pub mod json;
 pub mod markdown;
 pub mod mermaid;
+pub mod vector;
 
 pub use context::ContextExporter;
 pub use d2::{D2Config, D2Exporter};

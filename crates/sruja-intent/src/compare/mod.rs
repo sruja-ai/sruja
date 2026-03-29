@@ -718,18 +718,58 @@ impl std::fmt::Display for DriftKind {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{DeclaredComponent, IntentSourceInfo, IntentSourceType};
-    use sruja_scan::{EdgeKind, Graph as ScanGraph, NodeKind};
+    use crate::model::{
+        BoundaryRule, BoundaryRuleType, ConnectionType, DeclaredBoundary, DeclaredComponent,
+        DeclaredPolicy, DeclaredRelationship, IntentSourceInfo, IntentSourceType,
+        PolicyEdgeException, PolicyMetaSelector, PolicyRule, PolicyRuleContent, PolicySelector,
+        SourceReference,
+    };
+    use sruja_scan::{Edge, EdgeKind, Graph as ScanGraph, Node, NodeKind};
+    use std::collections::HashMap;
     use std::path::PathBuf;
 
-    fn scan_node(id: &str, label: &str, path: &str) -> sruja_scan::Node {
-        sruja_scan::Node {
+    fn source_ref(element: &str) -> SourceReference {
+        SourceReference {
+            file: "test.sruja".to_string(),
+            line: Some(1),
+            element: Some(element.to_string()),
+        }
+    }
+
+    fn scan_node(id: &str, label: &str, path: &str) -> Node {
+        Node {
             id: id.to_string(),
             kind: NodeKind::Module,
             label: label.to_string(),
             path: Some(path.to_string()),
             technology: None,
-            metadata: std::collections::HashMap::new(),
+            metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
+            confidence: None,
+        }
+    }
+
+    fn scan_node_with(
+        id: &str,
+        kind: NodeKind,
+        technology: Option<&str>,
+        metadata: HashMap<&str, &str>,
+    ) -> Node {
+        Node {
+            id: id.to_string(),
+            kind,
+            label: id.to_string(),
+            path: None,
+            technology: technology.map(|t| t.to_string()),
+            metadata: metadata
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             canonical_id: None,
             aliases: Vec::new(),
             owner: None,
@@ -742,12 +782,12 @@ mod tests {
 
     fn create_test_graph() -> ScanGraph {
         ScanGraph {
-            metadata: std::collections::HashMap::new(),
+            metadata: HashMap::new(),
             nodes: vec![
                 scan_node("api", "API", "src/api"),
                 scan_node("db", "Database", "src/db"),
             ],
-            edges: vec![sruja_scan::Edge {
+            edges: vec![Edge {
                 source: "api".to_string(),
                 target: "db".to_string(),
                 kind: EdgeKind::Calls,
@@ -769,11 +809,7 @@ mod tests {
             label: "API Service".to_string(),
             description: None,
             technology: None,
-            source_ref: crate::model::SourceReference {
-                file: "test.sruja".to_string(),
-                line: Some(1),
-                element: Some("api".to_string()),
-            },
+            source_ref: source_ref("api"),
         });
         model
     }
@@ -816,17 +852,355 @@ mod tests {
             label: "Database".to_string(),
             description: None,
             technology: None,
-            source_ref: crate::model::SourceReference {
-                file: "test.sruja".to_string(),
-                line: Some(2),
-                element: Some("db".to_string()),
-            },
+            source_ref: source_ref("db"),
         });
         let reality = create_test_graph();
 
         let report = detector.detect(&intent, &reality);
 
         assert!(report.drift_score < 50);
+    }
+
+    #[test]
+    fn test_detect_undocumented_relationship() {
+        let detector = DriftDetector::new();
+        let intent = create_test_intent();
+        let reality = create_test_graph();
+
+        let report = detector.detect(&intent, &reality);
+
+        assert!(report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::UndocumentedRelationship));
+    }
+
+    #[test]
+    fn test_detect_missing_relationship() {
+        let detector = DriftDetector::new();
+        let mut intent = create_test_intent();
+        intent.relationships.push(DeclaredRelationship {
+            source: "api".to_string(),
+            target: "db".to_string(),
+            kind: "calls".to_string(),
+            label: None,
+            source_ref: source_ref("api -> db"),
+        });
+
+        let mut reality = ScanGraph::new();
+        reality.nodes.push(scan_node("api", "API", "src/api"));
+        reality.nodes.push(scan_node("db", "Database", "src/db"));
+
+        let report = detector.detect(&intent, &reality);
+
+        assert!(report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::MissingRelationship));
+    }
+
+    #[test]
+    fn test_detect_boundary_violation_no_direct_database_access() {
+        let detector = DriftDetector::new();
+        let mut intent = create_test_intent();
+        intent.boundaries.push(DeclaredBoundary {
+            name: "Core".to_string(),
+            inside: vec!["api".to_string()],
+            allowed_connections: Vec::new(),
+            rules: vec![BoundaryRule {
+                rule_type: BoundaryRuleType::NoDirectDatabaseAccess,
+                description: "Use a repository/service boundary instead of direct DB access."
+                    .to_string(),
+            }],
+            source_ref: source_ref("Core"),
+        });
+        let reality = create_test_graph();
+
+        let report = detector.detect(&intent, &reality);
+
+        assert!(report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::BoundaryViolation));
+    }
+
+    #[test]
+    fn test_boundary_violation_not_reported_when_allowed_connection_matches_target() {
+        let detector = DriftDetector::new();
+        let mut intent = create_test_intent();
+        intent.boundaries.push(DeclaredBoundary {
+            name: "Core".to_string(),
+            inside: vec!["api".to_string()],
+            allowed_connections: vec![crate::model::AllowedConnection {
+                target_boundary: "db".to_string(),
+                via: ConnectionType::Database,
+            }],
+            rules: vec![BoundaryRule {
+                rule_type: BoundaryRuleType::NoDirectDatabaseAccess,
+                description: "Use a repository/service boundary instead of direct DB access."
+                    .to_string(),
+            }],
+            source_ref: source_ref("Core"),
+        });
+        let reality = create_test_graph();
+
+        let report = detector.detect(&intent, &reality);
+
+        assert!(!report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::BoundaryViolation));
+    }
+
+    #[test]
+    fn test_policy_deny_edge_detects_violation_and_respects_exceptions() {
+        let detector = DriftDetector::new();
+        let mut intent = create_test_intent();
+        intent.policies.push(DeclaredPolicy {
+            name: "NoDbCalls".to_string(),
+            description: "Services must not call the DB directly.".to_string(),
+            category: String::new(),
+            enforcement: String::new(),
+            scope: Vec::new(),
+            rules: vec![PolicyRule {
+                description: "No direct api->db".to_string(),
+                constraint: "deny".to_string(),
+                content: Some(PolicyRuleContent::DenyEdge {
+                    from: PolicySelector {
+                        id: Some("api".to_string()),
+                        ..Default::default()
+                    },
+                    to: PolicySelector {
+                        id: Some("db".to_string()),
+                        ..Default::default()
+                    },
+                    except: vec![PolicyEdgeException {
+                        from: PolicySelector {
+                            id: Some("api".to_string()),
+                            ..Default::default()
+                        },
+                        to: PolicySelector {
+                            id: Some("db".to_string()),
+                            ..Default::default()
+                        },
+                    }],
+                    message: None,
+                    suggestions: vec!["Introduce an API boundary layer.".to_string()],
+                }),
+            }],
+            source_ref: source_ref("NoDbCalls"),
+        });
+        let reality = create_test_graph();
+
+        let report = detector.detect(&intent, &reality);
+
+        assert!(!report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::PolicyViolation));
+
+        intent.policies[0].rules[0].content = Some(PolicyRuleContent::DenyEdge {
+            from: PolicySelector {
+                id: Some("api".to_string()),
+                ..Default::default()
+            },
+            to: PolicySelector {
+                id: Some("db".to_string()),
+                ..Default::default()
+            },
+            except: Vec::new(),
+            message: None,
+            suggestions: vec![],
+        });
+
+        let report = detector.detect(&intent, &reality);
+        assert!(report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::PolicyViolation && d.severity == Severity::High));
+    }
+
+    #[test]
+    fn test_policy_require_tags_and_metadata_and_slo() {
+        let detector = DriftDetector::new();
+        let mut intent = create_test_intent();
+        intent.policies.push(DeclaredPolicy {
+            name: "MetadataRules".to_string(),
+            description: "Ensure required tags/metadata exist.".to_string(),
+            category: String::new(),
+            enforcement: String::new(),
+            scope: Vec::new(),
+            rules: vec![
+                PolicyRule {
+                    description: "API must be tagged".to_string(),
+                    constraint: "tags".to_string(),
+                    content: Some(PolicyRuleContent::RequireTags {
+                        selector: PolicySelector {
+                            id: Some("api".to_string()),
+                            ..Default::default()
+                        },
+                        tags: vec!["public".to_string()],
+                        except: Vec::new(),
+                        message: None,
+                        suggestions: Vec::new(),
+                    }),
+                },
+                PolicyRule {
+                    description: "API must have tier metadata".to_string(),
+                    constraint: "meta".to_string(),
+                    content: Some(PolicyRuleContent::RequireMetadata {
+                        selector: PolicySelector {
+                            id: Some("api".to_string()),
+                            ..Default::default()
+                        },
+                        key: "tier".to_string(),
+                        value: Some("1".to_string()),
+                        except: Vec::new(),
+                        message: None,
+                        suggestions: Vec::new(),
+                    }),
+                },
+                PolicyRule {
+                    description: "API must define SLO".to_string(),
+                    constraint: "slo".to_string(),
+                    content: Some(PolicyRuleContent::RequireSlo {
+                        selector: PolicySelector {
+                            id: Some("api".to_string()),
+                            ..Default::default()
+                        },
+                        except: Vec::new(),
+                        message: None,
+                        suggestions: Vec::new(),
+                    }),
+                },
+            ],
+            source_ref: source_ref("MetadataRules"),
+        });
+
+        let mut reality = ScanGraph::new();
+        reality.nodes.push(scan_node_with(
+            "api",
+            NodeKind::Service,
+            Some("Rust"),
+            HashMap::new(),
+        ));
+        reality.nodes.push(scan_node_with(
+            "db",
+            NodeKind::Database,
+            Some("PostgreSQL"),
+            HashMap::new(),
+        ));
+        reality.edges.push(Edge {
+            source: "api".to_string(),
+            target: "db".to_string(),
+            kind: EdgeKind::Calls,
+            evidence: vec![],
+        });
+
+        let report = detector.detect(&intent, &reality);
+        assert!(report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::PolicyViolation));
+
+        let mut reality = reality;
+        let mut meta = HashMap::new();
+        meta.insert("tags", "public,internal");
+        meta.insert("tier", "1");
+        meta.insert("availability_slo", "99.9");
+        reality.nodes[0] = scan_node_with("api", NodeKind::Service, Some("Rust"), meta);
+
+        let report = detector.detect(&intent, &reality);
+        assert!(!report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::PolicyViolation));
+    }
+
+    #[test]
+    fn test_policy_phrase_compatibility_shim() {
+        let detector = DriftDetector::new();
+        let mut intent = create_test_intent();
+        intent.policies.push(DeclaredPolicy {
+            name: "NoApiDbPhrase".to_string(),
+            description: "Legacy phrase rule".to_string(),
+            category: String::new(),
+            enforcement: String::new(),
+            scope: Vec::new(),
+            rules: vec![PolicyRule {
+                description: "Legacy phrase".to_string(),
+                constraint: "api must not call db".to_string(),
+                content: Some(PolicyRuleContent::Phrase(
+                    "api must not call db".to_string(),
+                )),
+            }],
+            source_ref: source_ref("NoApiDbPhrase"),
+        });
+        let reality = create_test_graph();
+
+        let report = detector.detect(&intent, &reality);
+
+        assert!(report
+            .drifts
+            .iter()
+            .any(|d| d.kind == DriftKind::PolicyViolation));
+    }
+
+    #[test]
+    fn test_node_matches_selector_filters_kind_id_technology_tags_and_meta() {
+        let mut metadata = HashMap::new();
+        metadata.insert("tags", "public, pci");
+        metadata.insert("tier", "1");
+        metadata.insert("pci", "");
+        let node = scan_node_with("payments.api", NodeKind::Service, Some("Rust"), metadata);
+
+        let selector = PolicySelector {
+            kind: Some("service".to_string()),
+            id: Some("api".to_string()),
+            technology: Some("rust".to_string()),
+            tags: vec!["public".to_string(), "pci".to_string()],
+            meta: vec![
+                PolicyMetaSelector {
+                    key: "tier".to_string(),
+                    value: Some("1".to_string()),
+                },
+                PolicyMetaSelector {
+                    key: "pci".to_string(),
+                    value: None,
+                },
+            ],
+        };
+
+        assert!(node_matches_selector(&node, &selector));
+
+        let selector = PolicySelector {
+            technology: Some("Go".to_string()),
+            ..selector
+        };
+        assert!(!node_matches_selector(&node, &selector));
+    }
+
+    #[test]
+    fn test_compute_drift_score_zero_when_no_declared_components() {
+        let summary = DriftSummary {
+            total_components_declared: 0,
+            total_components_discovered: 0,
+            undocumented_components: 1,
+            missing_components: 1,
+            undocumented_relationships: 1,
+            boundary_violations: 1,
+            policy_violations: 1,
+        };
+        let drifts = vec![Drift {
+            kind: DriftKind::PolicyViolation,
+            severity: Severity::Critical,
+            description: "x".to_string(),
+            evidence: vec![],
+            intent_ref: None,
+            suggestion: None,
+        }];
+
+        assert_eq!(DriftDetector::compute_drift_score(&summary, &drifts), 0);
     }
 
     #[test]

@@ -178,6 +178,7 @@ impl Exporter {
                 domain: architecture_index.domain,
                 criticality: architecture_index.criticality,
                 sources: architecture_index.sources,
+                hydration: None,
             };
 
             dump.elements.insert(fqn.clone(), element_dump);

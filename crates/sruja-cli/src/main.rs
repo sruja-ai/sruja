@@ -129,6 +129,9 @@ enum Commands {
         /// Export all defined custom views in markdown (adds Custom views section)
         #[arg(long)]
         all_views: bool,
+        /// Hydrate architecture elements with source code content (JSON only)
+        #[arg(long)]
+        hydrate: bool,
     },
     /// Format a Sruja file
     Fmt {
@@ -463,6 +466,18 @@ enum Commands {
         #[arg(short = 'o', long)]
         output: Option<String>,
     },
+    /// Generate semantic embeddings for architectural nodes
+    Index {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Output path for vector index
+        #[arg(long, short = 'o', default_value = ".sruja/vectors.json")]
+        output: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -577,15 +592,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             target,
             view,
             all_views,
+            hydrate,
         } => {
             commands::export(
                 &format,
                 &file,
-                extended,
-                view_level,
-                target.as_deref(),
-                view.as_deref(),
-                all_views,
+                commands::ExportOptions {
+                    extended,
+                    view_level,
+                    target,
+                    view_name: view,
+                    all_views,
+                    hydrate,
+                },
             )
             .await
         }
@@ -762,6 +781,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             commands::generate_prompt(&repo, skill_path.as_deref(), output.as_deref())
         }
+        Commands::Index {
+            repo,
+            architecture,
+            output,
+        } => commands::index(&repo, architecture.as_deref(), &output).await,
     };
 
     match result {

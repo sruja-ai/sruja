@@ -401,6 +401,13 @@ pub async fn drift_pr(
     };
     let head_drift = sruja_diff::detect_architectural_drift(&head_graph);
 
+    // Map git diff to components (New native Phase 2 logic)
+    let component_diffs = sruja_diff::map_git_diff(repo_path, base, head, &head_graph)
+        .unwrap_or_else(|e| {
+            eprintln!("⚠️  Warning: Failed to map git diff to components: {}", e);
+            Vec::new()
+        });
+
     let cache_filename = base.replace(['/', '.'], "_");
     let cache_path = cache_dir.join(format!("{}.json", cache_filename));
     let base_graph = if cache_path.exists() {
@@ -465,8 +472,8 @@ pub async fn drift_pr(
         .collect();
 
     let result = PrDriftResult {
-        base_ref: base_ref.unwrap_or("origin/main").to_string(),
-        head_ref: head_ref.unwrap_or("HEAD").to_string(),
+        base_ref: base.to_string(),
+        head_ref: head.to_string(),
         changed_files,
         base_health: base_drift.health_score,
         head_health: head_drift.health_score,
@@ -482,6 +489,7 @@ pub async fn drift_pr(
             .collect(),
         base_violations_count: base_drift.violations.len(),
         head_violations_count: head_drift.violations.len(),
+        component_diffs,
     };
 
     match format {

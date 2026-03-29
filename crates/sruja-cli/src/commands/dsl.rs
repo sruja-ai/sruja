@@ -361,28 +361,48 @@ fn write_lint_baseline(
     Ok(())
 }
 
-pub async fn export(
-    format: &str,
-    file: &str,
-    extended: bool,
-    view_level: u8,
-    target: Option<&str>,
-    view_name: Option<&str>,
-    all_views: bool,
-) -> Result<(), CliError> {
+pub struct ExportOptions {
+    pub extended: bool,
+    pub view_level: u8,
+    pub target: Option<String>,
+    pub view_name: Option<String>,
+    pub all_views: bool,
+    pub hydrate: bool,
+}
+
+pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<(), CliError> {
     let (_, program) = super::parse_sruja_file(file)?;
 
     match format {
         "json" => {
-            let exporter = JsonExporter::with_extended(extended);
-            let json = exporter.export(&program)?;
+            let exporter = JsonExporter::with_extended(options.extended);
+            let mut dump = exporter.to_model_dump(&program);
+
+            if options.hydrate {
+                let repo_root = Path::new(file).parent().unwrap_or_else(|| Path::new("."));
+                for (_fqn, element) in dump.elements.iter_mut() {
+                    // Collect all sources for this element
+                    let mut code_blocks = Vec::new();
+                    for s in &element.sources {
+                        let full_path = repo_root.join(&s.path);
+                        if let Ok(content) = fs::read_to_string(&full_path) {
+                            code_blocks.push(format!("// File: {}\n{}", s.path, content));
+                        }
+                    }
+                    if !code_blocks.is_empty() {
+                        element.hydration = Some(code_blocks.join("\n\n"));
+                    }
+                }
+            }
+
+            let json = serde_json::to_string_pretty(&dump)?;
             println!("{}", json);
         }
         "mermaid" => {
             let exporter = MermaidExporter::new(MermaidConfig {
                 direction: "LR".to_string(),
-                view_level,
-                target_id: target.map(|s| s.to_string()),
+                view_level: options.view_level,
+                target_id: options.target.clone(),
             });
             let mmd = exporter.export(&program);
             println!("{}", mmd);
@@ -390,23 +410,23 @@ pub async fn export(
         "d2" => {
             let exporter = D2Exporter::new(D2Config {
                 direction: "right".to_string(),
-                view_level,
-                target_id: target.map(|s| s.to_string()),
+                view_level: options.view_level,
+                target_id: options.target.clone(),
                 link_template: None,
             });
             let d2 = exporter.export(&program);
             println!("{}", d2);
         }
         "markdown" => {
-            let mut options = MarkdownOptions::default();
-            if let Some(name) = view_name {
-                options.use_views = true;
-                options.view_name = Some(name.to_string());
-            } else if all_views {
-                options.use_views = true;
-                options.include_all_views = true;
+            let mut md_options = MarkdownOptions::default();
+            if let Some(name) = options.view_name.as_deref() {
+                md_options.use_views = true;
+                md_options.view_name = Some(name.to_string());
+            } else if options.all_views {
+                md_options.use_views = true;
+                md_options.include_all_views = true;
             }
-            let exporter = MarkdownExporter::new(options);
+            let exporter = MarkdownExporter::new(md_options);
             let md = exporter.export(&program);
             println!("{}", md);
         }
