@@ -2,9 +2,7 @@ use colored::Colorize;
 use std::path::Path;
 
 use crate::commands::CliError;
-use crate::context_detection::{
-    build_repo_context, detect_architecture_style, detect_framework, detect_languages,
-};
+use crate::context_detection::build_repo_context;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;
 use sruja_scan::scan_scope::resolve_scan_scope;
@@ -38,26 +36,18 @@ pub async fn quickstart(
     eprintln!("📂 Scanning repository...");
     let graph = scan_repo(repo_path)?;
     eprintln!("   ✓ Found {} components", graph.nodes.len());
-    let (_, scan_scope) = resolve_scan_scope(repo_path);
-
-    let languages = detect_languages(repo_path);
-    let primary_language = languages
-        .first()
-        .map(|(l, _)| l.as_str())
-        .unwrap_or("Unknown");
-    let framework = detect_framework(repo_path, primary_language);
-    let (is_monolith, is_microservices) = detect_architecture_style(&graph);
     let context = build_repo_context(repo_path, &graph);
+    let (_, scan_scope) = resolve_scan_scope(repo_path);
 
     eprintln!();
     eprintln!("📊 Repository Context");
-    eprintln!("   • Primary Language: {}", primary_language.cyan());
-    if let Some(ref fw) = framework {
+    eprintln!("   • Primary Language: {}", context.primary_language.cyan());
+    if let Some(ref fw) = context.framework {
         eprintln!("   • Framework: {}", fw.cyan());
     }
-    if is_microservices {
+    if context.is_microservices {
         eprintln!("   • Architecture: {}", "Microservices".cyan());
-    } else if is_monolith {
+    } else if context.is_monolith {
         eprintln!("   • Architecture: {}", "Monolith".cyan());
     }
     if let Some(ref domain) = context.domain {

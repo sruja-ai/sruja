@@ -3,7 +3,7 @@
 //! Detects primary language, framework, domain, and architecture style
 //! to improve LLM response quality and avoid incorrect assumptions.
 
-#![allow(dead_code)]
+
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -12,14 +12,11 @@ use sruja_scan::{Graph, NodeKind};
 
 /// Repository context for better LLM prompts
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 pub struct RepoContext {
-    pub name: String,
     pub primary_language: String,
-    pub languages: Vec<(String, usize)>,
     pub framework: Option<String>,
     pub domain: Option<String>,
-    pub component_count: usize,
     pub is_monolith: bool,
     pub is_microservices: bool,
 }
@@ -515,29 +512,26 @@ pub fn detect_architecture_style(graph: &Graph) -> (bool, bool) {
 
 /// Build complete repository context
 pub fn build_repo_context(repo_path: &Path, graph: &Graph) -> RepoContext {
-    let name = repo_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string();
-
     let languages = detect_languages(repo_path);
     let primary_language = languages
         .first()
         .map(|(lang, _)| lang.clone())
         .unwrap_or_else(|| "Unknown".to_string());
 
+    let name = repo_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
     let framework = detect_framework(repo_path, &primary_language);
     let domain = infer_domain(repo_path, &name);
     let (is_monolith, is_microservices) = detect_architecture_style(graph);
 
     RepoContext {
-        name,
         primary_language,
-        languages,
         framework,
         domain,
-        component_count: graph.nodes.len(),
         is_monolith,
         is_microservices,
     }

@@ -22,9 +22,6 @@ pub enum CliError {
     Json(#[from] serde_json::Error),
     #[error("Scan error: {0}")]
     Scan(String),
-    #[error("Drift error: {0}")]
-    #[allow(dead_code)]
-    Drift(String),
     #[error("Violations detected (--fail-on matched)")]
     FailOnViolations,
 }
@@ -53,7 +50,6 @@ impl CliError {
             CliError::Export(_) => 5,
             CliError::Json(_) => 6,
             CliError::Scan(_) => 7,
-            CliError::Drift(_) => 8,
             CliError::FailOnViolations => 1,
         }
     }

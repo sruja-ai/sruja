@@ -8,17 +8,13 @@ use serde::{Deserialize, Serialize};
 
 use super::CliError;
 
-#[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
+#[derive(Debug, Clone, serde::Deserialize)]
 struct Span {
-    id: Option<String>,
     name: String,
     #[serde(default)]
     start: Option<String>,
     #[serde(default)]
     end: Option<String>,
-    #[serde(default)]
-    attributes: Vec<serde_json::Value>,
     #[serde(default)]
     children: Vec<Span>,
 }

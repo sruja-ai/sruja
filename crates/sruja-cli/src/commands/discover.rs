@@ -12,9 +12,7 @@ use sruja_scan::scan_scope::resolve_scan_scope;
 use sruja_scan::{generate_repomap_from_graph, EdgeKind, Graph, NodeKind, RepoMapOptions};
 
 use super::{scan_repo_cached, CliError};
-use crate::context_detection::{
-    build_repo_context, detect_architecture_style, detect_framework, detect_languages,
-};
+use crate::context_detection::build_repo_context;
 
 const QUESTION_BANK: &str = r#"# Sruja discovery question bank
 
@@ -133,14 +131,7 @@ pub fn discover_context_string_from_graph(
     repo_path: &Path,
     graph: &Graph,
 ) -> Result<String, CliError> {
-    let languages = detect_languages(repo_path);
-    let primary_language = languages
-        .first()
-        .map(|(l, _)| l.as_str())
-        .unwrap_or("Unknown");
-    let framework = detect_framework(repo_path, primary_language);
     let context = build_repo_context(repo_path, graph);
-    let (is_monolith, is_microservices) = detect_architecture_style(graph);
 
     let repo_prefix = repo_path
         .canonicalize()
@@ -185,9 +176,9 @@ pub fn discover_context_string_from_graph(
     let mut areas: Vec<String> = areas.into_iter().collect();
     areas.sort();
 
-    let arch_style = if is_microservices {
+    let arch_style = if context.is_microservices {
         "microservices"
-    } else if is_monolith {
+    } else if context.is_monolith {
         "monolith"
     } else {
         "mixed/unclear"
@@ -198,8 +189,8 @@ pub fn discover_context_string_from_graph(
     out.push_str(&format!("**Repo:** {}\n", repo));
     out.push_str(&format!("**Components (scan):** {}\n", graph.nodes.len()));
     out.push_str(&format!("**Edges:** {}\n", graph.edges.len()));
-    out.push_str(&format!("**Primary language:** {}\n", primary_language));
-    if let Some(ref fw) = framework {
+    out.push_str(&format!("**Primary language:** {}\n", context.primary_language));
+    if let Some(ref fw) = context.framework {
         out.push_str(&format!("**Framework:** {}\n", fw));
     }
     out.push_str(&format!("**Architecture style:** {}\n", arch_style));
@@ -881,27 +872,17 @@ pub fn discover_context_json_from_graph(
     repo_path: &Path,
     graph: &Graph,
 ) -> Result<DiscoverContextJson, CliError> {
-    let (_, scan_scope) = resolve_scan_scope(repo_path);
-    let languages = detect_languages(repo_path);
-    let primary_language = languages
-        .first()
-        .map(|(l, _)| l.as_str())
-        .unwrap_or("Unknown")
-        .to_string();
-    let framework = detect_framework(
-        repo_path,
-        languages.first().map(|(l, _)| l.as_str()).unwrap_or(""),
-    );
     let context = build_repo_context(repo_path, graph);
-    let (is_monolith, is_microservices) = detect_architecture_style(graph);
-    let architecture_style = if is_microservices {
+    let architecture_style = if context.is_microservices {
         "microservices"
-    } else if is_monolith {
+    } else if context.is_monolith {
         "monolith"
     } else {
         "mixed/unclear"
     }
     .to_string();
+
+    let (_, scan_scope) = resolve_scan_scope(repo_path);
     let repo_prefix = repo_path
         .canonicalize()
         .ok()
@@ -946,8 +927,8 @@ pub fn discover_context_json_from_graph(
         scan_scope,
         components: graph.nodes.len(),
         edges: graph.edges.len(),
-        primary_language,
-        framework,
+        primary_language: context.primary_language.clone(),
+        framework: context.framework.clone(),
         architecture_style,
         domain: context.domain.clone(),
         suggested_areas,
