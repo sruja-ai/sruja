@@ -135,6 +135,85 @@ Any of the following triggers immediate pilot pause:
 
 ---
 
+## Phase 2.4: Task-Scoped Architecture Context Unification (TaskContext v1)
+
+### Product Goal
+Given a coding task or PR, return the smallest trustworthy architecture slice with source evidence, impact, and relevant code so an AI agent can act safely.
+
+### Primary Workflow
+`sync` → `context` → `act` → `drift/check`
+
+### Scope (This Phase)
+- Introduce a single canonical `TaskContext` contract returned by CLI JSON output and primary MCP context tool.
+- Implement one shared selector/resolver pipeline that powers file/ID/query/diff selection, impact mapping, neighbors/lineage expansion, hydration, and semantic fallback.
+- Preserve existing CLI/MCP compatibility surfaces for one release via adapters (no duplicate logic).
+
+### Non-Goals (This Phase)
+- Introducing new top-level workflows beyond `sync`, `context`, and `drift-pr`.
+- Exposing embedding/model details in user-facing APIs.
+- Making semantic search a required setup step.
+
+### TaskContext Contract (v1)
+Minimum required top-level fields:
+```json
+{
+  "schema_version": "task_context/v1",
+  "selection_reason": {},
+  "focus_elements": [],
+  "impacted_systems": [],
+  "impacted_containers": [],
+  "impacted_components": [],
+  "neighbors": [],
+  "source_bindings": [],
+  "hydrated_files": [],
+  "risk": "low|medium|high",
+  "truth_status": "architectural_truth|inferred_from_scan|inferred_from_code|unknown",
+  "confidence": "high|medium|low",
+  "semantic_candidates": []
+}
+```
+Contract requirements:
+- Every `focus_element` must include at least one evidence-backed reason for inclusion (direct binding, diff hunk, index edge, SCIP reference, or semantic match).
+- When architecture truth exists, always provide system/container lineage for focus and impacted elements.
+- When truth does not exist, fall back to scanned nodes and set lower `confidence` and `truth_status`.
+
+### Implementation Tasks
+| Task | Owner | Duration | Dependencies |
+|------|-------|----------|--------------|
+| Define versioned `TaskContext` type in a shared crate/module | Backend | 1 day | Phase 2 |
+| Add typed enums for `truth_status`, `confidence`, and `risk` | Backend | 0.5 day | 2.4.1 |
+| Implement canonical selector inputs: `file`, `element_id`, `query`, `git_diff(base_ref, head_ref)` | Backend | 1 day | 2.4.1 |
+| Implement shared resolver pipeline returning `TaskContext` | Backend | 3 days | 2.4.2, 2.4.3 |
+| Wire `sruja context --format json` to emit `TaskContext` | Backend | 1 day | 2.4.4 |
+| Rewire PR review / `drift-pr` to reuse resolver and emit lineage + confidence | Backend | 2 days | 2.4.4 |
+| Implement semantic fallback as recall-only (populate `semantic_candidates` when resolution is ambiguous/empty) | Backend | 2 days | 2.4.4 |
+| Implement hydration as assembly stage of `TaskContext` with deterministic budgets | Backend | 2 days | 2.4.4 |
+| Add MCP tools: `get_task_context`, `review_pr`, `search` (plus 1-release compatibility aliases) | Platform | 2 days | 2.4.4 |
+| Add contract tests (schema + resolution equivalence + compatibility mapping) | QA | 3 days | 2.4.5–2.4.9 |
+
+### Behavioral Guarantees
+- Deterministic outputs: stable ordering for `focus_elements` and `hydrated_files` for the same inputs.
+- Evidence-first: every selected element has explicit provenance; no silent semantic promotion to truth.
+- Graceful degradation: without SCIP, resolver still works and reports lower `confidence` with scan-backed evidence.
+
+### Test Plan
+- Selector equivalence: file-path, architecture-ID, source-binding, and git-diff inputs resolve to the same focus element when unambiguous.
+- PR review on multi-file change reports impacted lineage plus matching hydrated evidence.
+- SCIP-on vs SCIP-off: selection/impact remains consistent; confidence/evidence provenance changes accordingly.
+- Semantic fallback: natural-language query resolves to correct area or returns ranked candidates when ambiguous.
+- Hydration budgets: prefers target + immediate neighbors; excludes unrelated files when budget is tight.
+- Multi-repo: loads only impacted slice from composed system index.
+- Backward compatibility: existing MCP tool names and legacy CLI JSON continue to work for one release via adapters over `TaskContext`.
+
+### Phase 2.4 Exit Criteria
+- [ ] `sruja context --format json` returns `schema_version: task_context/v1` payload
+- [ ] PR review/drift output includes impacted lineage + `selection_reason` + `confidence`
+- [ ] Resolver uses one shared pipeline for selection/impact/hydration/semantic fallback
+- [ ] Compatibility aliases exist for one release and are adapter-only
+- [ ] Contract tests pass in CI
+
+---
+
 ## Phase 3: Multi-Repo Proof (Week 9-11)
 
 ### 3.1 Pilot Repo Setup

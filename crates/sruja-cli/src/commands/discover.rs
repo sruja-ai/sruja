@@ -189,7 +189,10 @@ pub fn discover_context_string_from_graph(
     out.push_str(&format!("**Repo:** {}\n", repo));
     out.push_str(&format!("**Components (scan):** {}\n", graph.nodes.len()));
     out.push_str(&format!("**Edges:** {}\n", graph.edges.len()));
-    out.push_str(&format!("**Primary language:** {}\n", context.primary_language));
+    out.push_str(&format!(
+        "**Primary language:** {}\n",
+        context.primary_language
+    ));
     if let Some(ref fw) = context.framework {
         out.push_str(&format!("**Framework:** {}\n", fw));
     }

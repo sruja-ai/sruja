@@ -147,3 +147,138 @@ pub struct BoundaryRule {
     pub allowed: bool,
     pub reason: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskTruthStatus {
+    ArchitecturalTruth,
+    InferredFromScan,
+    InferredFromCode,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskConfidence {
+    High,
+    Medium,
+    Low,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskRisk {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskContext {
+    pub schema_version: String,
+    pub selection_reason: SelectionReason,
+    pub focus_elements: Vec<TaskFocusElement>,
+    pub impacted_systems: Vec<String>,
+    pub impacted_containers: Vec<String>,
+    pub impacted_components: Vec<String>,
+    pub neighbors: Vec<TaskNeighbor>,
+    pub source_bindings: Vec<TaskSourceBinding>,
+    pub hydrated_files: Vec<TaskHydratedFile>,
+    pub risk: TaskRisk,
+    pub truth_status: TaskTruthStatus,
+    pub confidence: TaskConfidence,
+    pub semantic_candidates: Vec<TaskSemanticCandidate>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SelectionReason {
+    pub primary: String,
+    pub resolution_path: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskFocusElement {
+    pub element_id: String,
+    pub kind: NodeKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lineage: Option<TaskLineage>,
+    pub evidence: Vec<TaskEvidence>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskLineage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub container: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskEvidenceKind {
+    ExactId,
+    FileMatch,
+    DiffFile,
+    DiffHunk,
+    IndexEdge,
+    ScipReference,
+    SemanticMatch,
+    ScanInferred,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskEvidence {
+    pub kind: TaskEvidenceKind,
+    pub summary: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locator: Option<TaskLocator>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskLocator {
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line_start: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line_end: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskNeighbor {
+    pub element_id: String,
+    pub kind: NodeKind,
+    pub direction: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskSourceBinding {
+    pub element_id: String,
+    pub source_type: String,
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskHydratedFile {
+    pub element_id: String,
+    pub path: String,
+    pub content: String,
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskSemanticCandidate {
+    pub element_id: String,
+    pub score: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}

@@ -120,6 +120,53 @@ export function start() { return query(); }
 }
 
 #[test]
+fn context_format_json_returns_task_context_v1_schema_version() {
+    let temp = create_test_repo();
+    write_file(temp.path(), "src/main.rs", "fn main() {}\n");
+    let repo_str = temp.path().to_str().expect("path utf-8");
+    let (success, stdout, stderr) = run_sruja(&["context", "-r", repo_str, "-f", "json"]);
+
+    assert!(
+        success,
+        "context --format json should succeed: stderr={}",
+        stderr
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(stdout.trim()).expect("context output must be valid JSON");
+    let obj = parsed.as_object().expect("root must be object");
+    assert_eq!(
+        obj.get("schema_version").and_then(|v| v.as_str()),
+        Some("task_context/v1")
+    );
+    assert!(
+        obj.contains_key("selection_reason"),
+        "must have 'selection_reason'"
+    );
+    assert!(
+        obj.contains_key("focus_elements"),
+        "must have 'focus_elements'"
+    );
+    assert!(
+        obj.contains_key("impacted_systems"),
+        "must have 'impacted_systems'"
+    );
+    assert!(
+        obj.contains_key("impacted_containers"),
+        "must have 'impacted_containers'"
+    );
+    assert!(
+        obj.contains_key("impacted_components"),
+        "must have 'impacted_components'"
+    );
+    assert!(
+        obj.contains_key("hydrated_files"),
+        "must have 'hydrated_files'"
+    );
+    assert!(obj.contains_key("truth_status"), "must have 'truth_status'");
+    assert!(obj.contains_key("confidence"), "must have 'confidence'");
+}
+
+#[test]
 fn lint_on_temp_sruja_file() {
     let temp = create_test_repo();
     let minimal = r#"person = kind "Person"

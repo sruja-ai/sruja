@@ -1,5 +1,5 @@
-use clap::{Parser, Subcommand};
 use crate::commands;
+use clap::{Parser, Subcommand};
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum ContextIntent {
@@ -366,7 +366,7 @@ pub enum Commands {
         /// Path to repository root
         #[arg(long, short = 'r', action = clap::ArgAction::Append)]
         repo: Vec<String>,
-        /// Output format (cursor-rules, copilot-instructions, markdown, repomap, json, for-ai)
+        /// Output format (cursor-rules, copilot-instructions, markdown, repomap, json, for-ai, legacy-json)
         #[arg(long, short = 'f', default_value = "cursor-rules")]
         format: String,
         /// Output file (defaults to stdout)
@@ -375,6 +375,18 @@ pub enum Commands {
         /// Optional file focus for task-scoped context (relative to repo root or absolute path)
         #[arg(long)]
         file: Option<String>,
+        /// Optional architecture element ID focus (e.g. MySystem.Api)
+        #[arg(long)]
+        element_id: Option<String>,
+        /// Optional natural language query (semantic/recall fallback)
+        #[arg(long)]
+        query: Option<String>,
+        /// Optional git base ref for PR scope (requires --head-ref)
+        #[arg(long)]
+        base_ref: Option<String>,
+        /// Optional git head ref for PR scope (requires --base-ref)
+        #[arg(long)]
+        head_ref: Option<String>,
         /// Optional intent hint for task-scoped context
         #[arg(long)]
         intent: Option<ContextIntent>,
@@ -694,6 +706,10 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             format,
             output,
             file,
+            element_id,
+            query,
+            base_ref,
+            head_ref,
             intent,
             depth,
             max_tokens,
@@ -702,10 +718,16 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
                 &repo,
                 &format,
                 output.as_deref(),
-                file.as_deref(),
-                intent.as_ref().map(ContextIntent::as_str),
-                depth,
-                max_tokens,
+                commands::ContextRequest {
+                    file: file.as_deref(),
+                    element_id: element_id.as_deref(),
+                    query: query.as_deref(),
+                    base_ref: base_ref.as_deref(),
+                    head_ref: head_ref.as_deref(),
+                    intent: intent.as_ref().map(ContextIntent::as_str),
+                    depth,
+                    max_tokens,
+                },
             )
             .await
         }

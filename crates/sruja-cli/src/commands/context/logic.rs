@@ -1,9 +1,13 @@
 use super::super::federation::{find_system_index, infer_repo_id, load_system_index};
 use super::types::*;
 use crate::commands::CliError;
+use crate::utils::architecture_path::resolve_architecture_path;
+use sruja_language::ElementKind;
 use sruja_scan::graph::ComponentImportance;
 use sruja_scan::{Graph, NodeKind};
 use std::collections::HashMap;
+use std::collections::{BTreeMap, HashSet};
+use std::fs;
 use std::path::Path;
 
 pub fn build_architecture_context(
@@ -329,6 +333,630 @@ pub fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
         .collect();
     layers.sort_by(|a, b| a.name.cmp(&b.name));
     layers
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct TaskSelectors<'a> {
+    pub file: Option<&'a str>,
+    pub element_id: Option<&'a str>,
+    pub query: Option<&'a str>,
+    pub base_ref: Option<&'a str>,
+    pub head_ref: Option<&'a str>,
+}
+
+pub fn build_task_context(
+    graph: &Graph,
+    repo_root: &str,
+    selectors: TaskSelectors<'_>,
+    max_tokens: usize,
+) -> Result<TaskContext, CliError> {
+    let repo_path = Path::new(repo_root);
+    let baseline = load_baseline_elements(repo_path);
+
+    let (focus_ids, selection_reason, truth_status, confidence) =
+        resolve_focus(graph, repo_root, selectors, &baseline)?;
+
+    let focus_elements = build_focus_elements(graph, &focus_ids, &baseline, &selection_reason);
+    let (neighbors, impacted) = expand_neighbors_and_impact(graph, &focus_ids);
+    let (source_bindings, hydrated_files) = assemble_sources_and_hydration(
+        graph, repo_root, &focus_ids, &neighbors, &baseline, max_tokens,
+    )?;
+
+    let semantic_candidates = if selectors.query.is_some() && focus_ids.is_empty() {
+        semantic_candidates_from_scan(graph, selectors.query.unwrap_or_default(), 10)
+    } else {
+        Vec::new()
+    };
+
+    let risk = estimate_risk(graph, &focus_ids, &neighbors, &baseline);
+
+    Ok(TaskContext {
+        schema_version: "task_context/v1".to_string(),
+        selection_reason,
+        focus_elements,
+        impacted_systems: impacted.systems,
+        impacted_containers: impacted.containers,
+        impacted_components: impacted.components,
+        neighbors,
+        source_bindings,
+        hydrated_files,
+        risk,
+        truth_status,
+        confidence,
+        semantic_candidates,
+    })
+}
+
+#[derive(Debug, Default, Clone)]
+struct BaselineElements {
+    kinds_by_id: BTreeMap<String, NodeKind>,
+    labels_by_id: BTreeMap<String, String>,
+    sources_by_id: BTreeMap<String, Vec<sruja_language::SourceBinding>>,
+}
+
+fn load_baseline_elements(repo_root: &Path) -> BaselineElements {
+    let Some(path) = resolve_architecture_path(repo_root) else {
+        return BaselineElements::default();
+    };
+    let Ok(content) = fs::read_to_string(&path) else {
+        return BaselineElements::default();
+    };
+    let parser = sruja_language::Parser::new(path.to_string_lossy().to_string());
+    let Ok(program) = parser.parse(&content) else {
+        return BaselineElements::default();
+    };
+    let (elements, _) = sruja_language::collect_elements(&program);
+
+    let mut out = BaselineElements::default();
+    for (fqn, elem) in elements {
+        let kind = element_kind_to_node_kind(&elem.assignment.kind);
+        let label = elem
+            .assignment
+            .title
+            .clone()
+            .unwrap_or_else(|| elem.assignment.name.clone());
+        let sources = elem
+            .assignment
+            .body
+            .as_ref()
+            .map(|b| b.sources.clone())
+            .unwrap_or_default();
+
+        out.kinds_by_id.insert(fqn.clone(), kind);
+        out.labels_by_id.insert(fqn.clone(), label);
+        if !sources.is_empty() {
+            out.sources_by_id.insert(fqn, sources);
+        }
+    }
+    out
+}
+
+fn element_kind_to_node_kind(kind: &ElementKind) -> NodeKind {
+    match kind {
+        ElementKind::System => NodeKind::System,
+        ElementKind::Container => NodeKind::Container,
+        ElementKind::Component => NodeKind::Component,
+        ElementKind::Queue => NodeKind::Queue,
+        ElementKind::Database | ElementKind::DataStore => NodeKind::Database,
+        ElementKind::ExternalSystem => NodeKind::ExternalApi,
+        _ => NodeKind::Module,
+    }
+}
+
+fn resolve_focus(
+    graph: &Graph,
+    repo_root: &str,
+    selectors: TaskSelectors<'_>,
+    baseline: &BaselineElements,
+) -> Result<
+    (
+        Vec<String>,
+        SelectionReason,
+        TaskTruthStatus,
+        TaskConfidence,
+    ),
+    CliError,
+> {
+    if let Some(id) = selectors.element_id {
+        let resolved = resolve_element_id(id, baseline, graph);
+        let mut reason = SelectionReason {
+            primary: "element_id".to_string(),
+            resolution_path: vec!["exact_id".to_string()],
+            details: Some(serde_json::json!({ "element_id": id, "resolved": resolved })),
+        };
+        let (truth_status, confidence) = if baseline.kinds_by_id.contains_key(&resolved) {
+            (TaskTruthStatus::ArchitecturalTruth, TaskConfidence::High)
+        } else if graph.nodes.iter().any(|n| n.id == resolved) {
+            (TaskTruthStatus::InferredFromCode, TaskConfidence::High)
+        } else {
+            reason.primary = "element_id_not_found".to_string();
+            reason.resolution_path = vec!["exact_id".to_string(), "not_found".to_string()];
+            (TaskTruthStatus::Unknown, TaskConfidence::Low)
+        };
+        return Ok((vec![resolved], reason, truth_status, confidence));
+    }
+
+    if let (Some(base), Some(head)) = (selectors.base_ref, selectors.head_ref) {
+        let repo_path = Path::new(repo_root);
+        let diffs = sruja_diff::map_git_diff(repo_path, base, head, graph)
+            .map_err(|e| CliError::Validation(format!("Failed to map git diff: {}", e)))?;
+
+        let mut focus: Vec<String> = diffs.into_iter().map(|d| d.component_id).collect();
+        focus.sort();
+        focus.dedup();
+
+        let reason = SelectionReason {
+            primary: "git_diff".to_string(),
+            resolution_path: vec!["diff_binding".to_string(), "scan_graph".to_string()],
+            details: Some(serde_json::json!({ "base_ref": base, "head_ref": head })),
+        };
+        return Ok((
+            focus,
+            reason,
+            TaskTruthStatus::InferredFromScan,
+            TaskConfidence::Medium,
+        ));
+    }
+
+    if let Some(path) = selectors.file {
+        let centrality = sruja_scan::graph::compute_all_centrality(graph);
+        let focus_ctx = build_focus_context(graph, repo_root, path, None, 0, 0, &centrality)?;
+        let mut focus: Vec<String> = focus_ctx.matched_nodes.into_iter().map(|n| n.id).collect();
+        focus.truncate(1);
+        let reason = SelectionReason {
+            primary: "file".to_string(),
+            resolution_path: vec!["file_binding".to_string(), "scan_graph".to_string()],
+            details: Some(serde_json::json!({ "file": path })),
+        };
+        let confidence = if focus.is_empty() {
+            TaskConfidence::Low
+        } else {
+            TaskConfidence::Medium
+        };
+        return Ok((focus, reason, TaskTruthStatus::InferredFromCode, confidence));
+    }
+
+    if let Some(q) = selectors.query {
+        let candidates = semantic_candidates_from_scan(graph, q, 5);
+        let focus = candidates
+            .first()
+            .map(|c| vec![c.element_id.clone()])
+            .unwrap_or_default();
+
+        let confidence = TaskConfidence::Low;
+        let reason = SelectionReason {
+            primary: "query".to_string(),
+            resolution_path: vec!["semantic_fallback".to_string(), "scan_graph".to_string()],
+            details: Some(serde_json::json!({ "query": q })),
+        };
+        return Ok((focus, reason, TaskTruthStatus::Unknown, confidence));
+    }
+
+    Ok((
+        Vec::new(),
+        SelectionReason {
+            primary: "empty".to_string(),
+            resolution_path: vec!["none".to_string()],
+            details: None,
+        },
+        TaskTruthStatus::Unknown,
+        TaskConfidence::Low,
+    ))
+}
+
+fn resolve_element_id(id: &str, baseline: &BaselineElements, graph: &Graph) -> String {
+    if baseline.kinds_by_id.contains_key(id) || graph.nodes.iter().any(|n| n.id == id) {
+        return id.to_string();
+    }
+    if let Some((fqn, _)) = baseline
+        .kinds_by_id
+        .iter()
+        .find(|(fqn, _)| fqn.ends_with(&format!(".{}", id)))
+    {
+        return fqn.clone();
+    }
+    if let Some(node) = graph
+        .nodes
+        .iter()
+        .find(|n| n.id == id || n.id.ends_with(&format!(".{}", id)))
+    {
+        return node.id.clone();
+    }
+    id.to_string()
+}
+
+fn build_focus_elements(
+    graph: &Graph,
+    focus_ids: &[String],
+    baseline: &BaselineElements,
+    selection_reason: &SelectionReason,
+) -> Vec<TaskFocusElement> {
+    let mut out = Vec::new();
+    for id in focus_ids {
+        let (kind, label) = if let Some(kind) = baseline.kinds_by_id.get(id) {
+            (
+                *kind,
+                baseline
+                    .labels_by_id
+                    .get(id)
+                    .cloned()
+                    .or_else(|| Some(id.clone())),
+            )
+        } else if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
+            (node.kind, Some(node.label.clone()))
+        } else {
+            (NodeKind::Module, Some(id.clone()))
+        };
+
+        let lineage = baseline
+            .kinds_by_id
+            .contains_key(id)
+            .then(|| compute_lineage(id, baseline));
+
+        let evidence = match selection_reason.primary.as_str() {
+            "element_id" => vec![TaskEvidence {
+                kind: TaskEvidenceKind::ExactId,
+                summary: format!("Resolved by element_id: {}", id),
+                locator: None,
+            }],
+            "git_diff" => vec![TaskEvidence {
+                kind: TaskEvidenceKind::DiffFile,
+                summary: "Mapped from git diff to impacted components".to_string(),
+                locator: None,
+            }],
+            "file" => vec![TaskEvidence {
+                kind: TaskEvidenceKind::FileMatch,
+                summary: format!("Matched from file selector: {}", id),
+                locator: selection_reason
+                    .details
+                    .as_ref()
+                    .and_then(|d| d.get("file"))
+                    .and_then(|v| v.as_str())
+                    .map(|p| TaskLocator {
+                        path: p.to_string(),
+                        line_start: None,
+                        line_end: None,
+                    }),
+            }],
+            _ => vec![TaskEvidence {
+                kind: TaskEvidenceKind::ScanInferred,
+                summary: "Selected from scan graph".to_string(),
+                locator: None,
+            }],
+        };
+
+        out.push(TaskFocusElement {
+            element_id: id.clone(),
+            kind,
+            label,
+            lineage,
+            evidence,
+        });
+    }
+    out
+}
+
+fn compute_lineage(element_id: &str, baseline: &BaselineElements) -> TaskLineage {
+    let mut system = None;
+    let mut container = None;
+    let mut component = None;
+
+    let parts: Vec<&str> = element_id.split('.').collect();
+    if !parts.is_empty() {
+        let sys = parts[0].to_string();
+        if baseline
+            .kinds_by_id
+            .get(&sys)
+            .is_some_and(|k| *k == NodeKind::System)
+        {
+            system = Some(sys);
+        }
+    }
+    for i in (1..parts.len()).rev() {
+        let prefix = parts[..=i].join(".");
+        if let Some(kind) = baseline.kinds_by_id.get(&prefix) {
+            if *kind == NodeKind::Container && container.is_none() {
+                container = Some(prefix.clone());
+            }
+            if *kind == NodeKind::Component && component.is_none() {
+                component = Some(prefix.clone());
+            }
+        }
+    }
+
+    TaskLineage {
+        system,
+        container,
+        component,
+    }
+}
+
+#[derive(Debug, Default)]
+struct ImpactBuckets {
+    systems: Vec<String>,
+    containers: Vec<String>,
+    components: Vec<String>,
+}
+
+fn expand_neighbors_and_impact(
+    graph: &Graph,
+    focus_ids: &[String],
+) -> (Vec<TaskNeighbor>, ImpactBuckets) {
+    let mut neighbors = Vec::new();
+    let mut impacted = ImpactBuckets::default();
+    let mut seen_neighbors: HashSet<(String, String)> = HashSet::new();
+    let mut seen_impacted: HashSet<String> = HashSet::new();
+
+    let kind_for_id = |id: &str| -> NodeKind {
+        graph
+            .nodes
+            .iter()
+            .find(|n| n.id == id)
+            .map(|n| n.kind)
+            .unwrap_or(NodeKind::Module)
+    };
+
+    for id in focus_ids {
+        if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
+            record_impact(&mut impacted, &mut seen_impacted, &node.id, node.kind);
+        }
+
+        if graph.nodes.iter().any(|n| n.id == *id) {
+            let blast = graph.blast_radius(id, 1);
+            for n in blast.upstream {
+                if seen_neighbors.insert((n.id.clone(), "upstream".to_string())) {
+                    let kind = kind_for_id(&n.id);
+                    neighbors.push(TaskNeighbor {
+                        element_id: n.id.clone(),
+                        kind,
+                        direction: "upstream".to_string(),
+                    });
+                    record_impact(&mut impacted, &mut seen_impacted, &n.id, kind);
+                }
+            }
+            for n in blast.downstream {
+                if seen_neighbors.insert((n.id.clone(), "downstream".to_string())) {
+                    let kind = kind_for_id(&n.id);
+                    neighbors.push(TaskNeighbor {
+                        element_id: n.id.clone(),
+                        kind,
+                        direction: "downstream".to_string(),
+                    });
+                    record_impact(&mut impacted, &mut seen_impacted, &n.id, kind);
+                }
+            }
+        }
+    }
+
+    neighbors.sort_by(|a, b| {
+        a.element_id
+            .cmp(&b.element_id)
+            .then_with(|| a.direction.cmp(&b.direction))
+    });
+    impacted.systems.sort();
+    impacted.systems.dedup();
+    impacted.containers.sort();
+    impacted.containers.dedup();
+    impacted.components.sort();
+    impacted.components.dedup();
+
+    (neighbors, impacted)
+}
+
+fn record_impact(
+    impacted: &mut ImpactBuckets,
+    seen: &mut HashSet<String>,
+    id: &str,
+    kind: NodeKind,
+) {
+    if !seen.insert(format!("{}::{:?}", id, kind)) {
+        return;
+    }
+    match kind {
+        NodeKind::System => impacted.systems.push(id.to_string()),
+        NodeKind::Container | NodeKind::Service => impacted.containers.push(id.to_string()),
+        NodeKind::Component | NodeKind::Module | NodeKind::Frontend => {
+            impacted.components.push(id.to_string())
+        }
+        _ => impacted.components.push(id.to_string()),
+    }
+}
+
+fn assemble_sources_and_hydration(
+    graph: &Graph,
+    repo_root: &str,
+    focus_ids: &[String],
+    neighbors: &[TaskNeighbor],
+    baseline: &BaselineElements,
+    max_tokens: usize,
+) -> Result<(Vec<TaskSourceBinding>, Vec<TaskHydratedFile>), CliError> {
+    let repo_path = Path::new(repo_root);
+    let mut bindings = Vec::new();
+
+    for id in focus_ids {
+        if let Some(sources) = baseline.sources_by_id.get(id) {
+            for s in sources {
+                bindings.push(TaskSourceBinding {
+                    element_id: id.clone(),
+                    source_type: s.kind.as_str().to_string(),
+                    path: s.path.clone(),
+                    description: s.description.clone(),
+                });
+            }
+        }
+        if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
+            for s in &node.sources {
+                bindings.push(TaskSourceBinding {
+                    element_id: id.clone(),
+                    source_type: s.kind.as_str().to_string(),
+                    path: s.path.clone(),
+                    description: s.description.clone(),
+                });
+            }
+        }
+    }
+
+    let mut file_candidates: Vec<(String, String)> = Vec::new();
+    let mut add_node_files = |node_id: &str| {
+        if let Some(node) = graph.nodes.iter().find(|n| n.id == node_id) {
+            for s in &node.sources {
+                file_candidates.push((node_id.to_string(), s.path.clone()));
+            }
+            if node.sources.is_empty() {
+                if let Some(p) = &node.path {
+                    file_candidates.push((node_id.to_string(), p.clone()));
+                }
+            }
+        }
+    };
+
+    for id in focus_ids {
+        add_node_files(id);
+    }
+    for n in neighbors {
+        add_node_files(&n.element_id);
+    }
+
+    file_candidates.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+    file_candidates.dedup_by(|a, b| a.1 == b.1);
+
+    let mut hydrated = Vec::new();
+    let mut budget = TokenBudget::new(max_tokens);
+    for (node_id, rel_path) in file_candidates {
+        let full_path = repo_path.join(&rel_path);
+        let Ok(content) = fs::read_to_string(&full_path) else {
+            continue;
+        };
+        let remaining_tokens = budget.max_tokens.saturating_sub(budget.used_tokens);
+        if remaining_tokens == 0 {
+            break;
+        }
+        let mut truncated = false;
+        let max_chars = remaining_tokens.saturating_mul(4);
+        let out_content = if TokenBudget::estimate_tokens(&content) > remaining_tokens {
+            truncated = true;
+            content.chars().take(max_chars).collect::<String>()
+        } else {
+            content
+        };
+        let used = TokenBudget::estimate_tokens(&out_content);
+        if used > remaining_tokens {
+            break;
+        }
+        budget.used_tokens = budget.used_tokens.saturating_add(used);
+        hydrated.push(TaskHydratedFile {
+            element_id: node_id,
+            path: rel_path,
+            content: out_content,
+            truncated,
+        });
+    }
+
+    bindings.sort_by(|a, b| {
+        a.element_id
+            .cmp(&b.element_id)
+            .then_with(|| a.path.cmp(&b.path))
+    });
+    bindings.dedup_by(|a, b| {
+        a.element_id == b.element_id && a.path == b.path && a.source_type == b.source_type
+    });
+
+    Ok((bindings, hydrated))
+}
+
+fn semantic_candidates_from_scan(
+    graph: &Graph,
+    query: &str,
+    top_k: usize,
+) -> Vec<TaskSemanticCandidate> {
+    let q = query.trim().to_lowercase();
+    if q.is_empty() {
+        return Vec::new();
+    }
+    let terms: Vec<&str> = q.split_whitespace().collect();
+    let mut scored: Vec<(String, f32)> = Vec::new();
+    for n in &graph.nodes {
+        let hay = format!("{} {}", n.id.to_lowercase(), n.label.to_lowercase());
+        let mut score = 0f32;
+        for t in &terms {
+            if hay.contains(t) {
+                score += 1.0;
+            }
+        }
+        if score > 0.0 {
+            scored.push((n.id.clone(), score));
+        }
+    }
+    scored.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(&b.0))
+    });
+    scored.truncate(top_k);
+    scored
+        .into_iter()
+        .map(|(id, score)| {
+            let node = graph.nodes.iter().find(|n| n.id == id);
+            TaskSemanticCandidate {
+                element_id: id.clone(),
+                score,
+                label: node.map(|n| n.label.clone()),
+                description: node.and_then(|n| n.metadata.get("description").cloned()),
+            }
+        })
+        .collect()
+}
+
+fn estimate_risk(
+    graph: &Graph,
+    focus_ids: &[String],
+    neighbors: &[TaskNeighbor],
+    baseline: &BaselineElements,
+) -> TaskRisk {
+    let mut critical = false;
+    let mut touches_data = false;
+
+    let criticality_rank = |c: sruja_language::ast::Criticality| -> u8 {
+        match c {
+            sruja_language::ast::Criticality::Low => 0,
+            sruja_language::ast::Criticality::Medium => 1,
+            sruja_language::ast::Criticality::High => 2,
+            sruja_language::ast::Criticality::Critical => 3,
+        }
+    };
+
+    let mut check_id = |id: &str| {
+        if let Some(node) = graph.nodes.iter().find(|n| n.id == id) {
+            if node.criticality.is_some_and(|c| {
+                criticality_rank(c) >= criticality_rank(sruja_language::ast::Criticality::High)
+            }) {
+                critical = true;
+            }
+            if matches!(node.kind, NodeKind::Database | NodeKind::Queue) {
+                touches_data = true;
+            }
+        }
+        if let Some(kind) = baseline.kinds_by_id.get(id) {
+            if matches!(kind, NodeKind::Database | NodeKind::Queue) {
+                touches_data = true;
+            }
+        }
+    };
+
+    for id in focus_ids {
+        check_id(id);
+    }
+    for n in neighbors {
+        check_id(&n.element_id);
+    }
+
+    if critical && touches_data {
+        TaskRisk::High
+    } else if critical || touches_data {
+        TaskRisk::Medium
+    } else {
+        TaskRisk::Low
+    }
 }
 
 pub fn infer_layer_from_path(path: &str) -> String {

@@ -1,16 +1,11 @@
 //! Intent commands: check, propose, adr-index.
 
-
 use std::path::PathBuf;
 
-use sruja_intent::{
-    DriftDetector, DriftKind, IntentContext, IntentModel, IntentReport, Severity,
-};
+use sruja_intent::{DriftDetector, DriftKind, IntentContext, IntentModel, IntentReport, Severity};
 use sruja_scan::scan_repo;
 
 use super::CliError;
-
-
 
 pub async fn intent_check(
     repo_root: &str,
@@ -230,5 +225,3 @@ pub async fn intent_propose(repo_root: &str, intent_path: Option<&str>) -> Resul
 
     Ok(())
 }
-
-

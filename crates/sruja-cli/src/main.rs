@@ -2,6 +2,7 @@
 //!
 //! Command-line interface for the Sruja DSL tool.
 
+mod cli;
 mod commands;
 mod compliance;
 mod context_detection;
@@ -9,10 +10,11 @@ mod graph_store;
 mod modules;
 mod report;
 mod utils;
-mod cli;
 
 use clap::Parser;
-pub use cli::{Cli, Commands, KnowledgeCommand, RuntimeCommand, IntentCommand, ContextIntent, run_command};
+pub use cli::{
+    run_command, Cli, Commands, ContextIntent, IntentCommand, KnowledgeCommand, RuntimeCommand,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,4 +23,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     run_command(cli.command).await
 }
-

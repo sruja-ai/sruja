@@ -3,8 +3,6 @@
 //! Detects primary language, framework, domain, and architecture style
 //! to improve LLM response quality and avoid incorrect assumptions.
 
-
-
 use std::collections::HashMap;
 use std::path::Path;
 

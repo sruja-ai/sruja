@@ -425,13 +425,39 @@ async fn run_tool(
             Ok(repomap)
         }
         "sruja_get_architecture_context" => {
-            let content =
-                super::context::context_string(&repo, "markdown", None, None, 2, 10000).await?;
+            let content = super::context::context_string(
+                &repo,
+                "markdown",
+                super::context::ContextRequest {
+                    file: None,
+                    element_id: None,
+                    query: None,
+                    base_ref: None,
+                    head_ref: None,
+                    intent: None,
+                    depth: 2,
+                    max_tokens: 10000,
+                },
+            )
+            .await?;
             Ok(content)
         }
         "sruja_get_architecture_summary" => {
-            let content =
-                super::context::context_string(&repo, "markdown", None, None, 1, 3000).await?;
+            let content = super::context::context_string(
+                &repo,
+                "markdown",
+                super::context::ContextRequest {
+                    file: None,
+                    element_id: None,
+                    query: None,
+                    base_ref: None,
+                    head_ref: None,
+                    intent: None,
+                    depth: 1,
+                    max_tokens: 3000,
+                },
+            )
+            .await?;
             Ok(content)
         }
         "sruja_get_neighbors" => {

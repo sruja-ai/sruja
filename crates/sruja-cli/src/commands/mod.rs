@@ -75,7 +75,7 @@ pub use why::why;
 mod context;
 mod runtime;
 
-pub use context::context_export;
+pub use context::{context_export, ContextRequest};
 pub use runtime::runtime_analyze;
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
