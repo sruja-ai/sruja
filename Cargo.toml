@@ -43,7 +43,7 @@ git2 = { version = "0.20", default-features = false, features = ["vendored-libgi
 scip = "0.7.0"
 protobuf = "3"
 prost = "0.13"
-prost-types = "0.13"
+prost-types = "0.14"
 fastembed = "5.0"
 hnsw_rs = "0.3"
 
