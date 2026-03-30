@@ -706,3 +706,50 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn context_intent_as_str_mappings() {
+        assert_eq!(ContextIntent::AddFeature.as_str(), "add-feature");
+        assert_eq!(ContextIntent::Refactor.as_str(), "refactor");
+        assert_eq!(ContextIntent::FixBug.as_str(), "fix-bug");
+        assert_eq!(ContextIntent::AddTest.as_str(), "add-test");
+    }
+
+    #[test]
+    fn parses_context_defaults() {
+        let cli = Cli::try_parse_from(["sruja", "context"]).expect("parse");
+        match cli.command {
+            Commands::Context {
+                format,
+                repo,
+                output,
+                file,
+                element_id,
+                query,
+                base_ref,
+                head_ref,
+                intent,
+                depth,
+                max_tokens,
+            } => {
+                assert_eq!(format, "cursor-rules");
+                assert!(repo.is_empty());
+                assert!(output.is_none());
+                assert!(file.is_none());
+                assert!(element_id.is_none());
+                assert!(query.is_none());
+                assert!(base_ref.is_none());
+                assert!(head_ref.is_none());
+                assert!(intent.is_none());
+                assert_eq!(depth, 2);
+                assert_eq!(max_tokens, 10000);
+            }
+            _ => panic!("expected Context command"),
+        }
+    }
+}

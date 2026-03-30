@@ -81,3 +81,41 @@ pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan
         Ok(sruja_scan::scan_repo(repo_path)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use std::fs;
+
+    #[test]
+    fn parse_succeeds_on_minimal_valid_file() {
+        let dir = tempdir().expect("temp");
+        let file = dir.path().join("ok.sruja");
+        fs::write(
+            &file,
+            r#"MySystem = system "My System" {
+  description "A deployable system"
+}
+"#,
+        )
+        .expect("write");
+        let (content, program) = parse_sruja_file(&file).expect("parse");
+        assert!(content.contains("My System"));
+        assert!(!program.items.is_empty());
+    }
+
+    #[test]
+    fn parse_fails_on_invalid_file() {
+        let dir = tempdir().expect("temp");
+        let file = dir.path().join("bad.sruja");
+        fs::write(&file, "invalid {").expect("write");
+        let err = parse_sruja_file(&file).err().expect("expected error");
+        match err {
+            CliError::Parse { file: f, .. } => {
+                assert!(f.ends_with("bad.sruja"));
+            }
+            other => panic!("expected Parse error, got {:?}", other),
+        }
+    }
+}

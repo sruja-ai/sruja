@@ -60,3 +60,29 @@ impl From<sruja_scan::ScanError> for CliError {
         CliError::Scan(e.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exit_codes_map_correctly() {
+        let io_err = CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, "x"));
+        assert_eq!(io_err.exit_code(), 2);
+
+        let parse_err = CliError::parse_with_diagnostics("a.sruja", vec![]);
+        assert_eq!(parse_err.exit_code(), 3);
+
+        let val_err = CliError::Validation("oops".into());
+        assert_eq!(val_err.exit_code(), 4);
+
+        let json_err = CliError::Json(serde_json::from_str::<serde_json::Value>("invalid").unwrap_err());
+        assert_eq!(json_err.exit_code(), 6);
+
+        let scan_err = CliError::Scan("bad".into());
+        assert_eq!(scan_err.exit_code(), 7);
+
+        let fail_on = CliError::FailOnViolations;
+        assert_eq!(fail_on.exit_code(), 1);
+    }
+}
