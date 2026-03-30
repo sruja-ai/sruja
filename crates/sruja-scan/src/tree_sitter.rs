@@ -1022,4 +1022,49 @@ export class UserService {
 
         assert!(!graph.nodes.is_empty(), "Should have at least one node");
     }
+
+    #[test]
+    fn test_scan_java_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let main_file = dir.path().join("src").join("Main.java");
+        let helper_file = dir.path().join("src").join("util").join("Helper.java");
+        std::fs::create_dir_all(helper_file.parent().unwrap()).unwrap();
+        std::fs::write(
+            &main_file,
+            r#"
+package com.example;
+
+import com.example.util.Helper;
+
+public class Main {
+    public static void main(String[] args) {
+        Helper.help();
+    }
+}
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            &helper_file,
+            r#"
+package com.example.util;
+
+public class Helper {
+    public static int help() {
+        return 1;
+    }
+}
+"#,
+        )
+        .unwrap();
+
+        let config = ScanConfig::default();
+        let graph = scan_with_tree_sitter(dir.path(), &config).unwrap();
+
+        assert!(!graph.nodes.is_empty(), "Should have nodes");
+        assert!(
+            graph.nodes.iter().any(|n| n.id.contains("Main_java")),
+            "Should include Main.java node"
+        );
+    }
 }
