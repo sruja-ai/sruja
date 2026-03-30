@@ -363,7 +363,7 @@
     "glob": "^13.0.6",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.6",
-    "typescript": "~5.9.0"
+    "typescript": "~6.0.2"
   },
   "overrides": {
     "yauzl": "3.2.1"
