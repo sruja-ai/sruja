@@ -401,11 +401,6 @@ pub enum Commands {
         #[arg(long, default_value_t = 10000)]
         max_tokens: usize,
     },
-    /// Analyze runtime traces (spans) for emergent cycles and hotspots
-    Runtime {
-        #[command(subcommand)]
-        cmd: RuntimeCommand,
-    },
     /// Discovery: question bank or repo context for intelligent capture (use with sruja-architecture skill)
     Discover {
         /// Print repo context summary (structure, technologies, suggested areas) for contextual questions
@@ -429,31 +424,6 @@ pub enum Commands {
         /// Maximum tokens for repomap (default: 5000)
         #[arg(long, default_value_t = 5000)]
         max_tokens: usize,
-    },
-    /// Component knowledge: list doc links, show doc for an element, or find gaps
-    Knowledge {
-        #[command(subcommand)]
-        cmd: KnowledgeCommand,
-    },
-    /// List source bindings (OpenAPI, Kubernetes, docs) linked to architecture elements
-    Sources {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Path to .sruja architecture file (optional)
-        #[arg(long, short = 'a')]
-        architecture: Option<String>,
-        /// Element ID to show sources for (optional; shows all if omitted)
-        element: Option<String>,
-        /// Filter by source type (openapi, kubernetes, docs, etc.)
-        #[arg(long, short = 't')]
-        source_type: Option<String>,
-        /// Validate that all source paths exist
-        #[arg(long, short = 'v')]
-        validate: bool,
-        /// Output format: text (default) or json
-        #[arg(long, default_value = "text")]
-        format: String,
     },
     /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
     Generate {
@@ -481,52 +451,6 @@ pub enum Commands {
         /// Output path for vector index
         #[arg(long, short = 'o', default_value = ".sruja/vectors.json")]
         output: String,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum KnowledgeCommand {
-    /// List elements that have a doc link
-    List {
-        /// Path to repository root (for resolving default architecture file)
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Path to .sruja architecture file (optional; default: repo.sruja / architecture.sruja)
-        #[arg(long, short = 'a')]
-        architecture: Option<String>,
-    },
-    /// Show knowledge file content for an element
-    Show {
-        /// Element ID (e.g. PaymentService or Backend.API)
-        element_id: String,
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Path to .sruja architecture file
-        #[arg(long, short = 'a')]
-        architecture: Option<String>,
-    },
-    /// List elements that have no doc link (gaps)
-    Gaps {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Path to .sruja architecture file
-        #[arg(long, short = 'a')]
-        architecture: Option<String>,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum RuntimeCommand {
-    /// Analyze trace/span JSON for emergent cycles and hotspots
-    Analyze {
-        /// Path to traces JSON file (array of spans with id, name, start, end, children)
-        #[arg(long, short = 't')]
-        traces: String,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
     },
 }
 
@@ -735,11 +659,6 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             )
             .await
         }
-        Commands::Runtime { cmd } => match cmd {
-            RuntimeCommand::Analyze { traces, format } => {
-                commands::runtime_analyze(&traces, &format).await
-            }
-        },
         Commands::Discover {
             context,
             explain,
@@ -758,25 +677,6 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             } else {
                 commands::discover_questions()
             }
-        }
-        Commands::Knowledge { cmd } => commands::knowledge(cmd).await,
-        Commands::Sources {
-            repo,
-            architecture,
-            element,
-            source_type,
-            validate,
-            format,
-        } => {
-            commands::sources(
-                &repo,
-                architecture.as_deref(),
-                element.as_deref(),
-                source_type.as_deref(),
-                validate,
-                &format,
-            )
-            .await
         }
         Commands::Generate {
             repo,

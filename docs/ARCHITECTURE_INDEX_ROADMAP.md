@@ -168,39 +168,7 @@ criticality critical  // immediate business/finance impact on failure
 
 ---
 
-## 5. CLI Commands
-
-### 5.1 Phase 1 Commands
-
-```bash
-# List all source bindings across all elements
-sruja sources
-
-# List sources for specific element
-sruja sources Payments
-
-# Validate all source paths exist
-sruja sources --validate
-
-# Filter by source type
-sruja sources --type openapi
-```
-
-### 5.2 Phase 2+ Commands
-
-```bash
-# Query architecture (Phase 3)
-sruja query "what calls Payments"
-sruja query "dependencies of Checkout"
-sruja query "sources for API"
-sruja query "owner of Payments"
-sruja query "critical services"
-
-# Discover from codebase (Phase 2)
-sruja discover --extract openapi,kubernetes,docs
-```
-
-### 5.3 Enhanced Export (Phase 1)
+## 5. Export and Integrations
 
 ```bash
 # Export for AI consumption (enhanced JSON)
@@ -287,30 +255,14 @@ sruja export ai-context --output context.json
 3. Add `source <type> <path>` syntax
 4. Add `owner`, `domain`, `criticality` fields
 5. Extend JSON export with new fields
-6. Add `sruja sources` CLI command
 
 **Files to modify:**
 - `crates/sruja-language/src/ast.rs` - add new AST fields
 - `crates/sruja-language/src/parser/elements.rs` - parse new fields
 - `crates/sruja-export/src/json/types.rs` - extend JSON types
 - `crates/sruja-export/src/json/exporter.rs` - export new fields
-- `crates/sruja-cli/src/commands/` - add sources command
 
-**Deliverable:**
-```bash
-# List sources for an element
-sruja sources Payments
-# Output:
-#   openapi: ./specs/payments.yaml
-#   kubernetes: ./k8s/payments/
-#   docs: ./docs/services/payments.md
-
-# Validate all source paths exist
-sruja sources --validate
-# Output:
-#   ✓ Payments: all sources valid
-#   ✗ Checkout: ./specs/checkout.yaml not found
-```
+**Deliverable:** Source bindings are present in the DSL and included in JSON export for use by agents, the MCP server, and the editor experience.
 
 ### Phase 2: Extractors
 
@@ -322,16 +274,11 @@ sruja sources --validate
 3. Doc extractor (finds README, docs)
 4. Alias inference from codebase
 5. Relationship inference from imports/calls
-6. `sruja discover --sources` command
 
 **New crate:**
 - `crates/sruja-extract/` - extractor framework
 
-**Deliverable:**
-```bash
-sruja discover --sources
-# Generates draft with discovered source bindings
-```
+**Deliverable:** Extractors generate draft source bindings and write them into the DSL (or into a machine-readable artifact consumed by the skill/editor).
 
 ### Phase 3: Query Engine
 
@@ -528,8 +475,7 @@ pub(crate) fn parse_criticality(input: &str) -> IResult<&str, Criticality> {
 
 ### For Developers
 - Add `id`, `aliases`, `owner`, `domain`, `criticality` to elements
-- Use `sruja sources` to validate and list source paths
-- Run `sruja discover --sources` (Phase 2) to auto-generate source bindings
+- Use source bindings in the DSL to link OpenAPI/K8s/docs to architecture elements
 
 ### For AI Agents
 - Read JSON export to find artifact paths

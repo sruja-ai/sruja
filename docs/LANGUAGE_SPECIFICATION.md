@@ -261,32 +261,6 @@ PrimaryDB = database "Primary Database" {
 }
 ```
 
-#### CLI Commands
-
-List all source bindings:
-
-```bash
-sruja sources -a architecture.sruja
-```
-
-Filter by source type:
-
-```bash
-sruja sources -a architecture.sruja -t openapi
-```
-
-Validate source paths exist:
-
-```bash
-sruja sources -a architecture.sruja --validate
-```
-
-JSON output:
-
-```bash
-sruja sources -a architecture.sruja --format json
-```
-
 #### Design Philosophy
 
 - **Sruja = Index + Graph**: Structure and relationships, not content duplication

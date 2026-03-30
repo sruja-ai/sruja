@@ -8,7 +8,6 @@
   - `commands/dsl.rs` – file-based DSL (lint, export, fmt, list, tree, diff, explain, import, lsp, validate, compile)
   - `commands/scan.rs` – scan, why, drift, quickstart and drift/quickstart printing
   - `commands/analyze.rs` – complexity, semantic, comprehensive analyze
-  - `commands/runtime.rs` – trace loading and runtime analyze
   - `commands/intent.rs` – intent check and propose
 - **Unified types**: `NodeKind`/`EdgeKind` live in `sruja-language` (`ast`); `sruja-graph` and `sruja-scan` use or re-export them where appropriate.
 - **Dependency consistency**: `sruja-intent` uses workspace `thiserror`.

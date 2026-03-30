@@ -1,6 +1,6 @@
 //! CLI commands module.
 //!
-//! Commands are split by domain: dsl, scan, runtime, intent.
+//! Commands are split by domain: dsl, scan, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
 mod check;
@@ -14,11 +14,9 @@ mod impact;
 mod index;
 mod init;
 mod intent;
-mod knowledge;
 mod mcp;
 mod review;
 mod scan;
-mod sources;
 mod status;
 mod sync_cmd;
 mod version;
@@ -62,21 +60,17 @@ pub use impact::impact;
 pub use index::index;
 pub use init::init;
 pub use intent::{intent_check, intent_propose};
-pub use knowledge::knowledge;
 pub use mcp::mcp;
 pub use review::review;
 pub use scan::{drift, drift_pr, quickstart, scan};
-pub use sources::sources;
 pub use status::status;
 pub use sync_cmd::sync;
 pub use version::version;
 pub use watch::watch;
 pub use why::why;
 mod context;
-mod runtime;
 
 pub use context::{context_export, ContextRequest};
-pub use runtime::runtime_analyze;
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
     let graph_path = repo_path.join(".sruja").join("graph.json");

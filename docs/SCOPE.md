@@ -3,11 +3,11 @@
 Sruja is an **architecture-as-code tool for the AI SDLC process**—not a diagramming product. We ship:
 
 1. **Rust parser** (`sruja-language`) – core DSL parsing
-2. **CLI** (`sruja-cli`) – validate, export, scan, quickstart, why, drift, analyze (structural/semantic/intent/runtime)
+2. **CLI** (`sruja-cli`) – validate, export, scan, quickstart, why, drift
 3. **WASM** (`sruja-wasm`) – browser/Node export and parsing
 4. **mdBook** (`book/`) – **this is the website** (no separate Astro/React site)
 5. **VS Code extension** (`extension/`) – edit, preview, language features (WASM-powered)
-6. **Context engineering** – CLI: quickstart, drift, why, analyze, context; sruja-graph, sruja-scan, sruja-diff, sruja-intent.
+6. **Context engineering** – CLI: quickstart, drift, why, context; sruja-graph, sruja-scan, sruja-diff, sruja-intent.
 
 Nothing else is in scope (no designer app, no storybook, no social-publish, no separate website app).
 
@@ -20,7 +20,7 @@ Nothing else is in scope (no designer app, no storybook, no social-publish, no s
 | **crates/sruja-language** | Parser + AST |
 | **crates/sruja-diagnostics** | Errors/locations (used by language, engine, CLI, WASM) |
 | **crates/sruja-export** | DOT/Mermaid/Markdown/JSON export (CLI + WASM) |
-| **crates/sruja-cli** | CLI (lint, validate, export, scan, quickstart, why, drift, complexity, semantic, analyze, intent, runtime) |
+| **crates/sruja-cli** | CLI (lint, validate, export, scan, quickstart, why, drift, intent) |
 | **crates/sruja-wasm** | WASM bindings for browser/Node |
 | **crates/sruja-engine** | Validation rules |
 | **crates/sruja-graph** | Knowledge graph, centrality, coupling |

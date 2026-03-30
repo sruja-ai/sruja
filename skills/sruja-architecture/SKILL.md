@@ -107,12 +107,6 @@ Payments = container "Payments API" {
 
 Supported kinds include: `openapi`, `asyncapi`, `kubernetes` (`k8s`), `dockerfile` (`docker`), `terraform` (`tf`), `docs` (`doc`), `readme`, `proto` (`protobuf`), `config`, `graphql` (`gql`), `helm`, and `custom`.
 
-After adding or updating sources, validate paths with:
-
-```bash
-sruja sources -r . -a repo.sruja -v
-```
-
 ### 4. Validate and Repair
 
 ```bash

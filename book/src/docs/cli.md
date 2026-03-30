@@ -117,7 +117,6 @@ The **sruja-architecture skill** is the primary way to get value; it runs discov
 | **`sruja compose -i <bundle.json> -o system.index.json`** | Compose repo bundles into a system index |
 | **`sruja mcp`** | Start MCP stdio server (for tool-based clients) |
 | **`sruja scan <path> --output graph.json`** | Raw graph JSON (scripting / advanced) |
-| **`sruja runtime analyze -t <trace_file>`** | Runtime traces (optional) |
 
 **Examples (skill workflow / CI):**
 
