@@ -4,7 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 0.26.x  | :white_check_mark: |
 
 ## Security Scanning
 
@@ -136,7 +136,7 @@ The public key is also available at: [`.github/gpg-public-key.asc`](https://gith
 
 Security updates will be:
 
-- Released as patch versions (0.1.x)
+- Released as patch versions (0.26.x)
 - Documented in CHANGELOG.md
 - Announced via GitHub security advisories
 - GPG signed for verification

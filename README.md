@@ -1,8 +1,8 @@
-# Sruja – Context engineering for the AI era.
+# Sruja – Architecture truth + drift detection + AI context
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Not a diagram language—architecture context that stays in sync.** Sruja helps your AI coding workflow by generating and maintaining architecture as code, plus evidence-backed context (graph, drift, violations) so changes stay grounded in your real codebase. You validate, version-control, and enforce it; export to Mermaid when you need a diagram.
+**Not a diagram language—architecture truth that stays in sync.** Sruja provides evidence-backed context (graph, drift, violations) so changes stay grounded in your real codebase. You validate, version-control, and enforce it; export to Mermaid when you need a diagram. Integrates with AI editors by providing high-quality architecture context.
 
 **Try it in 60 seconds (no AI required):**
 
@@ -143,7 +143,7 @@ No. Your AI writes the `.sruja` files for you. You just need to know what to ask
 
 **What if I don't have an AI editor?**
 
-You can still use the CLI: `sruja lint` to validate `.sruja` files and `sruja export` to generate diagrams and docs. The main value (generate and maintain architecture from code) is designed around the **sruja-architecture skill** in an AI editor; structural analysis (discover, sync, drift) backs the skill and is also used in CI. We don’t promote running quickstart or drift as a standalone first step—use the skill for the full workflow.
+You can still use the CLI. For evaluation, start with `sruja quickstart -r . --generate-baseline` and `sruja lint repo.sruja`. Once you have a baseline, use `sruja sync -r .` and `sruja drift -r . -a repo.sruja` to keep declared architecture aligned with your code. The skill makes this workflow smoother in AI editors, but the underlying commands work in CI and automation too.
 
 **Can I use this with my existing project?**
 

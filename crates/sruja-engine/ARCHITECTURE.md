@@ -637,13 +637,7 @@ metadata {
 - `sruja/CONTRIBUTING.md`: Contribution guidelines
 
 ## Changelog
-
-### Version 0.1.0 (Current)
-
-- Initial release with core validation rules
-- Synchronous and parallel validation
-- Builder pattern for configuration
-- Comprehensive documentation
+See the repository-wide CHANGELOG.md for release history and VERSIONING.md for versioning policy.
 
 ### Planned Features
 

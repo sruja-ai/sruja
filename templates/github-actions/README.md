@@ -62,13 +62,15 @@ jobs:
   drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: Install Sruja
         run: curl -fsSL https://sruja.ai/install.sh | bash
       - name: Check PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Run drift check
-        run: sruja drift -r .
+      - name: Lint baseline
+        run: sruja lint repo.sruja
+      - name: Run drift check (declared vs actual)
+        run: sruja drift -r . -a repo.sruja
 ```
 
 ### PR-Scoped Analysis
@@ -81,7 +83,7 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install Sruja
@@ -111,7 +113,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repo }}
       - name: Install Sruja
@@ -151,7 +153,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repo }}
       - name: Install Sruja
@@ -200,7 +202,7 @@ jobs:
       matrix:
         repo: [repo-a, repo-b, repo-c]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           repository: ${{ matrix.repo }}
       - name: Install Sruja

@@ -10,6 +10,21 @@ summary: "Complete guide to evaluating and adopting Sruja for your organization.
 
 For a short, practical guide (install CLI, add to your project, CI, AI, multi-repo), see **[Using Sruja in your project](using-sruja-in-your-project.md)**. The rest of this adoption guide helps you evaluate fit and plan rollout.
 
+## Canonical pilot path (recommended)
+
+Use a single, repeatable workflow to evaluate Sruja:
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+sruja quickstart -r . --generate-baseline
+sruja lint repo.sruja
+sruja sync -r .
+sruja status -r .
+sruja drift -r . -a repo.sruja
+```
+
+This path is designed to minimize ambiguity: one baseline file (`repo.sruja`), one validation gate (`lint`), and one drift signal (`drift`) backed by refreshed evidence (`sync`).
+
 ## Is Sruja Right for Your Organization?
 
 ### Quick Self-Assessment
@@ -136,9 +151,11 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 **Activities:**
 
 1. Review Sruja documentation
-2. Install CLI: `curl -fsSL https://sruja.ai/install.sh | bash` (or from Git: `cargo install sruja-cli --git https://github.com/sruja-ai/sruja`; or build from source: `git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build`)
-3. Model a simple existing system
-4. Install VS Code extension for syntax highlighting and diagnostics
+2. Install CLI: `curl -fsSL https://sruja.ai/install.sh | bash`
+3. Generate a baseline in your target repo: `sruja quickstart -r . --generate-baseline`
+4. Validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
+5. Capture the first health signal: `sruja status -r .` and `sruja drift -r . -a repo.sruja`
+6. Install VS Code extension for syntax highlighting and diagnostics (optional)
 
 **Deliverable**: Understanding of Sruja capabilities
 
@@ -146,10 +163,10 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 **Activities:**
 
-1. Model 1-2 real systems in Sruja
-2. Integrate validation into CI/CD
-3. Document architecture decisions as ADRs
-4. Measure time savings
+1. Expand `repo.sruja` to cover the repo boundary and core containers that matter for reviews
+2. Integrate validation and drift into CI/CD (`sruja lint repo.sruja` and `sruja drift -r . -a repo.sruja`)
+3. Establish a PR review rule: architecture changes ship with code changes (same diff)
+4. Measure signal vs noise (how many findings you keep vs ignore)
 
 **Success Criteria:**
 

@@ -282,20 +282,16 @@ jobs:
   sruja:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
       - name: Install Sruja CLI
-        run: cargo install sruja-cli --git https://github.com/sruja-ai/sruja --locked
-      - name: Lint all .sruja files
-        run: |
-          find . -name '*.sruja' -not -path './target/*' | while read f; do
-            echo "Linting $f"
-            sruja lint "$f"
-          done
+        run: curl -fsSL https://sruja.ai/install.sh | bash
+      - name: Lint baseline
+        run: sruja lint repo.sruja
+      - name: Drift check (declared vs actual)
+        run: sruja drift -r . -a repo.sruja
 ```
 
-**Optional:** `sruja quickstart -r . -f json` for drift reports; `sruja export markdown` / `sruja export mermaid` for docs.
+**Optional:** `sruja drift -r . -a repo.sruja -f json` for machine-readable drift reports; `sruja export markdown` / `sruja export mermaid` for docs.
 
 ---
 

@@ -5,9 +5,9 @@ weight: 0
 
 # Introduction
 
-**Context engineering for the AI era.**
+**Architecture truth + drift detection + AI context.**
 
-Sruja uses AI to analyze your code and generate architecture as code—so it never drifts from reality.
+Sruja keeps architecture as code in sync with your repo—detects drift and provides AI-ready context for your editor and CI.
 
 > **New here?** Do [Quick start](../getting-started.md) (about 5 min), then the [Beginner path](beginner-path.md) (2–3 hours). You don't write `.sruja` files manually—your AI does it for you.
 

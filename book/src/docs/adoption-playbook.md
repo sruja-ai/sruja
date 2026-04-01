@@ -8,9 +8,10 @@ summary: "Practical steps to roll out Sruja across teams and CI."
 
 ## Week 1: Baseline & CI
 
-- Create a minimal `architecture.sruja` covering core systems.
-- Add `sruja fmt` and `sruja lint` to CI; fail on violations.
-- Export docs: `sruja export markdown architecture.sruja`.
+- Generate a baseline `repo.sruja`: `sruja quickstart -r . --generate-baseline`
+- Validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
+- Add `sruja lint repo.sruja` and `sruja drift -r . -a repo.sruja` to CI; fail on violations
+- Export docs: `sruja export markdown repo.sruja`
 
 ## Week 2: Targets & Guardrails
 
@@ -34,11 +35,15 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Lint DSL
-        run: sruja lint architecture.sruja
+      - uses: actions/checkout@v4
+      - name: Install Sruja CLI
+        run: curl -fsSL https://sruja.ai/install.sh | bash
+      - name: Lint baseline
+        run: sruja lint repo.sruja
+      - name: Drift check (declared vs actual)
+        run: sruja drift -r . -a repo.sruja
       - name: Export Docs
-        run: sruja export markdown architecture.sruja
+        run: sruja export markdown repo.sruja
 ```
 
 ## Success Metrics

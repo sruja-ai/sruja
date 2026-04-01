@@ -4,6 +4,7 @@
     ".": {
       "release-type": "simple",
       "package-name": "sruja",
+      "bump-minor-pre-major": true,
       "extra-files": [
         {
           "type": "toml",

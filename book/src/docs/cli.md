@@ -104,7 +104,7 @@ The **sruja-architecture skill** is the primary way to get value; it runs discov
 | **`sruja sync -r <path>`** | Refresh `.sruja/context.json` (summary) and `.sruja/graph.json` (full graph); skill uses these for evidence |
 | **`sruja drift -r <path> -a repo.sruja`** | Declared vs actual; skill uses for refinement; CI for gates |
 | **`sruja context -r <path>`** | Export architecture context for AI tools |
-| **`sruja quickstart -r <path>`** | Structural overview (optional; used by skill/CI, not promoted as primary) |
+| **`sruja quickstart -r <path>`** | First look: structural overview and baseline generation (recommended for evaluation) |
 | **`sruja status -r <path>`** | Show baseline + health + truth status (reviewed / drifted / unknown) |
 | **`sruja review -r <path>`** | Review workflow: refresh evidence, detect drift, propose updates/open questions |
 | **`sruja impact <target> -r <path>`** | Blast radius analysis (upstream dependents + downstream dependencies) |

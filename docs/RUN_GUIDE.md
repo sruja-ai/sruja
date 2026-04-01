@@ -87,7 +87,13 @@ Other useful commands:
 ```bash
 sruja drift -r .                    # Drift (cycles, orphans, layer violations)
 sruja quickstart -r .               # Quick architecture overview (inventory, health score, findings)
-# For full analysis: sruja drift -r . -a architecture.sruja (vs baseline)
+# Canonical pilot path (baseline + drift):
+#   sruja quickstart -r . --generate-baseline
+#   sruja lint repo.sruja
+#   sruja sync -r .
+#   sruja drift -r . -a repo.sruja
+# For analysis vs a specific baseline file:
+#   sruja drift -r . -a repo.sruja
 sruja lint book/valid-examples/*.sruja # Validate canonical book examples
 sruja export markdown file.sruja    # Export to Markdown
 ```

@@ -244,8 +244,11 @@ Yes, but it's easier to let AI do it. If you do edit manually:
 | Want to | Command |
 |----------|----------|
 | **Analyze code** | `sruja discover --context -r . --format json` |
+| **Generate baseline** | `sruja quickstart -r . --generate-baseline` |
 | **Validate** | `sruja lint repo.sruja` |
+| **Refresh evidence** | `sruja sync -r .` |
+| **Repo health** | `sruja status -r .` |
 | **Export Markdown** | `sruja export markdown repo.sruja > doc.md` |
 | **Export Mermaid** | `sruja export mermaid repo.sruja > diagram.mmd` |
 | **Export JSON** | `sruja export json repo.sruja > arch.json` |
-| **Check drift** | `sruja drift -r . --format json` |
+| **Check drift** | `sruja drift -r . -a repo.sruja --format json` |
