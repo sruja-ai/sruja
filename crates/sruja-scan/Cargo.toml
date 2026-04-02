@@ -30,6 +30,7 @@ tree-sitter-c = "0.24"
 tree-sitter-cpp = "0.23"
 regex = "1.10"
 rayon = "1.10"
+serde_yaml = "0.9"
 scip = { workspace = true }
 protobuf = { workspace = true }
 prost = { workspace = true }

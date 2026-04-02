@@ -180,6 +180,7 @@ impl QuickstartResult {
             top_findings,
             actionable_fixes,
             truth_status: "unknown".to_string(),
+            scan_quality: crate::commands::scan::output::calculate_scan_quality_internal(graph),
         }
     }
 }

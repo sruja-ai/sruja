@@ -9,6 +9,7 @@ pub mod graph;
 pub mod npm;
 pub mod repomap;
 pub mod scan_scope;
+mod manifests;
 mod scip_ingest;
 pub mod tree_sitter;
 
@@ -54,7 +55,7 @@ pub fn scan_repo(repo_root: &Path) -> Result<Graph, ScanError> {
     let config = ScanConfig::default();
     let mut graph = scan_with_tree_sitter(repo_root, &config)?;
 
-    // Merge manifest data (technology labels, monorepo packages)
+    // Merge manifest data (technology labels, monorepo packages, manifests)
     if let Ok(manifest_graph) = scan_repo_manifests(repo_root) {
         graph.merge(manifest_graph);
     }
@@ -75,31 +76,37 @@ pub fn scan_repo_with_config(repo_root: &Path, config: &ScanConfig) -> Result<Gr
     scan_with_tree_sitter(repo_root, config)
 }
 
-/// Scan a repository using only package manifests (package.json, Cargo.toml).
-/// This is a fallback for cases where source code parsing is not needed.
-/// Logs errors for each manifest type attempted before returning the final error.
+/// Scan a repository using all available package and deployment manifests.
+/// This merges results from package.json, Cargo.toml, OpenAPI, Docker, and Kubernetes.
 pub fn scan_repo_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
-    let mut last_error: Option<ScanError> = None;
+    let mut final_graph = Graph::new();
+    let mut found = false;
 
     if repo_root.join("package.json").exists() {
-        match npm::scan_npm_repo(repo_root) {
-            Ok(g) => return Ok(g),
-            Err(e) => {
-                last_error = Some(e);
-            }
+        if let Ok(g) = npm::scan_npm_repo(repo_root) {
+            final_graph.merge(g);
+            found = true;
         }
     }
 
     if repo_root.join("Cargo.toml").exists() {
-        match cargo::scan_cargo_repo(repo_root) {
-            Ok(g) => return Ok(g),
-            Err(e) => {
-                last_error = Some(e);
-            }
+        if let Ok(g) = cargo::scan_cargo_repo(repo_root) {
+            final_graph.merge(g);
+            found = true;
         }
     }
 
-    Err(last_error.unwrap_or_else(|| ScanError::UnsupportedRepo {
-        path: repo_root.display().to_string(),
-    }))
+    // New manifests (OpenAPI, Docker, K8s)
+    if let Ok(g) = manifests::scan_other_manifests(repo_root) {
+        final_graph.merge(g);
+        found = true;
+    }
+
+    if found {
+        Ok(final_graph)
+    } else {
+        Err(ScanError::UnsupportedRepo {
+            path: repo_root.display().to_string(),
+        })
+    }
 }

@@ -17,6 +17,18 @@ pub struct QuickstartResult {
     pub top_findings: Vec<Finding>,
     pub actionable_fixes: Vec<ActionableFix>,
     pub truth_status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scan_quality: Option<ScanQuality>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ScanQuality {
+    pub confidence_score: u8,
+    pub coverage_percent: u8,
+    pub manifest_discoveries: usize,
+    pub entry_point_count: usize,
+    pub leaf_node_count: usize,
+    pub orphan_count: usize,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -591,6 +603,34 @@ pub(crate) fn print_quickstart_summary(
     println!("  {}", score_bar);
     println!();
 
+    if let Some(quality) = calculate_scan_quality_internal(graph) {
+        println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+        let quality_score_str = format!("{}/100", quality.confidence_score);
+        let colored_quality = match quality.confidence_score {
+            80..=100 => quality_score_str.green().bold(),
+            60..=79 => quality_score_str.yellow().bold(),
+            _ => quality_score_str.red().bold(),
+        };
+        println!(
+            "💎 Scanner Confidence & Trust Score:     {}",
+            colored_quality
+        );
+        println!("{}", "─".repeat(70).truecolor(100, 100, 100));
+        println!(
+            "  Discovery Coverage: {} | Manifests: {} | Entrypoints: {}",
+            format!("{}%", quality.coverage_percent).cyan(),
+            quality.manifest_discoveries.to_string().cyan(),
+            quality.entry_point_count.to_string().cyan()
+        );
+        println!(
+            "  Structural Integrity: Nodes: {} | Leaves: {} | Orphans: {}",
+            graph.nodes.len().to_string().cyan(),
+            quality.leaf_node_count.to_string().cyan(),
+            quality.orphan_count.to_string().red()
+        );
+        println!();
+    }
+
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
     println!("{}", "🔍 Top 3 Structural Findings".red().bold());
     println!("{}", "─".repeat(70).truecolor(100, 100, 100));
@@ -762,6 +802,7 @@ pub(crate) fn print_quickstart_summary(
     println!();
     println!("{}", "═".repeat(70).truecolor(100, 100, 100));
 }
+
 
 pub(crate) fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: bool) {
     println!("{}", "═".repeat(60));
@@ -1085,4 +1126,67 @@ pub(crate) fn print_github_actions_output(result: &PrDriftResult) {
             result.head_health
         );
     }
+}
+pub fn calculate_scan_quality_internal(graph: &Graph) -> Option<ScanQuality> {
+    if graph.nodes.is_empty() {
+        return None;
+    }
+
+    let mut has_incoming = HashSet::new();
+    let mut has_outgoing = HashSet::new();
+    for edge in &graph.edges {
+        has_outgoing.insert(edge.source.as_str());
+        has_incoming.insert(edge.target.as_str());
+    }
+
+    let entry_points = graph
+        .nodes
+        .iter()
+        .filter(|n| !has_incoming.contains(n.id.as_str()))
+        .count();
+    let leaf_nodes = graph
+        .nodes
+        .iter()
+        .filter(|n| !has_outgoing.contains(n.id.as_str()))
+        .count();
+    let orphans = graph
+        .nodes
+        .iter()
+        .filter(|n| !has_incoming.contains(n.id.as_str()) && !has_outgoing.contains(n.id.as_str()))
+        .count();
+
+    let manifest_discoveries = graph
+        .nodes
+        .iter()
+        .filter(|n| {
+            n.metadata.contains_key("source_manifest")
+                || n.id.contains("package_json")
+                || n.id.contains("go_mod")
+                || n.id.contains("dockerfile")
+        })
+        .count();
+
+    // Confidence Score Calculation (Heuristic)
+    // 1. Coverage: Ratio of nodes with evidence vs total
+    let nodes_with_evidence = graph.nodes.iter().filter(|n| !n.sources.is_empty()).count();
+    let coverage_percent = if !graph.nodes.is_empty() {
+        ((nodes_with_evidence as f32 / graph.nodes.len() as f32) * 100.0) as u8
+    } else {
+        0
+    };
+
+    // 2. Score: coverage + bonus for manifests - penalty for orphans
+    let mut score = coverage_percent as i32;
+    score += (manifest_discoveries * 5) as i32;
+    score -= (orphans * 2) as i32;
+    let confidence_score = score.clamp(0, 100) as u8;
+
+    Some(ScanQuality {
+        confidence_score,
+        coverage_percent,
+        manifest_discoveries,
+        entry_point_count: entry_points,
+        leaf_node_count: leaf_nodes,
+        orphan_count: orphans,
+    })
 }

@@ -393,6 +393,19 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_validate_change",
+            "title": "Sruja Validate Change",
+            "description": "Validate architectural impact of a set of changed files. Runs fast lint and drift checks on the impacted area. Ideal for self-validation before committing.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "files": { "type": "array", "items": { "type": "string" }, "description": "List of changed file paths" }
+                },
+                "required": ["files"]
+            }
+        }),
+        json!({
             "name": "sruja_get_task_context",
             "title": "Sruja Task Context",
             "description": "Get high-fidelity architectural context for a specific task. Supports selection by element ID, file path, git diff (base/head refs), or search query. Returns focus elements, neighbors, impact analysis, and hydrated source code.",
@@ -637,6 +650,83 @@ async fn run_tool(
 
             let ctx = super::context::logic::build_task_context(&graph, &repo, selectors, max_tokens)?;
             Ok(serde_json::to_string_pretty(&ctx)?)
+        }
+        "sruja_validate_change" => {
+            let files = arguments
+                .get("files")
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| CliError::Validation("Missing files array".to_string()))?;
+            let file_list: Vec<String> = files
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let mut impacted_ids = std::collections::HashSet::new();
+            for f in &file_list {
+                for node in &graph.nodes {
+                    if node.path.as_ref().is_some_and(|p| p.contains(f) || f.contains(p)) {
+                        impacted_ids.insert(node.id.clone());
+                    }
+                }
+            }
+
+            let report = sruja_diff::detect_architectural_drift(&graph);
+            let mut relevant_violations: Vec<_> = report
+                .violations
+                .into_iter()
+                .filter(|v| {
+                    v.location
+                        .as_ref()
+                        .is_some_and(|l| {
+                            file_list.iter().any(|f| l.contains(f)) || impacted_ids.contains(l)
+                        })
+                })
+                .collect();
+
+            let baseline_path =
+                crate::utils::architecture_path::resolve_architecture_path(std::path::Path::new(&repo));
+            if let Some(p) = baseline_path {
+                if let Ok(status) = super::scan::drift::truth_status_from_baseline_compare(&graph, &p) {
+                    if matches!(status, sruja_diff::TruthStatus::Drifted) {
+                        // If we are drifted, run a full compare to get detailed delta violations
+                        let content = std::fs::read_to_string(&p)?;
+                        let parser = sruja_language::Parser::new(p.to_string_lossy().to_string());
+                        if let Ok(program) = parser.parse(&content) {
+                            let proposed = sruja_diff::program_to_graph(&program);
+                            let diff = sruja_diff::compare_graphs(&graph, &proposed);
+                            for v in diff.violations {
+                                if !relevant_violations
+                                    .iter()
+                                    .any(|rv| rv.message == v.message && rv.location == v.location)
+                                    && v.location.as_ref().is_some_and(|l| {
+                                        file_list.iter().any(|f| l.contains(f)) || impacted_ids.contains(l)
+                                    })
+                                {
+                                    relevant_violations.push(v);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if relevant_violations.is_empty() {
+                Ok("✅ No architectural violations detected for the changed files.".to_string())
+            } else {
+                let mut out = "⚠️ Architectural violations detected:\n\n".to_string();
+                for v in relevant_violations {
+                    out.push_str(&format!(
+                        "- [{:?}] {}{}: {}\n",
+                        v.severity,
+                        v.location.as_deref().unwrap_or("Unknown"),
+                        v.rule_id.as_ref().map(|r| format!(" ({})", r)).unwrap_or_default(),
+                        v.message
+                    ));
+                }
+                out.push_str("\nPlease review these findings before committing.");
+                Ok(out)
+            }
         }
         "sruja_add_element" => {
             let id = arguments

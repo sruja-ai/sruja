@@ -45,6 +45,26 @@ pub struct Node {
     pub confidence: Option<u8>,
 }
 
+impl Default for Node {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            kind: NodeKind::Module,
+            label: String::new(),
+            technology: None,
+            path: None,
+            metadata: HashMap::new(),
+            canonical_id: None,
+            aliases: Vec::new(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
+            confidence: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EdgeEvidence {
     pub rule: String,
