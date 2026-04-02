@@ -393,6 +393,24 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_get_task_context",
+            "title": "Sruja Task Context",
+            "description": "Get high-fidelity architectural context for a specific task. Supports selection by element ID, file path, git diff (base/head refs), or search query. Returns focus elements, neighbors, impact analysis, and hydrated source code.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "element_id": { "type": "string", "description": "Specific architectural element ID (e.g. MySystem.Api)" },
+                    "file": { "type": "string", "description": "File path to resolve architectural focus from" },
+                    "query": { "type": "string", "description": "Search query for semantic architectural lookup" },
+                    "base_ref": { "type": "string", "description": "Git base ref for diff-based context (baseline)" },
+                    "head_ref": { "type": "string", "description": "Git head ref for diff-based context (current changes)" },
+                    "depth": { "type": "integer", "description": "Depth of neighbor expansion (default: 1, max: 4)", "minimum": 1, "maximum": 4 },
+                    "max_tokens": { "type": "integer", "description": "Maximum tokens for hydrated source code (default: 10000)" }
+                }
+            }
+        }),
+        json!({
             "name": "sruja_semantic_search",
             "title": "Sruja Semantic Search",
             "description": "Search for architectural components using natural language (semantic similarity).",
@@ -594,6 +612,31 @@ async fn run_tool(
             let content =
                 super::scan::drift_json_string(&repo, architecture.as_deref(), false).await?;
             Ok(content)
+        }
+        "sruja_get_task_context" => {
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str());
+            let file = arguments.get("file").and_then(|v| v.as_str());
+            let query = arguments.get("query").and_then(|v| v.as_str());
+            let base_ref = arguments.get("base_ref").and_then(|v| v.as_str());
+            let head_ref = arguments.get("head_ref").and_then(|v| v.as_str());
+            let depth = arguments.get("depth").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+            let max_tokens = arguments
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(10000) as usize;
+
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let selectors = super::context::logic::TaskSelectors {
+                element_id,
+                file,
+                query,
+                base_ref,
+                head_ref,
+                depth: Some(depth),
+            };
+
+            let ctx = super::context::logic::build_task_context(&graph, &repo, selectors, max_tokens)?;
+            Ok(serde_json::to_string_pretty(&ctx)?)
         }
         "sruja_add_element" => {
             let id = arguments

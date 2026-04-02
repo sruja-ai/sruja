@@ -4,6 +4,7 @@
 //! - repo.bundle.json: repo metadata, local DSL snapshot, latest context, truth state.
 //! - system.index.json: composed graph across repos with canonical IDs and lineage.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -134,7 +135,6 @@ pub async fn publish(
         (None, None, "unknown".to_string())
     };
 
-    // Enrich context with truth_status and git_commit if not already present
     let mut context = context_value;
     context["truth_status"] = serde_json::Value::String(truth_status.clone());
     context["git_commit"] = git_commit_short(repo_path)
@@ -144,6 +144,8 @@ pub async fn publish(
         .as_ref()
         .map(|s| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
+    context["graph"] =
+        serde_json::to_value(&graph).map_err(|e| CliError::Validation(e.to_string()))?;
 
     let repo_id = repo_id_override
         .map(|s| s.trim().to_string())
@@ -215,6 +217,10 @@ pub struct SystemIndexNode {
     pub criticality: Option<sruja_language::ast::Criticality>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<sruja_language::ast::SourceBinding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logical_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aliases: Vec<String>,
 }
 
 /// Edge in system index.
@@ -351,16 +357,19 @@ pub async fn compose(
             git_commit: bundle.git_commit.clone(),
         });
 
-        // Load DSL graph from baseline if present
-        let (bundle_nodes, bundle_edges) = if let Some(ref dsl) = bundle.baseline_dsl {
+        // Load and merge nodes/edges: DSL wins, Scan fills the gaps.
+        let mut bundle_nodes = BTreeMap::new();
+        let mut bundle_edges = Vec::new();
+
+        // 1. Load from baseline DSL (if present)
+        if let Some(ref dsl) = bundle.baseline_dsl {
             let parser = sruja_language::Parser::new("repo.sruja");
-            match parser.parse(dsl) {
-                Ok(program) => {
-                    let g = sruja_diff::program_to_graph(&program);
-                    let ns: Vec<SystemIndexNode> = g
-                        .nodes
-                        .iter()
-                        .map(|n| SystemIndexNode {
+            if let Ok(program) = parser.parse(dsl) {
+                let g = sruja_diff::program_to_graph(&program);
+                for n in g.nodes {
+                    bundle_nodes.insert(
+                        n.id.clone(),
+                        SystemIndexNode {
                             canonical_id: format!("{}::{}", repo_id, n.id),
                             kind: n.kind.as_str().to_string(),
                             label: n.label.clone(),
@@ -371,28 +380,82 @@ pub async fn compose(
                             domain: n.domain.clone(),
                             criticality: n.criticality,
                             sources: n.sources.clone(),
-                        })
-                        .collect();
-                    let es: Vec<SystemIndexEdge> = g
-                        .edges
-                        .iter()
-                        .map(|e| SystemIndexEdge {
+                            logical_id: n.canonical_id.clone(),
+                            aliases: n.aliases.clone(),
+                        },
+                    );
+                }
+                for e in g.edges {
+                    bundle_edges.push(SystemIndexEdge {
+                        source: format!("{}::{}", repo_id, e.source),
+                        target: format!("{}::{}", repo_id, e.target),
+                        kind: e.kind.as_str().to_string(),
+                        label: e.evidence.first().and_then(|ev| ev.detail.clone()),
+                        repo_id: repo_id.to_string(),
+                    });
+                }
+            }
+        }
+
+        // 2. Load from scanned context (graph) to fill gaps
+        if let Some(g_val) = bundle.context.get("graph") {
+            if let Ok(g) = serde_json::from_value::<sruja_scan::Graph>(g_val.clone()) {
+                for n in g.nodes {
+                    // Only add if not already in DSL (DSL is reviewed truth)
+                    // and skip low-signal modules to avoid bloating the system index
+                    // unless they are entry points or have high centrality (TODO).
+                    if !bundle_nodes.contains_key(&n.id) {
+                        // Filter: include anything high-level OR module if it has specific metadata
+                        let is_high_level = matches!(
+                            n.kind,
+                            sruja_scan::NodeKind::System
+                                | sruja_scan::NodeKind::Container
+                                | sruja_scan::NodeKind::Service
+                                | sruja_scan::NodeKind::Database
+                                | sruja_scan::NodeKind::ExternalApi
+                                | sruja_scan::NodeKind::Queue
+                                | sruja_scan::NodeKind::Frontend
+                        );
+
+                        if is_high_level {
+                            bundle_nodes.insert(
+                                n.id.clone(),
+                                SystemIndexNode {
+                                    canonical_id: format!("{}::{}", repo_id, n.id),
+                                    kind: n.kind.as_str().to_string(),
+                                    label: n.label.clone(),
+                                    technology: n.technology.clone(),
+                                    repo_id: repo_id.to_string(),
+                                    local_id: n.id.clone(),
+                                    owner: n.owner.clone(),
+                                    domain: n.domain.clone(),
+                                    criticality: n.criticality,
+                                    sources: n.sources.clone(),
+                                    logical_id: n.canonical_id.clone(), // This comes from ElementDefBody.canonical_id
+                                    aliases: n.aliases.clone(),
+                                },
+                            );
+                        }
+                    }
+                }
+                for e in g.edges {
+                    // Only include edges where both ends are in our filtered nodes
+                    let src_exists = bundle_nodes.contains_key(&e.source);
+                    let dst_exists = bundle_nodes.contains_key(&e.target);
+                    if src_exists && dst_exists {
+                        bundle_edges.push(SystemIndexEdge {
                             source: format!("{}::{}", repo_id, e.source),
                             target: format!("{}::{}", repo_id, e.target),
                             kind: e.kind.as_str().to_string(),
                             label: e.evidence.first().and_then(|ev| ev.detail.clone()),
                             repo_id: repo_id.to_string(),
-                        })
-                        .collect();
-                    (ns, es)
+                        });
+                    }
                 }
-                Err(_) => (Vec::new(), Vec::new()),
             }
-        } else {
-            (Vec::new(), Vec::new())
-        };
+        }
 
-        nodes.extend(bundle_nodes);
+        nodes.extend(bundle_nodes.into_values());
         edges.extend(bundle_edges);
     }
 

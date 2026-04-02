@@ -1,0 +1,26 @@
+// Sruja Language Crate Architecture
+// Focus: DSL, AST, and Parser core.
+
+language = system "sruja-language" {
+  description "Core language definitions for Sruja DSL"
+
+  Parser = container "Parser" {
+    technology "nom"
+    description "Recursive descent parser for .sruja files"
+  }
+
+  AST = container "AST" {
+    technology "Rust"
+    description "Abstract Syntax Tree with architecture metadata"
+  }
+
+  Diagnostics = container "Diagnostics" {
+    technology "Rust"
+    description "Core diagnostic collection and formatting system"
+  }
+}
+
+language -> language.Parser "exposes parsing entrypoint"
+
+language.Parser -> language.AST "produces"
+language.AST -> language.Diagnostics "reports errors via"

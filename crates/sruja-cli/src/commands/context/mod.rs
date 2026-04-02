@@ -44,6 +44,7 @@ pub async fn context_string(
             query: req.query,
             base_ref: req.base_ref,
             head_ref: req.head_ref,
+            depth: Some(req.depth),
         };
         let ctx = build_task_context(&graph, repo_root, selectors, req.max_tokens)?;
         return Ok(serde_json::to_string_pretty(&ctx)?);

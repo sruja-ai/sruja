@@ -1,0 +1,20 @@
+// Sruja Diff Crate Architecture
+// Focus: Git diff mapping and change analysis.
+
+diff = system "sruja-diff" {
+  description "Git diff analysis and architecture-to-source mapping"
+
+  GitMapper = container "Git Mapper" {
+    technology "Git2"
+    description "Maps source code line changes to architectural elements"
+  }
+
+  ChangeDetector = container "Change Detector" {
+    technology "Rust"
+    description "Identifies impacted components and calculate blast radius"
+  }
+}
+
+diff -> diff.GitMapper "exposes mapping entrypoint"
+
+diff.GitMapper -> diff.ChangeDetector "provides change hunks to"

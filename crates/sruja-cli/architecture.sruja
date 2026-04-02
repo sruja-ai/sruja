@@ -1,23 +1,32 @@
-// Minimal valid architecture baseline (used by tests / quickstart)
-// Replace or extend with real components; run 'sruja drift -r . -a architecture.sruja' to compare code vs baseline
+// Sruja CLI Crate Architecture
+// Focus: Commands, Federation, and MCP Interface.
 
-person = kind "Person"
-system = kind "System"
-container = kind "Container"
-database = kind "Database"
+cli = system "sruja-cli" {
+  description "Core CLI and user interaction layer for Sruja"
 
-user = person "User" {
-  description "End user of the application"
-}
+  Commands = container "Commands" {
+    technology "Rust, clap"
+    description "Sub-command dispatch logic (check, context, drift, etc.)"
+  }
 
-app = system "Application" {
-  description "Main application system"
-
-  schemas = database "schemas" {
+  Federation = container "Federated Engine" {
     technology "Rust"
-    description "Schema storage"
+    description "Core federation logic for publishing bundles and composing system indexes"
+  }
+
+  Context = container "TaskContext Resolver" {
+    technology "Rust"
+    description "Precision context resolver (TaskContext v1) for AI agents"
+  }
+
+  MCP = container "MCP Server" {
+    technology "Rust"
+    description "Model Context Protocol server for IDE agent integration"
   }
 }
 
-user -> app "uses"
-app -> app.schemas "reads from"
+cli -> cli.Commands "dispatches via"
+
+cli.Commands -> cli.Federation "uses for multi-repo composition"
+cli.Commands -> cli.Context "invokes for task-scoped context"
+cli.MCP -> cli.Context "exposes resolution tools via"

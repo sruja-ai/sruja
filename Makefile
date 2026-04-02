@@ -283,6 +283,23 @@ demo-intel:
 		echo "❌ demo/run_demo.sh not found"; exit 1; \
 	fi
 
+# Federated Architecture (Dogfooding)
+# Publish crate bundles and compose unified system index
+federate: build
+	@echo "Publishing crate bundles..."
+	@./target/release/sruja publish -r crates/sruja-cli --repo-id sruja-cli -o crates/sruja-cli/repo.bundle.json
+	@./target/release/sruja publish -r crates/sruja-scan --repo-id sruja-scan -o crates/sruja-scan/repo.bundle.json
+	@./target/release/sruja publish -r crates/sruja-language --repo-id sruja-language -o crates/sruja-language/repo.bundle.json
+	@./target/release/sruja publish -r crates/sruja-diff --repo-id sruja-diff -o crates/sruja-diff/repo.bundle.json
+	@echo "Composing system index..."
+	@./target/release/sruja compose \
+		-i crates/sruja-cli/repo.bundle.json \
+		-i crates/sruja-scan/repo.bundle.json \
+		-i crates/sruja-language/repo.bundle.json \
+		-i crates/sruja-diff/repo.bundle.json \
+		-o system.index.json
+	@echo "✅ Federated architecture composed: system.index.json"
+
 # Show help
 help:
 	@echo "Sruja - Build Commands"

@@ -1,0 +1,26 @@
+// Sruja Scan Crate Architecture
+// Focus: Repository scanning and metadata extraction.
+
+scan = system "sruja-scan" {
+  description "Repository scanning and automated architecture discovery"
+
+  Scanner = container "Scanner" {
+    technology "Git2, tree-sitter"
+    description "Recursive repository scanner for manifests and source code"
+  }
+
+  Metadata = container "Metadata" {
+    technology "Serde"
+    description "Metadata extractor for framework detection"
+  }
+
+  SCIP = container "SCIP Driver" {
+    technology "Protobuf"
+    description "SCIP indexer for high-fidelity semantic analysis"
+  }
+}
+
+scan -> scan.Scanner "exposes scanning entrypoint"
+
+scan.Scanner -> scan.Metadata "uses for inference"
+scan.Scanner -> scan.SCIP "orchestrates indexing with"

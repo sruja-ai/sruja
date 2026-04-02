@@ -82,6 +82,10 @@ pub struct CrossRepoElement {
     pub domain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub criticality: Option<sruja_language::ast::Criticality>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logical_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aliases: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

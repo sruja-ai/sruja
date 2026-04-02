@@ -66,16 +66,16 @@ pub fn count_kind(graph: &Graph, kind: NodeKind) -> usize {
 
 pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
     let root = Path::new(repo_root);
+    let current_repo_id = infer_repo_id(root);
     let index_path = find_system_index(root)?;
     let index = load_system_index(&index_path).ok()?;
-    let current_repo_id = infer_repo_id(root);
-
     let mut cross_repo_elements = Vec::new();
     let mut cross_repo_edges = Vec::new();
     let mut conflicts = Vec::new();
 
     let current_repo_prefix = format!("{}::", current_repo_id);
-    let mut relevant_canonical_ids = std::collections::HashSet::new();
+    let mut seen_canonical_ids = HashSet::new();
+    let mut relevant_canonical_ids = HashSet::new();
 
     for edge in &index.edges {
         let is_source_current = edge.source.starts_with(&current_repo_prefix);
@@ -90,16 +90,16 @@ pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
             });
 
             if !is_source_current {
-                relevant_canonical_ids.insert(edge.source.as_str());
+                relevant_canonical_ids.insert(edge.source.clone());
             }
             if !is_target_current {
-                relevant_canonical_ids.insert(edge.target.as_str());
+                relevant_canonical_ids.insert(edge.target.clone());
             }
         }
     }
 
     for node in &index.nodes {
-        if relevant_canonical_ids.contains(node.canonical_id.as_str()) {
+        if relevant_canonical_ids.contains(&node.canonical_id) && seen_canonical_ids.insert(node.canonical_id.clone()) {
             cross_repo_elements.push(CrossRepoElement {
                 canonical_id: node.canonical_id.clone(),
                 kind: node.kind.clone(),
@@ -109,6 +109,8 @@ pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
                 owner: node.owner.clone(),
                 domain: node.domain.clone(),
                 criticality: node.criticality,
+                logical_id: node.logical_id.clone(),
+                aliases: node.aliases.clone(),
             });
         }
     }
@@ -342,6 +344,7 @@ pub struct TaskSelectors<'a> {
     pub query: Option<&'a str>,
     pub base_ref: Option<&'a str>,
     pub head_ref: Option<&'a str>,
+    pub depth: Option<usize>,
 }
 
 pub fn build_task_context(
@@ -357,7 +360,8 @@ pub fn build_task_context(
         resolve_focus(graph, repo_root, selectors, &baseline)?;
 
     let focus_elements = build_focus_elements(graph, &focus_ids, &baseline, &selection_reason);
-    let (neighbors, impacted) = expand_neighbors_and_impact(graph, &focus_ids);
+    let (neighbors, impacted) =
+        expand_neighbors_and_impact(graph, &focus_ids, selectors.depth.unwrap_or(1));
     let (source_bindings, hydrated_files) = assemble_sources_and_hydration(
         graph, repo_root, &focus_ids, &neighbors, &baseline, max_tokens,
     )?;
@@ -681,11 +685,15 @@ struct ImpactBuckets {
 fn expand_neighbors_and_impact(
     graph: &Graph,
     focus_ids: &[String],
+    depth: usize,
 ) -> (Vec<TaskNeighbor>, ImpactBuckets) {
     let mut neighbors = Vec::new();
     let mut impacted = ImpactBuckets::default();
     let mut seen_neighbors: HashSet<(String, String)> = HashSet::new();
     let mut seen_impacted: HashSet<String> = HashSet::new();
+
+    // Use current depth for resolution
+    let expansion_depth = depth.clamp(1, 4);
 
     let kind_for_id = |id: &str| -> NodeKind {
         graph
@@ -702,7 +710,7 @@ fn expand_neighbors_and_impact(
         }
 
         if graph.nodes.iter().any(|n| n.id == *id) {
-            let blast = graph.blast_radius(id, 1);
+            let blast = graph.blast_radius(id, expansion_depth);
             for n in blast.upstream {
                 if seen_neighbors.insert((n.id.clone(), "upstream".to_string())) {
                     let kind = kind_for_id(&n.id);
