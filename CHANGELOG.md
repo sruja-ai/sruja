@@ -5,6 +5,22 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.26.0...sruja-v0.27.0) (2026-04-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove runtime/knowledge/sources commands; delete tests; docs cleanup
+
+### cli
+
+* remove runtime/knowledge/sources commands; delete tests; docs cleanup ([bf98c04](https://github.com/sruja-ai/sruja/commit/bf98c048f152ab9f8b6a91a872bdc38ca8c61dba))
+
+
+### Features
+
+* **scan:** add manifest discovery and scan quality ([7a70de8](https://github.com/sruja-ai/sruja/commit/7a70de886d19d2c7ec97287492754f9b7e4d13d4))
+
 ## [0.26.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.25.0...sruja-v0.26.0) (2026-03-27)
 
 
