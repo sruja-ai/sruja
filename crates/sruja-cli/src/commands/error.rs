@@ -76,7 +76,8 @@ mod tests {
         let val_err = CliError::Validation("oops".into());
         assert_eq!(val_err.exit_code(), 4);
 
-        let json_err = CliError::Json(serde_json::from_str::<serde_json::Value>("invalid").unwrap_err());
+        let json_err =
+            CliError::Json(serde_json::from_str::<serde_json::Value>("invalid").unwrap_err());
         assert_eq!(json_err.exit_code(), 6);
 
         let scan_err = CliError::Scan("bad".into());

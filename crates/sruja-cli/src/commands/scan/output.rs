@@ -728,11 +728,20 @@ pub(crate) fn print_quickstart_summary(
     let mut domains: HashMap<String, usize> = HashMap::new();
     for node in &graph.nodes {
         let path_str = node.path.as_deref().unwrap_or(&node.id);
-        let normalized = path_str.replace(['\\', '_'], "/");
+
+        // Strip repo root or leading /tmp/ junk
+        let mut relative_path = path_str;
+        if let Some(stripped) = path_str.strip_prefix(repo) {
+            relative_path = stripped;
+        }
+        let normalized = relative_path.replace(['\\', '_'], "/");
         let parts: Vec<&str> = normalized
             .split('/')
-            .filter(|p| !p.is_empty() && *p != ".")
+            .filter(|p| {
+                !p.is_empty() && *p != "." && *p != "tmp" && *p != "node_modules" && *p != ".git"
+            })
             .collect();
+
         if parts.is_empty() {
             continue;
         }
@@ -802,7 +811,6 @@ pub(crate) fn print_quickstart_summary(
     println!();
     println!("{}", "═".repeat(70).truecolor(100, 100, 100));
 }
-
 
 pub(crate) fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: bool) {
     println!("{}", "═".repeat(60));

@@ -1,5 +1,5 @@
 mod common;
-use common::{create_test_repo, write_file, run_sruja};
+use common::{create_test_repo, run_sruja, write_file};
 
 #[test]
 fn intent_check_json_smoke() {

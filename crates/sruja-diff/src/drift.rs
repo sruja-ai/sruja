@@ -50,11 +50,17 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         violations.push(Violation {
             kind: ViolationKind::OrphanComponent,
             severity: Severity::Info,
-            message: format!("Module '{}' has no incoming or outgoing dependencies", orphan),
-            location: Some(orphan.clone()),
-            suggestion: Some(
-                "Consider if this module is still needed or if it should be connected to the rest of the system".to_string(),
+            message: format!(
+                "Module '{}' has no incoming or outgoing dependencies",
+                orphan
             ),
+            location: Some(orphan.clone()),
+            suggestion: Some(format!(
+                "Module '{}' has no import/export connections. \
+                 If it's consumed via framework DI or reflection, this is expected. \
+                 Otherwise, consider removing or connecting it.",
+                orphan
+            )),
             sources: sources.clone(),
             confidence: None,
             evidence_count: Some(sources.len()),
@@ -102,9 +108,12 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
                 module.name, module.dependency_count, config.god_module_threshold
             ),
             location: Some(module.name.clone()),
-            suggestion: Some(
-                "Consider splitting this module into smaller, focused components to reduce regression risk".to_string(),
-            ),
+            suggestion: Some(format!(
+                "Bottleneck detected: this module has {} outgoing dependencies. Top targets: {}. \
+                 Consider extracting related functionality into a separate module to reduce regression risk.",
+                module.dependency_count,
+                top_targets_for_module(graph, &module.name, 3).join(", ")
+            )),
             sources: sources.clone(),
             confidence: None,
             evidence_count: Some(sources.len()),
@@ -441,6 +450,52 @@ fn is_likely_entry_point(path: &str, _id: &str) -> bool {
     false
 }
 
+/// Files that are typically consumed through framework mechanisms
+/// (decorators, DI, reflection) rather than direct imports.
+fn is_likely_framework_consumed(path: &str, id: &str) -> bool {
+    let p = path.replace('\\', "/").to_lowercase();
+    let id_lower = id.to_lowercase();
+
+    // NestJS / Angular patterns
+    p.ends_with(".decorator.ts")
+        || p.ends_with(".guard.ts")
+        || p.ends_with(".pipe.ts")
+        || p.ends_with(".interceptor.ts")
+        || p.ends_with(".filter.ts")
+        || p.ends_with(".middleware.ts")
+        || p.ends_with(".strategy.ts")
+        || p.ends_with(".module.ts")
+        || p.ends_with(".transformer.ts")
+        // Enum and type files (consumed via TypeScript's type system)
+        || p.ends_with(".enum.ts")
+        || p.ends_with(".enum.js")
+        || p.ends_with(".type.ts")
+        || p.ends_with(".types.ts")
+        || p.ends_with(".dto.ts")
+        || p.ends_with(".entity.ts")
+        || p.ends_with(".interface.ts")
+        || p.ends_with(".constants.ts")
+        // Python Django patterns
+        || p.ends_with("/apps.py")
+        || p.ends_with("/admin.py")
+        || p.ends_with("/signals.py")
+        // Java/Spring patterns
+        || id_lower.contains("configuration")
+        || id_lower.contains("interceptor")
+}
+
+fn top_targets_for_module(graph: &sruja_scan::Graph, module_id: &str, n: usize) -> Vec<String> {
+    let mut targets: Vec<_> = graph
+        .edges
+        .iter()
+        .filter(|e| e.source == module_id)
+        .map(|e| e.target.clone())
+        .collect();
+    targets.sort();
+    targets.truncate(n);
+    targets
+}
+
 /// Find modules with no incoming or outgoing dependency edges.
 /// Excludes containment edges (module:->file) and nodes that look like doc/tools/tests
 /// so health score is not dominated by false positives in Go/JS/Python repos.
@@ -469,6 +524,10 @@ pub fn find_orphan_modules(graph: &Graph) -> Vec<String> {
             let path = n.path.as_deref().unwrap_or("");
             !is_likely_entry_point(path, &n.id)
         })
+        .filter(|n| {
+            let path = n.path.as_deref().unwrap_or("");
+            !is_likely_framework_consumed(path, &n.id)
+        })
         .map(|n| n.id.clone())
         .collect()
 }
@@ -492,7 +551,8 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
         .nodes
         .iter()
         .filter(|n| {
-            n.label.contains("frontend") || n.label.contains("ui") || n.label.contains("web")
+            let label = n.label.to_lowercase();
+            label.contains("frontend") || label.contains("ui") || label.contains("web")
         })
         .map(|n| n.id.as_str())
         .collect();

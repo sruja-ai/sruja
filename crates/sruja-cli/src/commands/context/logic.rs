@@ -99,7 +99,9 @@ pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
     }
 
     for node in &index.nodes {
-        if relevant_canonical_ids.contains(&node.canonical_id) && seen_canonical_ids.insert(node.canonical_id.clone()) {
+        if relevant_canonical_ids.contains(&node.canonical_id)
+            && seen_canonical_ids.insert(node.canonical_id.clone())
+        {
             cross_repo_elements.push(CrossRepoElement {
                 canonical_id: node.canonical_id.clone(),
                 kind: node.kind.clone(),

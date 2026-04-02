@@ -648,7 +648,8 @@ async fn run_tool(
                 depth: Some(depth),
             };
 
-            let ctx = super::context::logic::build_task_context(&graph, &repo, selectors, max_tokens)?;
+            let ctx =
+                super::context::logic::build_task_context(&graph, &repo, selectors, max_tokens)?;
             Ok(serde_json::to_string_pretty(&ctx)?)
         }
         "sruja_validate_change" => {
@@ -665,7 +666,11 @@ async fn run_tool(
             let mut impacted_ids = std::collections::HashSet::new();
             for f in &file_list {
                 for node in &graph.nodes {
-                    if node.path.as_ref().is_some_and(|p| p.contains(f) || f.contains(p)) {
+                    if node
+                        .path
+                        .as_ref()
+                        .is_some_and(|p| p.contains(f) || f.contains(p))
+                    {
                         impacted_ids.insert(node.id.clone());
                     }
                 }
@@ -676,18 +681,19 @@ async fn run_tool(
                 .violations
                 .into_iter()
                 .filter(|v| {
-                    v.location
-                        .as_ref()
-                        .is_some_and(|l| {
-                            file_list.iter().any(|f| l.contains(f)) || impacted_ids.contains(l)
-                        })
+                    v.location.as_ref().is_some_and(|l| {
+                        file_list.iter().any(|f| l.contains(f)) || impacted_ids.contains(l)
+                    })
                 })
                 .collect();
 
-            let baseline_path =
-                crate::utils::architecture_path::resolve_architecture_path(std::path::Path::new(&repo));
+            let baseline_path = crate::utils::architecture_path::resolve_architecture_path(
+                std::path::Path::new(&repo),
+            );
             if let Some(p) = baseline_path {
-                if let Ok(status) = super::scan::drift::truth_status_from_baseline_compare(&graph, &p) {
+                if let Ok(status) =
+                    super::scan::drift::truth_status_from_baseline_compare(&graph, &p)
+                {
                     if matches!(status, sruja_diff::TruthStatus::Drifted) {
                         // If we are drifted, run a full compare to get detailed delta violations
                         let content = std::fs::read_to_string(&p)?;
@@ -700,7 +706,8 @@ async fn run_tool(
                                     .iter()
                                     .any(|rv| rv.message == v.message && rv.location == v.location)
                                     && v.location.as_ref().is_some_and(|l| {
-                                        file_list.iter().any(|f| l.contains(f)) || impacted_ids.contains(l)
+                                        file_list.iter().any(|f| l.contains(f))
+                                            || impacted_ids.contains(l)
                                     })
                                 {
                                     relevant_violations.push(v);
@@ -720,7 +727,10 @@ async fn run_tool(
                         "- [{:?}] {}{}: {}\n",
                         v.severity,
                         v.location.as_deref().unwrap_or("Unknown"),
-                        v.rule_id.as_ref().map(|r| format!(" ({})", r)).unwrap_or_default(),
+                        v.rule_id
+                            .as_ref()
+                            .map(|r| format!(" ({})", r))
+                            .unwrap_or_default(),
                         v.message
                     ));
                 }

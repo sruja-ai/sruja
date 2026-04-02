@@ -1,7 +1,0 @@
-{
-  "name": "express-golden-repo",
-  "dependencies": {
-    "express": "^4.18.0",
-    "mongoose": "^7.0.0"
-  }
-}

@@ -24,15 +24,13 @@ export function start() { return query(); }
     );
 
     let repo_str = repo.path().to_str().expect("utf-8");
-    let (ok, stdout, stderr) = run_sruja(&[
-        "discover",
-        "--explain",
-        "-r",
-        repo_str,
-        "--format",
-        "json",
-    ]);
-    assert!(ok, "discover --explain json should succeed: stderr={}", stderr);
+    let (ok, stdout, stderr) =
+        run_sruja(&["discover", "--explain", "-r", repo_str, "--format", "json"]);
+    assert!(
+        ok,
+        "discover --explain json should succeed: stderr={}",
+        stderr
+    );
 
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
     assert!(parsed.get("context").is_some());

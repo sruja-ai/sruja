@@ -6,10 +6,10 @@
 mod cargo;
 pub mod confidence;
 pub mod graph;
+mod manifests;
 pub mod npm;
 pub mod repomap;
 pub mod scan_scope;
-mod manifests;
 mod scip_ingest;
 pub mod tree_sitter;
 

@@ -28,11 +28,16 @@ MySystem = system "My System" {
     write_file(dir.path(), "repo.sruja", sruja_file);
 
     // 1. Verify lint succeeds
-    let (success, _, stderr) = run_sruja(&["lint", dir.path().join("repo.sruja").to_str().unwrap()]);
+    let (success, _, stderr) =
+        run_sruja(&["lint", dir.path().join("repo.sruja").to_str().unwrap()]);
     assert!(success, "lint failed: {}", stderr);
 
     // 2. Verify export includes these fields
-    let (success, stdout, stderr) = run_sruja(&["export", "json", dir.path().join("repo.sruja").to_str().unwrap()]);
+    let (success, stdout, stderr) = run_sruja(&[
+        "export",
+        "json",
+        dir.path().join("repo.sruja").to_str().unwrap(),
+    ]);
     assert!(success, "export failed: {}", stderr);
 
     let json: Value = serde_json::from_str(&stdout).expect("valid json export");
@@ -46,15 +51,21 @@ MySystem = system "My System" {
     assert_eq!(my_system["criticality"], "high");
     assert_eq!(my_system["aliases"][0], "LegacySystem");
     assert_eq!(my_system["aliases"][1], "OldPay");
-    
+
     let sources = my_system["sources"].as_array().expect("sources array");
-    assert!(sources.iter().any(|s| s["type"] == "openapi" && s["path"] == "./specs/payments.yaml"));
-    assert!(sources.iter().any(|s| s["type"] == "dockerfile" && s["path"] == "./docker/Dockerfile"));
+    assert!(sources
+        .iter()
+        .any(|s| s["type"] == "openapi" && s["path"] == "./specs/payments.yaml"));
+    assert!(sources
+        .iter()
+        .any(|s| s["type"] == "dockerfile" && s["path"] == "./docker/Dockerfile"));
 
     // Check MySystem.MyApi
     let my_api = elements.get("MySystem.MyApi").expect("MyApi element");
     assert_eq!(my_api["canonical_id"], "api-002");
     assert_eq!(my_api["criticality"], "critical");
     let api_sources = my_api["sources"].as_array().expect("api sources array");
-    assert!(api_sources.iter().any(|s| s["type"] == "readme" && s["path"] == "./README.md"));
+    assert!(api_sources
+        .iter()
+        .any(|s| s["type"] == "readme" && s["path"] == "./README.md"));
 }

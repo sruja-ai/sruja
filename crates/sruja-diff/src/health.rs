@@ -162,9 +162,20 @@ pub fn calculate_health_score_with_breakdown(
     let _weights = HealthScoreWeights::default();
 
     let cycle_penalty = (cycle_count as u8).saturating_mul(2).min(15);
-    let layer_penalty = (layer_count as u8).saturating_mul(1).min(10);
-    let god_penalty = ((god_module_count / 100) as u8).min(10);
-    let orphan_penalty = ((orphan_count / 100) as u8).min(5);
+    let layer_penalty = (layer_count as u8).saturating_mul(2).min(15);
+    let god_penalty = match god_module_count {
+        0 => 0,
+        1..=3 => 2,
+        4..=10 => 5,
+        11..=25 => 8,
+        _ => 12,
+    };
+    let orphan_penalty = match orphan_count {
+        0 => 0,
+        1..=3 => 1,
+        4..=10 => 3,
+        _ => 5,
+    };
     let other = other_penalty.min(8);
 
     let total_penalty = cycle_penalty

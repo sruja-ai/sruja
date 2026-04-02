@@ -85,8 +85,8 @@ pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
     use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn parse_succeeds_on_minimal_valid_file() {
