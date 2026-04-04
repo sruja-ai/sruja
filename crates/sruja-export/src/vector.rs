@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
