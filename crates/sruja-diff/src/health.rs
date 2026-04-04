@@ -55,17 +55,6 @@ impl HealthGrade {
     }
 
     #[allow(dead_code)]
-    pub fn label(&self) -> &'static str {
-        match self {
-            HealthGrade::Critical => "Critical",
-            HealthGrade::Poor => "Poor",
-            HealthGrade::Fair => "Fair",
-            HealthGrade::Good => "Good",
-            HealthGrade::Excellent => "Excellent",
-        }
-    }
-
-    #[allow(dead_code)]
     pub fn description(&self) -> &'static str {
         match self {
             HealthGrade::Critical => "Immediate attention required",
@@ -309,9 +298,7 @@ mod tests {
     }
 
     #[test]
-    fn health_grade_label_and_description() {
-        assert_eq!(HealthGrade::Critical.label(), "Critical");
-        assert_eq!(HealthGrade::Excellent.label(), "Excellent");
+    fn health_grade_description() {
         assert!(!HealthGrade::Critical.description().is_empty());
     }
 
