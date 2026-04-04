@@ -104,6 +104,7 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
   <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>Sruja Markdown Preview</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
     body { 
@@ -168,7 +169,8 @@ export class SrujaMarkdownPreviewEditorProvider implements vscode.CustomEditorPr
             }
           );
 
-          content.innerHTML = marked.parse(mdWithPlaceholders);
+          const parsedHtml = marked.parse(mdWithPlaceholders);
+          content.innerHTML = DOMPurify.sanitize(parsedHtml);
 
           document.querySelectorAll('.mermaid-placeholder').forEach(el => {
             const idx = el.getAttribute('data-index');

@@ -8,6 +8,7 @@ pub mod dsl;
 pub mod json;
 pub mod markdown;
 pub mod mermaid;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod vector;
 
 pub use context::ContextExporter;

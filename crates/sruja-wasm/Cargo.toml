@@ -21,6 +21,7 @@ serde_json = { workspace = true }
 js-sys = { workspace = true }
 web-sys = { workspace = true }
 console_error_panic_hook = "0.1"
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 # wasm-pack: enable bulk memory so wasm-opt accepts LLVM-generated memory.copy etc.
 [package.metadata.wasm-pack.profile.release]

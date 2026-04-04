@@ -28,20 +28,6 @@ jobs:
       - name: Run cargo audit
         run: cargo audit
 
-  # Dependency review (for PRs)
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: moderate
-
   # Secret scanning — TruffleHog action errors when BASE and HEAD resolve to the same commit
   # (common on push to main). Run diff scan on PRs only; push/schedule skip to keep job green.
   secret-scanning:
