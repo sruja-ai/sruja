@@ -400,10 +400,25 @@ pub async fn compose(
         // 2. Load from scanned context (graph) to fill gaps
         if let Some(g_val) = bundle.context.get("graph") {
             if let Ok(g) = serde_json::from_value::<sruja_scan::Graph>(g_val.clone()) {
+                // Precompute centrality to find important modules
+                let centrality = sruja_scan::graph::centrality::compute_all_centrality(&g);
+                let mut high_centrality_nodes = std::collections::HashSet::new();
+                
+                // Keep top 15% of modules by pagerank or degree
+                let mut module_scores: Vec<(&String, f64)> = centrality
+                    .iter()
+                    .filter(|(id, _)| g.nodes.iter().any(|n| &n.id == *id && n.kind == sruja_scan::NodeKind::Module))
+                    .map(|(id, c)| (id, c.pagerank + c.degree_centrality))
+                    .collect();
+                
+                module_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                let top_n = std::cmp::max(1, module_scores.len() * 15 / 100);
+                for (id, _) in module_scores.into_iter().take(top_n) {
+                    high_centrality_nodes.insert(id.clone());
+                }
+
                 for n in g.nodes {
                     // Only add if not already in DSL (DSL is reviewed truth)
-                    // and skip low-signal modules to avoid bloating the system index
-                    // unless they are entry points or have high centrality (TODO).
                     if !bundle_nodes.contains_key(&n.id) {
                         // Filter: include anything high-level OR module if it has specific metadata
                         let is_high_level = matches!(
@@ -417,7 +432,12 @@ pub async fn compose(
                                 | sruja_scan::NodeKind::Frontend
                         );
 
-                        if is_high_level {
+                        let is_important_module = n.kind == sruja_scan::NodeKind::Module && (
+                            high_centrality_nodes.contains(&n.id) ||
+                            sruja_diff::drift::is_likely_entry_point(n.path.as_deref().unwrap_or(""), &n.id)
+                        );
+
+                        if is_high_level || is_important_module {
                             bundle_nodes.insert(
                                 n.id.clone(),
                                 SystemIndexNode {

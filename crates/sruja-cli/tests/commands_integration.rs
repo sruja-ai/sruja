@@ -799,6 +799,69 @@ fn export_json_handles_missing_file() {
 }
 
 #[test]
+fn compliance_report_json_succeeds() {
+    let repo = create_test_repo();
+    write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
+    let repo_str = repo.path().to_str().expect("utf-8");
+    let arch_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+
+    let (success, stdout, _stderr) = run_sruja(&["compliance", "-r", repo_str, "-a", &arch_str, "-f", "json"]);
+
+    // compliance returns non-zero exit code if NonCompliant, which is expected here
+    // because the empty repo doesn't match the architecture. 
+    // We want to verify it still produces a valid JSON report.
+    assert!(!success, "compliance should report non-compliance for empty repo vs architecture");
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON even on failure");
+    assert!(parsed.get("status").is_some());
+    assert!(parsed.get("health_score").is_some());
+}
+
+#[test]
+fn explain_element_json_succeeds() {
+    let repo = create_test_repo();
+    write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
+    let arch_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+
+    let (success, stdout, stderr) = run_sruja(&["explain", "App", "--file", &arch_str, "--json"]);
+
+    assert!(success, "explain should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert_eq!(parsed.get("id").and_then(|v| v.as_str()), Some("App"));
+    assert!(parsed.get("incoming_relations").is_some());
+}
+
+#[test]
+fn why_question_succeeds() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    // First sync to build the graph
+    run_sruja(&["sync", "-r", repo_str]);
+
+    let (success, stdout, stderr) = run_sruja(&["why", "what does this repo do?", "-r", repo_str, "-f", "json"]);
+
+    assert!(success, "why should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("answer").is_some());
+}
+
+#[test]
+fn index_embeddings_succeeds() {
+    let repo = create_test_repo();
+    write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
+    let repo_str = repo.path().to_str().expect("utf-8");
+    let arch_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let out_path = repo.path().join("vectors.json");
+    let out_str = out_path.to_str().expect("utf-8");
+
+    let (success, _stdout, stderr) = run_sruja(&["index", "-r", repo_str, "-a", &arch_str, "-o", out_str]);
+
+    assert!(success, "index should succeed: stderr={}", stderr);
+    assert!(out_path.exists(), "vectors.json should be created");
+}
+
+#[test]
 fn fmt_check_exits_zero_on_already_formatted_file() {
     let repo = create_test_repo();
     write_file(

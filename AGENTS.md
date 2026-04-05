@@ -276,3 +276,14 @@ MySystem = system "My System" {
 
 MySystem.MyContainer -> MySystem.Database "SQL"
 ```
+
+## AI Editor Integration (MCP & Context)
+
+Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, etc.) to give them deep context about the cross-repo architecture:
+
+1. **Daily Context Sync**: Run `make daily` to check for architectural drift, build cross-repo context, and automatically update `.cursorrules` and `.copilot-instructions.md`.
+2. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
+   - **Command**: `sruja mcp -r .`
+   - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.
+3. **Cross-Repo Context**: Use `sruja context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
+

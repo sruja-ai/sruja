@@ -417,10 +417,10 @@ fn is_likely_doc_or_tool_path(path: &str, id: &str) -> bool {
 
 /// Paths that are commonly entry points or re-export hubs; reporting them as orphans
 /// is usually a false positive (scanner may not see dynamic requires or re-exports).
-fn is_likely_entry_point(path: &str, _id: &str) -> bool {
+pub fn is_likely_entry_point(path: &str, _id: &str) -> bool {
     let p = path.replace('\\', "/");
     let p_lower = p.to_lowercase();
-    // Common JS/TS entry file names (often no static imports in the file itself)
+    // Common JS/TS/Rust/Python/Go entry file names (often no static imports in the file itself)
     if p_lower.ends_with("index.js")
         || p_lower.ends_with("index.ts")
         || p_lower.ends_with("index.jsx")
@@ -429,6 +429,11 @@ fn is_likely_entry_point(path: &str, _id: &str) -> bool {
         || p_lower.ends_with("main.ts")
         || p_lower.ends_with("app.js")
         || p_lower.ends_with("app.ts")
+        || p_lower.ends_with("main.rs")
+        || p_lower.ends_with("lib.rs")
+        || p_lower.ends_with("main.py")
+        || p_lower.ends_with("__init__.py")
+        || p_lower.ends_with("main.go")
     {
         return !p_lower.contains("/examples/")
             && !p_lower.contains("/tests/")

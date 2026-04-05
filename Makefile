@@ -300,6 +300,18 @@ federate: build
 		-o system.index.json
 	@echo "✅ Federated architecture composed: system.index.json"
 
+# Daily Dev Workflow
+# Runs drift checks, builds cross-repo context, and updates AI instructions
+daily: build federate
+	@echo "Checking for architecture drift..."
+	@./target/release/sruja drift -r . -a repo.sruja || true
+	@echo "Updating AI editor context..."
+	@./target/release/sruja context -r . -f cursor-rules -o .cursorrules
+	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .cursorrules
+	@./target/release/sruja context -r . -f copilot-instructions -o .copilot-instructions.md
+	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .copilot-instructions.md
+	@echo "✅ Daily setup complete. AI editors are now context-aware!"
+
 # Show help
 help:
 	@echo "Sruja - Build Commands"
@@ -307,6 +319,7 @@ help:
 	@echo "Build & Development:"
 	@echo "  make build              - Build Rust libraries"
 	@echo "  make test               - Run Rust tests"
+	@echo "  make daily              - Run daily checks, drift analysis, and update AI context"
 	@echo "  make test-wasm          - Run WASM unit tests (wasm-pack test --node)"
 	@echo "  make test-e2e           - Run Playwright E2E (book Show diagram); start book-serve first"
 	@echo "  make test-coverage      - Run tests with coverage (if available)"

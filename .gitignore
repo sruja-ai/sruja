@@ -148,3 +148,16 @@ test_new_complex_systems.sh
 test_new_complex_systems_v2.sh
 test_new_projects.sh
 test_service_detection.sh
+
+# Sruja Federation artifacts
+system.index.json
+repo.bundle.json
+.fastembed_cache
+
+# Coverage reports
+coverage_report.txt
+coverage_report_new.txt
+
+# Temporary scan artifacts
+express_scan.json
+fastapi_scan.json

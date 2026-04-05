@@ -3,13 +3,13 @@
 //! This crate provides functionality to compare architecture graphs,
 //! identifying differences, new components, missing elements, and potential violations.
 
-mod compare;
-mod convert;
-mod drift;
-mod git_mapper;
-mod health;
-mod source_ref;
-mod types;
+pub mod compare;
+pub mod convert;
+pub mod drift;
+pub mod git_mapper;
+pub mod health;
+pub mod source_ref;
+pub mod types;
 
 pub use compare::compare_graphs;
 pub use convert::program_to_graph;
