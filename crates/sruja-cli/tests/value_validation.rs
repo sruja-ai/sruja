@@ -1,6 +1,5 @@
 mod common;
 use common::*;
-use std::fs;
 
 #[test]
 fn test_clean_express_saas_score_and_map() {

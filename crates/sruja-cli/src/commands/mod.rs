@@ -110,7 +110,7 @@ mod tests {
         let dir = tempdir().expect("temp");
         let file = dir.path().join("bad.sruja");
         fs::write(&file, "invalid {").expect("write");
-        let err = parse_sruja_file(&file).err().expect("expected error");
+        let err = parse_sruja_file(&file).expect_err("expected error");
         match err {
             CliError::Parse { file: f, .. } => {
                 assert!(f.ends_with("bad.sruja"));

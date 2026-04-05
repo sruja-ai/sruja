@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn exit_codes_map_correctly() {
-        let io_err = CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, "x"));
+        let io_err = CliError::Io(std::io::Error::other("x"));
         assert_eq!(io_err.exit_code(), 2);
 
         let parse_err = CliError::parse_with_diagnostics("a.sruja", vec![]);
