@@ -49,6 +49,8 @@ pub struct ArchitectureContext {
     pub layers: Vec<LayerInfo>,
     pub boundaries: Vec<BoundaryRule>,
     pub forbidden_patterns: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub active_decisions: Vec<String>,
     pub focus: Option<FocusContext>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_context: Option<SystemContext>,

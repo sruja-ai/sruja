@@ -43,6 +43,19 @@ pub fn build_architecture_context(
 
     let system_context = build_system_context(repo);
 
+    let mut active_decisions = Vec::new();
+    let adr_dir = Path::new(repo).join("docs").join("architecture").join("decisions");
+    if adr_dir.exists() {
+        let parser = sruja_intent::AdrParser::new();
+        if let Ok(adrs) = parser.parse_dir(&adr_dir) {
+            for adr in adrs {
+                if adr.status == sruja_intent::AdrStatus::Accepted {
+                    active_decisions.push(format!("{}: {}", adr.title, adr.decision));
+                }
+            }
+        }
+    }
+
     Ok(ArchitectureContext {
         repo: repo.to_string(),
         summary: ContextSummary {
@@ -54,6 +67,7 @@ pub fn build_architecture_context(
         layers,
         boundaries,
         forbidden_patterns,
+        active_decisions,
         focus,
         system_context,
         max_tokens,

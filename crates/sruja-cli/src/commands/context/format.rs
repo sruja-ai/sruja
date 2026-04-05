@@ -187,6 +187,14 @@ pub fn format_cursor_rules(context: &ArchitectureContext) -> String {
         budget.push_str(&mut out, "\n");
     }
 
+    if !context.active_decisions.is_empty() {
+        budget.push_str(&mut out, "## Active Architecture Decisions (ADRs)\n\n");
+        for decision in &context.active_decisions {
+            budget.push_str(&mut out, &format!("- {}\n", decision));
+        }
+        budget.push_str(&mut out, "\n");
+    }
+
     budget.push_str(&mut out, "## When suggesting code\n\n");
     budget.push_str(
         &mut out,
@@ -285,6 +293,14 @@ pub fn format_copilot_instructions(context: &ArchitectureContext) -> String {
         budget.push_str(&mut out, "\n");
     }
 
+    if !context.active_decisions.is_empty() {
+        budget.push_str(&mut out, "## Active Architecture Decisions (ADRs)\n");
+        for decision in &context.active_decisions {
+            budget.push_str(&mut out, &format!("- {}\n", decision));
+        }
+        budget.push_str(&mut out, "\n");
+    }
+
     budget.push_str(&mut out, "## Before Committing\n");
     budget.push_str(
         &mut out,
@@ -365,6 +381,14 @@ pub fn format_markdown(context: &ArchitectureContext) -> String {
         budget.push_str(&mut out, "## Rules to Follow\n\n");
         for pattern in &context.forbidden_patterns {
             budget.push_str(&mut out, &format!("- {}\n", pattern));
+        }
+        budget.push_str(&mut out, "\n");
+    }
+
+    if !context.active_decisions.is_empty() {
+        budget.push_str(&mut out, "## Active Architecture Decisions (ADRs)\n\n");
+        for decision in &context.active_decisions {
+            budget.push_str(&mut out, &format!("- {}\n", decision));
         }
         budget.push_str(&mut out, "\n");
     }

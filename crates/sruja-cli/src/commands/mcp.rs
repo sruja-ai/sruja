@@ -229,11 +229,14 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_get_architecture_context",
             "title": "Sruja Architecture Context",
-            "description": "Export high-level architecture context and project rules for AI tooling.",
+            "description": "Export high-level architecture context and project rules. Provide a file or element_id to get a localized, task-scoped context map.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "file": { "type": "string", "description": "Optional file focus for task-scoped context (relative to repo root)" },
+                    "element_id": { "type": "string", "description": "Optional architecture element ID focus (e.g. MySystem.Api)" },
+                    "intent": { "type": "string", "description": "Optional intent hint (add-feature, refactor, fix-bug)" }
                 }
             }
         }),
@@ -459,16 +462,19 @@ async fn run_tool(
             Ok(repomap)
         }
         "sruja_get_architecture_context" => {
+            let file = arguments.get("file").and_then(|v| v.as_str()).map(String::from);
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str()).map(String::from);
+            let intent = arguments.get("intent").and_then(|v| v.as_str()).map(String::from);
             let content = super::context::context_string(
                 &repo,
                 "markdown",
                 super::context::ContextRequest {
-                    file: None,
-                    element_id: None,
+                    file: file.as_deref(),
+                    element_id: element_id.as_deref(),
                     query: None,
                     base_ref: None,
                     head_ref: None,
-                    intent: None,
+                    intent: intent.as_deref(),
                     depth: 2,
                     max_tokens: 10000,
                 },
