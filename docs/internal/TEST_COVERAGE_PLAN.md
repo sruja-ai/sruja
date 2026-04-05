@@ -109,7 +109,7 @@ The remaining ~10% gap is in areas that require significant test infrastructure.
 
 | Area | Current coverage | Blocker | Infrastructure / effort |
 |------|------------------|--------|-------------------------|
-| **CLI command handlers** | ~0% | Many handlers have no dedicated tests | **Integration tests**: temp repos, `Command::cargo_bin("sruja")`, stdout/stderr capture, golden or snapshot output. Some E2E exist (e.g. `lint_e2e`, `drift_e2e`, `quickstart_e2e`); extend pattern to all commands. |
+| **CLI command handlers** | ~50% | Some handlers still need dedicated tests (LSP, MCP, Watch) | **Integration tests**: temp repos, `run_sruja` helper. Added tests for `compliance`, `explain`, `why`, `index`, `export`, `fmt`, `list`, `tree`, `validate`, `sync`, `status`. |
 | **WASM bindings** | 0% in `cargo test` | Different target | **wasm-pack test**: `wasm32-unknown-unknown`, `wasm-bindgen-test` in `sruja-wasm`, `wasm-pack test --node`. Already documented in `docs/WASM_TESTING.md`; CI job to run it. Excluded from `cargo llvm-cov` by design. |
 | **Tree-sitter language parsers** | 30–40% | Language-specific ASTs | **Fixtures**: per-language sample files (Rust, Go, Java, Python, etc.) in `sruja-scan` tests, and tests that parse them and assert on key nodes. Detector and language modules in `crates/sruja-scan/src/tree_sitter/`. |
 
