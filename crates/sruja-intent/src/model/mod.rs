@@ -1,3 +1,4 @@
+// We need this dummy SEARCH block since the file might be empty or I need to read it first.
 //! Intent Model Types
 //!
 //! Normalized representation of architectural intent from various sources
@@ -532,5 +533,125 @@ impl Default for IntentModel {
             path: PathBuf::new(),
             name: "Default".to_string(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::{ParsedAdr, StructuralImplication as Implication};
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_intent_model_default() {
+        let model = IntentModel::default();
+        assert_eq!(model.source.name, "Default");
+        assert_eq!(model.source.source_type, IntentSourceType::Manual);
+        assert!(model.components.is_empty());
+    }
+
+    #[test]
+    fn test_intent_model_merge() {
+        let mut model1 = IntentModel::default();
+        model1.components.push(DeclaredComponent {
+            id: "C1".to_string(),
+            kind: "service".to_string(),
+            label: "C1".to_string(),
+            description: None,
+            technology: None,
+            source_ref: SourceReference { file: "".to_string(), line: None, element: None },
+        });
+
+        let mut model2 = IntentModel::default();
+        model2.components.push(DeclaredComponent {
+            id: "C2".to_string(),
+            kind: "service".to_string(),
+            label: "C2".to_string(),
+            description: None,
+            technology: None,
+            source_ref: SourceReference { file: "".to_string(), line: None, element: None },
+        });
+        model2.relationships.push(DeclaredRelationship {
+            source: "C1".to_string(),
+            target: "C2".to_string(),
+            kind: "depends_on".to_string(),
+            label: None,
+            source_ref: SourceReference { file: "".to_string(), line: None, element: None },
+        });
+
+        model1.merge(model2);
+        assert_eq!(model1.components.len(), 2);
+        assert_eq!(model1.relationships.len(), 1);
+        
+        let ids = model1.component_ids();
+        assert!(ids.contains(&"C1"));
+        assert!(ids.contains(&"C2"));
+
+        let pairs = model1.relationship_pairs();
+        assert_eq!(pairs, vec![("C1", "C2")]);
+
+        assert!(model1.find_component("C1").is_some());
+        assert!(model1.find_component("C3").is_none());
+    }
+
+    #[test]
+    fn test_intent_model_from_adr() {
+        let adr = ParsedAdr {
+            path: PathBuf::from("doc/adr/0001-test.md"),
+            number: Some(1),
+            title: "Test ADR".to_string(),
+            status: crate::parser::AdrStatus::Accepted,
+            date: None,
+            context: "Ctx".to_string(),
+            decision: "Dec".to_string(),
+            consequences: "Cons".to_string(),
+            tags: vec![],
+            implications: vec![
+                Implication {
+                    raw_text: "Component API introduced".to_string(),
+                    component: Some("API".to_string()),
+                    new_policy: None,
+                    boundary_change: None,
+                    constraint: None,
+                },
+                Implication {
+                    raw_text: "Policy: No cycles".to_string(),
+                    component: None,
+                    new_policy: Some("No cycles allowed".to_string()),
+                    boundary_change: None,
+                    constraint: None,
+                }
+            ],
+        };
+
+        let model = IntentModel::from_adr(adr);
+        assert_eq!(model.source.name, "Test ADR");
+        assert_eq!(model.source.source_type, IntentSourceType::AdrFile);
+        assert_eq!(model.components.len(), 1);
+        assert_eq!(model.components[0].id, "API");
+        assert_eq!(model.policies.len(), 1);
+        assert_eq!(model.policies[0].description, "No cycles allowed");
+    }
+
+    #[test]
+    fn test_intent_model_from_sruja_content() {
+        let content = r#"
+            system = kind "System"
+            App = system "App"
+            DB = system "DB"
+            App -> DB "reads"
+        "#;
+
+        let model = IntentModel::from_sruja_content(content, Path::new("test.sruja")).unwrap();
+        assert_eq!(model.source.name, "test.sruja");
+        assert_eq!(model.components.len(), 2);
+        assert_eq!(model.relationships.len(), 1);
+        
+        let app = model.find_component("App").unwrap();
+        assert_eq!(app.id, "App");
+        
+        let rel = &model.relationships[0];
+        assert_eq!(rel.source, "App");
+        assert_eq!(rel.target, "DB");
     }
 }

@@ -441,7 +441,7 @@ mod tests {
         App.Web -> App.Api "calls"
         "#;
         
-        let parser = Parser::new();
+        let mut parser = Parser::new("test.sruja");
         let program = parser.parse(input).unwrap();
         
         let config = D2Config {

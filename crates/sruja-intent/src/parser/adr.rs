@@ -430,4 +430,48 @@ Use MySQL.
         assert_eq!(adr.title, "Untitled ADR");
         assert_eq!(adr.status, AdrStatus::Proposed);
     }
+
+    #[test]
+    fn test_extract_implications() {
+        let parser = AdrParser::new();
+        
+        let content = r#"
+            We will introduce a new Payment service to handle transactions.
+            We should remove the old Legacy module.
+            Policy: Payments must be secure
+        "#;
+        
+        let implications = parser.extract_implications(content);
+        
+        // Let's just find the policy one explicitly to make it robust against other matches
+        let policy_impl = implications.iter().find(|i| i.new_policy.is_some()).unwrap();
+        assert_eq!(policy_impl.new_policy.as_deref(), Some("Payments must be secure"));
+    }
+
+    #[test]
+    fn test_extract_tags() {
+        let parser = AdrParser::new();
+        let content = r#"
+            Tags: architecture, database,  security 
+            #rust #fast
+        "#;
+        let tags = parser.extract_tags(content);
+        assert_eq!(tags.len(), 5);
+        assert!(tags.contains(&"architecture".to_string()));
+        assert!(tags.contains(&"database".to_string()));
+        assert!(tags.contains(&"security".to_string()));
+        assert!(tags.contains(&"rust".to_string()));
+        assert!(tags.contains(&"fast".to_string()));
+    }
+
+    #[test]
+    fn test_adr_status_display() {
+        assert_eq!(format!("{}", AdrStatus::Proposed), "Proposed");
+        assert_eq!(format!("{}", AdrStatus::Accepted), "Accepted");
+        assert_eq!(format!("{}", AdrStatus::Deprecated), "Deprecated");
+        assert_eq!(format!("{}", AdrStatus::Rejected), "Rejected");
+        assert_eq!(format!("{}", AdrStatus::Draft), "Draft");
+        assert_eq!(format!("{}", AdrStatus::Superseded { by: Some(5) }), "Superseded by ADR-0005");
+        assert_eq!(format!("{}", AdrStatus::Superseded { by: None }), "Superseded");
+    }
 }

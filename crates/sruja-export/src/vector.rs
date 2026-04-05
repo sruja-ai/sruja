@@ -89,3 +89,21 @@ fn cosine_similarity(v1: &[f32], v2: &[f32]) -> f32 {
     }
     dot_product / (norm1 * norm2)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cosine_similarity() {
+        let v1 = vec![1.0, 0.0, 0.0];
+        let v2 = vec![1.0, 0.0, 0.0];
+        assert_eq!(cosine_similarity(&v1, &v2), 1.0);
+
+        let v3 = vec![0.0, 1.0, 0.0];
+        assert_eq!(cosine_similarity(&v1, &v3), 0.0);
+
+        let v4 = vec![0.0, 0.0, 0.0];
+        assert_eq!(cosine_similarity(&v1, &v4), 0.0);
+    }
+}
