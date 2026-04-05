@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.27.1...sruja-v0.28.0) (2026-04-05)
+
+
+### Features
+
+* tighten architecture context with task focus and ADR intent ([1560c1a](https://github.com/sruja-ai/sruja/commit/1560c1ae510b8f2a192bf5cfa97b381b25a182bd))
+
 ## [0.27.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.27.0...sruja-v0.27.1) (2026-04-05)
 
 
