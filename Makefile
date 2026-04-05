@@ -69,9 +69,9 @@ test-coverage:
 	@echo "Running Rust tests with coverage..."
 	@if command -v cargo >/dev/null 2>&1; then \
 		if cargo llvm-cov --version >/dev/null 2>&1; then \
-			cargo llvm-cov --manifest-path Cargo.toml; \
+			cargo llvm-cov --workspace --manifest-path Cargo.toml; \
 		else \
-			cargo test --manifest-path Cargo.toml; \
+			cargo test --workspace --manifest-path Cargo.toml; \
 			echo ""; \
 			echo "Note: Install cargo-llvm-cov for coverage reports:"; \
 			echo "  rustup component add llvm-tools-preview"; \

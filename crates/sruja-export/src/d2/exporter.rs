@@ -408,3 +408,57 @@ fn get_container(
         cur = p;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::Parser;
+
+    #[test]
+    fn test_d2_export_empty_program() {
+        let exporter = D2Exporter::new(D2Config::default());
+        let program = Program { items: vec![] };
+        let out = exporter.export(&program);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_d2_export_basic_system() {
+        let input = r#"
+        system = kind "System"
+        container = kind "Container"
+        
+        App = system "App" {
+            description "My App"
+            Web = container "Web" {
+                description "Web UI"
+            }
+            Api = container "API" {
+                description "Backend"
+            }
+        }
+        
+        App.Web -> App.Api "calls"
+        "#;
+        
+        let parser = Parser::new();
+        let program = parser.parse(input).unwrap();
+        
+        let config = D2Config {
+            direction: "down".to_string(),
+            view_level: 2,
+            target_id: None,
+            link_template: None,
+        };
+        
+        let exporter = D2Exporter::new(config);
+        let out = exporter.export(&program);
+        
+        assert!(out.contains("direction: down"));
+        assert!(out.contains("App: \"App\" {"));
+        assert!(out.contains("Web: \"Web\" {"));
+        assert!(out.contains("Api: \"API\" {"));
+        assert!(out.contains("App_Web -> App_Api: \"calls\""));
+        assert!(out.contains("shape: package"));
+    }
+}

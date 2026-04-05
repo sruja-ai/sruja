@@ -232,3 +232,90 @@ fn format_selector(selector: &PolicySelectorAst) -> String {
         format!("{{ {} }}", parts.join(" "))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::{Adr, Policy, PolicyRuleAst, PolicySelectorAst, Requirement, PolicyMetaSelectorAst};
+    use sruja_diagnostics::SourceLocation;
+
+    #[test]
+    fn test_print_requirement() {
+        let mut out = String::new();
+        let req = Requirement {
+            location: SourceLocation::new("test".to_string(), 1, 1),
+            id: "REQ_1".to_string(),
+            r#type: "functional".to_string(),
+            title: "Must login".to_string(),
+            description: Some("User must be able to login".to_string()),
+            tags: vec![],
+        };
+        print_requirement(&mut out, &req);
+        assert!(out.contains("requirement REQ_1 functional \"Must login\" \"User must be able to login\""));
+    }
+
+    #[test]
+    fn test_print_adr() {
+        let mut out = String::new();
+        let adr = Adr {
+            location: SourceLocation::new("test".to_string(), 1, 1),
+            id: "ADR_1".to_string(),
+            title: "Use Rust".to_string(),
+            status: Some("accepted".to_string()),
+            context: Some("Need speed".to_string()),
+            decision: Some("Rust".to_string()),
+            consequences: Some("Fast".to_string()),
+        };
+        print_adr(&mut out, &adr);
+        assert!(out.contains("adr ADR_1 \"Use Rust\" {"));
+        assert!(out.contains("status \"accepted\""));
+        assert!(out.contains("context \"Need speed\""));
+        assert!(out.contains("decision \"Rust\""));
+        assert!(out.contains("consequences \"Fast\""));
+    }
+
+    #[test]
+    fn test_print_policy() {
+        let mut out = String::new();
+        let policy = Policy {
+            location: SourceLocation::new("test".to_string(), 1, 1),
+            id: "POL_1".to_string(),
+            title: "No circular deps".to_string(),
+            category: "architecture".to_string(),
+            enforcement: "error".to_string(),
+            description: Some("Prevent cycles".to_string()),
+            rules: vec![
+                PolicyRuleAst::DenyEdge {
+                    from: PolicySelectorAst { kind: Some("container".to_string()), id: None, tags: vec![], technology: None, meta: vec![] },
+                    to: PolicySelectorAst { id: Some("DB".to_string()), kind: None, tags: vec![], technology: None, meta: vec![] },
+                    except: vec![],
+                    message: Some("No DB access".to_string()),
+                    suggestions: vec!["Use API".to_string()],
+                }
+            ],
+        };
+        print_policy(&mut out, &policy);
+        assert!(out.contains("policy POL_1 \"No circular deps\" {"));
+        assert!(out.contains("category \"architecture\""));
+        assert!(out.contains("enforcement \"error\""));
+        assert!(out.contains("description \"Prevent cycles\""));
+        assert!(out.contains("rule deny edge from { kind \"container\" } to { id \"DB\" } message \"No DB access\" suggest \"Use API\""));
+    }
+
+    #[test]
+    fn test_format_selector() {
+        let selector = PolicySelectorAst {
+            kind: Some("component".to_string()),
+            id: Some("Auth".to_string()),
+            tags: vec!["critical".to_string()],
+            technology: Some("Rust".to_string()),
+            meta: vec![PolicyMetaSelectorAst { key: "tier".to_string(), value: Some("1".to_string()) }],
+        };
+        let formatted = format_selector(&selector);
+        assert!(formatted.contains("kind \"component\""));
+        assert!(formatted.contains("id \"Auth\""));
+        assert!(formatted.contains("tag \"critical\""));
+        assert!(formatted.contains("technology \"Rust\""));
+        assert!(formatted.contains("meta \"tier\"=\"1\""));
+    }
+}

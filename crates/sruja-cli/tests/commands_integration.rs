@@ -448,6 +448,40 @@ fn init_creates_dot_sruja_dir() {
 }
 
 #[test]
+fn init_auto_generates_baseline() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, _stdout, stderr) = run_sruja(&["init", "--auto", "-r", repo_str]);
+
+    assert!(success, "init --auto should succeed: stderr={}", stderr);
+    assert!(repo.path().join(".sruja").exists());
+    assert!(repo.path().join("repo.sruja").exists(), "init --auto should generate repo.sruja baseline");
+}
+
+#[test]
+fn init_generates_prompt_file() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let skill_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("skills/sruja-architecture/SKILL.md")
+        .canonicalize()
+        .expect("skill file exists");
+    
+    std::env::set_var("SRUJA_SKILL_PATH", skill_path);
+
+    let (success, _stdout, stderr) = run_sruja(&["init", "--prompt", "-r", repo_str]);
+
+    assert!(success, "init --prompt should succeed: stderr={}", stderr);
+    assert!(repo.path().join(".sruja").exists());
+    assert!(repo.path().join(".sruja/init_prompt.txt").exists(), "init --prompt should generate init_prompt.txt");
+}
+
+#[test]
 fn sync_writes_context_and_graph() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());
