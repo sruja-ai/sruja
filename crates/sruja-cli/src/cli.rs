@@ -117,6 +117,9 @@ pub enum Commands {
         /// Export all defined custom views in markdown (adds Custom views section)
         #[arg(long)]
         all_views: bool,
+        /// Inject the exported content into a file between `<!-- sruja:start -->` and `<!-- sruja:end -->` markers
+        #[arg(long)]
+        inject: Option<String>,
         /// Hydrate architecture elements with source code content (JSON only)
         #[arg(long)]
         hydrate: bool,
@@ -516,6 +519,7 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             target,
             view,
             all_views,
+            inject,
             hydrate,
         } => {
             commands::export(
@@ -527,6 +531,7 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
                     target,
                     view_name: view,
                     all_views,
+                    inject,
                     hydrate,
                 },
             )

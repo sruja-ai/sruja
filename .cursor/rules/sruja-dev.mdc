@@ -1,0 +1,19 @@
+# sruja-dev
+
+Project context for Sruja core and extension development.
+
+## Scopes
+- `**/*.rs`
+- `**/*.ts`
+- `**/*.sruja`
+
+## Instructions
+1. **Code Standards**: Follow the conventions in `AGENTS.md`.
+2. **Architecture**: Respect C4 boundaries declared in `.sruja` files.
+3. **WASM Integrity**: If you modify `sruja-wasm` or `sruja-language`, remind the user to rebuild WASM with `make wasm-nodejs` and update the extension assets.
+4. **Validation**: Use `sruja lint` on any `.sruja` files after editing.
+
+## Useful Context Tools
+- `sruja mcp` — Use for deep architecture queries.
+- `sruja drift` — Check for drift after code edits.
+- `sruja why` — Explain architectural relationships.

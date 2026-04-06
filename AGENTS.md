@@ -1,6 +1,14 @@
-# Sruja AI Agent Guide
-
 This guide helps AI agents work effectively with the Sruja codebase.
+
+## ⚡ Quick Reference (Top 5 Commands)
+
+| Command | Purpose |
+|---------|---------|
+| `make setup` | **First-run setup** (install deps, hooks, build) |
+| `make check` | **Pre-commit check** (fmt + lint + test) |
+| `make daily` | **Sync context** + check diagnostic drift |
+| `sruja lint <file>` | **Validate** .sruja architecture DSL |
+| `sruja mcp -r .` | **Start MCP server** for deep context queries |
 
 ## Build, Lint, and Test Commands
 
@@ -216,14 +224,14 @@ WASM is used for browser and Node.js targets. LSP provides language server featu
 ## Key Commands for AI Agents
 
 When working on Sruja:
-1. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
-2. Run `cargo fmt --all` before committing to ensure consistent formatting
-3. Run `make lint` and `cargo test` before committing
-4. For .sruja files, run `sruja lint file.sruja` after changes
-5. Use `cargo clippy -- -D warnings` for strict linting
-6. Build extension with `make build-extension`
-7. Test CLI commands with `make test-cli-smoke`
-8. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`
+1. **First Time Setup**: Run `make setup` to ensure all dependencies and git hooks are correctly installed.
+2. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
+3. Run `make check` before committing to ensure consistent formatting, linting, and passing tests.
+4. For .sruja files, run `sruja lint file.sruja` after changes.
+5. Use `cargo clippy -- -D warnings` for strict linting.
+6. Build extension with `make build-extension`.
+7. Test CLI commands with `make test-cli-smoke`.
+8. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`.
 
 ## Common Patterns
 
@@ -277,13 +285,35 @@ MySystem = system "My System" {
 MySystem.MyContainer -> MySystem.Database "SQL"
 ```
 
-## AI Editor Integration (MCP & Context)
+Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, Cline, Windsurf, etc.) to give them deep context about the cross-repo architecture:
 
-Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, etc.) to give them deep context about the cross-repo architecture:
-
-1. **Daily Context Sync**: Run `make daily` to check for architectural drift, build cross-repo context, and automatically update `.cursorrules` and `.copilot-instructions.md`.
-2. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
+1. **Daily Context Sync**: Run `make daily` to check for architectural drift, build cross-repo context, and automatically update `.cursorrules`, `.copilot-instructions.md`, `CLAUDE.md`, and other editor-specific rules.
+2. **Manual Sync**: Run `make context-sync` to force-update all editor context files without running tests/drift checks.
+3. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
    - **Command**: `sruja mcp -r .`
    - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.
-3. **Cross-Repo Context**: Use `sruja context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
+4. **Cross-Repo Context**: Use `sruja context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
+
+## Architecture Context Engineering (ACE)
+
+When using AI agents, leverage Sruja's context tools:
+- **`sruja why <id>`**: Explains the rationale/logic behind a specific architectural component or relationship.
+- **`sruja impact <id>`**: Analyzes the blast radius of changing a component.
+- **`sruja intent check`**: Verifies if your code changes match your architectural intent.
+
+## Editor-Specific Configs
+
+Sruja provides specialized configs for different editors:
+- **Cursor**: `.cursorrules` (auto-gen) and `.cursor/rules/*.mdc` (manual rules).
+- **Claude Code**: `CLAUDE.md` and `.gemini/AGENTS.md` (shared with Gemini).
+- **GitHub Copilot**: `.github/copilot-instructions.md`.
+- **Windsurf**: `.windsurf/rules/`.
+- **Cline**: `.clinerules`.
+
+## Troubleshooting Agent Tasks
+
+- **"Command Not Found"**: Ensure you've run `make build` and the `target/release` directory is populated.
+- **"Invalid DSL"**: Run `sruja lint <file>` and paste the JSON error output to the assistant.
+- **"Drift Detected"**: Run `sruja drift -r . --fix` (if available) or manually align `.sruja` with code.
+- **"WASM Mismatch"**: If logic changed in `sruja-language` but extension behavior is old, run `make wasm-nodejs`.
 

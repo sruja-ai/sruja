@@ -25,18 +25,31 @@ benchmarks/results/
 .env.*.local
 
 # IDE and editor files
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
 .vscode-test/
 .idea/
 
-# Extension test coverage (Jest)
-extension/coverage/
+# AI Editor Context & Rules
+.cursor/*
+!.cursor/rules/
+.trae/*
+!.trae/documents/
+.gemini/*
+!.gemini/settings.json
+!.gemini/AGENTS.md
+.windsurf/*
+!.windsurf/rules/
+.clinerules
+# Allow clinerules since it's a shared rule file
+
+# Swaps and temps
 *.swp
 *.swo
 *~
 .DS_Store
-.cursor/
-.trae/
 
 # Logs
 logs/

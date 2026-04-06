@@ -1,0 +1,32 @@
+#!/bin/bash
+set -e
+
+echo "🏗️  Sruja Pre-commit Hook..."
+
+# Find staged .rs files
+STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.rs$' || true)
+
+# Find staged .sruja files
+STAGED_SRUJA=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.sruja$' || true)
+
+if [ -n "$STAGED_RS" ]; then
+    echo "  🔍 Checking Rust formatting..."
+    cargo fmt --all -- --check
+    
+    echo "  🔍 Linting Rust code..."
+    cargo clippy --workspace -- -D warnings
+fi
+
+if [ -n "$STAGED_SRUJA" ]; then
+    echo "  🔍 Linting Sruja files..."
+    for file in $STAGED_SRUJA; do
+        if [ -f "target/release/sruja" ]; then
+            ./target/release/sruja lint "$file"
+        else
+            echo "  ⚠️  Sruja CLI not built (target/release/sruja missing). Skipping DSL linting."
+        fi
+    done
+fi
+
+echo "✅ All checks passed!"
+exit 0

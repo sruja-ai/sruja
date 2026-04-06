@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "sruja": {
+      "type": "stdio",
+      "command": "sruja",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

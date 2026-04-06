@@ -1,0 +1,11 @@
+{
+  "project": {
+    "name": "sruja",
+    "description": "Architecture Truth + Drift Detection + AI Context Engineering",
+    "instructions_pointer": "AGENTS.md"
+  },
+  "agent": {
+    "preferred_model": "gemini-2.0-flash",
+    "capabilities": ["code_generation", "architecture_analysis", "drift_detection"]
+  }
+}

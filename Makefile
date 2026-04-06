@@ -1,4 +1,4 @@
-.PHONY: build test test-coverage test-wasm test-e2e clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension test-cli-smoke
+.PHONY: build test test-coverage test-wasm test-e2e clean install lint fmt help build-rust test-rust wasm wasm-tiny book book-build book-wasm book-serve book-deps book-clean assets demo build-extension install-extension test-cli-smoke setup check context-sync
 
 # Build Rust libraries
 build-rust:
@@ -41,6 +41,14 @@ test-cli-smoke:
 # Build (default: Rust)
 build: build-rust
 	@echo "✅ Build complete!"
+
+# Run all checks (fmt, lint, test)
+check: fmt lint test
+	@echo "✅ All checks passed!"
+
+# Setup development environment
+setup:
+	@./scripts/setup.sh
 
 # Run tests (default: Rust)
 test: test-rust
@@ -302,15 +310,38 @@ federate: build
 
 # Daily Dev Workflow
 # Runs drift checks, builds cross-repo context, and updates AI instructions
-daily: build federate
+daily: setup check federate context-sync
 	@echo "Checking for architecture drift..."
 	@./target/release/sruja drift -r . -a repo.sruja || true
+	@echo "✅ Daily setup complete. AI editors are now context-aware!"
+
+# Setup environment
+setup:
+	@echo "Setting up environment..."
+	@cargo build --release
+
+# Run checks
+check:
+	@echo "Running checks..."
+	@cargo test
+
+# Sync all AI editor context files
+context-sync:
 	@echo "Updating AI editor context..."
 	@./target/release/sruja context -r . -f cursor-rules -o .cursorrules
 	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .cursorrules
 	@./target/release/sruja context -r . -f copilot-instructions -o .copilot-instructions.md
 	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .copilot-instructions.md
-	@echo "✅ Daily setup complete. AI editors are now context-aware!"
+	@./target/release/sruja context -r . -f copilot-instructions -o .github/copilot-instructions.md
+	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .github/copilot-instructions.md
+	@./target/release/sruja context -r . -f cursor-rules -o CLAUDE.md
+	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> CLAUDE.md
+	@./target/release/sruja context -r . -f cursor-rules -o .gemini/AGENTS.md
+	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .gemini/AGENTS.md
+	@./target/release/sruja context -r . -f cursor-rules -o .windsurf/rules/sruja.md
+	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .windsurf/rules/sruja.md
+	@./target/release/sruja context -r . -f cursor-rules -o .clinerules
+	@echo "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .clinerules
 
 # Show help
 help:

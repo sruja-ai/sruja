@@ -367,13 +367,14 @@ pub struct ExportOptions {
     pub target: Option<String>,
     pub view_name: Option<String>,
     pub all_views: bool,
+    pub inject: Option<String>,
     pub hydrate: bool,
 }
 
 pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<(), CliError> {
     let (_, program) = super::parse_sruja_file(file)?;
 
-    match format {
+    let output_str = match format {
         "json" => {
             let exporter = JsonExporter::with_extended(options.extended);
             let mut dump = exporter.to_model_dump(&program);
@@ -395,8 +396,7 @@ pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<
                 }
             }
 
-            let json = serde_json::to_string_pretty(&dump)?;
-            println!("{}", json);
+            serde_json::to_string_pretty(&dump)?
         }
         "mermaid" => {
             let exporter = MermaidExporter::new(MermaidConfig {
@@ -404,8 +404,7 @@ pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<
                 view_level: options.view_level,
                 target_id: options.target.clone(),
             });
-            let mmd = exporter.export(&program);
-            println!("{}", mmd);
+            exporter.export(&program)
         }
         "d2" => {
             let exporter = D2Exporter::new(D2Config {
@@ -414,8 +413,7 @@ pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<
                 target_id: options.target.clone(),
                 link_template: None,
             });
-            let d2 = exporter.export(&program);
-            println!("{}", d2);
+            exporter.export(&program)
         }
         "markdown" => {
             let mut md_options = MarkdownOptions::default();
@@ -427,18 +425,15 @@ pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<
                 md_options.include_all_views = true;
             }
             let exporter = MarkdownExporter::new(md_options);
-            let md = exporter.export(&program);
-            println!("{}", md);
+            exporter.export(&program)
         }
         "context" => {
             let exporter = ContextExporter::new("general");
-            let ctx = exporter.export(&program);
-            println!("{}", ctx);
+            exporter.export(&program)
         }
         "dsl" => {
             let printer = DslPrinter::new();
-            let dsl = printer.print(&program);
-            println!("{}", dsl);
+            printer.print(&program)
         }
         _ => {
             return Err(CliError::Export(JsonExportError::Export(format!(
@@ -446,9 +441,66 @@ pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<
                 format
             ))));
         }
+    };
+
+    if let Some(inject_path) = options.inject {
+        inject_into_file(&inject_path, &output_str, format)?;
+        println!("Successfully injected {} output into {}", format, inject_path);
+    } else {
+        println!("{}", output_str);
     }
 
     Ok(())
+}
+
+fn inject_into_file(path: &str, content: &str, format: &str) -> Result<(), CliError> {
+    let file_content = fs::read_to_string(path)
+        .map_err(|e| CliError::Io(std::io::Error::new(e.kind(), format!("Failed to read {}: {}", path, e))))?;
+
+    let start_marker = "<!-- sruja:start -->";
+    let end_marker = "<!-- sruja:end -->";
+
+    let start_idx = file_content.find(start_marker);
+    let end_idx = file_content.find(end_marker);
+
+    match (start_idx, end_idx) {
+        (Some(start), Some(end)) if start < end => {
+            let mut new_content = String::new();
+            new_content.push_str(&file_content[..start + start_marker.len()]);
+            new_content.push('\n');
+            
+            if format == "mermaid" {
+                new_content.push_str("```mermaid\n");
+                new_content.push_str(content);
+                if !content.ends_with('\n') {
+                    new_content.push('\n');
+                }
+                new_content.push_str("```\n");
+            } else if format == "d2" {
+                new_content.push_str("```d2\n");
+                new_content.push_str(content);
+                if !content.ends_with('\n') {
+                    new_content.push('\n');
+                }
+                new_content.push_str("```\n");
+            } else {
+                new_content.push_str(content);
+                if !content.ends_with('\n') {
+                    new_content.push('\n');
+                }
+            }
+
+            new_content.push_str(&file_content[end..]);
+
+            fs::write(path, new_content)
+                .map_err(|e| CliError::Io(std::io::Error::new(e.kind(), format!("Failed to write {}: {}", path, e))))?;
+            Ok(())
+        }
+        _ => Err(CliError::Export(JsonExportError::Export(format!(
+            "Could not find valid <!-- sruja:start --> and <!-- sruja:end --> markers in {}",
+            path
+        )))),
+    }
 }
 
 pub async fn fmt(file: &str, check: bool) -> Result<(), CliError> {
