@@ -266,6 +266,12 @@ pub enum Commands {
         /// Overwrite repo.sruja if it already exists
         #[arg(long, short = 'f')]
         force: bool,
+        /// Install a git pre-commit hook to run Sruja checks
+        #[arg(long)]
+        hook: bool,
+        /// Install a GitHub Actions workflow for Sruja checks
+        #[arg(long)]
+        ci: bool,
     },
     /// Quick repo health check: baseline, truth status, and last evidence refresh
     #[command(visible_alias = "doctor")]
@@ -594,7 +600,9 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             prompt,
             auto,
             force,
-        } => commands::init(&path, prompt, auto, force).await,
+            hook,
+            ci,
+        } => commands::init(&path, prompt, auto, force, hook, ci).await,
         Commands::Status { path, format } => commands::status(&path, &format).await,
         Commands::Watch { path, clear } => commands::watch(&path, clear).await,
         Commands::Sync { path, format } => commands::sync(&path, &format).await,

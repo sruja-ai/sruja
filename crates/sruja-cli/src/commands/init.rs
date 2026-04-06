@@ -14,6 +14,8 @@ pub async fn init(
     generate_prompt_file: bool,
     auto: bool,
     force: bool,
+    hook: bool,
+    ci: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
@@ -98,5 +100,118 @@ pub async fn init(
         eprintln!("  sruja watch -r {}", repo_root);
     }
 
+    if hook {
+        install_pre_commit_hook(repo_path)?;
+    }
+
+    if ci {
+        install_github_actions_workflow(repo_path)?;
+    }
+
+    Ok(())
+}
+
+fn install_github_actions_workflow(repo_path: &Path) -> Result<(), CliError> {
+    let workflows_dir = repo_path.join(".github").join("workflows");
+    if !workflows_dir.exists() {
+        fs::create_dir_all(&workflows_dir).map_err(|e| {
+            CliError::Io(std::io::Error::new(
+                e.kind(),
+                format!("Failed to create workflows directory at {}: {}", workflows_dir.display(), e),
+            ))
+        })?;
+    }
+
+    let workflow_path = workflows_dir.join("sruja-check.yml");
+    
+    let workflow_content = r#"name: Sruja Architecture Check
+
+on:
+  pull_request:
+    branches: [ "main", "master" ]
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  sruja-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Sruja CLI
+        run: |
+          # Download the latest Sruja release
+          curl -sL https://github.com/sruja-ai/sruja/releases/latest/download/sruja-linux-amd64.tar.gz | tar xz
+          sudo mv sruja /usr/local/bin/
+
+      - name: Run Sruja Check
+        run: sruja check --format github-actions
+"#;
+
+    fs::write(&workflow_path, workflow_content).map_err(|e| {
+        CliError::Io(std::io::Error::new(
+            e.kind(),
+            format!("Failed to write GitHub Actions workflow to {}: {}", workflow_path.display(), e),
+        ))
+    })?;
+
+    eprintln!("✅ Installed Sruja GitHub Actions workflow at {}", workflow_path.display());
+    Ok(())
+}
+
+fn install_pre_commit_hook(repo_path: &Path) -> Result<(), CliError> {
+    let hooks_dir = repo_path.join(".git").join("hooks");
+    if !hooks_dir.exists() {
+        fs::create_dir_all(&hooks_dir).map_err(|e| {
+            CliError::Io(std::io::Error::new(
+                e.kind(),
+                format!("Failed to create hooks directory at {}: {}", hooks_dir.display(), e),
+            ))
+        })?;
+    }
+
+    let pre_commit_path = hooks_dir.join("pre-commit");
+    
+    let hook_script = r#"#!/bin/bash
+# Sruja Pre-commit Hook
+set -e
+
+# Find staged .sruja files
+STAGED_SRUJA=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.sruja$' || true)
+
+if [ -n "$STAGED_SRUJA" ]; then
+    echo "🔍 Linting Sruja files..."
+    for file in $STAGED_SRUJA; do
+        if command -v sruja &> /dev/null; then
+            sruja lint "$file"
+        else
+            echo "⚠️  'sruja' command not found in PATH. Skipping DSL linting."
+        fi
+    done
+fi
+"#;
+
+    fs::write(&pre_commit_path, hook_script).map_err(|e| {
+        CliError::Io(std::io::Error::new(
+            e.kind(),
+            format!("Failed to write pre-commit hook to {}: {}", pre_commit_path.display(), e),
+        ))
+    })?;
+
+    // Make the hook executable (Unix only)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&pre_commit_path)
+            .map_err(|e| CliError::Io(e))?
+            .permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&pre_commit_path, perms).map_err(|e| CliError::Io(e))?;
+    }
+
+    eprintln!("✅ Installed Sruja pre-commit hook at {}", pre_commit_path.display());
     Ok(())
 }
