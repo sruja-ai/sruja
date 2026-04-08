@@ -15,8 +15,8 @@ pub async fn why(repo_root: &str, question: &str, format: &str) -> Result<(), Cl
 
     let graph = crate::graph_store::load_or_build_graph(repo_path)?;
     let result = graph.query(question).map_err(|e| match e {
-        QueryError::NoResults => CliError::Validation("No results found".to_string()),
-        _ => CliError::Validation(e.to_string()),
+        QueryError::NoResults => CliError::validation("No results found".to_string()),
+        _ => CliError::validation(e.to_string()),
     })?;
 
     match format {
@@ -39,7 +39,7 @@ pub async fn why(repo_root: &str, question: &str, format: &str) -> Result<(), Cl
 
             Ok(())
         }
-        _ => Err(CliError::Validation(format!(
+        _ => Err(CliError::validation(format!(
             "Unknown format: {}. Use: text, json",
             format
         ))),

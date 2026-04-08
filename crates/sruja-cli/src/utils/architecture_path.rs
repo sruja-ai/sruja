@@ -21,3 +21,10 @@ pub fn resolve_architecture_path(repo_root: &Path) -> Option<PathBuf> {
     }
     None
 }
+
+pub fn resolve_architecture_path_or_default(repo_root: &Path, override_path: Option<&str>) -> PathBuf {
+    if let Some(p) = override_path {
+        return PathBuf::from(p);
+    }
+    resolve_architecture_path(repo_root).unwrap_or_else(|| repo_root.join(REPO_SURUJA))
+}

@@ -102,10 +102,10 @@ pub async fn publish(
         )));
     }
 
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
     let ctx = discover_context_json_from_graph(repo_root, repo_path, &graph)?;
     let context_value =
-        serde_json::to_value(&ctx).map_err(|e| CliError::Validation(e.to_string()))?;
+        serde_json::to_value(&ctx).map_err(|e| CliError::validation(e.to_string()))?;
 
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
     let (baseline_path_str, baseline_dsl, truth_status) = if let Some(ref base) = baseline_path {
@@ -113,15 +113,9 @@ pub async fn publish(
         let content = fs::read_to_string(base).ok();
         let content_ref = content.as_deref().unwrap_or("");
         let parser = sruja_language::Parser::new(base.to_string_lossy().as_ref());
-        let program = parser.parse(content_ref).map_err(|diags| CliError::Parse {
-            file: path_str.clone(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
+        let program = parser
+            .parse(content_ref)
+            .map_err(|diags| CliError::parse_with_diagnostics(path_str.clone(), diags))?;
         let proposed = sruja_diff::program_to_graph(&program);
         let diff = sruja_diff::compare_graphs(&graph, &proposed);
         let truth = match diff.truth_status {
@@ -145,7 +139,7 @@ pub async fn publish(
         .map(|s| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
     context["graph"] =
-        serde_json::to_value(&graph).map_err(|e| CliError::Validation(e.to_string()))?;
+        serde_json::to_value(&graph).map_err(|e| CliError::validation(e.to_string()))?;
 
     let repo_id = repo_id_override
         .map(|s| s.trim().to_string())
@@ -180,7 +174,7 @@ pub async fn publish(
     }
     fs::write(
         out_path,
-        serde_json::to_string_pretty(&bundle).map_err(|e| CliError::Validation(e.to_string()))?,
+        serde_json::to_string_pretty(&bundle).map_err(|e| CliError::validation(e.to_string()))?,
     )
     .map_err(|e| {
         CliError::Io(std::io::Error::new(
@@ -296,7 +290,7 @@ fn collect_bundle_paths_in_dir(dir: &Path, recursive: bool) -> Result<Vec<PathBu
 
 fn collect_bundle_paths(inputs: &[String], recursive: bool) -> Result<Vec<PathBuf>, CliError> {
     if inputs.is_empty() {
-        return Err(CliError::Validation(
+        return Err(CliError::validation(
             "No inputs provided. Pass at least one -i <bundle-or-dir>.".to_string(),
         ));
     }
@@ -328,7 +322,7 @@ pub async fn compose(
 ) -> Result<(), CliError> {
     let paths = collect_bundle_paths(inputs, recursive)?;
     if paths.is_empty() {
-        return Err(CliError::Validation(
+        return Err(CliError::validation(
             "No bundle files found. Provide a path to a repo.bundle.json (or *.repo.bundle.json) file, or a directory containing such files. Tip: use --recursive when bundles are nested in subdirectories.".to_string(),
         ));
     }
@@ -346,7 +340,7 @@ pub async fn compose(
             ))
         })?;
         let bundle: RepoBundle = serde_json::from_str(&content).map_err(|e| {
-            CliError::Validation(format!("Invalid bundle {}: {}", path.display(), e))
+            CliError::validation(format!("Invalid bundle {}: {}", path.display(), e))
         })?;
 
         let repo_id = bundle.repo_id.as_str();
@@ -524,7 +518,7 @@ pub async fn compose(
     }
     fs::write(
         out_path,
-        serde_json::to_string_pretty(&index).map_err(|e| CliError::Validation(e.to_string()))?,
+        serde_json::to_string_pretty(&index).map_err(|e| CliError::validation(e.to_string()))?,
     )
     .map_err(|e| {
         CliError::Io(std::io::Error::new(
@@ -582,7 +576,7 @@ pub fn load_system_index(path: &Path) -> Result<SystemIndex, CliError> {
         ))
     })?;
     serde_json::from_str(&content).map_err(|e| {
-        CliError::Validation(format!("Invalid system index {}: {}", path.display(), e))
+        CliError::validation(format!("Invalid system index {}: {}", path.display(), e))
     })
 }
 

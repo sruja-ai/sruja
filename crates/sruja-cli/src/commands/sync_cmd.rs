@@ -105,13 +105,13 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     }
 
     // Scan once and reuse for context + drift/baseline-compare to avoid redundant work.
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
     let mut value = match discover_explanation_json(repo_root) {
         Ok(json) => serde_json::from_str::<serde_json::Value>(&json)
-            .map_err(|e| CliError::Validation(e.to_string()))?,
+            .map_err(|e| CliError::validation(e.to_string()))?,
         Err(_) => {
             let ctx = discover_context_json_from_graph(repo_root, repo_path, &graph)?;
-            serde_json::to_value(&ctx).map_err(|e| CliError::Validation(e.to_string()))?
+            serde_json::to_value(&ctx).map_err(|e| CliError::validation(e.to_string()))?
         }
     };
 
@@ -123,14 +123,8 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     let (truth_status, violations, health_score) = if let Some(ref baseline_file) = baseline_path {
         let content = fs::read_to_string(baseline_file)?;
         let parser = sruja_language::Parser::new(baseline_file.to_string_lossy().as_ref());
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: baseline_file.to_string_lossy().to_string(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
+        let program = parser.parse(&content).map_err(|diags| {
+            CliError::parse_with_diagnostics(baseline_file.to_string_lossy().to_string(), diags)
         })?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
         let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
@@ -180,7 +174,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     let baseline_set: Option<HashSet<String>> = if baseline_fp_path.exists() {
         let txt = fs::read_to_string(&baseline_fp_path)?;
         let base: super::check::ViolationBaseline =
-            serde_json::from_str(&txt).map_err(|e| CliError::Validation(e.to_string()))?;
+            serde_json::from_str(&txt).map_err(|e| CliError::validation(e.to_string()))?;
         Some(base.fingerprints.into_iter().collect())
     } else {
         None
@@ -215,16 +209,16 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     let suppressed_summ: Vec<ViolationSummary> = suppressed.iter().map(map_summary).collect();
 
     value["violations"] =
-        serde_json::to_value(&active_summ).map_err(|e| CliError::Validation(e.to_string()))?;
+        serde_json::to_value(&active_summ).map_err(|e| CliError::validation(e.to_string()))?;
     value["suppressed_violations"] =
-        serde_json::to_value(&suppressed_summ).map_err(|e| CliError::Validation(e.to_string()))?;
+        serde_json::to_value(&suppressed_summ).map_err(|e| CliError::validation(e.to_string()))?;
     value["suppressed_count"] = serde_json::Value::Number((suppressed_summ.len() as u64).into());
 
     let path = dot_sruja.join("context.json");
     let context_path = path.display().to_string();
     fs::write(
         &path,
-        serde_json::to_string_pretty(&value).map_err(|e| CliError::Validation(e.to_string()))?,
+        serde_json::to_string_pretty(&value).map_err(|e| CliError::validation(e.to_string()))?,
     )
     .map_err(|e| {
         CliError::Io(std::io::Error::new(
@@ -236,7 +230,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     let graph_path = dot_sruja.join("graph.json");
     fs::write(
         &graph_path,
-        serde_json::to_string_pretty(&graph).map_err(|e| CliError::Validation(e.to_string()))?,
+        serde_json::to_string_pretty(&graph).map_err(|e| CliError::validation(e.to_string()))?,
     )
     .map_err(|e| {
         CliError::Io(std::io::Error::new(
@@ -258,7 +252,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&output)
-                    .map_err(|e| CliError::Validation(e.to_string()))?
+                    .map_err(|e| CliError::validation(e.to_string()))?
             );
         }
         "quiet" => {}

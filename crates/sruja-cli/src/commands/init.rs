@@ -18,12 +18,22 @@ pub async fn init(
     ci: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
+    use crate::utils::{colors, progress};
+    use dialoguer::{Confirm, MultiSelect};
 
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             format!("Repository not found: {}", repo_root),
         )));
+    }
+
+    let is_interactive = !auto && !generate_prompt_file && !ci && !hook && !force;
+
+    if is_interactive {
+        colors::print_header("🚀 Sruja - Repository Initialization");
+        println!("This will set up Sruja in your repository for architecture-as-code.");
+        println!();
     }
 
     let dot_sruja = repo_path.join(".sruja");
@@ -34,81 +44,177 @@ pub async fn init(
                 format!("Failed to create {}: {}", dot_sruja.display(), e),
             ))
         })?;
-        eprintln!("Created {}", dot_sruja.display());
+        if is_interactive {
+            println!("  {} Created {}", colors::success("✓"), colors::dim(".sruja/"));
+        }
     }
 
-    if auto {
-        eprintln!("✨ Running AI discovery to generate baseline...");
-        let graph = sruja_scan::scan_repo(repo_path)?;
-        let baseline = super::scan::write_draft_baseline(repo_path, &graph, force)?;
+    // Project detection
+    let project_type = detect_project_type(repo_path);
+    if is_interactive {
+        println!("  {} Detected project: {}", colors::success("✓"), colors::info(&project_type));
+    }
+
+    // .srujaignore generation
+    let srujaignore_path = repo_path.join(".srujaignore");
+    if !srujaignore_path.exists() || force {
+        let ignore_content = generate_srujaignore(&project_type);
+        fs::write(&srujaignore_path, ignore_content)?;
+        if is_interactive {
+            println!("  {} Generated {}", colors::success("✓"), colors::dim(".srujaignore"));
+        }
+    }
+
+    if generate_prompt_file {
+        let prompt_path = dot_sruja.join("init_prompt.txt");
+        if !prompt_path.exists() || force {
+            let repos = vec![repo_root.to_string()];
+            let out = prompt_path.to_string_lossy().to_string();
+            generate_prompt(
+                &repos,
+                None,
+                Some(&out),
+            )?;
+            if is_interactive {
+                println!(
+                    "  {} Generated {}",
+                    colors::success("✓"),
+                    colors::dim(".sruja/init_prompt.txt")
+                );
+            }
+        } else if is_interactive {
+            println!(
+                "  {} Skipped {} (already exists; use --force to overwrite)",
+                colors::info("i"),
+                colors::dim(".sruja/init_prompt.txt")
+            );
+        }
+    }
+
+    let mut should_auto = auto;
+    let mut should_ci = ci;
+    let mut should_hook = hook;
+
+    if is_interactive {
+        println!();
+        should_auto = Confirm::new()
+            .with_prompt("Generate initial architecture baseline from code (v0.18+ recommendation)?")
+            .default(true)
+            .interact()
+            .unwrap_or(auto);
+            
+        let extras = MultiSelect::new()
+            .with_prompt("Select additional setup components:")
+            .item_checked("GitHub Actions workflow", ci)
+            .item_checked("Git pre-commit hook", hook)
+            .interact()
+            .unwrap_or_default();
+            
+        for i in extras {
+            if i == 0 { should_ci = true; }
+            if i == 1 { should_hook = true; }
+        }
+    }
+
+    if should_auto {
+        let pb = progress::spinner("✨ Running AI discovery to generate baseline...");
+        let graph_result = sruja_scan::scan_repo(repo_path).map_err(|e| CliError::Scan {
+            message: e.to_string(),
+            help: Some("Ensure your repo has source files and proper permissions.".into()),
+        });
+        
+        let graph = match graph_result {
+            Ok(g) => g,
+            Err(e) => {
+                pb.abandon();
+                return Err(e);
+            }
+        };
+        
+        let baseline = super::scan::output::write_draft_baseline(repo_path, &graph, force)?;
+        pb.finish_and_clear();
 
         if let Some(path) = baseline {
-            eprintln!("✅ Generated baseline: {}", path.display());
-            eprintln!();
-            eprintln!("Next steps:");
-            eprintln!(
-                "  1. Review: Use 'sruja lint {}' to check the architecture.",
-                path.display()
-            );
-            eprintln!(
-                "  2. View: Use 'sruja export mermaid {} --all-views' to visualize.",
-                path.display()
-            );
-            eprintln!("  3. Monitor: Run 'sruja watch' while you code.");
-            return Ok(());
-        } else {
+            if is_interactive {
+                println!("  {} Generated baseline: {}", colors::success("✅"), colors::info(path.display().to_string()));
+                println!();
+                println!("{}", colors::style("Next steps:").bold());
+                println!("  1. {} Use 'sruja lint {}' to check the architecture.", colors::info("Review:"), path.display());
+                println!("  2. {} Use 'sruja export mermaid {} --all-views' to visualize.", colors::info("View:"), path.display());
+                println!("  3. {} Run 'sruja watch' while you code.", colors::info("Monitor:"));
+            } else {
+                eprintln!("✅ Generated baseline: {}", path.display());
+            }
+            if !is_interactive {
+                return Ok(());
+            }
+        } else if !is_interactive {
             eprintln!("⚠️ Baseline already exists. Use --force to overwrite.");
         }
     }
 
-    let baseline_path = architecture_path::resolve_architecture_path(repo_path);
-    if let Some(ref p) = baseline_path {
-        eprintln!("Existing architecture file: {}", p.display());
-    } else {
-        eprintln!(
-            "No architecture file yet (looked for repo.sruja, architecture.sruja, docs/architecture.sruja)."
-        );
+    if !should_auto {
+        let baseline_path = architecture_path::resolve_architecture_path(repo_path);
+        if let Some(ref p) = baseline_path {
+            if is_interactive {
+                println!("  {} Existing architecture file: {}", colors::info("i"), p.display());
+            }
+        } else if is_interactive {
+            println!("  {} No architecture file found. Creating manual skeleton recommended.", colors::warning("!"));
+        }
+        
+        quickstart(repo_root, "text", false, None).await?;
     }
 
-    eprintln!();
-    quickstart(repo_root, "text", false, None).await?;
-
-    if generate_prompt_file {
-        let prompt_path = dot_sruja.join("init_prompt.txt");
-        let repo_roots = vec![repo_root.to_string()];
-        generate_prompt(&repo_roots, None, Some(&prompt_path.to_string_lossy()))?;
-        eprintln!();
-        eprintln!("Next steps:");
-        eprintln!(
-            "  1. Use the sruja-architecture skill with the prompt in {}",
-            prompt_path.display()
-        );
-        eprintln!(
-            "  2. Save the model output as repo.sruja (or architecture.sruja) in the repo root."
-        );
-        eprintln!("  3. Run: sruja lint repo.sruja");
-        eprintln!("  4. Day-to-day, run: sruja daily -r {}", repo_root);
-    } else if baseline_path.is_none() {
-        eprintln!();
-        eprintln!("Next steps:");
-        eprintln!("  Run: sruja init -a --force to automatically generate a baseline from code.",);
-        eprintln!("  Or create repo.sruja manually and run: sruja lint repo.sruja");
-    } else {
-        eprintln!();
-        eprintln!("Daily loop:");
-        eprintln!("  sruja daily -r {}", repo_root);
-        eprintln!("  sruja watch -r {}", repo_root);
-    }
-
-    if hook {
+    if should_hook {
         install_pre_commit_hook(repo_path)?;
     }
 
-    if ci {
+    if should_ci {
         install_github_actions_workflow(repo_path)?;
     }
 
+    if is_interactive {
+        println!();
+        println!("{} Sruja is ready! Try running {} to start monitoring your project.", 
+            colors::success("🎉"), 
+            colors::info("sruja watch")
+        );
+    }
+
     Ok(())
+}
+
+fn detect_project_type(path: &Path) -> String {
+    if path.join("Cargo.toml").exists() {
+        "Rust".to_string()
+    } else if path.join("package.json").exists() {
+        "Node.js".to_string()
+    } else if path.join("go.mod").exists() {
+        "Go".to_string()
+    } else if path.join("requirements.txt").exists() || path.join("pyproject.toml").exists() {
+        "Python".to_string()
+    } else if path.join("pom.xml").exists() || path.join("build.gradle").exists() {
+        "Java".to_string()
+    } else {
+        "Generic".to_string()
+    }
+}
+
+fn generate_srujaignore(project_type: &str) -> String {
+    let mut content = String::from("# Sruja ignore patterns\n# Exclude non-production code from architecture scans\n\n");
+    content.push_str("node_modules/\ntarget/\ndist/\nbuild/\n.git/\n.next/\nout/\n\n");
+    content.push_str("# Sruja config\n.sruja/\nrepo.sruja.draft\n\n");
+    
+    match project_type {
+        "Rust" => content.push_str("# Rust specific\ntests/\nbenches/\nexamples/\n"),
+        "Node.js" => content.push_str("# Node specific\ncoverage/\n.npm/\nlogs/\n"),
+        "Python" => content.push_str("# Python specific\n__pycache__/\n*.pyc\nvenv/\n.venv/\n"),
+        "Java" => content.push_str("# Java specific\nbin/\n*.class\n.gradle/\n.metadata/\n"),
+        _ => {}
+    }
+    
+    content
 }
 
 fn install_github_actions_workflow(repo_path: &Path) -> Result<(), CliError> {

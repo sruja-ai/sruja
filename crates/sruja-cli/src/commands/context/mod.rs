@@ -65,7 +65,7 @@ pub async fn context_string(
         "markdown" => Ok(format_markdown(&context)),
         "repomap" => Ok(format_repomap(&context, &graph)),
         "legacy-json" => Ok(serde_json::to_string_pretty(&context)?),
-        _ => Err(CliError::Validation(format!(
+        _ => Err(CliError::validation(format!(
             "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, repomap, json, for-ai, legacy-json",
             format
         ))),
@@ -146,7 +146,7 @@ pub async fn context_string_multi(
         "copilot-instructions" => Ok(format_copilot_instructions_multi(&multi)),
         "markdown" => Ok(format_markdown_multi(&multi)),
         "json" | "for-ai" | "legacy-json" => Ok(serde_json::to_string_pretty(&multi)?),
-        _ => Err(CliError::Validation(format!(
+        _ => Err(CliError::validation(format!(
             "Unknown format: {}. Use: cursor-rules, copilot-instructions, markdown, repomap, json, for-ai, legacy-json",
             format
         ))),

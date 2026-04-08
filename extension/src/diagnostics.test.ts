@@ -1,3 +1,4 @@
+import * as vscode from "vscode";
 import { ExtensionContext } from "./__mocks__/vscode";
 
 jest.mock("./wasm", () => {
@@ -8,104 +9,97 @@ jest.mock("./wasm", () => {
   };
 });
 
-describe("diagnostics", () => {
-  let vscode: typeof import("vscode");
+import { getDiagnosticsFromWasm } from "./wasm";
+import { updateDiagnostics } from "./diagnostics";
 
-  beforeEach(async () => {
-    jest.resetModules();
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
 
-    vscode = await import("vscode");
+describe("updateDiagnostics", () => {
+  const set = jest.fn();
+
+  beforeEach(() => {
+    set.mockReset();
+    (vscode.languages as any).createDiagnosticCollection = jest.fn(() => ({ set }));
     (vscode.workspace as any).textDocuments = [];
-    (vscode.languages as any).createDiagnosticCollection = jest.fn(() => ({
-      set: jest.fn(),
-    }));
+    (getDiagnosticsFromWasm as unknown as jest.Mock).mockReset();
   });
 
-  it("skips non-sruja docs", async () => {
-    const { getDiagnosticsFromWasm } = await import("./wasm");
-    const { updateDiagnostics } = await import("./diagnostics");
+  it("sets diagnostics from wasm when document is open", async () => {
+    const uri = vscode.Uri.file("/ws/a.sruja");
+    (vscode.workspace as any).textDocuments = [{ uri }];
 
-    const doc: any = {
+    const diags = [
+      new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), "m", vscode.DiagnosticSeverity.Error),
+    ];
+    (getDiagnosticsFromWasm as unknown as jest.Mock).mockResolvedValue(diags);
+
+    const doc = {
+      languageId: "sruja",
+      uri,
+      getText: () => "dsl",
+    } as unknown as vscode.TextDocument;
+
+    await updateDiagnostics(new ExtensionContext() as any, doc);
+    expect(set).toHaveBeenCalledWith(uri, diags);
+  });
+
+  it("does not set diagnostics if document closes before wasm resolves", async () => {
+    const uri = vscode.Uri.file("/ws/a.sruja");
+    (vscode.workspace as any).textDocuments = [{ uri }];
+
+    const d = deferred<vscode.Diagnostic[]>();
+    (getDiagnosticsFromWasm as unknown as jest.Mock).mockReturnValue(d.promise);
+
+    const doc = {
+      languageId: "sruja",
+      uri,
+      getText: () => "dsl",
+    } as unknown as vscode.TextDocument;
+
+    const p = updateDiagnostics(new ExtensionContext() as any, doc);
+    (vscode.workspace as any).textDocuments = [];
+    d.resolve([]);
+    await p;
+
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it("sets a warning diagnostic when wasm throws", async () => {
+    const uri = vscode.Uri.file("/ws/a.sruja");
+    (vscode.workspace as any).textDocuments = [{ uri }];
+    (getDiagnosticsFromWasm as unknown as jest.Mock).mockRejectedValue(new Error("boom"));
+
+    const doc = {
+      languageId: "sruja",
+      uri,
+      getText: () => "dsl",
+    } as unknown as vscode.TextDocument;
+
+    await updateDiagnostics(new ExtensionContext() as any, doc);
+
+    const args = set.mock.calls[0];
+    expect(args[0]).toBe(uri);
+    expect(args[1][0].message).toContain("Sruja lint failed: boom");
+    expect(args[1][0].severity).toBe(vscode.DiagnosticSeverity.Warning);
+  });
+
+  it("does nothing for non-file or non-sruja documents", async () => {
+    const uri = { scheme: "untitled", fsPath: "/ws/a.sruja", toString: () => "untitled:/ws/a.sruja" } as any;
+    const doc = {
       languageId: "plaintext",
-      uri: vscode.Uri.file("/ws/a.txt"),
-      getText: () => "x",
-    };
-
-    await updateDiagnostics(new ExtensionContext() as any, doc);
-    expect(getDiagnosticsFromWasm).not.toHaveBeenCalled();
-    expect((vscode.languages as any).createDiagnosticCollection).not.toHaveBeenCalled();
-  });
-
-  it("sets diagnostics when wasm returns results and doc is open", async () => {
-    const { getDiagnosticsFromWasm } = await import("./wasm");
-    (getDiagnosticsFromWasm as jest.Mock).mockResolvedValue([
-      new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), "msg", vscode.DiagnosticSeverity.Warning),
-    ]);
-
-    const { updateDiagnostics } = await import("./diagnostics");
-
-    const uri = vscode.Uri.file("/ws/a.sruja");
-    const doc: any = {
-      languageId: "sruja",
       uri,
       getText: () => "dsl",
-    };
-    (vscode.workspace as any).textDocuments = [{ uri }];
+    } as unknown as vscode.TextDocument;
 
     await updateDiagnostics(new ExtensionContext() as any, doc);
-
-    const collection = (vscode.languages as any).createDiagnosticCollection.mock.results[0].value;
-    expect(collection.set).toHaveBeenCalledWith(uri, expect.any(Array));
-  });
-
-  it("emits a warning diagnostic when wasm throws", async () => {
-    const { getDiagnosticsFromWasm } = await import("./wasm");
-    (getDiagnosticsFromWasm as jest.Mock).mockRejectedValue(new Error("boom"));
-
-    const { updateDiagnostics } = await import("./diagnostics");
-
-    const uri = vscode.Uri.file("/ws/a.sruja");
-    const doc: any = {
-      languageId: "sruja",
-      uri,
-      getText: () => "dsl",
-    };
-    (vscode.workspace as any).textDocuments = [{ uri }];
-
-    await updateDiagnostics(new ExtensionContext() as any, doc);
-
-    const collection = (vscode.languages as any).createDiagnosticCollection.mock.results[0].value;
-    const diags = collection.set.mock.calls[0][1];
-    expect(diags[0].message).toContain("Sruja lint failed: boom");
-    expect(diags[0].severity).toBe(vscode.DiagnosticSeverity.Warning);
-  });
-
-  it("does not set diagnostics when the doc is closed before wasm resolves", async () => {
-    const { getDiagnosticsFromWasm } = await import("./wasm");
-    let resolve: (value: any) => void = () => {};
-    (getDiagnosticsFromWasm as jest.Mock).mockImplementation(
-      () =>
-        new Promise((r) => {
-          resolve = r;
-        })
-    );
-
-    const { updateDiagnostics } = await import("./diagnostics");
-
-    const uri = vscode.Uri.file("/ws/a.sruja");
-    const doc: any = {
-      languageId: "sruja",
-      uri,
-      getText: () => "dsl",
-    };
-
-    (vscode.workspace as any).textDocuments = [{ uri }];
-    const promise = updateDiagnostics(new ExtensionContext() as any, doc);
-    (vscode.workspace as any).textDocuments = [];
-    resolve([]);
-    await promise;
-
-    const collection = (vscode.languages as any).createDiagnosticCollection.mock.results[0].value;
-    expect(collection.set).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
   });
 });

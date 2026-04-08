@@ -7,7 +7,6 @@ use std::fs;
 use std::path::Path;
 
 pub use drift::{drift, drift_json_string, drift_pr, status_result};
-pub use output::write_draft_baseline;
 pub use quickstart::quickstart;
 
 pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
@@ -16,7 +15,7 @@ pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {
     pb.enable_steady_tick(std::time::Duration::from_millis(100));
 
     let graph_result =
-        sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::Scan(e.to_string()));
+        sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::scan(e.to_string()));
     pb.finish_and_clear();
     let graph = graph_result?;
 

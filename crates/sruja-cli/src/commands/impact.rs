@@ -51,7 +51,7 @@ fn resolve_target_id(graph: &Graph, query: &str) -> Result<String, CliError> {
     matches.sort_by(|a, b| a.id.cmp(&b.id));
 
     match matches.len() {
-        0 => Err(CliError::Validation(format!(
+        0 => Err(CliError::validation(format!(
             "No node found matching '{}'. Try an exact node id from `sruja scan ...` output.",
             query
         ))),
@@ -63,7 +63,7 @@ fn resolve_target_id(graph: &Graph, query: &str) -> Result<String, CliError> {
                 .map(|n| format!("{} ({})", n.id, n.label))
                 .collect::<Vec<_>>()
                 .join(", ");
-            Err(CliError::Validation(format!(
+            Err(CliError::validation(format!(
                 "Ambiguous node selector '{}'. Matches: {}",
                 query, preview
             )))
@@ -243,7 +243,7 @@ pub async fn impact(repo: &str, target: &str, depth: usize, format: &str) -> Res
         .nodes
         .iter()
         .find(|n| n.id == target_id)
-        .ok_or_else(|| CliError::Validation(format!("Target node '{}' not found", target)))?;
+        .ok_or_else(|| CliError::validation(format!("Target node '{}' not found", target)))?;
 
     let blast: BlastRadiusResult = graph.blast_radius(&target_node.id, depth);
     let upstream = build_hits(&graph, &blast.upstream, &centrality);

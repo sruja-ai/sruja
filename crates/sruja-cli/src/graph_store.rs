@@ -53,7 +53,7 @@ pub fn load_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
 /// Build knowledge graph from repository scan and save to disk
 pub fn build_and_save_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     let scan_graph = sruja_scan::scan_repo(repo)
-        .map_err(|e| CliError::Validation(format!("Scan failed: {}", e)))?;
+        .map_err(|e| CliError::validation(format!("Scan failed: {}", e)))?;
 
     let mut kg = KnowledgeGraph::new();
     sruja_graph::merge_scan_into_graph(&mut kg, &scan_graph, &repo.display().to_string());

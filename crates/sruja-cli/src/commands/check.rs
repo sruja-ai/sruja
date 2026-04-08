@@ -125,7 +125,7 @@ fn resolve_repo_relative(repo_root: &Path, path: &str) -> PathBuf {
 fn load_violation_baseline(baseline_path: &Path) -> Result<HashSet<String>, CliError> {
     let content = fs::read_to_string(baseline_path)?;
     let baseline: ViolationBaseline =
-        serde_json::from_str(&content).map_err(|e| CliError::Validation(e.to_string()))?;
+        serde_json::from_str(&content).map_err(|e| CliError::validation(e.to_string()))?;
     Ok(baseline.fingerprints.into_iter().collect())
 }
 
@@ -253,7 +253,7 @@ pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
         )));
     }
 
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
 
     let filtered: Vec<sruja_diff::Violation> = if let Some(ref baseline) = baseline_path {
@@ -294,7 +294,7 @@ pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
         fs::create_dir_all(parent)?;
     }
     let json =
-        serde_json::to_string_pretty(&baseline).map_err(|e| CliError::Validation(e.to_string()))?;
+        serde_json::to_string_pretty(&baseline).map_err(|e| CliError::validation(e.to_string()))?;
     fs::write(&out_path, json)?;
     println!("{}", out_path.to_string_lossy());
 
@@ -314,7 +314,7 @@ pub async fn check(
         )));
     }
 
-    let graph = scan_repo(repo_path).map_err(|e| CliError::Scan(e.to_string()))?;
+    let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
 
     let baseline_filter_set = if let Some(b) = violations_baseline {
@@ -419,7 +419,7 @@ pub async fn check(
             println!(
                 "{}",
                 serde_json::to_string_pretty(&output)
-                    .map_err(|e| CliError::Validation(e.to_string()))?
+                    .map_err(|e| CliError::validation(e.to_string()))?
             );
         }
         "github-actions" => {
@@ -519,7 +519,21 @@ pub async fn check(
                 for s in &output.suggestions {
                     println!("  > {}", s);
                 }
+                println!();
             }
+
+            use crate::utils::colors;
+            let status_icon = if has_drift { colors::error("✗") } else { colors::success("✓") };
+            let drift_text = if has_drift { "drifted" } else { "in sync" };
+            
+            println!("──────────────────────────────────────────────");
+            println!(
+                "{} {} │ {} elements │ health: {}/100",
+                status_icon,
+                drift_text,
+                output.violations_count + output.suppressed_count, // This is just an estimate of "elements involved", but good enough for a footer.
+                output.health_score.unwrap_or(0)
+            );
         }
     }
 

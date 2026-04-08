@@ -268,14 +268,8 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
     let (truth_status, violations, health_score) = if let Some(ref baseline) = baseline_path {
         let content = fs::read_to_string(baseline)?;
         let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: baseline.to_string_lossy().to_string(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
+        let program = parser.parse(&content).map_err(|diags| {
+            CliError::parse_with_diagnostics(baseline.to_string_lossy().to_string(), diags)
         })?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
         let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
@@ -324,7 +318,7 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
         if violations_baseline_path.exists() {
             let content = fs::read_to_string(&violations_baseline_path)?;
             let baseline: super::check::ViolationBaseline =
-                serde_json::from_str(&content).map_err(|e| CliError::Validation(e.to_string()))?;
+                serde_json::from_str(&content).map_err(|e| CliError::validation(e.to_string()))?;
             Some(baseline.fingerprints.into_iter().collect())
         } else {
             None
@@ -396,7 +390,7 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&output)
-                    .map_err(|e| CliError::Validation(e.to_string()))?
+                    .map_err(|e| CliError::validation(e.to_string()))?
             );
         }
         _ => {

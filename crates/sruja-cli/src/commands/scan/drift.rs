@@ -73,15 +73,9 @@ pub(crate) fn truth_status_from_baseline_compare(
 ) -> Result<sruja_diff::TruthStatus, CliError> {
     let content = fs::read_to_string(baseline_path)?;
     let parser = sruja_language::Parser::new(baseline_path.to_string_lossy().as_ref());
-    let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-        file: baseline_path.to_string_lossy().to_string(),
-        message: diags
-            .iter()
-            .map(|d| d.message.as_str())
-            .collect::<Vec<_>>()
-            .join("; "),
-        diagnostics: diags,
-    })?;
+    let program = parser
+        .parse(&content)
+        .map_err(|diags| CliError::parse_with_diagnostics(baseline_path.to_string_lossy().to_string(), diags))?;
     let proposed_graph = sruja_diff::program_to_graph(&program);
     Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
 }
@@ -118,15 +112,9 @@ pub async fn drift(
         }
         let content = fs::read_to_string(arch_file)?;
         let parser = sruja_language::Parser::new(arch_path);
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: arch_path.to_string(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
+        let program = parser
+            .parse(&content)
+            .map_err(|diags| CliError::parse_with_diagnostics(arch_path.to_string(), diags))?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
         let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
 
@@ -197,15 +185,9 @@ pub async fn drift_json_string(
         }
         let content = fs::read_to_string(arch_file)?;
         let parser = sruja_language::Parser::new(arch_path);
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: arch_path.to_string(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
+        let program = parser
+            .parse(&content)
+            .map_err(|diags| CliError::parse_with_diagnostics(arch_path.to_string(), diags))?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
         let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
 
@@ -266,15 +248,9 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
     if let Some(ref arch_path) = baseline {
         let content = fs::read_to_string(arch_path)?;
         let parser = sruja_language::Parser::new(arch_path);
-        let program = parser.parse(&content).map_err(|diags| CliError::Parse {
-            file: arch_path.clone(),
-            message: diags
-                .iter()
-                .map(|d| d.message.as_str())
-                .collect::<Vec<_>>()
-                .join("; "),
-            diagnostics: diags,
-        })?;
+        let program = parser
+            .parse(&content)
+            .map_err(|diags| CliError::parse_with_diagnostics(arch_path.clone(), diags))?;
         let proposed = sruja_diff::program_to_graph(&program);
         let diff = sruja_diff::compare_graphs(&graph, &proposed);
         let truth_status = match diff.truth_status {
@@ -336,7 +312,7 @@ pub async fn drift_pr(
         .is_some();
 
     if !git_ok {
-        return Err(CliError::Validation(
+        return Err(CliError::validation(
             "Not a git repository. PR-scoped drift requires git.".to_string(),
         ));
     }
@@ -434,7 +410,7 @@ pub async fn drift_pr(
                 )))
             })?;
         if !status.success() {
-            return Err(CliError::Validation(format!(
+            return Err(CliError::validation(format!(
                 "Could not checkout base ref '{}'. Run a full scan on base and save to .sruja/cache/{}.json, or ensure the ref exists.",
                 base, cache_filename
             )));
@@ -447,7 +423,7 @@ pub async fn drift_pr(
                 .arg(worktree_dir.as_path())
                 .current_dir(repo_path)
                 .status();
-            CliError::Scan(e.to_string())
+            CliError::scan(e.to_string())
         })?;
         let _ = std::process::Command::new("git")
             .arg("worktree")

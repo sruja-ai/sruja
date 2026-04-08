@@ -499,7 +499,7 @@ fn resolve_focus(
     if let (Some(base), Some(head)) = (selectors.base_ref, selectors.head_ref) {
         let repo_path = Path::new(repo_root);
         let diffs = sruja_diff::map_git_diff(repo_path, base, head, graph)
-            .map_err(|e| CliError::Validation(format!("Failed to map git diff: {}", e)))?;
+            .map_err(|e| CliError::validation(format!("Failed to map git diff: {}", e)))?;
 
         let mut focus: Vec<String> = diffs.into_iter().map(|d| d.component_id).collect();
         focus.sort();

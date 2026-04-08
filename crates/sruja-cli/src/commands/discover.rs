@@ -773,7 +773,7 @@ pub fn discover_explanation_json(repo: &str) -> Result<String, CliError> {
 
     let graph = scan_repo_cached(repo_path)?;
     let explanation = build_discover_explanation(repo, repo_path, &graph)?;
-    serde_json::to_string_pretty(&explanation).map_err(|e| CliError::Validation(e.to_string()))
+    serde_json::to_string_pretty(&explanation).map_err(|e| CliError::validation(e.to_string()))
 }
 
 fn format_discovery_explanation(explanation: &DiscoverExplanationJson) -> String {
@@ -944,7 +944,7 @@ pub async fn discover_context(repo: &str, format: &str) -> Result<(), CliError> 
         let json = discover_context_json(repo)?;
         println!(
             "{}",
-            serde_json::to_string_pretty(&json).map_err(|e| CliError::Validation(e.to_string()))?
+            serde_json::to_string_pretty(&json).map_err(|e| CliError::validation(e.to_string()))?
         );
         return Ok(());
     }
@@ -965,7 +965,7 @@ pub async fn discover_explain(repo: &str, format: &str) -> Result<(), CliError> 
             println!("{}", text);
         }
         _ => {
-            return Err(CliError::Validation(format!(
+            return Err(CliError::validation(format!(
                 "Unknown format: {}. Use: text or json",
                 format
             )));
@@ -996,8 +996,7 @@ pub fn discover_repomap(
         include_signatures: true,
     };
 
-    generate_repomap_from_graph(repo_path, &graph, &options)
-        .map_err(|e| CliError::Scan(e.to_string()))
+    generate_repomap_from_graph(repo_path, &graph, &options).map_err(|e| CliError::scan(e.to_string()))
 }
 
 /// Print repository map for LLM context.

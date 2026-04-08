@@ -9,6 +9,7 @@ mod context_detection;
 mod graph_store;
 mod modules;
 mod report;
+mod scoring;
 mod utils;
 
 use clap::Parser;

@@ -174,3 +174,5 @@ coverage_report_new.txt
 # Temporary scan artifacts
 express_scan.json
 fastapi_scan.json
+
+extension/coverage/

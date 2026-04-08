@@ -22,6 +22,8 @@ mod sync_cmd;
 mod version;
 mod watch;
 mod why;
+mod completions;
+mod health;
 
 pub use check::{baseline, check};
 pub use compliance::compliance;
@@ -50,6 +52,8 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
                 file: path.to_string_lossy().to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
                 diagnostics,
+                help: Some("Run 'sruja lint <file>' for detailed validation output.".into()),
+                fix: Some("Fix the syntax errors in the file, then re-run 'sruja lint'.".into()),
             })
         }
     }
@@ -68,6 +72,8 @@ pub use sync_cmd::sync;
 pub use version::version;
 pub use watch::watch;
 pub use why::why;
+pub use completions::completions;
+pub use health::health;
 mod context;
 
 pub use context::{context_export, ContextRequest};

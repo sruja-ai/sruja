@@ -16,6 +16,7 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use crate::tree_sitter::ScanConfig;
 
@@ -194,76 +195,67 @@ pub fn resolve_scan_scope_with_patterns(
 /// - included: top-level segment of any dir that contains at least one scanned file.
 /// - excluded: full relative path of each directory we skipped (did not descend into).
 fn build_scope_from_walk_with_patterns(repo_root: &Path, user_patterns: &[String]) -> ScanScope {
-    let merged_patterns = merge_ignore_patterns(DEFAULT_EXCLUDE_PATTERNS, user_patterns);
     let mut included_top_level: HashSet<String> = HashSet::new();
-    let mut excluded_rel_paths: HashSet<String> = HashSet::new();
     let mut total_files = 0usize;
 
-    fn walk(
-        dir: &Path,
-        repo_root: &Path,
-        patterns: &[String],
-        included_top_level: &mut HashSet<String>,
-        excluded_rel_paths: &mut HashSet<String>,
-        total_files: &mut usize,
-    ) {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return;
-        };
-        for entry in entries.filter_map(|e| e.ok()) {
-            let path = entry.path();
-            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-                continue;
-            };
-            if name.starts_with('.') {
-                continue;
+    let repo_root_buf = repo_root.to_path_buf();
+    let excluded_rel_paths: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
+
+    let mut builder = ignore::WalkBuilder::new(repo_root);
+    builder
+        .hidden(true)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true);
+    builder.add_custom_ignore_filename(".srujaignore");
+
+    let config = ScanConfig::default();
+    let config_clone = config.clone();
+    let excluded_rel_paths_clone = Arc::clone(&excluded_rel_paths);
+    let repo_root_for_filter = repo_root_buf.clone();
+    builder.filter_entry(move |e| {
+        let path = e.path();
+        let excluded = should_exclude_with_config(path, &config_clone);
+
+        if e.file_type().is_some_and(|ft| ft.is_dir()) && excluded {
+            if let Ok(rel) = path.strip_prefix(&repo_root_for_filter) {
+                let rel = rel.to_string_lossy().replace('\\', "/");
+                if let Ok(mut set) = excluded_rel_paths_clone.lock() {
+                    set.insert(rel);
+                }
             }
+            return false;
+        }
 
-            let rel: Option<String> = path
-                .strip_prefix(repo_root)
-                .ok()
-                .map(|p| p.to_string_lossy().replace('\\', "/"));
-            let first_seg = rel
-                .as_ref()
-                .and_then(|r| r.split('/').next().map(String::from));
+        !excluded
+    });
 
-            if path.is_dir() {
-                if should_exclude_with_patterns(&path, patterns) {
-                    if let Some(ref r) = rel {
-                        excluded_rel_paths.insert(r.clone());
-                    }
-                    continue;
-                }
-                walk(
-                    &path,
-                    repo_root,
-                    patterns,
-                    included_top_level,
-                    excluded_rel_paths,
-                    total_files,
-                );
-            } else if !should_exclude_with_patterns(&path, patterns) {
-                *total_files += 1;
-                if let Some(ref seg) = first_seg {
-                    included_top_level.insert(seg.clone());
-                }
+    let walker = builder.build();
+    for entry in walker {
+        let Ok(entry) = entry else { continue };
+        let path = entry.path();
+
+        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
+            continue;
+        }
+
+        total_files += 1;
+        if let Ok(rel) = path.strip_prefix(&repo_root_buf) {
+            let rel = rel.to_string_lossy().replace('\\', "/");
+            if let Some(seg) = rel.split('/').next() {
+                included_top_level.insert(seg.to_string());
             }
         }
     }
 
-    walk(
-        repo_root,
-        repo_root,
-        &merged_patterns,
-        &mut included_top_level,
-        &mut excluded_rel_paths,
-        &mut total_files,
-    );
-
     let mut included: Vec<String> = included_top_level.into_iter().collect();
     included.sort();
-    let mut excluded: Vec<String> = excluded_rel_paths.into_iter().collect();
+    let mut excluded: Vec<String> = excluded_rel_paths
+        .lock()
+        .map(|set| set.iter().cloned().collect())
+        .unwrap_or_default();
     excluded.sort();
+    let merged_patterns = merge_ignore_patterns(DEFAULT_EXCLUDE_PATTERNS, user_patterns);
 
     ScanScope {
         included,
@@ -272,41 +264,6 @@ fn build_scope_from_walk_with_patterns(repo_root: &Path, user_patterns: &[String
         exclude_patterns: merged_patterns,
         user_patterns: user_patterns.to_vec(),
     }
-}
-
-/// Check if a path should be excluded based on a list of patterns.
-fn should_exclude_with_patterns(path: &Path, patterns: &[String]) -> bool {
-    let path_str = path.to_string_lossy();
-    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-
-    for pattern in patterns {
-        if pattern.starts_with('*') {
-            let rest = pattern.trim_start_matches('*');
-            if let Some((mid, suffix)) = rest.split_once('*') {
-                if !suffix.is_empty() && file_name.ends_with(suffix) && file_name.contains(mid) {
-                    return true;
-                }
-            } else if file_name.ends_with(rest) {
-                return true;
-            }
-        } else if pattern.ends_with('/') {
-            if path_str.contains(pattern.trim_end_matches('/')) {
-                return true;
-            }
-        } else if pattern.ends_with('*') && !pattern.starts_with('*') {
-            let prefix = pattern.trim_end_matches('*');
-            if file_name.starts_with(prefix) {
-                return true;
-            }
-        } else if file_name == *pattern
-            || path_str.contains(&format!("/{}", pattern))
-            || path_str == *pattern
-        {
-            return true;
-        }
-    }
-
-    false
 }
 
 /// Check if a path reflects production-relevant code.

@@ -504,7 +504,7 @@ async fn run_tool(
             let id = arguments
                 .get("id")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing id".into()))?;
+                .ok_or_else(|| CliError::validation("Missing id"))?;
             let depth = arguments.get("depth").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
 
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
@@ -534,11 +534,11 @@ async fn run_tool(
             let source = arguments
                 .get("source")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing source".into()))?;
+                .ok_or_else(|| CliError::validation("Missing source"))?;
             let target = arguments
                 .get("target")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing target".into()))?;
+                .ok_or_else(|| CliError::validation("Missing target"))?;
 
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
             match graph.find_path(source, target) {
@@ -617,7 +617,7 @@ async fn run_tool(
             match format {
                 "json" => super::discover::discover_explanation_json(&repo),
                 "text" => super::discover::discover_explanation_string(&repo),
-                _ => Err(CliError::Validation(format!(
+                _ => Err(CliError::validation(format!(
                     "Unknown format: {}. Use: text or json",
                     format
                 ))),
@@ -662,7 +662,7 @@ async fn run_tool(
             let files = arguments
                 .get("files")
                 .and_then(|v| v.as_array())
-                .ok_or_else(|| CliError::Validation("Missing files array".to_string()))?;
+                .ok_or_else(|| CliError::validation("Missing files array".to_string()))?;
             let file_list: Vec<String> = files
                 .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -748,15 +748,15 @@ async fn run_tool(
             let id = arguments
                 .get("id")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing id".into()))?;
+                .ok_or_else(|| CliError::validation("Missing id"))?;
             let kind = arguments
                 .get("kind")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing kind".into()))?;
+                .ok_or_else(|| CliError::validation("Missing kind"))?;
             let title = arguments
                 .get("title")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing title".into()))?;
+                .ok_or_else(|| CliError::validation("Missing title"))?;
             let description = arguments.get("description").and_then(|v| v.as_str());
             let technology = arguments.get("technology").and_then(|v| v.as_str());
 
@@ -767,11 +767,11 @@ async fn run_tool(
             let source = arguments
                 .get("source")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing source".into()))?;
+                .ok_or_else(|| CliError::validation("Missing source"))?;
             let target = arguments
                 .get("target")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing target".into()))?;
+                .ok_or_else(|| CliError::validation("Missing target"))?;
             let label = arguments.get("label").and_then(|v| v.as_str());
             let technology = arguments.get("technology").and_then(|v| v.as_str());
 
@@ -792,7 +792,7 @@ async fn run_tool(
                         index_path.display()
                     );
                     let json = serde_json::to_string_pretty(&index)
-                        .map_err(|e| CliError::Validation(e.to_string()))?;
+                        .map_err(|e| CliError::validation(e.to_string()))?;
                     Ok(format!("{}{}", summary, json))
                 }
                 None => Ok("No system.index.json found. Run `sruja compose` to create a multi-repo system index.".to_string()),
@@ -856,7 +856,7 @@ async fn run_tool(
             let id = arguments
                 .get("id")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing id".into()))?;
+                .ok_or_else(|| CliError::validation("Missing id"))?;
             let max_tokens = arguments
                 .get("max_tokens")
                 .and_then(|v| v.as_u64())
@@ -868,7 +868,7 @@ async fn run_tool(
             let query = arguments
                 .get("query")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::Validation("Missing query".into()))?;
+                .ok_or_else(|| CliError::validation("Missing query"))?;
             let top_k = arguments.get("top_k").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
 
             let vector_path = std::path::Path::new(&repo)
@@ -908,7 +908,7 @@ async fn run_tool(
             }
             Ok(out)
         }
-        _ => Err(CliError::Validation(format!("Unknown tool: {name}"))),
+        _ => Err(CliError::validation(format!("Unknown tool: {name}"))),
     }
 }
 
@@ -1014,7 +1014,7 @@ async fn get_hydrated_context(
         .nodes
         .iter()
         .find(|n| n.id == id)
-        .ok_or_else(|| CliError::Validation(format!("Component ID not found: {id}")))?;
+        .ok_or_else(|| CliError::validation(format!("Component ID not found: {id}")))?;
 
     let blast = graph.blast_radius(id, 1);
     let repo_path = std::path::Path::new(repo);
@@ -1103,10 +1103,10 @@ async fn get_hydrated_context(
 
 fn validate_ident(value: &str, field: &str) -> Result<(), CliError> {
     if value.is_empty() {
-        return Err(CliError::Validation(format!("Missing {}", field)));
+        return Err(CliError::validation(format!("Missing {}", field)));
     }
     if value.trim() != value {
-        return Err(CliError::Validation(format!(
+        return Err(CliError::validation(format!(
             "Invalid {}: leading/trailing whitespace",
             field
         )));
@@ -1115,7 +1115,7 @@ fn validate_ident(value: &str, field: &str) -> Result<(), CliError> {
         .chars()
         .any(|c| c.is_whitespace() || c == '"' || c == '{' || c == '}' || c == '\\')
     {
-        return Err(CliError::Validation(format!(
+        return Err(CliError::validation(format!(
             "Invalid {}: contains forbidden characters",
             field
         )));
@@ -1125,8 +1125,8 @@ fn validate_ident(value: &str, field: &str) -> Result<(), CliError> {
 
 fn escape_dsl_string(value: &str) -> Result<String, CliError> {
     if value.chars().any(|c| c == '\n' || c == '\r') {
-        return Err(CliError::Validation(
-            "Invalid string: contains newline".into(),
+        return Err(CliError::validation(
+            "Invalid string: contains newline",
         ));
     }
     Ok(value.replace('\\', "\\\\").replace('"', "\\\""))

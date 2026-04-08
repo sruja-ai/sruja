@@ -87,12 +87,14 @@ pub async fn lint(
                 let out = lint_diagnostics_to_json(&diagnostics, false);
                 println!(
                     "{}",
-                    serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?
+                    serde_json::to_string(&out).map_err(|e| CliError::validation(e.to_string()))?
                 );
                 return Err(CliError::Parse {
                     file: file.to_string(),
                     message: format!("Parsing failed with {} errors", diagnostics.len()),
                     diagnostics,
+                    help: Some("Fix the syntax errors reported by the parser.".into()),
+                    fix: Some("After fixing syntax, run 'sruja fmt' (optional) and re-run 'sruja lint'.".into()),
                 });
             }
             if github {
@@ -103,6 +105,8 @@ pub async fn lint(
                     file: file.to_string(),
                     message: format!("Parsing failed with {} errors", diagnostics.len()),
                     diagnostics,
+                    help: Some("Check the GitHub Actions annotations for the exact location.".into()),
+                    fix: Some("Fix the syntax errors in the file, then re-run the check.".into()),
                 });
             }
             for diag in &diagnostics {
@@ -112,6 +116,8 @@ pub async fn lint(
                 file: file.to_string(),
                 message: format!("Parsing failed with {} errors", diagnostics.len()),
                 diagnostics,
+                help: Some("Review the diagnostics printed above for the exact location.".into()),
+                fix: Some("Fix the syntax errors in the file, then re-run 'sruja lint'.".into()),
             });
         }
     };
@@ -152,10 +158,10 @@ pub async fn lint(
         out.total_warning_count = Some(total_warning_count);
         println!(
             "{}",
-            serde_json::to_string(&out).map_err(|e| CliError::Validation(e.to_string()))?
+            serde_json::to_string(&out).map_err(|e| CliError::validation(e.to_string()))?
         );
         if error_count > 0 {
-            return Err(CliError::Validation(format!(
+            return Err(CliError::validation(format!(
                 "Linting failed with {} errors",
                 error_count
             )));
@@ -172,7 +178,7 @@ pub async fn lint(
             println!("{}", format_github_actions_annotation(diag));
         }
         if error_count > 0 {
-            return Err(CliError::Validation(format!(
+            return Err(CliError::validation(format!(
                 "Linting failed with {} errors",
                 error_count
             )));
@@ -205,21 +211,28 @@ pub async fn lint(
     }
 
     if !errors.is_empty() {
-        eprintln!(
-            "\n✗ Found {} error(s) and {} warning(s)",
+        use crate::utils::colors;
+        println!("──────────────────────────────────────────────");
+        println!(
+            "{} Found {} error(s) and {} warning(s)",
+            colors::error("✗"),
             errors.len(),
             warnings.len()
         );
-        return Err(CliError::Validation(format!(
+        return Err(CliError::validation(format!(
             "Linting failed with {} errors",
             errors.len()
         )));
     }
 
     if !warnings.is_empty() {
-        println!("✓ Found {} warning(s) (no errors)", warnings.len());
+        use crate::utils::colors;
+        println!("──────────────────────────────────────────────");
+        println!("{} Found {} warning(s) (no errors)", colors::success("✓"), warnings.len());
     } else {
-        println!("✓ No issues found");
+        use crate::utils::colors;
+        println!("──────────────────────────────────────────────");
+        println!("{} No issues found", colors::success("✓"));
     }
 
     Ok(())
@@ -512,7 +525,7 @@ pub async fn fmt(file: &str, check: bool) -> Result<(), CliError> {
     if formatted != content {
         if check {
             println!("Would reformat {}", file);
-            return Err(CliError::Validation(format!(
+            return Err(CliError::validation(format!(
                 "File {} needs formatting",
                 file
             )));
@@ -779,11 +792,9 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
 
     let (elements, relations) = sruja_language::collect_elements(&program);
 
-    let elem = elements.get(element_id).ok_or_else(|| CliError::Parse {
-        file: element_id.to_string(),
-        message: "Element not found".to_string(),
-        diagnostics: Vec::new(),
-    })?;
+    let elem = elements
+        .get(element_id)
+        .ok_or_else(|| CliError::validation(format!("Element not found: {}", element_id)))?;
 
     let incoming: Vec<_> = relations
         .iter()
@@ -834,10 +845,10 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
 
 pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
     if format != "json" {
-        return Err(CliError::Parse {
-            file: file.to_string(),
+        return Err(CliError::Validation {
             message: format!("Unsupported import format: {}. Supported: json", format),
-            diagnostics: Vec::new(),
+            help: Some("Use: sruja import json <file>".into()),
+            fix: None,
         });
     }
 
@@ -873,15 +884,15 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
         return Ok(());
     }
 
-    Err(CliError::Parse {
-        file: "import".to_string(),
+    Err(CliError::Validation {
         message: "Could not identify architecture in JSON".to_string(),
-        diagnostics: Vec::new(),
+        help: Some("Expected either { architecture: { systems: [...] } } or { elements: [...] }.".into()),
+        fix: Some("Re-export JSON from a supported tool or provide a JSON file matching the expected shape.".into()),
     })
 }
 
 pub async fn lsp() -> Result<(), CliError> {
-    Err(CliError::Validation(
+    Err(CliError::validation(
         "LSP server is not available in this build".to_string(),
     ))
 }
@@ -921,7 +932,7 @@ pub async fn validate(
                 for diag in &constraint_diagnostics {
                     eprintln!("  {}", format_diagnostic(diag));
                 }
-                return Err(CliError::Validation(format!(
+                return Err(CliError::validation(format!(
                     "Constraint file '{}' has errors",
                     constraint_path
                 )));
@@ -975,7 +986,7 @@ pub async fn validate(
     }
 
     if fail_on_violations || !errors.is_empty() {
-        Err(CliError::Validation(format!(
+        Err(CliError::validation(format!(
             "Validation failed with {} violation(s)",
             errors.len()
         )))
@@ -1014,7 +1025,7 @@ pub async fn validate_files(
         println!("  Invalid: {}", results.len() - valid_count);
 
         if results.iter().any(|(_, valid)| !valid) && fail_on_violations {
-            return Err(CliError::Validation(
+            return Err(CliError::validation(
                 "Some files failed validation".to_string(),
             ));
         }
@@ -1035,7 +1046,7 @@ async fn validate_single_file(file: &str, _constraints: &[String]) -> Result<(),
         .count();
 
     if error_count > 0 {
-        Err(CliError::Validation(format!(
+        Err(CliError::validation(format!(
             "Validation failed with {} errors",
             error_count
         )))
@@ -1068,7 +1079,7 @@ pub async fn compile(file: &str) -> Result<(), CliError> {
         .count();
     if error_count > 0 {
         eprintln!("\n✗ Compilation failed with {} error(s)", error_count);
-        return Err(CliError::Validation(format!(
+        return Err(CliError::validation(format!(
             "Compilation failed with {} errors",
             error_count
         )));

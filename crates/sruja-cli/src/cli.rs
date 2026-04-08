@@ -461,6 +461,21 @@ pub enum Commands {
         #[arg(long, short = 'o', default_value = ".sruja/vectors.json")]
         output: String,
     },
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+    },
+    /// Calculate and report architecture health score
+    Health {
+        /// Repository root to scan
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -709,12 +724,14 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             architecture,
             output,
         } => commands::index(&repo, architecture.as_deref(), &output).await,
+        Commands::Completions { shell } => commands::completions(shell),
+        Commands::Health { repo, architecture } => commands::health(&repo, architecture.as_deref()).await,
     };
 
     match result {
         Ok(()) => Ok(()),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            e.report();
             std::process::exit(e.exit_code());
         }
     }

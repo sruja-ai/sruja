@@ -123,7 +123,18 @@ export class Diagnostic {
 }
 
 export class WorkspaceEdit {
-  insert(_uri: Uri, _position: Position, _text: string): void {}
+  public operations: Array<
+    | { type: "insert"; uri: Uri; position: Position; text: string }
+    | { type: "replace"; uri: Uri; range: Range; text: string }
+  > = [];
+
+  insert(uri: Uri, position: Position, text: string): void {
+    this.operations.push({ type: "insert", uri, position, text });
+  }
+
+  replace(uri: Uri, range: Range, text: string): void {
+    this.operations.push({ type: "replace", uri, range, text });
+  }
 }
 
 export class CodeAction {
@@ -143,11 +154,50 @@ export class DiagnosticCollection {
   get(_uri: Uri): Diagnostic[] | undefined { return undefined; }
 }
 
+export class CodeLens {
+  constructor(public range: Range, public command?: { title: string; command: string; arguments?: unknown[] }) {}
+}
+
+export enum CompletionItemKind {
+  Text = 0,
+  Method = 1,
+  Function = 2,
+  Constructor = 3,
+  Field = 4,
+  Variable = 5,
+  Class = 6,
+  Interface = 7,
+  Module = 8,
+  Property = 9,
+  Unit = 10,
+  Value = 11,
+  Enum = 12,
+  Keyword = 13,
+}
+
+export class CompletionItem {
+  detail?: string;
+  documentation?: string;
+  constructor(public label: string, public kind?: CompletionItemKind) {}
+}
+
+export class TextEdit {
+  constructor(public range: Range, public newText: string) {}
+  static replace(range: Range, newText: string): TextEdit {
+    return new TextEdit(range, newText);
+  }
+}
+
 export const languages = {
   registerDefinitionProvider: () => {},
   registerHoverProvider: () => {},
   registerDocumentSymbolProvider: () => {},
   registerCodeActionsProvider: () => {},
+  registerCodeLensProvider: () => {},
+  registerCompletionItemProvider: () => {},
+  registerRenameProvider: () => {},
+  registerReferenceProvider: () => {},
+  registerDocumentFormattingEditProvider: () => {},
   createDiagnosticCollection: () => new DiagnosticCollection(),
   getDiagnostics: (_uri?: Uri) => [],
 };
@@ -161,7 +211,17 @@ export const workspace = {
   workspaceFolders: [],
   getConfiguration: () => ({ get: () => '' }),
   getWorkspaceFolder: (_uri: Uri) => undefined,
+  findFiles: async (_include: string, _exclude?: string) => [],
   openTextDocument: async (arg: any) => {
+    const computePositionAt = (text: string, offset: number): Position => {
+      const clipped = Math.max(0, Math.min(text.length, offset));
+      const before = text.slice(0, clipped);
+      const lines = before.split(/\r?\n/);
+      const line = Math.max(0, lines.length - 1);
+      const character = lines[line]?.length ?? 0;
+      return new Position(line, character);
+    };
+
     if (arg && typeof arg === "object" && "content" in arg) {
       const content = String((arg as any).content ?? "");
       const languageId = String((arg as any).language ?? "plaintext");
@@ -170,26 +230,39 @@ export const workspace = {
         uri,
         languageId,
         version: 1,
-        lineCount: 0,
+        lineCount: content.split(/\r?\n/).length,
         getText: () => content,
-        lineAt: () => ({ text: "" }),
+        lineAt: (line: number) => {
+          const lines = content.split(/\r?\n/);
+          const text = lines[line] ?? "";
+          const start = new Position(line, 0);
+          const end = new Position(line, text.length);
+          return { text, range: new Range(start, end) };
+        },
         getWordRangeAtPosition: () => undefined,
+        positionAt: (offset: number) => computePositionAt(content, offset),
       };
     }
 
     const uri = arg as Uri;
+    const content = "";
     return {
       uri,
       languageId: "plaintext",
       version: 1,
       lineCount: 0,
-      getText: () => "",
-      lineAt: () => ({ text: "" }),
+      getText: () => content,
+      lineAt: (line: number) => {
+        const start = new Position(line, 0);
+        const end = new Position(line, 0);
+        return { text: "", range: new Range(start, end) };
+      },
       getWordRangeAtPosition: () => undefined,
+      positionAt: (offset: number) => computePositionAt(content, offset),
     };
   },
   fs: {
-    readFile: async () => Buffer.from(''),
+    readFile: async () => new Uint8Array(),
     writeFile: async () => {},
     stat: async () => ({ size: 0, mtime: 0 }),
     createDirectory: async () => {},
