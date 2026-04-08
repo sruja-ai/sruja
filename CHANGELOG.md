@@ -5,6 +5,15 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.28.0...sruja-v0.29.0) (2026-04-08)
+
+
+### Features
+
+* add --hook and --ci flags to sruja init to automate git hook and GitHub Actions workflow generation ([c0c9368](https://github.com/sruja-ai/sruja/commit/c0c93688bd6a28dae666d61dbc458e5358b420b2))
+* add --hook and --ci flags to sruja init to automate git hook and GitHub Actions workflow generation ([4a77d21](https://github.com/sruja-ai/sruja/commit/4a77d21319001cb9f072eef185c3f96065651376))
+* add --inject option to sruja export for automated diagram injection in markdown files ([209ad08](https://github.com/sruja-ai/sruja/commit/209ad08d1fc102a2c8ebe4f398fb4613fd30a808))
+
 ## [0.28.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.27.1...sruja-v0.28.0) (2026-04-05)
 
 
