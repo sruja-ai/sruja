@@ -5,8 +5,9 @@ use std::path::Path;
 
 use super::discover::{discover_context_json_from_graph, discover_explanation_json};
 use super::CliError;
-use crate::utils::architecture_path;
-use sruja_diff::{Severity, Violation, ViolationKind};
+use super::violation_shared::*;
+use crate::utils::{architecture_path, colors};
+use sruja_diff::Violation;
 use sruja_scan::scan_repo;
 use std::collections::HashSet;
 
@@ -38,51 +39,6 @@ fn git_commit_short(repo_path: &Path) -> Option<String> {
 
 /// Context.json schema version for machine consumers.
 const CONTEXT_SCHEMA_VERSION: u32 = 1;
-
-#[derive(Debug, serde::Serialize)]
-struct ViolationSummary {
-    kind: String,
-    severity: String,
-    fingerprint: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    location: Option<String>,
-    message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    confidence: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    evidence_count: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    production_relevant: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    baseline_delta: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    suppressed: Option<bool>,
-}
-
-fn kind_slug(kind: ViolationKind) -> &'static str {
-    match kind {
-        ViolationKind::OrphanComponent => "orphan-component",
-        ViolationKind::UndocumentedComponent => "undocumented-component",
-        ViolationKind::LayerViolation => "layer-violation",
-        ViolationKind::CircularDependency => "circular-dependency",
-        ViolationKind::GodModule => "god-module",
-        ViolationKind::MissingDependency => "missing-dependency",
-        ViolationKind::PatternMismatch => "pattern-mismatch",
-    }
-}
-
-fn severity_slug(v: &Violation) -> &'static str {
-    match v.severity {
-        Severity::Error => "error",
-        Severity::Warning => "warning",
-        Severity::Info => "info",
-    }
-}
-
-fn fingerprint_violation(v: &Violation) -> String {
-    let location = v.location.clone().unwrap_or_default();
-    format!("{}|{}|{}", kind_slug(v.kind), location, v.message)
-}
 
 /// Refresh evidence and drift: write .sruja/context.json (with timestamp, git_commit, baseline_path, truth_status), then run drift.
 pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
@@ -193,20 +149,9 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     } else {
         (violations, Vec::new())
     };
-    let map_summary = |v: &Violation| ViolationSummary {
-        kind: kind_slug(v.kind).to_string(),
-        severity: severity_slug(v).to_string(),
-        fingerprint: fingerprint_violation(v),
-        location: v.location.clone(),
-        message: v.message.clone(),
-        confidence: v.confidence,
-        evidence_count: v.evidence_count,
-        production_relevant: v.production_relevant,
-        baseline_delta: v.baseline_delta.clone(),
-        suppressed: v.suppressed,
-    };
-    let active_summ: Vec<ViolationSummary> = active.iter().map(map_summary).collect();
-    let suppressed_summ: Vec<ViolationSummary> = suppressed.iter().map(map_summary).collect();
+    
+    let active_summ: Vec<ViolationSummary> = active.iter().map(summarize_violation).collect();
+    let suppressed_summ: Vec<ViolationSummary> = suppressed.iter().map(summarize_violation).collect();
 
     value["violations"] =
         serde_json::to_value(&active_summ).map_err(|e| CliError::validation(e.to_string()))?;
@@ -257,23 +202,36 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         }
         "quiet" => {}
         _ => {
-            eprintln!("Wrote {}", context_path);
-            eprintln!("Wrote {}", graph_path.display());
+            eprintln!("Wrote {}", colors::info(context_path));
+            eprintln!("Wrote {}", colors::info(graph_path.display()));
             if let Some(ref base) = baseline {
                 eprintln!("Baseline: {}", base);
             } else {
-                eprintln!("No baseline (repo.sruja not found)");
+                eprintln!("{}", colors::warning("No baseline (repo.sruja not found)"));
             }
-            eprintln!("Truth: {} ({} violation(s))", truth_status, active.len());
+            
+            let status_color = match truth_status.as_str() {
+                "reviewed" => colors::success(&truth_status),
+                "drifted" => colors::error(&truth_status),
+                _ => colors::warning(&truth_status),
+            };
+            eprintln!("Truth: {} ({} violation(s))", status_color, active_summ.len());
+            
             if let Some(score) = health_score {
-                eprintln!("Health score: {}/100", score);
+                eprintln!("Health score: {}", colors::health_bar(score, 20));
             }
 
-            if !active.is_empty() {
+            if !active_summ.is_empty() {
                 eprintln!();
-                eprintln!("Violations:");
-                for v in &active {
-                    eprintln!("  - {:?}", v);
+                eprintln!("{}", colors::style("Violations:").bold());
+                for v in &active_summ {
+                    eprintln!(
+                        "  {} {}: {} {}",
+                        colors::severity_icon(&v.severity),
+                        colors::style(&v.kind).bold(),
+                        v.message,
+                        colors::dim(v.location.as_deref().unwrap_or(""))
+                    );
                 }
             }
         }

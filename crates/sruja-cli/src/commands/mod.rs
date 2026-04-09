@@ -24,6 +24,7 @@ mod watch;
 mod why;
 mod completions;
 mod health;
+pub mod violation_shared;
 
 pub use check::{baseline, check};
 pub use compliance::compliance;

@@ -31,11 +31,22 @@ pub enum CliError {
         message: String,
         help: Option<String>,
     },
+    #[error("Operation timed out: {message}")]
+    Timeout {
+        message: String,
+    },
     #[error("Violations detected (--fail-on matched)")]
     FailOnViolations,
 }
 
 impl CliError {
+    /// Creates a simple timeout error.
+    pub fn timeout(message: impl Into<String>) -> Self {
+        CliError::Timeout {
+            message: message.into(),
+        }
+    }
+
     /// Creates a simple validation error.
     pub fn validation(message: impl Into<String>) -> Self {
         CliError::Validation {
@@ -54,7 +65,7 @@ impl CliError {
             .join("; ");
         CliError::Parse {
             file: file.into(),
-            message,
+            message: if message.is_empty() { "Unknown parse error".into() } else { message },
             diagnostics,
             help: Some("Run 'sruja lint' for detailed error information.".into()),
             fix: Some("Check syntax in the mentioned file.".into()),
@@ -84,6 +95,7 @@ impl CliError {
             CliError::Export(_) => 5,
             CliError::Json(_) => 6,
             CliError::Scan { .. } => 7,
+            CliError::Timeout { .. } => 8,
             CliError::FailOnViolations => 1,
         }
     }
@@ -92,6 +104,10 @@ impl CliError {
     pub fn report(&self) {
         use crate::utils::colors;
         match self {
+            CliError::Io(e) => {
+                eprintln!("{} {}: {}", colors::error("Error:"), "System IO error", e);
+                eprintln!("  {} Ensure you have permissions and the path exists.", colors::info("💡 Help:"));
+            }
             CliError::Parse {
                 file,
                 message,
@@ -114,19 +130,37 @@ impl CliError {
                 eprintln!("{} {}: {}", colors::error("Error:"), "Validation error", message);
                 if let Some(h) = help {
                     eprintln!("  {} {}", colors::info("💡 Help:"), h);
+                } else {
+                    eprintln!("  {} Double check your arguments and configuration.", colors::info("💡 Help:"));
                 }
                 if let Some(f) = fix {
                     eprintln!("  {} {}", colors::success("🔧 Fix:"), f);
                 }
             }
+            CliError::Export(e) => {
+                eprintln!("{} {}: {}", colors::error("Error:"), "Export error", e);
+                eprintln!("  {} Ensure target directory exists and is writable.", colors::info("💡 Help:"));
+            }
+            CliError::Json(e) => {
+                eprintln!("{} {}: {}", colors::error("Error:"), "JSON error", e);
+                eprintln!("  {} The data structure in .sruja/ likely drift from expected schema.", colors::info("💡 Help:"));
+                eprintln!("  {} Run 'sruja daily' to refresh context files.", colors::success("🔧 Fix:"));
+            }
             CliError::Scan { message, help } => {
                 eprintln!("{} {}: {}", colors::error("Error:"), "Scan error", message);
                 if let Some(h) = help {
                     eprintln!("  {} {}", colors::info("💡 Help:"), h);
+                } else {
+                    eprintln!("  {} Try running 'sruja start -r .' to initialize Sruja.", colors::info("💡 Help:"));
                 }
             }
-            _ => {
-                eprintln!("{} {}", colors::error("Error:"), self);
+            CliError::Timeout { message } => {
+                eprintln!("{} {}: {}", colors::error("Error:"), "Operation timed out", message);
+                eprintln!("  {} The project may be too large or there's a file system bottleneck.", colors::info("💡 Help:"));
+                eprintln!("  {} Use .srujaignore to exclude large or irrelevant directories.", colors::success("🔧 Fix:"));
+            }
+            CliError::FailOnViolations => {
+                eprintln!("{} {}", colors::error("Error:"), "Strict check failed: architecture violations detected.");
             }
         }
     }

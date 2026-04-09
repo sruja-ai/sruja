@@ -1,39 +1,15 @@
 //! Check command: CI-focused tool for non-blocking exit code 0 on violations.
-//! Outputs GitHub Actions annotation format for PR checks.
-//!
-//! Non-blocking: always exits with code 0.
-//! Filters out violations whose evidence is only from non-production paths (book/, evaluation/, docs/, etc.)
-//! so PR signals are production-relevant.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{collections::HashSet, path::PathBuf};
+use std::collections::HashSet;
 
 use super::CliError;
-use crate::utils::architecture_path;
-use sruja_diff::{SourceRef, Violation, ViolationKind};
-use sruja_scan::{is_path_production_relevant as scan_prod_relevant, scan_repo};
-
-/// True if this violation should be reported in check (PR signal). Excludes violations
-/// whose only evidence is under non-production paths (book/, evaluation/, docs/, etc.).
-fn is_production_relevant(v: &Violation) -> bool {
-    let paths: Vec<&str> = v
-        .sources
-        .iter()
-        .filter_map(|s| s.file.as_deref())
-        .chain(v.location.as_deref())
-        .collect();
-    if paths.is_empty() {
-        return true;
-    }
-    let has_production = paths.iter().any(|p| scan_prod_relevant(p));
-    has_production
-}
-
-fn is_usize_zero(v: &usize) -> bool {
-    *v == 0
-}
+pub use super::violation_shared::*;
+use crate::utils::{architecture_path, colors};
+use sruja_diff::Violation;
+use sruja_scan::scan_repo;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct CheckOutput {
@@ -53,62 +29,20 @@ pub struct CheckOutput {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct ViolationSummary {
-    pub kind: String,
-    pub severity: String,
-    pub fingerprint: String,
-    pub location: Option<String>,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub confidence: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub evidence_count: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub production_relevant: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub baseline_delta: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub suppressed: Option<bool>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub sources: Vec<SourceRef>,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ViolationBaseline {
     pub schema_version: u32,
     pub generated_at_unix: u64,
     pub fingerprints: Vec<String>,
 }
 
-fn kind_slug(kind: ViolationKind) -> &'static str {
-    match kind {
-        ViolationKind::OrphanComponent => "orphan-component",
-        ViolationKind::UndocumentedComponent => "undocumented-component",
-        ViolationKind::LayerViolation => "layer-violation",
-        ViolationKind::CircularDependency => "circular-dependency",
-        ViolationKind::GodModule => "god-module",
-        ViolationKind::MissingDependency => "missing-dependency",
-        ViolationKind::PatternMismatch => "pattern-mismatch",
-    }
+fn is_usize_zero(v: &usize) -> bool {
+    *v == 0
 }
 
-fn fingerprint_violation(v: &Violation) -> String {
-    let location = v.location.clone().unwrap_or_default();
-    format!("{}|{}|{}", kind_slug(v.kind), location, v.message)
-}
-
-fn severity_slug(v: &Violation) -> &'static str {
-    match v.severity {
-        sruja_diff::Severity::Error => "error",
-        sruja_diff::Severity::Warning => "warning",
-        sruja_diff::Severity::Info => "info",
-    }
-}
-
-fn primary_source_for_annotations(v: &Violation) -> Option<SourceRef> {
+fn primary_source_for_annotations(v: &Violation) -> Option<sruja_diff::SourceRef> {
     v.sources
         .iter()
-        .find(|s| s.file.as_deref().is_some_and(scan_prod_relevant))
+        .find(|s| s.file.as_deref().is_some_and(sruja_scan::is_path_production_relevant))
         .or_else(|| v.sources.first())
         .cloned()
 }
@@ -129,121 +63,6 @@ fn load_violation_baseline(baseline_path: &Path) -> Result<HashSet<String>, CliE
     Ok(baseline.fingerprints.into_iter().collect())
 }
 
-fn categorize_violations(violations: &[sruja_diff::Violation]) -> Vec<ViolationSummary> {
-    violations
-        .iter()
-        .map(|v| {
-            let location = v
-                .location
-                .as_deref()
-                .or_else(|| v.sources.first().and_then(|s| s.detail.as_deref()))
-                .unwrap_or("unknown");
-            let fingerprint = fingerprint_violation(v);
-            ViolationSummary {
-                kind: kind_slug(v.kind).to_string(),
-                severity: severity_slug(v).to_string(),
-                fingerprint,
-                location: v.location.clone(),
-                message: match v.kind {
-                    ViolationKind::OrphanComponent | ViolationKind::UndocumentedComponent => {
-                        format!("{} (potential new component)", location)
-                    }
-                    ViolationKind::LayerViolation => {
-                        format!("{} - unexpected layer dependency", location)
-                    }
-                    ViolationKind::CircularDependency => {
-                        format!("{} - circular dependency", location)
-                    }
-                    ViolationKind::GodModule => {
-                        format!("{} - too many dependencies", location)
-                    }
-                    ViolationKind::MissingDependency => {
-                        format!("{} - missing expected dependency", location)
-                    }
-                    ViolationKind::PatternMismatch => {
-                        format!("{} - pattern mismatch", location)
-                    }
-                },
-                confidence: v.confidence,
-                evidence_count: v.evidence_count,
-                production_relevant: v.production_relevant,
-                baseline_delta: v.baseline_delta.clone(),
-                suppressed: v.suppressed,
-                sources: v.sources.clone(),
-            }
-        })
-        .collect()
-}
-
-fn generate_open_questions(violations: &[ViolationSummary]) -> Vec<String> {
-    let mut questions = Vec::new();
-
-    if violations
-        .iter()
-        .any(|v| v.kind == "orphan-component" || v.kind == "undocumented-component")
-    {
-        questions
-            .push("Are there new components that should be documented in repo.sruja?".to_string());
-    }
-
-    if violations.iter().any(|v| v.kind == "circular-dependency") {
-        questions.push(
-            "Should circular dependencies be broken by introducing an intermediary service?"
-                .to_string(),
-        );
-    }
-
-    if violations.iter().any(|v| v.kind == "layer-violation") {
-        questions.push(
-            "Are there layer violations that indicate missing architectural boundaries?"
-                .to_string(),
-        );
-    }
-
-    if violations.iter().any(|v| v.kind == "god-module") {
-        questions.push(
-            "Should any god modules be split into smaller services with clear responsibilities?"
-                .to_string(),
-        );
-    }
-
-    questions
-}
-
-fn generate_suggestions(
-    _violations: &[ViolationSummary],
-    baseline_path: Option<&Path>,
-    truth_status: &str,
-) -> Vec<String> {
-    let mut suggestions = Vec::new();
-
-    if baseline_path.is_none() {
-        suggestions.push(
-            "Run: Use sruja-architecture skill to generate repo.sruja from evidence. Ask targeted questions if scope is unclear."
-                .to_string(),
-        );
-    }
-
-    match truth_status {
-        "reviewed" => {
-            suggestions.push("Architecture is in sync - no action needed.".to_string());
-        }
-        "drifted" => {
-            suggestions.push(
-                "Review drift findings and update repo.sruja if architecture changed intentionally"
-                    .to_string(),
-            );
-            suggestions.push(
-                "Or refactor code to match existing architecture if drift is unintentional"
-                    .to_string(),
-            );
-        }
-        _ => {}
-    }
-
-    suggestions
-}
-
 pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -256,7 +75,7 @@ pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
     let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
 
-    let filtered: Vec<sruja_diff::Violation> = if let Some(ref baseline) = baseline_path {
+    let filtered: Vec<Violation> = if let Some(ref baseline) = baseline_path {
         let content = fs::read_to_string(baseline)?;
         let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
         let program = parser
@@ -394,11 +213,11 @@ pub async fn check(
             (filtered_violations, Vec::new())
         };
 
-    let violations = categorize_violations(&active_violations);
-    let suppressed_violations = categorize_violations(&suppressed_violations);
+    let violations: Vec<ViolationSummary> = active_violations.iter().map(summarize_violation).collect();
+    let suppressed_violations: Vec<ViolationSummary> = suppressed_violations.iter().map(summarize_violation).collect();
     let has_drift = !violations.is_empty();
-    let open_questions = generate_open_questions(&violations);
-    let suggestions = generate_suggestions(&violations, baseline_path.as_deref(), &truth_status);
+    let open_questions = generate_open_questions(&active_violations);
+    let suggestions = generate_suggestions(repo_root, baseline_path.as_deref(), &truth_status, &active_violations);
 
     let output = CheckOutput {
         truth_status,
@@ -436,14 +255,15 @@ pub async fn check(
                     .replace('\r', "%0D")
             );
 
-            for v in &active_violations {
-                let sev = match v.severity {
-                    sruja_diff::Severity::Error => "error",
-                    sruja_diff::Severity::Warning => "warning",
-                    sruja_diff::Severity::Info => "notice",
+            for v_sum in &output.violations {
+                // Find original violation from summarized one if needed, but we can just use v_sum
+                let sev = match v_sum.severity.as_str() {
+                    "error" => "error",
+                    "warning" => "warning",
+                    _ => "notice",
                 };
-                let title = format!("Sruja {}", kind_slug(v.kind));
-                let message = format!("{} ({})", v.message, fingerprint_violation(v));
+                let title = format!("Sruja {}", v_sum.kind);
+                let message = format!("{} ({})", v_sum.message, v_sum.fingerprint);
 
                 let escaped_title = title
                     .replace('%', "%25")
@@ -454,7 +274,8 @@ pub async fn check(
                     .replace('\n', "%0A")
                     .replace('\r', "%0D");
 
-                if let Some(src) = primary_source_for_annotations(v) {
+                // Use first source for annotation
+                if let Some(src) = v_sum.sources.first() {
                     let src_file = src.file.as_deref().unwrap_or(file);
                     if let Some(line) = src.line {
                         println!(
@@ -491,7 +312,7 @@ pub async fn check(
             } else {
                 println!("Violations found:");
                 for v in &output.violations {
-                    println!("  - [{}:{}] {}", v.severity, v.kind, v.message);
+                    println!("  {} [{}:{}] {}", colors::severity_icon(&v.severity), v.severity, v.kind, v.message);
                     let evidence: Vec<String> = v
                         .sources
                         .iter()
@@ -509,7 +330,7 @@ pub async fn check(
             if !output.open_questions.is_empty() {
                 println!("Open questions:");
                 for q in &output.open_questions {
-                    println!("  ? {}", q);
+                    println!("  {} {}", colors::info("?"), q);
                 }
                 println!();
             }
@@ -517,12 +338,11 @@ pub async fn check(
             if !output.suggestions.is_empty() {
                 println!("Suggestions:");
                 for s in &output.suggestions {
-                    println!("  > {}", s);
+                    println!("  {} {}", colors::success(">"), s);
                 }
                 println!();
             }
 
-            use crate::utils::colors;
             let status_icon = if has_drift { colors::error("✗") } else { colors::success("✓") };
             let drift_text = if has_drift { "drifted" } else { "in sync" };
             
@@ -531,7 +351,7 @@ pub async fn check(
                 "{} {} │ {} elements │ health: {}/100",
                 status_icon,
                 drift_text,
-                output.violations_count + output.suppressed_count, // This is just an estimate of "elements involved", but good enough for a footer.
+                output.violations_count + output.suppressed_count,
                 output.health_score.unwrap_or(0)
             );
         }

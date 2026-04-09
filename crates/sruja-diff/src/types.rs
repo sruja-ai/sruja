@@ -97,7 +97,7 @@ pub struct Violation {
     pub rationale: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum ViolationKind {
     LayerViolation,
     MissingDependency,
@@ -108,7 +108,7 @@ pub enum ViolationKind {
     GodModule,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum Severity {
     Error,
     Warning,

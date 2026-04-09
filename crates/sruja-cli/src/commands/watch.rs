@@ -1,12 +1,28 @@
-use colored::Colorize;
-use std::path::Path;
-use std::time::Duration;
-use tokio::sync::mpsc;
+//! Watch command: sync and evaluate drift live on file changes.
 
 use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode, DebouncedEvent};
+use std::collections::HashSet;
+use std::path::Path;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use std::time::{Duration, Instant};
 
-use super::scan::{drift_json_string, status_result};
 use super::CliError;
+use super::violation_shared::*;
+use crate::utils::{architecture_path, colors};
+use sruja_diff::Violation;
+use sruja_scan::scan_repo;
+
+const DEBOUNCE_MS: u64 = 500;
+const THROTTLE_COOLDOWN: Duration = Duration::from_secs(2);
+const MAX_RETRIES: u32 = 3;
+
+struct WatchState {
+    last_run: Option<Instant>,
+    previous_fingerprints: HashSet<String>,
+    retry_count: u32,
+    clear: bool,
+}
 
 pub async fn watch(repo_root: &str, clear: bool) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
@@ -17,178 +33,209 @@ pub async fn watch(repo_root: &str, clear: bool) -> Result<(), CliError> {
         )));
     }
 
-    let (tx, mut rx) = mpsc::channel(10);
-    let tx_clone = tx.clone();
+    if clear {
+        print!("{}[2J{}[1;1H", 27 as char, 27 as char);
+    }
+
+    colors::print_header("👁 Sruja Watcher");
+    println!("  {} {}", colors::dim("Root:"), repo_root);
+    println!("  {} Monitoring for changes...", colors::info("•"));
+    println!("  {} Press Ctrl+C to exit.", colors::dim("ℹ"));
+    println!();
+
+    // Initial run
+    let mut state = WatchState {
+        last_run: None,
+        previous_fingerprints: HashSet::new(),
+        retry_count: 0,
+        clear,
+    };
+    
+    // Initial evaluation
+    if let Ok((violations, _)) = evaluate_drift(repo_path).await {
+        state.previous_fingerprints = violations.iter().map(fingerprint_violation).collect();
+    }
+    state.last_run = Some(Instant::now());
+
+    let state = Arc::new(Mutex::new(state));
+    let (tx, mut rx) = tokio::sync::mpsc::channel(10);
 
     let mut debouncer = new_debouncer(
-        Duration::from_millis(500),
-        move |res: Result<Vec<DebouncedEvent>, _>| match res {
+        Duration::from_millis(DEBOUNCE_MS),
+        move |res: notify_debouncer_mini::DebounceEventResult| match res {
             Ok(events) => {
-                let relevant: Vec<_> = events
-                    .into_iter()
-                    .filter(|e| {
-                        let p = e.path.to_string_lossy();
-                        !p.contains("/.git/")
-                            && !p.contains("/target/")
-                            && !p.contains("/node_modules/")
-                            && !p.contains("/docs/")
-                            && !p.contains("/book/")
-                            && !p.contains("/.sruja/")
-                    })
-                    .collect();
-
-                if !relevant.is_empty() {
-                    let _ = tx_clone.blocking_send(relevant);
-                }
+                let _ = tx.blocking_send(events);
             }
             Err(e) => eprintln!("Watch error: {:?}", e),
         },
     )
-    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+    .map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 
     debouncer
         .watcher()
         .watch(repo_path, RecursiveMode::Recursive)
-        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
-
-    if clear {
-        print!("{}[2J{}[1;1H", 27 as char, 27 as char);
-    }
-    println!(
-        "{} Watching {} for changes...",
-        "👀".cyan(),
-        repo_root.bold()
-    );
-    println!("   Press Ctrl+C to exit. \n");
-
-    evaluate_and_display(repo_root, clear).await?;
+        .map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 
     while let Some(events) = rx.recv().await {
         while rx.try_recv().is_ok() {}
 
-        let path_summary = if events.len() == 1 {
-            let p = events[0]
-                .path
-                .strip_prefix(repo_path)
-                .unwrap_or(&events[0].path);
-            format!("File changed: {}", p.display())
-        } else {
-            format!("{} files changed", events.len())
-        };
-
-        if !clear {
-            println!("\n{} {}...", "↻".yellow(), path_summary);
+        if let Err(e) = handle_events(repo_root, events, Arc::clone(&state)).await {
+            eprintln!("{} {}", colors::error("Error during watch update:"), e);
         }
-
-        evaluate_and_display(repo_root, clear).await?;
     }
 
     Ok(())
 }
 
-async fn evaluate_and_display(repo_root: &str, clear: bool) -> Result<(), CliError> {
-    if clear {
-        print!("{}[2J{}[1;1H", 27 as char, 27 as char);
-    }
+async fn handle_events(
+    repo_root: &str,
+    events: Vec<DebouncedEvent>,
+    state: Arc<Mutex<WatchState>>,
+) -> Result<(), CliError> {
+    let mut s = state.lock().await;
 
-    let time = chrono::Local::now().format("%H:%M:%S");
-    println!(
-        "{} {} {}",
-        "─".repeat(20).truecolor(100, 100, 100),
-        time.to_string().truecolor(100, 100, 100),
-        "─".repeat(20).truecolor(100, 100, 100)
-    );
+    let relevant_events: Vec<_> = events
+        .iter()
+        .filter(|e| {
+            let path_str = e.path.to_string_lossy();
+            !path_str.contains("/.sruja/") && !path_str.contains("/.git/") && !path_str.contains("/target/")
+        })
+        .collect();
 
-    if let Err(e) = super::sync_cmd::sync(repo_root, "quiet").await {
-        eprintln!("{} Failed to sync context: {}", "✗".red(), e);
+    if relevant_events.is_empty() {
         return Ok(());
     }
 
-    match status_result(repo_root).await {
-        Ok(status) => {
-            let health_str = if let Some(score) = status.health_score {
-                format!("Health: {}/100", score)
-            } else {
-                "".to_string()
-            };
-
-            let status_color = match status.truth_status.as_str() {
-                "reviewed" => status.truth_status.green(),
-                "drifted" => status.truth_status.red(),
-                _ => status.truth_status.yellow(),
-            };
-
-            println!(
-                "{} {} | {} | {} violations",
-                "✓".green(),
-                status_color.bold(),
-                health_str.cyan(),
-                status.violations_count.to_string().yellow()
-            );
-
-            if status.violations_count > 0 {
-                println!("\n{}", "Violations:".bold());
-
-                if let Ok(json_str) = drift_json_string(repo_root, None, false).await {
-                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                        if let Some(violations) = value.get("violations").and_then(|v| v.as_array())
-                        {
-                            let display_count = std::cmp::min(10, violations.len());
-                            for v in violations.iter().take(display_count) {
-                                let kind =
-                                    v.get("kind").and_then(|k| k.as_str()).unwrap_or("unknown");
-                                let msg = v.get("message").and_then(|m| m.as_str()).unwrap_or("");
-
-                                let location = if let Some(sources) =
-                                    v.get("sources").and_then(|s| s.as_array())
-                                {
-                                    if let Some(src) = sources.first() {
-                                        if let Some(file) = src.get("file").and_then(|f| f.as_str())
-                                        {
-                                            if let Some(line) =
-                                                src.get("line").and_then(|l| l.as_u64())
-                                            {
-                                                format!("{}:{}", file, line)
-                                            } else {
-                                                file.to_string()
-                                            }
-                                        } else {
-                                            "".to_string()
-                                        }
-                                    } else {
-                                        "".to_string()
-                                    }
-                                } else {
-                                    "".to_string()
-                                };
-
-                                let loc_str = if location.is_empty() {
-                                    "".to_string()
-                                } else {
-                                    format!(" ({})", location)
-                                };
-
-                                println!(
-                                    "  {} {}{}",
-                                    "•".red(),
-                                    kind.bold(),
-                                    loc_str.truecolor(150, 150, 150)
-                                );
-                                println!("    {}", msg);
-                            }
-                            if violations.len() > display_count {
-                                println!("  ... and {} more", violations.len() - display_count);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("{} Evaluation failed: {}", "✗".red(), e);
+    if let Some(last) = s.last_run {
+        if last.elapsed() < THROTTLE_COOLDOWN {
+            return Ok(());
         }
     }
 
-    println!();
+    let mut current_retry = 0;
+    while current_retry <= MAX_RETRIES {
+        if current_retry > 0 {
+            let backoff = Duration::from_secs(current_retry as u64 * 2);
+            println!("  {} Retrying in {}...", colors::warning("⚠"), colors::elapsed_display(backoff));
+            tokio::time::sleep(backoff).await;
+        }
+
+        match run_sync_and_report(repo_root, &mut s).await {
+            Ok(_) => {
+                s.last_run = Some(Instant::now());
+                s.retry_count = 0;
+                return Ok(());
+            }
+            Err(e) => {
+                eprintln!("{} Evaluation failed (retry {}/{}): {}", colors::error("✗"), current_retry, MAX_RETRIES, e);
+                current_retry += 1;
+            }
+        }
+    }
+
     Ok(())
+}
+
+async fn run_sync_and_report(repo_root: &str, state: &mut WatchState) -> Result<(), CliError> {
+    if state.clear {
+        print!("{}[2J{}[1;1H", 27 as char, 27 as char);
+        colors::print_header("👁 Sruja Watcher (Automatic Refresh)");
+        println!();
+    }
+
+    let repo_path = Path::new(repo_root);
+    
+    // 1. Evaluate drift
+    let (violations, truth_status) = evaluate_drift(repo_path).await?;
+    
+    // 2. Health score
+    let _health_score = if violations.is_empty() { 100 } else { 0 }; // Simplified health for watch for now, or use sruja_diff::DriftReport
+
+    // 3. Compare violations
+    let current_fingerprints: HashSet<String> = violations.iter().map(fingerprint_violation).collect();
+
+    let new_violations: Vec<_> = violations
+        .iter()
+        .filter(|v| !state.previous_fingerprints.contains(&fingerprint_violation(v)))
+        .collect();
+
+    let resolved_count = state
+        .previous_fingerprints
+        .iter()
+        .filter(|fp| !current_fingerprints.contains(*fp))
+        .count();
+
+    // 4. Report
+    let now = chrono::Local::now().format("%H:%M:%S").to_string();
+    let status_icon = if truth_status == "reviewed" {
+        colors::success("✓")
+    } else {
+        colors::error("✗")
+    };
+
+    let diff_text = if !new_violations.is_empty() || resolved_count > 0 {
+        format!(
+            " ({}{}, {}{})",
+            if !new_violations.is_empty() { colors::error("+") } else { colors::dim("+") },
+            new_violations.len(),
+            if resolved_count > 0 { colors::success("-") } else { colors::dim("-") },
+            resolved_count
+        )
+    } else {
+        "".to_string()
+    };
+
+    println!(
+        "{} [{}] {} {} │ violations: {}{}",
+        colors::dim("→"),
+        colors::dim(now),
+        status_icon,
+        if truth_status == "reviewed" { colors::success("in sync") } else { colors::error("drifted") },
+        violations.len(),
+        diff_text
+    );
+
+    if !new_violations.is_empty() {
+        for v in new_violations {
+            let summ = summarize_violation(v);
+            println!(
+                "      {} {}: {} {}",
+                colors::error("+"),
+                colors::style(&summ.kind).bold(),
+                summ.message,
+                colors::dim(summ.location.as_deref().unwrap_or(""))
+            );
+        }
+    }
+
+    state.previous_fingerprints = current_fingerprints;
+    
+    // Also trigger a background sync to keep context.json up to date if possible, but safely.
+    let _ = super::sync_cmd::sync(repo_root, "quiet").await;
+
+    Ok(())
+}
+
+async fn evaluate_drift(repo_path: &Path) -> Result<(Vec<Violation>, String), CliError> {
+    let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
+    let baseline_path = architecture_path::resolve_architecture_path(repo_path);
+
+    if let Some(ref bp) = baseline_path {
+        let content = std::fs::read_to_string(bp)?;
+        let parser = sruja_language::Parser::new(bp.to_string_lossy().as_ref());
+        let program = parser.parse(&content).map_err(|diags| {
+            CliError::parse_with_diagnostics(bp.to_string_lossy().to_string(), diags)
+        })?;
+        let proposed = sruja_diff::program_to_graph(&program);
+        let diff = sruja_diff::compare_graphs(&graph, &proposed);
+        let truth = match diff.truth_status {
+            sruja_diff::TruthStatus::Reviewed => "reviewed",
+            sruja_diff::TruthStatus::Drifted => "drifted",
+            _ => "unknown",
+        };
+        Ok((diff.violations, truth.to_string()))
+    } else {
+        let drift = sruja_diff::detect_architectural_drift(&graph);
+        Ok((drift.violations, "unknown".to_string()))
+    }
 }

@@ -475,6 +475,9 @@ pub enum Commands {
         /// Path to architecture file
         #[arg(long, short = 'a')]
         architecture: Option<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }
 
@@ -725,7 +728,7 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             output,
         } => commands::index(&repo, architecture.as_deref(), &output).await,
         Commands::Completions { shell } => commands::completions(shell),
-        Commands::Health { repo, architecture } => commands::health(&repo, architecture.as_deref()).await,
+        Commands::Health { repo, architecture, format } => commands::health(&repo, architecture.as_deref(), &format).await,
     };
 
     match result {

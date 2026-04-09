@@ -1,9 +1,30 @@
+use std::fs;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 use crate::commands::CliError;
 use crate::utils::{colors, progress};
-use crate::scoring::health::calculate_health;
+use crate::scoring::health::{calculate_health, Deduction};
 
-pub async fn health(repo_root: &str, architecture: Option<&str>) -> Result<(), CliError> {
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct HealthScoreOutput {
+    pub score: u8,
+    pub trend: String,
+    pub architecture: String,
+    pub deductions: Vec<Deduction>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+struct HealthHistory {
+    pub scores: Vec<HistoryEntry>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct HistoryEntry {
+    pub timestamp: u64,
+    pub score: u8,
+}
+
+pub async fn health(repo_root: &str, architecture: Option<&str>, format: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     
     // 1. Parse architecture file
@@ -30,38 +51,93 @@ pub async fn health(repo_root: &str, architecture: Option<&str>) -> Result<(), C
     // 3. Calculate score
     let health = calculate_health(&diff.violations, &program);
 
-    // 4. Report
-    colors::print_header("🩺 Architecture Health Report");
+    // 4. Persistence & Trend
+    let dot_sruja = repo_path.join(".sruja");
+    if !dot_sruja.exists() {
+        let _ = fs::create_dir_all(&dot_sruja);
+    }
     
-    let score_color = if health.score >= 90 {
-        colors::success(health.score)
-    } else if health.score >= 70 {
-        colors::info(health.score)
-    } else if health.score >= 50 {
-        colors::warning(health.score)
+    let history_path = dot_sruja.join("health_history.json");
+    let mut history: HealthHistory = if history_path.exists() {
+        let content = fs::read_to_string(&history_path).unwrap_or_default();
+        serde_json::from_str(&content).unwrap_or_default()
     } else {
-        colors::error(health.score)
+        HealthHistory::default()
     };
 
-    println!("Score: {}/100", score_color);
-    println!();
-
-    if health.deductions.is_empty() {
-        println!("{} Your architecture is in perfect health!", colors::success("✨"));
-    } else {
-        println!("{}", colors::style("Deductions:").bold());
-        for d in &health.deductions {
-            println!("  {} {} (-{} pts)", colors::error("-"), colors::dim(&d.message), d.points);
-        }
-        
-        println!();
-        println!("{}", colors::style("Recommendations:").bold());
-        if health.score < 90 {
-            println!("  • Resolve architectural drift using 'sruja drift --fix'");
-            println!("  • Add missing descriptions to components in your .sruja files");
-            println!("  • Ensure all components are linked to a system or container (no orphans)");
+    let last_score = history.scores.last().map(|e| e.score);
+    let trend = if let Some(last) = last_score {
+        if health.score > last {
+            "up"
+        } else if health.score < last {
+            "down"
         } else {
-            println!("  • Your architecture is looking great! Keep maintaining it.");
+            "steady"
+        }
+    } else {
+        "new"
+    };
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    
+    // Only append if it's a new timestamp (rough avoid duplicates in same run)
+    if history.scores.last().map(|e| e.timestamp != now).unwrap_or(true) {
+        history.scores.push(HistoryEntry {
+            timestamp: now,
+            score: health.score,
+        });
+        // Keep last 50 entries
+        if history.scores.len() > 50 {
+            history.scores.remove(0);
+        }
+        let _ = fs::write(&history_path, serde_json::to_string_pretty(&history).unwrap_or_default());
+    }
+
+    match format {
+        "json" => {
+            let output = HealthScoreOutput {
+                score: health.score,
+                trend: trend.to_string(),
+                architecture: arch_path.to_string_lossy().to_string(),
+                deductions: health.deductions,
+            };
+            println!("{}", serde_json::to_string_pretty(&output).map_err(|e| CliError::validation(e.to_string()))?);
+        }
+        _ => {
+            colors::print_header("🩺 Architecture Health Report");
+            
+            let trend_icon = match trend {
+                "up" => colors::success("↑").to_string(),
+                "down" => colors::error("↓").to_string(),
+                "steady" => colors::dim("→").to_string(),
+                _ => "".to_string(),
+            };
+
+            println!("  Score: {} {}", colors::health_bar(health.score, 20), trend_icon);
+            println!("  File:  {}", arch_path.display());
+            println!();
+
+            if health.deductions.is_empty() {
+                println!("  {} Your architecture is in perfect health!", colors::success("✨"));
+            } else {
+                println!("{}", colors::style("Deductions:").bold());
+                for d in &health.deductions {
+                    println!("  {} {} (-{} pts)", colors::error("-"), colors::dim(&d.message), d.points);
+                }
+                
+                println!();
+                println!("{}", colors::style("Recommendations:").bold());
+                if health.score < 90 {
+                    println!("  • Resolve architectural drift using 'sruja drift --fix'");
+                    println!("  • Add missing descriptions to components in your .sruja files");
+                    println!("  • Ensure all components are linked to a system or container (no orphans)");
+                } else {
+                    println!("  • Your architecture is looking great! Keep maintaining it.");
+                }
+            }
         }
     }
 
