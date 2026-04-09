@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.29.0...sruja-v0.30.0) (2026-04-09)
+
+
+### Features
+
+* **cli:** refactor infrastructure, enhance status dashboard, and improve health scoring ([b4b3e80](https://github.com/sruja-ai/sruja/commit/b4b3e808a13b38d6838072b20c3f56f7206da44e))
+
 ## [0.29.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.28.0...sruja-v0.29.0) (2026-04-08)
 
 

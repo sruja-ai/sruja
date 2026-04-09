@@ -2,7 +2,7 @@
   "name": "sruja",
   "displayName": "Sruja – Context engineering for the AI era.",
   "description": "Sruja – Context engineering for the AI era.: diagnostics, syntax highlighting, snippets, markdown export, and AI features (skills, rules)",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "publisher": "SrujaAI",
   "icon": "sruja-logo.png",
   "license": "Apache-2.0",
