@@ -148,9 +148,20 @@ jobs:
           ls -la upload/
 
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1.5.2.6.1
-        with:
-          tag_name: ${{ needs.set-version.outputs.tag }}
-          files: upload/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.set-version.outputs.tag }}
+        run: |
+          gh release upload "$TAG" upload/* --clobber
+
+      - name: Verify release has assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.set-version.outputs.tag }}
+        run: |
+          asset_count="$(gh api "repos/${{ github.repository }}/releases/tags/${TAG}" --jq '.assets | length')"
+          echo "assets=$asset_count"
+          if [ "$asset_count" -lt 1 ]; then
+            echo "::error::Release ${TAG} has no attached assets."
+            exit 1
+          fi
