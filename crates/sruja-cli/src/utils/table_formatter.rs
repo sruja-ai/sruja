@@ -106,6 +106,45 @@ impl TableFormatter {
         output
     }
 
+    pub fn format_dashboard(&self, title: &str, blocks: Vec<(String, String)>) -> String {
+        let mut output = String::new();
+
+        let border = "═".repeat(self.max_width.saturating_sub(1).max(1));
+        output.push_str(&format!("╔{}╗\n", border));
+
+        let title_centered = format!(" {} ", title);
+        let title_padding_left = (self.max_width.saturating_sub(title_centered.len()) / 2).max(1);
+        let title_padding_right = self.max_width.saturating_sub(title_centered.len() + title_padding_left + 1);
+        output.push_str(&format!("║{}{}{}║\n", " ".repeat(title_padding_left), title_centered, " ".repeat(title_padding_right)));
+        output.push_str(&format!("╠{}╣\n", border));
+
+        for (i, (header, content)) in blocks.iter().enumerate() {
+            if i > 0 {
+                output.push_str(&format!("╟{}╢\n", "─".repeat(self.max_width.saturating_sub(1))));
+            }
+            output.push_str(&format!("║ {} ║\n", crate::utils::colors::style(header).bold()));
+            
+            for line in content.lines() {
+                let trimmed = line.trim_end();
+                // Special handling for escape sequences to avoid padding issues (rough approximation)
+                let visible_len = console::strip_ansi_codes(trimmed).len();
+                let line_padding = self.max_width.saturating_sub(visible_len + 3);
+                output.push_str(&format!("║  {}{}\n", trimmed, " ".repeat(line_padding)));
+            }
+        }
+
+        output.push_str(&format!("╚{}╝\n", border));
+        output
+    }
+
+    pub fn format_sparkline(scores: &[u8]) -> String {
+        const BARS: &[char] = &[' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+        scores.iter().map(|&s| {
+            let idx = ((s as f32 / 100.0) * (BARS.len() - 1) as f32).round() as usize;
+            BARS[idx]
+        }).collect()
+    }
+
     pub fn detect_width() -> usize {
         use std::env;
 

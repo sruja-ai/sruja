@@ -133,8 +133,8 @@ export function app() { return helper(); }
 
     let out = format!("{} {}", stdout, stderr);
     assert!(
-        out.contains("Next steps:"),
-        "daily output should include next steps. stdout={} stderr={}",
+        out.contains("Recommended Actions:"),
+        "daily output should include recommended actions. stdout={} stderr={}",
         stdout,
         stderr
     );

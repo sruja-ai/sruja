@@ -272,6 +272,9 @@ pub enum Commands {
         /// Install a GitHub Actions workflow for Sruja checks
         #[arg(long)]
         ci: bool,
+        /// Do not write files, only show what would happen
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Quick repo health check: baseline, truth status, and last evidence refresh
     #[command(visible_alias = "doctor")]
@@ -291,6 +294,9 @@ pub enum Commands {
         /// Clear screen between runs
         #[arg(long)]
         clear: bool,
+        /// Only watch specific paths (comma separated)
+        #[arg(long)]
+        focus: Option<String>,
     },
     /// Refresh evidence (write .sruja/context.json) and run drift
     Sync {
@@ -310,6 +316,9 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Show all violations (default is capped at 5)
+        #[arg(long, short)]
+        verbose: bool,
     },
     /// Check: CI-focused drift check (always exits 0, outputs github-actions format)
     Check {
@@ -620,11 +629,20 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             force,
             hook,
             ci,
-        } => commands::init(&path, prompt, auto, force, hook, ci).await,
+            dry_run,
+        } => commands::init(&path, prompt, auto, force, hook, ci, dry_run).await,
         Commands::Status { path, format } => commands::status(&path, &format).await,
-        Commands::Watch { path, clear } => commands::watch(&path, clear).await,
+        Commands::Watch {
+            path,
+            clear,
+            focus,
+        } => commands::watch(&path, clear, focus).await,
         Commands::Sync { path, format } => commands::sync(&path, &format).await,
-        Commands::Review { path, format } => commands::review(&path, &format).await,
+        Commands::Review {
+            path,
+            format,
+            verbose,
+        } => commands::review(&path, &format, verbose).await,
         Commands::Check {
             path,
             format,

@@ -34,6 +34,7 @@ notify-debouncer-mini = "0.4.1"
 clap_complete = "4.5"
 console = "0.15"
 dialoguer = "0.11"
+crossterm = "0.28"
 
 [dev-dependencies]
 tempfile = "3.27"

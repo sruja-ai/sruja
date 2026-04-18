@@ -258,14 +258,63 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
             sruja_diff::TruthStatus::Drifted => "drifted",
             sruja_diff::TruthStatus::Unknown => "unknown",
         };
+        let health_history = std::fs::read_to_string(repo_path.join(".sruja/health_history.json"))
+            .ok()
+            .and_then(|s| {
+                serde_json::from_str::<serde_json::Value>(&s)
+                    .ok()
+                    .and_then(|v| {
+                        v.get("scores")
+                            .and_then(|scores| scores.as_array())
+                            .map(|arr| {
+                                arr.iter()
+                                    .filter_map(|e| e.get("score").and_then(|s| s.as_u64()).map(|s| s as u8))
+                                    .collect::<Vec<u8>>()
+                            })
+                    })
+            })
+            .unwrap_or_default();
+
+        let top_findings: Vec<super::output::Finding> = diff.violations.iter().take(3).map(|v| {
+            let mut evidence: Vec<String> = v.location.as_ref().map(|s| vec![s.clone()]).unwrap_or_default();
+            for s in &v.sources {
+                evidence.push(sruja_diff::SourceRef::display_string(s));
+            }
+            super::output::Finding {
+                severity: format!("{:?}", v.severity).to_lowercase(),
+                kind: format!("{:?}", v.kind),
+                message: v.message.clone(),
+                evidence,
+            }
+        }).collect();
+
         return Ok(StatusOutput {
             baseline: Some(arch_path.clone()),
             truth_status: truth_status.to_string(),
             violations_count: diff.violations.len(),
             health_score: Some(diff.summary.health_score),
             context_updated_at,
+            top_findings,
+            health_history,
         });
     }
+
+    let health_history = std::fs::read_to_string(repo_path.join(".sruja/health_history.json"))
+        .ok()
+        .and_then(|s| {
+            serde_json::from_str::<serde_json::Value>(&s)
+                .ok()
+                .and_then(|v| {
+                    v.get("scores")
+                        .and_then(|scores| scores.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|e| e.get("score").and_then(|s| s.as_u64()).map(|s| s as u8))
+                                .collect::<Vec<u8>>()
+                        })
+                })
+        })
+        .unwrap_or_default();
 
     let drift = sruja_diff::detect_architectural_drift(&graph);
     let truth_status = match drift.truth_status {
@@ -273,12 +322,28 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
         sruja_diff::TruthStatus::Drifted => "drifted",
         sruja_diff::TruthStatus::Unknown => "unknown",
     };
+
+    let top_findings: Vec<super::output::Finding> = drift.violations.iter().take(3).map(|v| {
+        let mut evidence: Vec<String> = v.location.as_ref().map(|s| vec![s.clone()]).unwrap_or_default();
+        for s in &v.sources {
+            evidence.push(sruja_diff::SourceRef::display_string(s));
+        }
+        super::output::Finding {
+            severity: format!("{:?}", v.severity).to_lowercase(),
+            kind: format!("{:?}", v.kind),
+            message: v.message.clone(),
+            evidence,
+        }
+    }).collect();
+
     Ok(StatusOutput {
         baseline: None,
         truth_status: truth_status.to_string(),
         violations_count: drift.violations.len(),
         health_score: Some(drift.health_score),
         context_updated_at,
+        top_findings,
+        health_history,
     })
 }
 

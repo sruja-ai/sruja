@@ -35,7 +35,7 @@ fn is_usize_zero(v: &usize) -> bool {
     *v == 0
 }
 
-pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
+pub async fn review(repo_root: &str, format: &str, verbose: bool) -> Result<(), CliError> {
     let start_time = Instant::now();
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -46,7 +46,6 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
     }
 
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
-    let has_baseline = baseline_path.is_some();
 
     // Review is the day-to-day workflow, so refresh cached evidence first.
     super::sync_cmd::sync(repo_root, "quiet").await?;
@@ -92,7 +91,14 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
         .filter(|v| is_production_relevant(v))
         .collect();
 
-    // Mark production_relevant/evidence_count and split by baseline suppression if baseline fingerprints exist.
+    // Sort by severity (error first)
+    filtered_violations.sort_by(|a, b| {
+        use sruja_diff::Severity;
+        let a_sev = match a.severity { Severity::Error => 0, Severity::Warning => 1, Severity::Info => 2 };
+        let b_sev = match b.severity { Severity::Error => 0, Severity::Warning => 1, Severity::Info => 2 };
+        a_sev.cmp(&b_sev)
+    });
+
     for v in &mut filtered_violations {
         v.production_relevant = Some(true);
         if v.evidence_count.is_none() {
@@ -127,7 +133,7 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
             (filtered_violations, Vec::new())
         };
 
-    let has_drift = truth_status == "drifted" || (!has_baseline && !active_violations.is_empty());
+    let has_drift = truth_status == "drifted" || (baseline_path.is_none() && !active_violations.is_empty());
     let (new_components, missing_components, drifted_dependencies) =
         categorize_violations(&active_violations);
     let open_questions = generate_open_questions(&active_violations);
@@ -165,70 +171,61 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
             );
         }
         _ => {
-            colors::print_header("📅 Sruja Daily Review");
-            if let Some(ref base) = output.baseline {
-                println!("  {} {}", colors::dim("Baseline:"), base);
-            } else {
-                println!("  {} {}", colors::dim("Baseline:"), colors::warning("none (repo.sruja not found)"));
-            }
-            
-            let time_str = colors::elapsed_display(elapsed);
-            println!("  {} {}", colors::dim("Elapsed:"), colors::info(time_str));
-            println!();
+            use crate::utils::table_formatter::TableFormatter;
+            let formatter = TableFormatter::auto();
+            let mut blocks = Vec::new();
 
+            // 1. Health Summary
+            let mut health_info = String::new();
+            if let Some(score) = output.health_score {
+                health_info.push_str(&format!("Score:  {}\n", colors::health_bar(score, 20)));
+            }
             let status_color = match output.truth_status.as_str() {
                 "reviewed" => colors::success(&output.truth_status),
                 "drifted" => colors::error(&output.truth_status),
                 _ => colors::warning(&output.truth_status),
             };
+            health_info.push_str(&format!("Status: {}\n", status_color));
+            health_info.push_str(&format!("Issues: {} active, {} suppressed\n", 
+                colors::style(output.violations_count).bold(), 
+                colors::dim(output.suppressed_count)
+            ));
+            blocks.push(("Architecture Review".to_string(), health_info));
 
-            let errors = output.violations.iter().filter(|v| v.severity == "error").count();
-            let warnings = output.violations.iter().filter(|v| v.severity == "warning").count();
-            
-            println!(
-                "  {} {} ({} errors, {} warnings)",
-                colors::dim("Truth Status:"),
-                status_color,
-                colors::error(errors),
-                colors::warning(warnings)
-            );
-
-            if let Some(score) = output.health_score {
-                println!(
-                    "  {} {}",
-                    colors::dim("Health Score: "),
-                    colors::health_bar(score, 20)
-                );
-            }
-            println!();
-
-            if !output.new_components.is_empty() {
-                println!("{}", colors::style("New components (may need documentation):").bold());
-                for c in &output.new_components {
-                    println!("  {} {}", colors::success("+"), c);
-                }
-                println!();
-            }
-
-            if !output.missing_components.is_empty() {
-                println!("{}", colors::style("Missing components (in baseline but not code):").bold());
-                for c in &output.missing_components {
-                    println!("  {} {}", colors::error("-"), c);
-                }
-                println!();
-            }
-
-            if !output.drifted_dependencies.is_empty() {
-                println!("{}", colors::style("Drifted dependencies:").bold());
-                for d in &output.drifted_dependencies {
-                    println!("  {} {}", colors::warning("~"), d);
-                }
-                println!();
-            }
-
+            // 2. Priority Fix (DX highlight)
             if !output.violations.is_empty() {
-                println!("{}", colors::style("Active Violations:").bold());
-                for v in &output.violations {
+                let priority = &output.violations[0];
+                let mut fix_info = String::new();
+                fix_info.push_str(&format!("{} {}\n", colors::severity_icon(&priority.severity), colors::style(&priority.message).bold()));
+                if let Some(ref loc) = priority.location {
+                    fix_info.push_str(&format!("{} {}\n", colors::dim("Loc:"), loc));
+                }
+                blocks.push((colors::error("Priority Fix").to_string(), fix_info));
+            }
+
+            // 3. Structural Changes
+            let mut changes_info = String::new();
+            if !output.new_components.is_empty() {
+                changes_info.push_str(&format!("{} new components detected\n", colors::success(output.new_components.len())));
+            }
+            if !output.missing_components.is_empty() {
+                changes_info.push_str(&format!("{} components missing from code\n", colors::error(output.missing_components.len())));
+            }
+            if !output.drifted_dependencies.is_empty() {
+                changes_info.push_str(&format!("{} drifted dependencies\n", colors::warning(output.drifted_dependencies.len())));
+            }
+            if changes_info.is_empty() {
+                changes_info.push_str("No structural changes detected.\n");
+            }
+            blocks.push(("Structural Read".to_string(), changes_info));
+
+            println!("{}", formatter.format_dashboard("DAILY ARCHITECTURE REVIEW", blocks));
+
+            // Detailed Violations
+            if !output.violations.is_empty() {
+                println!("{}", colors::style("Detailed Findings:").bold());
+                let limit = if verbose { output.violations.len() } else { 5 };
+                for (_i, v) in output.violations.iter().take(limit).enumerate() {
                     println!(
                         "  {} {}: {} {}",
                         colors::severity_icon(&v.severity),
@@ -237,23 +234,27 @@ pub async fn review(repo_root: &str, format: &str) -> Result<(), CliError> {
                         colors::dim(v.location.as_deref().unwrap_or(""))
                     );
                 }
-                println!();
-            }
-
-            if !output.open_questions.is_empty() {
-                println!("{}", colors::style("Open questions:").bold());
-                for q in &output.open_questions {
-                    println!("  {} {}", colors::info("?"), q);
+                
+                if output.violations.len() > limit {
+                    println!("  {} ... and {} more issues. Run with {} to see all.", 
+                        colors::dim("•"), 
+                        output.violations.len() - limit,
+                        colors::info("--verbose")
+                    );
                 }
                 println!();
             }
 
+            // Suggestions
             if !output.suggestions.is_empty() {
-                println!("{}", colors::style("Next steps:").bold());
+                println!("{}", colors::style("Recommended Actions:").bold());
                 for s in &output.suggestions {
                     println!("  {} {}", colors::success(">"), s);
                 }
             }
+            
+            println!();
+            println!("{}", colors::dim(format!("Done in {}", colors::elapsed_display(elapsed))));
         }
     }
 

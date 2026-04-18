@@ -16,6 +16,7 @@ pub async fn init(
     force: bool,
     hook: bool,
     ci: bool,
+    dry_run: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     use crate::utils::{colors, progress};
@@ -28,7 +29,7 @@ pub async fn init(
         )));
     }
 
-    let is_interactive = !auto && !generate_prompt_file && !ci && !hook && !force;
+    let is_interactive = !auto && !generate_prompt_file && !ci && !hook && !force && !dry_run;
 
     if is_interactive {
         colors::print_header("🚀 Sruja - Repository Initialization");
@@ -36,53 +37,64 @@ pub async fn init(
         println!();
     }
 
+    if dry_run {
+        println!("{}", colors::warning("DRY RUN MODE: No files will be written."));
+        println!();
+    }
+
     let dot_sruja = repo_path.join(".sruja");
     if !dot_sruja.exists() {
-        fs::create_dir_all(&dot_sruja).map_err(|e| {
-            CliError::Io(std::io::Error::new(
-                e.kind(),
-                format!("Failed to create {}: {}", dot_sruja.display(), e),
-            ))
-        })?;
-        if is_interactive {
-            println!("  {} Created {}", colors::success("✓"), colors::dim(".sruja/"));
+        if !dry_run {
+            fs::create_dir_all(&dot_sruja).map_err(|e| {
+                CliError::Io(std::io::Error::new(
+                    e.kind(),
+                    format!("Failed to create {}: {}", dot_sruja.display(), e),
+                ))
+            })?;
+        }
+        if is_interactive || dry_run {
+            println!("  {} [1/4] Created {}", colors::success("✓"), colors::dim(".sruja/"));
         }
     }
 
     // Project detection
     let project_type = detect_project_type(repo_path);
-    if is_interactive {
-        println!("  {} Detected project: {}", colors::success("✓"), colors::info(&project_type));
+    if is_interactive || dry_run {
+        println!("  {} [2/4] Detected project: {}", colors::success("✓"), colors::info(&project_type));
     }
 
     // .srujaignore generation
     let srujaignore_path = repo_path.join(".srujaignore");
     if !srujaignore_path.exists() || force {
         let ignore_content = generate_srujaignore(&project_type);
-        fs::write(&srujaignore_path, ignore_content)?;
-        if is_interactive {
-            println!("  {} Generated {}", colors::success("✓"), colors::dim(".srujaignore"));
+        if !dry_run {
+            fs::write(&srujaignore_path, ignore_content)?;
+        }
+        if is_interactive || dry_run {
+            println!("  {} [3/4] Generated {}", colors::success("✓"), colors::dim(".srujaignore"));
         }
     }
 
     if generate_prompt_file {
         let prompt_path = dot_sruja.join("init_prompt.txt");
         if !prompt_path.exists() || force {
-            let repos = vec![repo_root.to_string()];
-            let out = prompt_path.to_string_lossy().to_string();
-            generate_prompt(
-                &repos,
-                None,
-                Some(&out),
-            )?;
-            if is_interactive {
+            if !dry_run {
+                let repos = vec![repo_root.to_string()];
+                let out = prompt_path.to_string_lossy().to_string();
+                generate_prompt(
+                    &repos,
+                    None,
+                    Some(&out),
+                )?;
+            }
+            if is_interactive || dry_run {
                 println!(
-                    "  {} Generated {}",
+                    "  {} [4/4] Generated {}",
                     colors::success("✓"),
                     colors::dim(".sruja/init_prompt.txt")
                 );
             }
-        } else if is_interactive {
+        } else if is_interactive || dry_run {
             println!(
                 "  {} Skipped {} (already exists; use --force to overwrite)",
                 colors::info("i"),
@@ -98,7 +110,7 @@ pub async fn init(
     if is_interactive {
         println!();
         should_auto = Confirm::new()
-            .with_prompt("Generate initial architecture baseline from code (v0.18+ recommendation)?")
+            .with_prompt("Generate initial architecture baseline from code?")
             .default(true)
             .interact()
             .unwrap_or(auto);
@@ -131,12 +143,24 @@ pub async fn init(
             }
         };
         
-        let baseline = super::scan::output::write_draft_baseline(repo_path, &graph, force)?;
+        let baseline = if !dry_run {
+            super::scan::output::write_draft_baseline(repo_path, &graph, force)?
+        } else {
+            Some(repo_path.join("repo.sruja"))
+        };
         pb.finish_and_clear();
 
         if let Some(path) = baseline {
-            if is_interactive {
+            if is_interactive || dry_run {
                 println!("  {} Generated baseline: {}", colors::success("✅"), colors::info(path.display().to_string()));
+                
+                // Show Summary Card
+                println!();
+                println!("  {}", colors::style("Architecture Summary:").bold());
+                println!("    • Components:   {}", colors::style(graph.nodes.len().to_string()).bold());
+                println!("    • Relations:    {}", colors::style(graph.edges.len().to_string()).bold());
+                println!("    • Entrypoints:  {}", colors::style(graph.nodes.iter().filter(|n| n.kind == sruja_scan::NodeKind::Service).count().to_string()).bold());
+
                 println!();
                 println!("{}", colors::style("Next steps:").bold());
                 println!("  1. {} Use 'sruja lint {}' to check the architecture.", colors::info("Review:"), path.display());
@@ -145,10 +169,10 @@ pub async fn init(
             } else {
                 eprintln!("✅ Generated baseline: {}", path.display());
             }
-            if !is_interactive {
+            if !is_interactive && !dry_run {
                 return Ok(());
             }
-        } else if !is_interactive {
+        } else if !is_interactive && !dry_run {
             eprintln!("⚠️ Baseline already exists. Use --force to overwrite.");
         }
     }
@@ -156,25 +180,27 @@ pub async fn init(
     if !should_auto {
         let baseline_path = architecture_path::resolve_architecture_path(repo_path);
         if let Some(ref p) = baseline_path {
-            if is_interactive {
+            if is_interactive || dry_run {
                 println!("  {} Existing architecture file: {}", colors::info("i"), p.display());
             }
-        } else if is_interactive {
+        } else if is_interactive || dry_run {
             println!("  {} No architecture file found. Creating manual skeleton recommended.", colors::warning("!"));
         }
         
-        quickstart(repo_root, "text", false, None).await?;
+        if !dry_run {
+            quickstart(repo_root, "text", false, None).await?;
+        }
     }
 
-    if should_hook {
+    if should_hook && !dry_run {
         install_pre_commit_hook(repo_path)?;
     }
 
-    if should_ci {
+    if should_ci && !dry_run {
         install_github_actions_workflow(repo_path)?;
     }
 
-    if is_interactive {
+    if is_interactive || dry_run {
         println!();
         println!("{} Sruja is ready! Try running {} to start monitoring your project.", 
             colors::success("🎉"), 

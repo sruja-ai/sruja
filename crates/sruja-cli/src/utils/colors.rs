@@ -119,3 +119,23 @@ pub fn elapsed_display(duration: Duration) -> String {
         format!("{}d {}h", secs / 86400, (secs % 86400) / 3600)
     }
 }
+
+pub fn badge(text: &str, color: &str) -> String {
+    let colored_text = match color {
+        "success" => success(text).to_string(),
+        "error" => error(text).to_string(),
+        "warning" => warning(text).to_string(),
+        "info" => info(text).to_string(),
+        _ => style(text).white().to_string(),
+    };
+    format!("[{}]", style(colored_text).bold())
+}
+
+pub fn sparkline(scores: &[u8]) -> String {
+    const BARS: &[char] = &[' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+    if scores.is_empty() { return String::new(); }
+    scores.iter().map(|&s| {
+        let idx = ((s as f32 / 100.0) * (BARS.len() - 1) as f32).round() as usize;
+        BARS[idx]
+    }).collect()
+}
