@@ -5,6 +5,20 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.32.0...sruja-v0.33.0) (2026-04-23)
+
+
+### Features
+
+* Add context-graph visualization, CI guardrails, and cache resiliency ([ab4261d](https://github.com/sruja-ai/sruja/commit/ab4261db7bd6bb8e811df188133d81608084b637))
+* finalize sruja dogfooding with 100/100 context score ([32db9fb](https://github.com/sruja-ai/sruja/commit/32db9fb38a51cc3ae2734e53139a26785eaaa44d))
+* refactor node classification to signal-based engine and enhance AI-editor context ([4cc1a67](https://github.com/sruja-ai/sruja/commit/4cc1a6757c37f94b58ab1855c9592e65b9bbede0))
+
+
+### Bug Fixes
+
+* add missing 'affects' field to Adr in export printer tests ([08dcbb9](https://github.com/sruja-ai/sruja/commit/08dcbb951714fb222abe9c11ed75789abf6b79de))
+
 ## [0.32.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.31.0...sruja-v0.32.0) (2026-04-23)
 
 
