@@ -46,7 +46,8 @@ pub fn print_adr(out: &mut String, adr: &Adr) {
     let has_body = adr.status.is_some()
         || adr.context.is_some()
         || adr.decision.is_some()
-        || adr.consequences.is_some();
+        || adr.consequences.is_some()
+        || !adr.affects.is_empty();
     if has_body {
         out.push_str(" {\n");
         if let Some(status) = &adr.status {
@@ -60,6 +61,9 @@ pub fn print_adr(out: &mut String, adr: &Adr) {
         }
         if let Some(consequences) = &adr.consequences {
             out.push_str(&format!("    consequences \"{}\"\n", consequences));
+        }
+        for affect in &adr.affects {
+            out.push_str(&format!("    affects \"{}\"\n", affect));
         }
         out.push_str("}\n");
     } else {
@@ -265,6 +269,7 @@ mod tests {
             context: Some("Need speed".to_string()),
             decision: Some("Rust".to_string()),
             consequences: Some("Fast".to_string()),
+            affects: vec![],
         };
         print_adr(&mut out, &adr);
         assert!(out.contains("adr ADR_1 \"Use Rust\" {"));
