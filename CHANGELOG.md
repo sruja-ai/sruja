@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.33.0...sruja-v0.34.0) (2026-04-23)
+
+
+### Features
+
+* **behavioral-dsl:** implement state machines and api contracts (Phase 3) ([3758a25](https://github.com/sruja-ai/sruja/commit/3758a254d104080c4a2a0e1d90f56ea07580d34b))
+* implement Phase 2 architecture-first review workflow ([30f4ebd](https://github.com/sruja-ai/sruja/commit/30f4ebd8e330585b6495b2bd60991130c19ff09f))
+
 ## [0.33.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.32.0...sruja-v0.33.0) (2026-04-23)
 
 
