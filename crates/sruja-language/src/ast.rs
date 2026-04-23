@@ -167,7 +167,7 @@ pub struct ParseNodeKindError(pub String);
 #[error("Unknown EdgeKind: '{0}'")]
 pub struct ParseEdgeKindError(pub String);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NodeKind {
     /// A top-level system or subsystem that groups related services.
@@ -188,6 +188,8 @@ pub enum NodeKind {
     Frontend,
     /// A generic module or package.
     Module,
+    /// Custom node kind
+    Custom(String),
 }
 
 impl NodeKind {
@@ -203,6 +205,21 @@ impl NodeKind {
             NodeKind::ExternalApi => "external_api",
             NodeKind::Frontend => "frontend",
             NodeKind::Module => "module",
+            NodeKind::Custom(_) => "custom",
+        }
+    }
+
+    pub fn kind_str(&self) -> &str {
+        match self {
+            NodeKind::Custom(s) => s.as_str(),
+            _ => self.as_str(),
+        }
+    }
+
+    pub fn to_string_kind(&self) -> String {
+        match self {
+            NodeKind::Custom(s) => s.clone(),
+            _ => self.as_str().to_string(),
         }
     }
 }
@@ -232,7 +249,7 @@ impl std::str::FromStr for NodeKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EdgeKind {
     /// Indicates that the source node depends on the target node for functionality.
@@ -253,6 +270,8 @@ pub enum EdgeKind {
     Contains,
     /// Indicates that the source node uses the target node in some way.
     Uses,
+    /// Custom edge kind
+    Custom(String),
 }
 
 impl EdgeKind {
@@ -268,6 +287,21 @@ impl EdgeKind {
             EdgeKind::Owns => "owns",
             EdgeKind::Contains => "contains",
             EdgeKind::Uses => "uses",
+            EdgeKind::Custom(_) => "custom",
+        }
+    }
+
+    pub fn kind_str(&self) -> &str {
+        match self {
+            EdgeKind::Custom(s) => s.as_str(),
+            _ => self.as_str(),
+        }
+    }
+
+    pub fn to_string_kind(&self) -> String {
+        match self {
+            EdgeKind::Custom(s) => s.clone(),
+            _ => self.as_str().to_string(),
         }
     }
 }

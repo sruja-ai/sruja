@@ -3,6 +3,7 @@
 //! Uses Tarjan's algorithm to find maximal cyclic subgraphs in dependency graphs.
 //! SCCs reveal tightly coupled clusters and potential domain boundaries.
 
+use sruja_graph_core::{ContextEdge, ContextGraph, ContextNode};
 use std::collections::{HashMap, HashSet};
 
 pub type SccId = String;
@@ -45,6 +46,16 @@ impl SccAnalyzer {
 
     pub fn with_min_size(min_size: usize) -> Self {
         Self { min_size }
+    }
+
+    pub fn analyze_graph<G: ContextGraph>(&self, graph: &G) -> SccResult {
+        let nodes: Vec<String> = graph.nodes().iter().map(|n| n.id().to_string()).collect();
+        let edges: Vec<(String, String)> = graph
+            .edges()
+            .iter()
+            .map(|e| (e.source().to_string(), e.target().to_string()))
+            .collect();
+        self.analyze(&nodes, &edges)
     }
 
     pub fn analyze(&self, nodes: &[String], edges: &[(String, String)]) -> SccResult {

@@ -157,7 +157,7 @@ fn compute_light_centrality(graph: &Graph) -> HashMap<String, ComponentImportanc
 fn summarize_node(node: &Node, centrality: &HashMap<String, ComponentImportance>) -> NodeSummary {
     NodeSummary {
         id: node.id.clone(),
-        kind: node.kind,
+        kind: node.kind.clone(),
         label: node.label.clone(),
         technology: node.technology.clone(),
         path: node.path.clone(),

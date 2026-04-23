@@ -47,7 +47,7 @@ pub fn merge_scan_into_graph(
     for node in &scan_graph.nodes {
         let arch_node = ArchitectureNode {
             id: node.id.clone(),
-            kind: node.kind,
+            kind: node.kind.clone(),
             label: node.label.clone(),
             technology: node.technology.clone(),
             description: node.path.clone(),
@@ -68,7 +68,7 @@ pub fn merge_scan_into_graph(
             id: edge_id,
             source: edge.source.clone(),
             target: edge.target.clone(),
-            kind: edge.kind,
+            kind: edge.kind.clone(),
             label: None,
             description: None,
             source_ref: source.clone(),
@@ -203,19 +203,19 @@ mod tests {
         let mut kg = KnowledgeGraph::new();
 
         // Test all node kind conversions
-        let test_cases = [
+        let test_cases = vec![
             NodeKind::Service,
             NodeKind::Module,
             NodeKind::Database,
             NodeKind::ExternalApi,
         ];
 
-        for (i, &kind) in test_cases.iter().enumerate() {
+        for (i, kind) in test_cases.into_iter().enumerate() {
             let scan_graph = Graph {
                 metadata: HashMap::new(),
                 nodes: vec![Node {
                     id: format!("test.{}", i),
-                    kind,
+                    kind: kind.clone(),
                     label: format!("test{}", i),
                     path: Some(format!("test{}.ts", i)),
                     technology: None,
@@ -287,7 +287,7 @@ mod tests {
                 edges: vec![Edge {
                     source: format!("source.{}", i),
                     target: format!("target.{}", i),
-                    kind,
+                    kind: kind.clone(),
                     evidence: vec![],
                 }],
                 confidence: None,

@@ -12,6 +12,7 @@ members = [
     "crates/sruja-scan",
     "crates/sruja-diff",
     # Product
+    "crates/sruja-graph-core",
     "crates/sruja-graph",
     "crates/sruja-intent",
     "crates/sruja-wasm",

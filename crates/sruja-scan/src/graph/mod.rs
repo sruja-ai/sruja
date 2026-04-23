@@ -140,7 +140,7 @@ impl Graph {
     }
 
     pub fn canonicalize(&mut self) {
-        fn node_kind_rank(kind: NodeKind) -> u8 {
+        fn node_kind_rank(kind: &NodeKind) -> u8 {
             match kind {
                 NodeKind::System => 100,
                 NodeKind::Service => 90,
@@ -151,12 +151,13 @@ impl Graph {
                 NodeKind::Database => 40,
                 NodeKind::Queue => 30,
                 NodeKind::Module => 10,
+                NodeKind::Custom(_) => 10,
             }
         }
 
         fn merge_node(base: &mut Node, other: Node) {
-            if node_kind_rank(other.kind) > node_kind_rank(base.kind) {
-                base.kind = other.kind;
+            if node_kind_rank(&other.kind) > node_kind_rank(&base.kind) {
+                base.kind = other.kind.clone();
             }
             if (base.label.is_empty() || base.label == base.id)
                 && !other.label.is_empty()
@@ -208,9 +209,9 @@ impl Graph {
 
         let mut nodes_by_id: BTreeMap<String, Node> = BTreeMap::new();
         self.nodes.sort_by(|a, b| {
-            (a.id.as_str(), a.kind.as_str(), a.label.as_str()).cmp(&(
+            (a.id.as_str(), a.kind.kind_str(), a.label.as_str()).cmp(&(
                 b.id.as_str(),
-                b.kind.as_str(),
+                b.kind.kind_str(),
                 b.label.as_str(),
             ))
         });

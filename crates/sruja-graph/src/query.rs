@@ -148,7 +148,7 @@ impl KnowledgeGraph {
 
         for (pattern, kind) in &kind_patterns {
             if question_lower.contains(pattern) {
-                let nodes = self.find_nodes_by_kind(*kind);
+                let nodes = self.find_nodes_by_kind(kind.clone());
                 if !nodes.is_empty() {
                     let labels: Vec<&str> = nodes.iter().map(|n| n.label.as_str()).collect();
                     return Ok(QueryResult {

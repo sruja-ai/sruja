@@ -158,7 +158,7 @@ fn compare_nodes(actual: &[Node], proposed: &[Node]) -> NodeDiff {
         .filter(|n| !matched_proposed_ids.contains(n.id.as_str()))
         .map(|n| DiffNode {
             id: n.id.clone(),
-            kind: n.kind,
+            kind: n.kind.clone(),
             label: n.label.clone(),
             technology: n.technology.clone(),
             description: None,
@@ -170,7 +170,7 @@ fn compare_nodes(actual: &[Node], proposed: &[Node]) -> NodeDiff {
         .filter(|n| !matched_actual_ids.contains(n.id.as_str()))
         .map(|n| DiffNode {
             id: n.id.clone(),
-            kind: n.kind,
+            kind: n.kind.clone(),
             label: n.label.clone(),
             technology: n.technology.clone(),
             description: None,
@@ -187,32 +187,32 @@ fn compare_nodes(actual: &[Node], proposed: &[Node]) -> NodeDiff {
 fn compare_edges(actual: &[Edge], proposed: &[Edge]) -> EdgeDiff {
     let actual_set: HashSet<(String, String, EdgeKind)> = actual
         .iter()
-        .map(|e| (e.source.clone(), e.target.clone(), e.kind))
+        .map(|e| (e.source.clone(), e.target.clone(), e.kind.clone()))
         .collect();
 
     let proposed_set: HashSet<(String, String, EdgeKind)> = proposed
         .iter()
-        .map(|e| (e.source.clone(), e.target.clone(), e.kind))
+        .map(|e| (e.source.clone(), e.target.clone(), e.kind.clone()))
         .collect();
 
     let added: Vec<DiffEdge> = proposed
         .iter()
-        .filter(|e| !actual_set.contains(&(e.source.clone(), e.target.clone(), e.kind)))
+        .filter(|e| !actual_set.contains(&(e.source.clone(), e.target.clone(), e.kind.clone())))
         .map(|e| DiffEdge {
             source: e.source.clone(),
             target: e.target.clone(),
-            kind: e.kind,
+            kind: e.kind.clone(),
             label: None,
         })
         .collect();
 
     let removed: Vec<DiffEdge> = actual
         .iter()
-        .filter(|e| !proposed_set.contains(&(e.source.clone(), e.target.clone(), e.kind)))
+        .filter(|e| !proposed_set.contains(&(e.source.clone(), e.target.clone(), e.kind.clone())))
         .map(|e| DiffEdge {
             source: e.source.clone(),
             target: e.target.clone(),
-            kind: e.kind,
+            kind: e.kind.clone(),
             label: None,
         })
         .collect();

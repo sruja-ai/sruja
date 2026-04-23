@@ -85,6 +85,48 @@ pub struct ArchitectureEdge {
     pub source_ref: SourceReference,
 }
 
+impl sruja_graph_core::ContextNode for ArchitectureNode {
+    fn id(&self) -> &str {
+        &self.id
+    }
+    fn kind(&self) -> &str {
+        self.kind.kind_str()
+    }
+    fn label(&self) -> &str {
+        &self.label
+    }
+    fn technology(&self) -> Option<&str> {
+        self.technology.as_deref()
+    }
+    fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+    fn metadata(&self) -> &HashMap<String, String> {
+        &self.metadata
+    }
+}
+
+impl sruja_graph_core::ContextEdge for ArchitectureEdge {
+    fn id(&self) -> &str {
+        &self.id
+    }
+    fn source(&self) -> &str {
+        &self.source
+    }
+    fn target(&self) -> &str {
+        &self.target
+    }
+    fn kind(&self) -> &str {
+        self.kind.kind_str()
+    }
+    fn label(&self) -> Option<&str> {
+        self.label.as_deref()
+    }
+    fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Decision {
     pub id: DecisionId,

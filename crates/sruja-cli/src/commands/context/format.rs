@@ -482,7 +482,7 @@ pub fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
         })
         .take(top_limit)
     {
-        let kind = repomap_kind(n.kind);
+        let kind = repomap_kind(n.kind.clone());
         let path = n
             .path
             .as_deref()
@@ -539,9 +539,9 @@ pub fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
                     .as_deref()
                     .and_then(|p| repomap_relative_path(p, repo_prefix.as_deref()));
                 let mut line = if let Some(p) = path {
-                    format!("- {}: {} ({})", repomap_kind(n.kind), n.label, p)
+                    format!("- {}: {} ({})", repomap_kind(n.kind.clone()), n.label, p)
                 } else {
-                    format!("- {}: {}", repomap_kind(n.kind), n.label)
+                    format!("- {}: {}", repomap_kind(n.kind.clone()), n.label)
                 };
 
                 if let Some(owner) = &n.owner {
@@ -627,6 +627,7 @@ fn repomap_kind(kind: NodeKind) -> &'static str {
         NodeKind::Database => "database",
         NodeKind::ExternalApi => "external_api",
         NodeKind::Module => "module",
+        NodeKind::Custom(_) => "custom",
         _ => "node",
     }
 }

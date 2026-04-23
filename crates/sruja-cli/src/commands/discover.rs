@@ -359,6 +359,7 @@ fn kind_priority(kind: NodeKind) -> u8 {
         NodeKind::Queue => 2,
         NodeKind::System => 1,
         NodeKind::Module => 0,
+        NodeKind::Custom(_) => 0,
     }
 }
 
@@ -444,7 +445,7 @@ fn discover_key_elements(
             .unwrap_or_default();
         b_rank
             .total_cmp(&a_rank)
-            .then_with(|| kind_priority(b.kind).cmp(&kind_priority(a.kind)))
+            .then_with(|| kind_priority(b.kind.clone()).cmp(&kind_priority(a.kind.clone())))
             .then_with(|| a.id.cmp(&b.id))
     });
 
@@ -509,7 +510,7 @@ fn discover_key_relationships(graph: &Graph) -> Vec<DiscoverRelationshipSummary>
     let node_kind_by_id: HashMap<&str, NodeKind> = graph
         .nodes
         .iter()
-        .map(|node| (node.id.as_str(), node.kind))
+        .map(|node| (node.id.as_str(), node.kind.clone()))
         .collect();
 
     let mut edges: Vec<_> = graph
@@ -548,7 +549,7 @@ fn discover_key_relationships(graph: &Graph) -> Vec<DiscoverRelationshipSummary>
             .then_with(|| b.evidence.len().cmp(&a.evidence.len()))
             .then_with(|| a.source.cmp(&b.source))
             .then_with(|| a.target.cmp(&b.target))
-            .then_with(|| match (a.kind, b.kind) {
+            .then_with(|| match (a.kind.clone(), b.kind.clone()) {
                 (ak, bk) if ak == bk => Ordering::Equal,
                 (ak, bk) => ak.as_str().cmp(bk.as_str()),
             })
@@ -563,7 +564,7 @@ fn discover_key_relationships(graph: &Graph) -> Vec<DiscoverRelationshipSummary>
             kind: edge.kind.as_str().to_string(),
             why_it_matters: explain_edge_relevance(
                 edge,
-                node_kind_by_id.get(edge.target.as_str()).copied(),
+                node_kind_by_id.get(edge.target.as_str()).cloned(),
                 edge.evidence.len(),
             ),
         })

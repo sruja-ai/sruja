@@ -181,7 +181,7 @@ impl DriftDetector {
                                 .nodes
                                 .iter()
                                 .find(|n| n.id == *discovered)
-                                .map(|n| n.kind)
+                                .map(|n| n.kind.clone())
                         ),
                     }],
                     intent_ref: None,

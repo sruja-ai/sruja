@@ -46,7 +46,7 @@ fn merge_scan_into_graph(
     for node in &scan_graph.nodes {
         let arch_node = sruja_graph::ArchitectureNode {
             id: node.id.clone(),
-            kind: node.kind,
+            kind: node.kind.clone(),
             label: node.label.clone(),
             technology: node.technology.clone(),
             description: node.path.clone(),
@@ -64,7 +64,7 @@ fn merge_scan_into_graph(
             id: edge_id,
             source: edge.source.clone(),
             target: edge.target.clone(),
-            kind: edge.kind,
+            kind: edge.kind.clone(),
             label: None,
             description: None,
             source_ref: source.clone(),

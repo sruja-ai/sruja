@@ -221,7 +221,7 @@ pub fn build_focus_context(
         .take(10)
         .map(|n| FocusNode {
             id: n.id.clone(),
-            kind: n.kind,
+            kind: n.kind.clone(),
             label: n.label.clone(),
             path: n.path.clone(),
             owner: n.owner.clone(),
@@ -595,7 +595,7 @@ fn build_focus_elements(
     for id in focus_ids {
         let (kind, label) = if let Some(kind) = baseline.kinds_by_id.get(id) {
             (
-                *kind,
+                kind.clone(),
                 baseline
                     .labels_by_id
                     .get(id)
@@ -603,7 +603,7 @@ fn build_focus_elements(
                     .or_else(|| Some(id.clone())),
             )
         } else if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
-            (node.kind, Some(node.label.clone()))
+            (node.kind.clone(), Some(node.label.clone()))
         } else {
             (NodeKind::Module, Some(id.clone()))
         };
@@ -716,13 +716,13 @@ fn expand_neighbors_and_impact(
             .nodes
             .iter()
             .find(|n| n.id == id)
-            .map(|n| n.kind)
+            .map(|n| n.kind.clone())
             .unwrap_or(NodeKind::Module)
     };
 
     for id in focus_ids {
         if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
-            record_impact(&mut impacted, &mut seen_impacted, &node.id, node.kind);
+            record_impact(&mut impacted, &mut seen_impacted, &node.id, node.kind.clone());
         }
 
         if graph.nodes.iter().any(|n| n.id == *id) {
@@ -732,7 +732,7 @@ fn expand_neighbors_and_impact(
                     let kind = kind_for_id(&n.id);
                     neighbors.push(TaskNeighbor {
                         element_id: n.id.clone(),
-                        kind,
+                        kind: kind.clone(),
                         direction: "upstream".to_string(),
                     });
                     record_impact(&mut impacted, &mut seen_impacted, &n.id, kind);
@@ -743,7 +743,7 @@ fn expand_neighbors_and_impact(
                     let kind = kind_for_id(&n.id);
                     neighbors.push(TaskNeighbor {
                         element_id: n.id.clone(),
-                        kind,
+                        kind: kind.clone(),
                         direction: "downstream".to_string(),
                     });
                     record_impact(&mut impacted, &mut seen_impacted, &n.id, kind);

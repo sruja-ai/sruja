@@ -4,6 +4,7 @@
 //! dependency graph. High centrality nodes are often critical architectural
 //! components that require special attention during refactoring.
 
+use sruja_graph_core::{ContextEdge, ContextGraph, ContextNode};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 pub struct CentralityAnalyzer {
@@ -87,6 +88,16 @@ impl CentralityAnalyzer {
             max_sample_size,
             ..Self::default()
         }
+    }
+
+    pub fn analyze_graph<G: ContextGraph>(&self, graph: &G) -> CentralityResult {
+        let nodes: Vec<String> = graph.nodes().iter().map(|n| n.id().to_string()).collect();
+        let edges: Vec<(String, String)> = graph
+            .edges()
+            .iter()
+            .map(|e| (e.source().to_string(), e.target().to_string()))
+            .collect();
+        self.analyze(&nodes, &edges)
     }
 
     pub fn analyze(&self, nodes: &[String], edges: &[(String, String)]) -> CentralityResult {

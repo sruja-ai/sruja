@@ -141,6 +141,7 @@ pub(crate) fn element_kind_for_node(
             sruja_language::ElementKind::Component,
             Some("module".to_string()),
         ),
+        NodeKind::Custom(_) => (sruja_language::ElementKind::Component, Some("custom".to_string())),
     }
 }
 
@@ -155,6 +156,7 @@ pub(crate) fn relation_label_for_edge(edge_kind: EdgeKind) -> &'static str {
         EdgeKind::Contains => "contains",
         EdgeKind::Uses => "uses",
         EdgeKind::Calls => "calls",
+        EdgeKind::Custom(_) => "custom",
     }
 }
 
@@ -287,7 +289,7 @@ pub(crate) fn build_draft_program_from_graph(
             .get(node.id.as_str())
             .cloned()
             .unwrap_or_else(|| sanitize_identifier(&node.id));
-        let (kind, sub_kind) = element_kind_for_node(node.kind);
+        let (kind, sub_kind) = element_kind_for_node(node.kind.clone());
 
         let body = sruja_language::ElementDefBody {
             description: node
@@ -363,7 +365,7 @@ pub(crate) fn build_draft_program_from_graph(
             location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
             from: qualified_ident_from_id(&from),
             to: qualified_ident_from_id(&to),
-            label: Some(relation_label_for_edge(edge.kind).to_string()),
+            label: Some(relation_label_for_edge(edge.kind.clone()).to_string()),
             description: None,
             technology: None,
             tags: Vec::new(),

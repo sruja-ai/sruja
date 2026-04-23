@@ -187,7 +187,7 @@ proptest! {
         let mut graph = KnowledgeGraph::new();
         let id = format!("node_{:?}", kind);
 
-        graph.add_node(make_node(&id, kind)).unwrap();
+        graph.add_node(make_node(&id, kind.clone())).unwrap();
         let found = graph.find_nodes_by_kind(kind);
 
         prop_assert_eq!(found.len(), 1);

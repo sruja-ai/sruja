@@ -7,6 +7,7 @@
 //! - Abstractness: ratio of abstract types
 //! - Distance from main sequence: |A + I - 1|
 
+use sruja_graph_core::{ContextEdge, ContextGraph, ContextNode};
 use std::collections::HashMap;
 
 const EXCLUDED_PATTERNS: &[&str] = &[
@@ -285,6 +286,26 @@ impl Default for CouplingAnalyzer {
 impl CouplingAnalyzer {
     pub fn new() -> Self {
         Self
+    }
+
+    pub fn analyze_graph<G: ContextGraph>(&self, graph: &G) -> CouplingResult {
+        let nodes: Vec<String> = graph.nodes().iter().map(|n| n.id().to_string()).collect();
+        let edges: Vec<(String, String)> = graph
+            .edges()
+            .iter()
+            .map(|e| (e.source().to_string(), e.target().to_string()))
+            .collect();
+        self.analyze(&nodes, &edges)
+    }
+
+    pub fn analyze_modules_graph<G: ContextGraph>(&self, graph: &G) -> Vec<ModuleCoupling> {
+        let nodes: Vec<String> = graph.nodes().iter().map(|n| n.id().to_string()).collect();
+        let edges: Vec<(String, String)> = graph
+            .edges()
+            .iter()
+            .map(|e| (e.source().to_string(), e.target().to_string()))
+            .collect();
+        self.analyze_modules(&nodes, &edges)
     }
 
     pub fn analyze(&self, nodes: &[String], edges: &[(String, String)]) -> CouplingResult {

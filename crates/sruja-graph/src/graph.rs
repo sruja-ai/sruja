@@ -38,6 +38,31 @@ impl Default for GraphMetadata {
     }
 }
 
+impl sruja_graph_core::ContextGraph for KnowledgeGraph {
+    type Node = ArchitectureNode;
+    type Edge = ArchitectureEdge;
+
+    fn nodes(&self) -> Vec<&Self::Node> {
+        self.nodes.values().collect()
+    }
+
+    fn edges(&self) -> Vec<&Self::Edge> {
+        self.edges.iter().collect()
+    }
+
+    fn get_node(&self, id: &str) -> Option<&Self::Node> {
+        self.nodes.get(id)
+    }
+
+    fn get_edges_from(&self, node_id: &str) -> Vec<&Self::Edge> {
+        self.edges.iter().filter(|e| e.source == node_id).collect()
+    }
+
+    fn get_edges_to(&self, node_id: &str) -> Vec<&Self::Edge> {
+        self.edges.iter().filter(|e| e.target == node_id).collect()
+    }
+}
+
 impl KnowledgeGraph {
     pub fn new() -> Self {
         Self::default()
