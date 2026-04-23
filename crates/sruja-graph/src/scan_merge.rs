@@ -81,6 +81,89 @@ pub fn merge_scan_into_graph(
     count
 }
 
+/// Merge a parsed DSL program into a KnowledgeGraph.
+pub fn merge_program_into_graph(
+    graph: &mut KnowledgeGraph,
+    program: &sruja_language::ast::Program,
+    source_file: &str,
+) -> usize {
+    let now = Utc::now();
+    let source = SourceReference::dsl_file(source_file, 1);
+    let mut count = 0;
+
+    // Collect elements from program
+    let (elements, _relations) = sruja_language::collect_elements(program);
+
+    // Merge elements as nodes
+    for (fqn, elem) in elements {
+        let node_kind = match elem.assignment.kind {
+            sruja_language::ast::ElementKind::Person => sruja_scan::NodeKind::Module,
+            sruja_language::ast::ElementKind::System => sruja_scan::NodeKind::System,
+            sruja_language::ast::ElementKind::Container => sruja_scan::NodeKind::Container,
+            sruja_language::ast::ElementKind::Component => sruja_scan::NodeKind::Component,
+            sruja_language::ast::ElementKind::Database => sruja_scan::NodeKind::Database,
+            sruja_language::ast::ElementKind::Queue => sruja_scan::NodeKind::Queue,
+            sruja_language::ast::ElementKind::Requirement => sruja_scan::NodeKind::Module,
+            sruja_language::ast::ElementKind::Custom(ref s) => sruja_scan::NodeKind::Custom(s.clone()),
+            _ => sruja_scan::NodeKind::Module,
+        };
+
+        let arch_node = ArchitectureNode {
+            id: fqn,
+            kind: node_kind,
+            label: elem.assignment.title.unwrap_or(elem.assignment.name),
+            technology: elem.assignment.body.as_ref().and_then(|b| b.technology.clone()),
+            description: elem.assignment.body.as_ref().and_then(|b| b.description.clone()),
+            metadata: std::collections::HashMap::new(),
+            source: source.clone(),
+            created_at: now,
+            updated_at: now,
+        };
+        graph.merge_node(arch_node);
+        count += 1;
+    }
+
+    // Collect ADRs
+    for item in &program.items {
+        if let sruja_language::ast::TopLevelItem::Adr(adr) = item {
+            let status = match adr.status.as_deref().unwrap_or("proposed") {
+                "accepted" | "Accepted" => crate::DecisionStatus::Accepted,
+                "rejected" | "Rejected" => crate::DecisionStatus::Rejected,
+                "superseded" | "Superseded" => crate::DecisionStatus::Superseded,
+                _ => crate::DecisionStatus::Proposed,
+            };
+
+            let decision = crate::Decision {
+                id: adr.id.clone(),
+                title: adr.title.clone(),
+                status,
+                context: adr.context.clone().unwrap_or_default(),
+                decision: adr.decision.clone().unwrap_or_default(),
+                consequences: adr.consequences.clone().unwrap_or_default(),
+                alternatives: vec![],
+                created_at: now,
+                updated_at: now,
+                ratified_at: if status == crate::DecisionStatus::Accepted {
+                    Some(now)
+                } else {
+                    None
+                },
+                author: None,
+                source: source.clone(),
+                affects: adr.affects.clone(),
+            };
+
+            graph.add_decision(decision).ok();
+            count += 1;
+        }
+    }
+
+    count
+}
+
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

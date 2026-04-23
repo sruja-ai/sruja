@@ -67,6 +67,8 @@ pub struct StatusOutput {
     pub context_updated_at: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub top_findings: Vec<Finding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_score: Option<u8>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub health_history: Vec<u8>,
 }

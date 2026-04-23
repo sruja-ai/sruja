@@ -10,6 +10,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 pub mod centrality;
+pub mod context_score;
 pub mod coupling;
 pub mod graph;
 pub mod query;
@@ -25,6 +26,10 @@ pub use coupling::{
     ModuleCoupling, Zone,
 };
 pub use graph::KnowledgeGraph;
+pub use context_score::{
+    compute_context_score, scan_external_context, ContextScore, DimensionScore,
+    ExternalContextSummary, QuickWin,
+};
 pub use query::{PolicyViolation, QueryError, QueryResult};
 pub use scan_merge::merge_scan_into_graph;
 pub use scc::{CondensationEdge, Scc, SccAnalyzer, SccResult};

@@ -667,7 +667,9 @@ pub struct Adr {
     pub context: Option<String>,
     pub decision: Option<String>,
     pub consequences: Option<String>,
+    pub affects: Vec<String>,
 }
+
 
 /// Policy definition
 #[derive(Debug, Clone, PartialEq, Eq)]

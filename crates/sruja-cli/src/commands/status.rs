@@ -50,6 +50,11 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
                 };
                 health_info.push_str(&format!("Health: {}{}\n", health_bar, trend));
             }
+            
+            if let Some(score) = out.context_score {
+                let context_bar = colors::health_bar(score, 20);
+                health_info.push_str(&format!("Context: {}\n", context_bar));
+            }
 
             let status_color = match out.truth_status.as_str() {
                 "reviewed" => colors::success(&out.truth_status),

@@ -1,0 +1,19 @@
+# Sruja ignore patterns
+# Exclude non-production code from architecture scans
+
+node_modules/
+target/
+dist/
+build/
+.git/
+.next/
+out/
+
+# Sruja config
+.sruja/
+repo.sruja.draft
+
+# Rust specific
+tests/
+benches/
+examples/

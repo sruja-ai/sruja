@@ -3,9 +3,8 @@
 //! Responsible for correlating scanned nodes/edges (fresh evidence) to
 //! defined architecture elements and relationships (reviewed truth).
 
-use std::collections::HashMap;
 use sruja_language::DomainSchema;
-use sruja_scan::{Graph, Node};
+use sruja_scan::Node;
 
 /// Maps raw scanner output to schema-aligned elements.
 pub struct EvidenceMapper<'a> {

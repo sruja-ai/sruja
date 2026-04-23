@@ -28,6 +28,8 @@ pub struct ReviewOutput {
     pub open_questions: Vec<String>,
     pub suggestions: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_score: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub elapsed_ms: Option<u128>,
 }
 
@@ -144,6 +146,12 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool) -> Result<(), 
         &active_violations,
     );
 
+    let context_score = (|| {
+        let kg = crate::graph_store::load_or_build_graph(repo_path).ok()?;
+        let age_hours = crate::utils::context::context_age_hours(repo_path);
+        Some(sruja_graph::compute_context_score(&kg, graph.nodes.len(), repo_path, age_hours).score)
+    })();
+
     let elapsed = start_time.elapsed();
     let output = ReviewOutput {
         truth_status: truth_status.clone(),
@@ -159,6 +167,7 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool) -> Result<(), 
         drifted_dependencies,
         open_questions,
         suggestions,
+        context_score,
         elapsed_ms: Some(elapsed.as_millis()),
     };
 
@@ -178,7 +187,10 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool) -> Result<(), 
             // 1. Health Summary
             let mut health_info = String::new();
             if let Some(score) = output.health_score {
-                health_info.push_str(&format!("Score:  {}\n", colors::health_bar(score, 20)));
+                health_info.push_str(&format!("Health:  {}\n", colors::health_bar(score, 20)));
+            }
+            if let Some(score) = output.context_score {
+                health_info.push_str(&format!("Context: {}\n", colors::health_bar(score, 20)));
             }
             let status_color = match output.truth_status.as_str() {
                 "reviewed" => colors::success(&output.truth_status),

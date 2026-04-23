@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
+use std::path::Path;
 
 use super::CliError;
 
@@ -438,6 +439,32 @@ fn tool_definitions() -> Vec<Value> {
                     "top_k": { "type": "integer", "description": "Number of results to return (default: 5)" }
                 },
                 "required": ["query"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_context_score",
+            "title": "Sruja Context Score",
+            "description": "Get the context engineering score (0-100) and AI-readiness breakdown for the repository.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "format": { "type": "string", "description": "Output format: text (default) or json" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_focus_briefing",
+            "title": "Sruja Focus Briefing",
+            "description": "Get a task-scoped architectural briefing for a specific file or element. Includes blast radius, linked decisions, and AI instructions.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "file": { "type": "string", "description": "File path to focus on" },
+                    "element_id": { "type": "string", "description": "Element ID to focus on" },
+                    "format": { "type": "string", "description": "Output format: text (default) or json" }
+                }
             }
         }),
     ]
@@ -907,6 +934,39 @@ async fn run_tool(
                 }
             }
             Ok(out)
+        }
+        "sruja_get_context_score" => {
+            let format = arguments.get("format").and_then(|v| v.as_str()).unwrap_or("text");
+            let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let age_hours = crate::utils::context::context_age_hours(Path::new(&repo));
+            let score = sruja_graph::compute_context_score(&kg, graph.nodes.len(), Path::new(&repo), age_hours);
+            
+            if format == "json" {
+                Ok(serde_json::to_string_pretty(&score)?)
+            } else {
+                Ok(format!(
+                    "Context Score: {}/100\n\nBreakdown:\n- Coverage: {}%\n- Decisions: {}%\n- Freshness: {}%\n- Density: {}%\n- External: {}%", 
+                    score.score, 
+                    score.architecture_coverage.pct_u8(), 
+                    score.decision_completeness.pct_u8(), 
+                    score.evidence_freshness.pct_u8(), 
+                    score.relationship_density.pct_u8(),
+                    score.external_context.pct_u8()
+                ))
+            }
+        }
+        "sruja_get_focus_briefing" => {
+            let file = arguments.get("file").and_then(|v| v.as_str());
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str());
+            
+            let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            
+            let target_id = super::focus::resolve_target(&kg, file, element_id)?;
+            let briefing = super::focus::build_focus_briefing(&kg, &target_id, Path::new(&repo), graph.nodes.len());
+            
+            Ok(serde_json::to_string_pretty(&briefing)?)
         }
         _ => Err(CliError::validation(format!("Unknown tool: {name}"))),
     }

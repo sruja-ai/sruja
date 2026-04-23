@@ -5,11 +5,14 @@
 
 mod check;
 mod compliance;
+mod context_score;
 mod discover;
 mod dsl;
 mod error;
 mod federation;
+mod focus;
 mod generate;
+mod ingest;
 mod impact;
 mod index;
 mod init;
@@ -28,6 +31,9 @@ pub mod violation_shared;
 
 pub use check::{baseline, check};
 pub use compliance::compliance;
+pub use context_score::context_score;
+pub use focus::focus;
+pub use ingest::ingest;
 pub use discover::{discover_context, discover_explain, discover_questions, discover_repomap_cmd};
 pub use dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,

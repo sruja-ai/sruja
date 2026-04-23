@@ -921,3 +921,60 @@ App = system "App" {
         "fmt --check should succeed on already formatted file"
     );
 }
+
+#[test]
+fn context_score_json_reports_breakdown() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    // Sync to create the graph
+    run_sruja(&["sync", "-r", repo_str]);
+
+    let (success, stdout, stderr) = run_sruja(&["context-score", "-r", repo_str, "-f", "json"]);
+
+    assert!(success, "context-score should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("score").is_some());
+    assert!(parsed.get("architecture_coverage").is_some());
+    assert!(parsed.get("quick_wins").is_some());
+}
+
+#[test]
+fn focus_json_provides_briefing_for_file() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    // Sync to create the graph
+    run_sruja(&["sync", "-r", repo_str]);
+
+    let (success, stdout, stderr) = run_sruja(&["focus", "-r", repo_str, "--file", "src/lib.rs", "-f", "json"]);
+
+    assert!(success, "focus should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("target").is_some());
+    assert!(parsed.get("blast_radius").is_some());
+    assert!(parsed.get("ai_instructions").is_some());
+}
+
+#[test]
+fn ingest_copies_file_to_context_dir() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    write_file(repo.path(), "adr.md", "# ADR 001\nDecision goes here.");
+    let adr_path = repo.path().join("adr.md").to_str().expect("utf-8").to_string();
+
+    let (success, _stdout, stderr) = run_sruja(&["ingest", "-r", repo_str, &adr_path, "--category", "adr"]);
+
+    assert!(success, "ingest should succeed: stderr={}", stderr);
+    
+    let dest_path = repo.path().join(".sruja/context/adr.md");
+    assert!(dest_path.exists(), "ingested file should exist in .sruja/context/");
+    
+    let content = std::fs::read_to_string(dest_path).expect("read ingested file");
+    assert!(content.contains("category: adr"), "ingested file should have front-matter");
+    assert!(content.contains("# ADR 001"), "ingested file should keep original content");
+}

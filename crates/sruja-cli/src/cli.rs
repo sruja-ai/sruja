@@ -488,6 +488,48 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
+
+    /// Context Score: how well-equipped is an AI agent to work on this codebase? (0-100)
+    #[command(name = "context-score")]
+    ContextScore {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+
+    /// Focus: get a context briefing for a specific file or architecture element
+    Focus {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// File path to focus on (relative to repo root)
+        #[arg(long)]
+        file: Option<String>,
+        /// Architecture element ID to focus on (e.g. Auth.Handler)
+        #[arg(long)]
+        element_id: Option<String>,
+        /// Output format (text, json, for-ai)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+
+    /// Ingest external context (ADRs, design docs, API contracts) into .sruja/context/
+    Ingest {
+        /// Files or directories to ingest
+        sources: Vec<String>,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Category tag (adr, design-doc, api-contract, runbook, note)
+        #[arg(long, short = 'c')]
+        category: Option<String>,
+        /// Comma-separated architecture element IDs to link (e.g. Auth.Handler,Database.Users)
+        #[arg(long, short = 'e')]
+        elements: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -747,6 +789,13 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
         } => commands::index(&repo, architecture.as_deref(), &output).await,
         Commands::Completions { shell } => commands::completions(shell),
         Commands::Health { repo, architecture, format } => commands::health(&repo, architecture.as_deref(), &format).await,
+        Commands::ContextScore { repo, format } => commands::context_score(&repo, &format).await,
+        Commands::Focus { repo, file, element_id, format } => {
+            commands::focus(&repo, file.as_deref(), element_id.as_deref(), &format).await
+        }
+        Commands::Ingest { sources, repo, category, elements } => {
+            commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await
+        }
     };
 
     match result {

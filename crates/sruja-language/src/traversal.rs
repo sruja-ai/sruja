@@ -97,10 +97,37 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
                 };
                 elements.insert(fl.id.clone(), elem_def);
             }
-            TopLevelItem::Schema(_schema) => {
-                // Schemas don't define elements in the graph directly,
-                // they are handled by the engine.
+            TopLevelItem::Adr(adr) => {
+                let elem_def = ElementDef {
+                    location: adr.location.clone(),
+                    assignment: ElementAssignment {
+                        location: adr.location.clone(),
+                        name: adr.id.clone(),
+                        kind: ElementKind::Adr,
+                        sub_kind: None,
+                        title: Some(adr.title.clone()),
+                        tag_refs: vec![],
+                        body: None,
+                    },
+                };
+                elements.insert(adr.id.clone(), elem_def);
             }
+            TopLevelItem::Flow(flow) => {
+                let elem_def = ElementDef {
+                    location: flow.location.clone(),
+                    assignment: ElementAssignment {
+                        location: flow.location.clone(),
+                        name: flow.id.clone(),
+                        kind: ElementKind::Flow,
+                        sub_kind: None,
+                        title: Some(flow.title.clone()),
+                        tag_refs: vec![],
+                        body: None,
+                    },
+                };
+                elements.insert(flow.id.clone(), elem_def);
+            }
+            TopLevelItem::Schema(_schema) => {}
             _ => {}
         }
     }

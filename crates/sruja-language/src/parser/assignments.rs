@@ -155,6 +155,7 @@ pub(crate) fn parse_adr_assignment(input: &str) -> IResult<&str, Adr> {
         context: None,
         decision: None,
         consequences: None,
+        affects: vec![],
     };
 
     if let Some(kvs) = fields {
@@ -164,10 +165,12 @@ pub(crate) fn parse_adr_assignment(input: &str) -> IResult<&str, Adr> {
                 "context" => adr.context = Some(v),
                 "decision" => adr.decision = Some(v),
                 "consequences" => adr.consequences = Some(v),
+                "affects" => adr.affects.push(v),
                 _ => {}
             }
         }
     }
+
 
     Ok((input, adr))
 }
@@ -532,6 +535,7 @@ pub(crate) fn parse_adr(input: &str) -> IResult<&str, Adr> {
         context: None,
         decision: None,
         consequences: None,
+        affects: vec![],
     };
 
     if let Some(kvs) = fields {
@@ -541,10 +545,12 @@ pub(crate) fn parse_adr(input: &str) -> IResult<&str, Adr> {
                 "context" => adr.context = Some(v),
                 "decision" => adr.decision = Some(v),
                 "consequences" => adr.consequences = Some(v),
+                "affects" => adr.affects.push(v),
                 _ => {}
             }
         }
     }
+
 
     Ok((input, adr))
 }

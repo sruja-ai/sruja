@@ -7,7 +7,7 @@ This guide helps AI agents work effectively with the Sruja codebase.
 | `make setup` | **First-run setup** (install deps, hooks, build) |
 | `make check` | **Pre-commit check** (fmt + lint + test) |
 | `make daily` | **Sync context** + check diagnostic drift |
-| `sruja lint <file>` | **Validate** .sruja architecture DSL |
+| `sruja focus` | **Task briefing** (blast radius, decisions, AI info) |
 | `sruja mcp -r .` | **Start MCP server** for deep context queries |
 
 ## Build, Lint, and Test Commands
@@ -294,9 +294,10 @@ Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, Cl
    - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.
 4. **Cross-Repo Context**: Use `sruja context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
 
-## Architecture Context Engineering (ACE)
-
 When using AI agents, leverage Sruja's context tools:
+- **`sruja focus --file <path>`**: Generates a task-scoped briefing (blast radius, decisions, boundaries, AI instructions).
+- **`sruja context-score`**: Quantifies the repository's AI-readiness (0-100 score across 5 dimensions).
+- **`sruja ingest <doc>`**: Imports external documentation (ADRs, design docs) into `.sruja/context/`.
 - **`sruja why <id>`**: Explains the rationale/logic behind a specific architectural component or relationship.
 - **`sruja impact <id>`**: Analyzes the blast radius of changing a component.
 - **`sruja intent check`**: Verifies if your code changes match your architectural intent.

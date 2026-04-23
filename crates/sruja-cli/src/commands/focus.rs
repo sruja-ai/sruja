@@ -1,0 +1,800 @@
+//! Focus command: file-scoped or element-scoped context briefing for AI agents.
+//!
+//! Answers: "I'm about to edit X. What does my AI agent need to know?"
+//! Combines impact analysis, decisions, boundaries, hotspot status, and
+//! external context into a single, actionable briefing.
+
+use colored::Colorize;
+use serde::Serialize;
+use std::collections::HashSet;
+use std::path::Path;
+
+use crate::commands::CliError;
+use crate::graph_store;
+use crate::utils::colors;
+use sruja_graph::{
+    compute_context_score, KnowledgeGraph,
+};
+
+#[derive(Debug, Serialize)]
+pub struct FocusBriefing {
+    pub target: FocusTarget,
+    pub blast_radius: BlastRadius,
+    pub decisions: Vec<LinkedDecision>,
+    pub boundaries: Vec<BoundaryInfo>,
+    pub external_context: Vec<ExternalContextRef>,
+    pub hotspot_status: HotspotStatus,
+    pub ai_instructions: Vec<String>,
+    pub context_score: u8,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FocusTarget {
+    pub id: String,
+    pub kind: String,
+    pub label: String,
+    pub technology: Option<String>,
+    pub system: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BlastRadius {
+    pub total_affected: usize,
+    pub upstream: Vec<AffectedNode>,
+    pub downstream: Vec<AffectedNode>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AffectedNode {
+    pub id: String,
+    pub label: String,
+    pub depth: usize,
+    pub relationship: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LinkedDecision {
+    pub id: String,
+    pub title: String,
+    pub status: String,
+    pub summary: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BoundaryInfo {
+    pub from: String,
+    pub to: String,
+    pub allowed: bool,
+    pub reason: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExternalContextRef {
+    pub file: String,
+    pub category: String,
+    pub excerpt: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct HotspotStatus {
+    pub is_hotspot: bool,
+    pub role: String,
+    pub in_degree: usize,
+    pub out_degree: usize,
+}
+
+/// Resolve a target ID from a file path or element ID.
+pub fn resolve_target(
+    graph: &KnowledgeGraph,
+    file: Option<&str>,
+    element_id: Option<&str>,
+) -> Result<String, CliError> {
+    // Direct element ID match
+    if let Some(eid) = element_id {
+        if graph.nodes.contains_key(eid) {
+            return Ok(eid.to_string());
+        }
+        // Fuzzy match
+        let q = eid.to_lowercase();
+        let matches: Vec<&str> = graph
+            .nodes
+            .keys()
+            .filter(|k| k.to_lowercase().contains(&q))
+            .map(|k| k.as_str())
+            .collect();
+        match matches.len() {
+            0 => {
+                return Err(CliError::validation(format!(
+                    "No architecture element matches '{}'. Run 'sruja list repo.sruja' to see available elements.",
+                    eid
+                )))
+            }
+            1 => return Ok(matches[0].to_string()),
+            _ => {
+                let preview: Vec<&str> = matches.iter().take(5).copied().collect();
+                return Err(CliError::validation(format!(
+                    "Ambiguous element '{}'. Matches: {}",
+                    eid,
+                    preview.join(", ")
+                )));
+            }
+        }
+    }
+
+    // File path match — find nodes whose metadata, label, or source ref mention the file
+    if let Some(file_path) = file {
+        let normalized = file_path
+            .replace('\\', "/")
+            .trim_start_matches("./")
+            .to_string();
+        let file_lower = normalized.to_lowercase();
+
+        // Try matching against node metadata (path field)
+        for (id, node) in &graph.nodes {
+            if let Some(path) = node.metadata.get("path") {
+                if path.to_lowercase().contains(&file_lower) {
+                    return Ok(id.clone());
+                }
+            }
+            // Match against label containing file name segments
+            let file_parts: Vec<&str> = file_lower.split('/').collect();
+            if let Some(last) = file_parts.last() {
+                let stem = last.split('.').next().unwrap_or(last);
+                if node.label.to_lowercase().contains(stem)
+                    || id.to_lowercase().contains(stem)
+                {
+                    return Ok(id.clone());
+                }
+            }
+        }
+
+        // If no match, return the closest node by path similarity
+        let mut best_match: Option<(&str, usize)> = None;
+        for (id, node) in &graph.nodes {
+            let label_lower = node.label.to_lowercase();
+            let id_lower = id.to_lowercase();
+            for part in file_lower.split('/') {
+                if part.is_empty() || part == "src" || part == "lib" || part == "app" {
+                    continue;
+                }
+                let stem = part.split('.').next().unwrap_or(part);
+                if stem.len() >= 3 && (label_lower.contains(stem) || id_lower.contains(stem)) {
+                    let score = stem.len();
+                    if best_match.map(|(_, s)| score > s).unwrap_or(true) {
+                        best_match = Some((id.as_str(), score));
+                    }
+                }
+            }
+        }
+
+        if let Some((id, _)) = best_match {
+            return Ok(id.to_string());
+        }
+
+        return Err(CliError::validation(format!(
+            "Could not resolve file '{}' to an architecture element. Try --element-id instead, or ensure your .sruja maps this file.",
+            file_path
+        )));
+    }
+
+    Err(CliError::validation(
+        "Provide --file or --element-id to focus on a specific part of the architecture."
+            .to_string(),
+    ))
+}
+
+/// Build the focus briefing.
+pub fn build_focus_briefing(
+    graph: &KnowledgeGraph,
+    target_id: &str,
+    repo_path: &Path,
+    scan_node_count: usize,
+) -> FocusBriefing {
+    let node = graph.nodes.get(target_id);
+
+    // -- Target Info --
+    let target = FocusTarget {
+        id: target_id.to_string(),
+        kind: node
+            .map(|n| format!("{:?}", n.kind))
+            .unwrap_or_else(|| "unknown".to_string()),
+        label: node
+            .map(|n| n.label.clone())
+            .unwrap_or_else(|| target_id.to_string()),
+        technology: node.and_then(|n| n.technology.clone()),
+        system: infer_system(target_id),
+    };
+
+    // -- Blast Radius --
+    let upstream = collect_dependents(graph, target_id, 3);
+    let downstream = collect_dependencies(graph, target_id, 3);
+    let blast_radius = BlastRadius {
+        total_affected: upstream.len() + downstream.len(),
+        upstream,
+        downstream,
+    };
+
+    // -- Decisions --
+    let decisions: Vec<LinkedDecision> = graph
+        .decisions
+        .values()
+        .filter(|d| {
+            d.affects.iter().any(|a| a == target_id)
+                || d.affects
+                    .iter()
+                    .any(|a| target_id.starts_with(a.as_str()))
+        })
+        .map(|d| LinkedDecision {
+            id: d.id.clone(),
+            title: d.title.clone(),
+            status: format!("{:?}", d.status),
+            summary: truncate(&d.decision, 120),
+        })
+        .collect();
+
+    // -- Boundaries --
+    let boundaries = infer_boundaries(graph, target_id);
+
+    // -- External Context --
+    let external_context = find_relevant_external_context(repo_path, target_id);
+
+    // -- Hotspot Status --
+    let in_degree = graph
+        .edges
+        .iter()
+        .filter(|e| e.target == target_id)
+        .count();
+    let out_degree = graph
+        .edges
+        .iter()
+        .filter(|e| e.source == target_id)
+        .count();
+    let total_degree = in_degree + out_degree;
+    let avg_degree = if graph.nodes.is_empty() {
+        0.0
+    } else {
+        (graph.edges.len() as f64 * 2.0) / graph.nodes.len() as f64
+    };
+    let is_hotspot = total_degree as f64 > avg_degree * 1.5;
+    let role = if in_degree > out_degree * 2 {
+        "Hub (many dependents)"
+    } else if out_degree > in_degree * 2 {
+        "Orchestrator (many dependencies)"
+    } else if is_hotspot {
+        "Bridge (connects many components)"
+    } else {
+        "Regular"
+    };
+
+    let hotspot_status = HotspotStatus {
+        is_hotspot,
+        role: role.to_string(),
+        in_degree,
+        out_degree,
+    };
+
+    // -- AI Instructions --
+    let mut ai_instructions: Vec<String> = Vec::new();
+
+    if is_hotspot {
+        ai_instructions.push(format!(
+            "⚠️  This is a {} node — changes affect {} components. Proceed carefully.",
+            role.to_lowercase(),
+            blast_radius.total_affected
+        ));
+    }
+
+    for d in &decisions {
+        ai_instructions.push(format!(
+            "Must respect {}: {}",
+            d.id,
+            truncate(&d.title, 60)
+        ));
+    }
+
+    for b in &boundaries {
+        if !b.allowed {
+            ai_instructions.push(format!(
+                "⛔ Must NOT introduce coupling: {} → {} ({})",
+                b.from, b.to, b.reason
+            ));
+        }
+    }
+
+    if ai_instructions.is_empty() {
+        ai_instructions.push("No special constraints found. Standard coding practices apply.".to_string());
+    }
+
+    // -- Context Score --
+    let score = compute_context_score(graph, scan_node_count, repo_path, 0);
+
+    FocusBriefing {
+        target,
+        blast_radius,
+        decisions,
+        boundaries,
+        external_context,
+        hotspot_status,
+        ai_instructions,
+        context_score: score.score,
+    }
+}
+
+/// Collect upstream dependents (who depends on this node).
+fn collect_dependents(
+    graph: &KnowledgeGraph,
+    target_id: &str,
+    max_depth: usize,
+) -> Vec<AffectedNode> {
+    let mut result = Vec::new();
+    let mut visited: HashSet<String> = HashSet::new();
+    visited.insert(target_id.to_string());
+    let mut frontier: Vec<(String, usize)> = vec![(target_id.to_string(), 0)];
+
+    while let Some((current, depth)) = frontier.pop() {
+        if depth >= max_depth {
+            continue;
+        }
+        for edge in &graph.edges {
+            if edge.target == current && !visited.contains(&edge.source) {
+                visited.insert(edge.source.clone());
+                let label = graph
+                    .nodes
+                    .get(&edge.source)
+                    .map(|n| n.label.clone())
+                    .unwrap_or_else(|| edge.source.clone());
+                let relationship = edge
+                    .label
+                    .as_deref()
+                    .unwrap_or(&format!("{}", edge.kind))
+                    .to_string();
+                result.push(AffectedNode {
+                    id: edge.source.clone(),
+                    label,
+                    depth: depth + 1,
+                    relationship,
+                });
+                frontier.push((edge.source.clone(), depth + 1));
+            }
+        }
+    }
+
+    result.sort_by(|a, b| a.depth.cmp(&b.depth).then_with(|| a.id.cmp(&b.id)));
+    result
+}
+
+/// Collect downstream dependencies (what this node depends on).
+fn collect_dependencies(
+    graph: &KnowledgeGraph,
+    target_id: &str,
+    max_depth: usize,
+) -> Vec<AffectedNode> {
+    let mut result = Vec::new();
+    let mut visited: HashSet<String> = HashSet::new();
+    visited.insert(target_id.to_string());
+    let mut frontier: Vec<(String, usize)> = vec![(target_id.to_string(), 0)];
+
+    while let Some((current, depth)) = frontier.pop() {
+        if depth >= max_depth {
+            continue;
+        }
+        for edge in &graph.edges {
+            if edge.source == current && !visited.contains(&edge.target) {
+                visited.insert(edge.target.clone());
+                let label = graph
+                    .nodes
+                    .get(&edge.target)
+                    .map(|n| n.label.clone())
+                    .unwrap_or_else(|| edge.target.clone());
+                let relationship = edge
+                    .label
+                    .as_deref()
+                    .unwrap_or(&format!("{}", edge.kind))
+                    .to_string();
+                result.push(AffectedNode {
+                    id: edge.target.clone(),
+                    label,
+                    depth: depth + 1,
+                    relationship,
+                });
+                frontier.push((edge.target.clone(), depth + 1));
+            }
+        }
+    }
+
+    result.sort_by(|a, b| a.depth.cmp(&b.depth).then_with(|| a.id.cmp(&b.id)));
+    result
+}
+
+/// Infer system name from dotted ID (e.g., "Auth.Handler" → "Auth").
+fn infer_system(id: &str) -> Option<String> {
+    let parts: Vec<&str> = id.split('.').collect();
+    if parts.len() > 1 {
+        Some(parts[0].to_string())
+    } else {
+        None
+    }
+}
+
+/// Infer boundary rules from the graph structure.
+fn infer_boundaries(graph: &KnowledgeGraph, target_id: &str) -> Vec<BoundaryInfo> {
+    let mut boundaries = Vec::new();
+
+    // Check existing edges as "allowed" boundaries
+    for edge in &graph.edges {
+        if edge.source == target_id {
+            boundaries.push(BoundaryInfo {
+                from: target_id.to_string(),
+                to: edge.target.clone(),
+                allowed: true,
+                reason: edge
+                    .label
+                    .as_deref()
+                    .unwrap_or("defined relationship")
+                    .to_string(),
+            });
+        }
+    }
+
+    // Check policy violations for "not allowed" boundaries
+    let violations = graph.find_policy_violations();
+    for v in &violations {
+        if v.source == target_id || v.target == target_id {
+            boundaries.push(BoundaryInfo {
+                from: v.source.clone(),
+                to: v.target.clone(),
+                allowed: false,
+                reason: v.message.clone(),
+            });
+        }
+    }
+
+    boundaries
+}
+
+/// Find external context files relevant to a target element.
+fn find_relevant_external_context(repo_path: &Path, target_id: &str) -> Vec<ExternalContextRef> {
+    let context_dir = repo_path.join(".sruja").join("context");
+    if !context_dir.exists() {
+        return Vec::new();
+    }
+
+    let mut results = Vec::new();
+    let target_lower = target_id.to_lowercase();
+    let target_parts: Vec<&str> = target_id.split('.').collect();
+
+    if let Ok(entries) = std::fs::read_dir(&context_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                let content_lower = content.to_lowercase();
+                // Check if this file references the target element
+                let is_relevant = content_lower.contains(&target_lower)
+                    || target_parts
+                        .iter()
+                        .any(|part| part.len() >= 3 && content_lower.contains(&part.to_lowercase()));
+
+                if is_relevant {
+                    let name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    let ext = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    let category =
+                        sruja_graph::context_score::detect_context_category(&name.to_lowercase(), &ext);
+                    let excerpt = extract_relevant_excerpt(&content, target_id, 150);
+
+                    results.push(ExternalContextRef {
+                        file: name,
+                        category,
+                        excerpt,
+                    });
+                }
+            }
+        }
+    }
+
+    results
+}
+
+/// Extract a relevant excerpt from content mentioning the target.
+fn extract_relevant_excerpt(content: &str, target: &str, max_len: usize) -> String {
+    let target_lower = target.to_lowercase();
+    let content_lower = content.to_lowercase();
+
+    // Find the first line mentioning the target
+    for line in content.lines() {
+        if line.to_lowercase().contains(&target_lower) {
+            return truncate(line.trim(), max_len);
+        }
+    }
+
+    // Fallback: first non-empty, non-front-matter line
+    let mut in_front_matter = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "---" {
+            in_front_matter = !in_front_matter;
+            continue;
+        }
+        if in_front_matter {
+            continue;
+        }
+        if !trimmed.is_empty() && !trimmed.starts_with('#') {
+            return truncate(trimmed, max_len);
+        }
+    }
+
+    "(external context available)".to_string()
+}
+
+fn truncate(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_len.saturating_sub(3)])
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+// CLI entry point
+// ──────────────────────────────────────────────────────────────
+
+pub async fn focus(
+    repo: &str,
+    file: Option<&str>,
+    element_id: Option<&str>,
+    format: &str,
+) -> Result<(), CliError> {
+    let repo_path = Path::new(repo);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo),
+        )));
+    }
+
+    // Load or build the knowledge graph
+    let kg = graph_store::load_or_build_graph(repo_path)?;
+
+    // Also get scan node count for context score
+    let scan_node_count = match sruja_scan::scan_repo(repo_path) {
+        Ok(g) => g.nodes.len(),
+        Err(_) => kg.nodes.len(),
+    };
+
+    // Resolve the target
+    let target_id = resolve_target(&kg, file, element_id)?;
+    let briefing = build_focus_briefing(&kg, &target_id, repo_path, scan_node_count);
+
+    match format {
+        "json" | "for-ai" => {
+            println!("{}", serde_json::to_string_pretty(&briefing)?);
+        }
+        _ => {
+            print_focus_briefing(&briefing);
+        }
+    }
+
+    Ok(())
+}
+
+fn print_focus_briefing(b: &FocusBriefing) {
+    let width = 56;
+    let border = "─".repeat(width);
+
+    println!();
+    println!(
+        "╭─ {} {} ─{}╮",
+        "Context Focus:".bold(),
+        colors::info(&b.target.label),
+        "─".repeat(width.saturating_sub(18 + b.target.label.len()))
+    );
+    println!("│{:width$}│", "", width = width);
+
+    // Target info
+    println!(
+        "│  📍 Component: {:width$}│",
+        colors::style(&b.target.id).bold(),
+        width = width - 17
+    );
+    if let Some(ref sys) = b.target.system {
+        println!(
+            "│  🏗  System:    {:width$}│",
+            sys,
+            width = width - 17
+        );
+    }
+    if let Some(ref tech) = b.target.technology {
+        println!(
+            "│  🔧 Technology: {:width$}│",
+            tech,
+            width = width - 18
+        );
+    }
+
+    println!("│{:width$}│", "", width = width);
+
+    // Blast radius
+    let risk = if b.blast_radius.total_affected > 10 {
+        colors::error("HIGH").to_string()
+    } else if b.blast_radius.total_affected > 5 {
+        colors::warning("MEDIUM").to_string()
+    } else {
+        colors::success("LOW").to_string()
+    };
+    println!(
+        "│  Blast Radius: {} components affected{:width$}│",
+        b.blast_radius.total_affected,
+        "",
+        width = width - 42
+    );
+    println!(
+        "│  Risk Level:   {}{:width$}│",
+        risk,
+        "",
+        width = width - 20
+    );
+
+    if b.hotspot_status.is_hotspot {
+        println!(
+            "│  🔥 Hotspot:   {}{:width$}│",
+            b.hotspot_status.role,
+            "",
+            width = width.saturating_sub(18 + b.hotspot_status.role.len())
+        );
+    }
+
+    println!("│{:width$}│", "", width = width);
+
+    // Upstream
+    if !b.blast_radius.upstream.is_empty() {
+        println!(
+            "│  {} Upstream (depends on this) {}{:width$}│",
+            "──",
+            "──",
+            "",
+            width = width - 36
+        );
+        for node in b.blast_radius.upstream.iter().take(5) {
+            println!(
+                "│  • {} (depth {}) — {}{:width$}│",
+                node.id,
+                node.depth,
+                truncate(&node.relationship, 20),
+                "",
+                width = width
+                    .saturating_sub(10 + node.id.len() + 10 + node.relationship.len().min(20))
+            );
+        }
+        println!("│{:width$}│", "", width = width);
+    }
+
+    // Downstream
+    if !b.blast_radius.downstream.is_empty() {
+        println!(
+            "│  {} Downstream (this depends on) {}{:width$}│",
+            "──",
+            "──",
+            "",
+            width = width - 38
+        );
+        for node in b.blast_radius.downstream.iter().take(5) {
+            println!(
+                "│  • {} (depth {}) — {}{:width$}│",
+                node.id,
+                node.depth,
+                truncate(&node.relationship, 20),
+                "",
+                width = width
+                    .saturating_sub(10 + node.id.len() + 10 + node.relationship.len().min(20))
+            );
+        }
+        println!("│{:width$}│", "", width = width);
+    }
+
+    // Decisions
+    if !b.decisions.is_empty() {
+        println!(
+            "│  {} Active Decisions {}{:width$}│",
+            "──",
+            "──",
+            "",
+            width = width - 26
+        );
+        for d in &b.decisions {
+            println!(
+                "│  {}: {}{:width$}│",
+                d.id,
+                truncate(&d.title, 40),
+                "",
+                width = width.saturating_sub(6 + d.id.len() + d.title.len().min(40))
+            );
+        }
+        println!("│{:width$}│", "", width = width);
+    }
+
+    // Boundaries
+    let not_allowed: Vec<&BoundaryInfo> = b.boundaries.iter().filter(|b| !b.allowed).collect();
+    if !not_allowed.is_empty() {
+        println!(
+            "│  {} Boundaries {}{:width$}│",
+            "──",
+            "──",
+            "",
+            width = width - 20
+        );
+        for bi in &not_allowed {
+            println!(
+                "│  ⛔ {} → {}: NOT allowed{:width$}│",
+                bi.from,
+                bi.to,
+                "",
+                width = width.saturating_sub(10 + bi.from.len() + bi.to.len() + 15)
+            );
+        }
+        println!("│{:width$}│", "", width = width);
+    }
+
+    // External Context
+    if !b.external_context.is_empty() {
+        println!(
+            "│  {} External Context {}{:width$}│",
+            "──",
+            "──",
+            "",
+            width = width - 26
+        );
+        for ec in &b.external_context {
+            println!(
+                "│  📄 {} [{}]{:width$}│",
+                ec.file,
+                ec.category,
+                "",
+                width = width.saturating_sub(8 + ec.file.len() + ec.category.len())
+            );
+        }
+        println!("│{:width$}│", "", width = width);
+    }
+
+    // AI Instructions
+    println!(
+        "│  {} AI Agent Instructions {}{:width$}│",
+        "──",
+        "──",
+        "",
+        width = width - 31
+    );
+    for (i, instr) in b.ai_instructions.iter().enumerate() {
+        let display = truncate(instr, width - 8);
+        println!(
+            "│  {}. {}{:width$}│",
+            i + 1,
+            display,
+            "",
+            width = width.saturating_sub(6 + display.len())
+        );
+    }
+
+    // Context Score
+    println!("│{:width$}│", "", width = width);
+    println!(
+        "│  Context Score: {} {}{:width$}│",
+        colors::health_bar(b.context_score, 15),
+        "",
+        "",
+        width = width.saturating_sub(45)
+    );
+
+    println!("╰{}╯", border);
+    println!();
+}

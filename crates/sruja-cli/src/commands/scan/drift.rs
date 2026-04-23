@@ -245,6 +245,13 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
 
     let graph = scan_repo(repo_path)?;
 
+    // Calculate context score
+    let context_score = (|| {
+        let kg = crate::graph_store::load_or_build_graph(repo_path).ok()?;
+        let age_hours = crate::utils::context::context_age_hours(repo_path);
+        Some(sruja_graph::compute_context_score(&kg, graph.nodes.len(), repo_path, age_hours).score)
+    })();
+
     if let Some(ref arch_path) = baseline {
         let content = fs::read_to_string(arch_path)?;
         let parser = sruja_language::Parser::new(arch_path);
@@ -295,6 +302,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
             health_score: Some(diff.summary.health_score),
             context_updated_at,
             top_findings,
+            context_score,
             health_history,
         });
     }
@@ -343,6 +351,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
         health_score: Some(drift.health_score),
         context_updated_at,
         top_findings,
+        context_score,
         health_history,
     })
 }
