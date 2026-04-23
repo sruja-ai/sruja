@@ -4,12 +4,11 @@
 //! It checks for correctness, best practices, and potential issues.
 
 pub mod rules;
-pub mod schema;
 pub mod utils;
 pub mod validator;
 
 // Re-export key public types
-pub use schema::DomainSchema;
+pub use sruja_language::DomainSchema;
 pub use validator::{Rule, RuleProfile, Validator};
 
 // Re-export common utilities for convenience

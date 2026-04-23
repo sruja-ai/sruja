@@ -65,8 +65,8 @@ pub async fn compliance(
 
     let intent_dir = resolve_intent_dir(repo_path, intent_path);
     let mut merged_model = IntentModel::default();
+    let mut context = IntentContext::new();
     if intent_dir.exists() {
-        let mut context = IntentContext::new();
         if let Ok(models) = context.load_from_directory(&intent_dir) {
             for model in models {
                 merged_model.merge(model);
@@ -75,7 +75,7 @@ pub async fn compliance(
     }
 
     let detector = sruja_intent::DriftDetector::new();
-    let mut intent_report: IntentDriftReport = detector.detect(&merged_model, &scan_graph);
+    let mut intent_report: IntentDriftReport = detector.detect(&merged_model, &scan_graph, context.schema());
     let policy_drifts = evaluate_policy_violations(&merged_model, &scan_graph);
     if !policy_drifts.is_empty() {
         intent_report.drifts.extend(policy_drifts);

@@ -5,7 +5,7 @@
 
 use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
-use crate::schema::DomainSchema;
+use crate::DomainSchema;
 
 /// Validation rule trait
 ///

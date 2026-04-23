@@ -150,6 +150,8 @@ mod tests {
                 undocumented_relationships: 0,
                 boundary_violations: 0,
                 policy_violations: 0,
+                schema_violations: 0,
+                taxonomy_mismatches: 0,
             },
         }
     }

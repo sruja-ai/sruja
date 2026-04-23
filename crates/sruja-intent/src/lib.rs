@@ -21,11 +21,19 @@ use std::path::Path;
 
 pub struct IntentContext {
     models: Vec<IntentModel>,
+    schema: sruja_language::DomainSchema,
 }
 
 impl IntentContext {
     pub fn new() -> Self {
-        Self { models: Vec::new() }
+        Self {
+            models: Vec::new(),
+            schema: sruja_language::DomainSchema::architecture(),
+        }
+    }
+
+    pub fn schema(&self) -> &sruja_language::DomainSchema {
+        &self.schema
     }
 
     pub fn load_from_directory(&mut self, dir: &Path) -> Result<Vec<IntentModel>, IntentError> {
@@ -47,8 +55,19 @@ impl IntentContext {
         {
             let path = entry.path();
             if path.extension().is_some_and(|ext| ext == "sruja") {
-                if let Ok(model) = IntentModel::from_sruja_file(path) {
-                    models.push(model);
+                let content = std::fs::read_to_string(path).map_err(IntentError::Io)?;
+                let parser = sruja_language::Parser::new(path.to_string_lossy().to_string());
+                if let Ok(program) = parser.parse(&content) {
+                    // Extract schema if present
+                    for item in &program.items {
+                        if let sruja_language::TopLevelItem::Schema(s) = item {
+                            self.schema = sruja_language::DomainSchema::from_ast(s);
+                        }
+                    }
+
+                    if let Ok(model) = IntentModel::from_sruja_content(&content, path) {
+                        models.push(model);
+                    }
                 }
             }
         }

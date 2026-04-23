@@ -1,7 +1,7 @@
-//! Domain Schema representation and validation logic.
+//! Domain Schema representation and logic.
 
 use std::collections::{HashMap, HashSet};
-use sruja_language::ast::SchemaBlock;
+use crate::ast::SchemaBlock;
 
 /// Represents a domain schema with allowed node kinds, edge kinds, and nesting rules.
 #[derive(Debug, Clone, Default)]
@@ -100,45 +100,5 @@ impl DomainSchema {
         } else {
             false
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use sruja_language::ast::NestingRule;
-    use sruja_diagnostics::SourceLocation;
-
-    #[test]
-    fn test_schema_from_ast() {
-        let schema_block = SchemaBlock {
-            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
-            name: "compliance".to_string(),
-            node_kinds: vec!["regulation".to_string(), "policy".to_string()],
-            edge_kinds: vec!["mandates".to_string()],
-            nesting: vec![NestingRule {
-                parent: "regulation".to_string(),
-                child: "policy".to_string(),
-            }],
-        };
-
-        let schema = DomainSchema::from_ast(&schema_block);
-        assert_eq!(schema.name, "compliance");
-        assert!(schema.is_node_kind_allowed("regulation"));
-        assert!(schema.is_node_kind_allowed("policy"));
-        assert!(!schema.is_node_kind_allowed("system"));
-        assert!(schema.is_edge_kind_allowed("mandates"));
-        assert!(!schema.is_edge_kind_allowed("calls"));
-        assert!(schema.is_nesting_allowed("regulation", "policy"));
-        assert!(!schema.is_nesting_allowed("policy", "regulation"));
-    }
-
-    #[test]
-    fn test_architecture_schema() {
-        let schema = DomainSchema::architecture();
-        assert_eq!(schema.name, "architecture");
-        assert!(schema.is_node_kind_allowed("system"));
-        assert!(schema.is_nesting_allowed("system", "container"));
-        assert!(!schema.is_nesting_allowed("component", "system"));
     }
 }

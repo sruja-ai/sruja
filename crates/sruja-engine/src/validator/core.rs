@@ -12,7 +12,7 @@ use crate::rules::{
     PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule, SimplicityRule,
     SloValidationRule, SourcesValidationRule, UniqueIdRule, ValidRefRule,
 };
-use crate::schema::DomainSchema;
+use crate::DomainSchema;
 
 use super::config::ValidatorConfig;
 use super::rule::Rule;

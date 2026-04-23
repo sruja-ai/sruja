@@ -5,7 +5,10 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+ 
+pub mod mapper;
 
+use sruja_language::DomainSchema;
 use sruja_scan::{Graph, Node};
 
 use crate::model::{
@@ -73,6 +76,16 @@ impl DriftReport {
             .iter()
             .filter(|d| d.kind == DriftKind::PolicyViolation)
             .count();
+        self.summary.schema_violations = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::SchemaViolation)
+            .count();
+        self.summary.taxonomy_mismatches = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::TaxonomyMismatch)
+            .count();
         self.drift_score = DriftDetector::compute_drift_score(&self.summary, &self.drifts);
         self.health = DriftDetector::classify_health(self.drift_score);
     }
@@ -87,6 +100,8 @@ pub struct DriftSummary {
     pub undocumented_relationships: usize,
     pub boundary_violations: usize,
     pub policy_violations: usize,
+    pub schema_violations: usize,
+    pub taxonomy_mismatches: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,6 +124,8 @@ pub enum DriftKind {
     TechnologyMismatch,
     PolicyViolation,
     ConstraintViolation,
+    SchemaViolation,
+    TaxonomyMismatch,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,15 +169,36 @@ impl DriftDetector {
         Self { config }
     }
 
-    pub fn detect(&self, intent: &IntentModel, reality: &Graph) -> DriftReport {
+    pub fn detect(&self, intent: &IntentModel, reality: &Graph, schema: &DomainSchema) -> DriftReport {
         let mut drifts = Vec::new();
+        let mapper = mapper::EvidenceMapper::new(schema);
 
         let declared_ids: HashSet<&str> = intent.components.iter().map(|c| c.id.as_str()).collect();
-
         let discovered_ids: HashSet<&str> = reality.nodes.iter().map(|n| n.id.as_str()).collect();
 
-        for discovered in &discovered_ids {
-            if !declared_ids.contains(discovered) {
+        for node in &reality.nodes {
+            let discovered = &node.id;
+            let node_kind = mapper.map_node_kind(node);
+
+            if !schema.is_node_kind_allowed(&node_kind) {
+                drifts.push(Drift {
+                    kind: DriftKind::TaxonomyMismatch,
+                    severity: Severity::Medium,
+                    description: format!(
+                        "Discovered component '{}' has kind '{}' which is not allowed in current schema '{}'",
+                        discovered, node_kind, schema.name
+                    ),
+                    evidence: vec![Evidence {
+                        source: "scan".to_string(),
+                        location: node.path.clone(),
+                        detail: format!("Scanner kind: {}", node.kind),
+                    }],
+                    intent_ref: None,
+                    suggestion: Some(format!("Add '{}' to schema node_kinds or update scanner mapping", node_kind)),
+                });
+            }
+
+            if !declared_ids.contains(discovered.as_str()) {
                 drifts.push(Drift {
                     kind: DriftKind::UndocumentedComponent,
                     severity: Severity::Medium,
@@ -170,19 +208,8 @@ impl DriftDetector {
                     ),
                     evidence: vec![Evidence {
                         source: "scan".to_string(),
-                        location: reality
-                            .nodes
-                            .iter()
-                            .find(|n| n.id == *discovered)
-                            .and_then(|n| n.path.clone()),
-                        detail: format!(
-                            "Discovered node of kind {:?}",
-                            reality
-                                .nodes
-                                .iter()
-                                .find(|n| n.id == *discovered)
-                                .map(|n| n.kind.clone())
-                        ),
+                        location: node.path.clone(),
+                        detail: format!("Discovered node of kind {}", node_kind),
                     }],
                     intent_ref: None,
                     suggestion: Some(format!(
@@ -311,6 +338,14 @@ impl DriftDetector {
             policy_violations: drifts
                 .iter()
                 .filter(|d| d.kind == DriftKind::PolicyViolation)
+                .count(),
+            schema_violations: drifts
+                .iter()
+                .filter(|d| d.kind == DriftKind::SchemaViolation)
+                .count(),
+            taxonomy_mismatches: drifts
+                .iter()
+                .filter(|d| d.kind == DriftKind::TaxonomyMismatch)
                 .count(),
         };
 
@@ -711,6 +746,8 @@ impl std::fmt::Display for DriftKind {
             DriftKind::TechnologyMismatch => write!(f, "Technology Mismatch"),
             DriftKind::PolicyViolation => write!(f, "Policy Violation"),
             DriftKind::ConstraintViolation => write!(f, "Constraint Violation"),
+            DriftKind::SchemaViolation => write!(f, "Schema Violation"),
+            DriftKind::TaxonomyMismatch => write!(f, "Taxonomy Mismatch"),
         }
     }
 }
@@ -820,7 +857,7 @@ mod tests {
         let intent = create_test_intent();
         let reality = create_test_graph();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(report
             .drifts
@@ -834,7 +871,7 @@ mod tests {
         let intent = create_test_intent();
         let reality = ScanGraph::new();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(report
             .drifts
@@ -856,7 +893,7 @@ mod tests {
         });
         let reality = create_test_graph();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(report.drift_score < 50);
     }
@@ -867,7 +904,7 @@ mod tests {
         let intent = create_test_intent();
         let reality = create_test_graph();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(report
             .drifts
@@ -891,7 +928,7 @@ mod tests {
         reality.nodes.push(scan_node("api", "API", "src/api"));
         reality.nodes.push(scan_node("db", "Database", "src/db"));
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(report
             .drifts
@@ -916,7 +953,7 @@ mod tests {
         });
         let reality = create_test_graph();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(report
             .drifts
@@ -944,7 +981,7 @@ mod tests {
         });
         let reality = create_test_graph();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(!report
             .drifts
@@ -992,7 +1029,7 @@ mod tests {
         });
         let reality = create_test_graph();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(!report
             .drifts
@@ -1013,7 +1050,7 @@ mod tests {
             suggestions: vec![],
         });
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
         assert!(report
             .drifts
             .iter()
@@ -1097,7 +1134,7 @@ mod tests {
             evidence: vec![],
         });
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
         assert!(report
             .drifts
             .iter()
@@ -1110,7 +1147,7 @@ mod tests {
         meta.insert("availability_slo", "99.9");
         reality.nodes[0] = scan_node_with("api", NodeKind::Service, Some("Rust"), meta);
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
         assert!(!report
             .drifts
             .iter()
@@ -1138,7 +1175,7 @@ mod tests {
         });
         let reality = create_test_graph();
 
-        let report = detector.detect(&intent, &reality);
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
         assert!(report
             .drifts
@@ -1190,6 +1227,8 @@ mod tests {
             undocumented_relationships: 1,
             boundary_violations: 1,
             policy_violations: 1,
+            schema_violations: 0,
+            taxonomy_mismatches: 0,
         };
         let drifts = vec![Drift {
             kind: DriftKind::PolicyViolation,
@@ -1248,7 +1287,7 @@ api = container "API" {
 
         let detector = DriftDetector::new();
         let reality = create_test_graph();
-        let report = detector.detect(&merged, &reality);
+        let report = detector.detect(&merged, &reality, &DomainSchema::architecture());
 
         assert!(report.drift_score <= 100);
         assert!(!report.intent_source.is_empty());

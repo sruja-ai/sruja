@@ -38,7 +38,7 @@ pub async fn intent_check(
     }
 
     let detector = DriftDetector::new();
-    let mut report = detector.detect(&merged_model, &graph);
+    let mut report = detector.detect(&merged_model, &graph, context.schema());
 
     let policy_drifts = crate::compliance::evaluate_policy_violations(&merged_model, &graph);
     if !policy_drifts.is_empty() {
@@ -180,7 +180,7 @@ pub async fn intent_propose(repo_root: &str, intent_path: Option<&str>) -> Resul
     }
 
     let detector = DriftDetector::new();
-    let report = detector.detect(&merged_model, &graph);
+    let report = detector.detect(&merged_model, &graph, context.schema());
 
     let undocumented: Vec<_> = report
         .drifts

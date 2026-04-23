@@ -5,10 +5,12 @@
 
 pub mod ast;
 pub mod parser;
+pub mod schema;
 pub mod token;
 pub mod traversal;
 
 pub use ast::*;
+pub use schema::DomainSchema;
 pub use parser::Parser;
 pub use traversal::*;
 
