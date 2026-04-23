@@ -76,6 +76,8 @@ pub enum TopLevelItem {
     CausalLoop(CausalLoop),
     /// Schema definition
     Schema(SchemaBlock),
+    /// Operational incident definition
+    Incident(Incident),
 }
 
 /// Element definition (person, system, container, component, database, queue)
@@ -469,17 +471,18 @@ pub struct ElementDefBody {
     pub scale: Option<ScaleBlock>,
     pub slo: Option<SloBlock>,
     pub items: Vec<ElementDefBodyItem>,
+    /// Gotchas/tribal knowledge about this element
+    pub gotchas: Vec<String>,
+    /// Operational constraints
+    pub operational_constraints: Vec<String>,
+    /// Paths to runbooks
+    pub runbooks: Vec<String>,
     /// Canonical ID for cross-system reference
     pub canonical_id: Option<String>,
-    /// Aliases found in codebase (alternative names for this element)
     pub aliases: Vec<String>,
-    /// Owner team or individual
     pub owner: Option<String>,
-    /// Business domain
     pub domain: Option<String>,
-    /// Criticality level
     pub criticality: Option<Criticality>,
-    /// Source bindings to external resources
     pub sources: Vec<SourceBinding>,
 }
 
@@ -515,6 +518,12 @@ pub enum ElementDefBodyItem {
     Criticality(Criticality),
     /// Source binding to external resource
     Source(SourceBinding),
+    /// Gotcha string
+    Gotcha(String),
+    /// Operational constraint string
+    OperationalConstraint(String),
+    /// Runbook path
+    Runbook(String),
 }
 
 /// System element (specialized ElementDef)
@@ -1320,4 +1329,18 @@ mod tests {
 
         assert_eq!(program.items.len(), 2);
     }
+}
+
+/// Operational incident definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Incident {
+    pub location: SourceLocation,
+    pub id: String,
+    pub title: String,
+    pub date: Option<String>,
+    pub severity: Option<String>,
+    pub affected: Vec<QualifiedIdent>,
+    pub cause: Option<String>,
+    pub resolution: Option<String>,
+    pub lesson: Option<String>,
 }

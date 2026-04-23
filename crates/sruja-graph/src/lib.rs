@@ -77,6 +77,25 @@ pub struct ArchitectureNode {
     pub source: SourceReference,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gotchas: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub operational_constraints: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub runbooks: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Incident {
+    pub id: String,
+    pub title: String,
+    pub date: Option<String>,
+    pub severity: Option<String>,
+    pub affected: Vec<NodeId>,
+    pub cause: Option<String>,
+    pub resolution: Option<String>,
+    pub lesson: Option<String>,
+    pub source: SourceReference,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

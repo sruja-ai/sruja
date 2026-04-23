@@ -8,6 +8,7 @@ pub mod convert;
 pub mod drift;
 pub mod git_mapper;
 pub mod health;
+pub mod proposal;
 pub mod source_ref;
 pub mod types;
 
@@ -19,6 +20,9 @@ pub use drift::{
 };
 pub use git_mapper::map_git_diff;
 pub use health::calculate_health_score_from_violations;
+pub use proposal::{
+    detect_unproposed_changes, Proposal, ProposalChange, ProposalStatus, ProposalValidation,
+};
 pub use types::{
     ComponentDiff, DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary, DriftConfig,
     DriftReport, EdgeDiff, HealthScoreBreakdown, HealthScorePenalties, NodeDiff, NodeMatch,

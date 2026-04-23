@@ -65,6 +65,7 @@ fn discover_docker(repo_root: &Path) -> Result<Graph, ScanError> {
             criticality: None,
             sources: Vec::new(),
             confidence: None,
+            ..Default::default()
         };
         graph.nodes.push(node);
     }
@@ -96,6 +97,7 @@ fn discover_docker(repo_root: &Path) -> Result<Graph, ScanError> {
                 criticality: None,
                 sources: Vec::new(),
                 confidence: None,
+                ..Default::default()
             };
             graph.nodes.push(node);
         }
@@ -139,6 +141,7 @@ fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
                 criticality: None,
                 sources: Vec::new(),
                 confidence: None,
+                ..Default::default()
             };
             graph.nodes.push(node);
         }
@@ -201,6 +204,7 @@ fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
                             criticality: None,
                             sources: Vec::new(),
                             confidence: None,
+                            ..Default::default()
                         };
                         graph.nodes.push(node);
                     }

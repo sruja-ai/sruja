@@ -11,6 +11,7 @@ pub struct KnowledgeGraph {
     pub decisions: HashMap<DecisionId, Decision>,
     pub policies: HashMap<PolicyId, Policy>,
     pub requirements: HashMap<RequirementId, Requirement>,
+    pub incidents: HashMap<String, Incident>,
     pub metadata: GraphMetadata,
 }
 
@@ -89,7 +90,25 @@ impl KnowledgeGraph {
 
     /// Merge a node into the graph. Inserts if new, updates if existing.
     /// Used when loading context from scanned code.
-    pub fn merge_node(&mut self, node: ArchitectureNode) {
+    pub fn merge_node(&mut self, mut node: ArchitectureNode) {
+        if let Some(existing) = self.nodes.get(&node.id) {
+            // Merge tribal knowledge if not already present
+            for g in &existing.gotchas {
+                if !node.gotchas.contains(g) {
+                    node.gotchas.push(g.clone());
+                }
+            }
+            for c in &existing.operational_constraints {
+                if !node.operational_constraints.contains(c) {
+                    node.operational_constraints.push(c.clone());
+                }
+            }
+            for r in &existing.runbooks {
+                if !node.runbooks.contains(r) {
+                    node.runbooks.push(r.clone());
+                }
+            }
+        }
         self.nodes.insert(node.id.clone(), node);
         self.touch();
     }
@@ -204,6 +223,16 @@ impl KnowledgeGraph {
 
     pub fn get_requirement(&self, id: &str) -> Option<&Requirement> {
         self.requirements.get(id)
+    }
+
+    pub fn add_incident(&mut self, incident: Incident) -> Result<(), GraphError> {
+        self.incidents.insert(incident.id.clone(), incident);
+        self.touch();
+        Ok(())
+    }
+
+    pub fn get_incident(&self, id: &str) -> Option<&Incident> {
+        self.incidents.get(id)
     }
 
     pub fn find_nodes_by_kind(&self, kind: NodeKind) -> Vec<&ArchitectureNode> {

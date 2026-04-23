@@ -3366,6 +3366,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -3380,9 +3381,12 @@ dependencies = [
 name = "sruja-diff"
 version = "0.32.0"
 dependencies = [
+ "chrono",
  "git2",
  "serde",
  "serde_json",
+ "sruja-diagnostics",
+ "sruja-intent",
  "sruja-language",
  "sruja-scan",
  "thiserror 2.0.18",

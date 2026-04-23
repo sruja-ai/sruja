@@ -48,6 +48,11 @@ pub struct Cli {
 pub enum Commands {
     /// Print version information
     Version,
+    /// Propose architectural changes for review
+    Propose {
+        #[command(subcommand)]
+        cmd: ProposeCommand,
+    },
     /// Scan a repository and infer an architecture graph
     Scan {
         /// Path to repository root (defaults to current directory)
@@ -382,6 +387,9 @@ pub enum Commands {
         /// Output format (text, json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Strict mode: fail if unproposed changes are detected
+        #[arg(long)]
+        strict: bool,
     },
     /// Export architecture context for AI tools (Cursor, Copilot, Claude)
     Context {
@@ -549,6 +557,42 @@ pub enum Commands {
 }
 
 #[derive(Subcommand)]
+pub enum ProposeCommand {
+    /// Create a new architectural proposal
+    Create {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Description of the change
+        #[arg(long, short = 'd')]
+        description: String,
+        /// Add elements in format "id:kind:label[:tech]"
+        #[arg(long, short = 'e')]
+        add_elements: Vec<String>,
+        /// Add relationships in format "source->target[:label]"
+        #[arg(long, short = 'l')]
+        add_relationships: Vec<String>,
+        /// Remove elements by ID
+        #[arg(long)]
+        remove_elements: Vec<String>,
+    },
+    /// List all architectural proposals
+    List {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+    /// Approve and merge a proposal
+    Approve {
+        /// Proposal ID to approve
+        proposal_id: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum IntentCommand {
     /// Check intent vs reality and report drift
     Check {
@@ -561,6 +605,9 @@ pub enum IntentCommand {
         /// Output format (text, json, markdown)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Strict mode: fail if unproposed changes are detected
+        #[arg(long)]
+        strict: bool,
     },
     /// Propose ADR from detected drift
     Propose {
@@ -576,6 +623,28 @@ pub enum IntentCommand {
 pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
     let result = match command {
         Commands::Version => commands::version(),
+        Commands::Propose { cmd } => match cmd {
+            ProposeCommand::Create {
+                repo,
+                description,
+                add_elements,
+                add_relationships,
+                remove_elements,
+            } => {
+                commands::propose_create(
+                    &repo,
+                    &description,
+                    add_elements,
+                    add_relationships,
+                    remove_elements,
+                )
+                .await
+            }
+            ProposeCommand::List { repo } => commands::propose_list(&repo).await,
+            ProposeCommand::Approve { proposal_id, repo } => {
+                commands::propose_approve(&repo, &proposal_id).await
+            }
+        },
         Commands::Scan { path, output } => commands::scan(&path, &output).await,
         Commands::Impact {
             repo,
@@ -722,9 +791,10 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
                 repo,
                 intent,
                 format,
+                strict,
             } => {
                 let intent_opt = intent.or_else(|| std::env::var("SRUJA_INTENT_PATH").ok());
-                commands::intent_check(&repo, intent_opt.as_deref(), &format).await
+                commands::intent_check(&repo, intent_opt.as_deref(), &format, strict).await
             }
             IntentCommand::Propose { repo, intent } => {
                 commands::intent_propose(&repo, intent.as_deref()).await
@@ -735,7 +805,8 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             architecture,
             intent,
             format,
-        } => commands::compliance(&repo, architecture.as_deref(), intent.as_deref(), &format).await,
+            strict,
+        } => commands::compliance(&repo, architecture.as_deref(), intent.as_deref(), &format, strict).await,
         Commands::Context {
             repo,
             format,

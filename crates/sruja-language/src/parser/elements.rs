@@ -340,6 +340,9 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
             ElementDefBodyItem::Domain(d) => body.domain = Some(d),
             ElementDefBodyItem::Criticality(c) => body.criticality = Some(c),
             ElementDefBodyItem::Source(s) => body.sources.push(s),
+            ElementDefBodyItem::Gotcha(g) => body.gotchas.push(g),
+            ElementDefBodyItem::OperationalConstraint(c) => body.operational_constraints.push(c),
+            ElementDefBodyItem::Runbook(r) => body.runbooks.push(r),
             #[allow(unreachable_patterns)]
             _ => {}
         }
@@ -354,71 +357,84 @@ fn parse_inline_step(input: &str) -> IResult<&str, crate::ast::ScenarioStep> {
 
 fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
     alt((
-        map(
-            preceded(
-                alt((tag("description"), tag("desc"))),
-                preceded(ws1, parse_string),
+        alt((
+            map(
+                preceded(tag("technology"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::Technology,
             ),
-            ElementDefBodyItem::Description,
-        ),
-        map(
-            preceded(
-                alt((tag("technology"), tag("tech"))),
-                preceded(ws1, parse_string),
+            map(
+                preceded(
+                    alt((tag("description"), tag("desc"))),
+                    preceded(ws1, parse_string),
+                ),
+                ElementDefBodyItem::Description,
             ),
-            ElementDefBodyItem::Technology,
-        ),
-        map(
-            preceded(
-                alt((tag("doc"), tag("documentation"))),
-                preceded(ws1, parse_string),
+            map(
+                preceded(
+                    alt((tag("doc"), tag("documentation"))),
+                    preceded(ws1, parse_string),
+                ),
+                ElementDefBodyItem::Doc,
             ),
-            ElementDefBodyItem::Doc,
-        ),
-        map(
-            preceded(tag("knowledge"), preceded(ws1, parse_string)),
-            ElementDefBodyItem::Knowledge,
-        ),
-        map(parse_metadata_block, ElementDefBodyItem::Metadata),
-        map(parse_slo_block, |s| ElementDefBodyItem::Slo(Box::new(s))),
-        map(parse_element_def, |e| {
-            ElementDefBodyItem::ElementDef(Box::new(e))
-        }),
-        map(parse_element_def_unassigned, |e| {
-            ElementDefBodyItem::ElementDef(Box::new(e))
-        }),
-        map(parse_inline_step, ElementDefBodyItem::Step),
-        map(parse_relation, ElementDefBodyItem::Relation),
-        map(parse_constraints_block, ElementDefBodyItem::Constraints),
-        map(parse_conventions_block, ElementDefBodyItem::Conventions),
-        map(parse_style_decl, ElementDefBodyItem::Style),
-        map(parse_scale_block, ElementDefBodyItem::Scale),
-        map(
-            preceded(
-                alt((tag("tags"), tag("tag"))),
-                preceded(ws0, opt(alt((parse_string_array, parse_tag_array)))),
+            map(
+                preceded(tag("knowledge"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::Knowledge,
             ),
-            |t| ElementDefBodyItem::Tags(t.unwrap_or_default()),
-        ),
-        // New fields for architecture index
-        map(
-            preceded(tag("id"), preceded(ws1, parse_string)),
-            ElementDefBodyItem::CanonicalId,
-        ),
-        map(
-            preceded(tag("aliases"), preceded(ws0, parse_string_array)),
-            ElementDefBodyItem::Aliases,
-        ),
-        map(
-            preceded(tag("owner"), preceded(ws1, parse_string)),
-            ElementDefBodyItem::Owner,
-        ),
-        map(
-            preceded(tag("domain"), preceded(ws1, parse_string)),
-            ElementDefBodyItem::Domain,
-        ),
-        map(parse_criticality, ElementDefBodyItem::Criticality),
-        map(parse_source_binding, ElementDefBodyItem::Source),
+            map(parse_metadata_block, ElementDefBodyItem::Metadata),
+            map(parse_slo_block, |s| ElementDefBodyItem::Slo(Box::new(s))),
+            map(parse_element_def, |e| {
+                ElementDefBodyItem::ElementDef(Box::new(e))
+            }),
+            map(parse_element_def_unassigned, |e| {
+                ElementDefBodyItem::ElementDef(Box::new(e))
+            }),
+            map(parse_inline_step, ElementDefBodyItem::Step),
+            map(parse_relation, ElementDefBodyItem::Relation),
+            map(parse_constraints_block, ElementDefBodyItem::Constraints),
+            map(parse_conventions_block, ElementDefBodyItem::Conventions),
+        )),
+        alt((
+            map(parse_style_decl, ElementDefBodyItem::Style),
+            map(parse_scale_block, ElementDefBodyItem::Scale),
+            map(
+                preceded(
+                    alt((tag("tags"), tag("tag"))),
+                    preceded(ws0, opt(alt((parse_string_array, parse_tag_array)))),
+                ),
+                |t| ElementDefBodyItem::Tags(t.unwrap_or_default()),
+            ),
+            // New fields for architecture index
+            map(
+                preceded(tag("id"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::CanonicalId,
+            ),
+            map(
+                preceded(tag("aliases"), preceded(ws0, parse_string_array)),
+                ElementDefBodyItem::Aliases,
+            ),
+            map(
+                preceded(tag("owner"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::Owner,
+            ),
+            map(
+                preceded(tag("domain"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::Domain,
+            ),
+            map(parse_criticality, ElementDefBodyItem::Criticality),
+            map(parse_source_binding, ElementDefBodyItem::Source),
+            map(
+                preceded(tag("gotcha"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::Gotcha,
+            ),
+            map(
+                preceded(tag("constraint"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::OperationalConstraint,
+            ),
+            map(
+                preceded(tag("runbook"), preceded(ws1, parse_string)),
+                ElementDefBodyItem::Runbook,
+            ),
+        )),
     ))
     .parse(input)
 }

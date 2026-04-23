@@ -10,7 +10,9 @@ use super::assignments::{
     parse_scenario_assignment,
 };
 use super::blocks::parse_metadata_block;
-use super::blocks::{parse_constraints_block, parse_conventions_block, parse_style_decl};
+use super::blocks::{
+    parse_constraints_block, parse_conventions_block, parse_incident, parse_style_decl,
+};
 use super::deployment::parse_deployment;
 use super::elements::{parse_element_def, parse_element_def_unassigned, parse_kind_def};
 use super::import::parse_import;
@@ -68,6 +70,7 @@ pub(super) fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
             map(parse_policy, TopLevelItem::Policy),
             map(parse_view, TopLevelItem::View),
             map(parse_schema, TopLevelItem::Schema),
+            map(parse_incident, TopLevelItem::Incident),
             map(parse_metadata_block, |m| {
                 TopLevelItem::ElementDef(Box::new(ElementDef {
                     location: m.location.clone(),

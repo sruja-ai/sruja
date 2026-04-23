@@ -61,6 +61,7 @@ impl DslPrinter {
                 TopLevelItem::CausalLoop(loop_data) => {
                     loops::print_causal_loop(&mut out, loop_data)
                 }
+                TopLevelItem::Incident(inc) => governance::print_incident(&mut out, inc),
                 TopLevelItem::Schema(_) => {}
             }
         }

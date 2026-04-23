@@ -40,6 +40,15 @@ pub struct Node {
     /// Source bindings to external resources
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<SourceBinding>,
+    /// Gotchas/tribal knowledge about this element
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gotchas: Vec<String>,
+    /// Operational constraints
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub operational_constraints: Vec<String>,
+    /// Paths to runbooks
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub runbooks: Vec<String>,
     /// Confidence score (0-100)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confidence: Option<u8>,
@@ -60,6 +69,9 @@ impl Default for Node {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            gotchas: Vec::new(),
+            operational_constraints: Vec::new(),
+            runbooks: Vec::new(),
             confidence: None,
         }
     }
@@ -91,9 +103,30 @@ pub struct Graph {
     pub metadata: HashMap<String, String>,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    /// Operational incidents
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub incidents: Vec<Incident>,
     /// Overall graph discovery confidence (0-100)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confidence: Option<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Incident {
+    pub id: String,
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub severity: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub affected: Vec<String>, // FQNs of affected elements
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cause: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolution: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lesson: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -126,6 +159,7 @@ impl Graph {
             metadata: HashMap::new(),
             nodes: Vec::new(),
             edges: Vec::new(),
+            incidents: Vec::new(),
             confidence: None,
         }
     }
@@ -133,6 +167,7 @@ impl Graph {
     pub fn merge(&mut self, other: Graph) {
         self.nodes.extend(other.nodes);
         self.edges.extend(other.edges);
+        self.incidents.extend(other.incidents);
         for (k, v) in other.metadata {
             self.metadata.entry(k).or_insert(v);
         }
@@ -202,6 +237,27 @@ impl Graph {
                     }
                 }
             }
+            if !other.gotchas.is_empty() {
+                for gotcha in other.gotchas {
+                    if !base.gotchas.contains(&gotcha) {
+                        base.gotchas.push(gotcha);
+                    }
+                }
+            }
+            if !other.operational_constraints.is_empty() {
+                for constraint in other.operational_constraints {
+                    if !base.operational_constraints.contains(&constraint) {
+                        base.operational_constraints.push(constraint);
+                    }
+                }
+            }
+            if !other.runbooks.is_empty() {
+                for runbook in other.runbooks {
+                    if !base.runbooks.contains(&runbook) {
+                        base.runbooks.push(runbook);
+                    }
+                }
+            }
             if base.confidence.is_none() {
                 base.confidence = other.confidence;
             }
@@ -262,6 +318,9 @@ impl Graph {
                 evidence,
             });
         }
+
+        self.incidents.sort_by(|a, b| a.id.cmp(&b.id));
+        self.incidents.dedup_by(|a, b| a.id == b.id);
     }
 
     #[must_use]

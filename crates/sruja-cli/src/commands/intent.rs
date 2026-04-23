@@ -11,6 +11,7 @@ pub async fn intent_check(
     repo_root: &str,
     intent_path: Option<&str>,
     format: &str,
+    strict: bool,
 ) -> Result<(), CliError> {
     let repo_path = std::path::Path::new(repo_root);
     if !repo_path.exists() {
@@ -39,6 +40,20 @@ pub async fn intent_check(
 
     let detector = DriftDetector::new();
     let mut report = detector.detect(&merged_model, &graph, context.schema());
+
+    if strict {
+        // 1. Get previous graph from .sruja/context.json (if exists)
+        let context_json = repo_path.join(".sruja").join("context.json");
+        if context_json.exists() {
+            let previous_graph: sruja_scan::Graph = serde_json::from_str(&std::fs::read_to_string(context_json)?)?;
+            // 2. Load proposals
+            let proposals = sruja_diff::Proposal::load_all(repo_path).unwrap_or_default();
+            // 3. Detect unproposed changes
+            let unproposed = sruja_diff::detect_unproposed_changes(&previous_graph, &graph, &proposals);
+            report.drifts.extend(unproposed);
+            report.recompute_summary_and_score();
+        }
+    }
 
     let policy_drifts = crate::compliance::evaluate_policy_violations(&merged_model, &graph);
     if !policy_drifts.is_empty() {

@@ -35,6 +35,9 @@ pub struct FocusTarget {
     pub label: String,
     pub technology: Option<String>,
     pub system: Option<String>,
+    pub gotchas: Vec<String>,
+    pub operational_constraints: Vec<String>,
+    pub runbooks: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -203,6 +206,11 @@ pub fn build_focus_briefing(
             .unwrap_or_else(|| target_id.to_string()),
         technology: node.and_then(|n| n.technology.clone()),
         system: infer_system(target_id),
+        gotchas: node.map(|n| n.gotchas.clone()).unwrap_or_default(),
+        operational_constraints: node
+            .map(|n| n.operational_constraints.clone())
+            .unwrap_or_default(),
+        runbooks: node.map(|n| n.runbooks.clone()).unwrap_or_default(),
     };
 
     // -- Blast Radius --
@@ -299,6 +307,14 @@ pub fn build_focus_briefing(
                 b.from, b.to, b.reason
             ));
         }
+    }
+    
+    // -- Tribal Knowledge AI Instructions --
+    for g in &target.gotchas {
+        ai_instructions.push(format!("💡 Gotcha: {}", g));
+    }
+    for c in &target.operational_constraints {
+        ai_instructions.push(format!("⚠️  Constraint: {}", c));
     }
 
     if ai_instructions.is_empty() {
@@ -619,6 +635,23 @@ fn print_focus_briefing(b: &FocusBriefing) {
             "│  🔧 Technology: {:width$}│",
             tech,
             width = width - 18
+        );
+    }
+
+    if !b.target.gotchas.is_empty() {
+        println!(
+            "│  💡 Gotchas:    {} recorded{:width$}│",
+            b.target.gotchas.len(),
+            "",
+            width = width - 30
+        );
+    }
+    if !b.target.operational_constraints.is_empty() {
+        println!(
+            "│  ⚠️  Constraints: {} recorded{:width$}│",
+            b.target.operational_constraints.len(),
+            "",
+            width = width - 30
         );
     }
 

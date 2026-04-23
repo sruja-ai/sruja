@@ -17,7 +17,7 @@ pub fn program_to_graph(program: &Program) -> Graph {
         let label = a.title.as_deref().unwrap_or(&a.name).to_string();
         let technology = a.body.as_ref().and_then(|b| b.technology.as_ref()).cloned();
 
-        let (canonical_id, aliases, owner, domain, criticality, sources) =
+        let (canonical_id, aliases, owner, domain, criticality, sources, gotchas, constraints, runbooks) =
             if let Some(body) = &a.body {
                 (
                     body.canonical_id.clone(),
@@ -26,9 +26,22 @@ pub fn program_to_graph(program: &Program) -> Graph {
                     body.domain.clone(),
                     body.criticality,
                     body.sources.clone(),
+                    body.gotchas.clone(),
+                    body.operational_constraints.clone(),
+                    body.runbooks.clone(),
                 )
             } else {
-                (None, Vec::new(), None, None, None, Vec::new())
+                (
+                    None,
+                    Vec::new(),
+                    None,
+                    None,
+                    None,
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                )
             };
 
         nodes.push(Node {
@@ -44,6 +57,9 @@ pub fn program_to_graph(program: &Program) -> Graph {
             domain,
             criticality,
             sources,
+            gotchas,
+            operational_constraints: constraints,
+            runbooks,
             confidence: None,
         });
     }
@@ -67,10 +83,27 @@ pub fn program_to_graph(program: &Program) -> Graph {
         }
     }
 
+    let mut incidents = Vec::new();
+    for item in &program.items {
+        if let sruja_language::TopLevelItem::Incident(inc) = item {
+            incidents.push(sruja_scan::Incident {
+                id: inc.id.clone(),
+                title: inc.title.clone(),
+                date: inc.date.clone(),
+                severity: inc.severity.clone(),
+                affected: inc.affected.iter().map(|id| id.as_string()).collect(),
+                cause: inc.cause.clone(),
+                resolution: inc.resolution.clone(),
+                lesson: inc.lesson.clone(),
+            });
+        }
+    }
+
     Graph {
         metadata: HashMap::new(),
         nodes,
         edges,
+        incidents,
         confidence: None,
     }
 }

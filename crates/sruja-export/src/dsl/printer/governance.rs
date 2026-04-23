@@ -207,6 +207,47 @@ pub fn print_policy(out: &mut String, policy: &Policy) {
     }
 }
 
+pub fn print_incident(out: &mut String, inc: &sruja_language::Incident) {
+    out.push_str("incident ");
+    out.push_str(&inc.id);
+    if !inc.title.is_empty() {
+        out.push_str(" \"");
+        out.push_str(&inc.title);
+        out.push('"');
+    }
+    let has_body = inc.date.is_some()
+        || inc.severity.is_some()
+        || inc.cause.is_some()
+        || inc.resolution.is_some()
+        || inc.lesson.is_some()
+        || !inc.affected.is_empty();
+
+    if has_body {
+        out.push_str(" {\n");
+        if let Some(date) = &inc.date {
+            out.push_str(&format!("    date \"{}\"\n", date));
+        }
+        if let Some(severity) = &inc.severity {
+            out.push_str(&format!("    severity \"{}\"\n", severity));
+        }
+        for affected in &inc.affected {
+            out.push_str(&format!("    affects {}\n", affected.as_string()));
+        }
+        if let Some(cause) = &inc.cause {
+            out.push_str(&format!("    cause \"{}\"\n", cause));
+        }
+        if let Some(resolution) = &inc.resolution {
+            out.push_str(&format!("    resolution \"{}\"\n", resolution));
+        }
+        if let Some(lesson) = &inc.lesson {
+            out.push_str(&format!("    lesson \"{}\"\n", lesson));
+        }
+        out.push_str("}\n");
+    } else {
+        out.push('\n');
+    }
+}
+
 fn format_selector(selector: &PolicySelectorAst) -> String {
     let mut parts: Vec<String> = Vec::new();
 

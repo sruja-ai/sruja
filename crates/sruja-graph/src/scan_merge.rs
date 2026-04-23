@@ -55,9 +55,29 @@ pub fn merge_scan_into_graph(
             source: source.clone(),
             created_at: now,
             updated_at: now,
+            gotchas: node.gotchas.clone(),
+            operational_constraints: node.operational_constraints.clone(),
+            runbooks: node.runbooks.clone(),
         };
 
         graph.merge_node(arch_node);
+        count += 1;
+    }
+
+    // Merge incidents
+    for inc in &scan_graph.incidents {
+        let incident = crate::Incident {
+            id: inc.id.clone(),
+            title: inc.title.clone(),
+            date: inc.date.clone(),
+            severity: inc.severity.clone(),
+            affected: inc.affected.clone(),
+            cause: inc.cause.clone(),
+            resolution: inc.resolution.clone(),
+            lesson: inc.lesson.clone(),
+            source: source.clone(),
+        };
+        graph.add_incident(incident).ok();
         count += 1;
     }
 
@@ -118,6 +138,24 @@ pub fn merge_program_into_graph(
             source: source.clone(),
             created_at: now,
             updated_at: now,
+            gotchas: elem
+                .assignment
+                .body
+                .as_ref()
+                .map(|b| b.gotchas.clone())
+                .unwrap_or_default(),
+            operational_constraints: elem
+                .assignment
+                .body
+                .as_ref()
+                .map(|b| b.operational_constraints.clone())
+                .unwrap_or_default(),
+            runbooks: elem
+                .assignment
+                .body
+                .as_ref()
+                .map(|b| b.runbooks.clone())
+                .unwrap_or_default(),
         };
         graph.merge_node(arch_node);
         count += 1;
@@ -154,6 +192,20 @@ pub fn merge_program_into_graph(
             };
 
             graph.add_decision(decision).ok();
+            count += 1;
+        } else if let sruja_language::ast::TopLevelItem::Incident(inc) = item {
+            let incident = crate::Incident {
+                id: inc.id.clone(),
+                title: inc.title.clone(),
+                date: inc.date.clone(),
+                severity: inc.severity.clone(),
+                affected: inc.affected.iter().map(|id| id.as_string()).collect(),
+                cause: inc.cause.clone(),
+                resolution: inc.resolution.clone(),
+                lesson: inc.lesson.clone(),
+                source: source.clone(),
+            };
+            graph.add_incident(incident).ok();
             count += 1;
         }
     }

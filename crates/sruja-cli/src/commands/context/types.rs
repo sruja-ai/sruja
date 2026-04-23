@@ -129,6 +129,12 @@ pub struct FocusNode {
     pub domain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub criticality: Option<sruja_language::ast::Criticality>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gotchas: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub operational_constraints: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub runbooks: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -213,6 +219,12 @@ pub struct TaskFocusElement {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lineage: Option<TaskLineage>,
     pub evidence: Vec<TaskEvidence>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gotchas: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub operational_constraints: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub runbooks: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

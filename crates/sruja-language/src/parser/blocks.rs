@@ -9,14 +9,15 @@ use nom::{
 use sruja_diagnostics::SourceLocation;
 
 use crate::ast::{
-    ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, MetaEntry, MetadataBlock,
-    StyleDecl,
+    ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, Incident, MetaEntry, MetadataBlock,
+    QualifiedIdent, StyleDecl,
 };
 
 use super::primitives::{
     parse_identifier, parse_kv_string, parse_string, parse_string_array, parse_tag_array, ws, ws0,
     ws1,
 };
+use super::relations::parse_qualified_ident;
 
 enum MaybeKeyedString {
     Keyed(String, String),
@@ -155,6 +156,118 @@ pub(crate) fn parse_convention_entry(input: &str) -> IResult<&str, ConventionEnt
     let (input, _) = ws0(input)?;
     let (input, value) = parse_string(input)?;
     Ok((input, ConventionEntry { key, value }))
+}
+
+pub(crate) fn parse_incident(input: &str) -> IResult<&str, Incident> {
+    use nom::branch::alt;
+    let (input, _) = tag("incident").parse(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, id) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, title) = parse_string(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, _) = char('{').parse(input)?;
+
+    let mut date = None;
+    let mut severity = None;
+    let mut affected = Vec::new();
+    let mut cause = None;
+    let mut resolution = None;
+    let mut lesson = None;
+
+    let mut current = input;
+    loop {
+        let (rest, _) = ws(current)?;
+        if rest.is_empty() {
+            break;
+        }
+        if rest.trim_start().starts_with('}') {
+            current = rest;
+            break;
+        }
+
+        let result: IResult<&str, (&str, String, Vec<QualifiedIdent>)> = alt((
+            map(
+                preceded(tag("date"), preceded(ws1, parse_string)),
+                |s| ("date", s, vec![]),
+            ),
+            map(
+                preceded(tag("severity"), preceded(ws1, parse_string)),
+                |s| ("severity", s, vec![]),
+            ),
+            map(
+                preceded(tag("affected"), preceded(ws0, parse_qualified_ident_array)),
+                |arr| ("affected", String::new(), arr),
+            ),
+            map(
+                preceded(tag("cause"), preceded(ws1, parse_string)),
+                |s| ("cause", s, vec![]),
+            ),
+            map(
+                preceded(tag("resolution"), preceded(ws1, parse_string)),
+                |s| ("resolution", s, vec![]),
+            ),
+            map(
+                preceded(tag("lesson"), preceded(ws1, parse_string)),
+                |s| ("lesson", s, vec![]),
+            ),
+        ))
+        .parse(rest);
+
+        match result {
+            Ok((next, (key, s, arr))) => {
+                match key {
+                    "date" => date = Some(s),
+                    "severity" => severity = Some(s),
+                    "affected" => affected = arr,
+                    "cause" => cause = Some(s),
+                    "resolution" => resolution = Some(s),
+                    "lesson" => lesson = Some(s),
+                    _ => {}
+                }
+                current = next;
+            }
+            Err(_) => {
+                if let Some(newline_pos) = rest.find('\n') {
+                    current = &rest[newline_pos + 1..];
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    let (input, _) = ws0(current)?;
+    let (input, _) = char('}').parse(input)?;
+
+    Ok((
+        input,
+        Incident {
+            location: SourceLocation::new(String::new(), 0, 0),
+            id,
+            title,
+            date,
+            severity,
+            affected,
+            cause,
+            resolution,
+            lesson,
+        },
+    ))
+}
+
+fn parse_qualified_ident_array(input: &str) -> IResult<&str, Vec<QualifiedIdent>> {
+    use nom::multi::separated_list0;
+    use nom::sequence::delimited;
+    delimited(
+        preceded(ws0, char('[')),
+        separated_list0(
+            preceded(ws0, char(',')),
+            preceded(ws0, parse_qualified_ident),
+        ),
+        preceded(ws0, char(']')),
+    )
+    .parse(input)
 }
 
 pub(crate) fn parse_style_decl(input: &str) -> IResult<&str, StyleDecl> {

@@ -199,6 +199,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                     criticality: None,
                     sources: Vec::new(),
                     confidence: None,
+                    ..Default::default()
                 },
             );
         }
@@ -222,6 +223,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             criticality: None,
             sources: Vec::new(),
             confidence,
+            ..Default::default()
         };
         nodes.push(node);
 
@@ -277,6 +279,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 criticality: None,
                 sources: Vec::new(),
                 confidence: None,
+                ..Default::default()
             });
             edges.push(Edge {
                 source: file_id.clone(),
@@ -377,6 +380,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         },
         nodes,
         edges,
+        incidents: Vec::new(),
         confidence: None,
     };
     graph.canonicalize();

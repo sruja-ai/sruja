@@ -227,6 +227,9 @@ pub fn build_focus_context(
             owner: n.owner.clone(),
             domain: n.domain.clone(),
             criticality: n.criticality,
+            gotchas: n.gotchas.clone(),
+            operational_constraints: n.operational_constraints.clone(),
+            runbooks: n.runbooks.clone(),
         })
         .collect();
 
@@ -412,6 +415,9 @@ struct BaselineElements {
     kinds_by_id: BTreeMap<String, NodeKind>,
     labels_by_id: BTreeMap<String, String>,
     sources_by_id: BTreeMap<String, Vec<sruja_language::SourceBinding>>,
+    gotchas_by_id: BTreeMap<String, Vec<String>>,
+    constraints_by_id: BTreeMap<String, Vec<String>>,
+    runbooks_by_id: BTreeMap<String, Vec<String>>,
 }
 
 fn load_baseline_elements(repo_root: &Path) -> BaselineElements {
@@ -445,7 +451,20 @@ fn load_baseline_elements(repo_root: &Path) -> BaselineElements {
         out.kinds_by_id.insert(fqn.clone(), kind);
         out.labels_by_id.insert(fqn.clone(), label);
         if !sources.is_empty() {
-            out.sources_by_id.insert(fqn, sources);
+            out.sources_by_id.insert(fqn.clone(), sources);
+        }
+
+        if let Some(body) = elem.assignment.body.as_ref() {
+            if !body.gotchas.is_empty() {
+                out.gotchas_by_id.insert(fqn.clone(), body.gotchas.clone());
+            }
+            if !body.operational_constraints.is_empty() {
+                out.constraints_by_id
+                    .insert(fqn.clone(), body.operational_constraints.clone());
+            }
+            if !body.runbooks.is_empty() {
+                out.runbooks_by_id.insert(fqn.clone(), body.runbooks.clone());
+            }
         }
     }
     out
@@ -645,12 +664,29 @@ fn build_focus_elements(
             }],
         };
 
+        let (gotchas, constraints, runbooks) = if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
+            (
+                node.gotchas.clone(),
+                node.operational_constraints.clone(),
+                node.runbooks.clone(),
+            )
+        } else {
+            (
+                baseline.gotchas_by_id.get(id).cloned().unwrap_or_default(),
+                baseline.constraints_by_id.get(id).cloned().unwrap_or_default(),
+                baseline.runbooks_by_id.get(id).cloned().unwrap_or_default(),
+            )
+        };
+
         out.push(TaskFocusElement {
             element_id: id.clone(),
             kind,
             label,
             lineage,
             evidence,
+            gotchas,
+            operational_constraints: constraints,
+            runbooks,
         });
     }
     out

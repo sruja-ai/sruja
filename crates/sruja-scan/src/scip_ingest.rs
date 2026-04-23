@@ -95,6 +95,7 @@ pub fn enrich_with_scip(repo_root: &Path) -> Result<Graph, Box<dyn Error>> {
         },
         nodes,
         edges,
+        incidents: Vec::new(),
         confidence: Some(90),
     })
 }

@@ -86,6 +86,11 @@ impl DriftReport {
             .iter()
             .filter(|d| d.kind == DriftKind::TaxonomyMismatch)
             .count();
+        self.summary.unproposed_changes = self
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::UnproposedChange)
+            .count();
         self.drift_score = DriftDetector::compute_drift_score(&self.summary, &self.drifts);
         self.health = DriftDetector::classify_health(self.drift_score);
     }
@@ -102,6 +107,7 @@ pub struct DriftSummary {
     pub policy_violations: usize,
     pub schema_violations: usize,
     pub taxonomy_mismatches: usize,
+    pub unproposed_changes: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,6 +132,7 @@ pub enum DriftKind {
     ConstraintViolation,
     SchemaViolation,
     TaxonomyMismatch,
+    UnproposedChange,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -346,6 +353,10 @@ impl DriftDetector {
             taxonomy_mismatches: drifts
                 .iter()
                 .filter(|d| d.kind == DriftKind::TaxonomyMismatch)
+                .count(),
+            unproposed_changes: drifts
+                .iter()
+                .filter(|d| d.kind == DriftKind::UnproposedChange)
                 .count(),
         };
 
@@ -748,6 +759,7 @@ impl std::fmt::Display for DriftKind {
             DriftKind::ConstraintViolation => write!(f, "Constraint Violation"),
             DriftKind::SchemaViolation => write!(f, "Schema Violation"),
             DriftKind::TaxonomyMismatch => write!(f, "Taxonomy Mismatch"),
+            DriftKind::UnproposedChange => write!(f, "Unproposed Change"),
         }
     }
 }

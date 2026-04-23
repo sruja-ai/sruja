@@ -467,6 +467,60 @@ fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "name": "sruja_get_operational_context",
+            "title": "Sruja Operational Context",
+            "description": "Get operational knowledge (gotchas, constraints, runbooks) and recent incidents for the repository or a specific element.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "element_id": { "type": "string", "description": "Optional element ID focus" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_propose_change",
+            "title": "Sruja Propose Change",
+            "description": "Propose an architectural change before writing code. Creates a validated proposal for human review.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path" },
+                    "description": { "type": "string", "description": "What this change does and why" },
+                    "add_elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "kind": { "type": "string" },
+                                "label": { "type": "string" },
+                                "technology": { "type": "string" }
+                            },
+                            "required": ["id", "kind", "label"]
+                        }
+                    },
+                    "add_relationships": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "source": { "type": "string" },
+                                "target": { "type": "string" },
+                                "label": { "type": "string" }
+                            },
+                            "required": ["source", "target"]
+                        }
+                    },
+                    "remove_elements": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                },
+                "required": ["description"]
+            }
+        }),
     ]
 }
 
@@ -770,6 +824,128 @@ async fn run_tool(
                 out.push_str("\nPlease review these findings before committing.");
                 Ok(out)
             }
+        }
+        "sruja_get_operational_context" => {
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str());
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+
+            let mut out = "# Operational Context\n\n".to_string();
+
+            if let Some(id) = element_id {
+                if let Some(node) = graph.nodes.iter().find(|n| n.id == id) {
+                    out.push_str(&format!("## {}\n", id));
+                    if !node.gotchas.is_empty() {
+                        out.push_str("### Gotchas\n");
+                        for g in &node.gotchas {
+                            out.push_str(&format!("- {}\n", g));
+                        }
+                    }
+                    if !node.operational_constraints.is_empty() {
+                        out.push_str("### Constraints\n");
+                        for c in &node.operational_constraints {
+                            out.push_str(&format!("- {}\n", c));
+                        }
+                    }
+                    if !node.runbooks.is_empty() {
+                        out.push_str("### Runbooks\n");
+                        for r in &node.runbooks {
+                            out.push_str(&format!("- {}\n", r));
+                        }
+                    }
+                } else {
+                    return Err(CliError::validation(format!("Element not found: {}", id)));
+                }
+            } else {
+                out.push_str("## Recent Incidents\n");
+                if graph.incidents.is_empty() {
+                    out.push_str("No incidents recorded.\n");
+                } else {
+                    for inc in &graph.incidents {
+                        out.push_str(&format!(
+                            "### {} - {}\n",
+                            inc.id,
+                            inc.title
+                        ));
+                        if let Some(s) = &inc.severity {
+                            out.push_str(&format!("- **Severity**: {}\n", s));
+                        }
+                        if let Some(d) = &inc.date {
+                            out.push_str(&format!("- **Date**: {}\n", d));
+                        }
+                        if !inc.affected.is_empty() {
+                            out.push_str("- **Affected**: ");
+                            out.push_str(&inc.affected.join(", "));
+                            out.push_str("\n");
+                        }
+                        if let Some(c) = &inc.cause {
+                            out.push_str(&format!("- **Cause**: {}\n", c));
+                        }
+                        if let Some(r) = &inc.resolution {
+                            out.push_str(&format!("- **Resolution**: {}\n", r));
+                        }
+                        if let Some(l) = &inc.lesson {
+                            out.push_str(&format!("- **Lesson**: {}\n", l));
+                        }
+                        out.push_str("\n");
+                    }
+                }
+
+                out.push_str("\n## Tribal Knowledge (Gotchas & Constraints)\n");
+                let mut found = false;
+                for node in &graph.nodes {
+                    if !node.gotchas.is_empty() || !node.operational_constraints.is_empty() {
+                        found = true;
+                        out.push_str(&format!("### {}\n", node.id));
+                        for g in &node.gotchas {
+                            out.push_str(&format!("- [Gotcha] {}\n", g));
+                        }
+                        for c in &node.operational_constraints {
+                            out.push_str(&format!("- [Constraint] {}\n", c));
+                        }
+                    }
+                }
+                if !found {
+                    out.push_str("No specific tribal knowledge recorded for elements.\n");
+                }
+            }
+
+            Ok(out)
+        }
+        "sruja_propose_change" => {
+            let description = arguments.get("description").and_then(|v| v.as_str()).unwrap_or("");
+            
+            let mut add_elements = Vec::new();
+            if let Some(elements) = arguments.get("add_elements").and_then(|v| v.as_array()) {
+                for e in elements {
+                    let id = e.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                    let kind = e.get("kind").and_then(|v| v.as_str()).unwrap_or("");
+                    let label = e.get("label").and_then(|v| v.as_str()).unwrap_or("");
+                    let tech = e.get("technology").and_then(|v| v.as_str()).unwrap_or("");
+                    add_elements.push(format!("{}:{}:{}:{}", id, kind, label, tech));
+                }
+            }
+
+            let mut add_relationships = Vec::new();
+            if let Some(rels) = arguments.get("add_relationships").and_then(|v| v.as_array()) {
+                for r in rels {
+                    let source = r.get("source").and_then(|v| v.as_str()).unwrap_or("");
+                    let target = r.get("target").and_then(|v| v.as_str()).unwrap_or("");
+                    let label = r.get("label").and_then(|v| v.as_str()).unwrap_or("");
+                    add_relationships.push(format!("{}->{}:{}", source, target, label));
+                }
+            }
+
+            let mut remove_elements = Vec::new();
+            if let Some(elements) = arguments.get("remove_elements").and_then(|v| v.as_array()) {
+                for e in elements {
+                    if let Some(id) = e.as_str() {
+                        remove_elements.push(id.to_string());
+                    }
+                }
+            }
+
+            super::propose_create(&repo, description, add_elements, add_relationships, remove_elements).await?;
+            Ok("Proposal created successfully. Human review required via CLI.".to_string())
         }
         "sruja_add_element" => {
             let id = arguments

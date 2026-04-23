@@ -140,6 +140,7 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             criticality: None,
             sources: Vec::new(),
             confidence: None,
+            ..Default::default()
         };
 
         for (dep_name, _) in pkg

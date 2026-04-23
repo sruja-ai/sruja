@@ -9,7 +9,7 @@ pub mod model;
 pub mod parser;
 pub mod report;
 
-pub use compare::{Drift, DriftDetector, DriftHealth, DriftKind, DriftReport, Severity};
+pub use compare::{Drift, DriftDetector, DriftHealth, DriftKind, DriftReport, Evidence, Severity};
 pub use model::{
     DeclaredBoundary, DeclaredComponent, DeclaredConstraint, DeclaredPolicy, DeclaredRelationship,
     IntentModel, IntentSourceInfo, SourceReference,

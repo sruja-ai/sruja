@@ -19,6 +19,7 @@ mod index;
 mod init;
 mod intent;
 mod mcp;
+mod propose;
 mod review;
 mod scan;
 mod status;
@@ -29,6 +30,8 @@ mod why;
 mod completions;
 mod health;
 pub mod violation_shared;
+
+pub use propose::*;
 
 pub use check::{baseline, check};
 pub use compliance::compliance;

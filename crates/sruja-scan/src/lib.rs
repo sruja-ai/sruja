@@ -19,7 +19,7 @@ use thiserror::Error;
 
 pub use graph::{
     BlastRadiusDirection, BlastRadiusNode, BlastRadiusResult, Edge, EdgeEvidence, EdgeKind, Graph,
-    Node, NodeKind,
+    Incident, Node, NodeKind,
 };
 pub use repomap::{generate_repomap, generate_repomap_from_graph, RepoMapOptions};
 pub use scan_scope::{
