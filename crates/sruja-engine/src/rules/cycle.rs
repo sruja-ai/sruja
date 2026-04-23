@@ -4,6 +4,7 @@
 //! Relations inside causal_loop elements are excluded, since cycles are the
 //! intended semantic for feedback loops in systems thinking models.
 
+use crate::DomainSchema;
 use std::collections::{HashMap, HashSet};
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
@@ -40,7 +41,7 @@ impl Rule for CycleDetectionRule {
         "Cycle Detection"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
         // Collect elements and relations with scope
@@ -154,13 +155,14 @@ impl Rule for CycleDetectionRule {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
     fn parse_and_validate(source: &str) -> Vec<Diagnostic> {
         let parser = Parser::new("test.sruja".to_string());
         let program = parser.parse(source).expect("Parse should succeed");
-        CycleDetectionRule.validate(&program)
+        CycleDetectionRule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

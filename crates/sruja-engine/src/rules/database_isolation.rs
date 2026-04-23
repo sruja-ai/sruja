@@ -5,6 +5,7 @@
 //!   access the same database.
 //! - Allows shared databases when `metadata { shared "true" }` is set on the database.
 
+use crate::DomainSchema;
 use std::collections::{HashMap, HashSet};
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
@@ -19,7 +20,7 @@ impl Rule for DatabaseIsolationRule {
         "Database Isolation"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -135,6 +136,7 @@ fn find_element<'a>(
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -145,7 +147,7 @@ mod tests {
             Err(_) => return vec![],
         };
         let rule = DatabaseIsolationRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

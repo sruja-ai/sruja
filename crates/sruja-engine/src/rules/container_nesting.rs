@@ -6,6 +6,7 @@
 //! - Containers contain components
 //! - Components cannot exist at top-level
 
+use crate::DomainSchema;
 use sruja_diagnostics::{Diagnostic, Severity};
 use sruja_language::{ElementKind, Program};
 
@@ -18,19 +19,22 @@ impl Rule for ContainerNestingRule {
         "Container Nesting"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, schema: &DomainSchema) -> Vec<Diagnostic> {
         let mut diags: Vec<Diagnostic> = Vec::new();
 
         for item in &program.items {
             if let sruja_language::TopLevelItem::ElementDef(elem) = item {
                 let kind = &elem.assignment.kind;
+                // If it's a top-level element, its "parent" kind is essentially "root" or None.
+                // In our DomainSchema, we can represent this by checking if it's allowed at top level.
+                // For now, we follow the logic that certain kinds MUST be nested.
                 if requires_nesting(kind) {
                     diags.push(
                         Diagnostic::new(
                             sruja_diagnostics::codes::CODE_NESTING_VIOLATION,
                             Severity::Error,
                             format!(
-                                "{} `{}` must be nested inside a system. Top-level {} declarations are not allowed.",
+                                "{} `{}` must be nested. Top-level {} declarations are not allowed in this schema.",
                                 kind,
                                 elem.assignment.name,
                                 kind
@@ -38,18 +42,55 @@ impl Rule for ContainerNestingRule {
                             elem.assignment.location.clone(),
                         )
                         .with_suggestions(vec![format!(
-                            "Move `{}` inside a system block:\n  MySystem = system \"...\" {{\n    {} = {} \"...\" {{ ... }}\n  }}",
+                            "Move `{}` inside an allowed parent block.",
                             elem.assignment.name,
-                            elem.assignment.name,
-                            kind
                         )]),
                     );
+                }
+                
+                // Also check nested elements recursively
+                if let Some(body) = &elem.assignment.body {
+                    diags.append(&mut validate_nested_nesting(kind, &body.items, schema));
                 }
             }
         }
 
         diags
     }
+}
+
+fn validate_nested_nesting(parent_kind: &sruja_language::ElementKind, items: &[sruja_language::ElementDefBodyItem], schema: &DomainSchema) -> Vec<Diagnostic> {
+    let mut diags = Vec::new();
+    let parent_kind_str = parent_kind.to_string();
+
+    for item in items {
+        if let sruja_language::ElementDefBodyItem::ElementDef(elem) = item {
+            let child_kind = &elem.assignment.kind;
+            let child_kind_str = child_kind.to_string();
+
+            if !schema.is_nesting_allowed(&parent_kind_str, &child_kind_str) {
+                diags.push(
+                    Diagnostic::new(
+                        sruja_diagnostics::codes::CODE_NESTING_VIOLATION,
+                        Severity::Error,
+                        format!(
+                            "{} `{}` cannot be nested inside {}. This nesting is not allowed in the current schema.",
+                            child_kind,
+                            elem.assignment.name,
+                            parent_kind
+                        ),
+                        elem.assignment.location.clone(),
+                    )
+                );
+            }
+
+            // Recurse
+            if let Some(body) = &elem.assignment.body {
+                diags.append(&mut validate_nested_nesting(child_kind, &body.items, schema));
+            }
+        }
+    }
+    diags
 }
 
 fn requires_nesting(kind: &ElementKind) -> bool {
@@ -65,6 +106,7 @@ fn requires_nesting(kind: &ElementKind) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -72,7 +114,7 @@ mod tests {
         let program = Parser::new("test.sruja".to_string())
             .parse(input)
             .expect("parse");
-        ContainerNestingRule.validate(&program)
+        ContainerNestingRule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

@@ -2,6 +2,7 @@
 //!
 //! Validates that feedback loops are properly formed and have valid relationships.
 
+use crate::DomainSchema;
 use sruja_diagnostics::Diagnostic;
 use sruja_language::{ast::TopLevelItem, collect_elements, Program};
 
@@ -16,7 +17,7 @@ impl Rule for FeedbackLoopIntegrityRule {
         "Feedback Loop Integrity"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
         // Collect all elements to check for valid references
@@ -160,6 +161,7 @@ fn dfs_has_cycle(
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
 
     #[test]
@@ -177,7 +179,7 @@ feedback Loop1 reinforcing "Test Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = FeedbackLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics.is_empty(),
@@ -198,7 +200,7 @@ feedback Loop1 reinforcing "Empty Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = FeedbackLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics
@@ -222,7 +224,7 @@ feedback Loop1 reinforcing "Invalid Ref Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = FeedbackLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics
@@ -247,7 +249,7 @@ feedback Loop1 reinforcing "Non-Cyclic Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = FeedbackLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics
@@ -275,7 +277,7 @@ feedback Loop1 reinforcing "Nested Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = FeedbackLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         // Qualified references should work
         let error_count = diagnostics
@@ -307,7 +309,7 @@ feedback Loop1 reinforcing "Nested Loop (Leaf)" {
         let program = parser.parse(input).unwrap();
 
         let rule = FeedbackLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics.is_empty(),

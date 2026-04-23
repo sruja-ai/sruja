@@ -2,6 +2,7 @@
 //!
 //! Validates that causal loops are properly formed with valid variables and relationships.
 
+use crate::DomainSchema;
 use sruja_diagnostics::{Diagnostic, Severity};
 use sruja_language::ast::TopLevelItem;
 use sruja_language::Program;
@@ -16,7 +17,7 @@ impl Rule for CausalLoopIntegrityRule {
         "Causal Loop Integrity"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
         // Check each causal loop
@@ -161,6 +162,7 @@ impl Rule for CausalLoopIntegrityRule {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
 
     #[test]
@@ -177,7 +179,7 @@ causal_loop Loop1 balancing "Test Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = CausalLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics.is_empty(),
@@ -196,7 +198,7 @@ causal_loop Loop1 reinforcing "Empty Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = CausalLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics.iter().any(|d| d
@@ -219,7 +221,7 @@ causal_loop Loop1 balancing "Invalid Ref Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = CausalLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics
@@ -242,7 +244,7 @@ causal_loop Loop1 reinforcing "Duplicate Variables" {
         let program = parser.parse(input).unwrap();
 
         let rule = CausalLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics
@@ -264,7 +266,7 @@ causal_loop Loop1 reinforcing "No Variables" {
         let program = parser.parse(input).unwrap();
 
         let rule = CausalLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         // Should warn about having relationships but no variables
         assert!(
@@ -288,7 +290,7 @@ causal_loop Loop1 reinforcing "Self Loop" {
         let program = parser.parse(input).unwrap();
 
         let rule = CausalLoopIntegrityRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         // Self-referencing loops are valid in systems thinking
         assert!(

@@ -5,6 +5,7 @@
 
 use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
+use crate::schema::DomainSchema;
 
 /// Validation rule trait
 ///
@@ -21,6 +22,7 @@ use sruja_language::Program;
 ///
 /// ```rust
 /// use sruja_engine::validator::Rule;
+/// use sruja_engine::DomainSchema;
 /// use sruja_language::Program;
 /// use sruja_diagnostics::{Diagnostic, Severity};
 ///
@@ -31,7 +33,7 @@ use sruja_language::Program;
 ///         "Example Rule"
 ///     }
 ///
-///     fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+///     fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
 ///         // Your validation logic here
 ///         vec![]
 ///     }
@@ -56,5 +58,5 @@ pub trait Rule: Send + Sync {
     /// - Be helpful: Include suggestions for fixing the issue
     /// - Be consistent: Use standard error codes and severity levels
     /// - Be performant: Avoid expensive operations in hot paths
-    fn validate(&self, program: &Program) -> Vec<Diagnostic>;
+    fn validate(&self, program: &Program, schema: &DomainSchema) -> Vec<Diagnostic>;
 }

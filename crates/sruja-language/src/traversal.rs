@@ -97,6 +97,10 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
                 };
                 elements.insert(fl.id.clone(), elem_def);
             }
+            TopLevelItem::Schema(_schema) => {
+                // Schemas don't define elements in the graph directly,
+                // they are handled by the engine.
+            }
             _ => {}
         }
     }
@@ -349,6 +353,14 @@ pub fn populate_locations(program: &mut Program, source: &str, filename: &str) {
                     }
                 }
             }
+            TopLevelItem::Schema(schema) => {
+                if is_unset_location(&schema.location) {
+                    if let Some((line, col)) = find_schema_definition_line(source, &schema.name) {
+                        schema.location =
+                            SourceLocation::new(filename.to_string(), line + 1, col + 1);
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -411,6 +423,17 @@ fn find_view_definition_line(source: &str, identifier: &str) -> Option<(u32, u32
     None
 }
 
+fn find_schema_definition_line(source: &str, identifier: &str) -> Option<(u32, u32)> {
+    for (line_idx, line) in source.lines().enumerate() {
+        if line.contains("schema") && line.contains(identifier) {
+            if let Some(pos) = line.find(identifier) {
+                return Some((line_idx as u32, pos as u32));
+            }
+        }
+    }
+    None
+}
+
 /// Get element location from various AST types
 pub trait HasLocation {
     fn location(&self) -> &SourceLocation;
@@ -465,6 +488,12 @@ impl HasLocation for Policy {
 }
 
 impl HasLocation for ViewDef {
+    fn location(&self) -> &SourceLocation {
+        &self.location
+    }
+}
+
+impl HasLocation for SchemaBlock {
     fn location(&self) -> &SourceLocation {
         &self.location
     }

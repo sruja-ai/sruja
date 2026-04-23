@@ -1,3 +1,4 @@
+use crate::DomainSchema;
 use sruja_diagnostics::{Diagnostic, Severity};
 use sruja_language::{collect_elements, ElementKind, Program};
 
@@ -10,7 +11,7 @@ impl Rule for RequiredFieldsRule {
         "Required Fields"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -83,6 +84,7 @@ fn kind_requires_technology(kind: &ElementKind) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -90,7 +92,7 @@ mod tests {
         let program = Parser::new("test.sruja".to_string())
             .parse(input)
             .expect("parse");
-        RequiredFieldsRule.validate(&program)
+        RequiredFieldsRule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

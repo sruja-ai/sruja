@@ -12,6 +12,7 @@ use crate::rules::{
     PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule, SimplicityRule,
     SloValidationRule, SourcesValidationRule, UniqueIdRule, ValidRefRule,
 };
+use crate::schema::DomainSchema;
 
 use super::config::ValidatorConfig;
 use super::rule::Rule;
@@ -53,6 +54,9 @@ pub struct Validator {
 
     /// Configuration for validation behavior
     pub(crate) config: ValidatorConfig,
+
+    /// Domain schema for validation
+    pub(crate) schema: DomainSchema,
 }
 
 impl Validator {
@@ -62,6 +66,7 @@ impl Validator {
             rules: Vec::new(),
             excluded_rules: HashSet::new(),
             config: ValidatorConfig::default(),
+            schema: DomainSchema::architecture(),
         }
     }
 
@@ -129,12 +134,25 @@ impl Validator {
     pub fn validate_sync(&self, program: &Program) -> Vec<Diagnostic> {
         let mut all_diagnostics = Vec::new();
 
+        // Check if program defines a custom schema
+        let mut active_schema = &self.schema;
+        let mut custom_schema = None;
+        for item in &program.items {
+            if let sruja_language::ast::TopLevelItem::Schema(s) = item {
+                custom_schema = Some(DomainSchema::from_ast(s));
+                break;
+            }
+        }
+        if let Some(s) = &custom_schema {
+            active_schema = s;
+        }
+
         for rule in &self.rules {
             if self.config.fail_fast && !all_diagnostics.is_empty() {
                 break;
             }
 
-            let mut diagnostics = rule.validate(program);
+            let mut diagnostics = rule.validate(program, active_schema);
             all_diagnostics.append(&mut diagnostics);
         }
 
@@ -153,12 +171,22 @@ impl Validator {
         let mut tasks = Vec::new();
         let rule_timeout = self.config.rule_timeout;
 
+        // Check if program defines a custom schema
+        let mut active_schema = Arc::new(self.schema.clone());
+        for item in &program.items {
+            if let sruja_language::ast::TopLevelItem::Schema(s) = item {
+                active_schema = Arc::new(DomainSchema::from_ast(s));
+                break;
+            }
+        }
+
         for rule in self.rules.clone() {
             let program_clone = Arc::clone(&program);
+            let schema_clone = Arc::clone(&active_schema);
             let task = tokio::spawn(async move {
                 tokio::time::timeout(
                     rule_timeout,
-                    tokio::task::spawn_blocking(move || rule.validate(&program_clone)),
+                    tokio::task::spawn_blocking(move || rule.validate(&program_clone, &schema_clone)),
                 )
                 .await
             });
@@ -234,7 +262,7 @@ mod tests {
             self.rule_name
         }
 
-        fn validate(&self, _program: &Program) -> Vec<Diagnostic> {
+        fn validate(&self, _program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
             if self.panic_on_validate {
                 panic!("validate should not be called");
             }

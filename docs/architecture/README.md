@@ -37,6 +37,10 @@ Current contributor and release workflow, including:
 - GitHub Actions CI for Rust, WASM, `.sruja`, skills, security, and version consistency
 - Release Please, CLI release assets, extension publishing, and mdBook deployments
 
+### `domain-schema.md`
+
+Explanation of the Domain Schema DSL and the transition to generalized Context Graphs.
+
 ## Usage
 
 ### Lint the architecture docs

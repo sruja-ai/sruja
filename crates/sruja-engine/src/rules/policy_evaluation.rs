@@ -1,3 +1,4 @@
+use crate::DomainSchema;
 use sruja_diagnostics::Diagnostic;
 use sruja_language::{collect_elements, ElementDef, Program, TopLevelItem};
 
@@ -14,7 +15,7 @@ impl Rule for PolicyEvaluationRule {
         "Policy Evaluation"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -265,6 +266,7 @@ fn selector_matches_any(
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_diagnostics::Severity;
     use sruja_language::Parser;
@@ -272,7 +274,7 @@ mod tests {
     fn validate(input: &str) -> Vec<Diagnostic> {
         let parser = Parser::new("test.sruja".to_string());
         let program = parser.parse(input).expect("parse");
-        PolicyEvaluationRule.validate(&program)
+        PolicyEvaluationRule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

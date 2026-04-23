@@ -160,6 +160,7 @@ impl MarkdownExporter {
                 }
                 TopLevelItem::FeedbackLoop(fl) => feedback_loops.push(fl),
                 TopLevelItem::CausalLoop(cl) => causal_loops.push(cl),
+                TopLevelItem::Schema(_) => {}
                 _ => {}
             }
         }

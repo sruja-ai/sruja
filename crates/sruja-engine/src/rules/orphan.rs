@@ -108,6 +108,7 @@
 //! - Cannot distinguish between intentional and unintentional orphans
 //! - Does not analyze directionality (source vs target)
 
+use crate::DomainSchema;
 use std::collections::HashSet;
 
 use sruja_diagnostics::{Diagnostic, Severity};
@@ -162,7 +163,7 @@ impl Rule for OrphanDetectionRule {
     /// # Returns
     ///
     /// A vector of warnings, one for each orphan element found
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -428,6 +429,7 @@ fn generate_orphan_suggestions(fully_qualified_name: &str, element: &ElementDef)
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_diagnostics::SourceLocation;
     use sruja_language::{Parser, QualifiedIdent, Relation};
@@ -443,7 +445,7 @@ mod tests {
         };
 
         let rule = OrphanDetectionRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

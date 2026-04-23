@@ -80,6 +80,7 @@
 //! 4. Uses flexible element lookup (exact FQN or suffix match)
 //! 5. Generates diagnostics for any undefined references with helpful suggestions
 
+use crate::DomainSchema;
 use std::collections::HashSet;
 
 use sruja_diagnostics::{Diagnostic, Severity};
@@ -126,7 +127,7 @@ impl Rule for ValidRefRule {
     /// # Returns
     ///
     /// A vector of diagnostics, one for each undefined reference found
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
 
         // Collect all elements from the program to build our lookup index
@@ -407,6 +408,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -421,7 +423,7 @@ mod tests {
         };
 
         let rule = ValidRefRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

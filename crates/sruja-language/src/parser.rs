@@ -14,6 +14,7 @@ mod overview_views;
 mod primitives;
 mod program;
 mod relations;
+mod schema;
 
 #[cfg(test)]
 mod tests;

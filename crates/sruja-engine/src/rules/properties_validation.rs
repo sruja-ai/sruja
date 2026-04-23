@@ -4,6 +4,7 @@
 //! - Validates specific metadata properties (key/value) on elements.
 //! - Uses key-specific validators and emits CODE_INVALID_PROPERTY errors.
 
+use crate::DomainSchema;
 use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity};
@@ -18,7 +19,7 @@ impl Rule for PropertiesValidationRule {
         "Properties Validation"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -247,6 +248,7 @@ fn is_number(s: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_diagnostics::SourceLocation;
     use sruja_language::{
@@ -280,7 +282,7 @@ mod tests {
     #[test]
     fn empty_program_returns_no_diagnostics() {
         let program = Program { items: vec![] };
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -290,7 +292,7 @@ mod tests {
             key: "capacity.readReplicas".to_string(),
             value: Some("3".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -300,7 +302,7 @@ mod tests {
             key: "capacity.readReplicas".to_string(),
             value: Some("three".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert_eq!(diags.len(), 1);
         assert!(diags[0].message.contains("capacity.readReplicas"));
     }
@@ -311,7 +313,7 @@ mod tests {
             key: "obs.tracing.sampleRate".to_string(),
             value: Some("10%".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -321,7 +323,7 @@ mod tests {
             key: "obs.tracing.sampleRate".to_string(),
             value: Some("ten".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert_eq!(diags.len(), 1);
     }
 
@@ -331,7 +333,7 @@ mod tests {
             key: "compliance.pci.level".to_string(),
             value: Some("1".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -341,7 +343,7 @@ mod tests {
             key: "compliance.pci.level".to_string(),
             value: Some("".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert_eq!(diags.len(), 1);
     }
 
@@ -351,7 +353,7 @@ mod tests {
             key: "cost.monthly.total".to_string(),
             value: Some("$1,000.50".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -361,7 +363,7 @@ mod tests {
             key: "cost.monthly.total".to_string(),
             value: Some("1000".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert_eq!(diags.len(), 1);
     }
 
@@ -377,7 +379,7 @@ mod tests {
                 value: Some("t3.medium".to_string()),
             },
         ]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -393,7 +395,7 @@ mod tests {
                 value: Some("n1-standard-4".to_string()),
             },
         ]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -409,7 +411,7 @@ mod tests {
                 value: Some("Standard_D4s".to_string()),
             },
         ]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -425,7 +427,7 @@ mod tests {
                 value: Some("invalid-type".to_string()),
             },
         ]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert_eq!(diags.len(), 1);
     }
 
@@ -435,7 +437,7 @@ mod tests {
             key: "customKey".to_string(),
             value: Some("anything".to_string()),
         }]);
-        let diags = PropertiesValidationRule.validate(&program);
+        let diags = PropertiesValidationRule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty(), "unknown properties are not validated");
     }
 }

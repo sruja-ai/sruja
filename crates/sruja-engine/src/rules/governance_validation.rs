@@ -5,6 +5,7 @@
 //!   requirement, adr, policy, scenario, flow, contract
 //! - Treats "story" as "scenario"
 
+use crate::DomainSchema;
 use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity};
@@ -19,7 +20,7 @@ impl Rule for GovernanceValidationRule {
         "Governance Validation"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -103,6 +104,7 @@ fn normalize_governance_kind(kind: &ElementKind) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -113,7 +115,7 @@ mod tests {
             Err(_) => return vec![],
         };
         let rule = GovernanceValidationRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

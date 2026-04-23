@@ -1,3 +1,4 @@
+use crate::DomainSchema;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -13,7 +14,7 @@ impl Rule for SourcesValidationRule {
         "Sources Validation"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -145,6 +146,7 @@ fn validate_element_sources(
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -152,7 +154,7 @@ mod tests {
         let parser = Parser::new(file.to_string());
         let program = parser.parse(input).expect("parse failed");
         let rule = SourcesValidationRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

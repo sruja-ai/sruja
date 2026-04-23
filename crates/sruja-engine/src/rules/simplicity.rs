@@ -2,6 +2,7 @@
 //!
 //! Validates that users are using the right perspective for their modeling goals.
 
+use crate::DomainSchema;
 use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
 
@@ -15,7 +16,7 @@ impl Rule for SimplicityRule {
         "SimplicityGuidance"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -28,6 +29,7 @@ impl Rule for SimplicityRule {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -41,7 +43,7 @@ mod tests {
     fn simplicity_rule_empty_program_returns_no_diagnostics() {
         let rule = SimplicityRule;
         let program = Program::default();
-        let diags = rule.validate(&program);
+        let diags = rule.validate(&program, &DomainSchema::architecture());
         assert!(diags.is_empty());
     }
 
@@ -51,7 +53,7 @@ mod tests {
         let program = Parser::new("test.sruja".to_string())
             .parse("S = system \"My System\" {}")
             .expect("parse");
-        let diags = rule.validate(&program);
+        let diags = rule.validate(&program, &DomainSchema::architecture());
         assert!(
             diags.is_empty(),
             "SimplicityRule currently defers DDD logic"

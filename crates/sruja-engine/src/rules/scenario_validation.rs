@@ -4,6 +4,7 @@
 //! - Each step must reference existing elements
 //! - Enforces simple tag-based policies (e.g., external -> database is forbidden)
 
+use crate::DomainSchema;
 use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
@@ -26,7 +27,7 @@ impl Rule for ScenarioValidationRule {
         "Scenario Validation"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -229,6 +230,7 @@ impl<'a> ScenarioRunner<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -239,7 +241,7 @@ mod tests {
             Err(_) => return vec![],
         };
         let rule = ScenarioValidationRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

@@ -74,6 +74,8 @@ pub enum TopLevelItem {
     FeedbackLoop(FeedbackLoop),
     /// Causal loop definition
     CausalLoop(CausalLoop),
+    /// Schema definition
+    Schema(SchemaBlock),
 }
 
 /// Element definition (person, system, container, component, database, queue)
@@ -834,6 +836,23 @@ pub struct ElementKindDef {
     pub description: Option<String>,
     pub technology: Option<String>,
     pub style: Option<StyleBlock>,
+}
+
+/// Schema definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemaBlock {
+    pub location: SourceLocation,
+    pub name: String,
+    pub node_kinds: Vec<String>,
+    pub edge_kinds: Vec<String>,
+    pub nesting: Vec<NestingRule>,
+}
+
+/// Nesting rule in a schema
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NestingRule {
+    pub parent: String,
+    pub child: String,
 }
 
 /// Tag definition

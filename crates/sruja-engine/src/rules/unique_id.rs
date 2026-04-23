@@ -2,6 +2,7 @@
 //!
 //! Ensures all element IDs are unique within architecture.
 
+use crate::DomainSchema;
 use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
@@ -17,7 +18,7 @@ impl Rule for UniqueIdRule {
         "Unique IDs"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         let mut seen_ids: HashMap<String, SourceLocation> = HashMap::with_capacity(100);
         let mut diagnostics = Vec::new();
 
@@ -94,6 +95,7 @@ fn check_nested_elements<F>(
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_diagnostics::SourceLocation;
     use sruja_language::ElementDefBodyItem;
@@ -126,7 +128,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics.is_empty(),
@@ -145,7 +147,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert_eq!(diagnostics.len(), 1, "Should report one duplicate");
         assert_eq!(
@@ -211,7 +213,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert_eq!(
             diagnostics.len(),
@@ -275,7 +277,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert_eq!(diagnostics.len(), 1, "Should report one duplicate");
         assert!(diagnostics[0]
@@ -303,7 +305,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert!(
             diagnostics.is_empty(),
@@ -324,7 +326,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert_eq!(
             diagnostics.len(),
@@ -369,7 +371,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         assert_eq!(diagnostics.len(), 1);
         assert!(
@@ -470,7 +472,7 @@ mod tests {
         };
 
         let rule = UniqueIdRule;
-        let diagnostics = rule.validate(&program);
+        let diagnostics = rule.validate(&program, &DomainSchema::architecture());
 
         // These elements have different FQNs (MainSystem.API.Database vs MainSystem.Worker.Database)
         // so they should NOT be reported as duplicates

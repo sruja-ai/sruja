@@ -4,6 +4,7 @@
 //! - Validates formats inside `slo { ... }` blocks for availability/latency/errorRate/throughput.
 //! - Emits CODE_VALIDATION_RULE_ERROR diagnostics with severity aligned to Go.
 
+use crate::DomainSchema;
 use sruja_diagnostics::{Diagnostic, Severity};
 use sruja_language::{collect_elements, Program, SloBlock};
 
@@ -16,7 +17,7 @@ impl Rule for SloValidationRule {
         "SLO Validation"
     }
 
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -386,6 +387,7 @@ fn is_number(s: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -396,7 +398,7 @@ mod tests {
             Err(_) => return vec![],
         };
         let rule = SloValidationRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

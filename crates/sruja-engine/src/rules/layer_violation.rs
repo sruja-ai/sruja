@@ -148,6 +148,7 @@
 //! - Detection of circular dependencies across layers
 //! - Visualization of dependency graph with layer coloring
 
+use crate::DomainSchema;
 use std::collections::HashMap;
 
 use sruja_diagnostics::{Diagnostic, Severity};
@@ -216,7 +217,7 @@ impl Rule for LayerViolationRule {
     /// # Returns
     ///
     /// A vector of error diagnostics, one for each layer violation found
-    fn validate(&self, program: &Program) -> Vec<Diagnostic> {
+    fn validate(&self, program: &Program, _schema: &DomainSchema) -> Vec<Diagnostic> {
         if program.items.is_empty() {
             return vec![];
         }
@@ -419,6 +420,7 @@ fn create_layer_violation_diagnostic(
 
 #[cfg(test)]
 mod tests {
+    use crate::DomainSchema;
     use super::*;
     use sruja_language::Parser;
 
@@ -433,7 +435,7 @@ mod tests {
         };
 
         let rule = LayerViolationRule;
-        rule.validate(&program)
+        rule.validate(&program, &DomainSchema::architecture())
     }
 
     #[test]

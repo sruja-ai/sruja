@@ -18,6 +18,7 @@ use super::loops::{parse_causal_loop, parse_feedback_loop};
 use super::overview_views::{parse_overview_block, parse_view};
 use super::primitives::ws;
 use super::relations::parse_relation;
+use super::schema::parse_schema;
 
 pub(super) fn parse_program(input: &str) -> IResult<&str, Program> {
     let (input, _) = ws(input)?;
@@ -66,6 +67,7 @@ pub(super) fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
             map(parse_adr, TopLevelItem::Adr),
             map(parse_policy, TopLevelItem::Policy),
             map(parse_view, TopLevelItem::View),
+            map(parse_schema, TopLevelItem::Schema),
             map(parse_metadata_block, |m| {
                 TopLevelItem::ElementDef(Box::new(ElementDef {
                     location: m.location.clone(),

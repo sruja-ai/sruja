@@ -502,6 +502,7 @@ impl Exporter {
                         from: import.from.clone(),
                     });
                 }
+                sruja_language::TopLevelItem::Schema(_) => {}
                 _ => {}
             }
         }
