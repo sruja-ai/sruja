@@ -11,7 +11,11 @@ use crate::graph_store;
 use crate::utils::colors;
 use sruja_graph::{compute_context_score, ContextScore, DimensionScore};
 
-pub async fn context_score(repo_root: &str, format: &str) -> Result<(), CliError> {
+pub async fn context_score(
+    repo_root: &str,
+    format: &str,
+    fail_under: Option<u8>,
+) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
@@ -22,7 +26,7 @@ pub async fn context_score(repo_root: &str, format: &str) -> Result<(), CliError
 
     // Load the knowledge graph (prefer architecture baseline if it exists)
     let baseline_path = crate::utils::architecture_path::resolve_architecture_path(repo_path);
-    let mut kg = if let Some(ref path) = baseline_path {
+    let kg = if let Some(ref path) = baseline_path {
         let content = std::fs::read_to_string(path)?;
         let mut parser = sruja_language::Parser::new(path.to_string_lossy().to_string());
         let program = parser.parse(&content).map_err(|diags| {
@@ -70,6 +74,15 @@ pub async fn context_score(repo_root: &str, format: &str) -> Result<(), CliError
         }
         _ => {
             print_context_score(&score);
+        }
+    }
+
+    if let Some(threshold) = fail_under {
+        if score.score < threshold {
+            return Err(CliError::validation(format!(
+                "Context score {} is below the required threshold of {}",
+                score.score, threshold
+            )));
         }
     }
 

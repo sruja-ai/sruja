@@ -498,6 +498,22 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Fail with exit code 1 if score is below this threshold
+        #[arg(long)]
+        fail_under: Option<u8>,
+    },
+    /// Generate an interactive HTML/D3.js visualization of the architecture context
+    #[command(name = "context-graph")]
+    ContextGraph {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output path for the HTML file (default: context_graph.html)
+        #[arg(long, short = 'o', default_value = "context_graph.html")]
+        output: String,
+        /// Open the browser after generation
+        #[arg(long)]
+        open: bool,
     },
 
     /// Focus: get a context briefing for a specific file or architecture element
@@ -789,7 +805,8 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
         } => commands::index(&repo, architecture.as_deref(), &output).await,
         Commands::Completions { shell } => commands::completions(shell),
         Commands::Health { repo, architecture, format } => commands::health(&repo, architecture.as_deref(), &format).await,
-        Commands::ContextScore { repo, format } => commands::context_score(&repo, &format).await,
+        Commands::ContextScore { repo, format, fail_under } => commands::context_score(&repo, &format, fail_under).await,
+        Commands::ContextGraph { repo, output, open } => commands::context_graph(&repo, &output, open).await,
         Commands::Focus { repo, file, element_id, format } => {
             commands::focus(&repo, file.as_deref(), element_id.as_deref(), &format).await
         }

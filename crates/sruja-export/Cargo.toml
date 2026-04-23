@@ -10,6 +10,7 @@ description = "Exporters for converting Sruja DSL AST to various formats (JSON, 
 [dependencies]
 sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-language = { path = "../sruja-language" }
+sruja-graph = { path = "../sruja-graph" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

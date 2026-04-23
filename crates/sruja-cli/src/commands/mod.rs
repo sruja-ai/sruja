@@ -6,6 +6,7 @@
 mod check;
 mod compliance;
 mod context_score;
+mod context_graph;
 mod discover;
 mod dsl;
 mod error;
@@ -34,6 +35,7 @@ pub use compliance::compliance;
 pub use context_score::context_score;
 pub use focus::focus;
 pub use ingest::ingest;
+pub use context_graph::context_graph;
 pub use discover::{discover_context, discover_explain, discover_questions, discover_repomap_cmd};
 pub use dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
@@ -89,7 +91,10 @@ pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan
     let graph_path = repo_path.join(".sruja").join("graph.json");
     if graph_path.exists() {
         let content = std::fs::read_to_string(&graph_path)?;
-        Ok(serde_json::from_str(&content)?)
+        match serde_json::from_str::<sruja_scan::Graph>(&content) {
+            Ok(graph) => Ok(graph),
+            Err(_) => Ok(sruja_scan::scan_repo(repo_path)?),
+        }
     } else {
         Ok(sruja_scan::scan_repo(repo_path)?)
     }

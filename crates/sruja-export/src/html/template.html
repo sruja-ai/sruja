@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{REPO_NAME}} - Sruja Context Graph</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.8);
+            --border-color: rgba(48, 54, 61, 0.6);
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-color: #58a6ff;
+            --success-color: #3fb950;
+            --warning-color: #d29922;
+            --error-color: #f85149;
+            --node-shadow: rgba(0, 0, 0, 0.5);
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #graph-container {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #graph-container:active {
+            cursor: grabbing;
+        }
+
+        /* Glassmorphism Panels */
+        .panel {
+            position: absolute;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            z-index: 100;
+        }
+
+        header {
+            top: 20px;
+            left: 20px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #8b949e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header .badge {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent-color);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid rgba(88, 166, 255, 0.3);
+        }
+
+        /* Sidebar Details */
+        #details-panel {
+            top: 20px;
+            right: 20px;
+            bottom: 20px;
+            width: 380px;
+            padding: 24px;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            display: none;
+        }
+
+        #details-panel.visible {
+            display: block;
+        }
+
+        .detail-header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        .detail-kind {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .detail-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            color: #fff;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section h3 {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .detail-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .tech-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+
+        .adr-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid var(--accent-color);
+            margin-bottom: 12px;
+        }
+
+        .adr-card h4 {
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+        }
+
+        .adr-card p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Controls */
+        #controls {
+            bottom: 20px;
+            left: 20px;
+            padding: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-secondary);
+        }
+
+        #search-box {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            z-index: 100;
+        }
+
+        #search-input {
+            width: 100%;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        #search-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 4px 20px rgba(88, 166, 255, 0.2);
+        }
+
+        /* Graph Styles */
+        .node {
+            stroke-width: 2px;
+            transition: filter 0.2s, stroke-width 0.2s;
+        }
+
+        .node:hover {
+            filter: brightness(1.2) drop-shadow(0 0 8px var(--accent-color));
+            stroke-width: 3px;
+        }
+
+        .link {
+            stroke-opacity: 0.3;
+            stroke-width: 1.5px;
+            fill: none;
+            transition: stroke-opacity 0.2s, stroke-width 0.2s;
+        }
+
+        .link.highlight {
+            stroke-opacity: 0.8;
+            stroke-width: 3px;
+        }
+
+        .node-label {
+            pointer-events: none;
+            font-size: 10px;
+            fill: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Tooltip */
+        #tooltip {
+            position: absolute;
+            background: #161b22;
+            border: 1px solid #30363d;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        /* Legend */
+        #legend {
+            bottom: 80px;
+            left: 20px;
+            padding: 16px;
+            font-size: 0.8rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+    </style>
+</head>
+<body>
+    <div id="tooltip"></div>
+
+    <header class="panel">
+        <h1>Sruja Context Graph</h1>
+        <div class="badge">{{REPO_NAME}}</div>
+    </header>
+
+    <div id="search-box">
+        <input type="text" id="search-input" placeholder="Search components, technologies, or kinds...">
+    </div>
+
+    <div id="graph-container"></div>
+
+    <div id="legend" class="panel">
+        <div class="legend-item"><div class="legend-color" style="background: #58a6ff;"></div> System</div>
+        <div class="legend-item"><div class="legend-color" style="background: #1f6feb;"></div> Container / Service</div>
+        <div class="legend-item"><div class="legend-color" style="background: #3fb950;"></div> Component / Module</div>
+        <div class="legend-item"><div class="legend-color" style="background: #d29922;"></div> Database</div>
+        <div class="legend-item"><div class="legend-color" style="background: #bc8cff;"></div> External API</div>
+    </div>
+
+    <div id="controls" class="panel">
+        <div class="control-btn" onclick="zoomIn()" title="Zoom In">+</div>
+        <div class="control-btn" onclick="zoomOut()" title="Zoom Out">−</div>
+        <div class="control-btn" onclick="resetZoom()" title="Reset View">⊙</div>
+    </div>
+
+    <div id="details-panel" class="panel">
+        <div class="detail-header">
+            <div id="node-kind" class="detail-kind">COMPONENT</div>
+            <h2 id="node-label" class="detail-title">Element Name</h2>
+        </div>
+
+        <div class="detail-section">
+            <h3>Description</h3>
+            <div id="node-description" class="detail-content">No description provided.</div>
+        </div>
+
+        <div id="tech-section" class="detail-section">
+            <h3>Technology</h3>
+            <div id="node-tech" class="tech-tag">Unknown</div>
+        </div>
+
+        <div id="adr-section" class="detail-section">
+            <h3>Linked Decisions (ADRs)</h3>
+            <div id="node-adrs"></div>
+        </div>
+
+        <div class="detail-section">
+            <h3>Metadata</h3>
+            <div id="node-metadata" class="detail-content" style="font-family: var(--font-mono); font-size: 0.75rem;"></div>
+        </div>
+    </div>
+
+    <script>
+        const nodes = {{NODES_JSON}};
+        const edges = {{EDGES_JSON}};
+        const decisions = {{DECISIONS_JSON}};
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        const colorScale = (kind) => {
+            const k = kind.toLowerCase();
+            if (k === 'system') return '#58a6ff';
+            if (k === 'container' || k === 'service' || k === 'frontend') return '#1f6feb';
+            if (k === 'database') return '#d29922';
+            if (k === 'externalapi' || k === 'external_api') return '#bc8cff';
+            if (k === 'component' || k === 'module') return '#3fb950';
+            return '#8b949e';
+        };
+
+        const svg = d3.select("#graph-container")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", [0, 0, width, height]);
+
+        const g = svg.append("g");
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+
+        function zoomIn() { svg.transition().call(zoom.scaleBy, 1.3); }
+        function zoomOut() { svg.transition().call(zoom.scaleBy, 1/1.3); }
+        function resetZoom() { svg.transition().call(zoom.transform, d3.zoomIdentity); }
+
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(edges).id(d.id).distance(100))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(40));
+
+        // Define arrow markers
+        svg.append("defs").append("marker")
+            .attr("id", "arrow")
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 25)
+            .attr("refY", 0)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("fill", "#30363d")
+            .attr("d", "M0,-5L10,0L0,5");
+
+        const link = g.append("g")
+            .attr("class", "links")
+            .selectAll("path")
+            .data(edges)
+            .enter().append("path")
+            .attr("class", "link")
+            .attr("stroke", "#30363d")
+            .attr("marker-end", "url(#arrow)");
+
+        const node = g.append("g")
+            .attr("class", "nodes")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", (d) => d.kind.toLowerCase() === 'system' ? 12 : 8)
+            .attr("fill", (d) => colorScale(d.kind))
+            .attr("stroke", "#fff")
+            .attr("stroke-opacity", 0.1)
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        const label = g.append("g")
+            .attr("class", "labels")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("class", "node-label")
+            .attr("dy", -12)
+            .attr("text-anchor", "middle")
+            .text(d => d.label);
+
+        node.on("mouseover", (event, d) => {
+            const tooltip = d3.select("#tooltip");
+            tooltip.style("opacity", 1)
+                .html(`<strong>${d.label}</strong><br><span style="color:var(--text-secondary)">${d.kind}</span>`)
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+
+            // Highlight neighbors
+            const neighbors = new Set();
+            neighbors.add(d.id);
+            edges.forEach(e => {
+                if (e.source.id === d.id) neighbors.add(e.target.id);
+                if (e.target.id === d.id) neighbors.add(e.source.id);
+            });
+
+            link.classed("highlight", l => l.source.id === d.id || l.target.id === d.id);
+        });
+
+        node.on("mouseout", () => {
+            d3.select("#tooltip").style("opacity", 0);
+            link.classed("highlight", false);
+        });
+
+        node.on("click", (event, d) => {
+            showDetails(d);
+            event.stopPropagation();
+        });
+
+        svg.on("click", () => {
+            d3.select("#details-panel").classed("visible", false);
+        });
+
+        function showDetails(d) {
+            const panel = d3.select("#details-panel");
+            panel.classed("visible", true);
+
+            d3.select("#node-kind").text(d.kind);
+            d3.select("#node-label").text(d.label);
+            d3.select("#node-description").text(d.description || "No description provided.");
+
+            if (d.technology) {
+                d3.select("#tech-section").style("display", "block");
+                d3.select("#node-tech").text(d.technology);
+            } else {
+                d3.select("#tech-section").style("display", "none");
+            }
+
+            // Linked decisions
+            const linkedDecisions = decisions.filter(dec => dec.affects && dec.affects.includes(d.id));
+            const adrContainer = d3.select("#node-adrs");
+            adrContainer.html("");
+
+            if (linkedDecisions.length > 0) {
+                d3.select("#adr-section").style("display", "block");
+                linkedDecisions.forEach(dec => {
+                    adrContainer.append("div")
+                        .attr("class", "adr-card")
+                        .html(`<h4>${dec.id}: ${dec.title}</h4><p>${dec.status.toUpperCase()}</p>`);
+                });
+            } else {
+                d3.select("#adr-section").style("display", "none");
+            }
+
+            // Metadata
+            const metaContainer = d3.select("#node-metadata");
+            metaContainer.html("");
+            if (d.metadata && Object.keys(d.metadata).length > 0) {
+                Object.entries(d.metadata).forEach(([k, v]) => {
+                    metaContainer.append("div").text(`${k}: ${v}`);
+                });
+            } else {
+                metaContainer.text("None");
+            }
+        }
+
+        simulation.on("tick", () => {
+            link.attr("d", d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const dr = 0; // straight line
+                return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+            });
+
+            node.attr("cx", d => d.x).attr("cy", d => d.y);
+            label.attr("x", d => d.x).attr("y", d => d.y);
+        });
+
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        // Search logic
+        d3.select("#search-input").on("input", function() {
+            const term = this.value.toLowerCase();
+            if (!term) {
+                node.style("opacity", 1);
+                link.style("opacity", 0.3);
+                label.style("opacity", 1);
+                return;
+            }
+
+            node.style("opacity", d => (d.label.toLowerCase().includes(term) || d.kind.toLowerCase().includes(term) || (d.technology && d.technology.toLowerCase().includes(term))) ? 1 : 0.1);
+            label.style("opacity", d => (d.label.toLowerCase().includes(term) || d.kind.toLowerCase().includes(term) || (d.technology && d.technology.toLowerCase().includes(term))) ? 1 : 0.1);
+            link.style("opacity", 0.05);
+        });
+
+        window.addEventListener("resize", () => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            svg.attr("viewBox", [0, 0, w, h]);
+            simulation.force("center", d3.forceCenter(w / 2, h / 2)).restart();
+        });
+    </script>
+</body>
+</html>
