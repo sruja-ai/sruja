@@ -5,6 +5,15 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.31.0...sruja-v0.32.0) (2026-04-23)
+
+
+### Features
+
+* **arch:** generalize to Context Graph platform with schema-pluggable kinds ([7c5ded1](https://github.com/sruja-ai/sruja/commit/7c5ded12db3149a8164f06542775cbe71c4a5a98))
+* **engine:** implement Phase 2 - Domain Schema and Context Graph transition ([68d2494](https://github.com/sruja-ai/sruja/commit/68d2494ac92e1f7ee409b600eb36d29d27fb5649))
+* **intent:** implement phase 3 - dynamic intent check and evidence mapping ([55ee882](https://github.com/sruja-ai/sruja/commit/55ee882407ff63c326ff4a1403ac455703d0a10f))
+
 ## [0.31.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.30.1...sruja-v0.31.0) (2026-04-18)
 
 
