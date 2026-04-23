@@ -8,6 +8,7 @@
 
 mod detector;
 mod languages;
+mod classifier;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -169,6 +170,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
     let mut file_imports: HashMap<String, Vec<String>> = HashMap::new();
     let mut module_imports: HashMap<String, Vec<String>> = HashMap::new();
 
+    let engine = classifier::ClassificationEngine::default();
     for (path, content, language, parsed) in &parsed {
         let file_id = file_to_id(repo_root, path);
 
@@ -201,20 +203,25 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             );
         }
 
+        let (kind, classification_metadata) = infer_node_kind(parsed, path, content.as_str(), &engine);
+        let confidence = classification_metadata
+            .get("classification.confidence")
+            .and_then(|c| c.parse::<u8>().ok());
+
         let node = Node {
             id: file_id.clone(),
-            kind: infer_node_kind(parsed, path, content.as_str()),
+            kind,
             label: parsed.name.clone(),
             technology: Some(language.to_string()),
             path: Some(path.to_string_lossy().to_string()),
-            metadata: HashMap::new(),
+            metadata: classification_metadata,
             canonical_id: None,
             aliases: Vec::new(),
             owner: None,
             domain: None,
             criticality: None,
             sources: Vec::new(),
-            confidence: None,
+            confidence,
         };
         nodes.push(node);
 
@@ -490,354 +497,30 @@ mod scan_diagnostics_tests {
     }
 }
 
-fn infer_node_kind(parsed: &ParsedFile, path: &Path, content: &str) -> NodeKind {
-    let path_str = path.to_string_lossy().to_lowercase();
-    let name_lower = parsed.name.to_lowercase();
-    let content_lower = content.to_lowercase();
+fn infer_node_kind(
+    parsed: &ParsedFile,
+    path: &Path,
+    content: &str,
+    engine: &classifier::ClassificationEngine,
+) -> (NodeKind, std::collections::HashMap<String, String>) {
+    let ctx = classifier::ClassificationContext {
+        path_str: path.to_string_lossy().to_lowercase(),
+        name_lower: parsed.name.to_lowercase(),
+        content_lower: content.to_lowercase(),
+        parsed,
+    };
 
-    // Early exit: detect CLI tools and exclude from service detection
-    if is_cli_tool(&path_str, &content_lower) {
-        return NodeKind::Module;
+    let (kind, confidence, signals) = engine.classify(&ctx);
+    
+    let mut metadata = std::collections::HashMap::new();
+    metadata.insert("classification.confidence".to_string(), confidence.to_string());
+    
+    if !signals.is_empty() {
+        let signal_names: Vec<String> = signals.iter().map(|s| s.name.to_string()).collect();
+        metadata.insert("classification.signals".to_string(), signal_names.join(","));
     }
 
-    // Check for deployment configs (highest confidence)
-    if is_deployment_config(&path_str) {
-        return NodeKind::Service;
-    }
-
-    // Check for Go cmd/*/main.go pattern (high confidence for Go services)
-    if is_go_service_entry_point(&path_str, &name_lower, &content_lower) {
-        return NodeKind::Service;
-    }
-
-    // Check for Java Spring Boot services
-    if is_java_service_entry_point(&content_lower, &path_str) {
-        return NodeKind::Service;
-    }
-
-    // Check for TypeScript/JavaScript server entry points
-    if is_js_service_entry_point(&content_lower, &path_str) {
-        return NodeKind::Service;
-    }
-
-    // Check for Python Flask/Django/FastAPI services
-    if is_python_service_entry_point(&content_lower, &path_str) {
-        return NodeKind::Service;
-    }
-
-    // Check for framework-specific server code (high confidence)
-    if has_framework_server_patterns(&content_lower) {
-        return NodeKind::Service;
-    }
-
-    // Check for main files with server initialization
-    if is_main_server_file(parsed, &path_str, &content_lower) {
-        return NodeKind::Service;
-    }
-
-    // Path/Name heuristics (conservative - require additional signals)
-    // Check for Next.js specific patterns
-    if is_nextjs_route(&path_str, content) {
-        return NodeKind::ExternalApi;
-    }
-    if is_nextjs_component(&path_str, content) {
-        return NodeKind::Module;
-    }
-
-    // Check for database/repository patterns (e.g. Prisma, Mongoose)
-    if is_database_file(&path_str, &content_lower) {
-        return NodeKind::Database;
-    }
-
-    if is_service_directory(&path_str, &content_lower) {
-        return NodeKind::Service;
-    }
-
-    if is_database_directory(&path_str, &name_lower) {
-        return NodeKind::Database;
-    }
-
-    if is_external_api_directory(&path_str, &name_lower) {
-        return NodeKind::ExternalApi;
-    }
-
-    NodeKind::Module
-}
-
-fn is_go_service_entry_point(path_str: &str, name_lower: &str, content_lower: &str) -> bool {
-    if !path_str.ends_with(".go") {
-        return false;
-    }
-
-    if path_str.contains("/cmd/") && name_lower == "main" {
-        let http_indicators = [
-            "http.", "grpc.", "serve", "listen", "router", "mux", "handler",
-        ];
-        return http_indicators.iter().any(|i| content_lower.contains(i));
-    }
-
-    false
-}
-
-fn is_java_service_entry_point(content_lower: &str, path_str: &str) -> bool {
-    if !path_str.ends_with(".java") {
-        return false;
-    }
-
-    let spring_patterns = [
-        "@springbootapplication",
-        "@restcontroller",
-        "@controller",
-        "@service",
-        "extends springbootservletinitializer",
-        "@enablewebmvc",
-    ];
-
-    if spring_patterns.iter().any(|p| content_lower.contains(p)) {
-        return true;
-    }
-
-    if content_lower.contains("public static void main") {
-        let server_indicators = ["springapplication.run", "server", "tomcat", "jetty"];
-        return server_indicators.iter().any(|i| content_lower.contains(i));
-    }
-
-    false
-}
-
-fn is_js_service_entry_point(content_lower: &str, path_str: &str) -> bool {
-    let is_js_file = path_str.ends_with(".js")
-        || path_str.ends_with(".ts")
-        || path_str.ends_with(".mjs")
-        || path_str.ends_with(".cjs");
-
-    if !is_js_file {
-        return false;
-    }
-
-    let server_patterns = [
-        "express()",
-        "fastify(",
-        "fastify({",
-        "nestfactory.create",
-        "http.createserver",
-        "https.createserver",
-        "app.listen(",
-        "server.listen(",
-        "koa()",
-        "hapi.server",
-        "@nestjs/core",
-    ];
-
-    server_patterns.iter().any(|p| content_lower.contains(p))
-}
-
-fn is_python_service_entry_point(content_lower: &str, path_str: &str) -> bool {
-    if !path_str.ends_with(".py") {
-        return false;
-    }
-
-    let web_framework_patterns = [
-        "flask(__name__)",
-        "fastapi(",
-        "apirouter",
-        "django",
-        "tornado.web.application",
-        "aiohttp.web",
-        "sanic(",
-        "starlette(",
-        "quart(",
-        "bottle.run",
-    ];
-
-    web_framework_patterns
-        .iter()
-        .any(|p| content_lower.contains(p))
-}
-
-fn is_deployment_config(path_str: &str) -> bool {
-    (path_str.contains("deployment.") || path_str.contains("docker-compose."))
-        && (path_str.ends_with(".yaml") || path_str.ends_with(".yml"))
-        || path_str.ends_with("dockerfile")
-        || path_str.contains("serverless.yml")
-}
-
-fn has_framework_server_patterns(content_lower: &str) -> bool {
-    let patterns = [
-        "http.listenandserve",
-        "http.listenandservertls",
-        "gin.run(",
-        "echo.start(",
-        "fiber.listen(",
-        "app.listen(",
-        "server.listen(",
-        "express()",
-        "app.run(",
-        "uvicorn.run(",
-        "actix_web::httpserver",
-        "warp::serve",
-        "rocket::ignite",
-        "@springbootapplication",
-        "grpc.newserver",
-        "grpc.server",
-    ];
-
-    patterns.iter().any(|p| content_lower.contains(p))
-}
-
-fn is_main_server_file(parsed: &ParsedFile, _path_str: &str, content_lower: &str) -> bool {
-    if parsed.name.to_lowercase() != "main" {
-        return false;
-    }
-
-    let server_indicators = [
-        "http.listenandserve",
-        "listenandserve",
-        "app.listen",
-        "server.listen",
-        "gin.run",
-        "http.server",
-        "grpc.server",
-    ];
-
-    server_indicators
-        .iter()
-        .any(|indicator| content_lower.contains(indicator))
-}
-
-fn is_database_file(path_str: &str, content_lower: &str) -> bool {
-    // Check for Prisma schema
-    if path_str.ends_with(".prisma") {
-        return true;
-    }
-
-    // Check for ORM/DB patterns in content (Prisma, Mongoose, Sequelize, TypeORM)
-    let db_patterns = [
-        "prisma.client",
-        "@prisma/client",
-        "mongoose.model",
-        "mongoose.schema",
-        "@module sequelize",
-        "sequelize.define",
-        "@entity",                 // TypeORM
-        "@primarygeneratedcolumn", // TypeORM
-        "drizzle-orm",
-    ];
-
-    if db_patterns.iter().any(|p| content_lower.contains(p)) {
-        return true;
-    }
-
-    false
-}
-
-fn is_cli_tool(path_str: &str, content_lower: &str) -> bool {
-    // CLI framework patterns
-    let cli_patterns = [
-        "cobra.",
-        "urfave/cli",
-        "urfave/cli",
-        "cli.app",
-        "commander",
-        "yargs",
-        "argparse",
-        "click.command",
-        "cobra.command",
-        "flag.parse",
-    ];
-
-    // Check for CLI indicators in content
-    let has_cli_framework = cli_patterns.iter().any(|p| content_lower.contains(p));
-
-    // Check for CLI-specific paths
-    let is_cli_path = path_str.contains("/cmd/") && !path_str.contains("/cmd/server")
-        || path_str.contains("/cli/")
-        || path_str.ends_with("/main.go")
-            && (content_lower.contains("flag.") || content_lower.contains("args"));
-
-    has_cli_framework || is_cli_path
-}
-
-fn is_external_api_directory(path_str: &str, name_lower: &str) -> bool {
-    path_str.contains("/external/")
-        || path_str.contains("/thirdparty/")
-        || path_str.contains("/vendor/")
-        || name_lower.ends_with("client")
-        || name_lower.ends_with("gateway")
-}
-
-fn is_nextjs_route(path_str: &str, _content: &str) -> bool {
-    if path_str.contains("/app/") && path_str.ends_with("/route.ts") {
-        return true;
-    }
-    if path_str.contains("/pages/api/") {
-        return true;
-    }
-    false
-}
-
-fn is_nextjs_component(path_str: &str, _content: &str) -> bool {
-    let special_files = [
-        "page.tsx",
-        "layout.tsx",
-        "loading.tsx",
-        "error.tsx",
-        "not-found.tsx",
-    ];
-    if path_str.contains("/app/") && special_files.iter().any(|f| path_str.ends_with(f)) {
-        return true;
-    }
-    if path_str.contains("/pages/") && !path_str.contains("/pages/api/") {
-        return true;
-    }
-    false
-}
-fn is_service_directory(path_str: &str, content_lower: &str) -> bool {
-    let patterns = ["/cmd/server", "/internal/server", "/pkg/server"];
-
-    // High-confidence server paths
-    if patterns.iter().any(|p| path_str.contains(p)) {
-        return true;
-    }
-
-    // Lower confidence paths - require additional HTTP/API indicators
-    let http_patterns = [
-        "http.",
-        "grpc.",
-        "rest",
-        "api",
-        "router",
-        "mux",
-        "handler",
-        "controller",
-        "endpoint",
-    ];
-
-    let has_http_indicator = http_patterns.iter().any(|p| content_lower.contains(p));
-
-    let service_paths = [
-        "/api/",
-        "/apis/",
-        "/controller",
-        "/controllers/",
-        "/handler",
-        "/handlers/",
-        "/routes/",
-    ];
-
-    service_paths.iter().any(|p| path_str.contains(p)) && has_http_indicator
-}
-
-fn is_database_directory(path_str: &str, name_lower: &str) -> bool {
-    path_str.contains("/db/")
-        || path_str.contains("/database/")
-        || path_str.contains("/dao/")
-        || (path_str.contains("/repository/") && !path_str.contains("/repositories/"))
-        || path_str.contains("/model/")
-        || path_str.contains("/entity/")
-        || (name_lower.ends_with("repository") && !name_lower.ends_with("services"))
-        || name_lower.ends_with("dao")
-        || name_lower.ends_with("schema")
+    (kind, metadata)
 }
 
 /// Common extensions to try when resolving extensionless imports (TypeScript/JavaScript).

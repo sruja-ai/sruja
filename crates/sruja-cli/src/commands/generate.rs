@@ -6,7 +6,13 @@ use std::path::Path;
 use super::CliError;
 use crate::commands::discover::discover_context_string;
 
-const PROMPT_INSTRUCTION: &str = r#"You are an architecture discovery agent. Follow the rules and context below. Your reply must be only valid Sruja DSL (no markdown fences, no extra commentary before or after the DSL). If you are uncertain about boundaries or externals, append a line "// Open questions: ..." at the end. The user will run `sruja lint` on the output; fix any errors until it passes.
+const PROMPT_INSTRUCTION: &str = r#"You are an architecture discovery agent. Follow the rules and context below. 
+
+Your task is to produce a valid `.sruja` file. 
+
+Pay close attention to the "Classification Signals" section in the repo context. Nodes with low confidence (<70%) or conflicting signals require your semantic reasoning to classify correctly (e.g., is it a Service or just a Module?).
+
+Your reply must be only valid Sruja DSL (no markdown fences, no extra commentary before or after the DSL). If you are uncertain about boundaries or externals, append a line "// Open questions: ..." at the end. The user will run `sruja lint` on the output; fix any errors until it passes.
 
 ---
 SKILL (follow these rules):

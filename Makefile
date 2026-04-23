@@ -315,15 +315,12 @@ daily: setup check federate context-sync
 	@./target/release/sruja drift -r . -a repo.sruja || true
 	@echo "✅ Daily setup complete. AI editors are now context-aware!"
 
-# Setup environment
-setup:
-	@echo "Setting up environment..."
-	@cargo build --release
-
-# Run checks
-check:
-	@echo "Running checks..."
-	@cargo test
+# Direct Cargo Commands:
+# cargo build --release   - Build release version
+# cargo test              - Run all tests
+# cargo test --lib        - Run library tests only
+# cargo clippy            - Run linter
+# cargo fmt --check       - Check formatting
 
 # Sync all AI editor context files
 context-sync:

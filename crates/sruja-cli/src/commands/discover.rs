@@ -262,6 +262,22 @@ pub fn discover_context_string_from_graph(
         out.push_str(&format!("- `{}` ({})\n", node.label, node.kind.as_str()));
     }
 
+    out.push_str("\n## Classification Signals\n\n");
+    let mut ambiguous = graph.nodes.iter()
+        .filter(|n| n.confidence.unwrap_or(100) < 70)
+        .collect::<Vec<_>>();
+    ambiguous.sort_by_key(|n| n.confidence.unwrap_or(100));
+    
+    if ambiguous.is_empty() {
+        out.push_str("- All nodes classified with high confidence (>70%).\n");
+    } else {
+        for node in ambiguous.iter().take(10) {
+            let signals = node.metadata.get("classification.signals").cloned().unwrap_or_else(|| "none".to_string());
+            out.push_str(&format!("- `{}` (kind={}, confidence={}%, signals=[{}])\n", 
+                node.id, node.kind.as_str(), node.confidence.unwrap_or(0), signals));
+        }
+    }
+
     out.push_str("\nUse this context to derive 2–5 questions tailored to this repo (see skill: contextual discovery).\n");
     Ok(out)
 }
@@ -820,6 +836,15 @@ fn format_discovery_explanation(explanation: &DiscoverExplanationJson) -> String
         for dir in &explanation.top_directories {
             out.push_str(&format!("- `{}`: {} node(s)\n", dir.area, dir.nodes));
         }
+    }
+
+    out.push_str("\n## Discovery Confidence\n\n");
+    out.push_str(&format!("**Level:** {}\n", explanation.confidence.level));
+    for signal in &explanation.confidence.signals {
+        out.push_str(&format!("- [✓] {}\n", signal));
+    }
+    for spot in &explanation.confidence.blind_spots {
+        out.push_str(&format!("- [?] {}\n", spot));
     }
 
     if !explanation.key_elements.is_empty() {
