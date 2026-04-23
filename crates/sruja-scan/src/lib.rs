@@ -19,7 +19,8 @@ use thiserror::Error;
 
 pub use graph::{
     BlastRadiusDirection, BlastRadiusNode, BlastRadiusResult, Edge, EdgeEvidence, EdgeKind, Graph,
-    Incident, Node, NodeKind,
+    Incident, Node, NodeKind, ResolvedContract, ResolvedError, ResolvedField, ResolvedStateMachine,
+    ResolvedTransition,
 };
 pub use repomap::{generate_repomap, generate_repomap_from_graph, RepoMapOptions};
 pub use scan_scope::{

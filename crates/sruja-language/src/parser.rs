@@ -15,6 +15,8 @@ mod primitives;
 mod program;
 mod relations;
 mod schema;
+mod state_machine;
+mod contracts;
 
 #[cfg(test)]
 mod tests;

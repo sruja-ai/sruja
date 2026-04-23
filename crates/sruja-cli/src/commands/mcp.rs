@@ -521,6 +521,33 @@ fn tool_definitions() -> Vec<Value> {
                 "required": ["description"]
             }
         }),
+        json!({
+            "name": "sruja_get_state_machine",
+            "title": "Sruja Get State Machine",
+            "description": "Get the state machine definition for a component. Returns states, transitions, guards, and actions.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "element_id": { "type": "string", "description": "Component ID with state machine (e.g. MySystem.Api)" }
+                },
+                "required": ["element_id"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_contract",
+            "title": "Sruja Get Contract",
+            "description": "Get the API contract (input/output spec) for a component. Ideal for generating client code or stubs.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "element_id": { "type": "string", "description": "Component ID with contract (e.g. MySystem.Api)" },
+                    "contract_name": { "type": "string", "description": "Optional specific contract name if the component has multiple" }
+                },
+                "required": ["element_id"]
+            }
+        }),
     ]
 }
 
@@ -738,6 +765,34 @@ async fn run_tool(
             let ctx =
                 super::context::logic::build_task_context(&graph, &repo, selectors, max_tokens)?;
             Ok(serde_json::to_string_pretty(&ctx)?)
+        }
+        "sruja_get_state_machine" => {
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str()).ok_or_else(|| CliError::validation("Missing element_id"))?;
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let node = graph.nodes.iter().find(|n| n.id == element_id).ok_or_else(|| CliError::validation(format!("Element {} not found", element_id)))?;
+            
+            if node.state_machines.is_empty() {
+                return Ok(format!("No state machines found for element {}.", element_id));
+            }
+            
+            Ok(serde_json::to_string_pretty(&node.state_machines)?)
+        }
+        "sruja_get_contract" => {
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str()).ok_or_else(|| CliError::validation("Missing element_id"))?;
+            let contract_name = arguments.get("contract_name").and_then(|v| v.as_str());
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let node = graph.nodes.iter().find(|n| n.id == element_id).ok_or_else(|| CliError::validation(format!("Element {} not found", element_id)))?;
+            
+            if node.contracts.is_empty() {
+                return Ok(format!("No contracts found for element {}.", element_id));
+            }
+            
+            if let Some(name) = contract_name {
+                let contract = node.contracts.iter().find(|c| c.name == name).ok_or_else(|| CliError::validation(format!("Contract {} not found on element {}", name, element_id)))?;
+                Ok(serde_json::to_string_pretty(contract)?)
+            } else {
+                Ok(serde_json::to_string_pretty(&node.contracts)?)
+            }
         }
         "sruja_validate_change" => {
             let files = arguments

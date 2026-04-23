@@ -1,6 +1,7 @@
 //! Relation and element printing (core C4-style nodes).
 
 use sruja_language::{ElementDef, ElementDefBodyItem, Relation};
+use super::{state_machine, contracts};
 
 /// Print a single relation line.
 pub fn print_relation(out: &mut String, rel: &Relation, indent: usize) {
@@ -224,6 +225,12 @@ pub fn print_element(
                 out.push_str(&format!("{indent_str}    }}\n"));
             }
             out.push_str(&format!("{indent_str}  }}\n"));
+        }
+        for sm in &body.state_machines {
+            state_machine::print_state_machine(out, sm, indent + 1);
+        }
+        for c in &body.contracts {
+            contracts::print_contract(out, c, indent + 1);
         }
         if let Some(style) = &body.style {
             out.push_str(&format!("{indent_str}  style self {{\n"));

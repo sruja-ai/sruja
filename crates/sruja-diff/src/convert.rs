@@ -2,7 +2,10 @@
 
 use sruja_language::traversal::collect_elements;
 use sruja_language::{ElementKind, Program};
-use sruja_scan::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
+use sruja_scan::{
+    Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind, ResolvedContract, ResolvedError,
+    ResolvedField, ResolvedStateMachine, ResolvedTransition,
+};
 use std::collections::HashMap;
 
 /// Convert a DSL Program to sruja_scan::Graph for comparison with scanned architecture.
@@ -17,32 +20,50 @@ pub fn program_to_graph(program: &Program) -> Graph {
         let label = a.title.as_deref().unwrap_or(&a.name).to_string();
         let technology = a.body.as_ref().and_then(|b| b.technology.as_ref()).cloned();
 
-        let (canonical_id, aliases, owner, domain, criticality, sources, gotchas, constraints, runbooks) =
-            if let Some(body) = &a.body {
-                (
-                    body.canonical_id.clone(),
-                    body.aliases.clone(),
-                    body.owner.clone(),
-                    body.domain.clone(),
-                    body.criticality,
-                    body.sources.clone(),
-                    body.gotchas.clone(),
-                    body.operational_constraints.clone(),
-                    body.runbooks.clone(),
-                )
-            } else {
-                (
-                    None,
-                    Vec::new(),
-                    None,
-                    None,
-                    None,
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                )
-            };
+        let (
+            canonical_id,
+            aliases,
+            owner,
+            domain,
+            criticality,
+            sources,
+            gotchas,
+            constraints,
+            runbooks,
+            state_machines,
+            contracts,
+        ) = if let Some(body) = &a.body {
+            (
+                body.canonical_id.clone(),
+                body.aliases.clone(),
+                body.owner.clone(),
+                body.domain.clone(),
+                body.criticality,
+                body.sources.clone(),
+                body.gotchas.clone(),
+                body.operational_constraints.clone(),
+                body.runbooks.clone(),
+                body.state_machines
+                    .iter()
+                    .map(convert_state_machine)
+                    .collect(),
+                body.contracts.iter().map(convert_contract).collect(),
+            )
+        } else {
+            (
+                None,
+                Vec::new(),
+                None,
+                None,
+                None,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            )
+        };
 
         nodes.push(Node {
             id: fqn.clone(),
@@ -61,6 +82,8 @@ pub fn program_to_graph(program: &Program) -> Graph {
             operational_constraints: constraints,
             runbooks,
             confidence: None,
+            state_machines,
+            contracts,
         });
     }
 
@@ -125,6 +148,71 @@ fn element_kind_to_node_kind(kind: &ElementKind) -> NodeKind {
         | ElementKind::Scenario
         | ElementKind::Story
         | ElementKind::Custom(_) => NodeKind::Module,
+    }
+}
+
+fn convert_state_machine(sm: &sruja_language::StateMachine) -> ResolvedStateMachine {
+    let mut states_set = std::collections::HashSet::new();
+    states_set.insert(sm.initial_state.clone());
+    for s in &sm.terminal_states {
+        states_set.insert(s.clone());
+    }
+    for t in &sm.transitions {
+        states_set.insert(t.from.clone());
+        states_set.insert(t.to.clone());
+    }
+
+    let mut states: Vec<_> = states_set.into_iter().collect();
+    states.sort();
+
+    ResolvedStateMachine {
+        name: sm.name.clone(),
+        states,
+        initial_state: sm.initial_state.clone(),
+        terminal_states: sm.terminal_states.clone(),
+        transitions: sm
+            .transitions
+            .iter()
+            .map(|t| ResolvedTransition {
+                from: t.from.clone(),
+                to: t.to.clone(),
+                event: t.event.clone(),
+                guard: t.guard.clone(),
+                action: t.action.clone(),
+            })
+            .collect(),
+    }
+}
+
+fn convert_contract(c: &sruja_language::Contract) -> ResolvedContract {
+    ResolvedContract {
+        name: c.name.clone(),
+        description: c.description.clone(),
+        inputs: c
+            .inputs
+            .iter()
+            .map(|f| ResolvedField {
+                name: f.name.clone(),
+                spec: f.spec.clone(),
+            })
+            .collect(),
+        outputs: c
+            .outputs
+            .iter()
+            .map(|f| ResolvedField {
+                name: f.name.clone(),
+                spec: f.spec.clone(),
+            })
+            .collect(),
+        errors: c
+            .errors
+            .iter()
+            .map(|e| ResolvedError {
+                code: e.code.clone(),
+                description: e.description.clone(),
+            })
+            .collect(),
+        constraints: c.constraints.clone(),
     }
 }
 

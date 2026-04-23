@@ -3337,7 +3337,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-cli"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "assert_cmd",
  "chrono",
@@ -3371,7 +3371,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3379,7 +3379,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "chrono",
  "git2",
@@ -3394,7 +3394,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-engine"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "log",
  "serde",
@@ -3407,7 +3407,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "chrono",
  "fastembed",
@@ -3423,7 +3423,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "chrono",
  "proptest",
@@ -3440,7 +3440,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph-core"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "hashbrown 0.14.5",
  "serde",
@@ -3449,7 +3449,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-intent"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "chrono",
  "regex",
@@ -3464,7 +3464,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-language"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "nom 8.0.0",
  "serde",
@@ -3474,7 +3474,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-scan"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "ignore",
  "log",
@@ -3509,7 +3509,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "console_error_panic_hook",
  "getrandom 0.3.4",

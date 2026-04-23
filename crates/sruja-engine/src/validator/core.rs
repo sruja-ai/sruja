@@ -11,6 +11,7 @@ use crate::rules::{
     LayerViolationRule, OrphanDetectionRule, PolicyEvaluationRule, PropertiesValidationRule,
     PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule, SimplicityRule,
     SloValidationRule, SourcesValidationRule, UniqueIdRule, ValidRefRule,
+    StateMachineIntegrityRule, ContractIntegrityRule,
 };
 use crate::DomainSchema;
 
@@ -120,6 +121,8 @@ impl Validator {
         self.register_rule(Arc::new(SourcesValidationRule));
         self.register_rule(Arc::new(GovernanceValidationRule));
         self.register_rule(Arc::new(PolicyEvaluationRule));
+        self.register_rule(Arc::new(StateMachineIntegrityRule));
+        self.register_rule(Arc::new(ContractIntegrityRule));
         self
     }
 

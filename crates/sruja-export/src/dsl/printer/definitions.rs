@@ -21,3 +21,9 @@ pub fn print_tag_def(out: &mut String, tag_def: &TagDef) {
     }
     out.push('\n');
 }
+
+pub fn indent(out: &mut String, depth: usize) {
+    for _ in 0..depth {
+        out.push_str("  ");
+    }
+}

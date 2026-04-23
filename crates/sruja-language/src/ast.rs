@@ -484,6 +484,8 @@ pub struct ElementDefBody {
     pub domain: Option<String>,
     pub criticality: Option<Criticality>,
     pub sources: Vec<SourceBinding>,
+    pub state_machines: Vec<StateMachine>,
+    pub contracts: Vec<Contract>,
 }
 
 /// Items that can appear in an element body
@@ -518,6 +520,10 @@ pub enum ElementDefBodyItem {
     Criticality(Criticality),
     /// Source binding to external resource
     Source(SourceBinding),
+    /// State machine definition
+    StateMachine(StateMachine),
+    /// API contract definition
+    Contract(Contract),
     /// Gotcha string
     Gotcha(String),
     /// Operational constraint string
@@ -664,6 +670,56 @@ pub struct Requirement {
     pub r#type: String, // functional, performance, security, constraint
     pub description: Option<String>,
     pub tags: Vec<String>,
+}
+
+
+/// State machine definition (nested inside element body)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StateMachine {
+    pub location: SourceLocation,
+    pub name: String,
+    pub initial_state: String,
+    pub terminal_states: Vec<String>,
+    pub transitions: Vec<StateTransition>,
+    pub description: Option<String>,
+}
+
+/// A single state transition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StateTransition {
+    pub location: SourceLocation,
+    pub from: String,
+    pub to: String,
+    pub event: String,             // The trigger event name
+    pub guard: Option<String>,     // Pre-condition expression (string)
+    pub action: Option<String>,    // Side-effect to execute
+    pub description: Option<String>,
+}
+
+/// API contract definition (nested inside element body)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Contract {
+    pub location: SourceLocation,
+    pub name: String,              // e.g. "POST /payments"
+    pub description: Option<String>,
+    pub inputs: Vec<ContractField>,
+    pub outputs: Vec<ContractField>,
+    pub errors: Vec<ContractError>,
+    pub constraints: Vec<String>,
+}
+
+/// A field in contract input/output
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContractField {
+    pub name: String,
+    pub spec: String,              // Free-text type/validation spec
+}
+
+/// An error response in a contract
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContractError {
+    pub code: String,              // "400", "409", etc.
+    pub description: String,
 }
 
 /// ADR (Architecture Decision Record)

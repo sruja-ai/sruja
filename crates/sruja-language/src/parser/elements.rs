@@ -12,20 +12,24 @@ use nom::{
 use sruja_diagnostics::SourceLocation;
 
 use crate::ast::{
-    Criticality, ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem, ElementKind,
-    ElementKindDef, ScaleBlock, SloAvailability, SloBlock, SloCurrent, SloErrorRate, SloLatency,
-    SloThroughput, SourceBinding, SourceKind, StyleBlock,
+    ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, Criticality,
+    ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem, ElementKind,
+    ElementKindDef, MetaEntry, MetadataBlock, QualifiedIdent, ScaleBlock, SloAvailability,
+    SloBlock, SloCurrent, SloErrorRate, SloLatency, SloThroughput, SourceBinding, SourceKind,
+    StyleBlock, StateMachine, Contract,
 };
 
 use super::assignments::parse_scenario_step;
 use super::blocks::{
     parse_constraints_block, parse_conventions_block, parse_metadata_block, parse_style_decl,
 };
+use super::contracts::parse_contract;
 use super::primitives::{
     parse_identifier, parse_kv_string, parse_string, parse_string_array, parse_tag_array,
     parse_tag_ref, ws, ws0, ws1,
 };
-use super::relations::parse_relation;
+use super::relations::{parse_qualified_ident, parse_relation};
+use super::state_machine::parse_state_machine;
 
 pub(crate) fn parse_kind_def(input: &str) -> IResult<&str, ElementKindDef> {
     let (input, id) = parse_identifier(input)?;
@@ -343,6 +347,8 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
             ElementDefBodyItem::Gotcha(g) => body.gotchas.push(g),
             ElementDefBodyItem::OperationalConstraint(c) => body.operational_constraints.push(c),
             ElementDefBodyItem::Runbook(r) => body.runbooks.push(r),
+            ElementDefBodyItem::StateMachine(sm) => body.state_machines.push(sm),
+            ElementDefBodyItem::Contract(c) => body.contracts.push(c),
             #[allow(unreachable_patterns)]
             _ => {}
         }
@@ -434,6 +440,8 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
                 preceded(tag("runbook"), preceded(ws1, parse_string)),
                 ElementDefBodyItem::Runbook,
             ),
+            map(parse_state_machine, ElementDefBodyItem::StateMachine),
+            map(parse_contract, ElementDefBodyItem::Contract),
         )),
     ))
     .parse(input)

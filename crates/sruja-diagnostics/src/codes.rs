@@ -50,6 +50,34 @@ pub const CODE_VALIDATION_RULE_ERROR: &str = "E303";
 pub const CODE_VALIDATION_TIMEOUT: &str = "E304";
 /// Validation logic panicked
 pub const CODE_VALIDATION_PANIC: &str = "E305";
+
+// State Machine Errors (E31x)
+/// Initial state not found in any transition
+pub const CODE_SM_INITIAL_NOT_FOUND: &str = "E311";
+/// Terminal state has outgoing transitions
+pub const CODE_SM_TERMINAL_HAS_OUTGOING: &str = "E312";
+
+// Contract Errors (E32x)
+/// Contract has no inputs, outputs or errors (empty)
+pub const CODE_CONTRACT_EMPTY: &str = "E321";
+
+// State Machine Warnings (W31x)
+/// Unreachable state
+pub const CODE_SM_UNREACHABLE_STATE: &str = "W311";
+/// Dead state (non-terminal with no outgoing)
+pub const CODE_SM_DEAD_STATE: &str = "W312";
+/// Duplicate transition
+pub const CODE_SM_DUPLICATE_TRANSITION: &str = "W313";
+/// State machine has no terminal states
+pub const CODE_SM_NO_TERMINAL: &str = "W314";
+
+// Contract Warnings (W32x)
+/// Contract has no input fields
+pub const CODE_CONTRACT_NO_INPUTS: &str = "W321";
+/// Contract has no error definitions
+pub const CODE_CONTRACT_NO_ERRORS: &str = "W322";
+/// Contract has no constraints
+pub const CODE_CONTRACT_NO_CONSTRAINTS: &str = "W323";
 /// Alias for duplicate identifier
 pub const CODE_DUPLICATE_IDENTIFIER: &str = "E201";
 /// Alias for reference not found

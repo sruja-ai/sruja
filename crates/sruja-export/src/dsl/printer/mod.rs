@@ -13,6 +13,8 @@ mod overview;
 mod relation;
 mod style;
 mod view;
+mod state_machine;
+mod contracts;
 
 use sruja_language::{Program, TopLevelItem};
 

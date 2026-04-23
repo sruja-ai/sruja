@@ -16,6 +16,8 @@ pub mod slo_validation;
 pub mod sources_validation;
 pub mod unique_id;
 pub mod valid_ref;
+pub mod state_machine_integrity;
+pub mod contract_integrity;
 
 pub use container_nesting::ContainerNestingRule;
 pub use cycle::CycleDetectionRule;
@@ -33,3 +35,5 @@ pub use slo_validation::SloValidationRule;
 pub use sources_validation::SourcesValidationRule;
 pub use unique_id::UniqueIdRule;
 pub use valid_ref::ValidRefRule;
+pub use state_machine_integrity::StateMachineIntegrityRule;
+pub use contract_integrity::ContractIntegrityRule;

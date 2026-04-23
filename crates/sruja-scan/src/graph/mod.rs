@@ -49,9 +49,13 @@ pub struct Node {
     /// Paths to runbooks
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub runbooks: Vec<String>,
-    /// Confidence score (0-100)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub confidence: Option<u8>,
+    /// State machine definitions
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub state_machines: Vec<ResolvedStateMachine>,
+    /// API contract definitions
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub contracts: Vec<ResolvedContract>,
 }
 
 impl Default for Node {
@@ -73,6 +77,8 @@ impl Default for Node {
             operational_constraints: Vec::new(),
             runbooks: Vec::new(),
             confidence: None,
+            state_machines: Vec::new(),
+            contracts: Vec::new(),
         }
     }
 }
@@ -148,6 +154,53 @@ pub struct BlastRadiusResult {
     pub max_depth: usize,
     pub upstream: Vec<BlastRadiusNode>,
     pub downstream: Vec<BlastRadiusNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvedStateMachine {
+    pub name: String,
+    pub states: Vec<String>, // All unique states
+    pub initial_state: String,
+    pub terminal_states: Vec<String>,
+    pub transitions: Vec<ResolvedTransition>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvedTransition {
+    pub from: String,
+    pub to: String,
+    pub event: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub guard: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvedContract {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inputs: Vec<ResolvedField>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outputs: Vec<ResolvedField>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<ResolvedError>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub constraints: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvedField {
+    pub name: String,
+    pub spec: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvedError {
+    pub code: String,
+    pub description: String,
 }
 
 type Adjacency<'a> = HashMap<&'a str, Vec<&'a str>>;
