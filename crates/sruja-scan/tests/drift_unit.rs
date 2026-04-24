@@ -11,6 +11,9 @@ fn make_node(id: &str, kind: NodeKind) -> Node {
     node.id = id.to_string();
     node.kind = kind;
     node.label = id.to_string();
+    node.gotchas = Vec::new();
+    node.operational_constraints = Vec::new();
+    node.contracts = Vec::new();
     node
 }
 

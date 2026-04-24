@@ -10,12 +10,14 @@ description = "Architecture Knowledge Graph for Sruja"
 [dependencies]
 sruja-language = { path = "../sruja-language" }
 sruja-graph-core = { path = "../sruja-graph-core" }
-sruja-scan = { path = "../sruja-scan" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+sruja-scan = { path = "../sruja-scan" }
 
 [dev-dependencies]
 tokio-test = "0.4"

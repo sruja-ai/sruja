@@ -40,7 +40,7 @@ js-sys = "0.3"
 web-sys = "0.3"
 proptest = "1.5"
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.22", features = ["v4", "serde"] }
+uuid = { version = "1.22", features = ["v4", "serde", "js"] }
 git2 = { version = "0.20", default-features = false, features = ["vendored-libgit2"] }
 scip = "0.7.0"
 protobuf = "3"

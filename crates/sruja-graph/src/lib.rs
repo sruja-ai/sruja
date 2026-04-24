@@ -14,6 +14,7 @@ pub mod context_score;
 pub mod coupling;
 pub mod graph;
 pub mod query;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod scan_merge;
 pub mod scc;
 pub mod treewidth;
@@ -31,6 +32,7 @@ pub use context_score::{
     ExternalContextSummary, QuickWin,
 };
 pub use query::{PolicyViolation, QueryError, QueryResult};
+#[cfg(not(target_arch = "wasm32"))]
 pub use scan_merge::merge_scan_into_graph;
 pub use scc::{CondensationEdge, Scc, SccAnalyzer, SccResult};
 pub use treewidth::{

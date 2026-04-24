@@ -55,5 +55,3 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/dependency-review-action@v4
-        with:
-          dependency-cursor: 2
