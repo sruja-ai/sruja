@@ -61,6 +61,8 @@ pub struct DeclaredBoundary {
     pub inside: Vec<String>,
     pub allowed_connections: Vec<AllowedConnection>,
     pub rules: Vec<BoundaryRule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_depth: Option<usize>,
     pub source_ref: SourceReference,
 }
 

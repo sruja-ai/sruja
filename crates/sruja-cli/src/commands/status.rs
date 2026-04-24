@@ -71,7 +71,25 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
 
             blocks.push(("Architecture Health".to_string(), health_info));
 
-            // 2. Findings Preview
+            // 2. Supervision / Velocity Block
+            if let Some(ref velocity) = out.velocity {
+                let mut supervision_info = String::new();
+                let ratio = (velocity.supervision_ratio * 100.0) as u8;
+                let bar = colors::health_bar(ratio, 20);
+                supervision_info.push_str(&format!("Ratio:   {}\n", bar));
+                supervision_info.push_str(&format!("Changed: {} components\n", colors::info(&velocity.nodes_changed.to_string())));
+                supervision_info.push_str(&format!("Intent:  {}/{} proposed\n", velocity.nodes_with_intent, velocity.nodes_changed));
+                
+                if !velocity.unsupervised_nodes.is_empty() {
+                    let uncovered = velocity.unsupervised_nodes.join(", ");
+                    let truncated = if uncovered.len() > 40 { format!("{}...", &uncovered[..37]) } else { uncovered };
+                    supervision_info.push_str(&format!("Gap:     {}\n", colors::error(&truncated)));
+                }
+
+                blocks.push(("Supervision (Recent)".to_string(), supervision_info));
+            }
+
+            // 3. Findings Preview
             if !out.top_findings.is_empty() {
                 let mut findings_info = String::new();
                 for (i, f) in out.top_findings.iter().enumerate() {

@@ -245,6 +245,16 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
 
     let graph = scan_repo(repo_path)?;
 
+    // Calculate architectural velocity (recent supervision ratio)
+    let velocity = (|| {
+        let base = if std::process::Command::new("git").args(["rev-parse", "origin/main"]).current_dir(repo_path).status().ok()?.success() {
+            "origin/main"
+        } else {
+            "HEAD~20"
+        };
+        sruja_diff::architectural_velocity(repo_path, base, "HEAD", &graph).ok()
+    })();
+
     // Calculate context score
     let context_score = (|| {
         let kg = crate::graph_store::load_or_build_graph(repo_path).ok()?;
@@ -304,6 +314,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
             top_findings,
             context_score,
             health_history,
+            velocity,
         });
     }
 
@@ -353,6 +364,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
         top_findings,
         context_score,
         health_history,
+        velocity,
     })
 }
 

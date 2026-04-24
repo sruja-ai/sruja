@@ -564,6 +564,20 @@ fn tool_definitions() -> Vec<Value> {
                 "required": ["element_id"]
             }
         }),
+        json!({
+            "name": "sruja_preflight_check",
+            "title": "Sruja Preflight Check",
+            "description": "Before generating code, check what architectural constraints, policies, boundaries, and known risks apply to the target area. Call this BEFORE writing any code.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "target_files": { "type": "array", "items": { "type": "string" }, "description": "List of files you plan to modify" },
+                    "intent": { "type": "string", "description": "What you plan to do (optional)" }
+                },
+                "required": ["target_files"]
+            }
+        }),
     ]
 }
 
@@ -809,6 +823,20 @@ async fn run_tool(
             } else {
                 Ok(serde_json::to_string_pretty(&node.contracts)?)
             }
+        }
+        "sruja_preflight_check" => {
+            let files = arguments
+                .get("target_files")
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| CliError::validation("Missing target_files array"))?;
+            let file_list: Vec<String> = files
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+            let intent_hint = arguments.get("intent").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+
+            let res = super::preflight::preflight(Path::new(&repo), file_list, intent_hint).await?;
+            Ok(serde_json::to_string_pretty(&res)?)
         }
         "sruja_validate_change" => {
             let files = arguments

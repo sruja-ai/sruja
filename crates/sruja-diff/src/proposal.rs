@@ -173,7 +173,7 @@ impl Proposal {
         validation
     }
 
-    fn get_affected_ids(&self) -> std::collections::HashSet<String> {
+    pub fn get_affected_ids(&self) -> std::collections::HashSet<String> {
         let mut ids = std::collections::HashSet::new();
         for change in &self.changes {
             match change {

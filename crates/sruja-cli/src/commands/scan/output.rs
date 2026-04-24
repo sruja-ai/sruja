@@ -71,6 +71,8 @@ pub struct StatusOutput {
     pub context_score: Option<u8>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub health_history: Vec<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub velocity: Option<sruja_diff::ArchitecturalVelocity>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

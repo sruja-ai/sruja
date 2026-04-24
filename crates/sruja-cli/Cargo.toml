@@ -21,6 +21,7 @@ sruja-scan = { path = "../sruja-scan" }
 sruja-diff = { path = "../sruja-diff" }
 sruja-graph = { path = "../sruja-graph" }
 sruja-intent = { path = "../sruja-intent" }
+sruja-extract = { path = "../sruja-extract" }
 clap = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }

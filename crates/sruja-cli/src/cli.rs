@@ -499,18 +499,26 @@ pub enum Commands {
         #[arg(short = 'o', long)]
         output: Option<String>,
     },
-    /// Generate semantic embeddings for architectural nodes
+    /// Generate indices for architectural nodes
     Index {
+        #[command(subcommand)]
+        cmd: IndexCommand,
+    },
+    /// Query the architectural registry
+    Query {
+        /// Query string (e.g., "Checkout", "depends_on Payments")
+        query: String,
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
         /// Path to architecture file
         #[arg(long, short = 'a')]
         architecture: Option<String>,
-        /// Output path for vector index
-        #[arg(long, short = 'o', default_value = ".sruja/vectors.json")]
-        output: String,
+        /// Output format (text or json)
+        #[arg(long, default_value = "text")]
+        format: String,
     },
+
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
@@ -586,6 +594,46 @@ pub enum Commands {
         /// Comma-separated architecture element IDs to link (e.g. Auth.Handler,Database.Users)
         #[arg(long, short = 'e')]
         elements: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum IndexCommand {
+    /// Generate semantic embeddings for architectural nodes
+    Semantic {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Output path for vector index
+        #[arg(long, short = 'o', default_value = ".sruja/vectors.json")]
+        output: String,
+    },
+    /// Automatically discover architectural artifacts and update registry
+    Registry {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Path to architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Automatically apply discovered sources to the architecture file
+        #[arg(long)]
+        fix: bool,
+        /// Output format (text or json)
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
+    /// Generate a visual dashboard for the architectural registry
+    Dashboard {
+        /// Path to repository root (or federated index)
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output file path (e.g., dashboard.md or dashboard.html)
+        #[arg(long, short = 'o', default_value = "dashboard.md")]
+        output: String,
     },
 }
 
@@ -927,11 +975,34 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             }
             commands::generate_prompt(&repo, skill_path.as_deref(), output.as_deref())
         }
-        Commands::Index {
+        Commands::Index { cmd } => match cmd {
+            IndexCommand::Semantic {
+                repo,
+                architecture,
+                output,
+            } => {
+                commands::semantic_index(&repo, architecture.as_deref(), &output).await
+            }
+            IndexCommand::Registry {
+                repo,
+                architecture,
+                fix,
+                format,
+            } => {
+                commands::registry_index(&repo, architecture.as_deref(), fix, &format).await
+            }
+            IndexCommand::Dashboard { repo, output } => {
+                commands::registry_dashboard(&repo, &output).await
+            }
+        },
+        Commands::Query {
+            query,
             repo,
             architecture,
-            output,
-        } => commands::index(&repo, architecture.as_deref(), &output).await,
+            format,
+        } => {
+            commands::query_registry(&repo, architecture.as_deref(), &query, &format).await
+        }
         Commands::Completions { shell } => commands::completions(shell),
         Commands::Health { repo, architecture, format } => commands::health(&repo, architecture.as_deref(), &format).await,
         Commands::ContextScore { repo, format, fail_under } => commands::context_score(&repo, &format, fail_under).await,

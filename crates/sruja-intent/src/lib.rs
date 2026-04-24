@@ -14,8 +14,8 @@ pub mod critique_report;
 
 pub use compare::{Drift, DriftDetector, DriftHealth, DriftKind, DriftReport, Evidence, Severity};
 pub use model::{
-    DeclaredBoundary, DeclaredComponent, DeclaredConstraint, DeclaredPolicy, DeclaredRelationship,
-    IntentModel, IntentSourceInfo, SourceReference,
+    BoundaryRule, BoundaryRuleType, DeclaredBoundary, DeclaredComponent, DeclaredConstraint,
+    DeclaredPolicy, DeclaredRelationship, IntentModel, IntentSourceInfo, SourceReference,
 };
 pub use parser::{AdrParser, AdrStatus, ParsedAdr};
 pub use report::{IntentReport, IntentViolation};

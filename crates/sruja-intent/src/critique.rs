@@ -1,7 +1,7 @@
 //! Adversarial architectural critique engine
 
 use serde::{Deserialize, Serialize};
-use sruja_scan::Graph;
+use sruja_scan::{Graph, Criticality};
 use sruja_language::Program;
 
 /// Request for architectural critique
@@ -290,17 +290,57 @@ impl CritiqueEngine {
 
     fn check_unproposed_changes(&self, affected: &[String]) -> Vec<CritiqueFinding> {
         let mut findings = Vec::new();
-        if !affected.is_empty() {
-             findings.push(CritiqueFinding {
+        
+        for id in affected {
+            if let Some(node) = self.graph.nodes.iter().find(|n| &n.id == id) {
+                let radius = self.graph.blast_radius(id, 2);
+                let affected_count = radius.upstream.len();
+                
+                // Determine severity based on criticality and blast radius (upstream consumers)
+                let severity = match (node.criticality, affected_count) {
+                    (Some(Criticality::Critical), _) => CritiqueSeverity::Critical,
+                    (Some(Criticality::High), _) | (_, 5..) => CritiqueSeverity::High,
+                    (_, 2..=4) => CritiqueSeverity::Medium,
+                    _ => CritiqueSeverity::Low,
+                };
+                
+                // Only report Medium and above individually, or if it's the only one
+                if severity >= CritiqueSeverity::Medium || affected.len() == 1 {
+                    findings.push(CritiqueFinding {
+                        category: CritiqueCategory::UnproposedChange,
+                        severity,
+                        title: format!("Unproposed Change: {}", id),
+                        detail: format!(
+                            "Change affects '{}' (criticality: {:?}, {} downstream consumers) without a linked architectural proposal.",
+                            id, 
+                            node.criticality.as_ref().map(|c| format!("{:?}", c)).unwrap_or_else(|| "Unknown".to_string()),
+                            affected_count
+                        ),
+                        evidence: vec![CritiqueEvidence {
+                            source: "sruja".to_string(),
+                            location: node.path.clone(),
+                            detail: format!("Blast radius: {} downstream consumers", affected_count),
+                        }],
+                        suggestion: Some("Run 'sruja propose' to document architectural intent and get formal review.".to_string()),
+                        confidence: 0.9,
+                    });
+                }
+            }
+        }
+        
+        // If we didn't add any specific findings but have affected elements, add a summary one
+        if findings.is_empty() && !affected.is_empty() {
+            findings.push(CritiqueFinding {
                 category: CritiqueCategory::UnproposedChange,
                 severity: CritiqueSeverity::Low,
-                title: "Unproposed Change".to_string(),
-                detail: "This change affects the architecture but has no linked proposal.".to_string(),
+                title: "Unproposed Architectural Changes".to_string(),
+                detail: format!("This change affects {} architectural elements without a linked proposal.", affected.len()),
                 evidence: vec![],
                 suggestion: Some("Consider running 'sruja propose' to document architectural intent.".to_string()),
                 confidence: 0.7,
             });
         }
+        
         findings
     }
 
@@ -363,5 +403,75 @@ mod tests {
         assert_eq!(report.affected_elements.len(), 1);
         assert!(report.findings.iter().any(|f| f.category == CritiqueCategory::UnproposedChange));
         assert_eq!(report.risk_level, RiskLevel::Caution);
+    }
+
+    #[test]
+    fn test_critique_unproposed_change_escalation() {
+        let mut graph = Graph::default();
+        graph.nodes.push(Node {
+            id: "CriticalService".to_string(),
+            kind: NodeKind::Service,
+            label: "Critical Service".to_string(),
+            path: Some("src/critical.rs".to_string()),
+            criticality: Some(Criticality::Critical),
+            ..Default::default()
+        });
+
+        let engine = CritiqueEngine::new(graph, None);
+        let report = engine.critique(&CritiqueRequest {
+            changed_files: vec!["src/critical.rs".to_string()],
+            description: None,
+            proposal_id: None,
+            base_ref: None,
+            head_ref: None,
+        });
+
+        assert_eq!(report.affected_elements.len(), 1);
+        let finding = report.findings.iter().find(|f| f.category == CritiqueCategory::UnproposedChange).expect("should have unproposed change finding");
+        assert_eq!(finding.severity, CritiqueSeverity::Critical);
+        assert_eq!(report.risk_level, RiskLevel::Danger);
+    }
+
+    #[test]
+    fn test_critique_unproposed_change_blast_radius_escalation() {
+        let mut graph = Graph::default();
+        graph.nodes.push(Node {
+            id: "CoreLib".to_string(),
+            kind: NodeKind::Component,
+            label: "Core Library".to_string(),
+            path: Some("src/core.rs".to_string()),
+            ..Default::default()
+        });
+        
+        // Add 6 downstream consumers to trigger High severity
+        for i in 0..6 {
+            let consumer_id = format!("Consumer{}", i);
+            graph.nodes.push(Node {
+                id: consumer_id.clone(),
+                kind: NodeKind::Component,
+                label: consumer_id.clone(),
+                ..Default::default()
+            });
+            graph.edges.push(sruja_scan::Edge {
+                source: consumer_id,
+                target: "CoreLib".to_string(),
+                kind: sruja_scan::EdgeKind::Calls,
+                evidence: vec![],
+            });
+        }
+
+        let engine = CritiqueEngine::new(graph, None);
+        let report = engine.critique(&CritiqueRequest {
+            changed_files: vec!["src/core.rs".to_string()],
+            description: None,
+            proposal_id: None,
+            base_ref: None,
+            head_ref: None,
+        });
+
+        assert_eq!(report.affected_elements.len(), 1);
+        let finding = report.findings.iter().find(|f| f.category == CritiqueCategory::UnproposedChange).expect("should have unproposed change finding");
+        assert_eq!(finding.severity, CritiqueSeverity::High);
+        assert_eq!(report.risk_level, RiskLevel::Warning);
     }
 }

@@ -411,38 +411,74 @@ impl DriftDetector {
         reality: &Graph,
     ) -> Vec<Drift> {
         let mut drifts = Vec::new();
-
         let inside_set: HashSet<&str> = boundary.inside.iter().map(|s| s.as_str()).collect();
+        let max_depth = boundary.max_depth.unwrap_or(2);
 
-        for edge in &reality.edges {
-            let src_inside = inside_set.contains(edge.source.as_str());
-            let tgt_inside = inside_set.contains(edge.target.as_str());
+        for start_node_id in &boundary.inside {
+            // Get transitive downstream dependencies
+            let radius = reality.blast_radius(start_node_id, max_depth);
+            
+            for downstream in &radius.downstream {
+                // If the downstream component is outside the boundary
+                if !inside_set.contains(downstream.id.as_str()) {
+                    // Check if this crossing is explicitly allowed
+                    let is_allowed = boundary.allowed_connections.iter().any(|ac| {
+                        ac.target_boundary == downstream.id
+                    });
 
-            if src_inside && !tgt_inside {
-                let allowed = boundary.allowed_connections.iter().any(|ac| {
-                    inside_set.contains(edge.target.as_str()) || ac.target_boundary == edge.target
-                });
-
-                if !allowed {
-                    for rule in &boundary.rules {
-                        if rule.rule_type == crate::model::BoundaryRuleType::NoDirectDatabaseAccess
-                            && (edge.target.contains("database") || edge.target.contains("db"))
-                        {
-                            drifts.push(Drift {
-                                kind: DriftKind::BoundaryViolation,
-                                severity: Severity::High,
-                                description: format!(
-                                    "Boundary '{}' violated: {} directly accesses {}",
-                                    boundary.name, edge.source, edge.target
-                                ),
-                                evidence: vec![Evidence {
-                                    source: "scan".to_string(),
-                                    location: None,
-                                    detail: format!("Edge {} -> {}", edge.source, edge.target),
-                                }],
-                                intent_ref: Some(boundary.source_ref.file.clone()),
-                                suggestion: Some(rule.description.clone()),
-                            });
+                    if !is_allowed {
+                        for rule in &boundary.rules {
+                            match rule.rule_type {
+                                crate::model::BoundaryRuleType::NoDirectDatabaseAccess => {
+                                    // Heuristic: check if ID contains database keywords
+                                    let target_id_lower = downstream.id.to_lowercase();
+                                    if target_id_lower.contains("database") || target_id_lower.contains("db") {
+                                        let is_transitive = downstream.depth > 1;
+                                        let prefix = if is_transitive { "Transitive " } else { "" };
+                                        
+                                        drifts.push(Drift {
+                                            kind: DriftKind::BoundaryViolation,
+                                            severity: Severity::High,
+                                            description: format!(
+                                                "Boundary '{}' violated: {} {}accesses database {} (depth {})",
+                                                boundary.name, 
+                                                start_node_id, 
+                                                if is_transitive { "transitively " } else { "directly " },
+                                                downstream.id,
+                                                downstream.depth
+                                            ),
+                                            evidence: vec![Evidence {
+                                                source: "scan".to_string(),
+                                                location: None,
+                                                detail: format!(
+                                                    "{} dependency chain detected from {} to {} (hop count: {})",
+                                                    prefix, start_node_id, downstream.id, downstream.depth
+                                                ),
+                                            }],
+                                            intent_ref: Some(boundary.source_ref.file.clone()),
+                                            suggestion: Some(rule.description.clone()),
+                                        });
+                                    }
+                                }
+                                _ => {
+                                    // Generic boundary crossing violation
+                                    drifts.push(Drift {
+                                        kind: DriftKind::BoundaryViolation,
+                                        severity: Severity::Medium,
+                                        description: format!(
+                                            "Boundary '{}' violation: {} depends on external component {} (depth {}) which is not in allowed_connections",
+                                            boundary.name, start_node_id, downstream.id, downstream.depth
+                                        ),
+                                        evidence: vec![Evidence {
+                                            source: "scan".to_string(),
+                                            location: None,
+                                            detail: format!("Unallowed transitive dependency: {} -> ... -> {}", start_node_id, downstream.id),
+                                        }],
+                                        intent_ref: Some(boundary.source_ref.file.clone()),
+                                        suggestion: Some(format!("Add {} to allowed_connections for boundary {}", downstream.id, boundary.name)),
+                                    });
+                                }
+                            }
                         }
                     }
                 }
@@ -949,6 +985,7 @@ mod tests {
                     .to_string(),
             }],
             source_ref: source_ref("Core"),
+            max_depth: None,
         });
         let reality = create_test_graph();
 
@@ -958,6 +995,54 @@ mod tests {
             .drifts
             .iter()
             .any(|d| d.kind == DriftKind::BoundaryViolation));
+    }
+
+    #[test]
+    fn test_detect_transitive_boundary_violation() {
+        let detector = DriftDetector::new();
+        let mut intent = create_test_intent();
+        
+        // Boundary for 'frontend' forbids direct/transitive database access
+        intent.boundaries.push(DeclaredBoundary {
+            name: "Frontend".to_string(),
+            inside: vec!["frontend".to_string()],
+            allowed_connections: Vec::new(),
+            rules: vec![BoundaryRule {
+                rule_type: BoundaryRuleType::NoDirectDatabaseAccess,
+                description: "Frontend must not touch database, even transitively.".to_string(),
+            }],
+            max_depth: Some(3),
+            source_ref: source_ref("Frontend"),
+        });
+
+        let mut reality = ScanGraph::new();
+        reality.nodes.push(scan_node("frontend", "Frontend", "src/fe"));
+        reality.nodes.push(scan_node("backend", "Backend", "src/be"));
+        reality.nodes.push(scan_node("users_db", "Users DB", "src/db"));
+
+        // Chain: frontend -> backend -> users_db
+        reality.edges.push(Edge {
+            source: "frontend".to_string(),
+            target: "backend".to_string(),
+            kind: EdgeKind::Calls,
+            evidence: Vec::new(),
+        });
+        reality.edges.push(Edge {
+            source: "backend".to_string(),
+            target: "users_db".to_string(),
+            kind: EdgeKind::WritesTo,
+            evidence: Vec::new(),
+        });
+
+        let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
+
+        let boundary_violations: Vec<_> = report.drifts.iter()
+            .filter(|d| d.kind == DriftKind::BoundaryViolation)
+            .collect();
+
+        assert!(!boundary_violations.is_empty(), "Should have detected transitive boundary violation");
+        assert!(boundary_violations[0].description.contains("transitively"));
+        assert!(boundary_violations[0].description.contains("depth 2"));
     }
 
     #[test]
@@ -977,6 +1062,7 @@ mod tests {
                     .to_string(),
             }],
             source_ref: source_ref("Core"),
+            max_depth: None,
         });
         let reality = create_test_graph();
 

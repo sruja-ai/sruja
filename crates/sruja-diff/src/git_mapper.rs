@@ -1,9 +1,67 @@
 use git2::{DiffOptions, Repository};
+use serde::{Deserialize, Serialize};
 use sruja_scan::Graph;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+use crate::proposal::{Proposal, ProposalStatus};
 use crate::types::ComponentDiff;
+
+/// Architectural velocity and supervision metrics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArchitecturalVelocity {
+    /// Total graph nodes touched by code changes
+    pub nodes_changed: usize,
+    /// Nodes that had a corresponding approved proposal
+    pub nodes_with_intent: usize,
+    /// supervision_ratio = nodes_with_intent / nodes_changed (1.0 = fully supervised)
+    pub supervision_ratio: f32,
+    /// Per-component breakdown
+    pub component_diffs: Vec<ComponentDiff>,
+    /// Nodes changed without intent
+    pub unsupervised_nodes: Vec<String>,
+}
+
+/// Calculate architectural velocity by comparing git changes to approved proposals.
+pub fn architectural_velocity(
+    repo_path: &Path,
+    base_ref: &str,
+    head_ref: &str,
+    graph: &Graph,
+) -> Result<ArchitecturalVelocity, git2::Error> {
+    let diffs = map_git_diff(repo_path, base_ref, head_ref, graph)?;
+    let proposals = Proposal::load_all(repo_path).unwrap_or_default();
+    
+    let approved_ids: HashSet<String> = proposals
+        .iter()
+        .filter(|p| p.status == ProposalStatus::Approved || p.status == ProposalStatus::Implemented)
+        .flat_map(|p| p.get_affected_ids())
+        .collect();
+
+    let nodes_changed = diffs.len();
+    let mut nodes_with_intent = 0;
+    let mut unsupervised_nodes = Vec::new();
+
+    for diff in &diffs {
+        if approved_ids.contains(&diff.component_id) {
+            nodes_with_intent += 1;
+        } else {
+            unsupervised_nodes.push(diff.component_id.clone());
+        }
+    }
+
+    Ok(ArchitecturalVelocity {
+        nodes_changed,
+        nodes_with_intent,
+        supervision_ratio: if nodes_changed > 0 {
+            nodes_with_intent as f32 / nodes_changed as f32
+        } else {
+            1.0
+        },
+        component_diffs: diffs,
+        unsupervised_nodes,
+    })
+}
 
 /// Map a git diff between two refs to architectural components in the graph.
 ///
@@ -83,7 +141,7 @@ pub fn map_git_diff(
 }
 
 /// Helper to find which architectural components a file belongs to.
-fn find_components_for_file(file_path: &str, graph: &Graph) -> Vec<String> {
+pub fn find_components_for_file(file_path: &str, graph: &Graph) -> Vec<String> {
     let mut matching = Vec::new();
 
     // Normalize path for comparison (strip leading ./ if present)

@@ -16,6 +16,7 @@ members = [
     "crates/sruja-graph",
     "crates/sruja-intent",
     "crates/sruja-wasm",
+    "crates/sruja-extract",
 ]
 resolver = "2"
 

@@ -31,6 +31,8 @@ pub enum CliError {
         message: String,
         help: Option<String>,
     },
+    #[error("Discovery error: {0}")]
+    Discovery(String),
     #[error("Operation timed out: {message}")]
     Timeout {
         message: String,
@@ -107,6 +109,7 @@ impl CliError {
             CliError::FailOnViolations => 1,
             CliError::NotInitialized { .. } => 9,
             CliError::ConfigCorrupted { .. } => 10,
+            CliError::Discovery(_) => 11,
         }
     }
 
@@ -210,6 +213,13 @@ impl CliError {
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Attempt to repair by running a sync: {}", colors::info("sruja daily"));
                 eprintln!("  2. If that fails, re-initialize (Caution: overwrites changes): {}", colors::warning("sruja start --force"));
+            }
+            CliError::Discovery(message) => {
+                eprintln!("{} {}: {}", colors::error("Error:"), "Discovery error", message);
+                eprintln!();
+                eprintln!("{}", colors::style("Remediation:").bold());
+                eprintln!("  1. Ensure the repository root is correct.");
+                eprintln!("  2. Check if the architecture file is valid and readable.");
             }
         }
     }

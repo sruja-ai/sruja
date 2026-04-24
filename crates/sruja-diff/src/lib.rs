@@ -18,7 +18,7 @@ pub use drift::{
     detect_architectural_drift, detect_architectural_drift_with_config, find_circular_dependencies,
     find_orphan_modules,
 };
-pub use git_mapper::map_git_diff;
+pub use git_mapper::{architectural_velocity, map_git_diff, ArchitecturalVelocity};
 pub use health::calculate_health_score_from_violations;
 pub use proposal::{
     detect_unproposed_changes, Proposal, ProposalChange, ProposalStatus, ProposalValidation,
