@@ -889,7 +889,7 @@ fn index_embeddings_succeeds() {
     let out_path = repo.path().join("vectors.json");
     let out_str = out_path.to_str().expect("utf-8");
 
-    let (success, _stdout, stderr) = run_sruja(&["index", "-r", repo_str, "-a", &arch_str, "-o", out_str]);
+    let (success, _stdout, stderr) = run_sruja(&["index", "semantic", "-r", repo_str, "-a", &arch_str, "-o", out_str]);
 
     assert!(success, "index should succeed: stderr={}", stderr);
     assert!(out_path.exists(), "vectors.json should be created");

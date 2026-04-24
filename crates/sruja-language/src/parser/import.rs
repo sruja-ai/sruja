@@ -23,20 +23,18 @@ pub(crate) fn parse_import(input: &str) -> IResult<&str, ImportStatement> {
 
     // Try structured import: import { A, B } from "path"
     let structured = map(
-        nom::sequence::tuple((
-            delimited(
-                char('{'),
-                separated_list0(
-                    preceded(ws0, char(',')),
-                    preceded(ws0, parse_import_element),
-                ),
-                preceded(ws0, char('}')),
+        (delimited(
+            char('{'),
+            separated_list0(
+                preceded(ws0, char(',')),
+                preceded(ws0, parse_import_element),
             ),
-            ws1,
-            tag("from"),
-            ws1,
-            parse_string,
-        )),
+            preceded(ws0, char('}')),
+        ),
+        ws1,
+        tag("from"),
+        ws1,
+        parse_string),
         |(elements, _, _, _, from)| ImportStatement {
             location: SourceLocation::new(String::new(), 0, 0),
             elements,

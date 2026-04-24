@@ -339,71 +339,48 @@ mod tests {
     use crate::{Edge, EdgeKind, Graph, Node, NodeKind};
 
     fn make_test_graph() -> Graph {
-        Graph {
-            nodes: vec![
-                Node {
-                    id: "a".into(),
-                    kind: NodeKind::Module,
-                    label: "a".into(),
-                    technology: None,
-                    path: Some("a.rs".into()),
-                    metadata: Default::default(),
-                    canonical_id: None,
-                    aliases: Vec::new(),
-                    owner: None,
-                    domain: None,
-                    criticality: None,
-                    sources: Vec::new(),
-                    confidence: None,
-                },
-                Node {
-                    id: "b".into(),
-                    kind: NodeKind::Module,
-                    label: "b".into(),
-                    technology: None,
-                    path: Some("b.rs".into()),
-                    metadata: Default::default(),
-                    canonical_id: None,
-                    aliases: Vec::new(),
-                    owner: None,
-                    domain: None,
-                    criticality: None,
-                    sources: Vec::new(),
-                    confidence: None,
-                },
-                Node {
-                    id: "c".into(),
-                    kind: NodeKind::Module,
-                    label: "c".into(),
-                    technology: None,
-                    path: Some("c.rs".into()),
-                    metadata: Default::default(),
-                    canonical_id: None,
-                    aliases: Vec::new(),
-                    owner: None,
-                    domain: None,
-                    criticality: None,
-                    sources: Vec::new(),
-                    confidence: None,
-                },
-            ],
-            edges: vec![
-                Edge {
-                    source: "a".into(),
-                    target: "b".into(),
-                    kind: EdgeKind::DependsOn,
-                    evidence: vec![],
-                },
-                Edge {
-                    source: "b".into(),
-                    target: "c".into(),
-                    kind: EdgeKind::DependsOn,
-                    evidence: vec![],
-                },
-            ],
-            metadata: Default::default(),
-            confidence: None,
-        }
+        let mut graph = Graph::default();
+        graph.nodes = vec![
+            {
+                let mut node = Node::default();
+                node.id = "a".into();
+                node.kind = NodeKind::Module;
+                node.label = "a".into();
+                node.path = Some("a.rs".into());
+                node
+            },
+            {
+                let mut node = Node::default();
+                node.id = "b".into();
+                node.kind = NodeKind::Module;
+                node.label = "b".into();
+                node.path = Some("b.rs".into());
+                node
+            },
+            {
+                let mut node = Node::default();
+                node.id = "c".into();
+                node.kind = NodeKind::Module;
+                node.label = "c".into();
+                node.path = Some("c.rs".into());
+                node
+            },
+        ];
+        graph.edges = vec![
+            Edge {
+                source: "a".into(),
+                target: "b".into(),
+                kind: EdgeKind::DependsOn,
+                evidence: vec![],
+            },
+            Edge {
+                source: "b".into(),
+                target: "c".into(),
+                kind: EdgeKind::DependsOn,
+                evidence: vec![],
+            },
+        ];
+        graph
     }
 
     #[test]

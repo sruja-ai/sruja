@@ -7,10 +7,10 @@ use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
 
 use crate::rules::{
-    ContainerNestingRule, CycleDetectionRule, DatabaseIsolationRule, GovernanceValidationRule,
-    LayerViolationRule, OrphanDetectionRule, PolicyEvaluationRule, PropertiesValidationRule,
-    PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule, SimplicityRule,
-    SloValidationRule, SourcesValidationRule, UniqueIdRule, ValidRefRule,
+    ComplexityThresholdRule, ContainerNestingRule, CycleDetectionRule, DatabaseIsolationRule,
+    GovernanceValidationRule, LayerViolationRule, OrphanDetectionRule, PolicyEvaluationRule,
+    PropertiesValidationRule, PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule,
+    SimplicityRule, SloValidationRule, SourcesValidationRule, UniqueIdRule, ValidRefRule,
     StateMachineIntegrityRule, ContractIntegrityRule,
 };
 use crate::DomainSchema;
@@ -123,6 +123,7 @@ impl Validator {
         self.register_rule(Arc::new(PolicyEvaluationRule));
         self.register_rule(Arc::new(StateMachineIntegrityRule));
         self.register_rule(Arc::new(ContractIntegrityRule));
+        self.register_rule(Arc::new(ComplexityThresholdRule));
         self
     }
 

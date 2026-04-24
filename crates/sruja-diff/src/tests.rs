@@ -28,7 +28,12 @@ mod cases {
             domain: None,
             criticality: None,
             sources: Vec::new(),
+            gotchas: Vec::new(),
+            operational_constraints: Vec::new(),
+            runbooks: Vec::new(),
             confidence: None,
+            state_machines: Vec::new(),
+            contracts: Vec::new(),
         }
     }
 

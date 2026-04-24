@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
- 
+
 pub mod mapper;
 
 use sruja_language::DomainSchema;
@@ -176,7 +176,12 @@ impl DriftDetector {
         Self { config }
     }
 
-    pub fn detect(&self, intent: &IntentModel, reality: &Graph, schema: &DomainSchema) -> DriftReport {
+    pub fn detect(
+        &self,
+        intent: &IntentModel,
+        reality: &Graph,
+        schema: &DomainSchema,
+    ) -> DriftReport {
         let mut drifts = Vec::new();
         let mapper = mapper::EvidenceMapper::new(schema);
 
@@ -417,14 +422,15 @@ impl DriftDetector {
         for start_node_id in &boundary.inside {
             // Get transitive downstream dependencies
             let radius = reality.blast_radius(start_node_id, max_depth);
-            
+
             for downstream in &radius.downstream {
                 // If the downstream component is outside the boundary
                 if !inside_set.contains(downstream.id.as_str()) {
                     // Check if this crossing is explicitly allowed
-                    let is_allowed = boundary.allowed_connections.iter().any(|ac| {
-                        ac.target_boundary == downstream.id
-                    });
+                    let is_allowed = boundary
+                        .allowed_connections
+                        .iter()
+                        .any(|ac| ac.target_boundary == downstream.id);
 
                     if !is_allowed {
                         for rule in &boundary.rules {
@@ -432,17 +438,19 @@ impl DriftDetector {
                                 crate::model::BoundaryRuleType::NoDirectDatabaseAccess => {
                                     // Heuristic: check if ID contains database keywords
                                     let target_id_lower = downstream.id.to_lowercase();
-                                    if target_id_lower.contains("database") || target_id_lower.contains("db") {
+                                    if target_id_lower.contains("database")
+                                        || target_id_lower.contains("db")
+                                    {
                                         let is_transitive = downstream.depth > 1;
                                         let prefix = if is_transitive { "Transitive " } else { "" };
-                                        
+
                                         drifts.push(Drift {
                                             kind: DriftKind::BoundaryViolation,
                                             severity: Severity::High,
                                             description: format!(
                                                 "Boundary '{}' violated: {} {}accesses database {} (depth {})",
-                                                boundary.name, 
-                                                start_node_id, 
+                                                boundary.name,
+                                                start_node_id,
                                                 if is_transitive { "transitively " } else { "directly " },
                                                 downstream.id,
                                                 downstream.depth
@@ -1001,7 +1009,7 @@ mod tests {
     fn test_detect_transitive_boundary_violation() {
         let detector = DriftDetector::new();
         let mut intent = create_test_intent();
-        
+
         // Boundary for 'frontend' forbids direct/transitive database access
         intent.boundaries.push(DeclaredBoundary {
             name: "Frontend".to_string(),
@@ -1016,9 +1024,15 @@ mod tests {
         });
 
         let mut reality = ScanGraph::new();
-        reality.nodes.push(scan_node("frontend", "Frontend", "src/fe"));
-        reality.nodes.push(scan_node("backend", "Backend", "src/be"));
-        reality.nodes.push(scan_node("users_db", "Users DB", "src/db"));
+        reality
+            .nodes
+            .push(scan_node("frontend", "Frontend", "src/fe"));
+        reality
+            .nodes
+            .push(scan_node("backend", "Backend", "src/be"));
+        reality
+            .nodes
+            .push(scan_node("users_db", "Users DB", "src/db"));
 
         // Chain: frontend -> backend -> users_db
         reality.edges.push(Edge {
@@ -1036,11 +1050,16 @@ mod tests {
 
         let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
 
-        let boundary_violations: Vec<_> = report.drifts.iter()
+        let boundary_violations: Vec<_> = report
+            .drifts
+            .iter()
             .filter(|d| d.kind == DriftKind::BoundaryViolation)
             .collect();
 
-        assert!(!boundary_violations.is_empty(), "Should have detected transitive boundary violation");
+        assert!(
+            !boundary_violations.is_empty(),
+            "Should have detected transitive boundary violation"
+        );
         assert!(boundary_violations[0].description.contains("transitively"));
         assert!(boundary_violations[0].description.contains("depth 2"));
     }

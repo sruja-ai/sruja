@@ -1,8 +1,8 @@
 //! Behavioral drift detection for critique engine
 
-use sruja_scan::{Graph, ResolvedStateMachine, ResolvedContract, Node};
+use crate::critique::{CritiqueCategory, CritiqueEvidence, CritiqueFinding, CritiqueSeverity};
 use sruja_language::Program;
-use crate::critique::{CritiqueFinding, CritiqueCategory, CritiqueSeverity, CritiqueEvidence};
+use sruja_scan::{Graph, Node, ResolvedContract, ResolvedStateMachine};
 
 /// Check if changed files could violate behavioral contracts.
 pub fn check_behavioral_drift(
@@ -43,7 +43,9 @@ fn check_state_machine_impact(
 
     // Heuristic: if a file specifically linked to this node changed
     let is_directly_affected = if let Some(path) = &node.path {
-        changed_files.iter().any(|f| f.contains(path) || path.contains(f))
+        changed_files
+            .iter()
+            .any(|f| f.contains(path) || path.contains(f))
     } else {
         false
     };
@@ -76,7 +78,9 @@ fn check_contract_impact(
     let id = &node.id;
 
     let is_directly_affected = if let Some(path) = &node.path {
-        changed_files.iter().any(|f| f.contains(path) || path.contains(f))
+        changed_files
+            .iter()
+            .any(|f| f.contains(path) || path.contains(f))
     } else {
         false
     };

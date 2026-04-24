@@ -4,26 +4,26 @@
 //! actual implementation to detect boundary drift, intent violations, and
 //! undocumented architectural changes.
 
+pub mod behavioral_drift;
 pub mod compare;
+pub mod critique;
+pub mod critique_report;
 pub mod model;
 pub mod parser;
 pub mod report;
-pub mod critique;
-pub mod behavioral_drift;
-pub mod critique_report;
 
 pub use compare::{Drift, DriftDetector, DriftHealth, DriftKind, DriftReport, Evidence, Severity};
+pub use critique::{
+    CritiqueCategory, CritiqueEngine, CritiqueFinding, CritiqueReport, CritiqueRequest,
+    CritiqueSeverity, RiskLevel,
+};
+pub use critique_report::{format_critique_json, format_critique_text};
 pub use model::{
     BoundaryRule, BoundaryRuleType, DeclaredBoundary, DeclaredComponent, DeclaredConstraint,
     DeclaredPolicy, DeclaredRelationship, IntentModel, IntentSourceInfo, SourceReference,
 };
 pub use parser::{AdrParser, AdrStatus, ParsedAdr};
 pub use report::{IntentReport, IntentViolation};
-pub use critique::{
-    CritiqueCategory, CritiqueEngine, CritiqueFinding, CritiqueReport, CritiqueRequest,
-    CritiqueSeverity, RiskLevel,
-};
-pub use critique_report::{format_critique_json, format_critique_text};
 
 use std::path::Path;
 

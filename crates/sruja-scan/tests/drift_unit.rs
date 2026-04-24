@@ -7,21 +7,11 @@ use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
 use std::collections::HashMap;
 
 fn make_node(id: &str, kind: NodeKind) -> Node {
-    Node {
-        id: id.to_string(),
-        kind,
-        label: id.to_string(),
-        technology: None,
-        path: None,
-        metadata: HashMap::new(),
-        canonical_id: None,
-        aliases: Vec::new(),
-        owner: None,
-        domain: None,
-        criticality: None,
-        sources: Vec::new(),
-        confidence: None,
-    }
+    let mut node = Node::default();
+    node.id = id.to_string();
+    node.kind = kind;
+    node.label = id.to_string();
+    node
 }
 
 fn make_edge(source: &str, target: &str) -> Edge {

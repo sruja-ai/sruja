@@ -93,21 +93,12 @@ mod tests {
     use std::collections::HashMap;
 
     fn node(id: &str, path: Option<&str>) -> Node {
-        Node {
-            id: id.to_string(),
-            kind: NodeKind::Module,
-            label: id.to_string(),
-            technology: None,
-            path: path.map(|p| p.to_string()),
-            metadata: HashMap::new(),
-            canonical_id: None,
-            aliases: Vec::new(),
-            owner: None,
-            domain: None,
-            criticality: None,
-            sources: Vec::new(),
-            confidence: None,
-        }
+        let mut node = Node::default();
+        node.id = id.to_string();
+        node.label = id.to_string();
+        node.kind = NodeKind::Module;
+        node.path = path.map(|p| p.to_string());
+        node
     }
 
     fn edge(source: &str, target: &str, evidence: Vec<EdgeEvidence>) -> Edge {
@@ -176,6 +167,7 @@ mod tests {
                     detail: Some("import".to_string()),
                 }],
             )],
+            incidents: Vec::new(),
             confidence: None,
         };
 
@@ -192,6 +184,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![node("A", None), node("B", None)],
             edges: vec![],
+            incidents: Vec::new(),
             confidence: None,
         };
 
@@ -205,6 +198,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![node("A", Some("src/a.ts"))],
             edges: vec![],
+            incidents: Vec::new(),
             confidence: None,
         };
 
@@ -256,6 +250,7 @@ mod tests {
                     }],
                 ),
             ],
+            incidents: Vec::new(),
             confidence: None,
         };
 

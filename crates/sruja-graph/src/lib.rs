@@ -85,6 +85,25 @@ pub struct ArchitectureNode {
     pub runbooks: Vec<String>,
 }
 
+impl Default for ArchitectureNode {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            kind: NodeKind::Module,
+            label: String::new(),
+            technology: None,
+            description: None,
+            metadata: HashMap::new(),
+            source: SourceReference::Manual,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            gotchas: Vec::new(),
+            operational_constraints: Vec::new(),
+            runbooks: Vec::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Incident {
     pub id: String,

@@ -2,7 +2,7 @@
 
 use nom::{
     bytes::complete::tag, character::complete::char, combinator::map, multi::many0,
-    sequence::{delimited, preceded, tuple}, IResult, Parser,
+    sequence::{delimited, preceded}, IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
@@ -62,11 +62,11 @@ enum ContractItem {
 fn parse_contract_item(input: &str) -> IResult<&str, ContractItem> {
     use nom::branch::alt;
     alt((
-        map(preceded(tuple((tag("description"), ws1)), parse_string), ContractItem::Description),
-        map(preceded(tuple((tag("input"), ws0)), parse_field_block), ContractItem::Input),
-        map(preceded(tuple((tag("output"), ws0)), parse_field_block), ContractItem::Output),
-        map(preceded(tuple((tag("error"), ws0)), parse_error_block), ContractItem::Error),
-        map(preceded(tuple((tag("constraint"), ws1)), parse_string), ContractItem::Constraint),
+        map(preceded((tag("description"), ws1), parse_string), ContractItem::Description),
+        map(preceded((tag("input"), ws0), parse_field_block), ContractItem::Input),
+        map(preceded((tag("output"), ws0), parse_field_block), ContractItem::Output),
+        map(preceded((tag("error"), ws0), parse_error_block), ContractItem::Error),
+        map(preceded((tag("constraint"), ws1), parse_string), ContractItem::Constraint),
     )).parse(input)
 }
 

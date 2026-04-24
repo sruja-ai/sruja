@@ -402,21 +402,14 @@ mod tests {
     use crate::{ArchitectureNode, NodeKind, SourceReference};
     use std::collections::HashMap;
 
-    fn test_graph_with_nodes(n: usize) -> KnowledgeGraph {
+fn test_graph_with_nodes(n: usize) -> KnowledgeGraph {
         let mut g = KnowledgeGraph::new();
         for i in 0..n {
-            g.add_node(ArchitectureNode {
-                id: format!("node_{}", i),
-                kind: NodeKind::Service,
-                label: format!("Service {}", i),
-                technology: None,
-                description: None,
-                metadata: HashMap::new(),
-                source: SourceReference::manual(),
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-            })
-            .unwrap();
+            let mut node = ArchitectureNode::default();
+            node.id = format!("node_{}", i);
+            node.kind = NodeKind::Service;
+            node.label = format!("Service {}", i);
+            g.add_node(node).unwrap();
         }
         g
     }

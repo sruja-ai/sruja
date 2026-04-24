@@ -10,6 +10,31 @@ This guide helps AI agents work effectively with the Sruja codebase.
 | `sruja focus` | **Task briefing** (blast radius, decisions, AI info) |
 | `sruja mcp -r .` | **Start MCP server** for deep context queries |
 
+## Before Coding: Shared Understanding
+
+**IMPORTANT**: From the talks, AI produces garbage without shared understanding. Re-running the compiler just produces more garbage.
+
+### Required Process
+
+Before any significant code change:
+
+1. **Reach shared understanding first** - Use "grill me" or equivalent questioning
+2. **Write the spec** - Document intent before code
+3. **Verify against spec** - Test matches spec, not just compilation
+
+### Anti-Patterns to Avoid
+
+- ✗ Generating code without clear intent
+- ✗ Running compiler repeatedly to fix AI errors
+- ✗ Shipping code you can't explain in a post-mortem
+- ✗ Merging AI output without verification
+
+### Code Quality Gates
+
+- Run `sruja drift -r .` before merging
+- Track code churn with `./scripts/code-churn.sh`
+- Review security with `./target/release/sruja lint` (if applicable)
+
 ## Build, Lint, and Test Commands
 
 ### Rust (Core)

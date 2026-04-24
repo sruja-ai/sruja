@@ -55,16 +55,22 @@ impl<'a> EvidenceMapper<'a> {
         // If nesting rules are defined, they act as a proxy for valid relationships
         // for this simplified Phase 3 implementation.
         // Future: Add explicit relationship_rules to DomainSchema.
-        
+
         // Example: if a 'component' is talking to a 'regulation', that might be weird.
         // For now, we just ensure both kinds are allowed.
         if !self.schema.is_node_kind_allowed(from_kind) {
-            return Some(format!("Source kind '{}' is not defined in schema", from_kind));
+            return Some(format!(
+                "Source kind '{}' is not defined in schema",
+                from_kind
+            ));
         }
         if !self.schema.is_node_kind_allowed(to_kind) {
-            return Some(format!("Target kind '{}' is not defined in schema", to_kind));
+            return Some(format!(
+                "Target kind '{}' is not defined in schema",
+                to_kind
+            ));
         }
-        
+
         None
     }
 }

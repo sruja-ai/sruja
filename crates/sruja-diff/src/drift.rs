@@ -620,21 +620,12 @@ mod tests {
     use std::collections::HashMap;
 
     fn node(id: &str, kind: NodeKind, path: Option<&str>) -> Node {
-        Node {
-            id: id.to_string(),
-            kind,
-            label: id.to_string(),
-            path: path.map(String::from),
-            technology: None,
-            metadata: HashMap::new(),
-            canonical_id: None,
-            aliases: Vec::new(),
-            owner: None,
-            domain: None,
-            criticality: None,
-            sources: Vec::new(),
-            confidence: None,
-        }
+        let mut node = Node::default();
+        node.id = id.to_string();
+        node.label = id.to_string();
+        node.kind = kind;
+        node.path = path.map(String::from);
+        node
     }
 
     fn edge(source: &str, target: &str) -> Edge {

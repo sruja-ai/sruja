@@ -13,6 +13,7 @@ chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"
 walkdir = "2.4"
 colored = "2.0"
+lazy_static = "1.5"
 
 sruja-scan = { path = "../sruja-scan" }
 sruja-language = { path = "../sruja-language" }

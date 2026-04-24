@@ -3476,6 +3476,7 @@ version = "0.34.0"
 dependencies = [
  "chrono",
  "colored",
+ "lazy_static",
  "regex",
  "serde",
  "serde_json",

@@ -296,17 +296,11 @@ mod tests {
     use super::*;
 
     fn test_node(id: &str) -> ArchitectureNode {
-        ArchitectureNode {
-            id: id.to_string(),
-            kind: NodeKind::Service,
-            label: id.to_string(),
-            technology: None,
-            description: None,
-            metadata: HashMap::new(),
-            source: SourceReference::manual(),
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-        }
+        let mut node: ArchitectureNode = Default::default();
+        node.id = id.to_string();
+        node.kind = NodeKind::Service;
+        node.label = id.to_string();
+        node
     }
 
     #[test]

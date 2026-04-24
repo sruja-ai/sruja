@@ -27,12 +27,7 @@ fn make_node(id: &str, kind: NodeKind) -> ArchitectureNode {
         id: id.to_string(),
         kind,
         label: id.to_string(),
-        technology: None,
-        description: None,
-        metadata: HashMap::new(),
-        source: SourceReference::manual(),
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        ..Default::default()
     }
 }
 

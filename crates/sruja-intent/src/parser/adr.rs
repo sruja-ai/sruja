@@ -5,12 +5,55 @@
 
 use crate::IntentError;
 use chrono::{DateTime, Utc};
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+lazy_static! {
+    static ref STATUS_SUPERSEDED_RE: Regex = Regex::new(r"(?i)^superseded(?:\s+by\s+(\d+))?")
+        .expect("superseded regex should compile");
+    static ref STATUS_ACCEPTED_RE: Regex = Regex::new(r"(?i)^accepted")
+        .expect("accepted regex should compile");
+    static ref STATUS_REJECTED_RE: Regex = Regex::new(r"(?i)^rejected")
+        .expect("rejected regex should compile");
+    static ref STATUS_DEPRECATED_RE: Regex = Regex::new(r"(?i)^deprecated")
+        .expect("deprecated regex should compile");
+    static ref STATUS_PROPOSED_RE: Regex = Regex::new(r"(?i)^proposed")
+        .expect("proposed regex should compile");
+    static ref STATUS_DRAFT_RE: Regex = Regex::new(r"(?i)^draft")
+        .expect("draft regex should compile");
+    static ref STATUS_RE: Regex = Regex::new(r"(?i)(?:^|\n)\s*[-*]?\s*Status\s*:\s*(.+?)(?:\n|$)")
+        .expect("status regex should compile");
+    static ref DATE_RE: Regex = Regex::new(r"(?i)(?:^|\n)\s*[-*]?\s*Date\s*:\s*(\d{4}[-/]\d{2}[-/]\d{2})")
+        .expect("date regex should compile");
+    static ref TAG_RE: Regex = Regex::new(r"(?i)Tags\s*:\s*(.+)")
+        .expect("tag regex should compile");
+    static ref HASH_RE: Regex = Regex::new(r"#(\w+)")
+        .expect("hash regex should compile");
+    static ref ADR_NUMBER_RE: Regex = Regex::new(r"^(\d{4})")
+        .expect("ADR number regex should compile");
+    static ref ADR_CONTENT_RE: Regex = Regex::new(r"(?i)ADR[-_]?(\d+)")
+        .expect("ADR content regex should compile");
+    static ref ADR_PREFIX_RE: Regex = Regex::new(r"(?i)^ADR[-_]?\d+[-_:]\s*")
+        .expect("ADR prefix regex should compile");
+    // Patterns for extract_implications
+    static ref IMPL_ADD_RE: Regex = Regex::new(r"(?i)(?:introduce|add|create)\s+(?:a\s+)?(?:new\s+)?(\w+)\s+(?:component|service|module)")
+        .expect("impl add regex should compile");
+    static ref IMPL_REMOVE_RE: Regex = Regex::new(r"(?i)(?:remove|delete|deprecate)\s+(?:the\s+)?(\w+)\s+(?:component|service|module)")
+        .expect("impl remove regex should compile");
+    static ref IMPL_SPLIT_RE: Regex = Regex::new(r"(?i)(?:split|refactor)\s+(\w+)\s+into\s+(\w+)\s+and\s+(\w+)")
+        .expect("impl split regex should compile");
+    static ref IMPL_MERGE_RE: Regex = Regex::new(r"(?i)(?:merge|combine)\s+(\w+)\s+and\s+(\w+)")
+        .expect("impl merge regex should compile");
+    static ref IMPL_BOUNDARY_RE: Regex = Regex::new(r"(?i)(?:boundary|interface|api)\s+(?:between|for)\s+(\w+)\s+and\s+(\w+)")
+        .expect("impl boundary regex should compile");
+    static ref POLICY_RE: Regex = Regex::new(r"(?i)(?:policy|rule|constraint):\s*(.+)")
+        .expect("policy regex should compile");
+}
+
 pub struct AdrParser {
-    status_patterns: Vec<(Regex, AdrStatus)>,
+    status_patterns: Vec<(&'static Regex, AdrStatus)>,
 }
 
 #[derive(Debug, Clone)]
@@ -71,19 +114,14 @@ impl Default for AdrParser {
 
 impl AdrParser {
     pub fn new() -> Self {
+        // Status patterns now reference lazy_static regexes
         let status_patterns = vec![
-            (
-                Regex::new(r"(?i)^superseded(?:\s+by\s+(\d+))?").unwrap(),
-                AdrStatus::Superseded { by: None },
-            ),
-            (Regex::new(r"(?i)^accepted").unwrap(), AdrStatus::Accepted),
-            (Regex::new(r"(?i)^rejected").unwrap(), AdrStatus::Rejected),
-            (
-                Regex::new(r"(?i)^deprecated").unwrap(),
-                AdrStatus::Deprecated,
-            ),
-            (Regex::new(r"(?i)^proposed").unwrap(), AdrStatus::Proposed),
-            (Regex::new(r"(?i)^draft").unwrap(), AdrStatus::Draft),
+            (&*STATUS_SUPERSEDED_RE, AdrStatus::Superseded { by: None }),
+            (&*STATUS_ACCEPTED_RE, AdrStatus::Accepted),
+            (&*STATUS_REJECTED_RE, AdrStatus::Rejected),
+            (&*STATUS_DEPRECATED_RE, AdrStatus::Deprecated),
+            (&*STATUS_PROPOSED_RE, AdrStatus::Proposed),
+            (&*STATUS_DRAFT_RE, AdrStatus::Draft),
         ];
 
         Self { status_patterns }
@@ -143,13 +181,11 @@ impl AdrParser {
     fn extract_number(&self, path: &Path, content: &str) -> Option<u32> {
         let filename = path.file_stem()?.to_string_lossy();
 
-        let re = Regex::new(r"^(\d{4})").ok()?;
-        if let Some(caps) = re.captures(&filename) {
+        if let Some(caps) = ADR_NUMBER_RE.captures(&filename) {
             return caps[1].parse().ok();
         }
 
-        let re = Regex::new(r"(?i)ADR[-_]?(\d+)").ok()?;
-        if let Some(caps) = re.captures(content) {
+        if let Some(caps) = ADR_CONTENT_RE.captures(content) {
             return caps[1].parse().ok();
         }
 
@@ -157,22 +193,14 @@ impl AdrParser {
     }
 
     fn extract_title(&self, content: &str) -> String {
-        let adr_prefix_re = Regex::new(r"(?i)^ADR[-_]?\d+[-_:]\s*").ok();
         for line in content.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with("# ") {
                 let title = trimmed.trim_start_matches('#').trim();
-                let title = adr_prefix_re
-                    .as_ref()
-                    .and_then(|re| {
-                        let replaced = re.replace(title, "");
-                        if replaced.is_empty() {
-                            None
-                        } else {
-                            Some(replaced.into_owned())
-                        }
-                    })
-                    .unwrap_or_else(|| title.to_string());
+                let title = ADR_PREFIX_RE.replace(title, "").to_string();
+                if title.is_empty() {
+                    return "Untitled ADR".to_string();
+                }
                 return title.trim().to_string();
             }
         }
@@ -180,18 +208,19 @@ impl AdrParser {
     }
 
     fn extract_status(&self, content: &str) -> AdrStatus {
-        let status_re = Regex::new(r"(?i)(?:^|\n)\s*[-*]?\s*Status\s*:\s*(.+?)(?:\n|$)").unwrap();
-
-        if let Some(caps) = status_re.captures(content) {
+        if let Some(caps) = STATUS_RE.captures(content) {
             let status_str = caps[1].trim();
 
             for (pattern, status) in &self.status_patterns {
-                if let Some(caps) = pattern.captures(status_str) {
+                if pattern.is_match(status_str) {
                     if let AdrStatus::Superseded { .. } = status {
-                        let by = caps.get(1).and_then(|m| m.as_str().parse().ok());
+                        let by = STATUS_SUPERSEDED_RE
+                            .captures(status_str)
+                            .and_then(|c| c.get(1))
+                            .and_then(|m| m.as_str().parse().ok());
                         return AdrStatus::Superseded { by };
                     }
-                    return *status;
+                    return status.clone();
                 }
             }
         }
@@ -200,10 +229,7 @@ impl AdrParser {
     }
 
     fn extract_date(&self, content: &str) -> Option<DateTime<Utc>> {
-        let date_re =
-            Regex::new(r"(?i)(?:^|\n)\s*[-*]?\s*Date\s*:\s*(\d{4}[-/]\d{2}[-/]\d{2})").unwrap();
-
-        if let Some(caps) = date_re.captures(content) {
+        if let Some(caps) = DATE_RE.captures(content) {
             let date_str = caps[1].replace('/', "-");
             if let Ok(dt) = chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d") {
                 return Some(dt.and_hms_opt(0, 0, 0)?.and_utc());
@@ -272,8 +298,7 @@ impl AdrParser {
     fn extract_tags(&self, content: &str) -> Vec<String> {
         let mut tags = Vec::new();
 
-        let tag_re = Regex::new(r"(?i)Tags\s*:\s*(.+)").unwrap();
-        if let Some(caps) = tag_re.captures(content) {
+        if let Some(caps) = TAG_RE.captures(content) {
             for tag in caps[1].split(',') {
                 let tag = tag.trim().to_string();
                 if !tag.is_empty() {
@@ -282,8 +307,7 @@ impl AdrParser {
             }
         }
 
-        let hash_re = Regex::new(r"#(\w+)").unwrap();
-        for caps in hash_re.captures_iter(content) {
+        for caps in HASH_RE.captures_iter(content) {
             let tag = caps[1].to_string();
             if !tags.contains(&tag) {
                 tags.push(tag);
@@ -296,12 +320,12 @@ impl AdrParser {
     fn extract_implications(&self, content: &str) -> Vec<StructuralImplication> {
         let mut implications = Vec::new();
 
-        let patterns = vec![
-            (Regex::new(r"(?i)(?:introduce|add|create)\s+(?:a\s+)?(?:new\s+)?(\w+)\s+(?:component|service|module)").unwrap(), "added"),
-            (Regex::new(r"(?i)(?:remove|delete|deprecate)\s+(?:the\s+)?(\w+)\s+(?:component|service|module)").unwrap(), "removed"),
-            (Regex::new(r"(?i)(?:split|refactor)\s+(\w+)\s+into\s+(\w+)\s+and\s+(\w+)").unwrap(), "split"),
-            (Regex::new(r"(?i)(?:merge|combine)\s+(\w+)\s+and\s+(\w+)").unwrap(), "merged"),
-            (Regex::new(r"(?i)(?:boundary|interface|api)\s+(?:between|for)\s+(\w+)\s+and\s+(\w+)").unwrap(), "boundary"),
+        let patterns: Vec<(&Regex, &str)> = vec![
+            (&IMPL_ADD_RE, "added"),
+            (&IMPL_REMOVE_RE, "removed"),
+            (&IMPL_SPLIT_RE, "split"),
+            (&IMPL_MERGE_RE, "merged"),
+            (&IMPL_BOUNDARY_RE, "boundary"),
         ];
 
         for line in content.lines() {
@@ -319,8 +343,7 @@ impl AdrParser {
             }
         }
 
-        let policy_re = Regex::new(r"(?i)(?:policy|rule|constraint):\s*(.+)").unwrap();
-        for caps in policy_re.captures_iter(content) {
+        for caps in POLICY_RE.captures_iter(content) {
             implications.push(StructuralImplication {
                 component: None,
                 boundary_change: None,
@@ -434,18 +457,24 @@ Use MySQL.
     #[test]
     fn test_extract_implications() {
         let parser = AdrParser::new();
-        
+
         let content = r#"
             We will introduce a new Payment service to handle transactions.
             We should remove the old Legacy module.
             Policy: Payments must be secure
         "#;
-        
+
         let implications = parser.extract_implications(content);
-        
+
         // Let's just find the policy one explicitly to make it robust against other matches
-        let policy_impl = implications.iter().find(|i| i.new_policy.is_some()).unwrap();
-        assert_eq!(policy_impl.new_policy.as_deref(), Some("Payments must be secure"));
+        let policy_impl = implications
+            .iter()
+            .find(|i| i.new_policy.is_some())
+            .unwrap();
+        assert_eq!(
+            policy_impl.new_policy.as_deref(),
+            Some("Payments must be secure")
+        );
     }
 
     #[test]
@@ -471,7 +500,13 @@ Use MySQL.
         assert_eq!(format!("{}", AdrStatus::Deprecated), "Deprecated");
         assert_eq!(format!("{}", AdrStatus::Rejected), "Rejected");
         assert_eq!(format!("{}", AdrStatus::Draft), "Draft");
-        assert_eq!(format!("{}", AdrStatus::Superseded { by: Some(5) }), "Superseded by ADR-0005");
-        assert_eq!(format!("{}", AdrStatus::Superseded { by: None }), "Superseded");
+        assert_eq!(
+            format!("{}", AdrStatus::Superseded { by: Some(5) }),
+            "Superseded by ADR-0005"
+        );
+        assert_eq!(
+            format!("{}", AdrStatus::Superseded { by: None }),
+            "Superseded"
+        );
     }
 }

@@ -1,5 +1,6 @@
 //! Validation rules for Sruja architectures
 
+pub mod complexity_threshold;
 pub mod container_nesting;
 pub mod cycle;
 pub mod database_isolation;
@@ -19,6 +20,7 @@ pub mod valid_ref;
 pub mod state_machine_integrity;
 pub mod contract_integrity;
 
+pub use complexity_threshold::ComplexityThresholdRule;
 pub use container_nesting::ContainerNestingRule;
 pub use cycle::CycleDetectionRule;
 pub use database_isolation::DatabaseIsolationRule;

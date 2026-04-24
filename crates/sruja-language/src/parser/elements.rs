@@ -12,11 +12,9 @@ use nom::{
 use sruja_diagnostics::SourceLocation;
 
 use crate::ast::{
-    ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, Criticality,
-    ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem, ElementKind,
-    ElementKindDef, MetaEntry, MetadataBlock, QualifiedIdent, ScaleBlock, SloAvailability,
-    SloBlock, SloCurrent, SloErrorRate, SloLatency, SloThroughput, SourceBinding, SourceKind,
-    StyleBlock, StateMachine, Contract,
+    Criticality, ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem,
+    ElementKind, ElementKindDef, ScaleBlock, SloAvailability, SloBlock, SloCurrent,
+    SloErrorRate, SloLatency, SloThroughput, SourceBinding, SourceKind, StyleBlock,
 };
 
 use super::assignments::parse_scenario_step;
@@ -28,7 +26,7 @@ use super::primitives::{
     parse_identifier, parse_kv_string, parse_string, parse_string_array, parse_tag_array,
     parse_tag_ref, ws, ws0, ws1,
 };
-use super::relations::{parse_qualified_ident, parse_relation};
+use super::relations::parse_relation;
 use super::state_machine::parse_state_machine;
 
 pub(crate) fn parse_kind_def(input: &str) -> IResult<&str, ElementKindDef> {

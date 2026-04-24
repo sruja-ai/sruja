@@ -44,17 +44,14 @@ fn merge_scan_into_graph(
     let source = SourceReference::scanned_repo(repo_path);
 
     for node in &scan_graph.nodes {
-        let arch_node = sruja_graph::ArchitectureNode {
-            id: node.id.clone(),
-            kind: node.kind.clone(),
-            label: node.label.clone(),
-            technology: node.technology.clone(),
-            description: node.path.clone(),
-            metadata: node.metadata.clone(),
-            source: source.clone(),
-            created_at: now,
-            updated_at: now,
-        };
+        let mut arch_node = sruja_graph::ArchitectureNode::default();
+        arch_node.id = node.id.clone();
+        arch_node.kind = node.kind.clone();
+        arch_node.label = node.label.clone();
+        arch_node.technology = node.technology.clone();
+        arch_node.description = node.path.clone();
+        arch_node.metadata = node.metadata.clone();
+        arch_node.source = source.clone();
         graph.merge_node(arch_node);
     }
 

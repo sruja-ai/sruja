@@ -499,21 +499,10 @@ mod tests {
     use super::*;
 
     fn node(id: &str) -> Node {
-        Node {
-            id: id.to_string(),
-            kind: NodeKind::Module,
-            label: id.to_string(),
-            technology: None,
-            path: None,
-            metadata: HashMap::new(),
-            canonical_id: None,
-            aliases: Vec::new(),
-            owner: None,
-            domain: None,
-            criticality: None,
-            sources: Vec::new(),
-            confidence: None,
-        }
+        let mut node = Node::default();
+        node.id = id.to_string();
+        node.label = id.to_string();
+        node
     }
 
     fn edge(source: &str, target: &str) -> Edge {
@@ -527,12 +516,9 @@ mod tests {
 
     #[test]
     fn canonicalize_drops_dangling_edges() {
-        let mut graph = Graph {
-            metadata: HashMap::new(),
-            nodes: vec![node("a")],
-            edges: vec![edge("a", "missing")],
-            confidence: None,
-        };
+        let mut graph = Graph::default();
+        graph.nodes = vec![node("a")];
+        graph.edges = vec![edge("a", "missing")];
 
         graph.canonicalize();
         assert!(graph.edges.is_empty());
@@ -540,43 +526,40 @@ mod tests {
 
     #[test]
     fn canonicalize_merges_duplicate_edges_and_evidence() {
-        let mut graph = Graph {
-            metadata: HashMap::new(),
-            nodes: vec![node("a"), node("b")],
-            edges: vec![
-                Edge {
-                    source: "a".into(),
-                    target: "b".into(),
-                    kind: EdgeKind::Calls,
-                    evidence: vec![EdgeEvidence {
+        let mut graph = Graph::default();
+        graph.nodes = vec![node("a"), node("b")];
+        graph.edges = vec![
+            Edge {
+                source: "a".into(),
+                target: "b".into(),
+                kind: EdgeKind::Calls,
+                evidence: vec![EdgeEvidence {
+                    rule: "r2".into(),
+                    file: None,
+                    line: None,
+                    detail: None,
+                }],
+            },
+            Edge {
+                source: "a".into(),
+                target: "b".into(),
+                kind: EdgeKind::Calls,
+                evidence: vec![
+                    EdgeEvidence {
+                        rule: "r1".into(),
+                        file: None,
+                        line: None,
+                        detail: None,
+                    },
+                    EdgeEvidence {
                         rule: "r2".into(),
                         file: None,
                         line: None,
                         detail: None,
-                    }],
-                },
-                Edge {
-                    source: "a".into(),
-                    target: "b".into(),
-                    kind: EdgeKind::Calls,
-                    evidence: vec![
-                        EdgeEvidence {
-                            rule: "r1".into(),
-                            file: None,
-                            line: None,
-                            detail: None,
-                        },
-                        EdgeEvidence {
-                            rule: "r2".into(),
-                            file: None,
-                            line: None,
-                            detail: None,
-                        },
-                    ],
-                },
-            ],
-            confidence: None,
-        };
+                    },
+                ],
+            },
+        ];
 
         graph.canonicalize();
         assert_eq!(graph.edges.len(), 1);
@@ -587,12 +570,9 @@ mod tests {
 
     #[test]
     fn blast_radius_returns_upstream_and_downstream() {
-        let graph = Graph {
-            metadata: HashMap::new(),
-            nodes: vec![node("a"), node("b"), node("c"), node("d")],
-            edges: vec![edge("a", "b"), edge("b", "c"), edge("d", "b")],
-            confidence: None,
-        };
+        let mut graph = Graph::default();
+        graph.nodes = vec![node("a"), node("b"), node("c"), node("d")];
+        graph.edges = vec![edge("a", "b"), edge("b", "c"), edge("d", "b")];
 
         let res = graph.blast_radius("b", 2);
         assert_eq!(res.target, "b");
@@ -621,12 +601,9 @@ mod tests {
 
     #[test]
     fn blast_radius_depth_zero_is_empty() {
-        let graph = Graph {
-            metadata: HashMap::new(),
-            nodes: vec![node("a"), node("b")],
-            edges: vec![edge("a", "b")],
-            confidence: None,
-        };
+        let mut graph = Graph::default();
+        graph.nodes = vec![node("a"), node("b")];
+        graph.edges = vec![edge("a", "b")];
 
         let res = graph.blast_radius("a", 0);
         assert!(res.upstream.is_empty());
@@ -635,17 +612,9 @@ mod tests {
 
     #[test]
     fn find_path_returns_correct_sequence() {
-        let graph = Graph {
-            metadata: HashMap::new(),
-            nodes: vec![node("a"), node("b"), node("c"), node("d")],
-            edges: vec![
-                edge("a", "b"),
-                edge("b", "c"),
-                edge("c", "d"),
-                edge("a", "c"),
-            ],
-            confidence: None,
-        };
+        let mut graph = Graph::default();
+        graph.nodes = vec![node("a"), node("b"), node("c"), node("d")];
+        graph.edges = vec![edge("a", "b"), edge("b", "c"), edge("c", "d"), edge("a", "c")];
 
         let path = graph.find_path("a", "d").expect("path should exist");
         assert_eq!(path, vec!["a", "c", "d"]);

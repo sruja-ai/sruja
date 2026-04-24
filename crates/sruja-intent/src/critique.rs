@@ -1,8 +1,8 @@
 //! Adversarial architectural critique engine
 
 use serde::{Deserialize, Serialize};
-use sruja_scan::{Graph, Criticality};
 use sruja_language::Program;
+use sruja_scan::{Criticality, Graph};
 
 /// Request for architectural critique
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,14 +173,21 @@ impl CritiqueEngine {
         Vec::new()
     }
 
-    fn check_incident_patterns(&self, affected: &[String], description: &Option<String>) -> Vec<CritiqueFinding> {
+    fn check_incident_patterns(
+        &self,
+        affected: &[String],
+        description: &Option<String>,
+    ) -> Vec<CritiqueFinding> {
         let mut findings = Vec::new();
         if let Some(program) = &self.program {
             for item in &program.items {
                 if let sruja_language::ast::TopLevelItem::Incident(incident) = item {
-                    let is_affected = incident.affected.iter().any(|qi| affected.contains(&qi.to_string()));
+                    let is_affected = incident
+                        .affected
+                        .iter()
+                        .any(|qi| affected.contains(&qi.to_string()));
                     let mut matches_desc = false;
-                    
+
                     if let (Some(desc), Some(inc_cause)) = (description, &incident.cause) {
                         if desc.to_lowercase().contains(&inc_cause.to_lowercase()) {
                             matches_desc = true;
@@ -192,8 +199,8 @@ impl CritiqueEngine {
                             category: CritiqueCategory::HistoricalPatternMatch,
                             severity: CritiqueSeverity::High,
                             title: format!("Historical Match: {}", incident.title),
-                            detail: format!("This change affects elements involved in a previous incident: {}. Cause: {}. Lesson: {}", 
-                                incident.title, 
+                            detail: format!("This change affects elements involved in a previous incident: {}. Cause: {}. Lesson: {}",
+                                incident.title,
                                 incident.cause.as_deref().unwrap_or("Unknown"),
                                 incident.lesson.as_deref().unwrap_or("None")
                             ),
@@ -212,7 +219,11 @@ impl CritiqueEngine {
         findings
     }
 
-    fn check_constraint_breaches(&self, affected: &[String], _files: &[String]) -> Vec<CritiqueFinding> {
+    fn check_constraint_breaches(
+        &self,
+        affected: &[String],
+        _files: &[String],
+    ) -> Vec<CritiqueFinding> {
         let mut findings = Vec::new();
         for id in affected {
             if let Some(node) = self.graph.nodes.iter().find(|n| &n.id == id) {
@@ -221,13 +232,18 @@ impl CritiqueEngine {
                         category: CritiqueCategory::ConstraintBreach,
                         severity: CritiqueSeverity::Medium,
                         title: format!("Constraint: {}", id),
-                        detail: format!("Element '{}' has a declared constraint: '{}'", id, constraint),
+                        detail: format!(
+                            "Element '{}' has a declared constraint: '{}'",
+                            id, constraint
+                        ),
                         evidence: vec![CritiqueEvidence {
                             source: "sruja".to_string(),
                             location: None,
                             detail: format!("Node: {}", id),
                         }],
-                        suggestion: Some("Verify this change does not violate the constraint.".to_string()),
+                        suggestion: Some(
+                            "Verify this change does not violate the constraint.".to_string(),
+                        ),
                         confidence: 0.9,
                     });
                 }
@@ -236,7 +252,10 @@ impl CritiqueEngine {
         findings
     }
 
-    fn assess_blast_radius(&self, affected: &[String]) -> (BlastRadiusSummary, Vec<CritiqueFinding>) {
+    fn assess_blast_radius(
+        &self,
+        affected: &[String],
+    ) -> (BlastRadiusSummary, Vec<CritiqueFinding>) {
         let mut total_downstream = 0;
         let mut max_depth = 0;
         let mut findings = Vec::new();
@@ -261,11 +280,14 @@ impl CritiqueEngine {
             });
         }
 
-        (BlastRadiusSummary {
-            total_affected_elements: affected.len(),
-            downstream_consumers: total_downstream,
-            max_depth,
-        }, findings)
+        (
+            BlastRadiusSummary {
+                total_affected_elements: affected.len(),
+                downstream_consumers: total_downstream,
+                max_depth,
+            },
+            findings,
+        )
     }
 
     fn surface_gotchas(&self, affected: &[String]) -> Vec<CritiqueFinding> {
@@ -290,12 +312,12 @@ impl CritiqueEngine {
 
     fn check_unproposed_changes(&self, affected: &[String]) -> Vec<CritiqueFinding> {
         let mut findings = Vec::new();
-        
+
         for id in affected {
             if let Some(node) = self.graph.nodes.iter().find(|n| &n.id == id) {
                 let radius = self.graph.blast_radius(id, 2);
                 let affected_count = radius.upstream.len();
-                
+
                 // Determine severity based on criticality and blast radius (upstream consumers)
                 let severity = match (node.criticality, affected_count) {
                     (Some(Criticality::Critical), _) => CritiqueSeverity::Critical,
@@ -303,7 +325,7 @@ impl CritiqueEngine {
                     (_, 2..=4) => CritiqueSeverity::Medium,
                     _ => CritiqueSeverity::Low,
                 };
-                
+
                 // Only report Medium and above individually, or if it's the only one
                 if severity >= CritiqueSeverity::Medium || affected.len() == 1 {
                     findings.push(CritiqueFinding {
@@ -312,7 +334,7 @@ impl CritiqueEngine {
                         title: format!("Unproposed Change: {}", id),
                         detail: format!(
                             "Change affects '{}' (criticality: {:?}, {} downstream consumers) without a linked architectural proposal.",
-                            id, 
+                            id,
                             node.criticality.as_ref().map(|c| format!("{:?}", c)).unwrap_or_else(|| "Unknown".to_string()),
                             affected_count
                         ),
@@ -327,20 +349,26 @@ impl CritiqueEngine {
                 }
             }
         }
-        
+
         // If we didn't add any specific findings but have affected elements, add a summary one
         if findings.is_empty() && !affected.is_empty() {
             findings.push(CritiqueFinding {
                 category: CritiqueCategory::UnproposedChange,
                 severity: CritiqueSeverity::Low,
                 title: "Unproposed Architectural Changes".to_string(),
-                detail: format!("This change affects {} architectural elements without a linked proposal.", affected.len()),
+                detail: format!(
+                    "This change affects {} architectural elements without a linked proposal.",
+                    affected.len()
+                ),
                 evidence: vec![],
-                suggestion: Some("Consider running 'sruja propose' to document architectural intent.".to_string()),
+                suggestion: Some(
+                    "Consider running 'sruja propose' to document architectural intent."
+                        .to_string(),
+                ),
                 confidence: 0.7,
             });
         }
-        
+
         findings
     }
 
@@ -366,10 +394,15 @@ impl CritiqueEngine {
         }
     }
 
-    fn generate_summary(&self, findings: &[CritiqueFinding], affected: &[String], blast: &BlastRadiusSummary) -> String {
-        format!("Critique found {} issues across {} affected elements. Blast radius includes {} downstream consumers.", 
-            findings.len(), 
-            affected.len(), 
+    fn generate_summary(
+        &self,
+        findings: &[CritiqueFinding],
+        affected: &[String],
+        blast: &BlastRadiusSummary,
+    ) -> String {
+        format!("Critique found {} issues across {} affected elements. Blast radius includes {} downstream consumers.",
+            findings.len(),
+            affected.len(),
             blast.downstream_consumers
         )
     }
@@ -401,7 +434,10 @@ mod tests {
         });
 
         assert_eq!(report.affected_elements.len(), 1);
-        assert!(report.findings.iter().any(|f| f.category == CritiqueCategory::UnproposedChange));
+        assert!(report
+            .findings
+            .iter()
+            .any(|f| f.category == CritiqueCategory::UnproposedChange));
         assert_eq!(report.risk_level, RiskLevel::Caution);
     }
 
@@ -427,7 +463,11 @@ mod tests {
         });
 
         assert_eq!(report.affected_elements.len(), 1);
-        let finding = report.findings.iter().find(|f| f.category == CritiqueCategory::UnproposedChange).expect("should have unproposed change finding");
+        let finding = report
+            .findings
+            .iter()
+            .find(|f| f.category == CritiqueCategory::UnproposedChange)
+            .expect("should have unproposed change finding");
         assert_eq!(finding.severity, CritiqueSeverity::Critical);
         assert_eq!(report.risk_level, RiskLevel::Danger);
     }
@@ -442,7 +482,7 @@ mod tests {
             path: Some("src/core.rs".to_string()),
             ..Default::default()
         });
-        
+
         // Add 6 downstream consumers to trigger High severity
         for i in 0..6 {
             let consumer_id = format!("Consumer{}", i);
@@ -470,7 +510,11 @@ mod tests {
         });
 
         assert_eq!(report.affected_elements.len(), 1);
-        let finding = report.findings.iter().find(|f| f.category == CritiqueCategory::UnproposedChange).expect("should have unproposed change finding");
+        let finding = report
+            .findings
+            .iter()
+            .find(|f| f.category == CritiqueCategory::UnproposedChange)
+            .expect("should have unproposed change finding");
         assert_eq!(finding.severity, CritiqueSeverity::High);
         assert_eq!(report.risk_level, RiskLevel::Warning);
     }

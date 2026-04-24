@@ -561,7 +561,11 @@ mod tests {
             label: "C1".to_string(),
             description: None,
             technology: None,
-            source_ref: SourceReference { file: "".to_string(), line: None, element: None },
+            source_ref: SourceReference {
+                file: "".to_string(),
+                line: None,
+                element: None,
+            },
         });
 
         let mut model2 = IntentModel::default();
@@ -571,20 +575,28 @@ mod tests {
             label: "C2".to_string(),
             description: None,
             technology: None,
-            source_ref: SourceReference { file: "".to_string(), line: None, element: None },
+            source_ref: SourceReference {
+                file: "".to_string(),
+                line: None,
+                element: None,
+            },
         });
         model2.relationships.push(DeclaredRelationship {
             source: "C1".to_string(),
             target: "C2".to_string(),
             kind: "depends_on".to_string(),
             label: None,
-            source_ref: SourceReference { file: "".to_string(), line: None, element: None },
+            source_ref: SourceReference {
+                file: "".to_string(),
+                line: None,
+                element: None,
+            },
         });
 
         model1.merge(model2);
         assert_eq!(model1.components.len(), 2);
         assert_eq!(model1.relationships.len(), 1);
-        
+
         let ids = model1.component_ids();
         assert!(ids.contains(&"C1"));
         assert!(ids.contains(&"C2"));
@@ -622,7 +634,7 @@ mod tests {
                     new_policy: Some("No cycles allowed".to_string()),
                     boundary_change: None,
                     constraint: None,
-                }
+                },
             ],
         };
 
@@ -648,10 +660,10 @@ mod tests {
         assert_eq!(model.source.name, "test.sruja");
         assert_eq!(model.components.len(), 2);
         assert_eq!(model.relationships.len(), 1);
-        
+
         let app = model.find_component("App").unwrap();
         assert_eq!(app.id, "App");
-        
+
         let rel = &model.relationships[0];
         assert_eq!(rel.source, "App");
         assert_eq!(rel.target, "DB");

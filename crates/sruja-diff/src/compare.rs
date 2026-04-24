@@ -412,21 +412,11 @@ mod tests {
     use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
 
     fn node(id: &str, label: &str, kind: NodeKind) -> Node {
-        Node {
-            id: id.to_string(),
-            label: label.to_string(),
-            path: None,
-            kind,
-            technology: None,
-            metadata: Default::default(),
-            canonical_id: None,
-            aliases: Vec::new(),
-            owner: None,
-            domain: None,
-            criticality: None,
-            sources: Vec::new(),
-            confidence: None,
-        }
+        let mut node = Node::default();
+        node.id = id.to_string();
+        node.label = label.to_string();
+        node.kind = kind;
+        node
     }
 
     fn edge(source: &str, target: &str, kind: EdgeKind) -> Edge {

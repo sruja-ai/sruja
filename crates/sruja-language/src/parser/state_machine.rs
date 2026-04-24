@@ -2,7 +2,7 @@
 
 use nom::{
     bytes::complete::tag, character::complete::char, combinator::{map, opt}, multi::many0,
-    sequence::{delimited, preceded, tuple}, IResult, Parser,
+    sequence::{delimited, preceded}, IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
@@ -58,9 +58,9 @@ enum StateMachineItem {
 fn parse_state_machine_item(input: &str) -> IResult<&str, StateMachineItem> {
     use nom::branch::alt;
     alt((
-        map(preceded(tuple((tag("initial"), ws1)), parse_string), StateMachineItem::Initial),
-        map(preceded(tuple((tag("terminal"), ws1)), parse_string_array), StateMachineItem::Terminal),
-        map(preceded(tuple((tag("description"), ws1)), parse_string), StateMachineItem::Description),
+        map(preceded((tag("initial"), ws1), parse_string), StateMachineItem::Initial),
+        map(preceded((tag("terminal"), ws1), parse_string_array), StateMachineItem::Terminal),
+        map(preceded((tag("description"), ws1), parse_string), StateMachineItem::Description),
         map(parse_state_transition, StateMachineItem::Transition),
     )).parse(input)
 }
@@ -120,8 +120,8 @@ enum TransitionItem {
 fn parse_transition_item(input: &str) -> IResult<&str, TransitionItem> {
     use nom::branch::alt;
     alt((
-        map(preceded(tuple((tag("guard"), ws1)), parse_string), TransitionItem::Guard),
-        map(preceded(tuple((tag("action"), ws1)), parse_string), TransitionItem::Action),
-        map(preceded(tuple((tag("description"), ws1)), parse_string), TransitionItem::Description),
+        map(preceded((tag("guard"), ws1), parse_string), TransitionItem::Guard),
+        map(preceded((tag("action"), ws1), parse_string), TransitionItem::Action),
+        map(preceded((tag("description"), ws1), parse_string), TransitionItem::Description),
     )).parse(input)
 }
