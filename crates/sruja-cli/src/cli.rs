@@ -62,6 +62,36 @@ pub enum Commands {
         #[arg(long, default_value = "sruja.graph.json")]
         output: String,
     },
+    /// Adversarial architectural critique of proposed changes
+    Critique {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Changed file paths to critique
+        #[arg(long, short = 'f')]
+        files: Vec<String>,
+        /// Description of what the change does (helps pattern matching)
+        #[arg(long, short = 'd')]
+        description: Option<String>,
+        /// Proposal ID if this is an approved proposal
+        #[arg(long, short = 'p')]
+        proposal: Option<String>,
+        /// Git base ref for diff-based critique
+        #[arg(long)]
+        base: Option<String>,
+        /// Git head ref for diff-based critique
+        #[arg(long)]
+        head: Option<String>,
+        /// Critique staged git changes
+        #[arg(long)]
+        staged: bool,
+        /// Output format (text or json)
+        #[arg(long, default_value = "text")]
+        format: String,
+        /// Fail the command (exit 1) if findings of this level or higher are found
+        #[arg(long)]
+        fail_on: Option<String>,
+    },
     /// Impact analysis: blast radius (upstream dependents + downstream dependencies)
     Impact {
         /// Node selector (exact id or substring match against id/label/path)
@@ -324,6 +354,9 @@ pub enum Commands {
         /// Show all violations (default is capped at 5)
         #[arg(long, short)]
         verbose: bool,
+        /// Include adversarial critique of unstaged changes
+        #[arg(long)]
+        critique: bool,
     },
     /// Check: CI-focused drift check (always exits 0, outputs github-actions format)
     Check {
@@ -700,6 +733,30 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
         Commands::Fmt { file, check } => commands::fmt(&file, check).await,
         Commands::Lsp { .. } => commands::lsp().await,
         Commands::Mcp { root } => commands::mcp(&root).await,
+        Commands::Critique {
+            repo,
+            files,
+            description,
+            proposal,
+            base,
+            head,
+            staged,
+            format,
+            fail_on,
+        } => {
+            commands::critique(
+                &repo,
+                files,
+                description,
+                proposal,
+                base,
+                head,
+                staged,
+                &format,
+                fail_on.as_deref(),
+            )
+            .await
+        }
         Commands::Compile { file } => commands::compile(&file).await,
         Commands::Validate {
             file,
@@ -769,7 +826,8 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             path,
             format,
             verbose,
-        } => commands::review(&path, &format, verbose).await,
+            critique,
+        } => commands::review(&path, &format, verbose, critique).await,
         Commands::Check {
             path,
             format,

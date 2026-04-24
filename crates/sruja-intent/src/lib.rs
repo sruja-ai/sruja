@@ -8,6 +8,9 @@ pub mod compare;
 pub mod model;
 pub mod parser;
 pub mod report;
+pub mod critique;
+pub mod behavioral_drift;
+pub mod critique_report;
 
 pub use compare::{Drift, DriftDetector, DriftHealth, DriftKind, DriftReport, Evidence, Severity};
 pub use model::{
@@ -16,6 +19,11 @@ pub use model::{
 };
 pub use parser::{AdrParser, AdrStatus, ParsedAdr};
 pub use report::{IntentReport, IntentViolation};
+pub use critique::{
+    CritiqueCategory, CritiqueEngine, CritiqueFinding, CritiqueReport, CritiqueRequest,
+    CritiqueSeverity, RiskLevel,
+};
+pub use critique_report::{format_critique_json, format_critique_text};
 
 use std::path::Path;
 

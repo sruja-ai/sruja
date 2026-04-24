@@ -4,7 +4,8 @@
 //! See REFACTORING_PLAN.md for the layout.
 
 mod check;
-mod compliance;
+pub mod compliance;
+pub mod critique;
 mod context_score;
 mod context_graph;
 mod discover;
@@ -34,6 +35,7 @@ pub mod violation_shared;
 pub use propose::*;
 
 pub use check::{baseline, check};
+pub use critique::critique;
 pub use compliance::compliance;
 pub use context_score::context_score;
 pub use focus::focus;

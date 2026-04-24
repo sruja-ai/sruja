@@ -791,15 +791,7 @@ mod tests {
             kind: NodeKind::Module,
             label: label.to_string(),
             path: Some(path.to_string()),
-            technology: None,
-            metadata: HashMap::new(),
-            canonical_id: None,
-            aliases: Vec::new(),
-            owner: None,
-            domain: None,
-            criticality: None,
-            sources: Vec::new(),
-            confidence: None,
+            ..Default::default()
         }
     }
 
@@ -819,13 +811,7 @@ mod tests {
                 .into_iter()
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
-            canonical_id: None,
-            aliases: Vec::new(),
-            owner: None,
-            domain: None,
-            criticality: None,
-            sources: Vec::new(),
-            confidence: None,
+            ..Default::default()
         }
     }
 
@@ -843,6 +829,7 @@ mod tests {
                 evidence: vec![],
             }],
             confidence: None,
+            incidents: vec![],
         }
     }
 
@@ -1241,6 +1228,7 @@ mod tests {
             policy_violations: 1,
             schema_violations: 0,
             taxonomy_mismatches: 0,
+            unproposed_changes: 0,
         };
         let drifts = vec![Drift {
             kind: DriftKind::PolicyViolation,

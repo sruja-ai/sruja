@@ -12,6 +12,7 @@ serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"
 walkdir = "2.4"
+colored = "2.0"
 
 sruja-scan = { path = "../sruja-scan" }
 sruja-language = { path = "../sruja-language" }

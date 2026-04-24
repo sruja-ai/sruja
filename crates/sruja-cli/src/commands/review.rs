@@ -37,7 +37,7 @@ fn is_usize_zero(v: &usize) -> bool {
     *v == 0
 }
 
-pub async fn review(repo_root: &str, format: &str, verbose: bool) -> Result<(), CliError> {
+pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critique: bool) -> Result<(), CliError> {
     let start_time = Instant::now();
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -45,6 +45,29 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool) -> Result<(), 
             std::io::ErrorKind::NotFound,
             format!("Repository not found: {}", repo_root),
         )));
+    }
+
+    if include_critique {
+        // Run critique for modified (but unstaged) + staged changes
+        let mut files = Vec::new();
+        let output = std::process::Command::new("git")
+            .args(["diff", "HEAD", "--name-only"])
+            .current_dir(repo_path)
+            .output()
+            .map_err(|e| CliError::Io(e))?;
+        
+        let git_files = String::from_utf8_lossy(&output.stdout);
+        for f in git_files.lines() {
+            if !f.is_empty() {
+                files.push(f.to_string());
+            }
+        }
+        
+        if !files.is_empty() {
+            // We just print it to stdout for now as part of the dashboard
+            super::critique::critique(repo_root, files, None, None, None, None, false, format, None).await?;
+            println!();
+        }
     }
 
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);

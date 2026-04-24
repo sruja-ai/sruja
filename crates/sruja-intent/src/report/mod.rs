@@ -152,6 +152,7 @@ mod tests {
                 policy_violations: 0,
                 schema_violations: 0,
                 taxonomy_mismatches: 0,
+                unproposed_changes: 0,
             },
         }
     }

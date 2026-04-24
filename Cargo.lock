@@ -3452,6 +3452,7 @@ name = "sruja-intent"
 version = "0.33.0"
 dependencies = [
  "chrono",
+ "colored",
  "regex",
  "serde",
  "serde_json",

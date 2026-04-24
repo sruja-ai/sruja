@@ -522,6 +522,22 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_critique",
+            "title": "Sruja Adversarial Critique",
+            "description": "Adversarial architectural review. Actively finds problems in proposed changes by cross-referencing policies, historical incidents, tribal knowledge, blast radius, and behavioral contracts.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path" },
+                    "files": { "type": "array", "items": { "type": "string" }, "description": "Changed file paths to critique" },
+                    "description": { "type": "string", "description": "What this change does (helps pattern matching)" },
+                    "proposal_id": { "type": "string", "description": "Proposal ID if this is an approved proposal" },
+                    "base_ref": { "type": "string", "description": "Git base ref for diff-based critique" },
+                    "head_ref": { "type": "string", "description": "Git head ref for diff-based critique" }
+                }
+            }
+        }),
+        json!({
             "name": "sruja_get_state_machine",
             "title": "Sruja Get State Machine",
             "description": "Get the state machine definition for a component. Returns states, transitions, guards, and actions.",
@@ -1198,6 +1214,37 @@ async fn run_tool(
             let briefing = super::focus::build_focus_briefing(&kg, &target_id, Path::new(&repo), graph.nodes.len());
             
             Ok(serde_json::to_string_pretty(&briefing)?)
+        }
+        "sruja_critique" => {
+            let files: Vec<String> = arguments.get("files")
+                .and_then(|v| v.as_array())
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            let description = arguments.get("description").and_then(|v| v.as_str()).map(String::from);
+            let proposal_id = arguments.get("proposal_id").and_then(|v| v.as_str()).map(String::from);
+            let base_ref = arguments.get("base_ref").and_then(|v| v.as_str()).map(String::from);
+            let head_ref = arguments.get("head_ref").and_then(|v| v.as_str()).map(String::from);
+
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let baseline_path = crate::utils::architecture_path::resolve_architecture_path(Path::new(&repo));
+            let program = if let Some(path) = baseline_path {
+                let content = std::fs::read_to_string(path).map_err(|e| CliError::Io(e))?;
+                let parser = sruja_language::Parser::new(&repo);
+                parser.parse(&content).ok()
+            } else {
+                None
+            };
+
+            let engine = sruja_intent::CritiqueEngine::new(graph, program);
+            let report = engine.critique(&sruja_intent::CritiqueRequest {
+                changed_files: files,
+                description,
+                proposal_id,
+                base_ref,
+                head_ref,
+            });
+
+            Ok(sruja_intent::format_critique_json(&report))
         }
         _ => Err(CliError::validation(format!("Unknown tool: {name}"))),
     }
