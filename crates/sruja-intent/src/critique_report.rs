@@ -85,7 +85,7 @@ pub fn format_critique_text(report: &CritiqueReport) -> String {
             if let Some(s) = &f.suggestion {
                 out.push_str(&format!("     Suggestion: {}\n", s.green()));
             }
-            out.push_str("\n");
+            out.push('\n');
         }
     }
 

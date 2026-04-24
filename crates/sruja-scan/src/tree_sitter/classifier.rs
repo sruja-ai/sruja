@@ -6,6 +6,7 @@ pub struct ClassificationContext<'a> {
     pub path_str: String,
     pub name_lower: String,
     pub content_lower: String,
+    #[allow(dead_code)]
     pub parsed: &'a ParsedFile,
 }
 

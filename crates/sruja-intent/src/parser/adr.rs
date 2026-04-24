@@ -220,7 +220,7 @@ impl AdrParser {
                             .and_then(|m| m.as_str().parse().ok());
                         return AdrStatus::Superseded { by };
                     }
-                    return status.clone();
+                    return *status;
                 }
             }
         }

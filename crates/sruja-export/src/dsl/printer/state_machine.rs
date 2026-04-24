@@ -28,9 +28,9 @@ pub fn print_state_machine(out: &mut String, sm: &StateMachine, depth: usize) {
             if i > 0 {
                 out.push_str(", ");
             }
-            out.push_str("\"");
+            out.push('"');
             out.push_str(state);
-            out.push_str("\"");
+            out.push('"');
         }
         out.push_str("]\n");
     }
@@ -45,13 +45,13 @@ pub fn print_state_machine(out: &mut String, sm: &StateMachine, depth: usize) {
 
 fn print_transition(out: &mut String, t: &StateTransition, depth: usize) {
     indent(out, depth);
-    out.push_str("\"");
+    out.push('"');
     out.push_str(&t.from);
     out.push_str("\" -> \"");
     out.push_str(&t.to);
     out.push_str("\" on \"");
     out.push_str(&t.event);
-    out.push_str("\"");
+    out.push('"');
 
     if t.guard.is_some() || t.action.is_some() || t.description.is_some() {
         out.push_str(" {\n");
@@ -76,6 +76,6 @@ fn print_transition(out: &mut String, t: &StateTransition, depth: usize) {
         indent(out, depth);
         out.push_str("}\n");
     } else {
-        out.push_str("\n");
+        out.push('\n');
     }
 }

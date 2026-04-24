@@ -49,7 +49,7 @@ pub fn print_contract(out: &mut String, c: &Contract, depth: usize) {
         out.push_str("error {\n");
         for error in &c.errors {
             indent(out, depth + 2);
-            out.push_str("\"");
+            out.push('"');
             out.push_str(&error.code);
             out.push_str("\" \"");
             out.push_str(&error.description);

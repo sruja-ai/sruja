@@ -4,6 +4,12 @@ use crate::{DiscoveredSource, Extractor};
 
 pub struct AliasExtractor;
 
+impl Default for AliasExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AliasExtractor {
     pub fn new() -> Self {
         Self
@@ -14,6 +20,7 @@ impl AliasExtractor {
         name == "docker-compose.yaml" || name == "docker-compose.yml" || name == "compose.yaml" || name == "compose.yml"
     }
 
+    #[allow(dead_code)]
     fn is_helm_values(path: &Path) -> bool {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
         name == "values.yaml" || name == "values.yml"

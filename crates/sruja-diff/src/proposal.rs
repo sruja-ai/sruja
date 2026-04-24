@@ -361,7 +361,7 @@ pub fn detect_unproposed_changes(
                         detail: format!("Kind: {}", node.kind),
                     }],
                     intent_ref: None,
-                    suggestion: Some(format!("Run 'sruja propose create' to document this change or remove it from code.")),
+                    suggestion: Some("Run 'sruja propose create' to document this change or remove it from code.".to_string()),
                 });
             }
         }

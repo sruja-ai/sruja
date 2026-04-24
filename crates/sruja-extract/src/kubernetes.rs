@@ -1,9 +1,14 @@
 use std::path::Path;
-use walkdir::WalkDir;
 use sruja_language::ast::{SourceBinding, SourceKind};
-use crate::{DiscoveredSource, ExtractError, Extractor};
+use crate::{DiscoveredSource, Extractor};
 
 pub struct KubernetesExtractor;
+
+impl Default for KubernetesExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl KubernetesExtractor {
     pub fn new() -> Self {

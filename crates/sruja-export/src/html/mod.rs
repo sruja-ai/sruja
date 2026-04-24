@@ -2,6 +2,12 @@ use sruja_graph::KnowledgeGraph;
 
 pub struct HtmlExporter;
 
+impl Default for HtmlExporter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HtmlExporter {
     pub fn new() -> Self {
         Self
