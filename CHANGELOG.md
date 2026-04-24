@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.34.0...sruja-v0.35.0) (2026-04-24)
+
+
+### Features
+
+* Implement Architecture Index MVP with Federated Registry ([133fed8](https://github.com/sruja-ai/sruja/commit/133fed8199dec2329f47a44d5a49b39de75426ca))
+* **intent:** implement Phase 4 - Adversarial Critique Engine ('Angry Agent') ([f5ec5fa](https://github.com/sruja-ai/sruja/commit/f5ec5fa6092f44be54915dc4f0ce02df7854ed2e))
+
 ## [0.34.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.33.0...sruja-v0.34.0) (2026-04-23)
 
 
