@@ -1,5 +1,5 @@
 use crate::graph::NodeKind;
-use crate::tree_sitter::languages::ParsedFile;
+use crate::tree_sitter::languages::{DefinitionKind, ParsedFile};
 
 /// A context for classification, containing all gathered evidence.
 pub struct ClassificationContext<'a> {
@@ -78,14 +78,23 @@ impl ClassificationEngine {
         });
 
         // Go Main/Service
-        self.add_rule("go_main_server", 80, NodeKind::Service, |ctx| {
-            ctx.path_str.ends_with(".go") && ctx.path_str.contains("/cmd/") && ctx.name_lower == "main" && 
+        self.add_rule("go_main_server", 85, NodeKind::Service, |ctx| {
+            let has_main_func = ctx.parsed.definitions.iter().any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
+            ctx.path_str.ends_with(".go") && has_main_func && 
             ["http.", "grpc.", "serve", "listen"].iter().any(|s| ctx.content_lower.contains(s))
+        });
+
+        // Rust Web Service
+        self.add_rule("rust_web_server", 90, NodeKind::Service, |ctx| {
+            let has_main = ctx.parsed.definitions.iter().any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
+            ctx.path_str.ends_with(".rs") && has_main && 
+            ["axum::", "actix_web::", "rocket::", "warp::", "tonic::", "serve("].iter().any(|s| ctx.content_lower.contains(s))
         });
 
         // Java Spring
         self.add_rule("java_spring_boot", 95, NodeKind::Service, |ctx| {
-            ctx.path_str.ends_with(".java") && 
+            let has_class = ctx.parsed.definitions.iter().any(|d| d.kind == DefinitionKind::Class);
+            ctx.path_str.ends_with(".java") && has_class && 
             ["@springbootapplication", "@restcontroller"].iter().any(|s| ctx.content_lower.contains(s))
         });
 

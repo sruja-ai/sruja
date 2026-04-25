@@ -288,7 +288,43 @@ pub(crate) fn build_draft_program_from_graph(
     };
     let mut system_items = Vec::new();
 
+    // Group nodes by directory/domain for robust clustering
+    let mut domains: HashMap<String, Vec<&sruja_scan::Node>> = HashMap::new();
+    let mut ungrouped: Vec<&sruja_scan::Node> = Vec::new();
+
     for node in &nodes {
+        if let Some(path_str) = &node.path {
+            let normalized = path_str.replace('\\', "/");
+            let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty() && *p != "." && *p != "tmp" && *p != "node_modules").collect();
+            if parts.is_empty() {
+                ungrouped.push(node);
+                continue;
+            }
+            let domain_name = if (parts[0] == "crates" || parts[0] == "packages" || parts[0] == "services" || parts[0] == "apps") && parts.len() > 1 {
+                parts[1].to_string()
+            } else if parts[0] == "src" && parts.len() > 2 {
+                parts[1].to_string()
+            } else {
+                parts[0].to_string()
+            };
+            
+            // Do not group high-level logical nodes like databases into directory containers
+            if node.kind == NodeKind::Database || node.kind == NodeKind::ExternalApi {
+                ungrouped.push(node);
+            } else {
+                domains.entry(domain_name).or_default().push(node);
+            }
+        } else {
+            ungrouped.push(node);
+        }
+    }
+
+    let mut domain_keys: Vec<_> = domains.keys().cloned().collect();
+    domain_keys.sort();
+
+    let mut qualified_id_map: HashMap<String, String> = HashMap::new();
+
+    let create_node_def = |node: &sruja_scan::Node| -> sruja_language::ElementDef {
         let name = id_map
             .get(node.id.as_str())
             .cloned()
@@ -303,10 +339,7 @@ pub(crate) fn build_draft_program_from_graph(
                 .or_else(|| Some("Scanned from repository".to_string())),
             technology: match kind {
                 sruja_language::ElementKind::Container | sruja_language::ElementKind::Database => {
-                    let mut tech = node
-                        .technology
-                        .clone()
-                        .unwrap_or_else(|| "Unknown".to_string());
+                    let mut tech = node.technology.clone().unwrap_or_else(|| "Unknown".to_string());
                     if tech == "Unknown" {
                         if let Some(path) = &node.path {
                             let normalized = path.replace('\\', "/");
@@ -326,26 +359,62 @@ pub(crate) fn build_draft_program_from_graph(
             ..Default::default()
         };
 
-        let assignment = sruja_language::ElementAssignment {
+        sruja_language::ElementDef {
             location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-            name,
-            kind: match kind {
-                sruja_language::ElementKind::System => sruja_language::ElementKind::Container,
-                k => k,
+            assignment: sruja_language::ElementAssignment {
+                location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+                name,
+                kind: match kind {
+                    sruja_language::ElementKind::System => sruja_language::ElementKind::Container,
+                    k => k,
+                },
+                sub_kind,
+                title: Some(node.label.clone()),
+                tag_refs: Vec::new(),
+                body: Some(body),
             },
-            sub_kind,
-            title: Some(node.label.clone()),
-            tag_refs: Vec::new(),
-            body: Some(body),
-        };
-        let def = sruja_language::ElementDef {
-            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-            assignment,
-        };
+        }
+    };
 
-        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
-            def,
-        )));
+    for key in domain_keys {
+        let domain_nodes = domains.get(&key).unwrap();
+        if domain_nodes.len() == 1 {
+            let node = domain_nodes[0];
+            system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(create_node_def(node))));
+            qualified_id_map.insert(node.id.clone(), id_map.get(&node.id).unwrap().clone());
+            continue;
+        }
+
+        let container_name = sanitize_identifier(&format!("{}Group", key));
+        let mut container_items = Vec::new();
+        for node in domain_nodes {
+            container_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(create_node_def(node))));
+            let local_name = id_map.get(&node.id).unwrap().clone();
+            qualified_id_map.insert(node.id.clone(), format!("{}.{}", container_name, local_name));
+        }
+
+        let container_def = sruja_language::ElementDef {
+            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+            assignment: sruja_language::ElementAssignment {
+                location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
+                name: container_name.clone(),
+                kind: sruja_language::ElementKind::Container,
+                sub_kind: None,
+                title: Some(key.clone()),
+                tag_refs: Vec::new(),
+                body: Some(sruja_language::ElementDefBody {
+                    description: Some(format!("Autogenerated boundary for {}", key)),
+                    items: container_items,
+                    ..Default::default()
+                }),
+            },
+        };
+        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(container_def)));
+    }
+
+    for node in ungrouped {
+        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(create_node_def(node))));
+        qualified_id_map.insert(node.id.clone(), id_map.get(&node.id).unwrap().clone());
     }
 
     edges.sort_by(|a, b| {
@@ -356,11 +425,11 @@ pub(crate) fn build_draft_program_from_graph(
         ))
     });
     for edge in &edges {
-        let from = id_map
+        let from = qualified_id_map
             .get(edge.source.as_str())
             .cloned()
             .unwrap_or_else(|| sanitize_identifier(&edge.source));
-        let to = id_map
+        let to = qualified_id_map
             .get(edge.target.as_str())
             .cloned()
             .unwrap_or_else(|| sanitize_identifier(&edge.target));

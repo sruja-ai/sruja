@@ -434,6 +434,7 @@ pub fn is_likely_entry_point(path: &str, _id: &str) -> bool {
         || p_lower.ends_with("main.py")
         || p_lower.ends_with("__init__.py")
         || p_lower.ends_with("main.go")
+        || p_lower.ends_with("mod.rs")
     {
         return !p_lower.contains("/examples/")
             && !p_lower.contains("/tests/")
@@ -556,14 +557,47 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
         .nodes
         .iter()
         .filter(|n| {
-            let label = n.label.to_lowercase();
-            label.contains("frontend") || label.contains("ui") || label.contains("web")
+            n.kind == NodeKind::Frontend || {
+                let label = n.label.to_lowercase();
+                label.contains("frontend") || label.contains("ui") || label.contains("web")
+            }
+        })
+        .map(|n| n.id.as_str())
+        .collect();
+
+    // Clean Architecture Heuristics: Domain/Core shouldn't depend on Infra/API
+    let core_nodes: HashSet<&str> = graph
+        .nodes
+        .iter()
+        .filter(|n| {
+            let p = n.path.as_deref().unwrap_or("").to_lowercase();
+            p.contains("/domain/") || p.contains("/core/") || p.contains("/entities/") || p.contains("/usecases/")
+        })
+        .map(|n| n.id.as_str())
+        .collect();
+
+    let infra_nodes: HashSet<&str> = graph
+        .nodes
+        .iter()
+        .filter(|n| {
+            let p = n.path.as_deref().unwrap_or("").to_lowercase();
+            p.contains("/infrastructure/") || p.contains("/infra/") || p.contains("/adapters/") || p.contains("/api/") || p.contains("/controllers/")
         })
         .map(|n| n.id.as_str())
         .collect();
 
     for edge in &graph.edges {
+        // UI/Frontend directly accessing DB is a violation
         if frontend_nodes.contains(edge.source.as_str()) && db_nodes.contains(edge.target.as_str())
+        {
+            violations.push(LayerViolationInfo {
+                source: edge.source.clone(),
+                target: edge.target.clone(),
+            });
+        }
+        
+        // Core/Domain business logic depending on Infrastructure is a Clean Architecture violation
+        if core_nodes.contains(edge.source.as_str()) && infra_nodes.contains(edge.target.as_str())
         {
             violations.push(LayerViolationInfo {
                 source: edge.source.clone(),
@@ -593,7 +627,7 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
         .filter(|n| n.kind == NodeKind::Module)
         .filter(|n| {
             let path = n.path.as_deref().unwrap_or("");
-            !is_likely_doc_or_tool_path(path, &n.id)
+            !is_likely_doc_or_tool_path(path, &n.id) && !is_likely_entry_point(path, &n.id)
         })
         .filter_map(|n| {
             let count = dep_counts.get(n.id.as_str()).copied().unwrap_or(0);
