@@ -79,9 +79,9 @@ pub async fn compliance(
     let mut intent_report: IntentDriftReport = detector.detect(&merged_model, &scan_graph, context.schema());
 
     if strict {
-        let context_json = repo_path.join(".sruja").join("context.json");
-        if context_json.exists() {
-            let previous_graph: sruja_scan::Graph = serde_json::from_str(&std::fs::read_to_string(context_json)?)?;
+        let graph_json = repo_path.join(".sruja").join("graph.json");
+        if graph_json.exists() {
+            let previous_graph: sruja_scan::Graph = serde_json::from_str(&std::fs::read_to_string(graph_json)?)?;
             let proposals = sruja_diff::Proposal::load_all(repo_path).unwrap_or_default();
             let unproposed = sruja_diff::detect_unproposed_changes(&previous_graph, &scan_graph, &proposals);
             intent_report.drifts.extend(unproposed);

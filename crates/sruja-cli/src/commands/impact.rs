@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use super::CliError;
+use crate::utils::architecture_path;
 use sruja_scan::graph::{compute_all_centrality, ComponentImportance};
 
 #[derive(Debug, Clone, Serialize)]
@@ -32,7 +33,7 @@ struct ImpactOutput {
     downstream: Vec<ImpactHit>,
 }
 
-fn resolve_target_id(graph: &Graph, query: &str) -> Result<String, CliError> {
+fn resolve_target_id(graph: &Graph, repo_path: &Path, query: &str) -> Result<String, CliError> {
     if graph.nodes.iter().any(|n| n.id == query) {
         return Ok(query.to_string());
     }
@@ -48,14 +49,47 @@ fn resolve_target_id(graph: &Graph, query: &str) -> Result<String, CliError> {
         })
         .collect();
 
+    if matches.len() == 1 {
+        return Ok(matches[0].id.clone());
+    }
+
+    if let Some(baseline) = architecture_path::resolve_architecture_path(repo_path) {
+        if let Ok(content) = std::fs::read_to_string(&baseline) {
+            let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
+            if let Ok(program) = parser.parse(&content) {
+                let (elements, _) = sruja_language::traversal::collect_elements(&program);
+                let q_lower = query.to_lowercase();
+                for (fqn, elem) in &elements {
+                    let label = elem.assignment.title.as_deref().unwrap_or(&elem.assignment.name);
+                    if fqn.to_lowercase() == q_lower
+                        || fqn.to_lowercase().contains(&q_lower)
+                        || label.to_lowercase().contains(&q_lower)
+                    {
+                        let label_lower = label.to_lowercase();
+                        let fqn_short: Vec<&str> = fqn.split('.').collect();
+                        let short = fqn_short.last().copied().unwrap_or(fqn.as_str());
+                        let short_lower = short.to_lowercase();
+                        let scan_match = graph.nodes.iter().find(|n| {
+                            n.label.to_lowercase() == label_lower
+                                || n.label.to_lowercase() == short_lower
+                                || n.id.to_lowercase().contains(&short_lower)
+                        });
+                        if let Some(node) = scan_match {
+                            return Ok(node.id.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     matches.sort_by(|a, b| a.id.cmp(&b.id));
 
     match matches.len() {
         0 => Err(CliError::validation(format!(
-            "No node found matching '{}'. Try an exact node id from `sruja scan ...` output.",
+            "No node found matching '{}'. Try an exact node id from `sruja scan ...` output, or a DSL element name from your .sruja baseline.",
             query
         ))),
-        1 => Ok(matches[0].id.clone()),
         _ => {
             let preview = matches
                 .iter()
@@ -231,7 +265,7 @@ fn print_section(title: &str, hits: &[ImpactHit]) {
 pub async fn impact(repo: &str, target: &str, depth: usize, format: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     let graph = sruja_scan::scan_repo(repo_path)?;
-    let target_id = resolve_target_id(&graph, target)?;
+    let target_id = resolve_target_id(&graph, repo_path, target)?;
 
     let centrality = if graph.nodes.len() <= 2000 {
         compute_all_centrality(&graph)

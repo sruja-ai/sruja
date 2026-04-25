@@ -1184,17 +1184,18 @@ pub fn calculate_scan_quality_internal(graph: &Graph) -> Option<ScanQuality> {
         })
         .count();
 
-    // Confidence Score Calculation (Heuristic)
-    // 1. Coverage: Ratio of nodes with evidence vs total
-    let nodes_with_evidence = graph.nodes.iter().filter(|n| !n.sources.is_empty()).count();
+    // Confidence Score Calculation
+    // Uses per-node confidence from ConfidenceScorer (technology, connectivity, path heuristics)
+    // plus bonus for manifest discoveries and penalty for orphans.
+    let nodes_with_confidence = graph.nodes.iter().filter(|n| n.confidence.unwrap_or(0) > 0).count();
     let coverage_percent = if !graph.nodes.is_empty() {
-        ((nodes_with_evidence as f32 / graph.nodes.len() as f32) * 100.0) as u8
+        ((nodes_with_confidence as f32 / graph.nodes.len() as f32) * 100.0) as u8
     } else {
         0
     };
 
-    // 2. Score: coverage + bonus for manifests - penalty for orphans
-    let mut score = coverage_percent as i32;
+    let graph_confidence = graph.confidence.unwrap_or(0) as i32;
+    let mut score = (coverage_percent as i32 + graph_confidence) / 2;
     score += (manifest_discoveries * 5) as i32;
     score -= (orphans * 2) as i32;
     let confidence_score = score.clamp(0, 100) as u8;

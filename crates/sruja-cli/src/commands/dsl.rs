@@ -794,7 +794,32 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
 
     let elem = elements
         .get(element_id)
-        .ok_or_else(|| CliError::validation(format!("Element not found: {}", element_id)))?;
+        .ok_or_else(|| {
+            let q = element_id.to_lowercase();
+            let fuzzy: Vec<&String> = elements
+                .keys()
+                .filter(|k| k.to_lowercase().contains(&q))
+                .collect();
+            if fuzzy.is_empty() {
+                CliError::validation(format!(
+                    "Element '{}' not found. Available: {} (or run `sruja list {}` to see all)",
+                    element_id,
+                    elements.keys().take(5).cloned().collect::<Vec<_>>().join(", "),
+                    file_path
+                ))
+            } else if fuzzy.len() == 1 {
+                CliError::validation(format!(
+                    "Element '{}' not found. Did you mean '{}'?",
+                    element_id, fuzzy[0]
+                ))
+            } else {
+                CliError::validation(format!(
+                    "Element '{}' not found. Similar: {}",
+                    element_id,
+                    fuzzy.iter().take(5).map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+                ))
+            }
+        })?;
 
     let incoming: Vec<_> = relations
         .iter()
