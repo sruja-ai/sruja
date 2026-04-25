@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.36.0...sruja-v0.37.0) (2026-04-25)
+
+
+### Features
+
+* implement agentic memory and autonomous optimization loop ([596acb5](https://github.com/sruja-ai/sruja/commit/596acb5609df8294cdb3649f3c446b2b83032d9e))
+* implement Evo-inspired agentic patterns (scratchpad, sandboxes, and experimental evaluation) ([70ffc98](https://github.com/sruja-ai/sruja/commit/70ffc98dc8d232611020d72c137e391be1899e58))
+
 ## [0.36.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.35.2...sruja-v0.36.0) (2026-04-25)
 
 
