@@ -39,5 +39,4 @@ tree-sitter-c = "0.24"
 tree-sitter-cpp = "0.23"
 
 [dev-dependencies]
-sruja-diff = { path = "../sruja-diff" }
 tempfile = "3.27"
