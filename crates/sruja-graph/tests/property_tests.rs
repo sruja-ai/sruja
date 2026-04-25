@@ -1,9 +1,7 @@
 //! Property-based tests for graph operations using proptest
 
-use chrono::Utc;
 use proptest::prelude::*;
 use sruja_graph::*;
-use std::collections::HashMap;
 
 fn arb_node_kind() -> impl Strategy<Value = NodeKind> {
     prop_oneof![

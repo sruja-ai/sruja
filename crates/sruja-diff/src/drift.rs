@@ -674,15 +674,15 @@ mod tests {
     };
     use crate::types::{DriftConfig, ViolationKind};
     use sruja_scan::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
-    use std::collections::HashMap;
 
     fn node(id: &str, kind: NodeKind, path: Option<&str>) -> Node {
-        let mut node = Node::default();
-        node.id = id.to_string();
-        node.label = id.to_string();
-        node.kind = kind;
-        node.path = path.map(String::from);
-        node
+        Node {
+            id: id.to_string(),
+            label: id.to_string(),
+            kind,
+            path: path.map(String::from),
+            ..Node::default()
+        }
     }
 
     fn edge(source: &str, target: &str) -> Edge {

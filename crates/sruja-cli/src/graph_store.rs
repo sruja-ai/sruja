@@ -230,13 +230,14 @@ mod tests {
         let repo_path = temp_dir.path();
         let mut graph = KnowledgeGraph::with_name("TestGraph");
 
-        let mut node = sruja_graph::ArchitectureNode::default();
-        node.id = "test_node".to_string();
-        node.kind = sruja_graph::NodeKind::Service;
-        node.label = "Test".to_string();
-        node.technology = Some("Rust".to_string());
-        node.description = Some("Test node".to_string());
-        graph.add_node(node).unwrap();
+        graph.add_node(sruja_graph::ArchitectureNode {
+            id: "test_node".to_string(),
+            kind: sruja_graph::NodeKind::Service,
+            label: "Test".to_string(),
+            technology: Some("Rust".to_string()),
+            description: Some("Test node".to_string()),
+            ..sruja_graph::ArchitectureNode::default()
+        }).unwrap();
 
         save_graph(repo_path, &graph).unwrap();
 
@@ -347,13 +348,14 @@ mod tests {
         let repo_path = temp_dir.path();
 
         let mut original = KnowledgeGraph::with_name("TestArchitecture");
-        let mut node = sruja_graph::ArchitectureNode::default();
-        node.id = "svc_api".to_string();
-        node.kind = sruja_graph::NodeKind::Service;
-        node.label = "API Service".to_string();
-        node.technology = Some("Node.js".to_string());
-        node.description = Some("Main API".to_string());
-        original.add_node(node).unwrap();
+        original.add_node(sruja_graph::ArchitectureNode {
+            id: "svc_api".to_string(),
+            kind: sruja_graph::NodeKind::Service,
+            label: "API Service".to_string(),
+            technology: Some("Node.js".to_string()),
+            description: Some("Main API".to_string()),
+            ..sruja_graph::ArchitectureNode::default()
+        }).unwrap();
 
         save_graph(repo_path, &original).unwrap();
         let loaded = load_graph(repo_path).unwrap();

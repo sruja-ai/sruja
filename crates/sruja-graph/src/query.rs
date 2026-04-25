@@ -637,24 +637,25 @@ pub struct PolicyViolation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     fn create_test_graph() -> KnowledgeGraph {
         let mut graph = KnowledgeGraph::new();
 
-        let mut api = ArchitectureNode::default();
-        api.id = "api".to_string();
-        api.kind = NodeKind::Service;
-        api.label = "API Service".to_string();
-        api.technology = Some("Node.js".to_string());
-        graph.add_node(api).unwrap();
+        graph.add_node(ArchitectureNode {
+            id: "api".to_string(),
+            kind: NodeKind::Service,
+            label: "API Service".to_string(),
+            technology: Some("Node.js".to_string()),
+            ..ArchitectureNode::default()
+        }).unwrap();
 
-        let mut db = ArchitectureNode::default();
-        db.id = "db".to_string();
-        db.kind = NodeKind::Database;
-        db.label = "PostgreSQL".to_string();
-        db.technology = Some("PostgreSQL".to_string());
-        graph.add_node(db).unwrap();
+        graph.add_node(ArchitectureNode {
+            id: "db".to_string(),
+            kind: NodeKind::Database,
+            label: "PostgreSQL".to_string(),
+            technology: Some("PostgreSQL".to_string()),
+            ..ArchitectureNode::default()
+        }).unwrap();
 
         graph
     }
@@ -748,11 +749,13 @@ mod tests {
 
     #[test]
     fn test_format_node_evidence() {
-        let mut node = ArchitectureNode::default();
-        node.id = "svc".to_string();
-        node.kind = NodeKind::Service;
-        node.label = "My Service".to_string();
-        node.technology = Some("Rust".to_string());
+        let node = ArchitectureNode {
+            id: "svc".to_string(),
+            kind: NodeKind::Service,
+            label: "My Service".to_string(),
+            technology: Some("Rust".to_string()),
+            ..ArchitectureNode::default()
+        };
         let evidence = format_node_evidence(&node, None);
         assert!(evidence.contains("My Service"));
         assert!(evidence.contains("Rust"));
@@ -760,10 +763,12 @@ mod tests {
 
     #[test]
     fn test_format_node_evidence_no_tech() {
-        let mut node = ArchitectureNode::default();
-        node.id = "svc".to_string();
-        node.kind = NodeKind::Service;
-        node.label = "No Tech Service".to_string();
+        let node = ArchitectureNode {
+            id: "svc".to_string(),
+            kind: NodeKind::Service,
+            label: "No Tech Service".to_string(),
+            ..ArchitectureNode::default()
+        };
         let evidence = format_node_evidence(&node, None);
         assert!(evidence.contains("(not set)"));
     }

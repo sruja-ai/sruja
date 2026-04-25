@@ -365,27 +365,19 @@ pub fn populate_locations(program: &mut Program, source: &str, filename: &str) {
         match item {
             TopLevelItem::ElementDef(elem) => populate_element_locations(elem, source, filename),
             TopLevelItem::Relation(rel) => populate_relation_location(rel, source, filename),
-            TopLevelItem::Requirement(req) => {
-                if is_unset_location(&req.location) {
-                    if let Some((line, col)) = find_definition_line(source, &req.id) {
-                        req.location = SourceLocation::new(filename.to_string(), line + 1, col + 1);
-                    }
+            TopLevelItem::Requirement(req) if is_unset_location(&req.location) => {
+                if let Some((line, col)) = find_definition_line(source, &req.id) {
+                    req.location = SourceLocation::new(filename.to_string(), line + 1, col + 1);
                 }
             }
-            TopLevelItem::View(view) => {
-                if is_unset_location(&view.location) {
-                    if let Some((line, col)) = find_view_definition_line(source, &view.id) {
-                        view.location =
-                            SourceLocation::new(filename.to_string(), line + 1, col + 1);
-                    }
+            TopLevelItem::View(view) if is_unset_location(&view.location) => {
+                if let Some((line, col)) = find_view_definition_line(source, &view.id) {
+                    view.location = SourceLocation::new(filename.to_string(), line + 1, col + 1);
                 }
             }
-            TopLevelItem::Schema(schema) => {
-                if is_unset_location(&schema.location) {
-                    if let Some((line, col)) = find_schema_definition_line(source, &schema.name) {
-                        schema.location =
-                            SourceLocation::new(filename.to_string(), line + 1, col + 1);
-                    }
+            TopLevelItem::Schema(schema) if is_unset_location(&schema.location) => {
+                if let Some((line, col)) = find_schema_definition_line(source, &schema.name) {
+                    schema.location = SourceLocation::new(filename.to_string(), line + 1, col + 1);
                 }
             }
             _ => {}

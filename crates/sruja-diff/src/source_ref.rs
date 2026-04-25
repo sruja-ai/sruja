@@ -93,12 +93,13 @@ mod tests {
     use std::collections::HashMap;
 
     fn node(id: &str, path: Option<&str>) -> Node {
-        let mut node = Node::default();
-        node.id = id.to_string();
-        node.label = id.to_string();
-        node.kind = NodeKind::Module;
-        node.path = path.map(|p| p.to_string());
-        node
+        Node {
+            id: id.to_string(),
+            label: id.to_string(),
+            kind: NodeKind::Module,
+            path: path.map(|p| p.to_string()),
+            ..Node::default()
+        }
     }
 
     fn edge(source: &str, target: &str, evidence: Vec<EdgeEvidence>) -> Edge {

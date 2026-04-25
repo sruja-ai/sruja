@@ -499,10 +499,11 @@ mod tests {
     use super::*;
 
     fn node(id: &str) -> Node {
-        let mut node = Node::default();
-        node.id = id.to_string();
-        node.label = id.to_string();
-        node
+        Node {
+            id: id.to_string(),
+            label: id.to_string(),
+            ..Default::default()
+        }
     }
 
     fn edge(source: &str, target: &str) -> Edge {
@@ -516,9 +517,11 @@ mod tests {
 
     #[test]
     fn canonicalize_drops_dangling_edges() {
-        let mut graph = Graph::default();
-        graph.nodes = vec![node("a")];
-        graph.edges = vec![edge("a", "missing")];
+        let mut graph = Graph {
+            nodes: vec![node("a")],
+            edges: vec![edge("a", "missing")],
+            ..Default::default()
+        };
 
         graph.canonicalize();
         assert!(graph.edges.is_empty());
@@ -526,9 +529,9 @@ mod tests {
 
     #[test]
     fn canonicalize_merges_duplicate_edges_and_evidence() {
-        let mut graph = Graph::default();
-        graph.nodes = vec![node("a"), node("b")];
-        graph.edges = vec![
+        let mut graph = Graph {
+            nodes: vec![node("a"), node("b")],
+            edges: vec![
             Edge {
                 source: "a".into(),
                 target: "b".into(),
@@ -559,7 +562,9 @@ mod tests {
                     },
                 ],
             },
-        ];
+            ],
+            ..Default::default()
+        };
 
         graph.canonicalize();
         assert_eq!(graph.edges.len(), 1);
@@ -570,9 +575,11 @@ mod tests {
 
     #[test]
     fn blast_radius_returns_upstream_and_downstream() {
-        let mut graph = Graph::default();
-        graph.nodes = vec![node("a"), node("b"), node("c"), node("d")];
-        graph.edges = vec![edge("a", "b"), edge("b", "c"), edge("d", "b")];
+        let graph = Graph {
+            nodes: vec![node("a"), node("b"), node("c"), node("d")],
+            edges: vec![edge("a", "b"), edge("b", "c"), edge("d", "b")],
+            ..Default::default()
+        };
 
         let res = graph.blast_radius("b", 2);
         assert_eq!(res.target, "b");
@@ -601,9 +608,11 @@ mod tests {
 
     #[test]
     fn blast_radius_depth_zero_is_empty() {
-        let mut graph = Graph::default();
-        graph.nodes = vec![node("a"), node("b")];
-        graph.edges = vec![edge("a", "b")];
+        let graph = Graph {
+            nodes: vec![node("a"), node("b")],
+            edges: vec![edge("a", "b")],
+            ..Default::default()
+        };
 
         let res = graph.blast_radius("a", 0);
         assert!(res.upstream.is_empty());
@@ -612,14 +621,16 @@ mod tests {
 
     #[test]
     fn find_path_returns_correct_sequence() {
-        let mut graph = Graph::default();
-        graph.nodes = vec![node("a"), node("b"), node("c"), node("d")];
-        graph.edges = vec![
-            edge("a", "b"),
-            edge("b", "c"),
-            edge("c", "d"),
-            edge("a", "c"),
-        ];
+        let graph = Graph {
+            nodes: vec![node("a"), node("b"), node("c"), node("d")],
+            edges: vec![
+                edge("a", "b"),
+                edge("b", "c"),
+                edge("c", "d"),
+                edge("a", "c"),
+            ],
+            ..Default::default()
+        };
 
         let path = graph.find_path("a", "d").expect("path should exist");
         assert_eq!(path, vec!["a", "c", "d"]);

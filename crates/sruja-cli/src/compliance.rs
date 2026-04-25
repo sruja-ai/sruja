@@ -295,7 +295,6 @@ mod tests {
     fn test_structured_forbid_edge_rule_produces_violation() {
         use sruja_intent::model::PolicyRuleContent;
         use sruja_intent::IntentModel;
-        use std::collections::HashMap;
         use std::path::PathBuf;
 
         let sruja = r#"
@@ -314,19 +313,17 @@ Security = policy "No external API to database" {
         ));
 
         let mut scan_graph = sruja_scan::Graph::new();
-        scan_graph.nodes.push({
-            let mut node = sruja_scan::Node::default();
-            node.id = "ext".to_string();
-            node.kind = sruja_scan::NodeKind::ExternalApi;
-            node.label = "External API".to_string();
-            node
+        scan_graph.nodes.push(sruja_scan::Node {
+            id: "ext".to_string(),
+            kind: sruja_scan::NodeKind::ExternalApi,
+            label: "External API".to_string(),
+            ..sruja_scan::Node::default()
         });
-        scan_graph.nodes.push({
-            let mut node = sruja_scan::Node::default();
-            node.id = "db".to_string();
-            node.kind = sruja_scan::NodeKind::Database;
-            node.label = "DB".to_string();
-            node
+        scan_graph.nodes.push(sruja_scan::Node {
+            id: "db".to_string(),
+            kind: sruja_scan::NodeKind::Database,
+            label: "DB".to_string(),
+            ..sruja_scan::Node::default()
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "ext".to_string(),

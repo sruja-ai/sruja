@@ -231,39 +231,38 @@ mod tests {
     use std::collections::HashMap;
 
     fn create_test_scan_graph() -> Graph {
-        let mut graph = Graph::default();
-        graph.nodes = vec![
-            {
-                let mut node = Node::default();
-                node.id = "module.main".to_string();
-                node.kind = NodeKind::Module;
-                node.label = "main".to_string();
-                node.path = Some("src/main.ts".to_string());
-                node.technology = Some("TypeScript".to_string());
-                node
-            },
-            {
-                let mut node = Node::default();
-                node.id = "module.utils".to_string();
-                node.kind = NodeKind::Module;
-                node.label = "utils".to_string();
-                node.path = Some("src/utils.ts".to_string());
-                node.technology = Some("TypeScript".to_string());
-                node
-            },
-        ];
-        graph.edges = vec![Edge {
-            source: "module.main".to_string(),
-            target: "module.utils".to_string(),
-            kind: EdgeKind::Calls,
-            evidence: vec![EdgeEvidence {
-                rule: "import".to_string(),
-                file: Some("src/main.ts".to_string()),
-                line: Some(1),
-                detail: Some("import { utils } from './utils'".to_string()),
+        Graph {
+            nodes: vec![
+                Node {
+                    id: "module.main".to_string(),
+                    kind: NodeKind::Module,
+                    label: "main".to_string(),
+                    path: Some("src/main.ts".to_string()),
+                    technology: Some("TypeScript".to_string()),
+                    ..Node::default()
+                },
+                Node {
+                    id: "module.utils".to_string(),
+                    kind: NodeKind::Module,
+                    label: "utils".to_string(),
+                    path: Some("src/utils.ts".to_string()),
+                    technology: Some("TypeScript".to_string()),
+                    ..Node::default()
+                },
+            ],
+            edges: vec![Edge {
+                source: "module.main".to_string(),
+                target: "module.utils".to_string(),
+                kind: EdgeKind::Calls,
+                evidence: vec![EdgeEvidence {
+                    rule: "import".to_string(),
+                    file: Some("src/main.ts".to_string()),
+                    line: Some(1),
+                    detail: Some("import { utils } from './utils'".to_string()),
+                }],
             }],
-        }];
-        graph
+            ..Graph::default()
+        }
     }
 
     #[test]
@@ -322,23 +321,16 @@ mod tests {
     }
 
     fn test_node(id: &str, kind: NodeKind) -> Node {
-        let mut node = Node::default();
-        node.id = id.to_string();
-        node.kind = kind;
-        node.label = id.to_string();
-        node.path = Some(format!("{}.ts", id.trim_start_matches("module.")));
-        node.technology = Some("TypeScript".to_string());
-        node
-    }
-
-    fn test_edge(source: &str, target: &str, kind: EdgeKind) -> Edge {
-        Edge {
-            source: source.to_string(),
-            target: target.to_string(),
+        Node {
+            id: id.to_string(),
             kind,
-            evidence: vec![],
+            label: id.to_string(),
+            path: Some(format!("{}.ts", id.trim_start_matches("module."))),
+            technology: Some("TypeScript".to_string()),
+            ..Node::default()
         }
     }
+
 
     #[test]
     fn test_node_kind_conversion() {
@@ -379,31 +371,31 @@ mod tests {
         let test_cases = vec![EdgeKind::Calls, EdgeKind::ReadsFrom, EdgeKind::WritesTo];
 
         for (i, kind) in test_cases.into_iter().enumerate() {
-            let mut scan_graph = Graph::default();
-            scan_graph.nodes = vec![
-                {
-                    let mut node = Node::default();
-                    node.id = format!("source.{}", i);
-                    node.kind = NodeKind::Module;
-                    node.label = format!("source{}", i);
-                    node.path = Some(format!("source{}.ts", i));
-                    node
-                },
-                {
-                    let mut node = Node::default();
-                    node.id = format!("target.{}", i);
-                    node.kind = NodeKind::Module;
-                    node.label = format!("target{}", i);
-                    node.path = Some(format!("target{}.ts", i));
-                    node
-                },
-            ];
-            scan_graph.edges = vec![Edge {
-                source: format!("source.{}", i),
-                target: format!("target.{}", i),
-                kind: kind.clone(),
-                evidence: vec![],
-            }];
+            let scan_graph = Graph {
+                nodes: vec![
+                    Node {
+                        id: format!("source.{}", i),
+                        kind: NodeKind::Module,
+                        label: format!("source{}", i),
+                        path: Some(format!("source{}.ts", i)),
+                        ..Node::default()
+                    },
+                    Node {
+                        id: format!("target.{}", i),
+                        kind: NodeKind::Module,
+                        label: format!("target{}", i),
+                        path: Some(format!("target{}.ts", i)),
+                        ..Node::default()
+                    },
+                ],
+                edges: vec![Edge {
+                    source: format!("source.{}", i),
+                    target: format!("target.{}", i),
+                    kind: kind.clone(),
+                    evidence: vec![],
+                }],
+                ..Graph::default()
+            };
 
             let count = merge_scan_into_graph(&mut kg, &scan_graph, ".");
             assert_eq!(count, 3); // 2 nodes + 1 edge

@@ -15,7 +15,7 @@ mod tests {
     #[test]
     fn test_parser_exports() {
         // Just verify the types are exported and can be instantiated/used
-        let parser = AdrParser::new();
+        let _parser = AdrParser::new();
         assert!(format!("{:?}", AdrStatus::Proposed).contains("Proposed"));
         let _ = BoundaryChange {
             component: "A".to_string(),

@@ -404,17 +404,17 @@ pub fn compute_context_score(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ArchitectureNode, NodeKind, SourceReference};
-    use std::collections::HashMap;
+    use crate::{ArchitectureNode, NodeKind};
 
     fn test_graph_with_nodes(n: usize) -> KnowledgeGraph {
         let mut g = KnowledgeGraph::new();
         for i in 0..n {
-            let mut node = ArchitectureNode::default();
-            node.id = format!("node_{}", i);
-            node.kind = NodeKind::Service;
-            node.label = format!("Service {}", i);
-            g.add_node(node).unwrap();
+            g.add_node(ArchitectureNode {
+                id: format!("node_{}", i),
+                kind: NodeKind::Service,
+                label: format!("Service {}", i),
+                ..ArchitectureNode::default()
+            }).unwrap();
         }
         g
     }

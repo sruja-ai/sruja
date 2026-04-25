@@ -1244,7 +1244,6 @@ mod tests {
             .iter()
             .any(|d| d.kind == DriftKind::PolicyViolation));
 
-        let mut reality = reality;
         let mut meta = HashMap::new();
         meta.insert("tags", "public,internal");
         meta.insert("tier", "1");
