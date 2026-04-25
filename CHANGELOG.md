@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.2](https://github.com/sruja-ai/sruja/compare/sruja-v0.35.1...sruja-v0.35.2) (2026-04-25)
+
+
+### Bug Fixes
+
+* break circular dependency sruja-diff-&gt;sruja-intent-&gt;sruja-scan and remove dead code ([414355a](https://github.com/sruja-ai/sruja/commit/414355a86e41ff4485048231f5f4f8204793a184))
+* resolve context.json path bug, confidence score always 0, and scan vs DSL ID mismatch ([ed0b1c4](https://github.com/sruja-ai/sruja/commit/ed0b1c43adab9b8f234be55fbd3f8f0124575eb3))
+
 ## [0.35.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.35.0...sruja-v0.35.1) (2026-04-24)
 
 
