@@ -90,6 +90,8 @@ pub const CODE_BEST_PRACTICE: &str = "W001";
 // Policy Errors (E4xx)
 /// Policy constraint violation
 pub const CODE_POLICY_VIOLATION: &str = "E401";
+/// Custom DSL constraint violation
+pub const CODE_CUSTOM_CONSTRAINT: &str = "E402";
 
 #[cfg(test)]
 mod tests {

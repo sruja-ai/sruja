@@ -205,9 +205,21 @@ pub fn format_cursor_rules(context: &ArchitectureContext) -> String {
         &mut out,
         "3. If adding a new dependency, verify it does not violate boundaries\n",
     );
+    budget.push_str(&mut out, "4. Run `sruja drift -r .` after changes to verify architecture health\n\n");
+
+    budget.push_str(&mut out, "## Agentic Optimization Loop\n\n");
     budget.push_str(
         &mut out,
-        "4. Run `sruja drift -r .` after changes to verify architecture health\n",
+        "When making architectural changes, you MUST follow this loop:\n",
+    );
+    budget.push_str(&mut out, "1. Run `sruja_evaluate_proposal` to validate the health of your changes.\n");
+    budget.push_str(
+        &mut out,
+        "2. If it fails, run `sruja_record_learning` to document the failed hypothesis and update your approach.\n",
+    );
+    budget.push_str(
+        &mut out,
+        "3. Only present the final code to the user after achieving a successful evaluation.\n\n",
     );
 
     if let Some(focus) = &context.focus {
@@ -304,7 +316,22 @@ pub fn format_copilot_instructions(context: &ArchitectureContext) -> String {
     budget.push_str(&mut out, "## Before Committing\n");
     budget.push_str(
         &mut out,
-        "Run: `sruja drift -r .` to check for architectural violations.\n",
+        "Run: `sruja drift -r .` to check for architectural violations.\n\n",
+    );
+
+    budget.push_str(&mut out, "## Agentic Optimization Loop\n\n");
+    budget.push_str(
+        &mut out,
+        "When making architectural changes, follow this loop:\n",
+    );
+    budget.push_str(&mut out, "1. Run `sruja_evaluate_proposal` to validate health.\n");
+    budget.push_str(
+        &mut out,
+        "2. If it fails, run `sruja_record_learning` to document the error.\n",
+    );
+    budget.push_str(
+        &mut out,
+        "3. Only present the final code after a successful evaluation.\n\n",
     );
 
     if let Some(focus) = &context.focus {

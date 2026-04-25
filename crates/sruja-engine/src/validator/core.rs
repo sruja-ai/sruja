@@ -7,7 +7,7 @@ use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
 
 use crate::rules::{
-    ComplexityThresholdRule, ContainerNestingRule, ContractIntegrityRule, CycleDetectionRule,
+    ComplexityThresholdRule, ContainerNestingRule, ContractIntegrityRule, CustomConstraintsRule, CycleDetectionRule,
     DatabaseIsolationRule, GovernanceValidationRule, LayerViolationRule, OrphanDetectionRule,
     PolicyEvaluationRule, PropertiesValidationRule, PublicInterfaceDocumentationRule,
     RequiredFieldsRule, ScenarioValidationRule, SimplicityRule, SloValidationRule,
@@ -123,6 +123,7 @@ impl Validator {
         self.register_rule(Arc::new(PolicyEvaluationRule));
         self.register_rule(Arc::new(StateMachineIntegrityRule));
         self.register_rule(Arc::new(ContractIntegrityRule));
+        self.register_rule(Arc::new(CustomConstraintsRule));
         self.register_rule(Arc::new(ComplexityThresholdRule));
         self
     }

@@ -595,6 +595,60 @@ pub enum Commands {
         #[arg(long, short = 'e')]
         elements: Option<String>,
     },
+    /// Manage Agentic Memory (learnings, guardrails, and failed hypotheses)
+    Agent {
+        #[command(subcommand)]
+        cmd: AgentCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum AgentCommand {
+    /// Show architectural learning history and guardrails
+    History {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Filter by architectural element ID
+        #[arg(long, short = 'e')]
+        element_id: Option<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Manually record a learning or failed hypothesis
+    Record {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Context of the learning (e.g. "Refactoring Auth")
+        #[arg(long, short = 'c')]
+        context: String,
+        /// What was being tried
+        #[arg(long, short = 'H')]
+        hypothesis: String,
+        /// Outcome (success or failed)
+        #[arg(long, short = 'o', default_value = "failed")]
+        outcome: String,
+        /// Explicit advice for future agents (the "Guardrail")
+        #[arg(long, short = 'g')]
+        guardrail: String,
+        /// Why it failed (optional)
+        #[arg(long, short = 's')]
+        reason: Option<String>,
+        /// Comma-separated architectural element IDs affected
+        #[arg(long, short = 'e')]
+        elements: Option<String>,
+    },
+    /// Clear all agentic memory for this repository
+    Clear {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Skip confirmation prompt
+        #[arg(long, short = 'y')]
+        force: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1028,6 +1082,34 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             category,
             elements,
         } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
+        Commands::Agent { cmd } => match cmd {
+            AgentCommand::History {
+                repo,
+                element_id,
+                format,
+            } => commands::agent_history(&repo, element_id.as_deref(), &format).await,
+            AgentCommand::Record {
+                repo,
+                context,
+                hypothesis,
+                outcome,
+                guardrail,
+                reason,
+                elements,
+            } => {
+                commands::agent_record(
+                    &repo,
+                    &context,
+                    &hypothesis,
+                    &outcome,
+                    &guardrail,
+                    reason.as_deref(),
+                    elements.as_deref(),
+                )
+                .await
+            }
+            AgentCommand::Clear { repo, force } => commands::agent_clear(&repo, force).await,
+        },
     };
 
     match result {

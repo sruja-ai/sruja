@@ -112,7 +112,24 @@ fn check_source_files_newer(
     repo: &Path,
     graph_modified: std::time::SystemTime,
 ) -> Result<bool, CliError> {
-    let source_dirs = ["src", "lib", "app", "packages", "crates"];
+    let source_dirs = ["src", "lib", "app", "packages", "crates", ".sruja"];
+    
+    // Also check root .sruja files
+    if let Ok(entries) = std::fs::read_dir(repo) {
+        for entry in entries.flatten() {
+            if let Some(ext) = entry.path().extension() {
+                if ext == "sruja" {
+                    if let Ok(metadata) = entry.metadata() {
+                        if let Ok(modified) = metadata.modified() {
+                            if modified > graph_modified {
+                                return Ok(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     for dir in source_dirs {
         let dir_path = repo.join(dir);

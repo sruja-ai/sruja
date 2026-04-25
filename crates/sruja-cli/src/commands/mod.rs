@@ -3,6 +3,7 @@
 //! Commands are split by domain: dsl, scan, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
+mod agent;
 mod check;
 mod completions;
 pub mod compliance;
@@ -33,6 +34,7 @@ pub mod violation_shared;
 mod watch;
 mod why;
 
+pub use agent::{agent_clear, agent_history, agent_record};
 pub use propose::*;
 
 pub use check::{baseline, check};

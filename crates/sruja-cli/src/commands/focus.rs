@@ -12,6 +12,7 @@ use std::path::Path;
 use crate::commands::CliError;
 use crate::graph_store;
 use crate::utils::colors;
+use sruja_agent::AgenticMemory;
 use sruja_graph::{compute_context_score, KnowledgeGraph};
 
 #[derive(Debug, Serialize)]
@@ -306,8 +307,23 @@ pub fn build_focus_briefing(
             .push("No special constraints found. Standard coding practices apply.".to_string());
     }
 
-    // -- Anti Patterns (From AI Scratchpad) --
+    // -- Architectural Guardrails (From Agentic Memory) --
     let mut anti_patterns = Vec::new();
+    let mut pointer_traces = Vec::new();
+
+    if let Ok(memory) = AgenticMemory::load(repo_path) {
+        let relevant = memory.find_relevant(target_id);
+        for entry in relevant {
+            anti_patterns.push(entry.guardrail_advice.clone());
+            if let Some(reason) = &entry.reason {
+                pointer_traces.push(format!("Failed hypothesis: {} ({})", entry.hypothesis, reason));
+            } else {
+                pointer_traces.push(format!("Prior learning: {}", entry.hypothesis));
+            }
+        }
+    }
+
+    // -- Fallback to Legacy Anti Patterns (From AI Scratchpad) --
     let scratchpad_path = repo_path.join(".sruja").join("ai-scratchpad.md");
     if let Ok(content) = std::fs::read_to_string(&scratchpad_path) {
         let lines: Vec<&str> = content.lines().collect();
@@ -319,15 +335,21 @@ pub fn build_focus_briefing(
                 continue;
             }
             if in_section && !trimmed.is_empty() && !trimmed.starts_with('#') {
-                anti_patterns.push(truncate(trimmed.trim_start_matches("- ").trim_start_matches("* "), 120));
+                let advice = truncate(trimmed.trim_start_matches("- ").trim_start_matches("* "), 120);
+                if !anti_patterns.contains(&advice) {
+                    anti_patterns.push(advice);
+                }
             }
         }
     }
 
-    // -- Pointer Traces (Recent failures) --
-    let mut pointer_traces = Vec::new();
-    if !anti_patterns.is_empty() {
+    if !anti_patterns.is_empty() && pointer_traces.is_empty() {
         pointer_traces.push("Review .sruja/ai-scratchpad.md for recent failed hypotheses before proceeding.".to_string());
+    }
+
+    // Inject anti-patterns into AI instructions for high visibility
+    for ap in &anti_patterns {
+        ai_instructions.insert(0, format!("🛑 ARCHITECTURAL GUARDRAIL: {}", ap));
     }
 
     // -- Context Score --

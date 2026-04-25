@@ -17,6 +17,7 @@ members = [
     "crates/sruja-intent",
     "crates/sruja-wasm",
     "crates/sruja-extract",
+    "crates/sruja-agent",
 ]
 resolver = "2"
 

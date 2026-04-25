@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
+use sruja_agent::{AgenticMemory, LearningEntry, ExperimentOutcome};
 
 use super::CliError;
 
@@ -581,13 +582,13 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_ai_scratchpad",
             "title": "Sruja AI Scratchpad",
-            "description": "Read or write to the shared AI architectural scratchpad. Used to persist failed hypotheses, cross-cutting learnings, and what NOT to try so future agents don't repeat mistakes.",
+            "description": "Read or write to the shared AI architectural scratchpad (legacy markdown format). Use sruja_record_learning for structured agentic memory.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
                     "action": { "type": "string", "description": "Action: 'read' or 'append'" },
-                    "content": { "type": "string", "description": "Markdown content to append (if action is append). Format it under a heading like '## Failed Hypothesis' or '## What Not To Try'" }
+                    "content": { "type": "string", "description": "Markdown content to append (if action is append)." }
                 },
                 "required": ["action"]
             }
@@ -595,20 +596,20 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_sandbox",
             "title": "Sruja Experiment Sandbox",
-            "description": "Create, commit, or discard an isolated git worktree for safe architectural experimentation. Prevents AI agents from breaking the user's main branch while trying out refactorings.",
+            "description": "Create, commit, or discard an isolated git worktree for safe architectural experimentation.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
                     "action": { "type": "string", "description": "Action: 'create', 'commit', 'discard', 'list'" },
-                    "name": { "type": "string", "description": "Name of the sandbox/experiment (e.g., 'refactor-auth'). Required for create, commit, discard." }
+                    "name": { "type": "string", "description": "Name of the sandbox/experiment." }
                 },
                 "required": ["action"]
             }
         }),
         json!({
-            "name": "sruja_evaluate_experiment",
-            "title": "Sruja Evaluate Experiment",
+            "name": "sruja_evaluate_proposal",
+            "title": "Sruja Evaluate Proposal",
             "description": "Evaluate the current state of the codebase against your architectural hypothesis. Calculates the current Context Score and runs an optional 'gate' command (e.g. 'make check').",
             "inputSchema": {
                 "type": "object",
@@ -616,6 +617,24 @@ fn tool_definitions() -> Vec<Value> {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
                     "gate_command": { "type": "string", "description": "Optional terminal command to run as a regression gate (e.g., 'make check' or 'cargo test')" }
                 }
+            }
+        }),
+        json!({
+            "name": "sruja_record_learning",
+            "title": "Sruja Record Learning",
+            "description": "Record an architectural learning, failed hypothesis, or guardrail advice in the Agentic Memory. Used to prevent future agents from repeating mistakes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "context": { "type": "string", "description": "Context of the learning (e.g. 'Refactoring Auth')" },
+                    "hypothesis": { "type": "string", "description": "What was being tried" },
+                    "outcome": { "type": "string", "description": "Outcome: 'success' or 'failed'" },
+                    "reason": { "type": "string", "description": "Why it failed (if applicable)" },
+                    "guardrail_advice": { "type": "string", "description": "Explicit advice for future agents (e.g. 'Do not merge X into Y')" },
+                    "affected_elements": { "type": "array", "items": { "type": "string" }, "description": "Architectural element IDs affected by this learning" }
+                },
+                "required": ["context", "hypothesis", "outcome", "guardrail_advice"]
             }
         }),
     ]
@@ -1042,7 +1061,7 @@ async fn run_tool(
                 _ => Err(CliError::validation(format!("Invalid sandbox action: {}", action))),
             }
         }
-        "sruja_evaluate_experiment" => {
+        "sruja_evaluate_proposal" => {
             let gate_cmd = arguments.get("gate_command").and_then(|v| v.as_str());
             
             let mut out = String::new();
@@ -1071,7 +1090,7 @@ async fn run_tool(
                             out.push_str("❌ Gate Failed\n\n");
                             out.push_str(&stdout);
                             out.push_str(&stderr);
-                            out.push_str("\nRevert your changes or update your hypothesis on the scratchpad before trying again.");
+                            out.push_str("\nRevert your changes or update your hypothesis in the Agentic Memory before trying again.");
                             return Ok(out);
                         }
                     }
@@ -1082,7 +1101,7 @@ async fn run_tool(
                 }
             }
             
-            // Calculate Context Score as the Evo metric
+            // Calculate Context Score as the quality metric
             let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
             let scan_node_count = match sruja_scan::scan_repo(Path::new(&repo)) {
                 Ok(g) => g.nodes.len(),
@@ -1099,10 +1118,40 @@ async fn run_tool(
             if score.score == 100 {
                 out.push_str("\n🎉 Perfect Score Achieved! Your hypothesis succeeded.");
             } else {
-                out.push_str("\nReview the AI Scratchpad or Context Map to find new optimization opportunities.");
+                out.push_str("\nReview the Agentic Memory or Context Map to find new optimization opportunities.");
             }
             
             Ok(out)
+        }
+        "sruja_record_learning" => {
+            let context = arguments.get("context").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+            let hypothesis = arguments.get("hypothesis").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+            let outcome_str = arguments.get("outcome").and_then(|v| v.as_str()).unwrap_or("success");
+            let reason = arguments.get("reason").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let guardrail_advice = arguments.get("guardrail_advice").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+            let affected_elements = arguments.get("affected_elements").and_then(|v| v.as_array()).map(|a| {
+                a.iter().filter_map(|v| v.as_str().map(String::from)).collect()
+            }).unwrap_or_default();
+
+            let outcome = if outcome_str == "failed" {
+                ExperimentOutcome::Failed
+            } else {
+                ExperimentOutcome::Success
+            };
+
+            let mut memory = AgenticMemory::load(Path::new(&repo)).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+            memory.add_learning(LearningEntry {
+                timestamp: chrono::Utc::now(),
+                context,
+                hypothesis,
+                outcome,
+                reason,
+                guardrail_advice,
+                affected_elements,
+            });
+            memory.save(Path::new(&repo)).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+
+            Ok("Learning recorded in Agentic Memory successfully.".to_string())
         }
         "sruja_validate_change" => {
             let files = arguments
