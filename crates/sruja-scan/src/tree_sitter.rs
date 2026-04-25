@@ -509,7 +509,6 @@ fn infer_node_kind(
 ) -> (NodeKind, std::collections::HashMap<String, String>) {
     let ctx = classifier::ClassificationContext {
         path_str: path.to_string_lossy().to_lowercase(),
-        name_lower: parsed.name.to_lowercase(),
         content_lower: content.to_lowercase(),
         parsed,
     };
