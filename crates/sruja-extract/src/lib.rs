@@ -3,14 +3,14 @@
 //! Handles automatic discovery of architectural artifacts and inference
 //! of relationships from codebase signals.
 
-pub mod openapi;
-pub mod kubernetes;
-pub mod docs;
 pub mod alias;
 pub mod dependency;
+pub mod docs;
+pub mod kubernetes;
+pub mod openapi;
 
-use std::path::Path;
 use sruja_language::ast::SourceBinding;
+use std::path::Path;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -37,7 +37,7 @@ pub struct DiscoveredSource {
 pub trait Extractor: Send + Sync {
     /// Name of the extractor
     fn name(&self) -> &'static str;
-    
+
     /// Check a specific file for architectural artifacts.
     fn check_file(&self, path: &Path, repo_root: &Path) -> Vec<DiscoveredSource>;
 
@@ -76,7 +76,7 @@ impl ExtractionEngine {
                 // Basic ignore list
                 !(name.starts_with('.') || name == "node_modules" || name == "target")
             })
-            .filter_map(|e| e.ok()) 
+            .filter_map(|e| e.ok())
         {
             let path = entry.path();
             if path.is_file() {

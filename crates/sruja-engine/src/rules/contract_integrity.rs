@@ -3,7 +3,7 @@
 use crate::DomainSchema;
 
 use sruja_diagnostics::{Diagnostic, Severity};
-use sruja_language::{ElementDefBodyItem, Program, TopLevelItem, Contract};
+use sruja_language::{Contract, ElementDefBodyItem, Program, TopLevelItem};
 
 use crate::validator::Rule;
 
@@ -49,7 +49,10 @@ fn validate_contract(c: &Contract, diagnostics: &mut Vec<Diagnostic>) {
         diagnostics.push(Diagnostic::new(
             sruja_diagnostics::codes::CODE_CONTRACT_EMPTY,
             Severity::Error,
-            format!("Contract '{}' is empty (no inputs, outputs, or errors).", c.name),
+            format!(
+                "Contract '{}' is empty (no inputs, outputs, or errors).",
+                c.name
+            ),
             c.location.clone(),
         ));
     }
@@ -79,7 +82,10 @@ fn validate_contract(c: &Contract, diagnostics: &mut Vec<Diagnostic>) {
         diagnostics.push(Diagnostic::new(
             sruja_diagnostics::codes::CODE_CONTRACT_NO_CONSTRAINTS,
             Severity::Info,
-            format!("Contract '{}' has no behavioral constraints defined.", c.name),
+            format!(
+                "Contract '{}' has no behavioral constraints defined.",
+                c.name
+            ),
             c.location.clone(),
         ));
     }

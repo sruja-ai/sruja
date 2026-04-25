@@ -1,9 +1,9 @@
+use crate::commands::CliError;
+use crate::scoring::health::{calculate_health, Deduction};
+use crate::utils::{colors, progress};
 use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::commands::CliError;
-use crate::utils::{colors, progress};
-use crate::scoring::health::{calculate_health, Deduction};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct HealthScoreOutput {
@@ -24,11 +24,18 @@ struct HistoryEntry {
     pub score: u8,
 }
 
-pub async fn health(repo_root: &str, architecture: Option<&str>, format: &str) -> Result<(), CliError> {
+pub async fn health(
+    repo_root: &str,
+    architecture: Option<&str>,
+    format: &str,
+) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
-    
+
     // 1. Parse architecture file
-    let arch_path = crate::utils::architecture_path::resolve_architecture_path_or_default(repo_path, architecture);
+    let arch_path = crate::utils::architecture_path::resolve_architecture_path_or_default(
+        repo_path,
+        architecture,
+    );
     let (_content, program) = super::parse_sruja_file(arch_path.to_str().unwrap())?;
 
     // 2. Run drift detection to get violations
@@ -56,7 +63,7 @@ pub async fn health(repo_root: &str, architecture: Option<&str>, format: &str) -
     if !dot_sruja.exists() {
         let _ = fs::create_dir_all(&dot_sruja);
     }
-    
+
     let history_path = dot_sruja.join("health_history.json");
     let mut history: HealthHistory = if history_path.exists() {
         let content = fs::read_to_string(&history_path).unwrap_or_default();
@@ -82,9 +89,14 @@ pub async fn health(repo_root: &str, architecture: Option<&str>, format: &str) -
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    
+
     // Only append if it's a new timestamp (rough avoid duplicates in same run)
-    if history.scores.last().map(|e| e.timestamp != now).unwrap_or(true) {
+    if history
+        .scores
+        .last()
+        .map(|e| e.timestamp != now)
+        .unwrap_or(true)
+    {
         history.scores.push(HistoryEntry {
             timestamp: now,
             score: health.score,
@@ -93,7 +105,10 @@ pub async fn health(repo_root: &str, architecture: Option<&str>, format: &str) -
         if history.scores.len() > 50 {
             history.scores.remove(0);
         }
-        let _ = fs::write(&history_path, serde_json::to_string_pretty(&history).unwrap_or_default());
+        let _ = fs::write(
+            &history_path,
+            serde_json::to_string_pretty(&history).unwrap_or_default(),
+        );
     }
 
     match format {
@@ -104,11 +119,15 @@ pub async fn health(repo_root: &str, architecture: Option<&str>, format: &str) -
                 architecture: arch_path.to_string_lossy().to_string(),
                 deductions: health.deductions,
             };
-            println!("{}", serde_json::to_string_pretty(&output).map_err(|e| CliError::validation(e.to_string()))?);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&output)
+                    .map_err(|e| CliError::validation(e.to_string()))?
+            );
         }
         _ => {
             colors::print_header("🩺 Architecture Health Report");
-            
+
             let trend_icon = match trend {
                 "up" => colors::success("↑").to_string(),
                 "down" => colors::error("↓").to_string(),
@@ -116,18 +135,30 @@ pub async fn health(repo_root: &str, architecture: Option<&str>, format: &str) -
                 _ => "".to_string(),
             };
 
-            println!("  Score: {} {}", colors::health_bar(health.score, 20), trend_icon);
+            println!(
+                "  Score: {} {}",
+                colors::health_bar(health.score, 20),
+                trend_icon
+            );
             println!("  File:  {}", arch_path.display());
             println!();
 
             if health.deductions.is_empty() {
-                println!("  {} Your architecture is in perfect health!", colors::success("✨"));
+                println!(
+                    "  {} Your architecture is in perfect health!",
+                    colors::success("✨")
+                );
             } else {
                 println!("{}", colors::style("Deductions:").bold());
                 for d in &health.deductions {
-                    println!("  {} {} (-{} pts)", colors::error("-"), colors::dim(&d.message), d.points);
+                    println!(
+                        "  {} {} (-{} pts)",
+                        colors::error("-"),
+                        colors::dim(&d.message),
+                        d.points
+                    );
                 }
-                
+
                 println!();
                 println!("{}", colors::style("Recommendations:").bold());
                 if health.score < 90 {

@@ -73,9 +73,9 @@ pub(crate) fn truth_status_from_baseline_compare(
 ) -> Result<sruja_diff::TruthStatus, CliError> {
     let content = fs::read_to_string(baseline_path)?;
     let parser = sruja_language::Parser::new(baseline_path.to_string_lossy().as_ref());
-    let program = parser
-        .parse(&content)
-        .map_err(|diags| CliError::parse_with_diagnostics(baseline_path.to_string_lossy().to_string(), diags))?;
+    let program = parser.parse(&content).map_err(|diags| {
+        CliError::parse_with_diagnostics(baseline_path.to_string_lossy().to_string(), diags)
+    })?;
     let proposed_graph = sruja_diff::program_to_graph(&program);
     Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
 }
@@ -247,7 +247,13 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
 
     // Calculate architectural velocity (recent supervision ratio)
     let velocity = (|| {
-        let base = if std::process::Command::new("git").args(["rev-parse", "origin/main"]).current_dir(repo_path).status().ok()?.success() {
+        let base = if std::process::Command::new("git")
+            .args(["rev-parse", "origin/main"])
+            .current_dir(repo_path)
+            .status()
+            .ok()?
+            .success()
+        {
             "origin/main"
         } else {
             "HEAD~20"
@@ -285,25 +291,36 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
                             .and_then(|scores| scores.as_array())
                             .map(|arr| {
                                 arr.iter()
-                                    .filter_map(|e| e.get("score").and_then(|s| s.as_u64()).map(|s| s as u8))
+                                    .filter_map(|e| {
+                                        e.get("score").and_then(|s| s.as_u64()).map(|s| s as u8)
+                                    })
                                     .collect::<Vec<u8>>()
                             })
                     })
             })
             .unwrap_or_default();
 
-        let top_findings: Vec<super::output::Finding> = diff.violations.iter().take(3).map(|v| {
-            let mut evidence: Vec<String> = v.location.as_ref().map(|s| vec![s.clone()]).unwrap_or_default();
-            for s in &v.sources {
-                evidence.push(sruja_diff::SourceRef::display_string(s));
-            }
-            super::output::Finding {
-                severity: format!("{:?}", v.severity).to_lowercase(),
-                kind: format!("{:?}", v.kind),
-                message: v.message.clone(),
-                evidence,
-            }
-        }).collect();
+        let top_findings: Vec<super::output::Finding> = diff
+            .violations
+            .iter()
+            .take(3)
+            .map(|v| {
+                let mut evidence: Vec<String> = v
+                    .location
+                    .as_ref()
+                    .map(|s| vec![s.clone()])
+                    .unwrap_or_default();
+                for s in &v.sources {
+                    evidence.push(sruja_diff::SourceRef::display_string(s));
+                }
+                super::output::Finding {
+                    severity: format!("{:?}", v.severity).to_lowercase(),
+                    kind: format!("{:?}", v.kind),
+                    message: v.message.clone(),
+                    evidence,
+                }
+            })
+            .collect();
 
         return Ok(StatusOutput {
             baseline: Some(arch_path.clone()),
@@ -328,7 +345,9 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
                         .and_then(|scores| scores.as_array())
                         .map(|arr| {
                             arr.iter()
-                                .filter_map(|e| e.get("score").and_then(|s| s.as_u64()).map(|s| s as u8))
+                                .filter_map(|e| {
+                                    e.get("score").and_then(|s| s.as_u64()).map(|s| s as u8)
+                                })
                                 .collect::<Vec<u8>>()
                         })
                 })
@@ -342,18 +361,27 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
         sruja_diff::TruthStatus::Unknown => "unknown",
     };
 
-    let top_findings: Vec<super::output::Finding> = drift.violations.iter().take(3).map(|v| {
-        let mut evidence: Vec<String> = v.location.as_ref().map(|s| vec![s.clone()]).unwrap_or_default();
-        for s in &v.sources {
-            evidence.push(sruja_diff::SourceRef::display_string(s));
-        }
-        super::output::Finding {
-            severity: format!("{:?}", v.severity).to_lowercase(),
-            kind: format!("{:?}", v.kind),
-            message: v.message.clone(),
-            evidence,
-        }
-    }).collect();
+    let top_findings: Vec<super::output::Finding> = drift
+        .violations
+        .iter()
+        .take(3)
+        .map(|v| {
+            let mut evidence: Vec<String> = v
+                .location
+                .as_ref()
+                .map(|s| vec![s.clone()])
+                .unwrap_or_default();
+            for s in &v.sources {
+                evidence.push(sruja_diff::SourceRef::display_string(s));
+            }
+            super::output::Finding {
+                severity: format!("{:?}", v.severity).to_lowercase(),
+                kind: format!("{:?}", v.kind),
+                message: v.message.clone(),
+                evidence,
+            }
+        })
+        .collect();
 
     Ok(StatusOutput {
         baseline: None,

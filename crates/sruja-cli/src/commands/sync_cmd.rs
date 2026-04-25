@@ -4,8 +4,8 @@ use std::fs;
 use std::path::Path;
 
 use super::discover::{discover_context_json_from_graph, discover_explanation_json};
-use super::CliError;
 use super::violation_shared::*;
+use super::CliError;
 use crate::utils::{architecture_path, colors};
 use sruja_diff::Violation;
 use sruja_scan::scan_repo;
@@ -149,9 +149,10 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     } else {
         (violations, Vec::new())
     };
-    
+
     let active_summ: Vec<ViolationSummary> = active.iter().map(summarize_violation).collect();
-    let suppressed_summ: Vec<ViolationSummary> = suppressed.iter().map(summarize_violation).collect();
+    let suppressed_summ: Vec<ViolationSummary> =
+        suppressed.iter().map(summarize_violation).collect();
 
     value["violations"] =
         serde_json::to_value(&active_summ).map_err(|e| CliError::validation(e.to_string()))?;
@@ -209,14 +210,18 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
             } else {
                 eprintln!("{}", colors::warning("No baseline (repo.sruja not found)"));
             }
-            
+
             let status_color = match truth_status.as_str() {
                 "reviewed" => colors::success(&truth_status),
                 "drifted" => colors::error(&truth_status),
                 _ => colors::warning(&truth_status),
             };
-            eprintln!("Truth: {} ({} violation(s))", status_color, active_summ.len());
-            
+            eprintln!(
+                "Truth: {} ({} violation(s))",
+                status_color,
+                active_summ.len()
+            );
+
             if let Some(score) = health_score {
                 eprintln!("Health score: {}", colors::health_bar(score, 20));
             }

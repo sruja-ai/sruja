@@ -270,7 +270,11 @@ pub fn compute_context_score(
     } else if accepted_decisions < total_decisions {
         let pending = total_decisions - accepted_decisions;
         quick_wins.push(QuickWin {
-            action: format!("Accept {} pending decision{}", pending, if pending == 1 { "" } else { "s" }),
+            action: format!(
+                "Accept {} pending decision{}",
+                pending,
+                if pending == 1 { "" } else { "s" }
+            ),
             impact_points: 5,
         });
     }
@@ -360,7 +364,8 @@ pub fn compute_context_score(
 
     if ext_ctx.file_count == 0 {
         quick_wins.push(QuickWin {
-            action: "Create .sruja/context/ and add ADRs, design docs, or API contracts".to_string(),
+            action: "Create .sruja/context/ and add ADRs, design docs, or API contracts"
+                .to_string(),
             impact_points: 15,
         });
     } else if ext_ctx.linked_elements == 0 {
@@ -402,7 +407,7 @@ mod tests {
     use crate::{ArchitectureNode, NodeKind, SourceReference};
     use std::collections::HashMap;
 
-fn test_graph_with_nodes(n: usize) -> KnowledgeGraph {
+    fn test_graph_with_nodes(n: usize) -> KnowledgeGraph {
         let mut g = KnowledgeGraph::new();
         for i in 0..n {
             let mut node = ArchitectureNode::default();
@@ -419,7 +424,11 @@ fn test_graph_with_nodes(n: usize) -> KnowledgeGraph {
         let g = KnowledgeGraph::new();
         let tmp = tempfile::tempdir().unwrap();
         let score = compute_context_score(&g, 10, tmp.path(), 0);
-        assert!(score.score < 50, "Empty graph should score low: {}", score.score);
+        assert!(
+            score.score < 50,
+            "Empty graph should score low: {}",
+            score.score
+        );
     }
 
     #[test]
@@ -483,7 +492,11 @@ fn test_graph_with_nodes(n: usize) -> KnowledgeGraph {
         std::fs::create_dir_all(&ctx_dir).unwrap();
         std::fs::write(ctx_dir.join("adr-001.md"), "# ADR 001\nSome decision.").unwrap();
         std::fs::write(ctx_dir.join("api-contract.yaml"), "openapi: 3.0.0").unwrap();
-        std::fs::write(ctx_dir.join("runbook-deploy.md"), "# Deploy runbook\nSteps...").unwrap();
+        std::fs::write(
+            ctx_dir.join("runbook-deploy.md"),
+            "# Deploy runbook\nSteps...",
+        )
+        .unwrap();
 
         let summary = scan_external_context(tmp.path());
         assert_eq!(summary.file_count, 3);

@@ -1,6 +1,6 @@
-use std::path::Path;
-use sruja_language::ast::{SourceBinding, SourceKind};
 use crate::{DiscoveredSource, Extractor};
+use sruja_language::ast::{SourceBinding, SourceKind};
+use std::path::Path;
 
 pub struct AliasExtractor;
 
@@ -16,13 +16,24 @@ impl AliasExtractor {
     }
 
     fn is_docker_compose(path: &Path) -> bool {
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
-        name == "docker-compose.yaml" || name == "docker-compose.yml" || name == "compose.yaml" || name == "compose.yml"
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        name == "docker-compose.yaml"
+            || name == "docker-compose.yml"
+            || name == "compose.yaml"
+            || name == "compose.yml"
     }
 
     #[allow(dead_code)]
     fn is_helm_values(path: &Path) -> bool {
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
         name == "values.yaml" || name == "values.yml"
     }
 }
@@ -44,7 +55,7 @@ impl Extractor for AliasExtractor {
                 for line in content.lines() {
                     let trimmed = line.trim_start();
                     let indent = line.len() - trimmed.len();
-                    
+
                     if trimmed.starts_with("services:") {
                         in_services = true;
                         continue;
@@ -52,7 +63,8 @@ impl Extractor for AliasExtractor {
 
                     if in_services && indent == 2 && trimmed.ends_with(':') {
                         let service_name = trimmed.trim_matches(':').trim().to_string();
-                        let relative_path = path.strip_prefix(repo_root)
+                        let relative_path = path
+                            .strip_prefix(repo_root)
                             .unwrap_or(path)
                             .to_string_lossy()
                             .to_string();
@@ -61,7 +73,10 @@ impl Extractor for AliasExtractor {
                             binding: SourceBinding {
                                 kind: SourceKind::Custom("docker-compose".to_string()),
                                 path: relative_path.clone(),
-                                description: Some(format!("Discovered service alias: {}", service_name)),
+                                description: Some(format!(
+                                    "Discovered service alias: {}",
+                                    service_name
+                                )),
                             },
                             suggested_element: Some(service_name),
                             confidence: 0.9,

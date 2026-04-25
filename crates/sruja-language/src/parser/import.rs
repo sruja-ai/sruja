@@ -23,18 +23,20 @@ pub(crate) fn parse_import(input: &str) -> IResult<&str, ImportStatement> {
 
     // Try structured import: import { A, B } from "path"
     let structured = map(
-        (delimited(
-            char('{'),
-            separated_list0(
-                preceded(ws0, char(',')),
-                preceded(ws0, parse_import_element),
+        (
+            delimited(
+                char('{'),
+                separated_list0(
+                    preceded(ws0, char(',')),
+                    preceded(ws0, parse_import_element),
+                ),
+                preceded(ws0, char('}')),
             ),
-            preceded(ws0, char('}')),
+            ws1,
+            tag("from"),
+            ws1,
+            parse_string,
         ),
-        ws1,
-        tag("from"),
-        ws1,
-        parse_string),
         |(elements, _, _, _, from)| ImportStatement {
             location: SourceLocation::new(String::new(), 0, 0),
             elements,
@@ -51,7 +53,6 @@ pub(crate) fn parse_import(input: &str) -> IResult<&str, ImportStatement> {
 
     alt((structured, simple)).parse(input)
 }
-
 
 pub(crate) fn parse_import_element(input: &str) -> IResult<&str, ImportElement> {
     use nom::branch::alt;

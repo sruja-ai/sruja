@@ -9,8 +9,8 @@ use nom::{
 use sruja_diagnostics::SourceLocation;
 
 use crate::ast::{
-    ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, Incident, MetaEntry, MetadataBlock,
-    QualifiedIdent, StyleDecl,
+    ConstraintEntry, ConstraintsBlock, ConventionEntry, ConventionsBlock, Incident, MetaEntry,
+    MetadataBlock, QualifiedIdent, StyleDecl,
 };
 
 use super::primitives::{
@@ -187,10 +187,9 @@ pub(crate) fn parse_incident(input: &str) -> IResult<&str, Incident> {
         }
 
         let result: IResult<&str, (&str, String, Vec<QualifiedIdent>)> = alt((
-            map(
-                preceded(tag("date"), preceded(ws1, parse_string)),
-                |s| ("date", s, vec![]),
-            ),
+            map(preceded(tag("date"), preceded(ws1, parse_string)), |s| {
+                ("date", s, vec![])
+            }),
             map(
                 preceded(tag("severity"), preceded(ws1, parse_string)),
                 |s| ("severity", s, vec![]),
@@ -199,18 +198,16 @@ pub(crate) fn parse_incident(input: &str) -> IResult<&str, Incident> {
                 preceded(tag("affected"), preceded(ws0, parse_qualified_ident_array)),
                 |arr| ("affected", String::new(), arr),
             ),
-            map(
-                preceded(tag("cause"), preceded(ws1, parse_string)),
-                |s| ("cause", s, vec![]),
-            ),
+            map(preceded(tag("cause"), preceded(ws1, parse_string)), |s| {
+                ("cause", s, vec![])
+            }),
             map(
                 preceded(tag("resolution"), preceded(ws1, parse_string)),
                 |s| ("resolution", s, vec![]),
             ),
-            map(
-                preceded(tag("lesson"), preceded(ws1, parse_string)),
-                |s| ("lesson", s, vec![]),
-            ),
+            map(preceded(tag("lesson"), preceded(ws1, parse_string)), |s| {
+                ("lesson", s, vec![])
+            }),
         ))
         .parse(rest);
 

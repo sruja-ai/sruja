@@ -4,50 +4,50 @@
 //! See REFACTORING_PLAN.md for the layout.
 
 mod check;
+mod completions;
 pub mod compliance;
-pub mod critique;
-mod context_score;
 mod context_graph;
+mod context_score;
+pub mod critique;
 mod discover;
 mod dsl;
 mod error;
 mod federation;
 mod focus;
 mod generate;
-mod ingest;
+mod health;
 mod impact;
 mod index;
+mod ingest;
 mod init;
 mod intent;
 mod mcp;
+mod preflight;
 mod propose;
 mod review;
 mod scan;
-mod preflight;
 mod status;
 mod sync_cmd;
 mod version;
+pub mod violation_shared;
 mod watch;
 mod why;
-mod completions;
-mod health;
-pub mod violation_shared;
 
 pub use propose::*;
 
 pub use check::{baseline, check};
-pub use critique::critique;
 pub use compliance::compliance;
-pub use context_score::context_score;
-pub use focus::focus;
-pub use ingest::ingest;
 pub use context_graph::context_graph;
+pub use context_score::context_score;
+pub use critique::critique;
 pub use discover::{discover_context, discover_explain, discover_questions, discover_repomap_cmd};
 pub use dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
     ExportOptions,
 };
 pub use error::CliError;
+pub use focus::focus;
+pub use ingest::ingest;
 
 pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
     path: P,
@@ -73,38 +73,37 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
         }
     }
 }
+pub use completions::completions;
 pub use federation::{compose, publish};
 pub use generate::generate_prompt;
+pub use health::health;
 pub use impact::impact;
-pub use index::{registry_index, semantic_index, query_registry, registry_dashboard};
+pub use index::{query_registry, registry_dashboard, registry_index, semantic_index};
 pub use init::init;
 pub use intent::{intent_check, intent_propose};
 pub use mcp::mcp;
 pub use review::review;
 pub use scan::{drift, drift_pr, quickstart, scan};
-pub use preflight::preflight;
 pub use status::status;
 pub use sync_cmd::sync;
 pub use version::version;
 pub use watch::watch;
 pub use why::why;
-pub use completions::completions;
-pub use health::health;
 mod context;
 
 pub use context::{context_export, ContextRequest};
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
     let graph_path = repo_path.join(".sruja").join("graph.json");
+
     if graph_path.exists() {
         let content = std::fs::read_to_string(&graph_path)?;
-        match serde_json::from_str::<sruja_scan::Graph>(&content) {
-            Ok(graph) => Ok(graph),
-            Err(_) => Ok(sruja_scan::scan_repo(repo_path)?),
+        if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
+            return Ok(graph);
         }
-    } else {
-        Ok(sruja_scan::scan_repo(repo_path)?)
     }
+
+    Ok(sruja_scan::scan_repo(repo_path)?)
 }
 
 #[cfg(test)]

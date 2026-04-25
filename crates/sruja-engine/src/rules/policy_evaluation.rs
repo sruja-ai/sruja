@@ -266,8 +266,8 @@ fn selector_matches_any(
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_diagnostics::Severity;
     use sruja_language::Parser;
 

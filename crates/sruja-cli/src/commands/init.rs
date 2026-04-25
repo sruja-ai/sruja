@@ -38,7 +38,10 @@ pub async fn init(
     }
 
     if dry_run {
-        println!("{}", colors::warning("DRY RUN MODE: No files will be written."));
+        println!(
+            "{}",
+            colors::warning("DRY RUN MODE: No files will be written.")
+        );
         println!();
     }
 
@@ -53,14 +56,22 @@ pub async fn init(
             })?;
         }
         if is_interactive || dry_run {
-            println!("  {} [1/4] Created {}", colors::success("✓"), colors::dim(".sruja/"));
+            println!(
+                "  {} [1/4] Created {}",
+                colors::success("✓"),
+                colors::dim(".sruja/")
+            );
         }
     }
 
     // Project detection
     let project_type = detect_project_type(repo_path);
     if is_interactive || dry_run {
-        println!("  {} [2/4] Detected project: {}", colors::success("✓"), colors::info(&project_type));
+        println!(
+            "  {} [2/4] Detected project: {}",
+            colors::success("✓"),
+            colors::info(&project_type)
+        );
     }
 
     // .srujaignore generation
@@ -71,7 +82,11 @@ pub async fn init(
             fs::write(&srujaignore_path, ignore_content)?;
         }
         if is_interactive || dry_run {
-            println!("  {} [3/4] Generated {}", colors::success("✓"), colors::dim(".srujaignore"));
+            println!(
+                "  {} [3/4] Generated {}",
+                colors::success("✓"),
+                colors::dim(".srujaignore")
+            );
         }
     }
 
@@ -81,11 +96,7 @@ pub async fn init(
             if !dry_run {
                 let repos = vec![repo_root.to_string()];
                 let out = prompt_path.to_string_lossy().to_string();
-                generate_prompt(
-                    &repos,
-                    None,
-                    Some(&out),
-                )?;
+                generate_prompt(&repos, None, Some(&out))?;
             }
             if is_interactive || dry_run {
                 println!(
@@ -114,17 +125,21 @@ pub async fn init(
             .default(true)
             .interact()
             .unwrap_or(auto);
-            
+
         let extras = MultiSelect::new()
             .with_prompt("Select additional setup components:")
             .item_checked("GitHub Actions workflow", ci)
             .item_checked("Git pre-commit hook", hook)
             .interact()
             .unwrap_or_default();
-            
+
         for i in extras {
-            if i == 0 { should_ci = true; }
-            if i == 1 { should_hook = true; }
+            if i == 0 {
+                should_ci = true;
+            }
+            if i == 1 {
+                should_hook = true;
+            }
         }
     }
 
@@ -134,7 +149,7 @@ pub async fn init(
             message: e.to_string(),
             help: Some("Ensure your repo has source files and proper permissions.".into()),
         });
-        
+
         let graph = match graph_result {
             Ok(g) => g,
             Err(e) => {
@@ -142,7 +157,7 @@ pub async fn init(
                 return Err(e);
             }
         };
-        
+
         let baseline = if !dry_run {
             super::scan::output::write_draft_baseline(repo_path, &graph, force)?
         } else {
@@ -152,20 +167,52 @@ pub async fn init(
 
         if let Some(path) = baseline {
             if is_interactive || dry_run {
-                println!("  {} Generated baseline: {}", colors::success("✅"), colors::info(path.display().to_string()));
-                
+                println!(
+                    "  {} Generated baseline: {}",
+                    colors::success("✅"),
+                    colors::info(path.display().to_string())
+                );
+
                 // Show Summary Card
                 println!();
                 println!("  {}", colors::style("Architecture Summary:").bold());
-                println!("    • Components:   {}", colors::style(graph.nodes.len().to_string()).bold());
-                println!("    • Relations:    {}", colors::style(graph.edges.len().to_string()).bold());
-                println!("    • Entrypoints:  {}", colors::style(graph.nodes.iter().filter(|n| n.kind == sruja_scan::NodeKind::Service).count().to_string()).bold());
+                println!(
+                    "    • Components:   {}",
+                    colors::style(graph.nodes.len().to_string()).bold()
+                );
+                println!(
+                    "    • Relations:    {}",
+                    colors::style(graph.edges.len().to_string()).bold()
+                );
+                println!(
+                    "    • Entrypoints:  {}",
+                    colors::style(
+                        graph
+                            .nodes
+                            .iter()
+                            .filter(|n| n.kind == sruja_scan::NodeKind::Service)
+                            .count()
+                            .to_string()
+                    )
+                    .bold()
+                );
 
                 println!();
                 println!("{}", colors::style("Next steps:").bold());
-                println!("  1. {} Use 'sruja lint {}' to check the architecture.", colors::info("Review:"), path.display());
-                println!("  2. {} Use 'sruja export mermaid {} --all-views' to visualize.", colors::info("View:"), path.display());
-                println!("  3. {} Run 'sruja watch' while you code.", colors::info("Monitor:"));
+                println!(
+                    "  1. {} Use 'sruja lint {}' to check the architecture.",
+                    colors::info("Review:"),
+                    path.display()
+                );
+                println!(
+                    "  2. {} Use 'sruja export mermaid {} --all-views' to visualize.",
+                    colors::info("View:"),
+                    path.display()
+                );
+                println!(
+                    "  3. {} Run 'sruja watch' while you code.",
+                    colors::info("Monitor:")
+                );
             } else {
                 eprintln!("✅ Generated baseline: {}", path.display());
             }
@@ -181,12 +228,19 @@ pub async fn init(
         let baseline_path = architecture_path::resolve_architecture_path(repo_path);
         if let Some(ref p) = baseline_path {
             if is_interactive || dry_run {
-                println!("  {} Existing architecture file: {}", colors::info("i"), p.display());
+                println!(
+                    "  {} Existing architecture file: {}",
+                    colors::info("i"),
+                    p.display()
+                );
             }
         } else if is_interactive || dry_run {
-            println!("  {} No architecture file found. Creating manual skeleton recommended.", colors::warning("!"));
+            println!(
+                "  {} No architecture file found. Creating manual skeleton recommended.",
+                colors::warning("!")
+            );
         }
-        
+
         if !dry_run {
             quickstart(repo_root, "text", false, None).await?;
         }
@@ -202,8 +256,9 @@ pub async fn init(
 
     if is_interactive || dry_run {
         println!();
-        println!("{} Sruja is ready! Try running {} to start monitoring your project.", 
-            colors::success("🎉"), 
+        println!(
+            "{} Sruja is ready! Try running {} to start monitoring your project.",
+            colors::success("🎉"),
             colors::info("sruja watch")
         );
     }
@@ -228,10 +283,12 @@ fn detect_project_type(path: &Path) -> String {
 }
 
 fn generate_srujaignore(project_type: &str) -> String {
-    let mut content = String::from("# Sruja ignore patterns\n# Exclude non-production code from architecture scans\n\n");
+    let mut content = String::from(
+        "# Sruja ignore patterns\n# Exclude non-production code from architecture scans\n\n",
+    );
     content.push_str("node_modules/\ntarget/\ndist/\nbuild/\n.git/\n.next/\nout/\n\n");
     content.push_str("# Sruja config\n.sruja/\nrepo.sruja.draft\n\n");
-    
+
     match project_type {
         "Rust" => content.push_str("# Rust specific\ntests/\nbenches/\nexamples/\n"),
         "Node.js" => content.push_str("# Node specific\ncoverage/\n.npm/\nlogs/\n"),
@@ -239,7 +296,7 @@ fn generate_srujaignore(project_type: &str) -> String {
         "Java" => content.push_str("# Java specific\nbin/\n*.class\n.gradle/\n.metadata/\n"),
         _ => {}
     }
-    
+
     content
 }
 
@@ -249,13 +306,17 @@ fn install_github_actions_workflow(repo_path: &Path) -> Result<(), CliError> {
         fs::create_dir_all(&workflows_dir).map_err(|e| {
             CliError::Io(std::io::Error::new(
                 e.kind(),
-                format!("Failed to create workflows directory at {}: {}", workflows_dir.display(), e),
+                format!(
+                    "Failed to create workflows directory at {}: {}",
+                    workflows_dir.display(),
+                    e
+                ),
             ))
         })?;
     }
 
     let workflow_path = workflows_dir.join("sruja-check.yml");
-    
+
     let workflow_content = r#"name: Sruja Architecture Check
 
 on:
@@ -286,11 +347,18 @@ jobs:
     fs::write(&workflow_path, workflow_content).map_err(|e| {
         CliError::Io(std::io::Error::new(
             e.kind(),
-            format!("Failed to write GitHub Actions workflow to {}: {}", workflow_path.display(), e),
+            format!(
+                "Failed to write GitHub Actions workflow to {}: {}",
+                workflow_path.display(),
+                e
+            ),
         ))
     })?;
 
-    eprintln!("✅ Installed Sruja GitHub Actions workflow at {}", workflow_path.display());
+    eprintln!(
+        "✅ Installed Sruja GitHub Actions workflow at {}",
+        workflow_path.display()
+    );
     Ok(())
 }
 
@@ -300,13 +368,17 @@ fn install_pre_commit_hook(repo_path: &Path) -> Result<(), CliError> {
         fs::create_dir_all(&hooks_dir).map_err(|e| {
             CliError::Io(std::io::Error::new(
                 e.kind(),
-                format!("Failed to create hooks directory at {}: {}", hooks_dir.display(), e),
+                format!(
+                    "Failed to create hooks directory at {}: {}",
+                    hooks_dir.display(),
+                    e
+                ),
             ))
         })?;
     }
 
     let pre_commit_path = hooks_dir.join("pre-commit");
-    
+
     let hook_script = r#"#!/bin/bash
 # Sruja Pre-commit Hook
 set -e
@@ -329,7 +401,11 @@ fi
     fs::write(&pre_commit_path, hook_script).map_err(|e| {
         CliError::Io(std::io::Error::new(
             e.kind(),
-            format!("Failed to write pre-commit hook to {}: {}", pre_commit_path.display(), e),
+            format!(
+                "Failed to write pre-commit hook to {}: {}",
+                pre_commit_path.display(),
+                e
+            ),
         ))
     })?;
 
@@ -338,12 +414,15 @@ fi
     {
         use std::os::unix::fs::PermissionsExt;
         let mut perms = fs::metadata(&pre_commit_path)
-            .map_err(|e| CliError::Io(e))?
+            .map_err(CliError::Io)?
             .permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(&pre_commit_path, perms).map_err(|e| CliError::Io(e))?;
+        fs::set_permissions(&pre_commit_path, perms).map_err(CliError::Io)?;
     }
 
-    eprintln!("✅ Installed Sruja pre-commit hook at {}", pre_commit_path.display());
+    eprintln!(
+        "✅ Installed Sruja pre-commit hook at {}",
+        pre_commit_path.display()
+    );
     Ok(())
 }

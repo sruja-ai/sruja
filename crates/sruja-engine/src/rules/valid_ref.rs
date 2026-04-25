@@ -408,8 +408,8 @@ fn levenshtein(a: &str, b: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_language::Parser;
 
     /// Helper function to parse a program and run validation.

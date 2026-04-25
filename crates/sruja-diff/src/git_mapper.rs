@@ -31,7 +31,7 @@ pub fn architectural_velocity(
 ) -> Result<ArchitecturalVelocity, git2::Error> {
     let diffs = map_git_diff(repo_path, base_ref, head_ref, graph)?;
     let proposals = Proposal::load_all(repo_path).unwrap_or_default();
-    
+
     let approved_ids: HashSet<String> = proposals
         .iter()
         .filter(|p| p.status == ProposalStatus::Approved || p.status == ProposalStatus::Implemented)

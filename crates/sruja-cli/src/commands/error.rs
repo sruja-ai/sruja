@@ -34,23 +34,17 @@ pub enum CliError {
     #[error("Discovery error: {0}")]
     Discovery(String),
     #[error("Operation timed out: {message}")]
-    Timeout {
-        message: String,
-    },
+    Timeout { message: String },
     #[error("Violations detected (--fail-on matched)")]
     FailOnViolations,
     #[error("Sruja not initialized in this repository")]
-    NotInitialized {
-        path: String,
-    },
+    NotInitialized { path: String },
     #[error("Configuration directory .sruja/ is corrupted or files are missing")]
-    ConfigCorrupted {
-        message: String,
-    },
+    ConfigCorrupted { message: String },
 }
 
 impl CliError {
-    /// Creates a simple timeout error.
+    #[allow(dead_code)]
     pub fn timeout(message: impl Into<String>) -> Self {
         CliError::Timeout {
             message: message.into(),
@@ -75,7 +69,11 @@ impl CliError {
             .join("; ");
         CliError::Parse {
             file: file.into(),
-            message: if message.is_empty() { "Unknown parse error".into() } else { message },
+            message: if message.is_empty() {
+                "Unknown parse error".into()
+            } else {
+                message
+            },
             diagnostics,
             help: Some("Run 'sruja lint' for detailed error information.".into()),
             fix: Some("Check syntax in the mentioned file.".into()),
@@ -118,7 +116,7 @@ impl CliError {
         use crate::utils::colors;
         match self {
             CliError::Io(e) => {
-                eprintln!("{} {}: {}", colors::error("Error:"), "System IO error", e);
+                eprintln!("{} System IO error: {}", colors::error("Error:"), e);
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Ensure you have permissions to the directory.");
@@ -131,7 +129,12 @@ impl CliError {
                 help,
                 fix,
             } => {
-                eprintln!("{} {} in {}: {}", colors::error("Error:"), "Parse error", file, message);
+                eprintln!(
+                    "{} Parse error in {}: {}",
+                    colors::error("Error:"),
+                    file,
+                    message
+                );
                 for diag in diagnostics {
                     eprintln!("{}", sruja_diagnostics::format_diagnostic(diag));
                 }
@@ -145,10 +148,13 @@ impl CliError {
                 if let Some(h) = help {
                     eprintln!("  2. {}", h);
                 }
-                eprintln!("  3. Run the linter to verify fixes: {}", colors::info(format!("sruja lint {}", file)));
+                eprintln!(
+                    "  3. Run the linter to verify fixes: {}",
+                    colors::info(format!("sruja lint {}", file))
+                );
             }
             CliError::Validation { message, help, fix } => {
-                eprintln!("{} {}: {}", colors::error("Error:"), "Validation error", message);
+                eprintln!("{} Validation error: {}", colors::error("Error:"), message);
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 if let Some(f) = fix {
@@ -161,32 +167,42 @@ impl CliError {
                 }
             }
             CliError::Export(e) => {
-                eprintln!("{} {}: {}", colors::error("Error:"), "Export error", e);
+                eprintln!("{} Export error: {}", colors::error("Error:"), e);
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Ensure the target directory is writable.");
                 eprintln!("  2. If exporting to a file, verify the parent path exists.");
             }
             CliError::Json(e) => {
-                eprintln!("{} {}: {}", colors::error("Error:"), "JSON error", e);
+                eprintln!("{} JSON error: {}", colors::error("Error:"), e);
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Your cached evidence in .sruja/ may be out of date.");
-                eprintln!("  2. Run a full sync to refresh: {}", colors::info("sruja daily"));
+                eprintln!(
+                    "  2. Run a full sync to refresh: {}",
+                    colors::info("sruja daily")
+                );
             }
             CliError::Scan { message, help } => {
-                eprintln!("{} {}: {}", colors::error("Error:"), "Scan error", message);
+                eprintln!("{} Scan error: {}", colors::error("Error:"), message);
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 if let Some(h) = help {
                     eprintln!("  1. {}", h);
                 } else {
-                    eprintln!("  1. If this is a new repo, run: {}", colors::info("sruja start"));
+                    eprintln!(
+                        "  1. If this is a new repo, run: {}",
+                        colors::info("sruja start")
+                    );
                 }
                 eprintln!("  2. Ensure your .srujaignore is not excluding all source files.");
             }
             CliError::Timeout { message } => {
-                eprintln!("{} {}: {}", colors::error("Error:"), "Operation timed out", message);
+                eprintln!(
+                    "{} Operation timed out: {}",
+                    colors::error("Error:"),
+                    message
+                );
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. The project may be too large for a single scan pass.");
@@ -194,28 +210,51 @@ impl CliError {
                 eprintln!("  3. If on a slow disk, try increasing the timeout via SRUJA_TIMEOUT environment variable.");
             }
             CliError::FailOnViolations => {
-                eprintln!("{} {}", colors::error("Error:"), "Strict check failed: architecture violations detected.");
+                eprintln!(
+                    "{} Strict check failed: architecture violations detected.",
+                    colors::error("Error:")
+                );
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Review violations in the output above.");
-                eprintln!("  2. To ignore known violations, run: {}", colors::info("sruja baseline"));
+                eprintln!(
+                    "  2. To ignore known violations, run: {}",
+                    colors::info("sruja baseline")
+                );
             }
             CliError::NotInitialized { path } => {
-                eprintln!("{} Sruja is not initialized in {}", colors::error("Error:"), path);
+                eprintln!(
+                    "{} Sruja is not initialized in {}",
+                    colors::error("Error:"),
+                    path
+                );
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Initialize Sruja to get started: {}", colors::success("sruja start"));
+                eprintln!(
+                    "  1. Initialize Sruja to get started: {}",
+                    colors::success("sruja start")
+                );
                 eprintln!("  2. This will create .sruja/ and detect your architecture.");
             }
             CliError::ConfigCorrupted { message } => {
-                eprintln!("{} Configuration corrupted: {}", colors::error("Error:"), message);
+                eprintln!(
+                    "{} Configuration corrupted: {}",
+                    colors::error("Error:"),
+                    message
+                );
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Attempt to repair by running a sync: {}", colors::info("sruja daily"));
-                eprintln!("  2. If that fails, re-initialize (Caution: overwrites changes): {}", colors::warning("sruja start --force"));
+                eprintln!(
+                    "  1. Attempt to repair by running a sync: {}",
+                    colors::info("sruja daily")
+                );
+                eprintln!(
+                    "  2. If that fails, re-initialize (Caution: overwrites changes): {}",
+                    colors::warning("sruja start --force")
+                );
             }
             CliError::Discovery(message) => {
-                eprintln!("{} {}: {}", colors::error("Error:"), "Discovery error", message);
+                eprintln!("{} Discovery error: {}", colors::error("Error:"), message);
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Ensure the repository root is correct.");

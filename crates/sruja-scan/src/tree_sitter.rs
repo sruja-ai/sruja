@@ -6,9 +6,9 @@
 //! - Export statements (public interfaces)
 //! - Function and class definitions (components)
 
+mod classifier;
 mod detector;
 mod languages;
-mod classifier;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -204,7 +204,8 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             );
         }
 
-        let (kind, classification_metadata) = infer_node_kind(parsed, path, content.as_str(), &engine);
+        let (kind, classification_metadata) =
+            infer_node_kind(parsed, path, content.as_str(), &engine);
         let confidence = classification_metadata
             .get("classification.confidence")
             .and_then(|c| c.parse::<u8>().ok());
@@ -514,10 +515,13 @@ fn infer_node_kind(
     };
 
     let (kind, confidence, signals) = engine.classify(&ctx);
-    
+
     let mut metadata = std::collections::HashMap::new();
-    metadata.insert("classification.confidence".to_string(), confidence.to_string());
-    
+    metadata.insert(
+        "classification.confidence".to_string(),
+        confidence.to_string(),
+    );
+
     if !signals.is_empty() {
         let signal_names: Vec<String> = signals.iter().map(|s| s.name.to_string()).collect();
         metadata.insert("classification.signals".to_string(), signal_names.join(","));

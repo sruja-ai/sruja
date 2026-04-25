@@ -672,7 +672,6 @@ pub struct Requirement {
     pub tags: Vec<String>,
 }
 
-
 /// State machine definition (nested inside element body)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StateMachine {
@@ -690,9 +689,9 @@ pub struct StateTransition {
     pub location: SourceLocation,
     pub from: String,
     pub to: String,
-    pub event: String,             // The trigger event name
-    pub guard: Option<String>,     // Pre-condition expression (string)
-    pub action: Option<String>,    // Side-effect to execute
+    pub event: String,          // The trigger event name
+    pub guard: Option<String>,  // Pre-condition expression (string)
+    pub action: Option<String>, // Side-effect to execute
     pub description: Option<String>,
 }
 
@@ -700,7 +699,7 @@ pub struct StateTransition {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Contract {
     pub location: SourceLocation,
-    pub name: String,              // e.g. "POST /payments"
+    pub name: String, // e.g. "POST /payments"
     pub description: Option<String>,
     pub inputs: Vec<ContractField>,
     pub outputs: Vec<ContractField>,
@@ -712,13 +711,13 @@ pub struct Contract {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContractField {
     pub name: String,
-    pub spec: String,              // Free-text type/validation spec
+    pub spec: String, // Free-text type/validation spec
 }
 
 /// An error response in a contract
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContractError {
-    pub code: String,              // "400", "409", etc.
+    pub code: String, // "400", "409", etc.
     pub description: String,
 }
 
@@ -734,7 +733,6 @@ pub struct Adr {
     pub consequences: Option<String>,
     pub affects: Vec<String>,
 }
-
 
 /// Policy definition
 #[derive(Debug, Clone, PartialEq, Eq)]

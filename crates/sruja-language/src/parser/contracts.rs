@@ -1,25 +1,30 @@
 //! API contract parser.
 
 use nom::{
-    bytes::complete::tag, character::complete::char, combinator::map, multi::many0,
-    sequence::{delimited, preceded}, IResult, Parser,
+    bytes::complete::tag,
+    character::complete::char,
+    combinator::map,
+    multi::many0,
+    sequence::{delimited, preceded},
+    IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
-use crate::ast::{Contract, ContractError, ContractField};
 use super::primitives::{parse_string, ws, ws0, ws1};
+use crate::ast::{Contract, ContractError, ContractField};
 
 pub(crate) fn parse_contract(input: &str) -> IResult<&str, Contract> {
     let (input, _) = tag("contract").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, name) = parse_string(input)?;
     let (input, _) = ws0(input)?;
-    
+
     let (input, body) = delimited(
         char('{'),
         many0(preceded(ws, parse_contract_item)),
         preceded(ws0, char('}')),
-    ).parse(input)?;
+    )
+    .parse(input)?;
 
     let mut description = None;
     let mut inputs = Vec::new();
@@ -62,12 +67,28 @@ enum ContractItem {
 fn parse_contract_item(input: &str) -> IResult<&str, ContractItem> {
     use nom::branch::alt;
     alt((
-        map(preceded((tag("description"), ws1), parse_string), ContractItem::Description),
-        map(preceded((tag("input"), ws0), parse_field_block), ContractItem::Input),
-        map(preceded((tag("output"), ws0), parse_field_block), ContractItem::Output),
-        map(preceded((tag("error"), ws0), parse_error_block), ContractItem::Error),
-        map(preceded((tag("constraint"), ws1), parse_string), ContractItem::Constraint),
-    )).parse(input)
+        map(
+            preceded((tag("description"), ws1), parse_string),
+            ContractItem::Description,
+        ),
+        map(
+            preceded((tag("input"), ws0), parse_field_block),
+            ContractItem::Input,
+        ),
+        map(
+            preceded((tag("output"), ws0), parse_field_block),
+            ContractItem::Output,
+        ),
+        map(
+            preceded((tag("error"), ws0), parse_error_block),
+            ContractItem::Error,
+        ),
+        map(
+            preceded((tag("constraint"), ws1), parse_string),
+            ContractItem::Constraint,
+        ),
+    ))
+    .parse(input)
 }
 
 fn parse_field_block(input: &str) -> IResult<&str, Vec<ContractField>> {
@@ -75,7 +96,8 @@ fn parse_field_block(input: &str) -> IResult<&str, Vec<ContractField>> {
         char('{'),
         many0(preceded(ws, parse_contract_field)),
         preceded(ws0, char('}')),
-    ).parse(input)
+    )
+    .parse(input)
 }
 
 fn parse_contract_field(input: &str) -> IResult<&str, ContractField> {
@@ -91,7 +113,8 @@ fn parse_error_block(input: &str) -> IResult<&str, Vec<ContractError>> {
         char('{'),
         many0(preceded(ws, parse_contract_error)),
         preceded(ws0, char('}')),
-    ).parse(input)
+    )
+    .parse(input)
 }
 
 fn parse_contract_error(input: &str) -> IResult<&str, ContractError> {

@@ -145,7 +145,10 @@ pub(crate) fn element_kind_for_node(
             sruja_language::ElementKind::Component,
             Some("module".to_string()),
         ),
-        NodeKind::Custom(_) => (sruja_language::ElementKind::Component, Some("custom".to_string())),
+        NodeKind::Custom(_) => (
+            sruja_language::ElementKind::Component,
+            Some("custom".to_string()),
+        ),
     }
 }
 
@@ -295,19 +298,26 @@ pub(crate) fn build_draft_program_from_graph(
     for node in &nodes {
         if let Some(path_str) = &node.path {
             let normalized = path_str.replace('\\', "/");
-            let parts: Vec<&str> = normalized.split('/').filter(|p| !p.is_empty() && *p != "." && *p != "tmp" && *p != "node_modules").collect();
+            let parts: Vec<&str> = normalized
+                .split('/')
+                .filter(|p| !p.is_empty() && *p != "." && *p != "tmp" && *p != "node_modules")
+                .collect();
             if parts.is_empty() {
                 ungrouped.push(node);
                 continue;
             }
-            let domain_name = if (parts[0] == "crates" || parts[0] == "packages" || parts[0] == "services" || parts[0] == "apps") && parts.len() > 1 {
-                parts[1].to_string()
-            } else if parts[0] == "src" && parts.len() > 2 {
+            let domain_name = if (parts[0] == "crates"
+                || parts[0] == "packages"
+                || parts[0] == "services"
+                || parts[0] == "apps"
+                || parts[0] == "src")
+                && parts.len() > 1
+            {
                 parts[1].to_string()
             } else {
                 parts[0].to_string()
             };
-            
+
             // Do not group high-level logical nodes like databases into directory containers
             if node.kind == NodeKind::Database || node.kind == NodeKind::ExternalApi {
                 ungrouped.push(node);
@@ -339,7 +349,10 @@ pub(crate) fn build_draft_program_from_graph(
                 .or_else(|| Some("Scanned from repository".to_string())),
             technology: match kind {
                 sruja_language::ElementKind::Container | sruja_language::ElementKind::Database => {
-                    let mut tech = node.technology.clone().unwrap_or_else(|| "Unknown".to_string());
+                    let mut tech = node
+                        .technology
+                        .clone()
+                        .unwrap_or_else(|| "Unknown".to_string());
                     if tech == "Unknown" {
                         if let Some(path) = &node.path {
                             let normalized = path.replace('\\', "/");
@@ -380,7 +393,9 @@ pub(crate) fn build_draft_program_from_graph(
         let domain_nodes = domains.get(&key).unwrap();
         if domain_nodes.len() == 1 {
             let node = domain_nodes[0];
-            system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(create_node_def(node))));
+            system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
+                create_node_def(node),
+            )));
             qualified_id_map.insert(node.id.clone(), id_map.get(&node.id).unwrap().clone());
             continue;
         }
@@ -388,9 +403,14 @@ pub(crate) fn build_draft_program_from_graph(
         let container_name = sanitize_identifier(&format!("{}Group", key));
         let mut container_items = Vec::new();
         for node in domain_nodes {
-            container_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(create_node_def(node))));
+            container_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
+                create_node_def(node),
+            )));
             let local_name = id_map.get(&node.id).unwrap().clone();
-            qualified_id_map.insert(node.id.clone(), format!("{}.{}", container_name, local_name));
+            qualified_id_map.insert(
+                node.id.clone(),
+                format!("{}.{}", container_name, local_name),
+            );
         }
 
         let container_def = sruja_language::ElementDef {
@@ -409,11 +429,15 @@ pub(crate) fn build_draft_program_from_graph(
                 }),
             },
         };
-        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(container_def)));
+        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
+            container_def,
+        )));
     }
 
     for node in ungrouped {
-        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(create_node_def(node))));
+        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
+            create_node_def(node),
+        )));
         qualified_id_map.insert(node.id.clone(), id_map.get(&node.id).unwrap().clone());
     }
 
@@ -1256,7 +1280,11 @@ pub fn calculate_scan_quality_internal(graph: &Graph) -> Option<ScanQuality> {
     // Confidence Score Calculation
     // Uses per-node confidence from ConfidenceScorer (technology, connectivity, path heuristics)
     // plus bonus for manifest discoveries and penalty for orphans.
-    let nodes_with_confidence = graph.nodes.iter().filter(|n| n.confidence.unwrap_or(0) > 0).count();
+    let nodes_with_confidence = graph
+        .nodes
+        .iter()
+        .filter(|n| n.confidence.unwrap_or(0) > 0)
+        .count();
     let coverage_percent = if !graph.nodes.is_empty() {
         ((nodes_with_confidence as f32 / graph.nodes.len() as f32) * 100.0) as u8
     } else {

@@ -146,8 +146,8 @@ fn validate_element_sources(
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_language::Parser;
 
     fn validate_program(file: &str, input: &str) -> Vec<Diagnostic> {

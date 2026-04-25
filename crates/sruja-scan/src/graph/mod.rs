@@ -614,7 +614,12 @@ mod tests {
     fn find_path_returns_correct_sequence() {
         let mut graph = Graph::default();
         graph.nodes = vec![node("a"), node("b"), node("c"), node("d")];
-        graph.edges = vec![edge("a", "b"), edge("b", "c"), edge("c", "d"), edge("a", "c")];
+        graph.edges = vec![
+            edge("a", "b"),
+            edge("b", "c"),
+            edge("c", "d"),
+            edge("a", "c"),
+        ];
 
         let path = graph.find_path("a", "d").expect("path should exist");
         assert_eq!(path, vec!["a", "c", "d"]);

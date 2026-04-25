@@ -104,8 +104,8 @@ fn normalize_governance_kind(kind: &ElementKind) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_language::Parser;
 
     fn validate_program(input: &str) -> Vec<Diagnostic> {

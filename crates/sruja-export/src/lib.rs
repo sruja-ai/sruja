@@ -5,10 +5,10 @@
 pub mod context;
 pub mod d2;
 pub mod dsl;
+pub mod html;
 pub mod json;
 pub mod markdown;
 pub mod mermaid;
-pub mod html;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod vector;
 

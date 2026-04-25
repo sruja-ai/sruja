@@ -1,9 +1,9 @@
 //! Shared violation infrastructure for CLI commands.
 //! Unifies fingerprinting, categorization, and reporting across review, check, sync, and watch.
 
-use std::path::Path;
 use sruja_diff::{SourceRef, Violation, ViolationKind};
 use sruja_scan::is_path_production_relevant as scan_prod_relevant;
+use std::path::Path;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ViolationSummary {
@@ -65,9 +65,7 @@ pub fn is_production_relevant(v: &Violation) -> bool {
     paths.iter().any(|p| scan_prod_relevant(p))
 }
 
-pub fn categorize_violations(
-    violations: &[Violation],
-) -> (Vec<String>, Vec<String>, Vec<String>) {
+pub fn categorize_violations(violations: &[Violation]) -> (Vec<String>, Vec<String>, Vec<String>) {
     let mut new_components = Vec::new();
     let mut missing_components = Vec::new();
     let mut drifted_dependencies = Vec::new();
@@ -167,7 +165,9 @@ pub fn generate_suggestions(
         return suggestions;
     }
 
-    let baseline_hint = baseline_path.and_then(|p| p.to_str()).unwrap_or("repo.sruja");
+    let baseline_hint = baseline_path
+        .and_then(|p| p.to_str())
+        .unwrap_or("repo.sruja");
     if truth_status == "drifted" {
         suggestions.push(format!(
             "Review drift: sruja drift -r {} -a {}",
@@ -181,12 +181,17 @@ pub fn generate_suggestions(
         suggestions.push("Architecture is in sync. Keep running 'sruja daily'.".to_string());
     }
 
-    let has_god = violations.iter().any(|v| v.kind == ViolationKind::GodModule);
+    let has_god = violations
+        .iter()
+        .any(|v| v.kind == ViolationKind::GodModule);
     if has_god {
         suggestions.push("Consider splitting god modules into smaller services.".to_string());
     }
 
-    suggestions.push(format!("Keep live feedback while coding with: sruja watch -r {}", repo_root));
+    suggestions.push(format!(
+        "Keep live feedback while coding with: sruja watch -r {}",
+        repo_root
+    ));
 
     suggestions
 }

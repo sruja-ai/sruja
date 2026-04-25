@@ -429,8 +429,8 @@ fn generate_orphan_suggestions(fully_qualified_name: &str, element: &ElementDef)
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_diagnostics::SourceLocation;
     use sruja_language::{Parser, QualifiedIdent, Relation};
 

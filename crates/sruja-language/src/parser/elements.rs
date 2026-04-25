@@ -12,9 +12,9 @@ use nom::{
 use sruja_diagnostics::SourceLocation;
 
 use crate::ast::{
-    Criticality, ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem,
-    ElementKind, ElementKindDef, ScaleBlock, SloAvailability, SloBlock, SloCurrent,
-    SloErrorRate, SloLatency, SloThroughput, SourceBinding, SourceKind, StyleBlock,
+    Criticality, ElementAssignment, ElementDef, ElementDefBody, ElementDefBodyItem, ElementKind,
+    ElementKindDef, ScaleBlock, SloAvailability, SloBlock, SloCurrent, SloErrorRate, SloLatency,
+    SloThroughput, SourceBinding, SourceKind, StyleBlock,
 };
 
 use super::assignments::parse_scenario_step;

@@ -142,8 +142,10 @@ impl KnowledgeGraph {
     fn query_why_entity(&self, node_id: &str, question: &str) -> Result<QueryResult, QueryError> {
         let node = self.nodes.get(node_id).ok_or(QueryError::NoResults)?;
 
-        let upstream: Vec<&ArchitectureEdge> = self.edges.iter().filter(|e| e.target == node_id).collect();
-        let downstream: Vec<&ArchitectureEdge> = self.edges.iter().filter(|e| e.source == node_id).collect();
+        let upstream: Vec<&ArchitectureEdge> =
+            self.edges.iter().filter(|e| e.target == node_id).collect();
+        let downstream: Vec<&ArchitectureEdge> =
+            self.edges.iter().filter(|e| e.source == node_id).collect();
 
         let mut answer_parts = Vec::new();
         let mut evidence = Vec::new();
@@ -201,10 +203,7 @@ impl KnowledgeGraph {
 
         let decisions = self.get_decisions_for_node(node_id);
         if !decisions.is_empty() {
-            answer_parts.push(format!(
-                "has {} linked decision(s)",
-                decisions.len()
-            ));
+            answer_parts.push(format!("has {} linked decision(s)", decisions.len()));
             for d in decisions.iter().take(3) {
                 evidence.push(Evidence {
                     kind: EvidenceKind::Decision,
@@ -228,7 +227,11 @@ impl KnowledgeGraph {
         })
     }
 
-    fn query_why_tech(&self, tech_patterns: &[String], question: &str) -> Result<QueryResult, QueryError> {
+    fn query_why_tech(
+        &self,
+        tech_patterns: &[String],
+        question: &str,
+    ) -> Result<QueryResult, QueryError> {
         for tech in tech_patterns {
             let nodes = self.find_nodes_by_technology(tech);
             if !nodes.is_empty() {
@@ -300,8 +303,10 @@ impl KnowledgeGraph {
     fn query_connections(&self, node_id: &str, question: &str) -> Result<QueryResult, QueryError> {
         let node = self.nodes.get(node_id).ok_or(QueryError::NoResults)?;
 
-        let downstream: Vec<&ArchitectureEdge> = self.edges.iter().filter(|e| e.source == node_id).collect();
-        let upstream: Vec<&ArchitectureEdge> = self.edges.iter().filter(|e| e.target == node_id).collect();
+        let downstream: Vec<&ArchitectureEdge> =
+            self.edges.iter().filter(|e| e.source == node_id).collect();
+        let upstream: Vec<&ArchitectureEdge> =
+            self.edges.iter().filter(|e| e.target == node_id).collect();
 
         let mut parts = Vec::new();
         let mut evidence = Vec::new();
@@ -311,15 +316,15 @@ impl KnowledgeGraph {
                 .iter()
                 .filter_map(|e| {
                     self.nodes.get(&e.target).map(|n| {
-                        format!(
-                            "{} ({})",
-                            n.label,
-                            e.label.as_deref().unwrap_or_default()
-                        )
+                        format!("{} ({})", n.label, e.label.as_deref().unwrap_or_default())
                     })
                 })
                 .collect();
-            parts.push(format!("{} connects to: {}", node.label, targets.join(", ")));
+            parts.push(format!(
+                "{} connects to: {}",
+                node.label,
+                targets.join(", ")
+            ));
         }
 
         if !upstream.is_empty() {
@@ -327,11 +332,7 @@ impl KnowledgeGraph {
                 .iter()
                 .filter_map(|e| {
                     self.nodes.get(&e.source).map(|n| {
-                        format!(
-                            "{} ({})",
-                            n.label,
-                            e.label.as_deref().unwrap_or_default()
-                        )
+                        format!("{} ({})", n.label, e.label.as_deref().unwrap_or_default())
                     })
                 })
                 .collect();
@@ -343,7 +344,12 @@ impl KnowledgeGraph {
                 evidence.push(Evidence {
                     kind: EvidenceKind::Edge,
                     reference: e.source_ref.summary(),
-                    excerpt: format_edge_evidence(&node.label, &e.kind, &tgt.label, e.label.as_deref()),
+                    excerpt: format_edge_evidence(
+                        &node.label,
+                        &e.kind,
+                        &tgt.label,
+                        e.label.as_deref(),
+                    ),
                 });
             }
         }
@@ -367,10 +373,7 @@ impl KnowledgeGraph {
         let downstream_count = self.edges.iter().filter(|e| e.source == node_id).count();
         let upstream_count = self.edges.iter().filter(|e| e.target == node_id).count();
 
-        let mut answer = format!(
-            "'{}' is a {}",
-            node.label, node.kind
-        );
+        let mut answer = format!("'{}' is a {}", node.label, node.kind);
         if let Some(tech) = &node.technology {
             answer = format!("{} using {}", answer, tech);
         }
@@ -743,7 +746,7 @@ mod tests {
         assert!(evidence.len() < long_decision.len() + 50);
     }
 
-#[test]
+    #[test]
     fn test_format_node_evidence() {
         let mut node = ArchitectureNode::default();
         node.id = "svc".to_string();

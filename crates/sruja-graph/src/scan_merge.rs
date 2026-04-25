@@ -124,7 +124,9 @@ pub fn merge_program_into_graph(
             sruja_language::ast::ElementKind::Database => sruja_scan::NodeKind::Database,
             sruja_language::ast::ElementKind::Queue => sruja_scan::NodeKind::Queue,
             sruja_language::ast::ElementKind::Requirement => sruja_scan::NodeKind::Module,
-            sruja_language::ast::ElementKind::Custom(ref s) => sruja_scan::NodeKind::Custom(s.clone()),
+            sruja_language::ast::ElementKind::Custom(ref s) => {
+                sruja_scan::NodeKind::Custom(s.clone())
+            }
             _ => sruja_scan::NodeKind::Module,
         };
 
@@ -132,8 +134,16 @@ pub fn merge_program_into_graph(
             id: fqn,
             kind: node_kind,
             label: elem.assignment.title.unwrap_or(elem.assignment.name),
-            technology: elem.assignment.body.as_ref().and_then(|b| b.technology.clone()),
-            description: elem.assignment.body.as_ref().and_then(|b| b.description.clone()),
+            technology: elem
+                .assignment
+                .body
+                .as_ref()
+                .and_then(|b| b.technology.clone()),
+            description: elem
+                .assignment
+                .body
+                .as_ref()
+                .and_then(|b| b.description.clone()),
             metadata: std::collections::HashMap::new(),
             source: source.clone(),
             created_at: now,
@@ -212,9 +222,6 @@ pub fn merge_program_into_graph(
 
     count
 }
-
-
-
 
 #[cfg(test)]
 mod tests {

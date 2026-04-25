@@ -10,15 +10,15 @@ use nom::{
 };
 use sruja_diagnostics::SourceLocation;
 
-use crate::ast::{NestingRule, SchemaBlock};
 use super::primitives::{parse_identifier, parse_string, parse_string_array, ws, ws0, ws1};
+use crate::ast::{NestingRule, SchemaBlock};
 
 pub(crate) fn parse_schema(input: &str) -> IResult<&str, SchemaBlock> {
     let (input, _) = tag("schema").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, name) = parse_string(input)?;
     let (input, _) = ws0(input)?;
-    
+
     let (input, (node_kinds, edge_kinds, nesting)) = delimited(
         char('{'),
         (

@@ -95,8 +95,8 @@ fn check_nested_elements<F>(
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_diagnostics::SourceLocation;
     use sruja_language::ElementDefBodyItem;
     use sruja_language::ElementKind;

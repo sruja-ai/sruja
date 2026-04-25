@@ -171,7 +171,6 @@ pub(crate) fn parse_adr_assignment(input: &str) -> IResult<&str, Adr> {
         }
     }
 
-
     Ok((input, adr))
 }
 
@@ -550,7 +549,6 @@ pub(crate) fn parse_adr(input: &str) -> IResult<&str, Adr> {
             }
         }
     }
-
 
     Ok((input, adr))
 }

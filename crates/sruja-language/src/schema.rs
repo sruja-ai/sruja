@@ -1,7 +1,7 @@
 //! Domain Schema representation and logic.
 
-use std::collections::{HashMap, HashSet};
 use crate::ast::SchemaBlock;
+use std::collections::{HashMap, HashSet};
 
 /// Represents a domain schema with allowed node kinds, edge kinds, and nesting rules.
 #[derive(Debug, Clone, Default)]
@@ -60,22 +60,52 @@ impl DomainSchema {
     pub fn architecture() -> Self {
         let mut schema = Self::new("architecture");
         schema.node_kinds = [
-            "person", "system", "container", "component", "database", "queue", "service"
-        ].iter().map(|s| s.to_string()).collect();
-        
+            "person",
+            "system",
+            "container",
+            "component",
+            "database",
+            "queue",
+            "service",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
         schema.edge_kinds = [
-            "depends_on", "calls", "reads_from", "writes_to", "publishes_to", "subscribes_to", "owns", "contains", "uses"
-        ].iter().map(|s| s.to_string()).collect();
+            "depends_on",
+            "calls",
+            "reads_from",
+            "writes_to",
+            "publishes_to",
+            "subscribes_to",
+            "owns",
+            "contains",
+            "uses",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
 
         // C4 nesting rules
         let mut nesting = HashMap::new();
-        nesting.insert("system".to_string(), [
-            "container".to_string(), "database".to_string(), "queue".to_string(), "component".to_string()
-        ].iter().cloned().collect());
-        nesting.insert("container".to_string(), [
-            "component".to_string()
-        ].iter().cloned().collect());
-        
+        nesting.insert(
+            "system".to_string(),
+            [
+                "container".to_string(),
+                "database".to_string(),
+                "queue".to_string(),
+                "component".to_string(),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        );
+        nesting.insert(
+            "container".to_string(),
+            ["component".to_string()].iter().cloned().collect(),
+        );
+
         schema.nesting_rules = nesting;
         schema
     }

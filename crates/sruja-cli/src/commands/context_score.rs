@@ -28,7 +28,7 @@ pub async fn context_score(
     let baseline_path = crate::utils::architecture_path::resolve_architecture_path(repo_path);
     let kg = if let Some(ref path) = baseline_path {
         let content = std::fs::read_to_string(path)?;
-        let mut parser = sruja_language::Parser::new(path.to_string_lossy().to_string());
+        let parser = sruja_language::Parser::new(path.to_string_lossy().to_string());
         let program = parser.parse(&content).map_err(|diags| {
             CliError::parse_with_diagnostics(path.to_string_lossy().to_string(), diags)
         })?;
@@ -142,29 +142,24 @@ fn print_context_score(score: &ContextScore) {
         } else {
             colors::error(&pct_str)
         };
-        println!(
-            "│  {:<24} {} {}  │",
-            dim.name, pct_colored, bar
-        );
+        println!("│  {:<24} {} {}  │", dim.name, pct_colored, bar);
     }
 
     println!("│                                                      │");
 
     // Quick wins
     if !score.quick_wins.is_empty() {
-        println!("│  {} Quick wins to improve:                      │", colors::style("⚡").bold());
+        println!(
+            "│  {} Quick wins to improve:                      │",
+            colors::style("⚡").bold()
+        );
         for (i, qw) in score.quick_wins.iter().enumerate() {
             let action = if qw.action.len() > 42 {
                 format!("{}...", &qw.action[..39])
             } else {
                 qw.action.clone()
             };
-            println!(
-                "│  {}. {} (→ +{} pts) │",
-                i + 1,
-                action,
-                qw.impact_points
-            );
+            println!("│  {}. {} (→ +{} pts) │", i + 1, action, qw.impact_points);
         }
     }
 

@@ -1,4 +1,4 @@
-use console::{style as console_style, StyledObject, colors_enabled};
+use console::{colors_enabled, style as console_style, StyledObject};
 use std::time::Duration;
 
 pub fn style<T: std::fmt::Display>(text: T) -> StyledObject<T> {
@@ -7,7 +7,9 @@ pub fn style<T: std::fmt::Display>(text: T) -> StyledObject<T> {
 
 /// Returns true if colors are enabled (respects NO_COLOR, terminal detection, etc.)
 pub fn is_color_enabled() -> bool {
-    colors_enabled() && std::env::var("NO_COLOR").is_err() && std::env::var("SRUJA_NO_COLOR").is_err()
+    colors_enabled()
+        && std::env::var("NO_COLOR").is_err()
+        && std::env::var("SRUJA_NO_COLOR").is_err()
 }
 
 /// Returns a red styled object for error messages.
@@ -79,7 +81,7 @@ pub fn severity_icon(severity: &str) -> String {
 pub fn health_bar(score: u8, width: usize) -> String {
     let filled_len = (score as f32 / 100.0 * width as f32).round() as usize;
     let empty_len = width.saturating_sub(filled_len);
-    
+
     let bar_color = if score >= 90 {
         success("█")
     } else if score >= 70 {
@@ -92,7 +94,7 @@ pub fn health_bar(score: u8, width: usize) -> String {
 
     let filled = bar_color.to_string().repeat(filled_len);
     let empty = dim("░").to_string().repeat(empty_len);
-    
+
     let score_styled = if score >= 90 {
         success(score)
     } else if score >= 70 {
@@ -133,9 +135,14 @@ pub fn badge(text: &str, color: &str) -> String {
 
 pub fn sparkline(scores: &[u8]) -> String {
     const BARS: &[char] = &[' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-    if scores.is_empty() { return String::new(); }
-    scores.iter().map(|&s| {
-        let idx = ((s as f32 / 100.0) * (BARS.len() - 1) as f32).round() as usize;
-        BARS[idx]
-    }).collect()
+    if scores.is_empty() {
+        return String::new();
+    }
+    scores
+        .iter()
+        .map(|&s| {
+            let idx = ((s as f32 / 100.0) * (BARS.len() - 1) as f32).round() as usize;
+            BARS[idx]
+        })
+        .collect()
 }

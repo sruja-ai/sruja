@@ -44,11 +44,13 @@ pub async fn intent_check(
     if strict {
         let graph_json = repo_path.join(".sruja").join("graph.json");
         if graph_json.exists() {
-            let previous_graph: sruja_scan::Graph = serde_json::from_str(&std::fs::read_to_string(graph_json)?)?;
+            let previous_graph: sruja_scan::Graph =
+                serde_json::from_str(&std::fs::read_to_string(graph_json)?)?;
             // 2. Load proposals
             let proposals = sruja_diff::Proposal::load_all(repo_path).unwrap_or_default();
             // 3. Detect unproposed changes
-            let unproposed = sruja_diff::detect_unproposed_changes(&previous_graph, &graph, &proposals);
+            let unproposed =
+                sruja_diff::detect_unproposed_changes(&previous_graph, &graph, &proposals);
             report.drifts.extend(unproposed);
             report.recompute_summary_and_score();
         }

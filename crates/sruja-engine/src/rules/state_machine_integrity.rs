@@ -4,7 +4,7 @@ use crate::DomainSchema;
 use std::collections::HashSet;
 
 use sruja_diagnostics::{Diagnostic, Severity};
-use sruja_language::{ElementDefBodyItem, Program, TopLevelItem, StateMachine};
+use sruja_language::{ElementDefBodyItem, Program, StateMachine, TopLevelItem};
 
 use crate::validator::Rule;
 
@@ -56,11 +56,16 @@ fn validate_state_machine(sm: &StateMachine, diagnostics: &mut Vec<Diagnostic>) 
     }
 
     // E311: Initial state not found in any transition
-    if !sm.transitions.iter().any(|t| t.from == sm.initial_state) && !sm.terminal_states.contains(&sm.initial_state) {
+    if !sm.transitions.iter().any(|t| t.from == sm.initial_state)
+        && !sm.terminal_states.contains(&sm.initial_state)
+    {
         diagnostics.push(Diagnostic::new(
             sruja_diagnostics::codes::CODE_SM_INITIAL_NOT_FOUND,
             Severity::Error,
-            format!("Initial state '{}' has no outgoing transitions and is not a terminal state.", sm.initial_state),
+            format!(
+                "Initial state '{}' has no outgoing transitions and is not a terminal state.",
+                sm.initial_state
+            ),
             sm.location.clone(),
         ));
     }
@@ -71,7 +76,10 @@ fn validate_state_machine(sm: &StateMachine, diagnostics: &mut Vec<Diagnostic>) 
             diagnostics.push(Diagnostic::new(
                 sruja_diagnostics::codes::CODE_SM_TERMINAL_HAS_OUTGOING,
                 Severity::Error,
-                format!("Terminal state '{}' cannot have outgoing transitions.", terminal),
+                format!(
+                    "Terminal state '{}' cannot have outgoing transitions.",
+                    terminal
+                ),
                 sm.location.clone(),
             ));
         }
@@ -84,7 +92,10 @@ fn validate_state_machine(sm: &StateMachine, diagnostics: &mut Vec<Diagnostic>) 
             diagnostics.push(Diagnostic::new(
                 sruja_diagnostics::codes::CODE_SM_UNREACHABLE_STATE,
                 Severity::Warning,
-                format!("State '{}' is unreachable from initial state '{}'.", state, sm.initial_state),
+                format!(
+                    "State '{}' is unreachable from initial state '{}'.",
+                    state, sm.initial_state
+                ),
                 sm.location.clone(),
             ));
         }
@@ -93,10 +104,13 @@ fn validate_state_machine(sm: &StateMachine, diagnostics: &mut Vec<Diagnostic>) 
     // W312: Dead states (non-terminal with no outgoing)
     for state in &all_states {
         if !sm.terminal_states.contains(state) && !sm.transitions.iter().any(|t| &t.from == state) {
-             diagnostics.push(Diagnostic::new(
+            diagnostics.push(Diagnostic::new(
                 sruja_diagnostics::codes::CODE_SM_DEAD_STATE,
                 Severity::Warning,
-                format!("State '{}' is a dead end (non-terminal with no outgoing transitions).", state),
+                format!(
+                    "State '{}' is a dead end (non-terminal with no outgoing transitions).",
+                    state
+                ),
                 sm.location.clone(),
             ));
         }
@@ -107,7 +121,7 @@ fn validate_state_machine(sm: &StateMachine, diagnostics: &mut Vec<Diagnostic>) 
     for t in &sm.transitions {
         let key = (t.from.clone(), t.event.clone());
         if seen_transitions.contains(&key) {
-             diagnostics.push(Diagnostic::new(
+            diagnostics.push(Diagnostic::new(
                 sruja_diagnostics::codes::CODE_SM_DUPLICATE_TRANSITION,
                 Severity::Warning,
                 format!("Duplicate transition from '{}' on event '{}'. This makes the state machine non-deterministic.", t.from, t.event),
@@ -120,7 +134,7 @@ fn validate_state_machine(sm: &StateMachine, diagnostics: &mut Vec<Diagnostic>) 
 
     // W314: No terminal states
     if sm.terminal_states.is_empty() {
-         diagnostics.push(Diagnostic::new(
+        diagnostics.push(Diagnostic::new(
             sruja_diagnostics::codes::CODE_SM_NO_TERMINAL,
             Severity::Warning,
             format!("State machine '{}' has no terminal states.", sm.name),
@@ -129,7 +143,10 @@ fn validate_state_machine(sm: &StateMachine, diagnostics: &mut Vec<Diagnostic>) 
     }
 }
 
-fn compute_reachable(initial: &str, transitions: &[sruja_language::StateTransition]) -> HashSet<String> {
+fn compute_reachable(
+    initial: &str,
+    transitions: &[sruja_language::StateTransition],
+) -> HashSet<String> {
     let mut reachable = HashSet::new();
     let mut stack = vec![initial.to_string()];
     reachable.insert(initial.to_string());

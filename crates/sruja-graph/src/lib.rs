@@ -22,15 +22,15 @@ pub mod treewidth;
 pub use centrality::{
     ArchitecturalHotspot, BridgeNode, CentralityAnalyzer, CentralityResult, HotspotRole, HubNode,
 };
+pub use context_score::{
+    compute_context_score, scan_external_context, ContextScore, DimensionScore,
+    ExternalContextSummary, QuickWin,
+};
 pub use coupling::{
     CouplingAnalyzer, CouplingResult, CouplingSummary, CouplingViolation, CouplingViolationType,
     ModuleCoupling, Zone,
 };
 pub use graph::KnowledgeGraph;
-pub use context_score::{
-    compute_context_score, scan_external_context, ContextScore, DimensionScore,
-    ExternalContextSummary, QuickWin,
-};
 pub use query::{PolicyViolation, QueryError, QueryResult};
 #[cfg(not(target_arch = "wasm32"))]
 pub use scan_merge::merge_scan_into_graph;

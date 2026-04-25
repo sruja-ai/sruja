@@ -427,6 +427,9 @@ fn status_json_includes_truth_and_baseline() {
     write_minimal_cargo_repo(repo.path());
     let repo_str = repo.path().to_str().expect("utf-8");
 
+    let (init_ok, _, init_stderr) = run_sruja(&["init", "-r", repo_str]);
+    assert!(init_ok, "init should succeed: stderr={}", init_stderr);
+
     let (success, stdout, stderr) = run_sruja(&["status", "-r", repo_str, "-f", "json"]);
 
     assert!(success, "status should succeed: stderr={}", stderr);
@@ -457,7 +460,10 @@ fn init_auto_generates_baseline() {
 
     assert!(success, "init --auto should succeed: stderr={}", stderr);
     assert!(repo.path().join(".sruja").exists());
-    assert!(repo.path().join("repo.sruja").exists(), "init --auto should generate repo.sruja baseline");
+    assert!(
+        repo.path().join("repo.sruja").exists(),
+        "init --auto should generate repo.sruja baseline"
+    );
 }
 
 #[test]
@@ -471,14 +477,17 @@ fn init_generates_prompt_file() {
         .join("skills/sruja-architecture/SKILL.md")
         .canonicalize()
         .expect("skill file exists");
-    
+
     std::env::set_var("SRUJA_SKILL_PATH", skill_path);
 
     let (success, _stdout, stderr) = run_sruja(&["init", "--prompt", "-r", repo_str]);
 
     assert!(success, "init --prompt should succeed: stderr={}", stderr);
     assert!(repo.path().join(".sruja").exists());
-    assert!(repo.path().join(".sruja/init_prompt.txt").exists(), "init --prompt should generate init_prompt.txt");
+    assert!(
+        repo.path().join(".sruja/init_prompt.txt").exists(),
+        "init --prompt should generate init_prompt.txt"
+    );
 }
 
 #[test]
@@ -837,15 +846,25 @@ fn compliance_report_json_succeeds() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
     let repo_str = repo.path().to_str().expect("utf-8");
-    let arch_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let arch_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
-    let (success, stdout, _stderr) = run_sruja(&["compliance", "-r", repo_str, "-a", &arch_str, "-f", "json"]);
+    let (success, stdout, _stderr) =
+        run_sruja(&["compliance", "-r", repo_str, "-a", &arch_str, "-f", "json"]);
 
     // compliance returns non-zero exit code if NonCompliant, which is expected here
-    // because the empty repo doesn't match the architecture. 
+    // because the empty repo doesn't match the architecture.
     // We want to verify it still produces a valid JSON report.
-    assert!(!success, "compliance should report non-compliance for empty repo vs architecture");
-    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON even on failure");
+    assert!(
+        !success,
+        "compliance should report non-compliance for empty repo vs architecture"
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(stdout.trim()).expect("valid JSON even on failure");
     assert!(parsed.get("status").is_some());
     assert!(parsed.get("health_score").is_some());
 }
@@ -854,7 +873,12 @@ fn compliance_report_json_succeeds() {
 fn explain_element_json_succeeds() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
-    let arch_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let arch_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
     let (success, stdout, stderr) = run_sruja(&["explain", "App", "--file", &arch_str, "--json"]);
 
@@ -873,7 +897,14 @@ fn why_question_succeeds() {
     // First sync to build the graph
     run_sruja(&["sync", "-r", repo_str]);
 
-    let (success, stdout, stderr) = run_sruja(&["why", "what does this repo do?", "-r", repo_str, "-f", "json"]);
+    let (success, stdout, stderr) = run_sruja(&[
+        "why",
+        "what does this repo do?",
+        "-r",
+        repo_str,
+        "-f",
+        "json",
+    ]);
 
     assert!(success, "why should succeed: stderr={}", stderr);
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
@@ -885,11 +916,18 @@ fn index_embeddings_succeeds() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);
     let repo_str = repo.path().to_str().expect("utf-8");
-    let arch_str = repo.path().join("arch.sruja").to_str().expect("utf-8").to_string();
+    let arch_str = repo
+        .path()
+        .join("arch.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
     let out_path = repo.path().join("vectors.json");
     let out_str = out_path.to_str().expect("utf-8");
 
-    let (success, _stdout, stderr) = run_sruja(&["index", "semantic", "-r", repo_str, "-a", &arch_str, "-o", out_str]);
+    let (success, _stdout, stderr) = run_sruja(&[
+        "index", "semantic", "-r", repo_str, "-a", &arch_str, "-o", out_str,
+    ]);
 
     assert!(success, "index should succeed: stderr={}", stderr);
     assert!(out_path.exists(), "vectors.json should be created");
@@ -949,7 +987,15 @@ fn focus_json_provides_briefing_for_file() {
     // Sync to create the graph
     run_sruja(&["sync", "-r", repo_str]);
 
-    let (success, stdout, stderr) = run_sruja(&["focus", "-r", repo_str, "--file", "src/lib.rs", "-f", "json"]);
+    let (success, stdout, stderr) = run_sruja(&[
+        "focus",
+        "-r",
+        repo_str,
+        "--file",
+        "src/lib.rs",
+        "-f",
+        "json",
+    ]);
 
     assert!(success, "focus should succeed: stderr={}", stderr);
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
@@ -965,16 +1011,31 @@ fn ingest_copies_file_to_context_dir() {
     let repo_str = repo.path().to_str().expect("utf-8");
 
     write_file(repo.path(), "adr.md", "# ADR 001\nDecision goes here.");
-    let adr_path = repo.path().join("adr.md").to_str().expect("utf-8").to_string();
+    let adr_path = repo
+        .path()
+        .join("adr.md")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
-    let (success, _stdout, stderr) = run_sruja(&["ingest", "-r", repo_str, &adr_path, "--category", "adr"]);
+    let (success, _stdout, stderr) =
+        run_sruja(&["ingest", "-r", repo_str, &adr_path, "--category", "adr"]);
 
     assert!(success, "ingest should succeed: stderr={}", stderr);
-    
+
     let dest_path = repo.path().join(".sruja/context/adr.md");
-    assert!(dest_path.exists(), "ingested file should exist in .sruja/context/");
-    
+    assert!(
+        dest_path.exists(),
+        "ingested file should exist in .sruja/context/"
+    );
+
     let content = std::fs::read_to_string(dest_path).expect("read ingested file");
-    assert!(content.contains("category: adr"), "ingested file should have front-matter");
-    assert!(content.contains("# ADR 001"), "ingested file should keep original content");
+    assert!(
+        content.contains("category: adr"),
+        "ingested file should have front-matter"
+    );
+    assert!(
+        content.contains("# ADR 001"),
+        "ingested file should keep original content"
+    );
 }

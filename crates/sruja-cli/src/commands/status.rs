@@ -1,9 +1,9 @@
 //! Status command: show repo health, baseline, and truth status.
 
-use std::path::Path;
 use super::scan::status_result;
 use super::CliError;
 use crate::utils::colors;
+use std::path::Path;
 
 fn escape_github_actions_message(input: &str) -> String {
     input
@@ -15,6 +15,13 @@ fn escape_github_actions_message(input: &str) -> String {
 /// Run status and print text or JSON.
 pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
+
+    if !repo_path.join(".sruja").exists() {
+        return Err(CliError::NotInitialized {
+            path: repo_root.to_string(),
+        });
+    }
+
     let out = status_result(repo_root).await?;
 
     match format {
@@ -36,7 +43,7 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
         _ => {
             use crate::utils::table_formatter::TableFormatter;
             let formatter = TableFormatter::auto();
-            
+
             let mut blocks = Vec::new();
 
             // 1. Core Health Block
@@ -44,13 +51,16 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
             if let Some(score) = out.health_score {
                 let health_bar = colors::health_bar(score, 20);
                 let trend = if !out.health_history.is_empty() {
-                    format!(" | Trend: {}", TableFormatter::format_sparkline(&out.health_history))
+                    format!(
+                        " | Trend: {}",
+                        TableFormatter::format_sparkline(&out.health_history)
+                    )
                 } else {
                     "".to_string()
                 };
                 health_info.push_str(&format!("Health: {}{}\n", health_bar, trend));
             }
-            
+
             if let Some(score) = out.context_score {
                 let context_bar = colors::health_bar(score, 20);
                 health_info.push_str(&format!("Context: {}\n", context_bar));
@@ -61,8 +71,11 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
                 "drifted" => colors::error(&out.truth_status),
                 _ => colors::warning(&out.truth_status),
             };
-            health_info.push_str(&format!("Truth:  {} ({} violations)\n", status_color, out.violations_count));
-            
+            health_info.push_str(&format!(
+                "Truth:  {} ({} violations)\n",
+                status_color, out.violations_count
+            ));
+
             if let Some(ref base) = out.baseline {
                 health_info.push_str(&format!("Config: {}\n", colors::info(base)));
             } else {
@@ -77,12 +90,22 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
                 let ratio = (velocity.supervision_ratio * 100.0) as u8;
                 let bar = colors::health_bar(ratio, 20);
                 supervision_info.push_str(&format!("Ratio:   {}\n", bar));
-                supervision_info.push_str(&format!("Changed: {} components\n", colors::info(&velocity.nodes_changed.to_string())));
-                supervision_info.push_str(&format!("Intent:  {}/{} proposed\n", velocity.nodes_with_intent, velocity.nodes_changed));
-                
+                supervision_info.push_str(&format!(
+                    "Changed: {} components\n",
+                    colors::info(&velocity.nodes_changed.to_string())
+                ));
+                supervision_info.push_str(&format!(
+                    "Intent:  {}/{} proposed\n",
+                    velocity.nodes_with_intent, velocity.nodes_changed
+                ));
+
                 if !velocity.unsupervised_nodes.is_empty() {
                     let uncovered = velocity.unsupervised_nodes.join(", ");
-                    let truncated = if uncovered.len() > 40 { format!("{}...", &uncovered[..37]) } else { uncovered };
+                    let truncated = if uncovered.len() > 40 {
+                        format!("{}...", &uncovered[..37])
+                    } else {
+                        uncovered
+                    };
                     supervision_info.push_str(&format!("Gap:     {}\n", colors::error(&truncated)));
                 }
 
@@ -98,7 +121,13 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
                         "warning" => colors::warning("⚠"),
                         _ => colors::info("ℹ"),
                     };
-                    findings_info.push_str(&format!("{}. {} {} - {}\n", i + 1, severity_icon, colors::style(&f.kind).bold(), f.message));
+                    findings_info.push_str(&format!(
+                        "{}. {} {} - {}\n",
+                        i + 1,
+                        severity_icon,
+                        colors::style(&f.kind).bold(),
+                        f.message
+                    ));
                 }
                 blocks.push(("Top Issues".to_string(), findings_info));
             }
@@ -110,11 +139,13 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
                     let now = chrono::Utc::now();
                     let duration = now.signed_duration_since(dt.with_timezone(&chrono::Utc));
                     let elapsed = if duration.num_seconds() > 0 {
-                        colors::elapsed_display(std::time::Duration::from_secs(duration.num_seconds() as u64))
+                        colors::elapsed_display(std::time::Duration::from_secs(
+                            duration.num_seconds() as u64,
+                        ))
                     } else {
                         "just now".to_string()
                     };
-                    
+
                     let color = if duration.num_hours() > 24 {
                         colors::error(&elapsed)
                     } else if duration.num_hours() > 1 {
@@ -128,17 +159,33 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
 
             let git_dir = repo_path.join(".git");
             let hook_exists = git_dir.join("hooks/pre-commit").exists();
-            env_info.push_str(&format!("Git Hook:   {}\n", if hook_exists { colors::success("installed") } else { colors::dim("missing") }));
-            env_info.push_str(&format!("CLI Ver:    {}\n", colors::dim(env!("CARGO_PKG_VERSION"))));
-            
+            env_info.push_str(&format!(
+                "Git Hook:   {}\n",
+                if hook_exists {
+                    colors::success("installed")
+                } else {
+                    colors::dim("missing")
+                }
+            ));
+            env_info.push_str(&format!(
+                "CLI Ver:    {}\n",
+                colors::dim(env!("CARGO_PKG_VERSION"))
+            ));
+
             blocks.push(("Environment".to_string(), env_info));
 
             // 4. Recommendation (The "Smarter" bit)
             let mut recommendation = String::new();
             if out.baseline.is_none() {
-                recommendation.push_str(&format!("Repository not setup. Run: {}\n", colors::success("sruja start")));
+                recommendation.push_str(&format!(
+                    "Repository not setup. Run: {}\n",
+                    colors::success("sruja start")
+                ));
             } else if out.truth_status == "drifted" {
-                recommendation.push_str(&format!("Architecture drifted. Run: {} to review changes.\n", colors::info("sruja daily")));
+                recommendation.push_str(&format!(
+                    "Architecture drifted. Run: {} to review changes.\n",
+                    colors::info("sruja daily")
+                ));
             } else if out.violations_count > 0 {
                 recommendation.push_str("Maintain health by resolving active violations.\n");
             } else {
@@ -146,7 +193,10 @@ pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
             }
             blocks.push(("Recommended Next Step".to_string(), recommendation));
 
-            println!("{}", formatter.format_dashboard("SRUJA REPOSITORY STATUS", blocks));
+            println!(
+                "{}",
+                formatter.format_dashboard("SRUJA REPOSITORY STATUS", blocks)
+            );
         }
     }
 

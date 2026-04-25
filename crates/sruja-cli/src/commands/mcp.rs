@@ -1,9 +1,9 @@
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
-use std::path::Path;
 
 use super::CliError;
 
@@ -600,9 +600,18 @@ async fn run_tool(
             Ok(repomap)
         }
         "sruja_get_architecture_context" => {
-            let file = arguments.get("file").and_then(|v| v.as_str()).map(String::from);
-            let element_id = arguments.get("element_id").and_then(|v| v.as_str()).map(String::from);
-            let intent = arguments.get("intent").and_then(|v| v.as_str()).map(String::from);
+            let file = arguments
+                .get("file")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let element_id = arguments
+                .get("element_id")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let intent = arguments
+                .get("intent")
+                .and_then(|v| v.as_str())
+                .map(String::from);
             let content = super::context::context_string(
                 &repo,
                 "markdown",
@@ -797,28 +806,54 @@ async fn run_tool(
             Ok(serde_json::to_string_pretty(&ctx)?)
         }
         "sruja_get_state_machine" => {
-            let element_id = arguments.get("element_id").and_then(|v| v.as_str()).ok_or_else(|| CliError::validation("Missing element_id"))?;
+            let element_id = arguments
+                .get("element_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing element_id"))?;
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
-            let node = graph.nodes.iter().find(|n| n.id == element_id).ok_or_else(|| CliError::validation(format!("Element {} not found", element_id)))?;
-            
+            let node = graph
+                .nodes
+                .iter()
+                .find(|n| n.id == element_id)
+                .ok_or_else(|| CliError::validation(format!("Element {} not found", element_id)))?;
+
             if node.state_machines.is_empty() {
-                return Ok(format!("No state machines found for element {}.", element_id));
+                return Ok(format!(
+                    "No state machines found for element {}.",
+                    element_id
+                ));
             }
-            
+
             Ok(serde_json::to_string_pretty(&node.state_machines)?)
         }
         "sruja_get_contract" => {
-            let element_id = arguments.get("element_id").and_then(|v| v.as_str()).ok_or_else(|| CliError::validation("Missing element_id"))?;
+            let element_id = arguments
+                .get("element_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing element_id"))?;
             let contract_name = arguments.get("contract_name").and_then(|v| v.as_str());
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
-            let node = graph.nodes.iter().find(|n| n.id == element_id).ok_or_else(|| CliError::validation(format!("Element {} not found", element_id)))?;
-            
+            let node = graph
+                .nodes
+                .iter()
+                .find(|n| n.id == element_id)
+                .ok_or_else(|| CliError::validation(format!("Element {} not found", element_id)))?;
+
             if node.contracts.is_empty() {
                 return Ok(format!("No contracts found for element {}.", element_id));
             }
-            
+
             if let Some(name) = contract_name {
-                let contract = node.contracts.iter().find(|c| c.name == name).ok_or_else(|| CliError::validation(format!("Contract {} not found on element {}", name, element_id)))?;
+                let contract = node
+                    .contracts
+                    .iter()
+                    .find(|c| c.name == name)
+                    .ok_or_else(|| {
+                        CliError::validation(format!(
+                            "Contract {} not found on element {}",
+                            name, element_id
+                        ))
+                    })?;
                 Ok(serde_json::to_string_pretty(contract)?)
             } else {
                 Ok(serde_json::to_string_pretty(&node.contracts)?)
@@ -833,7 +868,11 @@ async fn run_tool(
                 .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect();
-            let intent_hint = arguments.get("intent").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+            let intent_hint = arguments
+                .get("intent")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
 
             let res = super::preflight::preflight(Path::new(&repo), file_list, intent_hint).await?;
             Ok(serde_json::to_string_pretty(&res)?)
@@ -960,11 +999,7 @@ async fn run_tool(
                     out.push_str("No incidents recorded.\n");
                 } else {
                     for inc in &graph.incidents {
-                        out.push_str(&format!(
-                            "### {} - {}\n",
-                            inc.id,
-                            inc.title
-                        ));
+                        out.push_str(&format!("### {} - {}\n", inc.id, inc.title));
                         if let Some(s) = &inc.severity {
                             out.push_str(&format!("- **Severity**: {}\n", s));
                         }
@@ -974,7 +1009,7 @@ async fn run_tool(
                         if !inc.affected.is_empty() {
                             out.push_str("- **Affected**: ");
                             out.push_str(&inc.affected.join(", "));
-                            out.push_str("\n");
+                            out.push('\n');
                         }
                         if let Some(c) = &inc.cause {
                             out.push_str(&format!("- **Cause**: {}\n", c));
@@ -985,7 +1020,7 @@ async fn run_tool(
                         if let Some(l) = &inc.lesson {
                             out.push_str(&format!("- **Lesson**: {}\n", l));
                         }
-                        out.push_str("\n");
+                        out.push('\n');
                     }
                 }
 
@@ -1011,8 +1046,11 @@ async fn run_tool(
             Ok(out)
         }
         "sruja_propose_change" => {
-            let description = arguments.get("description").and_then(|v| v.as_str()).unwrap_or("");
-            
+            let description = arguments
+                .get("description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
             let mut add_elements = Vec::new();
             if let Some(elements) = arguments.get("add_elements").and_then(|v| v.as_array()) {
                 for e in elements {
@@ -1025,7 +1063,10 @@ async fn run_tool(
             }
 
             let mut add_relationships = Vec::new();
-            if let Some(rels) = arguments.get("add_relationships").and_then(|v| v.as_array()) {
+            if let Some(rels) = arguments
+                .get("add_relationships")
+                .and_then(|v| v.as_array())
+            {
                 for r in rels {
                     let source = r.get("source").and_then(|v| v.as_str()).unwrap_or("");
                     let target = r.get("target").and_then(|v| v.as_str()).unwrap_or("");
@@ -1043,7 +1084,14 @@ async fn run_tool(
                 }
             }
 
-            super::propose_create(&repo, description, add_elements, add_relationships, remove_elements).await?;
+            super::propose_create(
+                &repo,
+                description,
+                add_elements,
+                add_relationships,
+                remove_elements,
+            )
+            .await?;
             Ok("Proposal created successfully. Human review required via CLI.".to_string())
         }
         "sruja_add_element" => {
@@ -1211,21 +1259,29 @@ async fn run_tool(
             Ok(out)
         }
         "sruja_get_context_score" => {
-            let format = arguments.get("format").and_then(|v| v.as_str()).unwrap_or("text");
+            let format = arguments
+                .get("format")
+                .and_then(|v| v.as_str())
+                .unwrap_or("text");
             let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
             let age_hours = crate::utils::context::context_age_hours(Path::new(&repo));
-            let score = sruja_graph::compute_context_score(&kg, graph.nodes.len(), Path::new(&repo), age_hours);
-            
+            let score = sruja_graph::compute_context_score(
+                &kg,
+                graph.nodes.len(),
+                Path::new(&repo),
+                age_hours,
+            );
+
             if format == "json" {
                 Ok(serde_json::to_string_pretty(&score)?)
             } else {
                 Ok(format!(
-                    "Context Score: {}/100\n\nBreakdown:\n- Coverage: {}%\n- Decisions: {}%\n- Freshness: {}%\n- Density: {}%\n- External: {}%", 
-                    score.score, 
-                    score.architecture_coverage.pct_u8(), 
-                    score.decision_completeness.pct_u8(), 
-                    score.evidence_freshness.pct_u8(), 
+                    "Context Score: {}/100\n\nBreakdown:\n- Coverage: {}%\n- Decisions: {}%\n- Freshness: {}%\n- Density: {}%\n- External: {}%",
+                    score.score,
+                    score.architecture_coverage.pct_u8(),
+                    score.decision_completeness.pct_u8(),
+                    score.evidence_freshness.pct_u8(),
                     score.relationship_density.pct_u8(),
                     score.external_context.pct_u8()
                 ))
@@ -1234,29 +1290,52 @@ async fn run_tool(
         "sruja_get_focus_briefing" => {
             let file = arguments.get("file").and_then(|v| v.as_str());
             let element_id = arguments.get("element_id").and_then(|v| v.as_str());
-            
+
             let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
-            
+
             let target_id = super::focus::resolve_target(&kg, file, element_id)?;
-            let briefing = super::focus::build_focus_briefing(&kg, &target_id, Path::new(&repo), graph.nodes.len());
-            
+            let briefing = super::focus::build_focus_briefing(
+                &kg,
+                &target_id,
+                Path::new(&repo),
+                graph.nodes.len(),
+            );
+
             Ok(serde_json::to_string_pretty(&briefing)?)
         }
         "sruja_critique" => {
-            let files: Vec<String> = arguments.get("files")
+            let files: Vec<String> = arguments
+                .get("files")
                 .and_then(|v| v.as_array())
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
-            let description = arguments.get("description").and_then(|v| v.as_str()).map(String::from);
-            let proposal_id = arguments.get("proposal_id").and_then(|v| v.as_str()).map(String::from);
-            let base_ref = arguments.get("base_ref").and_then(|v| v.as_str()).map(String::from);
-            let head_ref = arguments.get("head_ref").and_then(|v| v.as_str()).map(String::from);
+            let description = arguments
+                .get("description")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let proposal_id = arguments
+                .get("proposal_id")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let base_ref = arguments
+                .get("base_ref")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let head_ref = arguments
+                .get("head_ref")
+                .and_then(|v| v.as_str())
+                .map(String::from);
 
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
-            let baseline_path = crate::utils::architecture_path::resolve_architecture_path(Path::new(&repo));
+            let baseline_path =
+                crate::utils::architecture_path::resolve_architecture_path(Path::new(&repo));
             let program = if let Some(path) = baseline_path {
-                let content = std::fs::read_to_string(path).map_err(|e| CliError::Io(e))?;
+                let content = std::fs::read_to_string(path).map_err(CliError::Io)?;
                 let parser = sruja_language::Parser::new(&repo);
                 parser.parse(&content).ok()
             } else {
@@ -1491,9 +1570,7 @@ fn validate_ident(value: &str, field: &str) -> Result<(), CliError> {
 
 fn escape_dsl_string(value: &str) -> Result<String, CliError> {
     if value.chars().any(|c| c == '\n' || c == '\r') {
-        return Err(CliError::validation(
-            "Invalid string: contains newline",
-        ));
+        return Err(CliError::validation("Invalid string: contains newline"));
     }
     Ok(value.replace('\\', "\\\\").replace('"', "\\\""))
 }

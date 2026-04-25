@@ -549,7 +549,18 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
     let db_nodes: HashSet<&str> = graph
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::Database)
+        .filter(|n| {
+            n.kind == NodeKind::Database || {
+                let p = n.path.as_deref().unwrap_or("").to_lowercase();
+                let label = n.label.to_lowercase();
+                p.contains("/database/")
+                    || p.contains("/db/")
+                    || p.contains("/datastore/")
+                    || label.contains("database")
+                    || label.contains("db")
+                    || label.contains("repository")
+            }
+        })
         .map(|n| n.id.as_str())
         .collect();
 
@@ -558,8 +569,14 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
         .iter()
         .filter(|n| {
             n.kind == NodeKind::Frontend || {
+                let p = n.path.as_deref().unwrap_or("").to_lowercase();
                 let label = n.label.to_lowercase();
-                label.contains("frontend") || label.contains("ui") || label.contains("web")
+                label.contains("frontend")
+                    || label.contains("ui")
+                    || label.contains("web")
+                    || p.contains("/frontend/")
+                    || p.contains("/ui/")
+                    || p.contains("/web/")
             }
         })
         .map(|n| n.id.as_str())
@@ -571,7 +588,10 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
         .iter()
         .filter(|n| {
             let p = n.path.as_deref().unwrap_or("").to_lowercase();
-            p.contains("/domain/") || p.contains("/core/") || p.contains("/entities/") || p.contains("/usecases/")
+            p.contains("/domain/")
+                || p.contains("/core/")
+                || p.contains("/entities/")
+                || p.contains("/usecases/")
         })
         .map(|n| n.id.as_str())
         .collect();
@@ -581,7 +601,11 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
         .iter()
         .filter(|n| {
             let p = n.path.as_deref().unwrap_or("").to_lowercase();
-            p.contains("/infrastructure/") || p.contains("/infra/") || p.contains("/adapters/") || p.contains("/api/") || p.contains("/controllers/")
+            p.contains("/infrastructure/")
+                || p.contains("/infra/")
+                || p.contains("/adapters/")
+                || p.contains("/api/")
+                || p.contains("/controllers/")
         })
         .map(|n| n.id.as_str())
         .collect();
@@ -595,10 +619,9 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
                 target: edge.target.clone(),
             });
         }
-        
+
         // Core/Domain business logic depending on Infrastructure is a Clean Architecture violation
-        if core_nodes.contains(edge.source.as_str()) && infra_nodes.contains(edge.target.as_str())
-        {
+        if core_nodes.contains(edge.source.as_str()) && infra_nodes.contains(edge.target.as_str()) {
             violations.push(LayerViolationInfo {
                 source: edge.source.clone(),
                 target: edge.target.clone(),

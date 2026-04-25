@@ -59,11 +59,7 @@ pub async fn ingest(
                 ingested_count += count;
             }
         } else {
-            eprintln!(
-                "  {} Skipped (not found): {}",
-                colors::warning("⚠"),
-                source
-            );
+            eprintln!("  {} Skipped (not found): {}", colors::warning("⚠"), source);
         }
     }
 
@@ -214,14 +210,14 @@ fn show_context_inventory(context_dir: &Path) -> Result<(), CliError> {
     println!();
 
     let summary = sruja_graph::scan_external_context(
-        context_dir.parent().and_then(|p| p.parent()).unwrap_or(Path::new(".")),
+        context_dir
+            .parent()
+            .and_then(|p| p.parent())
+            .unwrap_or(Path::new(".")),
     );
 
     if summary.file_count == 0 {
-        println!(
-            "  {} Directory exists but is empty.",
-            colors::dim("ℹ")
-        );
+        println!("  {} Directory exists but is empty.", colors::dim("ℹ"));
         println!("  Run 'sruja ingest <path>' to add context files.");
         return Ok(());
     }
@@ -242,10 +238,7 @@ fn show_context_inventory(context_dir: &Path) -> Result<(), CliError> {
         "  Linked:     {} files linked to architecture elements",
         summary.linked_elements
     );
-    println!(
-        "  Words:      ~{}",
-        summary.total_words
-    );
+    println!("  Words:      ~{}", summary.total_words);
     println!();
 
     // List files
@@ -253,13 +246,8 @@ fn show_context_inventory(context_dir: &Path) -> Result<(), CliError> {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_file() {
-                let name = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("?");
-                let size = std::fs::metadata(&path)
-                    .map(|m| m.len())
-                    .unwrap_or(0);
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+                let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
                 let size_str = if size < 1024 {
                     format!("{}B", size)
                 } else {

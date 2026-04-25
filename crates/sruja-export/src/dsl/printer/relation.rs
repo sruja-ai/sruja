@@ -1,7 +1,7 @@
 //! Relation and element printing (core C4-style nodes).
 
+use super::{contracts, state_machine};
 use sruja_language::{ElementDef, ElementDefBodyItem, Relation};
-use super::{state_machine, contracts};
 
 /// Print a single relation line.
 pub fn print_relation(out: &mut String, rel: &Relation, indent: usize) {

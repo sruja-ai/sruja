@@ -10,8 +10,8 @@ pub mod token;
 pub mod traversal;
 
 pub use ast::*;
-pub use schema::DomainSchema;
 pub use parser::Parser;
+pub use schema::DomainSchema;
 pub use traversal::*;
 
 #[cfg(test)]

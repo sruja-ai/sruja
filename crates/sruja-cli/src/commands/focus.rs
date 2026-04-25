@@ -12,9 +12,7 @@ use std::path::Path;
 use crate::commands::CliError;
 use crate::graph_store;
 use crate::utils::colors;
-use sruja_graph::{
-    compute_context_score, KnowledgeGraph,
-};
+use sruja_graph::{compute_context_score, KnowledgeGraph};
 
 #[derive(Debug, Serialize)]
 pub struct FocusBriefing {
@@ -143,9 +141,7 @@ pub fn resolve_target(
             let file_parts: Vec<&str> = file_lower.split('/').collect();
             if let Some(last) = file_parts.last() {
                 let stem = last.split('.').next().unwrap_or(last);
-                if node.label.to_lowercase().contains(stem)
-                    || id.to_lowercase().contains(stem)
-                {
+                if node.label.to_lowercase().contains(stem) || id.to_lowercase().contains(stem) {
                     return Ok(id.clone());
                 }
             }
@@ -228,9 +224,7 @@ pub fn build_focus_briefing(
         .values()
         .filter(|d| {
             d.affects.iter().any(|a| a == target_id)
-                || d.affects
-                    .iter()
-                    .any(|a| target_id.starts_with(a.as_str()))
+                || d.affects.iter().any(|a| target_id.starts_with(a.as_str()))
         })
         .map(|d| LinkedDecision {
             id: d.id.clone(),
@@ -247,16 +241,8 @@ pub fn build_focus_briefing(
     let external_context = find_relevant_external_context(repo_path, target_id);
 
     // -- Hotspot Status --
-    let in_degree = graph
-        .edges
-        .iter()
-        .filter(|e| e.target == target_id)
-        .count();
-    let out_degree = graph
-        .edges
-        .iter()
-        .filter(|e| e.source == target_id)
-        .count();
+    let in_degree = graph.edges.iter().filter(|e| e.target == target_id).count();
+    let out_degree = graph.edges.iter().filter(|e| e.source == target_id).count();
     let total_degree = in_degree + out_degree;
     let avg_degree = if graph.nodes.is_empty() {
         0.0
@@ -293,11 +279,7 @@ pub fn build_focus_briefing(
     }
 
     for d in &decisions {
-        ai_instructions.push(format!(
-            "Must respect {}: {}",
-            d.id,
-            truncate(&d.title, 60)
-        ));
+        ai_instructions.push(format!("Must respect {}: {}", d.id, truncate(&d.title, 60)));
     }
 
     for b in &boundaries {
@@ -308,7 +290,7 @@ pub fn build_focus_briefing(
             ));
         }
     }
-    
+
     // -- Tribal Knowledge AI Instructions --
     for g in &target.gotchas {
         ai_instructions.push(format!("💡 Gotcha: {}", g));
@@ -318,7 +300,8 @@ pub fn build_focus_briefing(
     }
 
     if ai_instructions.is_empty() {
-        ai_instructions.push("No special constraints found. Standard coding practices apply.".to_string());
+        ai_instructions
+            .push("No special constraints found. Standard coding practices apply.".to_string());
     }
 
     // -- Context Score --
@@ -490,9 +473,9 @@ fn find_relevant_external_context(repo_path: &Path, target_id: &str) -> Vec<Exte
                 let content_lower = content.to_lowercase();
                 // Check if this file references the target element
                 let is_relevant = content_lower.contains(&target_lower)
-                    || target_parts
-                        .iter()
-                        .any(|part| part.len() >= 3 && content_lower.contains(&part.to_lowercase()));
+                    || target_parts.iter().any(|part| {
+                        part.len() >= 3 && content_lower.contains(&part.to_lowercase())
+                    });
 
                 if is_relevant {
                     let name = path
@@ -505,8 +488,10 @@ fn find_relevant_external_context(repo_path: &Path, target_id: &str) -> Vec<Exte
                         .and_then(|e| e.to_str())
                         .unwrap_or("")
                         .to_lowercase();
-                    let category =
-                        sruja_graph::context_score::detect_context_category(&name.to_lowercase(), &ext);
+                    let category = sruja_graph::context_score::detect_context_category(
+                        &name.to_lowercase(),
+                        &ext,
+                    );
                     let excerpt = extract_relevant_excerpt(&content, target_id, 150);
 
                     results.push(ExternalContextRef {
@@ -525,7 +510,6 @@ fn find_relevant_external_context(repo_path: &Path, target_id: &str) -> Vec<Exte
 /// Extract a relevant excerpt from content mentioning the target.
 fn extract_relevant_excerpt(content: &str, target: &str, max_len: usize) -> String {
     let target_lower = target.to_lowercase();
-    let content_lower = content.to_lowercase();
 
     // Find the first line mentioning the target
     for line in content.lines() {
@@ -624,18 +608,10 @@ fn print_focus_briefing(b: &FocusBriefing) {
         width = width - 17
     );
     if let Some(ref sys) = b.target.system {
-        println!(
-            "│  🏗  System:    {:width$}│",
-            sys,
-            width = width - 17
-        );
+        println!("│  🏗  System:    {:width$}│", sys, width = width - 17);
     }
     if let Some(ref tech) = b.target.technology {
-        println!(
-            "│  🔧 Technology: {:width$}│",
-            tech,
-            width = width - 18
-        );
+        println!("│  🔧 Technology: {:width$}│", tech, width = width - 18);
     }
 
     if !b.target.gotchas.is_empty() {
@@ -692,9 +668,7 @@ fn print_focus_briefing(b: &FocusBriefing) {
     // Upstream
     if !b.blast_radius.upstream.is_empty() {
         println!(
-            "│  {} Upstream (depends on this) {}{:width$}│",
-            "──",
-            "──",
+            "│  ── Upstream (depends on this) ──{:width$}│",
             "",
             width = width - 36
         );
@@ -705,8 +679,8 @@ fn print_focus_briefing(b: &FocusBriefing) {
                 node.depth,
                 truncate(&node.relationship, 20),
                 "",
-                width = width
-                    .saturating_sub(10 + node.id.len() + 10 + node.relationship.len().min(20))
+                width =
+                    width.saturating_sub(10 + node.id.len() + 10 + node.relationship.len().min(20))
             );
         }
         println!("│{:width$}│", "", width = width);
@@ -715,9 +689,7 @@ fn print_focus_briefing(b: &FocusBriefing) {
     // Downstream
     if !b.blast_radius.downstream.is_empty() {
         println!(
-            "│  {} Downstream (this depends on) {}{:width$}│",
-            "──",
-            "──",
+            "│  ── Downstream (this depends on) ──{:width$}│",
             "",
             width = width - 38
         );
@@ -728,8 +700,8 @@ fn print_focus_briefing(b: &FocusBriefing) {
                 node.depth,
                 truncate(&node.relationship, 20),
                 "",
-                width = width
-                    .saturating_sub(10 + node.id.len() + 10 + node.relationship.len().min(20))
+                width =
+                    width.saturating_sub(10 + node.id.len() + 10 + node.relationship.len().min(20))
             );
         }
         println!("│{:width$}│", "", width = width);
@@ -738,9 +710,7 @@ fn print_focus_briefing(b: &FocusBriefing) {
     // Decisions
     if !b.decisions.is_empty() {
         println!(
-            "│  {} Active Decisions {}{:width$}│",
-            "──",
-            "──",
+            "│  ── Active Decisions ──{:width$}│",
             "",
             width = width - 26
         );
@@ -759,13 +729,7 @@ fn print_focus_briefing(b: &FocusBriefing) {
     // Boundaries
     let not_allowed: Vec<&BoundaryInfo> = b.boundaries.iter().filter(|b| !b.allowed).collect();
     if !not_allowed.is_empty() {
-        println!(
-            "│  {} Boundaries {}{:width$}│",
-            "──",
-            "──",
-            "",
-            width = width - 20
-        );
+        println!("│  ── Boundaries ──{:width$}│", "", width = width - 20);
         for bi in &not_allowed {
             println!(
                 "│  ⛔ {} → {}: NOT allowed{:width$}│",
@@ -781,9 +745,7 @@ fn print_focus_briefing(b: &FocusBriefing) {
     // External Context
     if !b.external_context.is_empty() {
         println!(
-            "│  {} External Context {}{:width$}│",
-            "──",
-            "──",
+            "│  ── External Context ──{:width$}│",
             "",
             width = width - 26
         );
@@ -801,9 +763,7 @@ fn print_focus_briefing(b: &FocusBriefing) {
 
     // AI Instructions
     println!(
-        "│  {} AI Agent Instructions {}{:width$}│",
-        "──",
-        "──",
+        "│  ── AI Agent Instructions ──{:width$}│",
         "",
         width = width - 31
     );
@@ -821,9 +781,8 @@ fn print_focus_briefing(b: &FocusBriefing) {
     // Context Score
     println!("│{:width$}│", "", width = width);
     println!(
-        "│  Context Score: {} {}{:width$}│",
+        "│  Context Score: {}{:width$}│",
         colors::health_bar(b.context_score, 15),
-        "",
         "",
         width = width.saturating_sub(45)
     );

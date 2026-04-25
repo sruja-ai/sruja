@@ -5,6 +5,7 @@
 
 mod assignments;
 mod blocks;
+mod contracts;
 mod deployment;
 mod elements;
 mod import;
@@ -16,7 +17,6 @@ mod program;
 mod relations;
 mod schema;
 mod state_machine;
-mod contracts;
 
 #[cfg(test)]
 mod tests;

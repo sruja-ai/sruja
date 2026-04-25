@@ -1,10 +1,13 @@
 //! Critique command: adversarial architectural review of changes.
 
-use std::path::Path;
-use sruja_intent::{CritiqueEngine, CritiqueRequest, format_critique_text, format_critique_json, CritiqueSeverity};
 use crate::commands::{scan_repo_cached, CliError};
 use crate::utils::architecture_path;
+use sruja_intent::{
+    format_critique_json, format_critique_text, CritiqueEngine, CritiqueRequest, CritiqueSeverity,
+};
+use std::path::Path;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn critique(
     repo_root: &str,
     mut files: Vec<String>,
@@ -17,15 +20,15 @@ pub async fn critique(
     fail_on: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
-    
+
     // 1. Resolve files from git if requested
     if staged {
         let output = std::process::Command::new("git")
             .args(["diff", "--cached", "--name-only"])
             .current_dir(repo_path)
             .output()
-            .map_err(|e| CliError::Io(e))?;
-        
+            .map_err(CliError::Io)?;
+
         let git_files = String::from_utf8_lossy(&output.stdout);
         for f in git_files.lines() {
             if !f.is_empty() {
@@ -75,7 +78,12 @@ pub async fn critique(
             "high" => CritiqueSeverity::High,
             "medium" => CritiqueSeverity::Medium,
             "low" => CritiqueSeverity::Low,
-            _ => return Err(CliError::validation(format!("Invalid fail-on level: {}", level))),
+            _ => {
+                return Err(CliError::validation(format!(
+                    "Invalid fail-on level: {}",
+                    level
+                )))
+            }
         };
 
         let has_violation = report.findings.iter().any(|f| f.severity >= threshold);

@@ -60,7 +60,11 @@ fn resolve_target_id(graph: &Graph, repo_path: &Path, query: &str) -> Result<Str
                 let (elements, _) = sruja_language::traversal::collect_elements(&program);
                 let q_lower = query.to_lowercase();
                 for (fqn, elem) in &elements {
-                    let label = elem.assignment.title.as_deref().unwrap_or(&elem.assignment.name);
+                    let label = elem
+                        .assignment
+                        .title
+                        .as_deref()
+                        .unwrap_or(&elem.assignment.name);
                     if fqn.to_lowercase() == q_lower
                         || fqn.to_lowercase().contains(&q_lower)
                         || label.to_lowercase().contains(&q_lower)

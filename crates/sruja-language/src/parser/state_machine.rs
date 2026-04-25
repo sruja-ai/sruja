@@ -1,25 +1,30 @@
 //! State machine parser.
 
 use nom::{
-    bytes::complete::tag, character::complete::char, combinator::{map, opt}, multi::many0,
-    sequence::{delimited, preceded}, IResult, Parser,
+    bytes::complete::tag,
+    character::complete::char,
+    combinator::{map, opt},
+    multi::many0,
+    sequence::{delimited, preceded},
+    IResult, Parser,
 };
 use sruja_diagnostics::SourceLocation;
 
-use crate::ast::{StateMachine, StateTransition};
 use super::primitives::{parse_string, parse_string_array, ws, ws0, ws1};
+use crate::ast::{StateMachine, StateTransition};
 
 pub(crate) fn parse_state_machine(input: &str) -> IResult<&str, StateMachine> {
     let (input, _) = tag("state_machine").parse(input)?;
     let (input, _) = ws1(input)?;
     let (input, name) = parse_string(input)?;
     let (input, _) = ws0(input)?;
-    
+
     let (input, body) = delimited(
         char('{'),
         many0(preceded(ws, parse_state_machine_item)),
         preceded(ws0, char('}')),
-    ).parse(input)?;
+    )
+    .parse(input)?;
 
     let mut initial_state = String::new();
     let mut terminal_states = Vec::new();
@@ -58,11 +63,21 @@ enum StateMachineItem {
 fn parse_state_machine_item(input: &str) -> IResult<&str, StateMachineItem> {
     use nom::branch::alt;
     alt((
-        map(preceded((tag("initial"), ws1), parse_string), StateMachineItem::Initial),
-        map(preceded((tag("terminal"), ws1), parse_string_array), StateMachineItem::Terminal),
-        map(preceded((tag("description"), ws1), parse_string), StateMachineItem::Description),
+        map(
+            preceded((tag("initial"), ws1), parse_string),
+            StateMachineItem::Initial,
+        ),
+        map(
+            preceded((tag("terminal"), ws1), parse_string_array),
+            StateMachineItem::Terminal,
+        ),
+        map(
+            preceded((tag("description"), ws1), parse_string),
+            StateMachineItem::Description,
+        ),
         map(parse_state_transition, StateMachineItem::Transition),
-    )).parse(input)
+    ))
+    .parse(input)
 }
 
 fn parse_state_transition(input: &str) -> IResult<&str, StateTransition> {
@@ -76,12 +91,13 @@ fn parse_state_transition(input: &str) -> IResult<&str, StateTransition> {
     let (input, _) = ws0(input)?;
     let (input, event) = parse_string(input)?;
     let (input, _) = ws0(input)?;
-    
+
     let (input, body) = opt(delimited(
         char('{'),
         many0(preceded(ws, parse_transition_item)),
         preceded(ws0, char('}')),
-    )).parse(input)?;
+    ))
+    .parse(input)?;
 
     let mut guard = None;
     let mut action = None;
@@ -120,8 +136,18 @@ enum TransitionItem {
 fn parse_transition_item(input: &str) -> IResult<&str, TransitionItem> {
     use nom::branch::alt;
     alt((
-        map(preceded((tag("guard"), ws1), parse_string), TransitionItem::Guard),
-        map(preceded((tag("action"), ws1), parse_string), TransitionItem::Action),
-        map(preceded((tag("description"), ws1), parse_string), TransitionItem::Description),
-    )).parse(input)
+        map(
+            preceded((tag("guard"), ws1), parse_string),
+            TransitionItem::Guard,
+        ),
+        map(
+            preceded((tag("action"), ws1), parse_string),
+            TransitionItem::Action,
+        ),
+        map(
+            preceded((tag("description"), ws1), parse_string),
+            TransitionItem::Description,
+        ),
+    ))
+    .parse(input)
 }

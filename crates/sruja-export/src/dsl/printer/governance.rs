@@ -281,8 +281,10 @@ fn format_selector(selector: &PolicySelectorAst) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sruja_language::{Adr, Policy, PolicyRuleAst, PolicySelectorAst, Requirement, PolicyMetaSelectorAst};
     use sruja_diagnostics::SourceLocation;
+    use sruja_language::{
+        Adr, Policy, PolicyMetaSelectorAst, PolicyRuleAst, PolicySelectorAst, Requirement,
+    };
 
     #[test]
     fn test_print_requirement() {
@@ -296,7 +298,9 @@ mod tests {
             tags: vec![],
         };
         print_requirement(&mut out, &req);
-        assert!(out.contains("requirement REQ_1 functional \"Must login\" \"User must be able to login\""));
+        assert!(out.contains(
+            "requirement REQ_1 functional \"Must login\" \"User must be able to login\""
+        ));
     }
 
     #[test]
@@ -330,15 +334,25 @@ mod tests {
             category: "architecture".to_string(),
             enforcement: "error".to_string(),
             description: Some("Prevent cycles".to_string()),
-            rules: vec![
-                PolicyRuleAst::DenyEdge {
-                    from: PolicySelectorAst { kind: Some("container".to_string()), id: None, tags: vec![], technology: None, meta: vec![] },
-                    to: PolicySelectorAst { id: Some("DB".to_string()), kind: None, tags: vec![], technology: None, meta: vec![] },
-                    except: vec![],
-                    message: Some("No DB access".to_string()),
-                    suggestions: vec!["Use API".to_string()],
-                }
-            ],
+            rules: vec![PolicyRuleAst::DenyEdge {
+                from: PolicySelectorAst {
+                    kind: Some("container".to_string()),
+                    id: None,
+                    tags: vec![],
+                    technology: None,
+                    meta: vec![],
+                },
+                to: PolicySelectorAst {
+                    id: Some("DB".to_string()),
+                    kind: None,
+                    tags: vec![],
+                    technology: None,
+                    meta: vec![],
+                },
+                except: vec![],
+                message: Some("No DB access".to_string()),
+                suggestions: vec!["Use API".to_string()],
+            }],
         };
         print_policy(&mut out, &policy);
         assert!(out.contains("policy POL_1 \"No circular deps\" {"));
@@ -355,7 +369,10 @@ mod tests {
             id: Some("Auth".to_string()),
             tags: vec!["critical".to_string()],
             technology: Some("Rust".to_string()),
-            meta: vec![PolicyMetaSelectorAst { key: "tier".to_string(), value: Some("1".to_string()) }],
+            meta: vec![PolicyMetaSelectorAst {
+                key: "tier".to_string(),
+                value: Some("1".to_string()),
+            }],
         };
         let formatted = format_selector(&selector);
         assert!(formatted.contains("kind \"component\""));

@@ -1,12 +1,12 @@
 //! Check command: CI-focused tool for non-blocking exit code 0 on violations.
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::HashSet;
 
-use super::CliError;
 pub use super::violation_shared::*;
+use super::CliError;
 use crate::utils::{architecture_path, colors};
 use sruja_diff::Violation;
 use sruja_scan::scan_repo;
@@ -37,14 +37,6 @@ pub struct ViolationBaseline {
 
 fn is_usize_zero(v: &usize) -> bool {
     *v == 0
-}
-
-fn primary_source_for_annotations(v: &Violation) -> Option<sruja_diff::SourceRef> {
-    v.sources
-        .iter()
-        .find(|s| s.file.as_deref().is_some_and(sruja_scan::is_path_production_relevant))
-        .or_else(|| v.sources.first())
-        .cloned()
 }
 
 fn resolve_repo_relative(repo_root: &Path, path: &str) -> PathBuf {
@@ -213,11 +205,20 @@ pub async fn check(
             (filtered_violations, Vec::new())
         };
 
-    let violations: Vec<ViolationSummary> = active_violations.iter().map(summarize_violation).collect();
-    let suppressed_violations: Vec<ViolationSummary> = suppressed_violations.iter().map(summarize_violation).collect();
+    let violations: Vec<ViolationSummary> =
+        active_violations.iter().map(summarize_violation).collect();
+    let suppressed_violations: Vec<ViolationSummary> = suppressed_violations
+        .iter()
+        .map(summarize_violation)
+        .collect();
     let has_drift = !violations.is_empty();
     let open_questions = generate_open_questions(&active_violations);
-    let suggestions = generate_suggestions(repo_root, baseline_path.as_deref(), &truth_status, &active_violations);
+    let suggestions = generate_suggestions(
+        repo_root,
+        baseline_path.as_deref(),
+        &truth_status,
+        &active_violations,
+    );
 
     let output = CheckOutput {
         truth_status,
@@ -312,7 +313,13 @@ pub async fn check(
             } else {
                 println!("Violations found:");
                 for v in &output.violations {
-                    println!("  {} [{}:{}] {}", colors::severity_icon(&v.severity), v.severity, v.kind, v.message);
+                    println!(
+                        "  {} [{}:{}] {}",
+                        colors::severity_icon(&v.severity),
+                        v.severity,
+                        v.kind,
+                        v.message
+                    );
                     let evidence: Vec<String> = v
                         .sources
                         .iter()
@@ -343,9 +350,13 @@ pub async fn check(
                 println!();
             }
 
-            let status_icon = if has_drift { colors::error("✗") } else { colors::success("✓") };
+            let status_icon = if has_drift {
+                colors::error("✗")
+            } else {
+                colors::success("✓")
+            };
             let drift_text = if has_drift { "drifted" } else { "in sync" };
-            
+
             println!("──────────────────────────────────────────────");
             println!(
                 "{} {} │ {} elements │ health: {}/100",

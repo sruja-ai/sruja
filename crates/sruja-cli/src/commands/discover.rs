@@ -263,18 +263,29 @@ pub fn discover_context_string_from_graph(
     }
 
     out.push_str("\n## Classification Signals\n\n");
-    let mut ambiguous = graph.nodes.iter()
+    let mut ambiguous = graph
+        .nodes
+        .iter()
         .filter(|n| n.confidence.unwrap_or(100) < 70)
         .collect::<Vec<_>>();
     ambiguous.sort_by_key(|n| n.confidence.unwrap_or(100));
-    
+
     if ambiguous.is_empty() {
         out.push_str("- All nodes classified with high confidence (>70%).\n");
     } else {
         for node in ambiguous.iter().take(10) {
-            let signals = node.metadata.get("classification.signals").cloned().unwrap_or_else(|| "none".to_string());
-            out.push_str(&format!("- `{}` (kind={}, confidence={}%, signals=[{}])\n", 
-                node.id, node.kind.as_str(), node.confidence.unwrap_or(0), signals));
+            let signals = node
+                .metadata
+                .get("classification.signals")
+                .cloned()
+                .unwrap_or_else(|| "none".to_string());
+            out.push_str(&format!(
+                "- `{}` (kind={}, confidence={}%, signals=[{}])\n",
+                node.id,
+                node.kind.as_str(),
+                node.confidence.unwrap_or(0),
+                signals
+            ));
         }
     }
 
@@ -1022,7 +1033,8 @@ pub fn discover_repomap(
         include_signatures: true,
     };
 
-    generate_repomap_from_graph(repo_path, &graph, &options).map_err(|e| CliError::scan(e.to_string()))
+    generate_repomap_from_graph(repo_path, &graph, &options)
+        .map_err(|e| CliError::scan(e.to_string()))
 }
 
 /// Print repository map for LLM context.

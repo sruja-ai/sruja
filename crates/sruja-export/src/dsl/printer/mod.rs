@@ -3,6 +3,7 @@
 //! Pretty-prints AST back to Sruja DSL format. Each AST category is handled by a dedicated submodule.
 
 mod blocks;
+mod contracts;
 mod definitions;
 mod deployment;
 mod flows;
@@ -11,10 +12,9 @@ mod import;
 mod loops;
 mod overview;
 mod relation;
+mod state_machine;
 mod style;
 mod view;
-mod state_machine;
-mod contracts;
 
 use sruja_language::{Program, TopLevelItem};
 

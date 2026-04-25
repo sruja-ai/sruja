@@ -38,16 +38,19 @@ pub fn load_or_build_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
 pub fn load_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     let graph_path = repo.join(GRAPH_FILE);
 
-    let json = std::fs::read_to_string(&graph_path).map_err(|e| {
-        CliError::Io(std::io::Error::new(
-            e.kind(),
-            format!("Failed to read graph file {}: {}", graph_path.display(), e),
-        ))
+    let json = std::fs::read_to_string(&graph_path).map_err(|_| CliError::ConfigCorrupted {
+        message: format!(
+            "Cannot read {}. Run `sruja sync` to rebuild.",
+            graph_path.display()
+        ),
     })?;
 
-    let graph: KnowledgeGraph = serde_json::from_str(&json)?;
-
-    Ok(graph)
+    serde_json::from_str(&json).map_err(|_| CliError::ConfigCorrupted {
+        message: format!(
+            "{} is not valid JSON. Run `sruja sync` to rebuild.",
+            graph_path.display()
+        ),
+    })
 }
 
 /// Build knowledge graph from repository scan and save to disk

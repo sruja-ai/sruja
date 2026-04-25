@@ -1,10 +1,9 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::path::Path;
-use sruja_scan::Graph;
-use sruja_intent::model::{IntentModel, BoundaryRuleType};
 use crate::commands::error::CliError;
 use crate::commands::scan_repo_cached;
+use serde::{Deserialize, Serialize};
+use sruja_intent::model::IntentModel;
+use std::collections::HashSet;
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PreflightResult {
@@ -17,7 +16,7 @@ pub struct PreflightResult {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PreflightConstraint {
     #[serde(rename = "type")]
-    pub constraint_type: String,  // "boundary", "policy", "convention"
+    pub constraint_type: String, // "boundary", "policy", "convention"
     pub rule: String,
     pub applies_to: Vec<String>,
 }
@@ -25,7 +24,7 @@ pub struct PreflightConstraint {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PreflightRisk {
     #[serde(rename = "type")]
-    pub risk_type: String,  // "incident", "gotcha", "constraint"
+    pub risk_type: String, // "incident", "gotcha", "constraint"
     pub element: String,
     pub detail: String,
 }
@@ -39,7 +38,7 @@ pub struct PreflightContract {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PreflightSupervision {
-    pub recent_velocity: String,        // "high", "moderate", "low"
+    pub recent_velocity: String, // "high", "moderate", "low"
     pub unproposed_changes_in_area: usize,
     pub recommendation: Option<String>,
 }
@@ -50,7 +49,7 @@ pub async fn preflight(
     _intent: String,
 ) -> Result<PreflightResult, CliError> {
     let graph = scan_repo_cached(repo_path)?;
-    
+
     // Load intent model (boundaries and policies)
     let intent_path = repo_path.join("architecture.sruja");
     let intent = if intent_path.exists() {
@@ -86,7 +85,10 @@ pub async fn preflight(
 
     // Collect constraints from boundaries
     for boundary in &intent.boundaries {
-        let is_affected = boundary.inside.iter().any(|id| expanded_elements.contains(id));
+        let is_affected = boundary
+            .inside
+            .iter()
+            .any(|id| expanded_elements.contains(id));
         if is_affected {
             for rule in &boundary.rules {
                 constraints.push(PreflightConstraint {
@@ -108,7 +110,7 @@ pub async fn preflight(
                     detail: gotcha.clone(),
                 });
             }
-            
+
             for contract in &node.contracts {
                 contracts.push(PreflightContract {
                     element: id.clone(),
@@ -121,11 +123,10 @@ pub async fn preflight(
 
     // Supervision metrics
     let velocity = sruja_diff::git_mapper::architectural_velocity(
-        repo_path,
-        "HEAD~20", // Default heuristic
-        "HEAD",
-        &graph,
-    ).ok();
+        repo_path, "HEAD~20", // Default heuristic
+        "HEAD", &graph,
+    )
+    .ok();
 
     let (recent_velocity, unproposed_changes) = if let Some(v) = velocity {
         let rel_v = if v.supervision_ratio < 0.5 {
@@ -135,11 +136,13 @@ pub async fn preflight(
         } else {
             "low"
         };
-        
-        let area_unproposed = v.unsupervised_nodes.iter()
+
+        let area_unproposed = v
+            .unsupervised_nodes
+            .iter()
             .filter(|id| expanded_elements.contains(*id))
             .count();
-            
+
         (rel_v.to_string(), area_unproposed)
     } else {
         ("unknown".to_string(), 0)

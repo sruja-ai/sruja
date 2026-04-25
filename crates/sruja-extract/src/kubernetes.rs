@@ -1,6 +1,6 @@
-use std::path::Path;
-use sruja_language::ast::{SourceBinding, SourceKind};
 use crate::{DiscoveredSource, Extractor};
+use sruja_language::ast::{SourceBinding, SourceKind};
+use std::path::Path;
 
 pub struct KubernetesExtractor;
 
@@ -16,14 +16,21 @@ impl KubernetesExtractor {
     }
 
     fn is_k8s_file(path: &Path) -> bool {
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
         if !name.ends_with(".yaml") && !name.ends_with(".yml") {
             return false;
         }
-        
+
         // check content for "apiVersion:" (minimal check)
         if let Ok(content) = std::fs::read_to_string(path) {
-            content.contains("apiVersion:") && (content.contains("kind: Deployment") || content.contains("kind: Service") || content.contains("kind: StatefulSet"))
+            content.contains("apiVersion:")
+                && (content.contains("kind: Deployment")
+                    || content.contains("kind: Service")
+                    || content.contains("kind: StatefulSet"))
         } else {
             false
         }
@@ -39,17 +46,23 @@ impl Extractor for KubernetesExtractor {
         let mut results = Vec::new();
 
         if Self::is_k8s_file(path) {
-            let relative_path = path.strip_prefix(repo_root)
+            let relative_path = path
+                .strip_prefix(repo_root)
                 .unwrap_or(path)
                 .to_string_lossy()
                 .to_string();
-            
+
             // Heuristic: try to find 'name:' in metadata
             let mut suggested_element = None;
             if let Ok(content) = std::fs::read_to_string(path) {
                 for line in content.lines() {
                     if line.trim().starts_with("name:") {
-                        suggested_element = Some(line.trim()["name:".len()..].trim().trim_matches('"').to_string());
+                        suggested_element = Some(
+                            line.trim()["name:".len()..]
+                                .trim()
+                                .trim_matches('"')
+                                .to_string(),
+                        );
                         break;
                     }
                 }

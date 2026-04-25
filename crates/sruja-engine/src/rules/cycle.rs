@@ -155,8 +155,8 @@ impl Rule for CycleDetectionRule {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_language::Parser;
 
     fn parse_and_validate(source: &str) -> Vec<Diagnostic> {

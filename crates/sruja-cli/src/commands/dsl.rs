@@ -94,7 +94,10 @@ pub async fn lint(
                     message: format!("Parsing failed with {} errors", diagnostics.len()),
                     diagnostics,
                     help: Some("Fix the syntax errors reported by the parser.".into()),
-                    fix: Some("After fixing syntax, run 'sruja fmt' (optional) and re-run 'sruja lint'.".into()),
+                    fix: Some(
+                        "After fixing syntax, run 'sruja fmt' (optional) and re-run 'sruja lint'."
+                            .into(),
+                    ),
                 });
             }
             if github {
@@ -105,7 +108,9 @@ pub async fn lint(
                     file: file.to_string(),
                     message: format!("Parsing failed with {} errors", diagnostics.len()),
                     diagnostics,
-                    help: Some("Check the GitHub Actions annotations for the exact location.".into()),
+                    help: Some(
+                        "Check the GitHub Actions annotations for the exact location.".into(),
+                    ),
                     fix: Some("Fix the syntax errors in the file, then re-run the check.".into()),
                 });
             }
@@ -228,7 +233,11 @@ pub async fn lint(
     if !warnings.is_empty() {
         use crate::utils::colors;
         println!("──────────────────────────────────────────────");
-        println!("{} Found {} warning(s) (no errors)", colors::success("✓"), warnings.len());
+        println!(
+            "{} Found {} warning(s) (no errors)",
+            colors::success("✓"),
+            warnings.len()
+        );
     } else {
         use crate::utils::colors;
         println!("──────────────────────────────────────────────");
@@ -458,7 +467,10 @@ pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<
 
     if let Some(inject_path) = options.inject {
         inject_into_file(&inject_path, &output_str, format)?;
-        println!("Successfully injected {} output into {}", format, inject_path);
+        println!(
+            "Successfully injected {} output into {}",
+            format, inject_path
+        );
     } else {
         println!("{}", output_str);
     }
@@ -467,8 +479,12 @@ pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<
 }
 
 fn inject_into_file(path: &str, content: &str, format: &str) -> Result<(), CliError> {
-    let file_content = fs::read_to_string(path)
-        .map_err(|e| CliError::Io(std::io::Error::new(e.kind(), format!("Failed to read {}: {}", path, e))))?;
+    let file_content = fs::read_to_string(path).map_err(|e| {
+        CliError::Io(std::io::Error::new(
+            e.kind(),
+            format!("Failed to read {}: {}", path, e),
+        ))
+    })?;
 
     let start_marker = "<!-- sruja:start -->";
     let end_marker = "<!-- sruja:end -->";
@@ -481,7 +497,7 @@ fn inject_into_file(path: &str, content: &str, format: &str) -> Result<(), CliEr
             let mut new_content = String::new();
             new_content.push_str(&file_content[..start + start_marker.len()]);
             new_content.push('\n');
-            
+
             if format == "mermaid" {
                 new_content.push_str("```mermaid\n");
                 new_content.push_str(content);
@@ -505,8 +521,12 @@ fn inject_into_file(path: &str, content: &str, format: &str) -> Result<(), CliEr
 
             new_content.push_str(&file_content[end..]);
 
-            fs::write(path, new_content)
-                .map_err(|e| CliError::Io(std::io::Error::new(e.kind(), format!("Failed to write {}: {}", path, e))))?;
+            fs::write(path, new_content).map_err(|e| {
+                CliError::Io(std::io::Error::new(
+                    e.kind(),
+                    format!("Failed to write {}: {}", path, e),
+                ))
+            })?;
             Ok(())
         }
         _ => Err(CliError::Export(JsonExportError::Export(format!(
@@ -792,34 +812,42 @@ pub async fn explain(element_id: &str, file: Option<&str>, json: bool) -> Result
 
     let (elements, relations) = sruja_language::collect_elements(&program);
 
-    let elem = elements
-        .get(element_id)
-        .ok_or_else(|| {
-            let q = element_id.to_lowercase();
-            let fuzzy: Vec<&String> = elements
-                .keys()
-                .filter(|k| k.to_lowercase().contains(&q))
-                .collect();
-            if fuzzy.is_empty() {
-                CliError::validation(format!(
-                    "Element '{}' not found. Available: {} (or run `sruja list {}` to see all)",
-                    element_id,
-                    elements.keys().take(5).cloned().collect::<Vec<_>>().join(", "),
-                    file_path
-                ))
-            } else if fuzzy.len() == 1 {
-                CliError::validation(format!(
-                    "Element '{}' not found. Did you mean '{}'?",
-                    element_id, fuzzy[0]
-                ))
-            } else {
-                CliError::validation(format!(
-                    "Element '{}' not found. Similar: {}",
-                    element_id,
-                    fuzzy.iter().take(5).map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
-                ))
-            }
-        })?;
+    let elem = elements.get(element_id).ok_or_else(|| {
+        let q = element_id.to_lowercase();
+        let fuzzy: Vec<&String> = elements
+            .keys()
+            .filter(|k| k.to_lowercase().contains(&q))
+            .collect();
+        if fuzzy.is_empty() {
+            CliError::validation(format!(
+                "Element '{}' not found. Available: {} (or run `sruja list {}` to see all)",
+                element_id,
+                elements
+                    .keys()
+                    .take(5)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                file_path
+            ))
+        } else if fuzzy.len() == 1 {
+            CliError::validation(format!(
+                "Element '{}' not found. Did you mean '{}'?",
+                element_id, fuzzy[0]
+            ))
+        } else {
+            CliError::validation(format!(
+                "Element '{}' not found. Similar: {}",
+                element_id,
+                fuzzy
+                    .iter()
+                    .take(5)
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
+        }
+    })?;
 
     let incoming: Vec<_> = relations
         .iter()
@@ -896,14 +924,14 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
 
     if let Some(elements) = json.get("elements").and_then(|e| e.as_object()) {
         let mut sorted: Vec<_> = elements.iter().collect();
-        sorted.sort_by_key(|(k, _)| k.clone());
+        sorted.sort_by_key(|(k, _)| *k);
 
         for (fqn, elem) in &sorted {
             if let (Some(kind), Some(title)) = (
                 elem.get("kind").and_then(|v| v.as_str()),
                 elem.get("title").and_then(|v| v.as_str()),
             ) {
-                let short_id = fqn.split('.').last().unwrap_or(fqn);
+                let short_id = fqn.split('.').next_back().unwrap_or(fqn);
                 println!(
                     "{} = {} \"{}\" {{",
                     short_id.replace('-', "_").replace(" ", "_"),
@@ -925,12 +953,28 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
         if let Some(relations) = json.get("relations").and_then(|r| r.as_array()) {
             println!();
             for rel in relations {
-                let from = rel.get("source").and_then(|s| s.get("model")).and_then(|m| m.as_str());
-                let to = rel.get("target").and_then(|t| t.get("model")).and_then(|m| m.as_str());
+                let from = rel
+                    .get("source")
+                    .and_then(|s| s.get("model"))
+                    .and_then(|m| m.as_str());
+                let to = rel
+                    .get("target")
+                    .and_then(|t| t.get("model"))
+                    .and_then(|m| m.as_str());
                 let label = rel.get("title").and_then(|t| t.as_str()).unwrap_or("");
                 if let (Some(f), Some(t)) = (from, to) {
-                    let from_short = f.split('.').last().unwrap_or(f).replace('-', "_").replace(" ", "_");
-                    let to_short = t.split('.').last().unwrap_or(t).replace('-', "_").replace(" ", "_");
+                    let from_short = f
+                        .split('.')
+                        .next_back()
+                        .unwrap_or(f)
+                        .replace('-', "_")
+                        .replace(" ", "_");
+                    let to_short = t
+                        .split('.')
+                        .next_back()
+                        .unwrap_or(t)
+                        .replace('-', "_")
+                        .replace(" ", "_");
                     println!("{} -> {} \"{}\"", from_short, to_short, label);
                 }
             }

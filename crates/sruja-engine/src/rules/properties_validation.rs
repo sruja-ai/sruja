@@ -248,8 +248,8 @@ fn is_number(s: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_diagnostics::SourceLocation;
     use sruja_language::{
         ElementAssignment, ElementDef, ElementDefBody, ElementKind, MetaEntry, Program,

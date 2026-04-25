@@ -47,7 +47,7 @@ impl Rule for ContainerNestingRule {
                         )]),
                     );
                 }
-                
+
                 // Also check nested elements recursively
                 if let Some(body) = &elem.assignment.body {
                     diags.append(&mut validate_nested_nesting(kind, &body.items, schema));
@@ -59,7 +59,11 @@ impl Rule for ContainerNestingRule {
     }
 }
 
-fn validate_nested_nesting(parent_kind: &sruja_language::ElementKind, items: &[sruja_language::ElementDefBodyItem], schema: &DomainSchema) -> Vec<Diagnostic> {
+fn validate_nested_nesting(
+    parent_kind: &sruja_language::ElementKind,
+    items: &[sruja_language::ElementDefBodyItem],
+    schema: &DomainSchema,
+) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     let parent_kind_str = parent_kind.to_string();
 
@@ -86,7 +90,11 @@ fn validate_nested_nesting(parent_kind: &sruja_language::ElementKind, items: &[s
 
             // Recurse
             if let Some(body) = &elem.assignment.body {
-                diags.append(&mut validate_nested_nesting(child_kind, &body.items, schema));
+                diags.append(&mut validate_nested_nesting(
+                    child_kind,
+                    &body.items,
+                    schema,
+                ));
             }
         }
     }
@@ -106,8 +114,8 @@ fn requires_nesting(kind: &ElementKind) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_language::Parser;
 
     fn validate(input: &str) -> Vec<Diagnostic> {

@@ -7,11 +7,11 @@ use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
 
 use crate::rules::{
-    ComplexityThresholdRule, ContainerNestingRule, CycleDetectionRule, DatabaseIsolationRule,
-    GovernanceValidationRule, LayerViolationRule, OrphanDetectionRule, PolicyEvaluationRule,
-    PropertiesValidationRule, PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule,
-    SimplicityRule, SloValidationRule, SourcesValidationRule, UniqueIdRule, ValidRefRule,
-    StateMachineIntegrityRule, ContractIntegrityRule,
+    ComplexityThresholdRule, ContainerNestingRule, ContractIntegrityRule, CycleDetectionRule,
+    DatabaseIsolationRule, GovernanceValidationRule, LayerViolationRule, OrphanDetectionRule,
+    PolicyEvaluationRule, PropertiesValidationRule, PublicInterfaceDocumentationRule,
+    RequiredFieldsRule, ScenarioValidationRule, SimplicityRule, SloValidationRule,
+    SourcesValidationRule, StateMachineIntegrityRule, UniqueIdRule, ValidRefRule,
 };
 use crate::DomainSchema;
 
@@ -190,7 +190,9 @@ impl Validator {
             let task = tokio::spawn(async move {
                 tokio::time::timeout(
                     rule_timeout,
-                    tokio::task::spawn_blocking(move || rule.validate(&program_clone, &schema_clone)),
+                    tokio::task::spawn_blocking(move || {
+                        rule.validate(&program_clone, &schema_clone)
+                    }),
                 )
                 .await
             });

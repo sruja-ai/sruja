@@ -440,20 +440,20 @@ mod tests {
         
         App.Web -> App.Api "calls"
         "#;
-        
+
         let mut parser = Parser::new("test.sruja");
         let program = parser.parse(input).unwrap();
-        
+
         let config = D2Config {
             direction: "down".to_string(),
             view_level: 2,
             target_id: None,
             link_template: None,
         };
-        
+
         let exporter = D2Exporter::new(config);
         let out = exporter.export(&program);
-        
+
         assert!(out.contains("direction: down"));
         assert!(out.contains("App: \"App\" {"));
         assert!(out.contains("Web: \"Web\" {"));

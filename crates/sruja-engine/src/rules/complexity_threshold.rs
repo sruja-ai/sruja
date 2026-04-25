@@ -3,10 +3,10 @@
 //! Validates that architecture graph complexity is within acceptable thresholds.
 //! Based on talks: "Cyclomatic complexity above a threshold triggers mandatory human review"
 
+use crate::validator::Rule;
 use crate::DomainSchema;
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
 use sruja_language::Program;
-use crate::validator::Rule;
 
 const COMPLEXITY_THRESHOLD: usize = 6;
 const CRITICAL_COMPLEXITY_THRESHOLD: usize = 10;
@@ -61,8 +61,8 @@ impl Rule for ComplexityThresholdRule {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
 
     #[test]
     fn low_complexity_no_warning() {

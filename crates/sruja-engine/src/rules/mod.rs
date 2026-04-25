@@ -2,6 +2,7 @@
 
 pub mod complexity_threshold;
 pub mod container_nesting;
+pub mod contract_integrity;
 pub mod cycle;
 pub mod database_isolation;
 pub mod governance_validation;
@@ -15,13 +16,13 @@ pub mod scenario_validation;
 pub mod simplicity;
 pub mod slo_validation;
 pub mod sources_validation;
+pub mod state_machine_integrity;
 pub mod unique_id;
 pub mod valid_ref;
-pub mod state_machine_integrity;
-pub mod contract_integrity;
 
 pub use complexity_threshold::ComplexityThresholdRule;
 pub use container_nesting::ContainerNestingRule;
+pub use contract_integrity::ContractIntegrityRule;
 pub use cycle::CycleDetectionRule;
 pub use database_isolation::DatabaseIsolationRule;
 pub use governance_validation::GovernanceValidationRule;
@@ -35,7 +36,6 @@ pub use scenario_validation::ScenarioValidationRule;
 pub use simplicity::SimplicityRule;
 pub use slo_validation::SloValidationRule;
 pub use sources_validation::SourcesValidationRule;
+pub use state_machine_integrity::StateMachineIntegrityRule;
 pub use unique_id::UniqueIdRule;
 pub use valid_ref::ValidRefRule;
-pub use state_machine_integrity::StateMachineIntegrityRule;
-pub use contract_integrity::ContractIntegrityRule;

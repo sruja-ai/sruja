@@ -4,8 +4,8 @@ use std::fs;
 use std::path::Path;
 use std::time::Instant;
 
-use super::{scan_repo_cached, CliError};
 use super::violation_shared::*;
+use super::{scan_repo_cached, CliError};
 use crate::utils::{architecture_path, colors};
 use sruja_diff::Violation;
 
@@ -37,7 +37,12 @@ fn is_usize_zero(v: &usize) -> bool {
     *v == 0
 }
 
-pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critique: bool) -> Result<(), CliError> {
+pub async fn review(
+    repo_root: &str,
+    format: &str,
+    verbose: bool,
+    include_critique: bool,
+) -> Result<(), CliError> {
     let start_time = Instant::now();
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
@@ -55,17 +60,20 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
             .current_dir(repo_path)
             .output()
             .map_err(CliError::Io)?;
-        
+
         let git_files = String::from_utf8_lossy(&output.stdout);
         for f in git_files.lines() {
             if !f.is_empty() {
                 files.push(f.to_string());
             }
         }
-        
+
         if !files.is_empty() {
             // We just print it to stdout for now as part of the dashboard
-            super::critique::critique(repo_root, files, None, None, None, None, false, format, None).await?;
+            super::critique::critique(
+                repo_root, files, None, None, None, None, false, format, None,
+            )
+            .await?;
             println!();
         }
     }
@@ -119,8 +127,16 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
     // Sort by severity (error first)
     filtered_violations.sort_by(|a, b| {
         use sruja_diff::Severity;
-        let a_sev = match a.severity { Severity::Error => 0, Severity::Warning => 1, Severity::Info => 2 };
-        let b_sev = match b.severity { Severity::Error => 0, Severity::Warning => 1, Severity::Info => 2 };
+        let a_sev = match a.severity {
+            Severity::Error => 0,
+            Severity::Warning => 1,
+            Severity::Info => 2,
+        };
+        let b_sev = match b.severity {
+            Severity::Error => 0,
+            Severity::Warning => 1,
+            Severity::Info => 2,
+        };
         a_sev.cmp(&b_sev)
     });
 
@@ -158,7 +174,8 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
             (filtered_violations, Vec::new())
         };
 
-    let has_drift = truth_status == "drifted" || (baseline_path.is_none() && !active_violations.is_empty());
+    let has_drift =
+        truth_status == "drifted" || (baseline_path.is_none() && !active_violations.is_empty());
     let (new_components, missing_components, drifted_dependencies) =
         categorize_violations(&active_violations);
     let open_questions = generate_open_questions(&active_violations);
@@ -184,7 +201,10 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
         health_score,
         suppressed_count: suppressed_violations.len(),
         violations: active_violations.iter().map(summarize_violation).collect(),
-        suppressed_violations: suppressed_violations.iter().map(summarize_violation).collect(),
+        suppressed_violations: suppressed_violations
+            .iter()
+            .map(summarize_violation)
+            .collect(),
         new_components,
         missing_components,
         drifted_dependencies,
@@ -221,8 +241,9 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
                 _ => colors::warning(&output.truth_status),
             };
             health_info.push_str(&format!("Status: {}\n", status_color));
-            health_info.push_str(&format!("Issues: {} active, {} suppressed\n", 
-                colors::style(output.violations_count).bold(), 
+            health_info.push_str(&format!(
+                "Issues: {} active, {} suppressed\n",
+                colors::style(output.violations_count).bold(),
                 colors::dim(output.suppressed_count)
             ));
             blocks.push(("Architecture Review".to_string(), health_info));
@@ -231,7 +252,11 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
             if !output.violations.is_empty() {
                 let priority = &output.violations[0];
                 let mut fix_info = String::new();
-                fix_info.push_str(&format!("{} {}\n", colors::severity_icon(&priority.severity), colors::style(&priority.message).bold()));
+                fix_info.push_str(&format!(
+                    "{} {}\n",
+                    colors::severity_icon(&priority.severity),
+                    colors::style(&priority.message).bold()
+                ));
                 if let Some(ref loc) = priority.location {
                     fix_info.push_str(&format!("{} {}\n", colors::dim("Loc:"), loc));
                 }
@@ -241,20 +266,32 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
             // 3. Structural Changes
             let mut changes_info = String::new();
             if !output.new_components.is_empty() {
-                changes_info.push_str(&format!("{} new components detected\n", colors::success(output.new_components.len())));
+                changes_info.push_str(&format!(
+                    "{} new components detected\n",
+                    colors::success(output.new_components.len())
+                ));
             }
             if !output.missing_components.is_empty() {
-                changes_info.push_str(&format!("{} components missing from code\n", colors::error(output.missing_components.len())));
+                changes_info.push_str(&format!(
+                    "{} components missing from code\n",
+                    colors::error(output.missing_components.len())
+                ));
             }
             if !output.drifted_dependencies.is_empty() {
-                changes_info.push_str(&format!("{} drifted dependencies\n", colors::warning(output.drifted_dependencies.len())));
+                changes_info.push_str(&format!(
+                    "{} drifted dependencies\n",
+                    colors::warning(output.drifted_dependencies.len())
+                ));
             }
             if changes_info.is_empty() {
                 changes_info.push_str("No structural changes detected.\n");
             }
             blocks.push(("Structural Read".to_string(), changes_info));
 
-            println!("{}", formatter.format_dashboard("DAILY ARCHITECTURE REVIEW", blocks));
+            println!(
+                "{}",
+                formatter.format_dashboard("DAILY ARCHITECTURE REVIEW", blocks)
+            );
 
             // Detailed Violations
             if !output.violations.is_empty() {
@@ -269,10 +306,11 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
                         colors::dim(v.location.as_deref().unwrap_or(""))
                     );
                 }
-                
+
                 if output.violations.len() > limit {
-                    println!("  {} ... and {} more issues. Run with {} to see all.", 
-                        colors::dim("•"), 
+                    println!(
+                        "  {} ... and {} more issues. Run with {} to see all.",
+                        colors::dim("•"),
                         output.violations.len() - limit,
                         colors::info("--verbose")
                     );
@@ -287,9 +325,12 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
                     println!("  {} {}", colors::success(">"), s);
                 }
             }
-            
+
             println!();
-            println!("{}", colors::dim(format!("Done in {}", colors::elapsed_display(elapsed))));
+            println!(
+                "{}",
+                colors::dim(format!("Done in {}", colors::elapsed_display(elapsed)))
+            );
         }
     }
 

@@ -78,35 +78,67 @@ impl ClassificationEngine {
 
         // Go Main/Service
         self.add_rule("go_main_server", 85, NodeKind::Service, |ctx| {
-            let has_main_func = ctx.parsed.definitions.iter().any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
-            ctx.path_str.ends_with(".go") && has_main_func && 
-            ["http.", "grpc.", "serve", "listen"].iter().any(|s| ctx.content_lower.contains(s))
+            let has_main_func = ctx
+                .parsed
+                .definitions
+                .iter()
+                .any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
+            ctx.path_str.ends_with(".go")
+                && has_main_func
+                && ["http.", "grpc.", "serve", "listen"]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
         });
 
         // Rust Web Service
         self.add_rule("rust_web_server", 90, NodeKind::Service, |ctx| {
-            let has_main = ctx.parsed.definitions.iter().any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
-            ctx.path_str.ends_with(".rs") && has_main && 
-            ["axum::", "actix_web::", "rocket::", "warp::", "tonic::", "serve("].iter().any(|s| ctx.content_lower.contains(s))
+            let has_main = ctx
+                .parsed
+                .definitions
+                .iter()
+                .any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
+            ctx.path_str.ends_with(".rs")
+                && has_main
+                && [
+                    "axum::",
+                    "actix_web::",
+                    "rocket::",
+                    "warp::",
+                    "tonic::",
+                    "serve(",
+                ]
+                .iter()
+                .any(|s| ctx.content_lower.contains(s))
         });
 
         // Java Spring
         self.add_rule("java_spring_boot", 95, NodeKind::Service, |ctx| {
-            let has_class = ctx.parsed.definitions.iter().any(|d| d.kind == DefinitionKind::Class);
-            ctx.path_str.ends_with(".java") && has_class && 
-            ["@springbootapplication", "@restcontroller"].iter().any(|s| ctx.content_lower.contains(s))
+            let has_class = ctx
+                .parsed
+                .definitions
+                .iter()
+                .any(|d| d.kind == DefinitionKind::Class);
+            ctx.path_str.ends_with(".java")
+                && has_class
+                && ["@springbootapplication", "@restcontroller"]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
         });
 
         // JS/TS Server
         self.add_rule("js_express_app", 90, NodeKind::Service, |ctx| {
-            (ctx.path_str.ends_with(".js") || ctx.path_str.ends_with(".ts")) &&
-            ["express()", "app.listen(", "nestfactory.create"].iter().any(|s| ctx.content_lower.contains(s))
+            (ctx.path_str.ends_with(".js") || ctx.path_str.ends_with(".ts"))
+                && ["express()", "app.listen(", "nestfactory.create"]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
         });
 
         // Python Web
         self.add_rule("python_web_framework", 90, NodeKind::Service, |ctx| {
-            ctx.path_str.ends_with(".py") &&
-            ["flask(", "fastapi(", "django"].iter().any(|s| ctx.content_lower.contains(s))
+            ctx.path_str.ends_with(".py")
+                && ["flask(", "fastapi(", "django"]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
         });
 
         // Databases & Storage
@@ -114,33 +146,53 @@ impl ClassificationEngine {
             ctx.path_str.ends_with(".prisma")
         });
         self.add_rule("redis_client", 80, NodeKind::Database, |ctx| {
-            ["redis.createclient", "ioredis", "redis-go", "redis-py"].iter().any(|s| ctx.content_lower.contains(s))
+            ["redis.createclient", "ioredis", "redis-go", "redis-py"]
+                .iter()
+                .any(|s| ctx.content_lower.contains(s))
         });
         self.add_rule("postgres_driver", 70, NodeKind::Database, |ctx| {
-            ["pg.", "postgres.", "sqlx", "gorm"].iter().any(|s| ctx.content_lower.contains(s)) &&
-            ctx.content_lower.contains("connect")
+            ["pg.", "postgres.", "sqlx", "gorm"]
+                .iter()
+                .any(|s| ctx.content_lower.contains(s))
+                && ctx.content_lower.contains("connect")
         });
         self.add_rule("orm_entity", 70, NodeKind::Database, |ctx| {
-            ["mongoose.model", "sequelize.define", "@entity", "drizzle-orm"].iter().any(|s| ctx.content_lower.contains(s))
+            [
+                "mongoose.model",
+                "sequelize.define",
+                "@entity",
+                "drizzle-orm",
+            ]
+            .iter()
+            .any(|s| ctx.content_lower.contains(s))
         });
 
         // Queues & Messaging
         self.add_rule("kafka_client", 90, NodeKind::Queue, |ctx| {
-            ["kafkajs", "confluent", "sarama", "aiokafka"].iter().any(|s| ctx.content_lower.contains(s))
+            ["kafkajs", "confluent", "sarama", "aiokafka"]
+                .iter()
+                .any(|s| ctx.content_lower.contains(s))
         });
         self.add_rule("rabbitmq_client", 90, NodeKind::Queue, |ctx| {
-            ["amqp", "pika", "stomp"].iter().any(|s| ctx.content_lower.contains(s))
+            ["amqp", "pika", "stomp"]
+                .iter()
+                .any(|s| ctx.content_lower.contains(s))
         });
 
         // External APIs & Integrations
         self.add_rule("stripe_integration", 90, NodeKind::ExternalApi, |ctx| {
-            ctx.content_lower.contains("stripe") && (ctx.content_lower.contains("checkout") || ctx.content_lower.contains("payment"))
+            ctx.content_lower.contains("stripe")
+                && (ctx.content_lower.contains("checkout") || ctx.content_lower.contains("payment"))
         });
 
         // CLI Exclusion (Negative signals or early exit)
         self.add_rule("cli_tool_match", -100, NodeKind::Module, |ctx| {
-            ["cobra.", "commander", "yargs", "argparse", "click."].iter().any(|s| ctx.content_lower.contains(s)) ||
-            (ctx.path_str.contains("/cmd/") && !ctx.path_str.contains("/cmd/server") && (ctx.content_lower.contains("flag.") || ctx.content_lower.contains("args")))
+            ["cobra.", "commander", "yargs", "argparse", "click."]
+                .iter()
+                .any(|s| ctx.content_lower.contains(s))
+                || (ctx.path_str.contains("/cmd/")
+                    && !ctx.path_str.contains("/cmd/server")
+                    && (ctx.content_lower.contains("flag.") || ctx.content_lower.contains("args")))
         });
     }
 }

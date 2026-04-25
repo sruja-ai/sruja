@@ -1,6 +1,6 @@
-use std::path::Path;
-use sruja_language::ast::{SourceBinding, SourceKind};
 use crate::{DiscoveredSource, Extractor};
+use sruja_language::ast::{SourceBinding, SourceKind};
+use std::path::Path;
 
 pub struct DocExtractor;
 
@@ -16,12 +16,20 @@ impl DocExtractor {
     }
 
     fn is_doc_file(path: &Path) -> bool {
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
         name.ends_with(".md") || name.ends_with(".adoc") || name.ends_with(".rst")
     }
 
     fn source_kind(path: &Path) -> SourceKind {
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
         if name.starts_with("readme") {
             SourceKind::Readme
         } else {
@@ -39,13 +47,15 @@ impl Extractor for DocExtractor {
         let mut results = Vec::new();
 
         if Self::is_doc_file(path) {
-            let relative_path = path.strip_prefix(repo_root)
+            let relative_path = path
+                .strip_prefix(repo_root)
                 .unwrap_or(path)
                 .to_string_lossy()
                 .to_string();
-            
+
             // Heuristic: use directory name for suggested element
-            let suggested_element = path.parent()
+            let suggested_element = path
+                .parent()
                 .and_then(|p| p.file_name())
                 .and_then(|n| n.to_str())
                 .map(|s| s.to_string());

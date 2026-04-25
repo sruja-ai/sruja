@@ -29,8 +29,8 @@ impl Rule for SimplicityRule {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_language::Parser;
 
     #[test]

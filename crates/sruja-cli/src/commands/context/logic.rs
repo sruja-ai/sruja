@@ -44,7 +44,10 @@ pub fn build_architecture_context(
     let system_context = build_system_context(repo);
 
     let mut active_decisions = Vec::new();
-    let adr_dir = Path::new(repo).join("docs").join("architecture").join("decisions");
+    let adr_dir = Path::new(repo)
+        .join("docs")
+        .join("architecture")
+        .join("decisions");
     if adr_dir.exists() {
         let parser = sruja_intent::AdrParser::new();
         if let Ok(adrs) = parser.parse_dir(&adr_dir) {
@@ -463,7 +466,8 @@ fn load_baseline_elements(repo_root: &Path) -> BaselineElements {
                     .insert(fqn.clone(), body.operational_constraints.clone());
             }
             if !body.runbooks.is_empty() {
-                out.runbooks_by_id.insert(fqn.clone(), body.runbooks.clone());
+                out.runbooks_by_id
+                    .insert(fqn.clone(), body.runbooks.clone());
             }
         }
     }
@@ -577,7 +581,9 @@ fn resolve_focus(
             sruja_scan::NodeKind::System | sruja_scan::NodeKind::ExternalApi => {
                 overview_ids.push(id.clone());
             }
-            sruja_scan::NodeKind::Container | sruja_scan::NodeKind::Database | sruja_scan::NodeKind::Queue => {
+            sruja_scan::NodeKind::Container
+            | sruja_scan::NodeKind::Database
+            | sruja_scan::NodeKind::Queue => {
                 let dot_count = id.matches('.').count();
                 if dot_count <= 1 {
                     overview_ids.push(id.clone());
@@ -699,19 +705,24 @@ fn build_focus_elements(
             }],
         };
 
-        let (gotchas, constraints, runbooks) = if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
-            (
-                node.gotchas.clone(),
-                node.operational_constraints.clone(),
-                node.runbooks.clone(),
-            )
-        } else {
-            (
-                baseline.gotchas_by_id.get(id).cloned().unwrap_or_default(),
-                baseline.constraints_by_id.get(id).cloned().unwrap_or_default(),
-                baseline.runbooks_by_id.get(id).cloned().unwrap_or_default(),
-            )
-        };
+        let (gotchas, constraints, runbooks) =
+            if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
+                (
+                    node.gotchas.clone(),
+                    node.operational_constraints.clone(),
+                    node.runbooks.clone(),
+                )
+            } else {
+                (
+                    baseline.gotchas_by_id.get(id).cloned().unwrap_or_default(),
+                    baseline
+                        .constraints_by_id
+                        .get(id)
+                        .cloned()
+                        .unwrap_or_default(),
+                    baseline.runbooks_by_id.get(id).cloned().unwrap_or_default(),
+                )
+            };
 
         out.push(TaskFocusElement {
             element_id: id.clone(),
@@ -793,7 +804,12 @@ fn expand_neighbors_and_impact(
 
     for id in focus_ids {
         if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
-            record_impact(&mut impacted, &mut seen_impacted, &node.id, node.kind.clone());
+            record_impact(
+                &mut impacted,
+                &mut seen_impacted,
+                &node.id,
+                node.kind.clone(),
+            );
         }
 
         if graph.nodes.iter().any(|n| n.id == *id) {

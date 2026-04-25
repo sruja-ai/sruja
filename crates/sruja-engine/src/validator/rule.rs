@@ -3,9 +3,9 @@
 //! Defines the interface for all validation rules. Implement this trait to create
 //! custom validation logic that can be registered with the [`super::Validator`].
 
+use crate::DomainSchema;
 use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
-use crate::DomainSchema;
 
 /// Validation rule trait
 ///

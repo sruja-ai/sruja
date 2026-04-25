@@ -230,8 +230,8 @@ impl<'a> ScenarioRunner<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::DomainSchema;
     use super::*;
+    use crate::DomainSchema;
     use sruja_language::Parser;
 
     fn validate_program(input: &str) -> Vec<Diagnostic> {

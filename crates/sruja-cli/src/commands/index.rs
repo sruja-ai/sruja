@@ -75,7 +75,7 @@ pub async fn registry_index(
     format: &str,
 ) -> Result<(), CliError> {
     let repo_root = Path::new(repo_path);
-    
+
     // 1. Parse architecture file if provided
     let arch_file = architecture_file.unwrap_or("repo.sruja");
     let program = if Path::new(arch_file).exists() {
@@ -100,9 +100,10 @@ pub async fn registry_index(
     } else {
         println!("✅ Discovered {} artifacts:", discovered.len());
         for d in &discovered {
-            println!("  [{}] {} (suggested: {})", 
-                d.binding.kind.as_str(), 
-                d.binding.path, 
+            println!(
+                "  [{}] {} (suggested: {})",
+                d.binding.kind.as_str(),
+                d.binding.path,
                 d.suggested_element.as_deref().unwrap_or("unknown")
             );
         }
@@ -121,14 +122,20 @@ pub async fn registry_index(
                 println!("No updates needed.");
             }
         } else {
-            return Err(CliError::Discovery(format!("Architecture file {} not found. Cannot --fix.", arch_file)));
+            return Err(CliError::Discovery(format!(
+                "Architecture file {} not found. Cannot --fix.",
+                arch_file
+            )));
         }
     }
 
     Ok(())
 }
 
-fn apply_discovered_sources(program: &mut sruja_language::ast::Program, discovered: Vec<sruja_extract::DiscoveredSource>) -> usize {
+fn apply_discovered_sources(
+    program: &mut sruja_language::ast::Program,
+    discovered: Vec<sruja_extract::DiscoveredSource>,
+) -> usize {
     let mut updated_count = 0;
 
     // Build a map of elements for easy lookup
@@ -142,19 +149,27 @@ fn apply_discovered_sources(program: &mut sruja_language::ast::Program, discover
     updated_count
 }
 
-fn update_element(elem: &mut sruja_language::ast::ElementDef, discovered: &[sruja_extract::DiscoveredSource]) -> usize {
+fn update_element(
+    elem: &mut sruja_language::ast::ElementDef,
+    discovered: &[sruja_extract::DiscoveredSource],
+) -> usize {
     let mut added = 0;
     let elem_name = &elem.assignment.name;
-    
+
     for d in discovered {
         if let Some(suggested) = &d.suggested_element {
             // Fuzzy match suggested name with element name or title
             let title = elem.assignment.title.as_ref().unwrap_or(elem_name);
-            if suggested.to_lowercase() == elem_name.to_lowercase() || suggested.to_lowercase() == title.to_lowercase() {
+            if suggested.to_lowercase() == elem_name.to_lowercase()
+                || suggested.to_lowercase() == title.to_lowercase()
+            {
                 // Check if already has this source
-                let has_source = elem.assignment.body.as_ref().map(|b| {
-                    b.sources.iter().any(|s| s.path == d.binding.path)
-                }).unwrap_or(false);
+                let has_source = elem
+                    .assignment
+                    .body
+                    .as_ref()
+                    .map(|b| b.sources.iter().any(|s| s.path == d.binding.path))
+                    .unwrap_or(false);
 
                 if !has_source {
                     if elem.assignment.body.is_none() {
@@ -191,7 +206,7 @@ pub async fn query_registry(
     let root = Path::new(repo_path);
     let arch_file = architecture_file.unwrap_or("repo.sruja");
     let query_lower = query.to_lowercase();
-    
+
     // 1. Search Local Registry (DSL)
     let mut local_found = Vec::new();
     if Path::new(arch_file).exists() {
@@ -208,9 +223,9 @@ pub async fn query_registry(
     if let Some(index_path) = crate::commands::federation::find_system_index(root) {
         if let Ok(index) = crate::commands::federation::load_system_index(&index_path) {
             for node in &index.nodes {
-                if node.label.to_lowercase().contains(&query_lower) || 
-                   node.local_id.to_lowercase().contains(&query_lower) ||
-                   node.repo_id.to_lowercase().contains(&query_lower) 
+                if node.label.to_lowercase().contains(&query_lower)
+                    || node.local_id.to_lowercase().contains(&query_lower)
+                    || node.repo_id.to_lowercase().contains(&query_lower)
                 {
                     global_found.push(node.clone());
                 }
@@ -231,17 +246,29 @@ pub async fn query_registry(
         println!("{}", serde_json::to_string_pretty(&result)?);
     } else {
         if !local_found.is_empty() {
-            println!("🔍 Found {} local elements matching '{}':", local_found.len(), query);
+            println!(
+                "🔍 Found {} local elements matching '{}':",
+                local_found.len(),
+                query
+            );
             for name in &local_found {
                 println!("  • {}", name);
             }
         }
-        
+
         if !global_found.is_empty() {
-            if !local_found.is_empty() { println!(); }
-            println!("🌐 Found {} global elements in federated index:", global_found.len());
+            if !local_found.is_empty() {
+                println!();
+            }
+            println!(
+                "🌐 Found {} global elements in federated index:",
+                global_found.len()
+            );
             for node in &global_found {
-                println!("  • {} ({}) - Repo: {}", node.label, node.kind, node.repo_id);
+                println!(
+                    "  • {} ({}) - Repo: {}",
+                    node.label, node.kind, node.repo_id
+                );
                 if let Some(owner) = &node.owner {
                     println!("    Owner: {}", owner);
                 }
@@ -270,51 +297,59 @@ fn search_elements(elem: &sruja_language::ast::ElementDef, query: &str, found: &
 }
 
 /// Generate a visual dashboard for the architectural registry
-pub async fn registry_dashboard(
-    repo_path: &str,
-    output_path: &str,
-) -> Result<(), CliError> {
+pub async fn registry_dashboard(repo_path: &str, output_path: &str) -> Result<(), CliError> {
     let root = Path::new(repo_path);
     let mut md = String::new();
-    
+
     md.push_str("# Sruja Architecture Registry Dashboard\n\n");
-    
+
     // 1. Try to find federated index
     if let Some(index_path) = crate::commands::federation::find_system_index(root) {
         if let Ok(index) = crate::commands::federation::load_system_index(&index_path) {
             md.push_str("## 🌐 Federated Landscape\n\n");
-            md.push_str(&format!("- **Total Repositories**: {}\n", index.repos.len()));
+            md.push_str(&format!(
+                "- **Total Repositories**: {}\n",
+                index.repos.len()
+            ));
             md.push_str(&format!("- **Total Elements**: {}\n", index.nodes.len()));
-            md.push_str(&format!("- **Total Relationships**: {}\n\n", index.edges.len()));
-            
+            md.push_str(&format!(
+                "- **Total Relationships**: {}\n\n",
+                index.edges.len()
+            ));
+
             md.push_str("### Repositories\n\n");
             md.push_str("| Repo ID | Status | Last Commit |\n|---|---|---|\n");
             for repo in &index.repos {
-                md.push_str(&format!("| `{}` | {} | {} |\n", 
-                    repo.repo_id, 
-                    repo.truth_status, 
+                md.push_str(&format!(
+                    "| `{}` | {} | {} |\n",
+                    repo.repo_id,
+                    repo.truth_status,
                     repo.git_commit.as_deref().unwrap_or("-")
                 ));
             }
-            md.push_str("\n");
+            md.push('\n');
 
             if !index.conflicts.is_empty() {
                 md.push_str("### ⚠ Conflicts\n\n");
                 for c in &index.conflicts {
-                    md.push_str(&format!("- **{}**: {} (involved: {})\n", 
-                        c.key, c.message, c.repos.join(", ")
+                    md.push_str(&format!(
+                        "- **{}**: {} (involved: {})\n",
+                        c.key,
+                        c.message,
+                        c.repos.join(", ")
                     ));
                 }
-                md.push_str("\n");
+                md.push('\n');
             }
 
             md.push_str("### High-Level Elements\n\n");
             md.push_str("| Element | Kind | Repo | Owner |\n|---|---|---|---|\n");
             for node in &index.nodes {
                 if node.kind != "module" {
-                    md.push_str(&format!("| {} | {} | `{}` | {} |\n", 
-                        node.label, 
-                        node.kind, 
+                    md.push_str(&format!(
+                        "| {} | {} | `{}` | {} |\n",
+                        node.label,
+                        node.kind,
                         node.repo_id,
                         node.owner.as_deref().unwrap_or("-")
                     ));
@@ -328,12 +363,13 @@ pub async fn registry_dashboard(
             let (_, program) = crate::commands::parse_sruja_file(arch_file)?;
             let (elements, _) = sruja_language::collect_elements(&program);
             md.push_str(&format!("- **Total Elements**: {}\n\n", elements.len()));
-            
+
             md.push_str("| Element | Kind | Title |\n|---|---|---|\n");
             for (fqn, elem) in elements {
-                md.push_str(&format!("| `{}` | {} | {} |\n", 
-                    fqn, 
-                    elem.assignment.kind, 
+                md.push_str(&format!(
+                    "| `{}` | {} | {} |\n",
+                    fqn,
+                    elem.assignment.kind,
                     elem.assignment.title.as_deref().unwrap_or("-")
                 ));
             }

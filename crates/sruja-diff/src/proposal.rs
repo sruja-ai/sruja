@@ -1,23 +1,23 @@
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-use sruja_scan::Graph;
+use sruja_diagnostics::SourceLocation;
 use sruja_intent::IntentModel;
+use sruja_intent::{Drift, DriftKind, Evidence, Severity};
 use sruja_language::ast::{
     ElementAssignment, ElementDef, ElementKind, Program, QualifiedIdent, Relation, TopLevelItem,
 };
-use sruja_diagnostics::SourceLocation;
-use sruja_intent::{Drift, DriftKind, Severity, Evidence};
+use sruja_scan::Graph;
+use std::path::{Path, PathBuf};
 
 /// A structured architectural change proposal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proposal {
-    pub id: String,                    // Slug-like ID, e.g., "add-payment-retry"
-    pub title: String,                 // Human-readable title
-    pub description: String,           // Why this change is needed
-    pub author: Option<String>,        // Who proposed it (agent ID or human)
-    pub created_at: String,            // ISO 8601 timestamp
+    pub id: String,             // Slug-like ID, e.g., "add-payment-retry"
+    pub title: String,          // Human-readable title
+    pub description: String,    // Why this change is needed
+    pub author: Option<String>, // Who proposed it (agent ID or human)
+    pub created_at: String,     // ISO 8601 timestamp
     pub status: ProposalStatus,
-    pub changes: Vec<ProposalChange>,  // The actual modifications
+    pub changes: Vec<ProposalChange>, // The actual modifications
     pub validation: Option<ProposalValidation>, // Result of pre-validation
 }
 
@@ -25,7 +25,7 @@ pub struct Proposal {
 #[serde(rename_all = "snake_case")]
 pub enum ProposalStatus {
     Draft,
-    Pending,     // Awaiting human review
+    Pending, // Awaiting human review
     Approved,
     Rejected,
     Implemented, // Code matches the proposal
@@ -36,7 +36,7 @@ pub enum ProposalStatus {
 pub enum ProposalChange {
     AddElement {
         id: String,
-        kind: String,           // "container", "component", "database", etc.
+        kind: String, // "container", "component", "database", etc.
         label: String,
         technology: Option<String>,
         parent: Option<String>, // Dot-notation parent, e.g., "PaymentSystem"
@@ -48,7 +48,7 @@ pub enum ProposalChange {
     },
     ModifyElement {
         id: String,
-        field: String,          // "technology", "description", "kind"
+        field: String, // "technology", "description", "kind"
         old_value: Option<String>,
         new_value: String,
     },
@@ -56,7 +56,7 @@ pub enum ProposalChange {
         source: String,
         target: String,
         label: Option<String>,
-        kind: Option<String>,   // "calls", "stores", "publishes"
+        kind: Option<String>, // "calls", "stores", "publishes"
     },
     RemoveRelationship {
         source: String,
@@ -70,8 +70,8 @@ pub enum ProposalChange {
 pub struct ProposalValidation {
     pub is_valid: bool,
     pub policy_violations: Vec<String>,
-    pub tribal_warnings: Vec<String>,  // Gotchas from affected components
-    pub blast_radius: Vec<String>,     // IDs of downstream affected components
+    pub tribal_warnings: Vec<String>, // Gotchas from affected components
+    pub blast_radius: Vec<String>,    // IDs of downstream affected components
     pub suggestions: Vec<String>,
 }
 
@@ -131,11 +131,7 @@ impl Proposal {
         Ok(proposals)
     }
 
-    pub fn validate(
-        &mut self,
-        graph: &Graph,
-        _intent: &IntentModel,
-    ) -> ProposalValidation {
+    pub fn validate(&mut self, graph: &Graph, _intent: &IntentModel) -> ProposalValidation {
         let mut validation = ProposalValidation {
             is_valid: true,
             ..Default::default()
@@ -146,10 +142,14 @@ impl Proposal {
         for node in &graph.nodes {
             if affected_ids.contains(&node.id) {
                 for gotcha in &node.gotchas {
-                    validation.tribal_warnings.push(format!("⚠️ Gotcha on {}: {}", node.id, gotcha));
+                    validation
+                        .tribal_warnings
+                        .push(format!("⚠️ Gotcha on {}: {}", node.id, gotcha));
                 }
                 for constraint in &node.operational_constraints {
-                    validation.tribal_warnings.push(format!("🔒 Constraint on {}: {}", node.id, constraint));
+                    validation
+                        .tribal_warnings
+                        .push(format!("🔒 Constraint on {}: {}", node.id, constraint));
                 }
             }
         }
@@ -177,9 +177,15 @@ impl Proposal {
         let mut ids = std::collections::HashSet::new();
         for change in &self.changes {
             match change {
-                ProposalChange::AddElement { id, .. } => { ids.insert(id.clone()); }
-                ProposalChange::RemoveElement { id, .. } => { ids.insert(id.clone()); }
-                ProposalChange::ModifyElement { id, .. } => { ids.insert(id.clone()); }
+                ProposalChange::AddElement { id, .. } => {
+                    ids.insert(id.clone());
+                }
+                ProposalChange::RemoveElement { id, .. } => {
+                    ids.insert(id.clone());
+                }
+                ProposalChange::ModifyElement { id, .. } => {
+                    ids.insert(id.clone());
+                }
                 ProposalChange::AddRelationship { source, target, .. } => {
                     ids.insert(source.clone());
                     ids.insert(target.clone());
@@ -208,23 +214,27 @@ impl Proposal {
                 } => {
                     // Check if already exists
                     if self.find_element(&program, id).is_some() {
-                        return Err(ProposalError::Apply(format!("Element '{}' already exists", id)));
+                        return Err(ProposalError::Apply(format!(
+                            "Element '{}' already exists",
+                            id
+                        )));
                     }
 
-                    let mut assignment = ElementAssignment::new(id.clone(), parse_element_kind(kind));
+                    let mut assignment =
+                        ElementAssignment::new(id.clone(), parse_element_kind(kind));
                     assignment.title = Some(label.clone());
-                    
+
                     let body = sruja_language::ast::ElementDefBody {
                         technology: technology.clone(),
                         description: description.clone(),
                         ..Default::default()
                     };
-                    
-                    // Note: parent is handled via naming convention or nesting. 
+
+                    // Note: parent is handled via naming convention or nesting.
                     // In flat DSL, it's usually part of the ID or handled via dot notation.
-                    
+
                     assignment.body = Some(body);
-                    
+
                     program.push_item(TopLevelItem::ElementDef(Box::new(ElementDef {
                         location: SourceLocation::new(String::new(), 0, 0),
                         assignment,
@@ -244,19 +254,32 @@ impl Proposal {
                         return Err(ProposalError::Apply(format!("Element '{}' not found", id)));
                     }
                 }
-                ProposalChange::ModifyElement { id, field, new_value, .. } => {
-                    let element = self.find_element_mut(&mut program, id)
-                        .ok_or_else(|| ProposalError::Apply(format!("Element '{}' not found", id)))?;
-                    
+                ProposalChange::ModifyElement {
+                    id,
+                    field,
+                    new_value,
+                    ..
+                } => {
+                    let element = self.find_element_mut(&mut program, id).ok_or_else(|| {
+                        ProposalError::Apply(format!("Element '{}' not found", id))
+                    })?;
+
                     let body = element.assignment.body.get_or_insert_with(Default::default);
                     match field.as_str() {
                         "technology" => body.technology = Some(new_value.clone()),
                         "description" => body.description = Some(new_value.clone()),
                         "kind" => element.assignment.kind = parse_element_kind(new_value),
-                        _ => return Err(ProposalError::Apply(format!("Unknown field '{}'", field))),
+                        _ => {
+                            return Err(ProposalError::Apply(format!("Unknown field '{}'", field)))
+                        }
                     }
                 }
-                ProposalChange::AddRelationship { source, target, label, kind } => {
+                ProposalChange::AddRelationship {
+                    source,
+                    target,
+                    label,
+                    kind,
+                } => {
                     let rel = Relation {
                         location: SourceLocation::new(String::new(), 0, 0),
                         from: parse_qualified_ident(source),
@@ -279,7 +302,10 @@ impl Proposal {
                     if let Some(i) = pos {
                         program.items.remove(i);
                     } else {
-                        return Err(ProposalError::Apply(format!("Relationship '{} -> {}' not found", source, target)));
+                        return Err(ProposalError::Apply(format!(
+                            "Relationship '{} -> {}' not found",
+                            source, target
+                        )));
                     }
                 }
             }
@@ -291,17 +317,29 @@ impl Proposal {
     fn find_element<'a>(&self, program: &'a Program, id: &str) -> Option<&'a ElementDef> {
         program.items.iter().find_map(|item| {
             if let TopLevelItem::ElementDef(def) = item {
-                if def.assignment.name == id { Some(def.as_ref()) } else { None }
+                if def.assignment.name == id {
+                    Some(def.as_ref())
+                } else {
+                    None
+                }
             } else {
                 None
             }
         })
     }
 
-    fn find_element_mut<'a>(&self, program: &'a mut Program, id: &str) -> Option<&'a mut ElementDef> {
+    fn find_element_mut<'a>(
+        &self,
+        program: &'a mut Program,
+        id: &str,
+    ) -> Option<&'a mut ElementDef> {
         program.items.iter_mut().find_map(|item| {
             if let TopLevelItem::ElementDef(def) = item {
-                if def.assignment.name == id { Some(def.as_mut()) } else { None }
+                if def.assignment.name == id {
+                    Some(def.as_mut())
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -333,18 +371,18 @@ pub fn detect_unproposed_changes(
     let mut drifts = Vec::new();
 
     // 1. Find nodes that are in current but not in previous
-    let previous_ids: std::collections::HashSet<_> = previous_graph.nodes.iter().map(|n| &n.id).collect();
-    
+    let previous_ids: std::collections::HashSet<_> =
+        previous_graph.nodes.iter().map(|n| &n.id).collect();
+
     for node in &current_graph.nodes {
         if !previous_ids.contains(&node.id) {
             // New node. Check if it was proposed.
             let is_proposed = approved_proposals.iter().any(|p| {
-                p.status == ProposalStatus::Approved && p.changes.iter().any(|c| {
-                    match c {
+                p.status == ProposalStatus::Approved
+                    && p.changes.iter().any(|c| match c {
                         ProposalChange::AddElement { id, .. } => id == &node.id,
                         _ => false,
-                    }
-                })
+                    })
             });
 
             if !is_proposed {
@@ -368,19 +406,22 @@ pub fn detect_unproposed_changes(
     }
 
     // 2. Find new relationships
-    let previous_edges: std::collections::HashSet<_> = previous_graph.edges.iter().map(|e| (e.source.clone(), e.target.clone())).collect();
+    let previous_edges: std::collections::HashSet<_> = previous_graph
+        .edges
+        .iter()
+        .map(|e| (e.source.clone(), e.target.clone()))
+        .collect();
 
     for edge in &current_graph.edges {
         if !previous_edges.contains(&(edge.source.clone(), edge.target.clone())) {
             let is_proposed = approved_proposals.iter().any(|p| {
-                p.status == ProposalStatus::Approved && p.changes.iter().any(|c| {
-                    match c {
+                p.status == ProposalStatus::Approved
+                    && p.changes.iter().any(|c| match c {
                         ProposalChange::AddRelationship { source, target, .. } => {
                             source == &edge.source && target == &edge.target
                         }
                         _ => false,
-                    }
-                })
+                    })
             });
 
             if !is_proposed {

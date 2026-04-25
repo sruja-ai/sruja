@@ -864,11 +864,7 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             dry_run,
         } => commands::init(&path, prompt, auto, force, hook, ci, dry_run).await,
         Commands::Status { path, format } => commands::status(&path, &format).await,
-        Commands::Watch {
-            path,
-            clear,
-            focus,
-        } => commands::watch(&path, clear, focus).await,
+        Commands::Watch { path, clear, focus } => commands::watch(&path, clear, focus).await,
         Commands::Sync { path, format } => commands::sync(&path, &format).await,
         Commands::Review {
             path,
@@ -912,7 +908,16 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             intent,
             format,
             strict,
-        } => commands::compliance(&repo, architecture.as_deref(), intent.as_deref(), &format, strict).await,
+        } => {
+            commands::compliance(
+                &repo,
+                architecture.as_deref(),
+                intent.as_deref(),
+                &format,
+                strict,
+            )
+            .await
+        }
         Commands::Context {
             repo,
             format,
@@ -980,17 +985,13 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
                 repo,
                 architecture,
                 output,
-            } => {
-                commands::semantic_index(&repo, architecture.as_deref(), &output).await
-            }
+            } => commands::semantic_index(&repo, architecture.as_deref(), &output).await,
             IndexCommand::Registry {
                 repo,
                 architecture,
                 fix,
                 format,
-            } => {
-                commands::registry_index(&repo, architecture.as_deref(), fix, &format).await
-            }
+            } => commands::registry_index(&repo, architecture.as_deref(), fix, &format).await,
             IndexCommand::Dashboard { repo, output } => {
                 commands::registry_dashboard(&repo, &output).await
             }
@@ -1000,19 +1001,33 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
             repo,
             architecture,
             format,
-        } => {
-            commands::query_registry(&repo, architecture.as_deref(), &query, &format).await
-        }
+        } => commands::query_registry(&repo, architecture.as_deref(), &query, &format).await,
         Commands::Completions { shell } => commands::completions(shell),
-        Commands::Health { repo, architecture, format } => commands::health(&repo, architecture.as_deref(), &format).await,
-        Commands::ContextScore { repo, format, fail_under } => commands::context_score(&repo, &format, fail_under).await,
-        Commands::ContextGraph { repo, output, open } => commands::context_graph(&repo, &output, open).await,
-        Commands::Focus { repo, file, element_id, format } => {
-            commands::focus(&repo, file.as_deref(), element_id.as_deref(), &format).await
+        Commands::Health {
+            repo,
+            architecture,
+            format,
+        } => commands::health(&repo, architecture.as_deref(), &format).await,
+        Commands::ContextScore {
+            repo,
+            format,
+            fail_under,
+        } => commands::context_score(&repo, &format, fail_under).await,
+        Commands::ContextGraph { repo, output, open } => {
+            commands::context_graph(&repo, &output, open).await
         }
-        Commands::Ingest { sources, repo, category, elements } => {
-            commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await
-        }
+        Commands::Focus {
+            repo,
+            file,
+            element_id,
+            format,
+        } => commands::focus(&repo, file.as_deref(), element_id.as_deref(), &format).await,
+        Commands::Ingest {
+            sources,
+            repo,
+            category,
+            elements,
+        } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
     };
 
     match result {
