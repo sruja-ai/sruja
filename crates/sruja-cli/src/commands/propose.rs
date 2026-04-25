@@ -71,7 +71,7 @@ pub async fn propose_create(
     let validation = proposal.validate(&graph, &intent_model);
 
     // 3. Save
-    let file_path = proposal.save(repo_path).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    let file_path = proposal.save(repo_path).map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
     println!("═══════════════════════════════════════════════════════════════");
     println!("📋 Proposal Created: {} ({:?})", proposal.id, proposal.status);
@@ -108,7 +108,7 @@ pub async fn propose_create(
 
 pub async fn propose_list(repo_root: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
-    let proposals = Proposal::load_all(repo_path).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    let proposals = Proposal::load_all(repo_path).map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
     
     if proposals.is_empty() {
         println!("No proposals found.");
@@ -126,7 +126,7 @@ pub async fn propose_list(repo_root: &str) -> Result<(), CliError> {
 
 pub async fn propose_approve(repo_root: &str, proposal_id: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
-    let mut proposals = Proposal::load_all(repo_path).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    let mut proposals = Proposal::load_all(repo_path).map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
     
     let proposal = proposals.iter_mut().find(|p| p.id == proposal_id)
         .ok_or_else(|| CliError::validation(format!("Proposal '{}' not found", proposal_id)))?;
@@ -153,7 +153,7 @@ pub async fn propose_approve(repo_root: &str, proposal_id: &str) -> Result<(), C
     std::fs::write(&sruja_file, updated_dsl)?;
     
     proposal.status = ProposalStatus::Approved;
-    proposal.save(repo_path).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    proposal.save(repo_path).map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
     println!("Proposal '{}' approved and merged into repo.sruja", proposal_id);
     

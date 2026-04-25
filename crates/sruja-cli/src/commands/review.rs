@@ -54,7 +54,7 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
             .args(["diff", "HEAD", "--name-only"])
             .current_dir(repo_path)
             .output()
-            .map_err(|e| CliError::Io(e))?;
+            .map_err(CliError::Io)?;
         
         let git_files = String::from_utf8_lossy(&output.stdout);
         for f in git_files.lines() {
@@ -113,7 +113,7 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
 
     let mut filtered_violations: Vec<_> = violations
         .into_iter()
-        .filter(|v| is_production_relevant(v))
+        .filter(is_production_relevant)
         .collect();
 
     // Sort by severity (error first)
@@ -260,7 +260,7 @@ pub async fn review(repo_root: &str, format: &str, verbose: bool, include_critiq
             if !output.violations.is_empty() {
                 println!("{}", colors::style("Detailed Findings:").bold());
                 let limit = if verbose { output.violations.len() } else { 5 };
-                for (_i, v) in output.violations.iter().take(limit).enumerate() {
+                for v in output.violations.iter().take(limit) {
                     println!(
                         "  {} {}: {} {}",
                         colors::severity_icon(&v.severity),

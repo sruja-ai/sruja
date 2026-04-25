@@ -4,9 +4,9 @@ This guide helps AI agents work effectively with the Sruja codebase.
 
 | Command | Purpose |
 |---------|---------|
-| `make setup` | **First-run setup** (install deps, hooks, build) |
-| `make check` | **Pre-commit check** (fmt + lint + test) |
-| `make daily` | **Sync context** + check diagnostic drift |
+| `make setup` / `just setup` | **First-run setup** (install deps, hooks, build) |
+| `make check` / `just check` | **Pre-commit check** (fmt + lint + test) |
+| `make daily` / `just daily` | **Sync context** + check diagnostic drift |
 | `sruja focus` | **Task briefing** (blast radius, decisions, AI info) |
 | `sruja mcp -r .` | **Start MCP server** for deep context queries |
 

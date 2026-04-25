@@ -72,12 +72,12 @@ pub async fn watch(repo_root: &str, clear: bool, focus: Option<String>) -> Resul
             Err(e) => eprintln!("Watch error: {:?}", e),
         },
     )
-    .map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
     debouncer
         .watcher()
         .watch(repo_path, RecursiveMode::Recursive)
-        .map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
     // Input thread for shortcuts
     let input_refresh_tx = refresh_tx.clone();
