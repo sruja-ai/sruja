@@ -31,41 +31,58 @@ impl Extractor for DependencyExtractor {
 
         if Self::is_source_code(path) {
             if let Ok(content) = std::fs::read_to_string(path) {
-                // Heuristic: look for SERVICE_URL, API_URL, etc.
+                // Heuristic: look for uppercase config variables like PAYMENTS_SERVICE_URL
+                // Exclude common noise that doesn't represent external dependencies
+                let noise_prefixes = ["BASE", "APP", "LOCAL", "CURRENT", "WEB", "SERVER", "MY", "THIS", "API", "PROXY", "TARGET"];
+                
                 for line in content.lines() {
-                    let line_upper = line.to_uppercase();
-                    if line_upper.contains("_URL") || line_upper.contains("_SERVICE") || line_upper.contains("_HOST") {
-                        // Extract potential service name from the variable
-                        // e.g., PAYMENTS_SERVICE_URL -> PAYMENTS
-                        if let Some(start) = line.find(|c: char| c.is_alphabetic()) {
-                            let part = &line[start..];
-                            if let Some(end) = part.find(|c: char| !c.is_alphanumeric() && c != '_') {
-                                let var_name = &part[..end];
-                                if var_name.contains("_URL") || var_name.contains("_SERVICE") || var_name.contains("_HOST") {
-                                    let service_name = var_name
-                                        .replace("_URL", "")
-                                        .replace("_SERVICE", "")
-                                        .replace("_HOST", "")
-                                        .replace("_", "")
-                                        .to_lowercase();
+                    // Quick check before allocating/parsing
+                    if !line.contains("_URL") && !line.contains("_SERVICE") && !line.contains("_HOST") && !line.contains("_API") {
+                        continue;
+                    }
 
-                                    if service_name.len() > 2 {
-                                        let relative_path = path.strip_prefix(repo_root)
-                                            .unwrap_or(path)
-                                            .to_string_lossy()
-                                            .to_string();
+                    // Extract uppercase tokens that look like config variables
+                    let tokens: Vec<&str> = line
+                        .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+                        .filter(|t| !t.is_empty())
+                        .collect();
 
-                                        results.push(DiscoveredSource {
-                                            binding: SourceBinding {
-                                                kind: SourceKind::Custom("dependency_signal".to_string()),
-                                                path: relative_path,
-                                                description: Some(format!("Signal for dependency on: {}", service_name)),
-                                            },
-                                            suggested_element: Some(service_name),
-                                            confidence: 0.5,
-                                        });
-                                    }
-                                }
+                    for token in tokens {
+                        // Must be fully uppercase with underscores to be a reliable config signal
+                        if !token.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_') {
+                            continue;
+                        }
+
+                        if token.ends_with("_URL") || token.ends_with("_SERVICE") || token.ends_with("_HOST") || token.ends_with("_API") {
+                            let service_name_upper = token
+                                .replace("_URL", "")
+                                .replace("_SERVICE", "")
+                                .replace("_HOST", "")
+                                .replace("_API", "");
+
+                            // Filter out generic noise (e.g., BASE_URL, APP_HOST)
+                            if noise_prefixes.contains(&service_name_upper.as_str()) {
+                                continue;
+                            }
+
+                            let service_name = service_name_upper.to_lowercase().replace('_', "");
+                            
+                            if service_name.len() > 2 {
+                                let relative_path = path.strip_prefix(repo_root)
+                                    .unwrap_or(path)
+                                    .to_string_lossy()
+                                    .to_string();
+
+                                results.push(DiscoveredSource {
+                                    binding: SourceBinding {
+                                        kind: SourceKind::Custom("dependency_signal".to_string()),
+                                        path: relative_path,
+                                        description: Some(format!("Signal for dependency on: {}", service_name)),
+                                    },
+                                    suggested_element: Some(service_name),
+                                    // Lower confidence as this is still a heuristic
+                                    confidence: 0.3,
+                                });
                             }
                         }
                     }
