@@ -124,9 +124,6 @@ impl ClassificationEngine {
         self.add_rule("orm_entity", 70, NodeKind::Database, |ctx| {
             ["mongoose.model", "sequelize.define", "@entity", "drizzle-orm"].iter().any(|s| ctx.content_lower.contains(s))
         });
-        self.add_rule("db_directory", 40, NodeKind::Database, |ctx| {
-            ctx.path_str.contains("/db/") || ctx.path_str.contains("/database/") || ctx.path_str.contains("/migrations/")
-        });
 
         // Queues & Messaging
         self.add_rule("kafka_client", 90, NodeKind::Queue, |ctx| {
@@ -135,17 +132,8 @@ impl ClassificationEngine {
         self.add_rule("rabbitmq_client", 90, NodeKind::Queue, |ctx| {
             ["amqp", "pika", "stomp"].iter().any(|s| ctx.content_lower.contains(s))
         });
-        self.add_rule("event_bus", 60, NodeKind::Queue, |ctx| {
-            ctx.name_lower.contains("eventbus") || ctx.name_lower.contains("pubsub") || ctx.name_lower.contains("queue")
-        });
 
         // External APIs & Integrations
-        self.add_rule("nextjs_api_route", 100, NodeKind::ExternalApi, |ctx| {
-            ctx.path_str.contains("/pages/api/") || (ctx.path_str.contains("/app/") && ctx.path_str.ends_with("/route.ts"))
-        });
-        self.add_rule("external_gateway", 60, NodeKind::ExternalApi, |ctx| {
-            ctx.path_str.contains("/external/") || ctx.name_lower.ends_with("gateway") || ctx.name_lower.ends_with("client")
-        });
         self.add_rule("stripe_integration", 90, NodeKind::ExternalApi, |ctx| {
             ctx.content_lower.contains("stripe") && (ctx.content_lower.contains("checkout") || ctx.content_lower.contains("payment"))
         });
