@@ -5,6 +5,21 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.35.2...sruja-v0.36.0) (2026-04-25)
+
+
+### Features
+
+* enhance architectural robustness and accuracy invariants ([09abeac](https://github.com/sruja-ai/sruja/commit/09abeac94a6994690aec095ced49c8195349644c))
+
+
+### Bug Fixes
+
+* prevent DependencyExtractor from generating junk graph nodes ([378c4eb](https://github.com/sruja-ai/sruja/commit/378c4eb04997bafa3817d2248f272b64e65bb2ee))
+* remove broad string-matching heuristics that produced junk top-level components ([099db0d](https://github.com/sruja-ai/sruja/commit/099db0d67a90ef262a16f7c2c35116bca9cb51dc))
+* resolve all clippy warnings, wire dead code into real paths, fix layer violation detection ([f6902f0](https://github.com/sruja-ai/sruja/commit/f6902f02a33700abd91fe4f6385fbbacb34b7d96))
+* resolve for-ai empty output, import json schema mismatch, and why generic answers ([7aafb1e](https://github.com/sruja-ai/sruja/commit/7aafb1e1fe7544ba3f48d80fccafe33dcfaf6250))
+
 ## [0.35.2](https://github.com/sruja-ai/sruja/compare/sruja-v0.35.1...sruja-v0.35.2) (2026-04-25)
 
 
