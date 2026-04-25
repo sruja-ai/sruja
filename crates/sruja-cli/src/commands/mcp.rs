@@ -578,6 +578,46 @@ fn tool_definitions() -> Vec<Value> {
                 "required": ["target_files"]
             }
         }),
+        json!({
+            "name": "sruja_ai_scratchpad",
+            "title": "Sruja AI Scratchpad",
+            "description": "Read or write to the shared AI architectural scratchpad. Used to persist failed hypotheses, cross-cutting learnings, and what NOT to try so future agents don't repeat mistakes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "action": { "type": "string", "description": "Action: 'read' or 'append'" },
+                    "content": { "type": "string", "description": "Markdown content to append (if action is append). Format it under a heading like '## Failed Hypothesis' or '## What Not To Try'" }
+                },
+                "required": ["action"]
+            }
+        }),
+        json!({
+            "name": "sruja_sandbox",
+            "title": "Sruja Experiment Sandbox",
+            "description": "Create, commit, or discard an isolated git worktree for safe architectural experimentation. Prevents AI agents from breaking the user's main branch while trying out refactorings.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "action": { "type": "string", "description": "Action: 'create', 'commit', 'discard', 'list'" },
+                    "name": { "type": "string", "description": "Name of the sandbox/experiment (e.g., 'refactor-auth'). Required for create, commit, discard." }
+                },
+                "required": ["action"]
+            }
+        }),
+        json!({
+            "name": "sruja_evaluate_experiment",
+            "title": "Sruja Evaluate Experiment",
+            "description": "Evaluate the current state of the codebase against your architectural hypothesis. Calculates the current Context Score and runs an optional 'gate' command (e.g. 'make check').",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "gate_command": { "type": "string", "description": "Optional terminal command to run as a regression gate (e.g., 'make check' or 'cargo test')" }
+                }
+            }
+        }),
     ]
 }
 
@@ -876,6 +916,193 @@ async fn run_tool(
 
             let res = super::preflight::preflight(Path::new(&repo), file_list, intent_hint).await?;
             Ok(serde_json::to_string_pretty(&res)?)
+        }
+        "sruja_ai_scratchpad" => {
+            let action = arguments
+                .get("action")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing action"))?;
+            
+            let scratchpad_path = Path::new(&repo).join(".sruja").join("ai-scratchpad.md");
+            
+            match action {
+                "read" => {
+                    if scratchpad_path.exists() {
+                        Ok(std::fs::read_to_string(scratchpad_path)?)
+                    } else {
+                        Ok("Scratchpad is empty. No learnings recorded yet.".to_string())
+                    }
+                }
+                "append" => {
+                    let content = arguments
+                        .get("content")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| CliError::validation("Missing content for append"))?;
+                    
+                    std::fs::create_dir_all(Path::new(&repo).join(".sruja"))?;
+                    let mut file = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(scratchpad_path)?;
+                    
+                    use std::io::Write;
+                    writeln!(file, "\n{}", content)?;
+                    Ok("Successfully appended to AI scratchpad.".to_string())
+                }
+                _ => Err(CliError::validation(format!("Invalid action: {}", action))),
+            }
+        }
+        "sruja_sandbox" => {
+            let action = arguments
+                .get("action")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing action"))?;
+            
+            let name = arguments.get("name").and_then(|v| v.as_str());
+            let sruja_dir = Path::new(&repo).join(".sruja");
+            let sandbox_dir = sruja_dir.join("sandboxes");
+            std::fs::create_dir_all(&sandbox_dir)?;
+
+            match action {
+                "create" => {
+                    let name = name.ok_or_else(|| CliError::validation("Missing name for create"))?;
+                    let target = sandbox_dir.join(name);
+                    if target.exists() {
+                        return Err(CliError::validation(format!("Sandbox '{}' already exists", name)));
+                    }
+                    
+                    let output = std::process::Command::new("git")
+                        .args(["worktree", "add", "-b", &format!("sruja-sandbox/{}", name), target.to_str().unwrap()])
+                        .current_dir(&repo)
+                        .output()?;
+                        
+                    if !output.status.success() {
+                        return Err(CliError::validation(format!("Git worktree failed: {}", String::from_utf8_lossy(&output.stderr))));
+                    }
+                    Ok(format!("✅ Created isolated sandbox at {}. Run your tools and evaluations against this path.", target.display()))
+                }
+                "discard" => {
+                    let name = name.ok_or_else(|| CliError::validation("Missing name for discard"))?;
+                    let target = sandbox_dir.join(name);
+                    
+                    if !target.exists() {
+                        return Err(CliError::validation(format!("Sandbox '{}' not found", name)));
+                    }
+                    
+                    std::process::Command::new("git")
+                        .args(["worktree", "remove", "--force", target.to_str().unwrap()])
+                        .current_dir(&repo)
+                        .output()?;
+                        
+                    std::process::Command::new("git")
+                        .args(["branch", "-D", &format!("sruja-sandbox/{}", name)])
+                        .current_dir(&repo)
+                        .output()?;
+                        
+                    Ok(format!("🗑️ Discarded sandbox '{}'.", name))
+                }
+                "commit" => {
+                    let name = name.ok_or_else(|| CliError::validation("Missing name for commit"))?;
+                    let target = sandbox_dir.join(name);
+                    
+                    if !target.exists() {
+                        return Err(CliError::validation(format!("Sandbox '{}' not found", name)));
+                    }
+                    
+                    // Commit any pending changes in the worktree
+                    std::process::Command::new("git")
+                        .args(["add", "-A"])
+                        .current_dir(&target)
+                        .output()?;
+                        
+                    std::process::Command::new("git")
+                        .args(["commit", "-m", &format!("Sruja Sandbox: {}", name)])
+                        .current_dir(&target)
+                        .output()?;
+                        
+                    Ok(format!("✅ Sandbox '{}' successfully committed to branch 'sruja-sandbox/{}'. A human can now merge this into the main branch.", name, name))
+                }
+                "list" => {
+                    if let Ok(entries) = std::fs::read_dir(&sandbox_dir) {
+                        let mut sandboxes = Vec::new();
+                        for entry in entries.flatten() {
+                            if entry.path().is_dir() {
+                                sandboxes.push(format!("- {}", entry.file_name().to_string_lossy()));
+                            }
+                        }
+                        if sandboxes.is_empty() {
+                            Ok("No active sandboxes.".to_string())
+                        } else {
+                            Ok(format!("Active Sandboxes:\n{}", sandboxes.join("\n")))
+                        }
+                    } else {
+                        Ok("No active sandboxes.".to_string())
+                    }
+                }
+                _ => Err(CliError::validation(format!("Invalid sandbox action: {}", action))),
+            }
+        }
+        "sruja_evaluate_experiment" => {
+            let gate_cmd = arguments.get("gate_command").and_then(|v| v.as_str());
+            
+            let mut out = String::new();
+            if let Some(cmd) = gate_cmd {
+                out.push_str(&format!("Running gate: {}\n", cmd));
+                
+                let output = if cfg!(target_os = "windows") {
+                    std::process::Command::new("cmd")
+                        .args(["/C", cmd])
+                        .current_dir(&repo)
+                        .output()
+                } else {
+                    std::process::Command::new("sh")
+                        .args(["-c", cmd])
+                        .current_dir(&repo)
+                        .output()
+                };
+                
+                match output {
+                    Ok(o) => {
+                        let stdout = String::from_utf8_lossy(&o.stdout);
+                        let stderr = String::from_utf8_lossy(&o.stderr);
+                        if o.status.success() {
+                            out.push_str("✅ Gate Passed\n");
+                        } else {
+                            out.push_str("❌ Gate Failed\n\n");
+                            out.push_str(&stdout);
+                            out.push_str(&stderr);
+                            out.push_str("\nRevert your changes or update your hypothesis on the scratchpad before trying again.");
+                            return Ok(out);
+                        }
+                    }
+                    Err(e) => {
+                        out.push_str(&format!("❌ Gate Execution Failed: {}\n", e));
+                        return Ok(out);
+                    }
+                }
+            }
+            
+            // Calculate Context Score as the Evo metric
+            let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
+            let scan_node_count = match sruja_scan::scan_repo(Path::new(&repo)) {
+                Ok(g) => g.nodes.len(),
+                Err(_) => kg.nodes.len(),
+            };
+            let score = sruja_graph::compute_context_score(&kg, scan_node_count, Path::new(&repo), 0);
+            
+            out.push_str(&format!("\n📈 Context Score: {}/100\n", score.score));
+            out.push_str(&format!("  - Architecture Coverage: {}/100\n", score.architecture_coverage.value));
+            out.push_str(&format!("  - Decision Completeness: {}/100\n", score.decision_completeness.value));
+            out.push_str(&format!("  - Evidence Freshness: {}/100\n", score.evidence_freshness.value));
+            out.push_str(&format!("  - Relationship Density: {}/100\n", score.relationship_density.value));
+            
+            if score.score == 100 {
+                out.push_str("\n🎉 Perfect Score Achieved! Your hypothesis succeeded.");
+            } else {
+                out.push_str("\nReview the AI Scratchpad or Context Map to find new optimization opportunities.");
+            }
+            
+            Ok(out)
         }
         "sruja_validate_change" => {
             let files = arguments

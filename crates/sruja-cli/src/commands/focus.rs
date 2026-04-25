@@ -23,6 +23,8 @@ pub struct FocusBriefing {
     pub external_context: Vec<ExternalContextRef>,
     pub hotspot_status: HotspotStatus,
     pub ai_instructions: Vec<String>,
+    pub anti_patterns: Vec<String>,
+    pub pointer_traces: Vec<String>,
     pub context_score: u8,
 }
 
@@ -304,6 +306,30 @@ pub fn build_focus_briefing(
             .push("No special constraints found. Standard coding practices apply.".to_string());
     }
 
+    // -- Anti Patterns (From AI Scratchpad) --
+    let mut anti_patterns = Vec::new();
+    let scratchpad_path = repo_path.join(".sruja").join("ai-scratchpad.md");
+    if let Ok(content) = std::fs::read_to_string(&scratchpad_path) {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_section = false;
+        for line in lines {
+            let trimmed = line.trim();
+            if trimmed.starts_with("##") {
+                in_section = trimmed.to_lowercase().contains("what not to try") || trimmed.to_lowercase().contains("failed hypothesis");
+                continue;
+            }
+            if in_section && !trimmed.is_empty() && !trimmed.starts_with('#') {
+                anti_patterns.push(truncate(trimmed.trim_start_matches("- ").trim_start_matches("* "), 120));
+            }
+        }
+    }
+
+    // -- Pointer Traces (Recent failures) --
+    let mut pointer_traces = Vec::new();
+    if !anti_patterns.is_empty() {
+        pointer_traces.push("Review .sruja/ai-scratchpad.md for recent failed hypotheses before proceeding.".to_string());
+    }
+
     // -- Context Score --
     let score = compute_context_score(graph, scan_node_count, repo_path, 0);
 
@@ -315,6 +341,8 @@ pub fn build_focus_briefing(
         external_context,
         hotspot_status,
         ai_instructions,
+        anti_patterns,
+        pointer_traces,
         context_score: score.score,
     }
 }
@@ -776,6 +804,25 @@ fn print_focus_briefing(b: &FocusBriefing) {
             "",
             width = width.saturating_sub(6 + display.len())
         );
+    }
+
+    // Evo-style Anti Patterns
+    if !b.anti_patterns.is_empty() {
+        println!("│{:width$}│", "", width = width);
+        println!(
+            "│  ── What NOT to try (Scratchpad) ──{:width$}│",
+            "",
+            width = width - 37
+        );
+        for ap in b.anti_patterns.iter().take(5) {
+            let display = truncate(ap, width - 8);
+            println!(
+                "│  ⛔ {}{:width$}│",
+                display,
+                "",
+                width = width.saturating_sub(6 + display.len())
+            );
+        }
     }
 
     // Context Score
