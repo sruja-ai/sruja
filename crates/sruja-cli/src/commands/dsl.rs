@@ -894,6 +894,51 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
         }
     }
 
+    if let Some(elements) = json.get("elements").and_then(|e| e.as_object()) {
+        let mut sorted: Vec<_> = elements.iter().collect();
+        sorted.sort_by_key(|(k, _)| k.clone());
+
+        for (fqn, elem) in &sorted {
+            if let (Some(kind), Some(title)) = (
+                elem.get("kind").and_then(|v| v.as_str()),
+                elem.get("title").and_then(|v| v.as_str()),
+            ) {
+                let short_id = fqn.split('.').last().unwrap_or(fqn);
+                println!(
+                    "{} = {} \"{}\" {{",
+                    short_id.replace('-', "_").replace(" ", "_"),
+                    kind,
+                    title
+                );
+                if let Some(desc) = elem.get("description").and_then(|v| v.as_str()) {
+                    if !desc.is_empty() {
+                        println!("  description \"{}\"", desc.replace('"', "\\\""));
+                    }
+                }
+                if let Some(tech) = elem.get("technology").and_then(|v| v.as_str()) {
+                    println!("  technology \"{}\"", tech);
+                }
+                println!("}}");
+            }
+        }
+
+        if let Some(relations) = json.get("relations").and_then(|r| r.as_array()) {
+            println!();
+            for rel in relations {
+                let from = rel.get("source").and_then(|s| s.get("model")).and_then(|m| m.as_str());
+                let to = rel.get("target").and_then(|t| t.get("model")).and_then(|m| m.as_str());
+                let label = rel.get("title").and_then(|t| t.as_str()).unwrap_or("");
+                if let (Some(f), Some(t)) = (from, to) {
+                    let from_short = f.split('.').last().unwrap_or(f).replace('-', "_").replace(" ", "_");
+                    let to_short = t.split('.').last().unwrap_or(t).replace('-', "_").replace(" ", "_");
+                    println!("{} -> {} \"{}\"", from_short, to_short, label);
+                }
+            }
+        }
+
+        return Ok(());
+    }
+
     if let Some(elements) = json.get("elements").and_then(|e| e.as_array()) {
         for elem in elements {
             if let (Some(kind), Some(id), Some(title)) = (
@@ -911,7 +956,7 @@ pub async fn import(format: &str, file: &str) -> Result<(), CliError> {
 
     Err(CliError::Validation {
         message: "Could not identify architecture in JSON".to_string(),
-        help: Some("Expected either { architecture: { systems: [...] } } or { elements: [...] }.".into()),
+        help: Some("Expected { architecture: { systems: [...] } }, { elements: { ... } } (Sruja native), or { elements: [...] }.".into()),
         fix: Some("Re-export JSON from a supported tool or provide a JSON file matching the expected shape.".into()),
     })
 }

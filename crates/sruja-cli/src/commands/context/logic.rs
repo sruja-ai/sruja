@@ -571,15 +571,50 @@ fn resolve_focus(
         return Ok((focus, reason, TaskTruthStatus::Unknown, confidence));
     }
 
+    let mut overview_ids: Vec<String> = Vec::new();
+    for (id, kind) in &baseline.kinds_by_id {
+        match kind {
+            sruja_scan::NodeKind::System | sruja_scan::NodeKind::ExternalApi => {
+                overview_ids.push(id.clone());
+            }
+            sruja_scan::NodeKind::Container | sruja_scan::NodeKind::Database | sruja_scan::NodeKind::Queue => {
+                let dot_count = id.matches('.').count();
+                if dot_count <= 1 {
+                    overview_ids.push(id.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+    if overview_ids.is_empty() {
+        for node in &graph.nodes {
+            if matches!(
+                node.kind,
+                sruja_scan::NodeKind::System
+                    | sruja_scan::NodeKind::Service
+                    | sruja_scan::NodeKind::ExternalApi
+            ) {
+                overview_ids.push(node.id.clone());
+            }
+        }
+        overview_ids.truncate(30);
+    }
+    let confidence = if overview_ids.is_empty() {
+        TaskConfidence::Low
+    } else {
+        TaskConfidence::Medium
+    };
     Ok((
-        Vec::new(),
+        overview_ids,
         SelectionReason {
-            primary: "empty".to_string(),
-            resolution_path: vec!["none".to_string()],
-            details: None,
+            primary: "architecture_overview".to_string(),
+            resolution_path: vec!["no_selector".to_string()],
+            details: Some(serde_json::json!({
+                "total_scan_nodes": graph.nodes.len(),
+            })),
         },
         TaskTruthStatus::Unknown,
-        TaskConfidence::Low,
+        confidence,
     ))
 }
 
