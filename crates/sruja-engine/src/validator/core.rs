@@ -137,7 +137,12 @@ impl Validator {
     }
 
     /// Validate a program synchronously and return all diagnostics
+    #[tracing::instrument(skip(self, program))]
     pub fn validate_sync(&self, program: &Program) -> Vec<Diagnostic> {
+        tracing::info!(
+            "Starting synchronous validation with {} rules",
+            self.rules.len()
+        );
         let mut all_diagnostics = Vec::new();
 
         // Check if program defines a custom schema
@@ -169,7 +174,12 @@ impl Validator {
     ///
     /// Only available when the "async" feature is enabled.
     #[cfg(feature = "async")]
+    #[tracing::instrument(skip(self, program))]
     pub async fn validate(&self, program: Arc<Program>) -> Vec<Diagnostic> {
+        tracing::info!(
+            "Starting asynchronous validation with {} rules",
+            self.rules.len()
+        );
         if !self.config.parallel || self.rules.len() <= 1 {
             return self.validate_sync(&program);
         }

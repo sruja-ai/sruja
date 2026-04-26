@@ -13,7 +13,7 @@ pub mod scan_scope;
 mod scip_ingest;
 pub mod tree_sitter;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use thiserror::Error;
 
@@ -46,18 +46,37 @@ pub enum ScanError {
     Walk(String),
 }
 
+use std::cell::RefCell;
+
+thread_local! {
+    static CLASSIFICATION_RULES_PATH: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+}
+
+/// Set the classification rules path for the current thread.
+pub fn set_classification_rules_path(path: Option<PathBuf>) {
+    CLASSIFICATION_RULES_PATH.with(|p: &RefCell<Option<PathBuf>>| *p.borrow_mut() = path);
+}
+
 /// Scan a repository and return an inferred architecture graph.
 ///
 /// Uses Tree-sitter to parse source code files and extract:
 /// - Modules/packages from file structure
 /// - Dependencies from import statements
 /// - Public interfaces from exports
+#[tracing::instrument(skip(repo_root))]
 pub fn scan_repo(repo_root: &Path) -> Result<Graph, ScanError> {
-    let config = ScanConfig::default();
+    tracing::info!("Starting full repository scan in {:?}", repo_root);
+    let config = ScanConfig {
+        classification_rules_path: CLASSIFICATION_RULES_PATH
+            .with(|p: &RefCell<Option<PathBuf>>| p.borrow().clone()),
+        ..Default::default()
+    };
+
     let mut graph = scan_with_tree_sitter(repo_root, &config)?;
 
     // Merge manifest data (technology labels, monorepo packages, manifests)
     if let Ok(manifest_graph) = scan_repo_manifests(repo_root) {
+        tracing::debug!("Merging manifest data into graph");
         graph.merge(manifest_graph);
     }
 
@@ -79,6 +98,7 @@ pub fn scan_repo_with_config(repo_root: &Path, config: &ScanConfig) -> Result<Gr
 
 /// Scan a repository using all available package and deployment manifests.
 /// This merges results from package.json, Cargo.toml, OpenAPI, Docker, and Kubernetes.
+#[tracing::instrument(skip(repo_root))]
 pub fn scan_repo_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
     let mut final_graph = Graph::new();
     let mut found = false;

@@ -42,6 +42,14 @@ Docs & CI:
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+
+    /// Increase logging verbosity (-v for info, -vv for debug, -vvv for trace)
+    #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    pub verbose: u8,
+
+    /// Path to custom classification rules YAML file
+    #[arg(long, global = true)]
+    pub classification_rules: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -352,8 +360,8 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
         /// Show all violations (default is capped at 5)
-        #[arg(long, short)]
-        verbose: bool,
+        #[arg(long, short = 'a')]
+        show_all: bool,
         /// Include adversarial critique of unstaged changes
         #[arg(long)]
         critique: bool,
@@ -755,7 +763,12 @@ pub enum IntentCommand {
     },
 }
 
-pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(ref rules_path) = cli.classification_rules {
+        sruja_scan::set_classification_rules_path(Some(std::path::PathBuf::from(rules_path)));
+    }
+
+    let command = cli.command;
     let result = match command {
         Commands::Version => commands::version(),
         Commands::Propose { cmd } => match cmd {
@@ -923,9 +936,9 @@ pub async fn run_command(command: Commands) -> Result<(), Box<dyn std::error::Er
         Commands::Review {
             path,
             format,
-            verbose,
+            show_all,
             critique,
-        } => commands::review(&path, &format, verbose, critique).await,
+        } => commands::review(&path, &format, show_all, critique).await,
         Commands::Check {
             path,
             format,

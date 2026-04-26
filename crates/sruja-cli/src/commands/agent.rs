@@ -3,6 +3,10 @@ use crate::utils::colors;
 use sruja_agent::{AgenticMemory, ExperimentOutcome, LearningEntry};
 use std::path::Path;
 
+/// Displays the history of architectural learnings and guardrails recorded in agentic memory.
+///
+/// If `element_id` is provided, filters the history to only show learnings relevant to that element.
+/// Supports `json` format via the `format` parameter.
 pub async fn agent_history(
     repo: &str,
     element_id: Option<&str>,
@@ -68,6 +72,10 @@ pub async fn agent_history(
     Ok(())
 }
 
+/// Records a new architectural learning entry in agentic memory.
+///
+/// This is typically used by AI agents to record the results of their experiments,
+/// helping future agents avoid repeating mistakes or to replicate successful patterns.
 pub async fn agent_record(
     repo: &str,
     context: &str,
@@ -107,6 +115,9 @@ pub async fn agent_record(
     Ok(())
 }
 
+/// Clears all agentic memory for the specified repository.
+///
+/// Requires `force` to be true to confirm deletion.
 pub async fn agent_clear(repo: &str, force: bool) -> Result<(), CliError> {
     let memory_path = Path::new(repo).join(".sruja").join("agent_memory.json");
     if !memory_path.exists() {

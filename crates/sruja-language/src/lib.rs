@@ -1,7 +1,23 @@
 //! Sruja Language Processing Library
 //!
-//! This crate provides parsing, AST representation, and traversal utilities
-//! for the Sruja DSL.
+//! This crate provides the core language infrastructure for the Sruja DSL,
+//! including parsing, AST representation, and architectural traversal.
+//!
+//! ## DSL Structure
+//!
+//! The Sruja DSL follows a hierarchical C4-style structure:
+//! - **System:** A top-level software system or external service.
+//! - **Container:** A deployable unit (service, database, etc.) nested within a system.
+//! - **Component:** A logical building block nested within a container.
+//! - **Person:** A human actor interacting with the systems.
+//!
+//! ## Crate Components
+//!
+//! - [`ast`]: Abstract Syntax Tree definitions representing the Sruja DSL.
+//! - [`parser`]: Recursive descent parser that converts DSL strings into an AST.
+//! - [`traversal`]: Utilities for walking the AST and resolving element references (FQDNs).
+//! - [`schema`]: Domain-specific validation schemas (e.g., Architecture, Threat Model).
+//! - [`token`]: Lexical tokens used by the parser.
 
 pub mod ast;
 pub mod parser;

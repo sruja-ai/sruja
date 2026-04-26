@@ -53,7 +53,7 @@ impl Rule for GovernanceValidationRule {
 
             let loc = elem.location.clone();
             let Some(entry) = seen.get_mut(kind_key) else {
-                log::warn!(
+                tracing::warn!(
                     "kind_key '{}' not in governance map - this is a bug",
                     kind_key
                 );

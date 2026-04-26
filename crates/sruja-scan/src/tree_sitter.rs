@@ -32,6 +32,7 @@ pub struct ScanConfig {
     pub exclude_fixtures: bool,
     pub exclude_docs: bool,
     pub max_file_size: usize,
+    pub classification_rules_path: Option<PathBuf>,
 }
 
 impl Default for ScanConfig {
@@ -44,11 +45,14 @@ impl Default for ScanConfig {
             exclude_fixtures: true,
             exclude_docs: true,
             max_file_size: 500 * 1024,
+            classification_rules_path: None,
         }
     }
 }
 
+#[tracing::instrument(skip(repo_root, config))]
 pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Graph, ScanError> {
+    tracing::info!("Scanning with tree-sitter: {:?}", repo_root);
     let repo_canon = repo_root
         .canonicalize()
         .unwrap_or_else(|_| repo_root.to_path_buf());
@@ -170,7 +174,18 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
     let mut file_imports: HashMap<String, Vec<String>> = HashMap::new();
     let mut module_imports: HashMap<String, Vec<String>> = HashMap::new();
 
-    let engine = classifier::ClassificationEngine::default();
+    let engine = if let Some(ref config_path) = config.classification_rules_path {
+        classifier::ClassificationEngine::load_from_file(config_path).unwrap_or_else(|e| {
+            tracing::warn!(
+                "Failed to load classification rules from {:?}: {}. Using default rules.",
+                config_path,
+                e
+            );
+            classifier::ClassificationEngine::default()
+        })
+    } else {
+        classifier::ClassificationEngine::default()
+    };
     for (path, content, language, parsed) in &parsed {
         let file_id = file_to_id(repo_root, path);
 

@@ -96,7 +96,7 @@ impl Rule for CycleDetectionRule {
                     } else if rec_stack.contains(neighbor) {
                         // Cycle detected
                         let Some(cycle_start) = path.iter().position(|x| x == neighbor) else {
-                            log::warn!(
+                            tracing::warn!(
                                 "Cycle detection inconsistency: neighbor '{}' not in path",
                                 neighbor
                             );

@@ -1,5 +1,7 @@
 use crate::graph::NodeKind;
 use crate::tree_sitter::languages::{DefinitionKind, ParsedFile};
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// A context for classification, containing all gathered evidence.
 pub struct ClassificationContext<'a> {
@@ -9,10 +11,34 @@ pub struct ClassificationContext<'a> {
     pub parsed: &'a ParsedFile,
 }
 
+/// Configuration for the classification engine, allowing for custom rules.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClassificationConfig {
+    pub rules: Vec<CustomRuleConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomRuleConfig {
+    pub name: String,
+    pub weight: i32,
+    pub kind: NodeKind,
+    pub match_patterns: MatchPatterns,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchPatterns {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path_ends_with: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path_contains: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_contains: Option<Vec<String>>,
+}
+
 /// A signal represents a single piece of evidence.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Signal {
-    pub name: &'static str,
+    pub name: String,
     pub weight: i32,
     pub kind: NodeKind,
 }
@@ -33,12 +59,64 @@ impl ClassificationEngine {
         engine
     }
 
+    pub fn from_config(config: ClassificationConfig) -> Self {
+        let mut engine = Self::new();
+        for custom_rule in config.rules {
+            engine.register_custom_rule(custom_rule);
+        }
+        engine
+    }
+
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = std::fs::read_to_string(path)?;
+        let config: ClassificationConfig = serde_yaml::from_str(&content)?;
+        Ok(Self::from_config(config))
+    }
+
     fn add_rule<F>(&mut self, name: &'static str, weight: i32, kind: NodeKind, matcher: F)
     where
         F: Fn(&ClassificationContext) -> bool + Send + Sync + 'static,
     {
         self.rules.push(Rule {
-            signal: Signal { name, weight, kind },
+            signal: Signal {
+                name: name.to_string(),
+                weight,
+                kind,
+            },
+            matcher: Box::new(matcher),
+        });
+    }
+
+    fn register_custom_rule(&mut self, config: CustomRuleConfig) {
+        let patterns = config.match_patterns;
+        let matcher = move |ctx: &ClassificationContext| {
+            if let Some(ref suffix) = patterns.path_ends_with {
+                if !ctx.path_str.ends_with(suffix) {
+                    return false;
+                }
+            }
+            if let Some(ref substring) = patterns.path_contains {
+                if !ctx.path_str.contains(substring) {
+                    return false;
+                }
+            }
+            if let Some(ref content_substrings) = patterns.content_contains {
+                if !content_substrings
+                    .iter()
+                    .all(|s| ctx.content_lower.contains(&s.to_lowercase()))
+                {
+                    return false;
+                }
+            }
+            true
+        };
+
+        self.rules.push(Rule {
+            signal: Signal {
+                name: config.name,
+                weight: config.weight,
+                kind: config.kind,
+            },
             matcher: Box::new(matcher),
         });
     }

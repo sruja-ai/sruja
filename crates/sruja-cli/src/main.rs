@@ -17,8 +17,23 @@ pub use cli::{run_command, Cli, Commands, ContextIntent, IntentCommand};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::try_init().ok();
     let cli = Cli::parse();
 
-    run_command(cli.command).await
+    let log_level = match cli.verbose {
+        0 => "warn",
+        1 => "info",
+        2 => "debug",
+        _ => "trace",
+    };
+
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(log_level)),
+        )
+        .with_target(false)
+        .compact()
+        .init();
+
+    run_command(cli).await
 }
