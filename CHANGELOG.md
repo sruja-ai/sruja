@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.37.0...sruja-v0.38.0) (2026-04-26)
+
+
+### Features
+
+* implement Sruja maturation phases (Instrumentation, Context Hints, Infra Discovery) ([8f7c9d4](https://github.com/sruja-ai/sruja/commit/8f7c9d4cf90f5947fc93a6fc8dfbf3e3d383f208))
+
 ## [0.37.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.36.0...sruja-v0.37.0) (2026-04-25)
 
 
