@@ -641,21 +641,25 @@ mod tests {
     fn create_test_graph() -> KnowledgeGraph {
         let mut graph = KnowledgeGraph::new();
 
-        graph.add_node(ArchitectureNode {
-            id: "api".to_string(),
-            kind: NodeKind::Service,
-            label: "API Service".to_string(),
-            technology: Some("Node.js".to_string()),
-            ..ArchitectureNode::default()
-        }).unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "api".to_string(),
+                kind: NodeKind::Service,
+                label: "API Service".to_string(),
+                technology: Some("Node.js".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
 
-        graph.add_node(ArchitectureNode {
-            id: "db".to_string(),
-            kind: NodeKind::Database,
-            label: "PostgreSQL".to_string(),
-            technology: Some("PostgreSQL".to_string()),
-            ..ArchitectureNode::default()
-        }).unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "db".to_string(),
+                kind: NodeKind::Database,
+                label: "PostgreSQL".to_string(),
+                technology: Some("PostgreSQL".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
 
         graph
     }

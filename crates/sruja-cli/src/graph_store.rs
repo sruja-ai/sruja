@@ -113,7 +113,7 @@ fn check_source_files_newer(
     graph_modified: std::time::SystemTime,
 ) -> Result<bool, CliError> {
     let source_dirs = ["src", "lib", "app", "packages", "crates", ".sruja"];
-    
+
     // Also check root .sruja files
     if let Ok(entries) = std::fs::read_dir(repo) {
         for entry in entries.flatten() {
@@ -247,14 +247,16 @@ mod tests {
         let repo_path = temp_dir.path();
         let mut graph = KnowledgeGraph::with_name("TestGraph");
 
-        graph.add_node(sruja_graph::ArchitectureNode {
-            id: "test_node".to_string(),
-            kind: sruja_graph::NodeKind::Service,
-            label: "Test".to_string(),
-            technology: Some("Rust".to_string()),
-            description: Some("Test node".to_string()),
-            ..sruja_graph::ArchitectureNode::default()
-        }).unwrap();
+        graph
+            .add_node(sruja_graph::ArchitectureNode {
+                id: "test_node".to_string(),
+                kind: sruja_graph::NodeKind::Service,
+                label: "Test".to_string(),
+                technology: Some("Rust".to_string()),
+                description: Some("Test node".to_string()),
+                ..sruja_graph::ArchitectureNode::default()
+            })
+            .unwrap();
 
         save_graph(repo_path, &graph).unwrap();
 
@@ -365,14 +367,16 @@ mod tests {
         let repo_path = temp_dir.path();
 
         let mut original = KnowledgeGraph::with_name("TestArchitecture");
-        original.add_node(sruja_graph::ArchitectureNode {
-            id: "svc_api".to_string(),
-            kind: sruja_graph::NodeKind::Service,
-            label: "API Service".to_string(),
-            technology: Some("Node.js".to_string()),
-            description: Some("Main API".to_string()),
-            ..sruja_graph::ArchitectureNode::default()
-        }).unwrap();
+        original
+            .add_node(sruja_graph::ArchitectureNode {
+                id: "svc_api".to_string(),
+                kind: sruja_graph::NodeKind::Service,
+                label: "API Service".to_string(),
+                technology: Some("Node.js".to_string()),
+                description: Some("Main API".to_string()),
+                ..sruja_graph::ArchitectureNode::default()
+            })
+            .unwrap();
 
         save_graph(repo_path, &original).unwrap();
         let loaded = load_graph(repo_path).unwrap();

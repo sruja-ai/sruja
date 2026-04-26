@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use chrono::{DateTime, Utc};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -64,8 +64,12 @@ impl AgenticMemory {
         self.learnings
             .iter()
             .filter(|l| {
-                l.affected_elements.iter().any(|e| e == element_id || element_id.starts_with(e))
-                    || l.context.to_lowercase().contains(&element_id.to_lowercase())
+                l.affected_elements
+                    .iter()
+                    .any(|e| e == element_id || element_id.starts_with(e))
+                    || l.context
+                        .to_lowercase()
+                        .contains(&element_id.to_lowercase())
             })
             .collect()
     }

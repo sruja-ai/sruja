@@ -1,10 +1,10 @@
 use serde_json::{json, Value};
+use sruja_agent::{AgenticMemory, ExperimentOutcome, LearningEntry};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
-use sruja_agent::{AgenticMemory, LearningEntry, ExperimentOutcome};
 
 use super::CliError;
 
@@ -941,9 +941,9 @@ async fn run_tool(
                 .get("action")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| CliError::validation("Missing action"))?;
-            
+
             let scratchpad_path = Path::new(&repo).join(".sruja").join("ai-scratchpad.md");
-            
+
             match action {
                 "read" => {
                     if scratchpad_path.exists() {
@@ -957,13 +957,13 @@ async fn run_tool(
                         .get("content")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| CliError::validation("Missing content for append"))?;
-                    
+
                     std::fs::create_dir_all(Path::new(&repo).join(".sruja"))?;
                     let mut file = std::fs::OpenOptions::new()
                         .create(true)
                         .append(true)
                         .open(scratchpad_path)?;
-                    
+
                     use std::io::Write;
                     writeln!(file, "\n{}", content)?;
                     Ok("Successfully appended to AI scratchpad.".to_string())
@@ -976,7 +976,7 @@ async fn run_tool(
                 .get("action")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| CliError::validation("Missing action"))?;
-            
+
             let name = arguments.get("name").and_then(|v| v.as_str());
             let sruja_dir = Path::new(&repo).join(".sruja");
             let sandbox_dir = sruja_dir.join("sandboxes");
@@ -984,61 +984,91 @@ async fn run_tool(
 
             match action {
                 "create" => {
-                    let name = name.ok_or_else(|| CliError::validation("Missing name for create"))?;
+                    let name =
+                        name.ok_or_else(|| CliError::validation("Missing name for create"))?;
                     let target = sandbox_dir.join(name);
                     if target.exists() {
-                        return Err(CliError::validation(format!("Sandbox '{}' already exists", name)));
+                        return Err(CliError::validation(format!(
+                            "Sandbox '{}' already exists",
+                            name
+                        )));
                     }
-                    
+
                     let output = std::process::Command::new("git")
-                        .args(["worktree", "add", "-b", &format!("sruja-sandbox/{}", name), target.to_str().unwrap()])
+                        .args([
+                            "worktree",
+                            "add",
+                            "-b",
+                            &format!("sruja-sandbox/{}", name),
+                            target.to_str().ok_or_else(|| {
+                                CliError::validation("Target path is not valid UTF-8")
+                            })?,
+                        ])
                         .current_dir(&repo)
                         .output()?;
-                        
+
                     if !output.status.success() {
-                        return Err(CliError::validation(format!("Git worktree failed: {}", String::from_utf8_lossy(&output.stderr))));
+                        return Err(CliError::validation(format!(
+                            "Git worktree failed: {}",
+                            String::from_utf8_lossy(&output.stderr)
+                        )));
                     }
                     Ok(format!("✅ Created isolated sandbox at {}. Run your tools and evaluations against this path.", target.display()))
                 }
                 "discard" => {
-                    let name = name.ok_or_else(|| CliError::validation("Missing name for discard"))?;
+                    let name =
+                        name.ok_or_else(|| CliError::validation("Missing name for discard"))?;
                     let target = sandbox_dir.join(name);
-                    
+
                     if !target.exists() {
-                        return Err(CliError::validation(format!("Sandbox '{}' not found", name)));
+                        return Err(CliError::validation(format!(
+                            "Sandbox '{}' not found",
+                            name
+                        )));
                     }
-                    
+
                     std::process::Command::new("git")
-                        .args(["worktree", "remove", "--force", target.to_str().unwrap()])
+                        .args([
+                            "worktree",
+                            "remove",
+                            "--force",
+                            target.to_str().ok_or_else(|| {
+                                CliError::validation("Target path is not valid UTF-8")
+                            })?,
+                        ])
                         .current_dir(&repo)
                         .output()?;
-                        
+
                     std::process::Command::new("git")
                         .args(["branch", "-D", &format!("sruja-sandbox/{}", name)])
                         .current_dir(&repo)
                         .output()?;
-                        
+
                     Ok(format!("🗑️ Discarded sandbox '{}'.", name))
                 }
                 "commit" => {
-                    let name = name.ok_or_else(|| CliError::validation("Missing name for commit"))?;
+                    let name =
+                        name.ok_or_else(|| CliError::validation("Missing name for commit"))?;
                     let target = sandbox_dir.join(name);
-                    
+
                     if !target.exists() {
-                        return Err(CliError::validation(format!("Sandbox '{}' not found", name)));
+                        return Err(CliError::validation(format!(
+                            "Sandbox '{}' not found",
+                            name
+                        )));
                     }
-                    
+
                     // Commit any pending changes in the worktree
                     std::process::Command::new("git")
                         .args(["add", "-A"])
                         .current_dir(&target)
                         .output()?;
-                        
+
                     std::process::Command::new("git")
                         .args(["commit", "-m", &format!("Sruja Sandbox: {}", name)])
                         .current_dir(&target)
                         .output()?;
-                        
+
                     Ok(format!("✅ Sandbox '{}' successfully committed to branch 'sruja-sandbox/{}'. A human can now merge this into the main branch.", name, name))
                 }
                 "list" => {
@@ -1046,7 +1076,8 @@ async fn run_tool(
                         let mut sandboxes = Vec::new();
                         for entry in entries.flatten() {
                             if entry.path().is_dir() {
-                                sandboxes.push(format!("- {}", entry.file_name().to_string_lossy()));
+                                sandboxes
+                                    .push(format!("- {}", entry.file_name().to_string_lossy()));
                             }
                         }
                         if sandboxes.is_empty() {
@@ -1058,16 +1089,19 @@ async fn run_tool(
                         Ok("No active sandboxes.".to_string())
                     }
                 }
-                _ => Err(CliError::validation(format!("Invalid sandbox action: {}", action))),
+                _ => Err(CliError::validation(format!(
+                    "Invalid sandbox action: {}",
+                    action
+                ))),
             }
         }
         "sruja_evaluate_proposal" => {
             let gate_cmd = arguments.get("gate_command").and_then(|v| v.as_str());
-            
+
             let mut out = String::new();
             if let Some(cmd) = gate_cmd {
                 out.push_str(&format!("Running gate: {}\n", cmd));
-                
+
                 let output = if cfg!(target_os = "windows") {
                     std::process::Command::new("cmd")
                         .args(["/C", cmd])
@@ -1079,7 +1113,7 @@ async fn run_tool(
                         .current_dir(&repo)
                         .output()
                 };
-                
+
                 match output {
                     Ok(o) => {
                         let stdout = String::from_utf8_lossy(&o.stdout);
@@ -1100,38 +1134,75 @@ async fn run_tool(
                     }
                 }
             }
-            
+
             // Calculate Context Score as the quality metric
             let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
             let scan_node_count = match sruja_scan::scan_repo(Path::new(&repo)) {
                 Ok(g) => g.nodes.len(),
                 Err(_) => kg.nodes.len(),
             };
-            let score = sruja_graph::compute_context_score(&kg, scan_node_count, Path::new(&repo), 0);
-            
+            let score =
+                sruja_graph::compute_context_score(&kg, scan_node_count, Path::new(&repo), 0);
+
             out.push_str(&format!("\n📈 Context Score: {}/100\n", score.score));
-            out.push_str(&format!("  - Architecture Coverage: {}/100\n", score.architecture_coverage.value));
-            out.push_str(&format!("  - Decision Completeness: {}/100\n", score.decision_completeness.value));
-            out.push_str(&format!("  - Evidence Freshness: {}/100\n", score.evidence_freshness.value));
-            out.push_str(&format!("  - Relationship Density: {}/100\n", score.relationship_density.value));
-            
+            out.push_str(&format!(
+                "  - Architecture Coverage: {}/100\n",
+                score.architecture_coverage.value
+            ));
+            out.push_str(&format!(
+                "  - Decision Completeness: {}/100\n",
+                score.decision_completeness.value
+            ));
+            out.push_str(&format!(
+                "  - Evidence Freshness: {}/100\n",
+                score.evidence_freshness.value
+            ));
+            out.push_str(&format!(
+                "  - Relationship Density: {}/100\n",
+                score.relationship_density.value
+            ));
+
             if score.score == 100 {
                 out.push_str("\n🎉 Perfect Score Achieved! Your hypothesis succeeded.");
             } else {
                 out.push_str("\nReview the Agentic Memory or Context Map to find new optimization opportunities.");
             }
-            
+
             Ok(out)
         }
         "sruja_record_learning" => {
-            let context = arguments.get("context").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-            let hypothesis = arguments.get("hypothesis").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-            let outcome_str = arguments.get("outcome").and_then(|v| v.as_str()).unwrap_or("success");
-            let reason = arguments.get("reason").and_then(|v| v.as_str()).map(|s| s.to_string());
-            let guardrail_advice = arguments.get("guardrail_advice").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-            let affected_elements = arguments.get("affected_elements").and_then(|v| v.as_array()).map(|a| {
-                a.iter().filter_map(|v| v.as_str().map(String::from)).collect()
-            }).unwrap_or_default();
+            let context = arguments
+                .get("context")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let hypothesis = arguments
+                .get("hypothesis")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let outcome_str = arguments
+                .get("outcome")
+                .and_then(|v| v.as_str())
+                .unwrap_or("success");
+            let reason = arguments
+                .get("reason")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let guardrail_advice = arguments
+                .get("guardrail_advice")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let affected_elements = arguments
+                .get("affected_elements")
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default();
 
             let outcome = if outcome_str == "failed" {
                 ExperimentOutcome::Failed
@@ -1139,7 +1210,8 @@ async fn run_tool(
                 ExperimentOutcome::Success
             };
 
-            let mut memory = AgenticMemory::load(Path::new(&repo)).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+            let mut memory = AgenticMemory::load(Path::new(&repo))
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
             memory.add_learning(LearningEntry {
                 timestamp: chrono::Utc::now(),
                 context,
@@ -1149,7 +1221,9 @@ async fn run_tool(
                 guardrail_advice,
                 affected_elements,
             });
-            memory.save(Path::new(&repo)).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+            memory
+                .save(Path::new(&repo))
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
             Ok("Learning recorded in Agentic Memory successfully.".to_string())
         }

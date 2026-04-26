@@ -414,7 +414,8 @@ mod tests {
                 kind: NodeKind::Service,
                 label: format!("Service {}", i),
                 ..ArchitectureNode::default()
-            }).unwrap();
+            })
+            .unwrap();
         }
         g
     }

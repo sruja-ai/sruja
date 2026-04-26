@@ -2,4 +2,4 @@
 
 pub mod memory;
 
-pub use memory::{AgenticMemory, LearningEntry, ExperimentOutcome};
+pub use memory::{AgenticMemory, ExperimentOutcome, LearningEntry};

@@ -331,7 +331,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_node_kind_conversion() {
         let mut kg = KnowledgeGraph::new();

@@ -7,11 +7,12 @@ use sruja_diagnostics::Diagnostic;
 use sruja_language::Program;
 
 use crate::rules::{
-    ComplexityThresholdRule, ContainerNestingRule, ContractIntegrityRule, CustomConstraintsRule, CycleDetectionRule,
-    DatabaseIsolationRule, GovernanceValidationRule, LayerViolationRule, OrphanDetectionRule,
-    PolicyEvaluationRule, PropertiesValidationRule, PublicInterfaceDocumentationRule,
-    RequiredFieldsRule, ScenarioValidationRule, SimplicityRule, SloValidationRule,
-    SourcesValidationRule, StateMachineIntegrityRule, UniqueIdRule, ValidRefRule,
+    ComplexityThresholdRule, ContainerNestingRule, ContractIntegrityRule, CustomConstraintsRule,
+    CycleDetectionRule, DatabaseIsolationRule, GovernanceValidationRule, LayerViolationRule,
+    OrphanDetectionRule, PolicyEvaluationRule, PropertiesValidationRule,
+    PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule, SimplicityRule,
+    SloValidationRule, SourcesValidationRule, StateMachineIntegrityRule, UniqueIdRule,
+    ValidRefRule,
 };
 use crate::DomainSchema;
 

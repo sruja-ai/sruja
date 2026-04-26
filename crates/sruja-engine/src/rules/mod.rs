@@ -3,8 +3,8 @@
 pub mod complexity_threshold;
 pub mod container_nesting;
 pub mod contract_integrity;
-pub mod cycle;
 pub mod custom_constraints;
+pub mod cycle;
 pub mod database_isolation;
 pub mod governance_validation;
 pub mod layer_violation;

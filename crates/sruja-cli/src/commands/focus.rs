@@ -316,7 +316,10 @@ pub fn build_focus_briefing(
         for entry in relevant {
             anti_patterns.push(entry.guardrail_advice.clone());
             if let Some(reason) = &entry.reason {
-                pointer_traces.push(format!("Failed hypothesis: {} ({})", entry.hypothesis, reason));
+                pointer_traces.push(format!(
+                    "Failed hypothesis: {} ({})",
+                    entry.hypothesis, reason
+                ));
             } else {
                 pointer_traces.push(format!("Prior learning: {}", entry.hypothesis));
             }
@@ -331,11 +334,15 @@ pub fn build_focus_briefing(
         for line in lines {
             let trimmed = line.trim();
             if trimmed.starts_with("##") {
-                in_section = trimmed.to_lowercase().contains("what not to try") || trimmed.to_lowercase().contains("failed hypothesis");
+                in_section = trimmed.to_lowercase().contains("what not to try")
+                    || trimmed.to_lowercase().contains("failed hypothesis");
                 continue;
             }
             if in_section && !trimmed.is_empty() && !trimmed.starts_with('#') {
-                let advice = truncate(trimmed.trim_start_matches("- ").trim_start_matches("* "), 120);
+                let advice = truncate(
+                    trimmed.trim_start_matches("- ").trim_start_matches("* "),
+                    120,
+                );
                 if !anti_patterns.contains(&advice) {
                     anti_patterns.push(advice);
                 }
@@ -344,7 +351,10 @@ pub fn build_focus_briefing(
     }
 
     if !anti_patterns.is_empty() && pointer_traces.is_empty() {
-        pointer_traces.push("Review .sruja/ai-scratchpad.md for recent failed hypotheses before proceeding.".to_string());
+        pointer_traces.push(
+            "Review .sruja/ai-scratchpad.md for recent failed hypotheses before proceeding."
+                .to_string(),
+        );
     }
 
     // Inject anti-patterns into AI instructions for high visibility

@@ -36,7 +36,11 @@ pub async fn health(
         repo_path,
         architecture,
     );
-    let (_content, program) = super::parse_sruja_file(arch_path.to_str().unwrap())?;
+    let (_content, program) = super::parse_sruja_file(
+        arch_path
+            .to_str()
+            .ok_or_else(|| CliError::validation("Architecture path is not valid UTF-8"))?,
+    )?;
 
     // 2. Run drift detection to get violations
     let pb = progress::spinner("Calculating health score...");

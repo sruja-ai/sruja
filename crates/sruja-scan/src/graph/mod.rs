@@ -532,36 +532,36 @@ mod tests {
         let mut graph = Graph {
             nodes: vec![node("a"), node("b")],
             edges: vec![
-            Edge {
-                source: "a".into(),
-                target: "b".into(),
-                kind: EdgeKind::Calls,
-                evidence: vec![EdgeEvidence {
-                    rule: "r2".into(),
-                    file: None,
-                    line: None,
-                    detail: None,
-                }],
-            },
-            Edge {
-                source: "a".into(),
-                target: "b".into(),
-                kind: EdgeKind::Calls,
-                evidence: vec![
-                    EdgeEvidence {
-                        rule: "r1".into(),
-                        file: None,
-                        line: None,
-                        detail: None,
-                    },
-                    EdgeEvidence {
+                Edge {
+                    source: "a".into(),
+                    target: "b".into(),
+                    kind: EdgeKind::Calls,
+                    evidence: vec![EdgeEvidence {
                         rule: "r2".into(),
                         file: None,
                         line: None,
                         detail: None,
-                    },
-                ],
-            },
+                    }],
+                },
+                Edge {
+                    source: "a".into(),
+                    target: "b".into(),
+                    kind: EdgeKind::Calls,
+                    evidence: vec![
+                        EdgeEvidence {
+                            rule: "r1".into(),
+                            file: None,
+                            line: None,
+                            detail: None,
+                        },
+                        EdgeEvidence {
+                            rule: "r2".into(),
+                            file: None,
+                            line: None,
+                            detail: None,
+                        },
+                    ],
+                },
             ],
             ..Default::default()
         };

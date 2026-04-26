@@ -1,10 +1,15 @@
-use std::path::Path;
-use sruja_agent::{AgenticMemory, LearningEntry, ExperimentOutcome};
 use crate::commands::CliError;
 use crate::utils::colors;
+use sruja_agent::{AgenticMemory, ExperimentOutcome, LearningEntry};
+use std::path::Path;
 
-pub async fn agent_history(repo: &str, element_id: Option<&str>, format: &str) -> Result<(), CliError> {
-    let memory = AgenticMemory::load(Path::new(repo)).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+pub async fn agent_history(
+    repo: &str,
+    element_id: Option<&str>,
+    format: &str,
+) -> Result<(), CliError> {
+    let memory = AgenticMemory::load(Path::new(repo))
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
     if format == "json" {
         let entries = if let Some(id) = element_id {
@@ -16,8 +21,14 @@ pub async fn agent_history(repo: &str, element_id: Option<&str>, format: &str) -
         return Ok(());
     }
 
-    println!("{}", colors::style("Architectural Learning History & Guardrails").bold());
-    println!("{}", colors::dim("------------------------------------------"));
+    println!(
+        "{}",
+        colors::style("Architectural Learning History & Guardrails").bold()
+    );
+    println!(
+        "{}",
+        colors::dim("------------------------------------------")
+    );
 
     let entries = if let Some(id) = element_id {
         println!("Filtering by element: {}", colors::info(id));
@@ -37,7 +48,12 @@ pub async fn agent_history(repo: &str, element_id: Option<&str>, format: &str) -
             ExperimentOutcome::Failed => colors::error("FAILED"),
         };
 
-        println!("\n[{}] {} - {}", i + 1, entry.timestamp.format("%Y-%m-%d %H:%M"), outcome_color);
+        println!(
+            "\n[{}] {} - {}",
+            i + 1,
+            entry.timestamp.format("%Y-%m-%d %H:%M"),
+            outcome_color
+        );
         println!("  Context:    {}", colors::style(&entry.context).bold());
         println!("  Hypothesis: {}", entry.hypothesis);
         if let Some(reason) = &entry.reason {
@@ -70,8 +86,9 @@ pub async fn agent_record(
         .map(|e| e.split(',').map(|s| s.trim().to_string()).collect())
         .unwrap_or_default();
 
-    let mut memory = AgenticMemory::load(Path::new(repo)).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
-    
+    let mut memory = AgenticMemory::load(Path::new(repo))
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+
     memory.add_learning(LearningEntry {
         timestamp: chrono::Utc::now(),
         context: context.to_string(),
@@ -82,7 +99,9 @@ pub async fn agent_record(
         affected_elements,
     });
 
-    memory.save(Path::new(repo)).map_err(|e| CliError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+    memory
+        .save(Path::new(repo))
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
     println!("✅ Learning recorded in Agentic Memory.");
     Ok(())
@@ -99,7 +118,9 @@ pub async fn agent_clear(repo: &str, force: bool) -> Result<(), CliError> {
         println!("⚠️  Are you sure you want to clear all agentic memory for this repository?");
         println!("   This will delete all prior learnings and guardrails.");
         // In a real CLI we might use dialoguer here, but for now we'll require --force
-        return Err(CliError::validation("Action requires --force to confirm deletion."));
+        return Err(CliError::validation(
+            "Action requires --force to confirm deletion.",
+        ));
     }
 
     std::fs::remove_file(memory_path)?;

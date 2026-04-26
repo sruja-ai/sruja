@@ -50,15 +50,23 @@ impl Rule for CustomConstraintsRule {
                     for relation in &relations {
                         let from_id = relation.from.as_string().to_lowercase();
                         let to_id = relation.to.as_string().to_lowercase();
-                        
-                        let from_kind = elements.get(&relation.from.as_string())
-                            .map_or(String::new(), |e| e.assignment.kind.to_string().to_lowercase());
-                        
-                        let to_kind = elements.get(&relation.to.as_string())
-                            .map_or(String::new(), |e| e.assignment.kind.to_string().to_lowercase());
 
-                        let from_match = from_id.contains(source_pattern) || from_kind.contains(source_pattern);
-                        let to_match = to_id.contains(target_pattern) || to_kind.contains(target_pattern);
+                        let from_kind = elements
+                            .get(&relation.from.as_string())
+                            .map_or(String::new(), |e| {
+                                e.assignment.kind.to_string().to_lowercase()
+                            });
+
+                        let to_kind = elements
+                            .get(&relation.to.as_string())
+                            .map_or(String::new(), |e| {
+                                e.assignment.kind.to_string().to_lowercase()
+                            });
+
+                        let from_match =
+                            from_id.contains(source_pattern) || from_kind.contains(source_pattern);
+                        let to_match =
+                            to_id.contains(target_pattern) || to_kind.contains(target_pattern);
 
                         if from_match && to_match {
                             diagnostics.push(
@@ -68,9 +76,11 @@ impl Rule for CustomConstraintsRule {
                                     format!("Custom constraint violated: {}", constraint_str),
                                     relation.location.clone(),
                                 )
-                                .with_suggestions(vec![
-                                    format!("Remove the relation {} -> {}", relation.from.as_string(), relation.to.as_string()),
-                                ]),
+                                .with_suggestions(vec![format!(
+                                    "Remove the relation {} -> {}",
+                                    relation.from.as_string(),
+                                    relation.to.as_string()
+                                )]),
                             );
                         }
                     }
