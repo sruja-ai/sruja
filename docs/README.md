@@ -31,7 +31,9 @@ sruja sync -r .
 | [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** – Install, use, and operate the architecture/context-engineering workflow |
 | [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) | **Multi-repo federation** – Step-by-step guide for `repo.bundle.json` and `system.index.json` |
 | [FEDERATION.md](FEDERATION.md) | Retrieval order, artifact shapes, and multi-repo composition rules |
-| [architecture/README.md](architecture/README.md) | Sruja’s own architecture models: platform, context pipeline, and development workflow |
+| [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) | Context engineering principles and pipeline |
+| [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) | Shared terminology and definitions |
+| [architecture/README.md](architecture/README.md) | Sruja's own architecture models: platform, context pipeline, and development workflow |
 | [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) | DSL reference |
 | [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) | Language and modeling principles |
 | [RUN_GUIDE.md](RUN_GUIDE.md) | Build, run, and demo commands |
@@ -40,6 +42,8 @@ sruja sync -r .
 | [CODING_GUIDELINES.md](CODING_GUIDELINES.md) | Coding standards |
 | [SCOPE.md](SCOPE.md) | Product scope |
 | [SECURITY.md](SECURITY.md) | Security policy |
+| [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | Known limitations of architecture analysis |
+| [mcp_setup.md](mcp_setup.md) | MCP server setup for AI editors |
 | [adr/](adr/) | Architecture decision records |
 | [internal/](internal/) | Internal docs |
 

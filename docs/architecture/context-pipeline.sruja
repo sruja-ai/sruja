@@ -118,7 +118,7 @@ ContextEngineering = system "Sruja Context Engineering" {
 
   CLI = container "CLI Commands" {
     technology "Rust, crates/sruja-cli"
-    description "Commands that refresh evidence, review drift, export context, and publish federation artifacts"
+    description "Commands that refresh evidence, review drift, export context, critique changes, and publish federation artifacts"
 
     SyncCommand = component "Sync Command" {
       description "Runs sruja sync -r . to refresh evidence and write .sruja/context.json"
@@ -142,6 +142,39 @@ ContextEngineering = system "Sruja Context Engineering" {
 
     ComposeCommand = component "Compose Command" {
       description "Runs sruja compose -i <input> -o system.index.json for federated retrieval"
+    }
+
+    FocusCommand = component "Focus Command" {
+      description "Runs sruja focus --file <path> to generate task-scoped briefing with blast radius and AI instructions"
+    }
+
+    CritiqueCommand = component "Critique Command" {
+      description "Runs sruja critique to perform adversarial architectural review of proposed/changed files"
+    }
+
+    ProposeCommand = component "Propose Command" {
+      description "Runs sruja propose create/list/approve for architectural change proposal lifecycle"
+    }
+
+    ContextScoreCommand = component "Context Score Command" {
+      description "Runs sruja context-score -r . to compute AI-readiness score (0-100) across 5 dimensions"
+    }
+
+    IngestCommand = component "Ingest Command" {
+      description "Runs sruja ingest <path> to import external context (ADRs, design docs) into .sruja/context/"
+    }
+
+    ComplianceCommand = component "Compliance Command" {
+      description "Runs sruja compliance -r . to check structural drift + intent + policy violations"
+    }
+  }
+
+  AgentMemory = container "Agentic Memory" {
+    technology "Rust, crates/sruja-agent"
+    description "Persistent learning and guardrails for AI agents"
+
+    AgentMemoryStore = component "Agent Memory Store" {
+      description "Learning entries persisted at .sruja/agent_memory.json with guardrail advice for future agents"
     }
   }
 
@@ -213,6 +246,20 @@ ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.AIOutputs.Mark
 ContextEngineering.CLI.ContextExportCommand -> ContextEngineering.AIOutputs.JsonContext "Formats json"
 ContextEngineering.CLI.PublishCommand -> ContextEngineering.ContextArtifacts.RepoBundle "Writes bundle"
 ContextEngineering.CLI.ComposeCommand -> ContextEngineering.ContextArtifacts.SystemIndex "Builds system index"
+ContextEngineering.CLI.FocusCommand -> ContextEngineering.RepoTruth.BaselineModel "Reads reviewed DSL"
+ContextEngineering.CLI.FocusCommand -> ContextEngineering.EvidencePipeline.DependencyGraph "Traverses blast radius"
+ContextEngineering.CLI.FocusCommand -> ContextEngineering.Analysis.ImpactAnalyzer "Requests impact"
+ContextEngineering.CLI.CritiqueCommand -> ContextEngineering.Analysis.IntentComparer "Adversarial review"
+ContextEngineering.CLI.CritiqueCommand -> ContextEngineering.Analysis.DriftEngine "Compares changes"
+ContextEngineering.CLI.ProposeCommand -> ContextEngineering.RepoTruth.BaselineModel "Modifies DSL"
+ContextEngineering.CLI.ProposeCommand -> ContextEngineering.Analysis.DriftEngine "Validates proposals"
+ContextEngineering.CLI.ContextScoreCommand -> ContextEngineering.ContextArtifacts.RepoContextCache "Reads evidence"
+ContextEngineering.CLI.IngestCommand -> ContextEngineering.RepoTruth.KnowledgeLinks "Imports external docs"
+ContextEngineering.CLI.ComplianceCommand -> ContextEngineering.Analysis.DriftEngine "Checks structural drift"
+ContextEngineering.CLI.ComplianceCommand -> ContextEngineering.Analysis.IntentComparer "Checks intent alignment"
+ContextEngineering.AgentMemory.AgentMemoryStore -> ContextEngineering.CLI.FocusCommand "Provides guardrail advice"
+ContextEngineering.CLI.ReviewCommand -> ContextEngineering.AgentMemory.AgentMemoryStore "Records learnings"
+ContextEngineering.AgentMemory -> ContextEngineering.CLI "Persists agent learning"
 
 ContextEngineering.ContextArtifacts.RepoContextCache -> ContextEngineering.ContextArtifacts.RepoBundle "Supplies repo context"
 ContextEngineering.RepoTruth.BaselineModel -> ContextEngineering.ContextArtifacts.RepoBundle "Supplies reviewed truth"
@@ -238,6 +285,9 @@ Developer -> ContextEngineering.CLI.SyncCommand "Runs"
 Developer -> ContextEngineering.CLI.ContextExportCommand "Runs"
 Developer -> ContextEngineering.CLI.PublishCommand "Runs for federation"
 Developer -> ContextEngineering.CLI.ComposeCommand "Runs for federation"
+Developer -> ContextEngineering.CLI.FocusCommand "Runs for task briefing"
+Developer -> ContextEngineering.CLI.CritiqueCommand "Runs before commit"
+Developer -> ContextEngineering.CLI.ContextScoreCommand "Runs to check AI-readiness"
 Developer -> ContextEngineering.Extension.CliBridge "Uses in editor"
 Developer -> ContextEngineering.Extension.ContextPackBuilder "Copies context for AI"
 Developer -> ContextEngineering.Extension.DocsThread "Browses references"
@@ -253,5 +303,5 @@ view index {
 
 view editor {
   title "Editor and AI Workflow"
-  include "Developer ContextEngineering.Extension ContextEngineering.CLI ContextEngineering.AIOutputs AICodingAssistants DeveloperWorkspace"
+  include "Developer ContextEngineering.Extension ContextEngineering.CLI ContextEngineering.AIOutputs ContextEngineering.AgentMemory AICodingAssistants DeveloperWorkspace"
 }

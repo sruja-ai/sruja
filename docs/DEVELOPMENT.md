@@ -40,16 +40,19 @@ make wasm-nodejs # nodejs target
 
 | Crate | Purpose |
 |-------|---------|
-| **sruja-cli** | CLI: lint, export, scan, why, drift |
-| **sruja-language** | Parser and AST |
+| **sruja-cli** | CLI: lint, export, scan, why, drift, critique, propose, focus, context, agent, context-score, context-graph, compliance, ingest, federation |
+| **sruja-language** | Parser, AST, and pluggable domain schemas |
 | **sruja-engine** | Validation rules |
-| **sruja-export** | Markdown, Mermaid, JSON export |
+| **sruja-export** | Markdown, Mermaid, JSON, HTML/D3 export |
 | **sruja-wasm** | WASM build for browser/Node |
 | **sruja-diagnostics** | Diagnostic types |
 | **sruja-graph** | Knowledge graph, centrality, coupling |
+| **sruja-graph-core** | Core graph types and primitives |
 | **sruja-scan** | Repo scanning (multi-language tree-sitter) |
-| **sruja-diff** | Drift detection |
-| **sruja-intent** | Intent vs. reality comparison |
+| **sruja-diff** | Drift detection + proposal system |
+| **sruja-intent** | Intent vs. reality comparison + adversarial critique engine |
+| **sruja-extract** | Source code extraction utilities |
+| **sruja-agent** | Agentic memory – persistent learning and guardrails for AI agents |
 | **book/** | mdBook documentation |
 
 ## VS Code extension

@@ -93,6 +93,41 @@ Sruja = system "Sruja Platform" {
       description "Blast-radius analysis for a target node (upstream + downstream)"
       technology "Rust, crates/sruja-cli"
     }
+
+    Critique = component "Critique" {
+      description "Adversarial architectural review of proposed/changed files"
+      technology "Rust, crates/sruja-cli, crates/sruja-intent"
+    }
+
+    Propose = component "Propose" {
+      description "Architectural change proposal system (create, list, approve)"
+      technology "Rust, crates/sruja-cli, crates/sruja-diff"
+    }
+
+    Focus = component "Focus" {
+      description "Task-scoped context briefing (blast radius, decisions, AI instructions)"
+      technology "Rust, crates/sruja-cli"
+    }
+
+    ContextScore = component "Context Score" {
+      description "Context readiness score (0-100) for AI agents across 5 dimensions"
+      technology "Rust, crates/sruja-cli"
+    }
+
+    ContextGraph = component "Context Graph" {
+      description "Interactive HTML/D3.js architecture visualization"
+      technology "Rust, crates/sruja-cli, crates/sruja-export"
+    }
+
+    Ingest = component "Ingest" {
+      description "Import external context (ADRs, design docs, API contracts) into .sruja/context/"
+      technology "Rust, crates/sruja-cli"
+    }
+
+    Compliance = component "Compliance" {
+      description "Structural drift + intent + policy violations report"
+      technology "Rust, crates/sruja-cli"
+    }
   }
 
   Diagnostics = container "Diagnostics" {
@@ -205,6 +240,29 @@ Sruja = system "Sruja Platform" {
     tags ["context"]
   }
 
+  Agent = container "Agentic Memory" {
+    technology "Rust, crates/sruja-agent"
+    description "Persistent learning and guardrails for AI agents"
+    tags ["context", "agent"]
+
+    Memory = component "Agentic Memory Store" {
+      description "Learning entries persisted at .sruja/agent_memory.json"
+      technology "Rust, crates/sruja-agent"
+    }
+  }
+
+  Extract = container "Source Extraction" {
+    technology "Rust, crates/sruja-extract"
+    description "Source code extraction utilities for scanning pipeline"
+    tags ["context"]
+  }
+
+  GraphCore = container "Graph Core" {
+    technology "Rust, crates/sruja-graph-core"
+    description "Core graph types and primitives shared across graph-dependent crates"
+    tags ["core"]
+  }
+
   LSP = container "IDE Support" {
     technology "TypeScript (extension/), WASM (crates/sruja-wasm)"
     description "VS Code language features and preview powered by the WASM build (no standalone Rust LSP server crate)"
@@ -279,6 +337,9 @@ Sruja = system "Sruja Platform" {
   CLI -> Diff "Computes drift"
   CLI -> Intent "Evaluates intent vs reality"
   CLI -> Report "Generates reports"
+  CLI -> Agent "Records and queries learnings"
+  CLI -> Extract "Extracts source context"
+  CLI -> GraphCore "Uses graph primitives"
 
   // Component relationships within containers
   Language.Lexer -> Language.Parser "Provides tokens"
@@ -308,6 +369,30 @@ Sruja = system "Sruja Platform" {
 
   CLI.Impact -> Scan "Builds graph"
   CLI.Impact -> Diagnostics "Emits"
+
+  CLI.Critique -> Intent "Runs adversarial critique"
+  CLI.Critique -> Diff "Compares changes"
+  CLI.Critique -> Diagnostics "Emits"
+
+  CLI.Propose -> Diff "Creates proposals"
+  CLI.Propose -> Diagnostics "Emits"
+
+  CLI.Focus -> Scan "Builds task context"
+  CLI.Focus -> Graph "Traverses blast radius"
+  CLI.Focus -> Diagnostics "Emits"
+
+  CLI.ContextScore -> Scan "Checks coverage"
+  CLI.ContextScore -> Diagnostics "Emits"
+
+  CLI.ContextGraph -> Export "Generates HTML"
+  CLI.ContextGraph -> Diagnostics "Emits"
+
+  CLI.Ingest -> Language "Parses imported docs"
+  CLI.Ingest -> Diagnostics "Emits"
+
+  CLI.Compliance -> Diff "Checks structural drift"
+  CLI.Compliance -> Intent "Checks intent alignment"
+  CLI.Compliance -> Diagnostics "Emits"
 
   Language.Parser -> Engine "Validates AST"
   Language.AST -> Export "Exports"
@@ -349,6 +434,9 @@ Sruja = system "Sruja Platform" {
   Diff -> Graph "Reads"
   Diff -> Scan "Compares"
   Intent -> Diff "Compares"
+  Graph -> GraphCore "Uses"
+  Scan -> Extract "Uses"
+  Agent.Memory -> Diagnostics "Reports via"
 }
 
 // User relationships
@@ -356,7 +444,7 @@ Architect -> Sruja.CLI "Uses"
 Architect -> Sruja.VSCode "Writes DSL"
 Architect -> Sruja.Book "Reads docs"
 
-Developer -> Sruja.CLI "Runs quickstart/sync/context/drift"
+Developer -> Sruja.CLI "Runs quickstart/sync/context/drift/critique/focus"
 Developer -> Sruja.VSCode "Writes code"
 Developer -> CratesIo "Installs CLI from"
 Developer -> VSCodeMarketplace "Installs extension from"
@@ -439,6 +527,10 @@ DailyDevFlow = flow "Daily Development Loop" {
   step Developer -> Sruja.CLI.ContextExport "Runs: sruja context -r . --file <file> --intent <intent> -f json"
   step Sruja.CLI.ContextExport -> Sruja.Scan "Builds task-scoped context"
   step Developer -> Sruja.CLI.Drift "Runs: sruja drift -r . --violations-only"
+  step Developer -> Sruja.CLI.Focus "Runs: sruja focus --file <path>"
+  step Sruja.CLI.Focus -> Sruja.Graph "Traverses blast radius"
+  step Developer -> Sruja.CLI.Critique "Runs: sruja critique --staged"
+  step Sruja.CLI.Critique -> Sruja.Intent "Adversarial review"
 }
 
 ReleaseFlow = flow "Release & Distribution" {
@@ -461,7 +553,7 @@ view index {
 view backend of Sruja {
   title "Backend Components"
   description "Rust core and LSP components"
-  include "Sruja.CLI Sruja.Diagnostics Sruja.Language Sruja.Engine Sruja.Export Sruja.WASM Sruja.LSP Sruja.Stdlib Sruja.Scan Sruja.Graph Sruja.Diff Sruja.Intent Sruja.Report"
+  include "Sruja.CLI Sruja.Diagnostics Sruja.Language Sruja.Engine Sruja.Export Sruja.WASM Sruja.LSP Sruja.Stdlib Sruja.Scan Sruja.Graph Sruja.GraphCore Sruja.Extract Sruja.Diff Sruja.Intent Sruja.Report Sruja.Agent"
 }
 
 view interfaces of Sruja {

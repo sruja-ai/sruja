@@ -92,10 +92,17 @@ sruja quickstart -r .               # Quick architecture overview (inventory, he
 #   sruja lint repo.sruja
 #   sruja sync -r .
 #   sruja drift -r . -a repo.sruja
-# For analysis vs a specific baseline file:
-#   sruja drift -r . -a repo.sruja
 sruja lint book/valid-examples/*.sruja # Validate canonical book examples
 sruja export markdown file.sruja    # Export to Markdown
+sruja focus --file src/main.rs      # Task-scoped briefing for a file
+sruja context-score -r .            # Context readiness score (0-100) for AI agents
+sruja context-graph -r .            # Generate interactive HTML/D3 visualization
+sruja critique --staged             # Adversarial review of staged changes
+sruja propose create                # Create an architectural change proposal
+sruja agent history                 # Show agentic learning history
+sruja health -r .                   # Architecture health report
+sruja compliance -r .               # Structural + intent + policy compliance check
+sruja ingest docs/adr/              # Import external docs into .sruja/context/
 ```
 
 ---
