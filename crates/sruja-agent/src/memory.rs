@@ -85,6 +85,20 @@ impl AgenticMemory {
         Ok(())
     }
 
+    /// Clears the agentic memory for the specified repository.
+    pub fn clear(repo_root: &Path) -> Result<(), MemoryError> {
+        let path = Self::get_path(repo_root);
+        if path.exists() {
+            std::fs::remove_file(path)?;
+        }
+        Ok(())
+    }
+
+    /// Checks if the agentic memory file exists for the given repository.
+    pub fn exists(repo_root: &Path) -> bool {
+        Self::get_path(repo_root).exists()
+    }
+
     /// Adds a new learning entry to the memory.
     pub fn add_learning(&mut self, learning: LearningEntry) {
         self.learnings.push(learning);
@@ -100,17 +114,19 @@ impl AgenticMemory {
         self.learnings
             .iter()
             .filter(|l| {
-                l.affected_elements
-                    .iter()
-                    .any(|e| e == element_id || element_id.starts_with(e))
-                    || l.context
-                        .to_lowercase()
-                        .contains(&element_id.to_lowercase())
+                l.affected_elements.iter().any(|e| {
+                    e == element_id
+                        || element_id.starts_with(&format!("{}.", e))
+                        || e.starts_with(&format!("{}.", element_id))
+                }) || l
+                    .context
+                    .to_lowercase()
+                    .contains(&element_id.to_lowercase())
             })
             .collect()
     }
 
-    fn get_path(repo_root: &Path) -> PathBuf {
+    pub fn get_path(repo_root: &Path) -> PathBuf {
         repo_root.join(".sruja").join("agent_memory.json")
     }
 }

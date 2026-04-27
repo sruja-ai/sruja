@@ -45,49 +45,18 @@ pub fn scan_other_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
 fn discover_docker(repo_root: &Path) -> Result<Graph, ScanError> {
     let mut graph = Graph::new();
 
-    // Check for Dockerfile
-    let dockerfile = repo_root.join("Dockerfile");
-    if dockerfile.exists() {
-        let mut technology = "Docker".to_string();
-        let mut description = String::new();
-
-        if let Ok(content) = std::fs::read_to_string(&dockerfile) {
-            for line in content.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("FROM ") {
-                    technology = trimmed.replace("FROM ", "").to_string();
-                } else if trimmed.starts_with("EXPOSE ") {
-                    description.push_str(&format!("Exposes: {}; ", trimmed.replace("EXPOSE ", "")));
-                } else if trimmed.starts_with("ENTRYPOINT ") || trimmed.starts_with("CMD ") {
-                    let cmd = trimmed.replace("ENTRYPOINT ", "").replace("CMD ", "");
-                    description.push_str(&format!("Runs: {}; ", cmd));
+    if let Ok(entries) = std::fs::read_dir(repo_root) {
+        for entry in entries.flatten() {
+            if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                let path = entry.path();
+                let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+                if file_name.starts_with("Dockerfile") || file_name.ends_with(".Dockerfile") {
+                    if let Some(node) = process_dockerfile(&path, &file_name) {
+                        graph.nodes.push(node);
+                    }
                 }
             }
         }
-
-        let mut metadata = HashMap::new();
-        metadata.insert("source_manifest".to_string(), "dockerfile".to_string());
-        if !description.is_empty() {
-            metadata.insert("description".to_string(), description.trim().to_string());
-        }
-
-        let node = Node {
-            id: "docker:Dockerfile".to_string(),
-            kind: NodeKind::Container,
-            label: "Docker Image".to_string(),
-            technology: Some(technology),
-            path: Some("Dockerfile".to_string()),
-            metadata,
-            canonical_id: None,
-            aliases: Vec::new(),
-            owner: None,
-            domain: None,
-            criticality: None,
-            sources: Vec::new(),
-            confidence: None,
-            ..Default::default()
-        };
-        graph.nodes.push(node);
     }
 
     // Check for docker-compose
@@ -124,6 +93,48 @@ fn discover_docker(repo_root: &Path) -> Result<Graph, ScanError> {
     }
 
     Ok(graph)
+}
+
+fn process_dockerfile(path: &Path, file_name: &str) -> Option<Node> {
+    let mut technology = "Docker".to_string();
+    let mut description = String::new();
+
+    if let Ok(content) = std::fs::read_to_string(path) {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("FROM ") {
+                technology = trimmed.replace("FROM ", "").to_string();
+            } else if trimmed.starts_with("EXPOSE ") {
+                description.push_str(&format!("Exposes: {}; ", trimmed.replace("EXPOSE ", "")));
+            } else if trimmed.starts_with("ENTRYPOINT ") || trimmed.starts_with("CMD ") {
+                let cmd = trimmed.replace("ENTRYPOINT ", "").replace("CMD ", "");
+                description.push_str(&format!("Runs: {}; ", cmd));
+            }
+        }
+    }
+
+    let mut metadata = HashMap::new();
+    metadata.insert("source_manifest".to_string(), "dockerfile".to_string());
+    if !description.is_empty() {
+        metadata.insert("description".to_string(), description.trim().to_string());
+    }
+
+    Some(Node {
+        id: format!("docker:{}", file_name),
+        kind: NodeKind::Container,
+        label: "Docker Image".to_string(),
+        technology: Some(technology),
+        path: Some(file_name.to_string()),
+        metadata,
+        canonical_id: None,
+        aliases: Vec::new(),
+        owner: None,
+        domain: None,
+        criticality: None,
+        sources: Vec::new(),
+        confidence: None,
+        ..Default::default()
+    })
 }
 
 fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
@@ -173,7 +184,16 @@ fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
 fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
     let mut graph = Graph::new();
     // Simple heuristic for K8s discovery in likely directories
-    let k8s_dirs = ["k8s", "kubernetes", "deploy", "deployment"];
+    let k8s_dirs = [
+        "k8s",
+        "kubernetes",
+        "deploy",
+        "deployment",
+        "manifests",
+        "helm",
+        "chart",
+        "charts",
+    ];
 
     for dir_name in &k8s_dirs {
         let dir_path = repo_root.join(dir_name);
@@ -211,14 +231,10 @@ fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
                             // Extract details based on kind
                             if let (Some(kind), Some(spec)) = (k8s.kind, k8s.spec) {
                                 match kind.as_str() {
-                                    "Deployment" | "StatefulSet" | "DaemonSet" | "Job" => {
+                                    "Deployment" | "StatefulSet" | "DaemonSet" | "Job"
+                                    | "CronJob" | "Pod" => {
                                         // Try to find containers
-                                        if let Some(containers) = spec
-                                            .get("template")
-                                            .and_then(|t| t.get("spec"))
-                                            .and_then(|s| s.get("containers"))
-                                            .and_then(|c| c.as_sequence())
-                                        {
+                                        if let Some(containers) = extract_containers(&spec) {
                                             for container in containers {
                                                 if let Some(image) =
                                                     container.get("image").and_then(|i| i.as_str())
@@ -298,6 +314,34 @@ fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
     }
 
     Ok(graph)
+}
+
+fn extract_containers(spec: &serde_yaml::Value) -> Option<&Vec<serde_yaml::Value>> {
+    // Try Pod
+    if let Some(containers) = spec.get("containers").and_then(|c| c.as_sequence()) {
+        return Some(containers);
+    }
+    // Try Deployment, etc
+    if let Some(containers) = spec
+        .get("template")
+        .and_then(|t| t.get("spec"))
+        .and_then(|s| s.get("containers"))
+        .and_then(|c| c.as_sequence())
+    {
+        return Some(containers);
+    }
+    // Try CronJob
+    if let Some(containers) = spec
+        .get("jobTemplate")
+        .and_then(|jt| jt.get("spec"))
+        .and_then(|t| t.get("template"))
+        .and_then(|t| t.get("spec"))
+        .and_then(|s| s.get("containers"))
+        .and_then(|c| c.as_sequence())
+    {
+        return Some(containers);
+    }
+    None
 }
 
 #[cfg(test)]

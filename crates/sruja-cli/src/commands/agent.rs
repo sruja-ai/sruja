@@ -91,7 +91,12 @@ pub async fn agent_record(
     };
 
     let affected_elements = elements
-        .map(|e| e.split(',').map(|s| s.trim().to_string()).collect())
+        .map(|e| {
+            e.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
         .unwrap_or_default();
 
     let mut memory = AgenticMemory::load(Path::new(repo))
@@ -119,8 +124,8 @@ pub async fn agent_record(
 ///
 /// Requires `force` to be true to confirm deletion.
 pub async fn agent_clear(repo: &str, force: bool) -> Result<(), CliError> {
-    let memory_path = Path::new(repo).join(".sruja").join("agent_memory.json");
-    if !memory_path.exists() {
+    let repo_path = Path::new(repo);
+    if !AgenticMemory::exists(repo_path) {
         println!("Memory is already empty.");
         return Ok(());
     }
@@ -134,7 +139,8 @@ pub async fn agent_clear(repo: &str, force: bool) -> Result<(), CliError> {
         ));
     }
 
-    std::fs::remove_file(memory_path)?;
+    AgenticMemory::clear(repo_path)
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
     println!("🗑️  Agentic memory cleared.");
     Ok(())
 }
