@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.38.0...sruja-v0.39.0) (2026-04-27)
+
+
+### Features
+
+* enhance AgenticMemory and manifest discovery robustness ([5d1585c](https://github.com/sruja-ai/sruja/commit/5d1585c0ac6e237e038947ca36230f83ecdc6fb6))
+* implement robust file locking for AgenticMemory ([e87cd92](https://github.com/sruja-ai/sruja/commit/e87cd929c14fc9f25dfd4406f71a73108175b512))
+
 ## [0.38.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.37.0...sruja-v0.38.0) (2026-04-26)
 
 
