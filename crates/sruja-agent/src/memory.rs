@@ -5,7 +5,10 @@
 //! architectural experiments.
 
 use chrono::{DateTime, Utc};
+use fs2::FileExt;
 use serde::{Deserialize, Serialize};
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -67,7 +70,12 @@ impl AgenticMemory {
         if !path.exists() {
             return Ok(Self::default());
         }
-        let content = std::fs::read_to_string(path)?;
+        let file = File::open(path)?;
+        file.lock_shared()?;
+        let mut content = String::new();
+        let mut reader = std::io::BufReader::new(&file);
+        reader.read_to_string(&mut content)?;
+        file.unlock()?;
         let memory = serde_json::from_str(&content)?;
         Ok(memory)
     }
@@ -80,8 +88,17 @@ impl AgenticMemory {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
+        let file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)?;
+        file.lock_exclusive()?;
         let content = serde_json::to_string_pretty(self)?;
-        std::fs::write(path, content)?;
+        let mut writer = std::io::BufWriter::new(&file);
+        writer.write_all(content.as_bytes())?;
+        writer.flush()?;
+        file.unlock()?;
         Ok(())
     }
 
