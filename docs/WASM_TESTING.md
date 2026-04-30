@@ -33,7 +33,7 @@ The `sruja-wasm` crate is excluded from `cargo llvm-cov` coverage because it is 
 One **Playwright** E2E test verifies “Show diagram” in the book.
 
 - **What:** `e2e/book-show-diagram.spec.ts` opens the “How Sruja works” page, clicks “Show diagram” on a ```sruja block, and asserts the diagram renders (WASM + Mermaid SVG).
-- **Run:** Start the book with `make book-serve` (or `book/serve.sh`) so WASM is copied into the output, then `npm run e2e`. See `e2e/README.md`.
+- **Run:** Start the book with `just book-serve` (or `book/serve.sh`) so WASM is copied into the output, then `npm run e2e`. See `e2e/README.md`.
 - **When:** Confirms the full path (book → WASM → Mermaid) works; complement to wasm-bindgen-test for the WASM API.
 
 ---

@@ -13,7 +13,7 @@ Build and install the Sruja CLI:
 
 ```bash
 # From the sruja repository root
-make install
+just install
 # or
 cargo install --path crates/sruja-cli
 ```

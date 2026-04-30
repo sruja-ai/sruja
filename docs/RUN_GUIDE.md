@@ -31,11 +31,11 @@ cd sruja
 
 ```bash
 # Fetch Rust dependencies
-make install
+just install
 # or: cargo fetch
 
 # Build release binary (CLI)
-make build
+just build
 # or: cargo build --release
 ```
 
@@ -122,14 +122,14 @@ cd evaluation/real-world-test
 - **`--llm`** – Add LLM evaluation (requires an API key in `.env`; see Step 7).
 - **`--all`** – Baseline + LLM.
 
-If the script says “sruja CLI not found”, ensure `sruja` is on PATH or build from repo root first (`make build`) and add `target/release` to PATH.
+If the script says “sruja CLI not found”, ensure `sruja` is on PATH or build from repo root first (`just build`) and add `target/release` to PATH.
 
 ### Optional: Context Engineering microservices demo (~2 min)
 
 This demo walks through the full flow: **intent (rulebook) → scan → drift → analyze → AI ask**, using the small Python microservices in `demo/`.
 
 ```bash
-make demo-intel
+just demo-intel
 # or: cd demo && ./run_demo.sh
 ```
 
@@ -186,15 +186,15 @@ Or build a VSIX and install it: `npm run package` then install the generated `.v
 ## Step 8: Run tests
 
 ```bash
-make test
+just test
 # or: cargo test --workspace
 ```
 
 Other targets:
 
 ```bash
-make fmt          # Format Rust code
-make lint         # Clippy
+just fmt          # Format Rust code
+just lint         # Clippy
 cargo test -p sruja-cli --test why_e2e   # Why command E2E (optional)
 ```
 
@@ -203,10 +203,10 @@ cargo test -p sruja-cli --test why_e2e   # Why command E2E (optional)
 ## Step 9: Book (mdBook docs, optional)
 
 ```bash
-make book-deps    # Install mdbook, mdbook-mermaid (one-time)
-make wasm         # Needed for in-book WASM diagrams
-make book         # Build book
-make book-serve   # Serve at http://localhost:3000 (live reload)
+just book-deps    # Install mdbook, mdbook-mermaid (one-time)
+just wasm         # Needed for in-book WASM diagrams
+just book         # Build book
+just book-serve   # Serve at http://localhost:3000 (live reload)
 ```
 
 ---
@@ -216,11 +216,11 @@ make book-serve   # Serve at http://localhost:3000 (live reload)
 | Step | Command | Purpose |
 |------|---------|--------|
 | 1 | `git clone ... && cd sruja` | Get repo |
-| 2 | `make install && make build` | Dependencies + CLI binary |
+| 2 | `just install && just build` | Dependencies + CLI binary |
 | 3 | `./target/release/sruja --version` | Verify CLI |
 | 4 | `./target/release/sruja quickstart -r .` | First value (no config) |
 | 5a | `cd evaluation/real-world-test && ./run_demo.sh` | Optional: E2E demo (quickstart + drift) |
-| 5b | `make demo-intel` | Optional: Context Engineering demo (intent → scan → drift → analyze → AI) |
+| 5b | `just demo-intel` | Optional: Context Engineering demo (intent → scan → drift → analyze → AI) |
 
 **Troubleshooting**
 

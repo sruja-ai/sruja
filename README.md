@@ -279,7 +279,7 @@ cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 ```bash
 git clone https://github.com/sruja-ai/sruja.git
 cd sruja
-make build
+just build
 ```
 
 **Verify installation:**

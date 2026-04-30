@@ -106,7 +106,7 @@ If your organization requires:
 When using Sruja in production:
 
 - **Pin versions** – Use specific versions in CI/CD, not `latest`
-- **Test before deploying** – Run `make test-cli-smoke` after updates
+- **Test before deploying** – Run `just test-cli-smoke` after updates
 - **Monitor issues** – Watch GitHub Issues for known problems in your version
 - **Have a rollback plan** – Know how to revert if a version introduces issues
 

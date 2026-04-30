@@ -6,11 +6,11 @@ This guide covers development for the Rust Sruja repo (CLI, engine, export, WASM
 
 ```bash
 # Install Rust (if needed): https://rustup.rs/
-make install   # cargo fetch
-make build     # cargo build --release
-make test      # cargo test
-make fmt       # cargo fmt
-make lint      # cargo clippy
+just install   # cargo fetch
+just build     # cargo build --release
+just test      # cargo test
+just fmt       # cargo fmt
+just lint      # cargo clippy
 ```
 
 ## First value (no .sruja)
@@ -32,8 +32,8 @@ See `docs/RUN_GUIDE.md` and `demo/README.md` for the end-to-end demo flow.
 ## WASM build
 
 ```bash
-make wasm        # web target → crates/sruja-wasm/pkg/
-make wasm-nodejs # nodejs target
+just wasm        # web target → crates/sruja-wasm/pkg/
+just wasm-nodejs # nodejs target
 ```
 
 ## Project layout

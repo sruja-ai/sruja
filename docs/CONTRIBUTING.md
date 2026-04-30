@@ -57,7 +57,7 @@ The deployment repositories will be automatically updated when your changes are 
 Optional:
 
 - `wasm-opt` (optimizes WASM artifacts)
-- `wasm-pack` (for `make wasm` / `make wasm-nodejs`)
+- `wasm-pack` (for `just wasm` / `just wasm-nodejs`)
 
 ### Quick Setup
 
@@ -67,10 +67,10 @@ git clone https://github.com/sruja-ai/sruja.git
 cd sruja
 
 # 2. Install dependencies
-make install
+just install
 
 # 3. Build the CLI
-make build
+just build
 
 # 4. Verify it works
 ./target/release/sruja --help
@@ -80,16 +80,16 @@ make build
 
 ```bash
 # Run tests
-make test
+just test
 
 # Format code
-make fmt
+just fmt
 
 # Lint code
-make lint
+just lint
 
 # Build everything
-make build
+just build
 
 # Try examples
 ./target/release/sruja compile book/valid-examples/getting-started.sruja
@@ -142,8 +142,8 @@ Use this workflow to propose changes via pull requests.
 
 ### 2. Implement and validate
 
-- Build and test locally: `make build`, `make test`
-- Run formatting and linting: `make fmt`, `make lint`
+- Build and test locally: `just build`, `just test`
+- Run formatting and linting: `just fmt`, `just lint`
 - Add or update tests for new behavior
 
 ### 3. Commit style
@@ -181,7 +181,7 @@ Optional scope: `feat(language): …`
 
 ## Pull Request Checklist
 
-- `make test`, `make fmt`, `make lint` run clean locally
+- `just test`, `just fmt`, `just lint` run clean locally
 - Add/update tests for new behavior
 - Update docs/examples if usage changes
 - CI passes (build, tests, lint)
@@ -249,8 +249,8 @@ You can start working on these right away! Open a draft PR to show what you're w
 ## Principles
 
 - **Keep PRs small and focused**: Easier to review and merge
-- **Test your changes**: Run `make test` before submitting
-- **Follow conventions**: Use Conventional Commits, run `make fmt`
+- **Test your changes**: Run `just test` before submitting
+- **Follow conventions**: Use Conventional Commits, run `just fmt`
 - **Start small**: You can always contribute more later!
 - **Ask questions**: We're here to help!
 
@@ -264,7 +264,7 @@ To add or edit docs, courses, and tutorials (mdBook in `book/`):
 
 - **Book content**: Add/edit files in `book/src/`
 - **Examples**: Add to `book/valid-examples/`
-- **Validate**: Run `make book` to build and verify
+- **Validate**: Run `just book` to build and verify
 
 ## Reporting Issues
 

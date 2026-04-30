@@ -28,7 +28,7 @@ cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 **Option C – build from source:**
 
 ```bash
-git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
+git clone https://github.com/sruja-ai/sruja.git && cd sruja && just build
 ```
 
 Ensure the install directory is on your `PATH` (install script uses `~/.local/bin` by default; Option B uses `~/.cargo/bin`; Option C uses `target/release`).

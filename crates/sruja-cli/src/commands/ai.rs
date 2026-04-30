@@ -245,10 +245,11 @@ fn suggested_commands(repo_path: &Path, changed_files: &[String]) -> Vec<String>
         .iter()
         .any(|f| f.starts_with("extension/") || f.ends_with(".ts") || f.ends_with(".tsx"));
 
-    if repo_path.join("Makefile").exists() {
-        commands.push("make check".to_string());
-    } else if repo_path.join("justfile").exists() {
+    // Prefer `just` when both exist (Makefile is a compatibility shim).
+    if repo_path.join("justfile").exists() {
         commands.push("just check".to_string());
+    } else if repo_path.join("Makefile").exists() {
+        commands.push("make check".to_string());
     }
 
     if touches_rust {
@@ -342,13 +343,13 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn suggested_commands_include_make_check_and_rust_checks() {
+    fn suggested_commands_include_just_check_and_rust_checks() {
         let dir = tempdir().unwrap();
-        fs::write(dir.path().join("Makefile"), "check:\n\tcargo test\n").unwrap();
+        fs::write(dir.path().join("justfile"), "check:\n\tcargo test\n").unwrap();
         let commands =
             suggested_commands(dir.path(), &["crates/sruja-cli/src/main.rs".to_string()]);
 
-        assert!(commands.contains(&"make check".to_string()));
+        assert!(commands.contains(&"just check".to_string()));
         assert!(commands.contains(&"cargo fmt --check".to_string()));
         assert!(commands.contains(&"cargo clippy --workspace -- -D warnings".to_string()));
         assert!(commands.contains(&"cargo test --workspace".to_string()));

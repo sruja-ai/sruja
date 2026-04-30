@@ -49,6 +49,18 @@ test-coverage:
 
 # --- Specialized Tests ---
 
+# Test context engineering (why command E2E)
+test-arch-intel:
+    @echo "Testing context engineering (why E2E)..."
+    cargo test -p sruja-cli --test why_e2e
+    @echo "✅ Context engineering tests passed"
+
+# Test extraction CLI (lint --format json, discover --format json)
+test-extraction:
+    @echo "Testing extraction CLI (lint/discover JSON)..."
+    cargo test -p sruja-cli --test extraction_cli
+    @echo "✅ Extraction CLI tests passed"
+
 # Run WASM unit tests
 test-wasm:
     @echo "Testing WASM (sruja-wasm)..."
@@ -65,6 +77,12 @@ test-e2e:
 test-cli-smoke:
     @echo "Running CLI smoke tests..."
     ./scripts/test_cli_smoke.sh
+
+# Install Rust dependencies (fetch only)
+install:
+    @echo "Installing Rust dependencies..."
+    cargo fetch
+    @echo "✅ Dependencies installed"
 
 # --- Build Targets ---
 
@@ -111,6 +129,19 @@ install-extension: build-extension
         echo "✅ Extension installed!"; \
     fi
 
+# Build extension and reveal VSIX (for Trae manual install)
+deploy-trae: build-extension
+    @VSIX=$$(ls -t extension/sruja-*.vsix 2>/dev/null | head -1); \
+    if [ -z "$$VSIX" ]; then \
+        echo "❌ No .vsix found. Run 'just build-extension' first."; exit 1; \
+    fi; \
+    if command -v open >/dev/null 2>&1; then open -R "$$VSIX" || true; fi; \
+    echo ""; \
+    echo "✅ VSIX ready: $$VSIX"; \
+    echo ""; \
+    echo "Trae: Extensions → ... → Install from VSIX → select $$VSIX"; \
+    echo "Or drag-and-drop the VSIX into the Extensions panel."
+
 # --- Workflows ---
 
 # Daily sync: setup, check, federate, and update AI context
@@ -146,6 +177,76 @@ federate: build
         -i crates/sruja-diff/repo.bundle.json \
         -o system.index.json
     @echo "✅ Federated architecture composed"
+
+# --- Book (mdBook) ---
+
+book-build:
+    @echo "Building book..."
+    @if command -v mdbook >/dev/null 2>&1; then \
+        (cd book && mdbook build); \
+        echo "✅ Book built (book/book/)"; \
+    else \
+        echo "❌ mdbook not found. Run: just book-deps"; exit 1; \
+    fi
+
+book-wasm:
+    @echo "Copying WASM into book output..."
+    @book/copy-wasm.sh || echo "⚠️  Run 'just wasm' first if you need Sruja diagrams"
+    @echo "✅ WASM copied"
+
+book: book-build book-wasm
+    @echo "✅ Book ready (output: book/book/)"
+
+book-serve: wasm
+    @echo "Serving book at http://localhost:3000 (live reload)..."
+    @book/serve.sh
+
+book-deps:
+    @echo "Installing mdbook and mdbook-mermaid..."
+    cargo install mdbook mdbook-mermaid
+    (cd book && mdbook-mermaid install .)
+    @echo "✅ Book dependencies installed"
+
+book-clean:
+    rm -rf book/book
+    @echo "✅ Book output removed"
+
+book-lint-examples:
+    @echo "Linting book/valid-examples/*.sruja..."
+    @for f in book/valid-examples/*.sruja; do \
+        sruja lint "$$f" || exit 1; \
+    done
+    @echo "✅ All valid-examples pass sruja lint"
+
+# --- Assets ---
+
+assets:
+    @echo "Copying assets to correct locations..."
+    @if [ -f "extension/sruja-logo.png" ]; then \
+        if [ -d "crates/sruja-wasm/pkg" ]; then \
+            cp extension/sruja-logo.png crates/sruja-wasm/pkg/; \
+            echo "  ✅ sruja-logo.png → crates/sruja-wasm/pkg/"; \
+        fi; \
+    fi
+    @echo "✅ Assets copied"
+
+# --- Demos ---
+
+demo:
+    @echo "Running Sruja E2E demo..."
+    @if [ -f "evaluation/real-world-test/run_demo.sh" ]; then \
+        cd evaluation/real-world-test && ./run_demo.sh; \
+    else \
+        echo "❌ evaluation/real-world-test/run_demo.sh not found"; exit 1; \
+    fi
+
+demo-intel:
+    @echo "Running Context Engineering demo..."
+    @if [ -f "demo/run_demo.sh" ]; then \
+        cd demo && ./run_demo.sh; \
+    else \
+        echo "❌ demo/run_demo.sh not found"; exit 1; \
+    fi
 
 # Clean build artifacts
 clean:
