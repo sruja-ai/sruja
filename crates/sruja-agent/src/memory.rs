@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -53,6 +53,27 @@ pub struct LearningEntry {
     pub affected_elements: Vec<String>,
 }
 
+impl LearningEntry {
+    /// Checks if this learning entry is relevant to a specific architectural element.
+    pub fn is_relevant_to(&self, element_id: &str) -> bool {
+        let element_id_lower = element_id.to_lowercase();
+
+        // 1. Check affected elements (direct match or hierarchy match)
+        let element_match = self.affected_elements.iter().any(|e| {
+            e == element_id
+                || element_id.starts_with(&format!("{}.", e))
+                || e.starts_with(&format!("{}.", element_id))
+        });
+
+        if element_match {
+            return true;
+        }
+
+        // 2. Check context for keywords
+        self.context.to_lowercase().contains(&element_id_lower)
+    }
+}
+
 /// Persistent store for architectural learnings and agentic guardrails.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AgenticMemory {
@@ -67,6 +88,11 @@ impl AgenticMemory {
     /// an empty memory is returned.
     pub fn load(repo_root: &Path) -> Result<Self, MemoryError> {
         let path = Self::get_path(repo_root);
+        Self::load_from_path(&path)
+    }
+
+    /// Loads agentic memory from a specific path.
+    pub fn load_from_path(path: &Path) -> Result<Self, MemoryError> {
         if !path.exists() {
             return Ok(Self::default());
         }
@@ -85,19 +111,29 @@ impl AgenticMemory {
     /// This will create the `.sruja` directory if it doesn't exist.
     pub fn save(&self, repo_root: &Path) -> Result<(), MemoryError> {
         let path = Self::get_path(repo_root);
+        self.save_to_path(&path)
+    }
+
+    /// Saves the current memory to a specific path.
+    pub fn save_to_path(&self, path: &Path) -> Result<(), MemoryError> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let file = OpenOptions::new()
+        let mut file = OpenOptions::new()
+            .read(true)
             .write(true)
             .create(true)
-            .truncate(true)
+            .truncate(false)
             .open(path)?;
         file.lock_exclusive()?;
         let content = serde_json::to_string_pretty(self)?;
-        let mut writer = std::io::BufWriter::new(&file);
-        writer.write_all(content.as_bytes())?;
-        writer.flush()?;
+        file.set_len(0)?;
+        file.seek(SeekFrom::Start(0))?;
+        {
+            let mut writer = std::io::BufWriter::new(&mut file);
+            writer.write_all(content.as_bytes())?;
+            writer.flush()?;
+        }
         file.unlock()?;
         Ok(())
     }
@@ -130,16 +166,7 @@ impl AgenticMemory {
     pub fn find_relevant(&self, element_id: &str) -> Vec<&LearningEntry> {
         self.learnings
             .iter()
-            .filter(|l| {
-                l.affected_elements.iter().any(|e| {
-                    e == element_id
-                        || element_id.starts_with(&format!("{}.", e))
-                        || e.starts_with(&format!("{}.", element_id))
-                }) || l
-                    .context
-                    .to_lowercase()
-                    .contains(&element_id.to_lowercase())
-            })
+            .filter(|l| l.is_relevant_to(element_id))
             .collect()
     }
 
@@ -199,5 +226,146 @@ mod tests {
         let loaded = AgenticMemory::load(repo_root).unwrap();
         assert_eq!(loaded.learnings.len(), 1);
         assert_eq!(loaded.learnings[0].context, "Test");
+    }
+
+    #[test]
+    fn test_load_nonexistent() {
+        let dir = tempdir().unwrap();
+        let repo_root = dir.path();
+
+        let loaded = AgenticMemory::load(repo_root).unwrap();
+        assert_eq!(loaded.learnings.len(), 0);
+    }
+
+    #[test]
+    fn test_clear_and_exists() {
+        let dir = tempdir().unwrap();
+        let repo_root = dir.path();
+
+        assert!(!AgenticMemory::exists(repo_root));
+
+        let memory = AgenticMemory::default();
+        memory.save(repo_root).unwrap();
+
+        assert!(AgenticMemory::exists(repo_root));
+
+        AgenticMemory::clear(repo_root).unwrap();
+
+        assert!(!AgenticMemory::exists(repo_root));
+    }
+
+    #[test]
+    fn test_load_invalid_json() {
+        let dir = tempdir().unwrap();
+        let repo_root = dir.path();
+        let path = AgenticMemory::get_path(repo_root);
+
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "invalid json").unwrap();
+
+        let result = AgenticMemory::load(repo_root);
+        assert!(matches!(result, Err(MemoryError::Serialization(_))));
+    }
+
+    #[test]
+    fn test_find_relevant_edge_cases() {
+        let mut memory = AgenticMemory::default();
+        let entry = LearningEntry {
+            timestamp: Utc::now(),
+            context: "Some Context".to_string(),
+            hypothesis: "".to_string(),
+            outcome: ExperimentOutcome::Success,
+            reason: None,
+            guardrail_advice: "".to_string(),
+            affected_elements: vec!["Sruja.API.V1".to_string()],
+        };
+        memory.add_learning(entry);
+
+        // e.starts_with(&format!("{}.", element_id)) -> element_id is prefix of e
+        // e is "Sruja.API.V1"
+        // element_id is "Sruja.API"
+        assert_eq!(memory.find_relevant("Sruja.API").len(), 1);
+
+        // element_id.starts_with(&format!("{}.", e)) -> e is prefix of element_id
+        // e is "Sruja.API.V1"
+        // element_id is "Sruja.API.V1.Endpoint"
+        assert_eq!(memory.find_relevant("Sruja.API.V1.Endpoint").len(), 1);
+
+        // Exact match
+        assert_eq!(memory.find_relevant("Sruja.API.V1").len(), 1);
+
+        // No match
+        assert_eq!(memory.find_relevant("Sruja.API.V2").len(), 0);
+    }
+
+    #[test]
+    fn test_load_save_custom_path() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("custom_memory.json");
+        let mut memory = AgenticMemory::default();
+        memory.add_learning(LearningEntry {
+            timestamp: Utc::now(),
+            context: "Custom".to_string(),
+            hypothesis: "H".to_string(),
+            outcome: ExperimentOutcome::Success,
+            reason: None,
+            guardrail_advice: "G".to_string(),
+            affected_elements: vec![],
+        });
+
+        memory.save_to_path(&path).unwrap();
+        assert!(path.exists());
+
+        let loaded = AgenticMemory::load_from_path(&path).unwrap();
+        assert_eq!(loaded.learnings.len(), 1);
+        assert_eq!(loaded.learnings[0].context, "Custom");
+    }
+
+    #[test]
+    fn test_learning_entry_relevance() {
+        let entry = LearningEntry {
+            timestamp: Utc::now(),
+            context: "API Refactoring".to_string(),
+            hypothesis: "".to_string(),
+            outcome: ExperimentOutcome::Success,
+            reason: None,
+            guardrail_advice: "".to_string(),
+            affected_elements: vec!["System.Core".to_string()],
+        };
+
+        // Direct match
+        assert!(entry.is_relevant_to("System.Core"));
+        // Hierarchy match (child)
+        assert!(entry.is_relevant_to("System.Core.UI"));
+        // Hierarchy match (parent)
+        assert!(entry.is_relevant_to("System"));
+        // Context match
+        assert!(entry.is_relevant_to("api"));
+        // No match
+        assert!(!entry.is_relevant_to("Database"));
+    }
+
+    #[test]
+    fn test_save_to_path_replaces_longer_existing_content() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("memory.json");
+        let mut memory = AgenticMemory::default();
+        memory.add_learning(LearningEntry {
+            timestamp: Utc::now(),
+            context: "Short".to_string(),
+            hypothesis: "H".to_string(),
+            outcome: ExperimentOutcome::Success,
+            reason: None,
+            guardrail_advice: "G".to_string(),
+            affected_elements: vec![],
+        });
+
+        std::fs::write(&path, "{".repeat(4096)).unwrap();
+
+        memory.save_to_path(&path).unwrap();
+
+        let loaded = AgenticMemory::load_from_path(&path).unwrap();
+        assert_eq!(loaded.learnings.len(), 1);
+        assert_eq!(loaded.learnings[0].context, "Short");
     }
 }

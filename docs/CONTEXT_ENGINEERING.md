@@ -6,6 +6,11 @@ By quantifying and surfacing architectural evidence, Sruja reduces the "context 
 
 ## Core Pillars
 
+### 0. AI Coding Brief
+Before starting an AI-assisted coding session, run `sruja ai` to generate a paste-ready brief that combines the task, current worktree, architecture health, context score, changed files, guardrails, verification commands, and task-scoped JSON context.
+
+**Command:** `sruja ai -r . --task "Fix parser diagnostics"` or `sruja ai -r . --file crates/sruja-cli/src/main.rs`
+
 ### 1. Context Score (AI-Readiness)
 The **Context Score (0–100)** is the "Lighthouse score" for your repository's context. It measures five critical dimensions:
 - **Architecture Coverage**: % of code modules mapped in your `.sruja` files.

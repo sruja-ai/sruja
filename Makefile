@@ -122,7 +122,7 @@ fmt:
 lint:
 	@echo "Linting Rust code..."
 	@if command -v cargo >/dev/null 2>&1; then \
-		cargo clippy --manifest-path Cargo.toml -- -D warnings || \
+		cargo clippy --workspace --manifest-path Cargo.toml -- -D warnings || \
 		(cargo install clippy 2>/dev/null || echo "Note: Install clippy for linting"); \
 	else \
 		echo "❌ Cargo not found. Please install Rust: https://rustup.rs/"; \

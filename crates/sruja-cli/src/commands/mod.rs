@@ -4,6 +4,7 @@
 //! See REFACTORING_PLAN.md for the layout.
 
 mod agent;
+mod ai;
 mod check;
 mod completions;
 pub mod compliance;
@@ -35,6 +36,7 @@ mod watch;
 mod why;
 
 pub use agent::{agent_clear, agent_history, agent_record};
+pub use ai::{ai_brief, AiBriefOptions};
 pub use propose::*;
 
 pub use check::{baseline, check};

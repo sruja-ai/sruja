@@ -432,6 +432,39 @@ pub enum Commands {
         #[arg(long)]
         strict: bool,
     },
+    /// Generate a paste-ready AI coding brief for the current task or worktree
+    Ai {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Natural-language task or intent to give the AI coding assistant
+        #[arg(long, short = 't')]
+        task: Option<String>,
+        /// File path to focus on (defaults to the first changed file when available)
+        #[arg(long)]
+        file: Option<String>,
+        /// Architecture element ID to focus on (e.g. Auth.Handler)
+        #[arg(long)]
+        element_id: Option<String>,
+        /// Natural-language query to find relevant architecture context
+        #[arg(long)]
+        query: Option<String>,
+        /// Git base ref for diff-scoped context
+        #[arg(long)]
+        base_ref: Option<String>,
+        /// Git head ref for diff-scoped context
+        #[arg(long)]
+        head_ref: Option<String>,
+        /// Use staged changes instead of all changes against HEAD for changed-file detection
+        #[arg(long)]
+        staged: bool,
+        /// Max tokens for the embedded task context
+        #[arg(long, default_value_t = 8000)]
+        max_tokens: usize,
+        /// Output file (defaults to stdout)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+    },
     /// Export architecture context for AI tools (Cursor, Copilot, Claude)
     Context {
         /// Path to repository root
@@ -985,6 +1018,32 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
+        Commands::Ai {
+            repo,
+            task,
+            file,
+            element_id,
+            query,
+            base_ref,
+            head_ref,
+            staged,
+            max_tokens,
+            output,
+        } => {
+            commands::ai_brief(commands::AiBriefOptions {
+                repo: &repo,
+                task: task.as_deref(),
+                file: file.as_deref(),
+                element_id: element_id.as_deref(),
+                query: query.as_deref(),
+                base_ref: base_ref.as_deref(),
+                head_ref: head_ref.as_deref(),
+                staged,
+                max_tokens,
+                output: output.as_deref(),
+            })
+            .await
+        }
         Commands::Context {
             repo,
             format,
@@ -1177,6 +1236,91 @@ mod tests {
                 assert_eq!(max_tokens, 10000);
             }
             _ => panic!("expected Context command"),
+        }
+    }
+
+    #[test]
+    fn parses_ai_brief_defaults() {
+        let cli = Cli::try_parse_from(["sruja", "ai"]).expect("parse");
+        match cli.command {
+            Commands::Ai {
+                repo,
+                task,
+                file,
+                element_id,
+                query,
+                base_ref,
+                head_ref,
+                staged,
+                max_tokens,
+                output,
+            } => {
+                assert_eq!(repo, ".");
+                assert!(task.is_none());
+                assert!(file.is_none());
+                assert!(element_id.is_none());
+                assert!(query.is_none());
+                assert!(base_ref.is_none());
+                assert!(head_ref.is_none());
+                assert!(!staged);
+                assert_eq!(max_tokens, 8000);
+                assert!(output.is_none());
+            }
+            _ => panic!("expected Ai command"),
+        }
+    }
+
+    #[test]
+    fn parses_ai_brief_focus_options() {
+        let cli = Cli::try_parse_from([
+            "sruja",
+            "ai",
+            "--task",
+            "Fix parser diagnostics",
+            "--file",
+            "crates/sruja-language/src/parser/mod.rs",
+            "--element-id",
+            "Sruja.Language",
+            "--query",
+            "parser",
+            "--base-ref",
+            "main",
+            "--head-ref",
+            "HEAD",
+            "--staged",
+            "--max-tokens",
+            "12000",
+            "-o",
+            "brief.md",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Ai {
+                task,
+                file,
+                element_id,
+                query,
+                base_ref,
+                head_ref,
+                staged,
+                max_tokens,
+                output,
+                ..
+            } => {
+                assert_eq!(task.as_deref(), Some("Fix parser diagnostics"));
+                assert_eq!(
+                    file.as_deref(),
+                    Some("crates/sruja-language/src/parser/mod.rs")
+                );
+                assert_eq!(element_id.as_deref(), Some("Sruja.Language"));
+                assert_eq!(query.as_deref(), Some("parser"));
+                assert_eq!(base_ref.as_deref(), Some("main"));
+                assert_eq!(head_ref.as_deref(), Some("HEAD"));
+                assert!(staged);
+                assert_eq!(max_tokens, 12000);
+                assert_eq!(output.as_deref(), Some("brief.md"));
+            }
+            _ => panic!("expected Ai command"),
         }
     }
 }

@@ -79,6 +79,9 @@ sruja start -r . --prompt
 # Day-to-day review: refresh evidence and see what changed
 sruja daily -r .
 
+# Generate a paste-ready brief for your AI coding assistant
+sruja ai -r . --task "Fix the parser error reporting"
+
 # Keep feedback live while you code
 sruja watch -r .
 
