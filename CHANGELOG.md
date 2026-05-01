@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.40.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.39.0...sruja-v0.40.0) (2026-04-30)
+
+
+### Features
+
+* add sruja ai coding brief command ([45da2f1](https://github.com/sruja-ai/sruja/commit/45da2f171cf55ad5faf13517864f09e96ebae64b))
+
 ## [0.39.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.38.0...sruja-v0.39.0) (2026-04-27)
 
 
