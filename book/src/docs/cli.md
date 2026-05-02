@@ -10,6 +10,10 @@ The `sruja` command-line interface is your primary tool for interacting with Sru
 
 <!--more-->
 
+## Repository path
+
+Most repo-scoped commands take **`-r`** with **`--repo`** as the long form (recommended). **`--path`** is accepted as an alias on many commands for older scripts. Positional paths (e.g. `sruja scan .`) remain valid where documented.
+
 ## Commands
 
 ### `export`
@@ -105,6 +109,7 @@ The **sruja-architecture skill** is the primary way to get value; it runs discov
 | **`sruja drift -r <path> -a repo.sruja`** | Declared vs actual; skill uses for refinement; CI for gates |
 | **`sruja context -r <path>`** | Export architecture context for AI tools |
 | **`sruja quickstart -r <path>`** | First look: structural overview and baseline generation (recommended for evaluation) |
+| **`sruja onboard -r <path>`** | One-shot onboarding brief for humans and agents (deterministic; optional enrichment) |
 | **`sruja status -r <path>`** | Show baseline + health + truth status (reviewed / drifted / unknown) |
 | **`sruja review -r <path>`** | Review workflow: refresh evidence, detect drift, propose updates/open questions |
 | **`sruja impact <target> -r <path>`** | Blast radius analysis (upstream dependents + downstream dependencies) |

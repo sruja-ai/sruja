@@ -1,0 +1,34 @@
+name: Sruja Onboarding Brief
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  onboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Sruja CLI
+        run: |
+          curl -fsSL https://sruja.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Generate onboarding brief (job summary)
+        run: |
+          sruja onboard -r . -o sruja-onboard.md
+          cat sruja-onboard.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Emit onboarding annotations (GitHub Actions)
+        run: |
+          sruja onboard -r . -f github-actions
+

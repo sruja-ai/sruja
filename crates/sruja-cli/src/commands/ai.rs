@@ -10,6 +10,9 @@ use std::process::Command;
 
 use super::context::{context_string, ContextRequest};
 use super::{scan_repo_cached, CliError};
+use crate::integrations::{
+    resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AiBriefOptions<'a> {
@@ -23,6 +26,13 @@ pub struct AiBriefOptions<'a> {
     pub staged: bool,
     pub max_tokens: usize,
     pub output: Option<&'a str>,
+    pub enrich: bool,
+    pub enrich_provider: Option<&'a str>,
+    pub enrich_cmd: Option<&'a str>,
+    pub enrich_model: Option<&'a str>,
+    pub enrich_base_url: Option<&'a str>,
+    pub enrich_timeout_ms: u64,
+    pub enrich_max_bytes: usize,
 }
 
 pub async fn ai_brief(options: AiBriefOptions<'_>) -> Result<(), CliError> {
@@ -80,6 +90,14 @@ pub async fn ai_brief(options: AiBriefOptions<'_>) -> Result<(), CliError> {
         drift: &drift,
         context_score: context_score.score,
         task_context: &task_context,
+        enrichment: build_ai_enrichment(
+            repo_path,
+            options,
+            &branch,
+            &changed_files,
+            selected_file.as_deref(),
+            &task_context,
+        ),
         repo_path,
     });
 
@@ -101,7 +119,17 @@ struct AiBriefRender<'a> {
     drift: &'a sruja_diff::DriftReport,
     context_score: u8,
     task_context: &'a str,
+    enrichment: Option<AiEnrichment>,
     repo_path: &'a Path,
+}
+
+#[derive(Debug, Clone)]
+struct AiEnrichment {
+    status: String,
+    provider: String,
+    model: Option<String>,
+    error: Option<String>,
+    narrative_markdown: Option<String>,
 }
 
 fn format_brief(render: AiBriefRender<'_>) -> String {
@@ -183,6 +211,25 @@ fn format_brief(render: AiBriefRender<'_>) -> String {
     out.push_str(render.task_context.trim());
     out.push_str("\n```\n");
 
+    if let Some(ref e) = render.enrichment {
+        out.push_str("\n## Enrichment (opt-in)\n\n");
+        out.push_str("- This section is **LLM/tool-generated** and must be treated as **interpretation**, not truth.\n");
+        out.push_str("- It is grounded in the Task Context JSON above; if it contradicts it, prefer the grounded output.\n\n");
+        out.push_str(&format!("- Status: `{}`\n", e.status));
+        out.push_str(&format!("- Provider: `{}`\n", e.provider));
+        if let Some(ref m) = e.model {
+            out.push_str(&format!("- Model: `{}`\n", m));
+        }
+        if let Some(ref err) = e.error {
+            out.push_str(&format!("- Error: `{}`\n", err));
+        }
+        out.push('\n');
+        if let Some(ref md) = e.narrative_markdown {
+            out.push_str(md.trim());
+            out.push('\n');
+        }
+    }
+
     out.push_str("\n## Useful Follow-Up Commands\n\n");
     out.push_str("- `sruja doctor -r .`\n");
     out.push_str("- `sruja context -r . -f for-ai --max-tokens ");
@@ -199,6 +246,139 @@ fn format_brief(render: AiBriefRender<'_>) -> String {
     out.push_str("- `sruja agent record -r . --context \"<what changed>\" --hypothesis \"<what you expected>\" --outcome success --guardrail \"<future advice>\"`\n");
 
     out
+}
+
+fn build_ai_enrichment(
+    repo_path: &Path,
+    options: AiBriefOptions<'_>,
+    branch: &str,
+    changed_files: &[String],
+    selected_file: Option<&str>,
+    task_context: &str,
+) -> Option<AiEnrichment> {
+    if !options.enrich && options.enrich_cmd.is_none() {
+        return None;
+    }
+
+    let plan = resolve_enrichment_plan(
+        repo_path,
+        options.enrich_cmd,
+        options.enrich_model,
+        options.enrich_base_url,
+        Some(options.enrich_timeout_ms),
+        Some(options.enrich_max_bytes),
+    );
+    let provider = options.enrich_provider.unwrap_or(plan.provider.as_str());
+    let limits = plan.limits;
+
+    let parsed_task_context: serde_json::Value = serde_json::from_str(task_context)
+        .unwrap_or_else(|_| serde_json::Value::String(task_context.to_string()));
+
+    let payload = serde_json::json!({
+        "schema_version": "ai_brief_enrichment_input/v1",
+        "repo": repo_path.display().to_string(),
+        "git": branch,
+        "selected_file": selected_file,
+        "changed_files": changed_files,
+        "task": options.task,
+        "task_context": parsed_task_context
+    });
+    let stdin_payload = serde_json::to_vec(&payload).unwrap_or_default();
+
+    if provider == "cmd" {
+        let Some(cmd) = plan.cmd.as_deref() else {
+            return Some(AiEnrichment {
+                status: "skipped".to_string(),
+                provider: "cmd".to_string(),
+                model: None,
+                error: Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
+                narrative_markdown: None,
+            });
+        };
+        return Some(match run_cmd_enrichment(cmd, &stdin_payload, limits) {
+            Ok(md) => AiEnrichment {
+                status: "ok".to_string(),
+                provider: "external_cmd".to_string(),
+                model: None,
+                error: None,
+                narrative_markdown: Some(md),
+            },
+            Err(e) => AiEnrichment {
+                status: "error".to_string(),
+                provider: "external_cmd".to_string(),
+                model: None,
+                error: Some(e),
+                narrative_markdown: None,
+            },
+        });
+    }
+
+    if provider != "openai" {
+        return Some(AiEnrichment {
+            status: "skipped".to_string(),
+            provider: provider.to_string(),
+            model: None,
+            error: Some(
+                "Unsupported provider. Use provider=cmd (recommended) or provider=openai."
+                    .to_string(),
+            ),
+            narrative_markdown: None,
+        });
+    }
+
+    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
+    let base_url = plan
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1");
+    let Some(api_key) = resolve_openai_auth() else {
+        return Some(AiEnrichment {
+            status: "skipped".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
+            narrative_markdown: None,
+        });
+    };
+
+    let user_prompt = format!(
+        r#"You are assisting an AI coding agent.
+
+You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
+
+Produce markdown with these sections:
+- "One-paragraph plan"
+- "Risks / unknowns to verify" (bullets)
+- "Suggested test/verification steps" (bullets)
+- "Clarifying questions" (bullets)
+
+JSON facts:
+{}"#,
+        payload
+    );
+
+    match run_openai_markdown(
+        "You are a careful repo assistant. Never fabricate.",
+        &user_prompt,
+        model,
+        base_url,
+        &api_key,
+    ) {
+        Ok(md) => Some(AiEnrichment {
+            status: "ok".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: None,
+            narrative_markdown: Some(md),
+        }),
+        Err(e) => Some(AiEnrichment {
+            status: "error".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: Some(e),
+            narrative_markdown: None,
+        }),
+    }
 }
 
 fn changed_files(repo_path: &Path, staged: bool) -> Vec<String> {

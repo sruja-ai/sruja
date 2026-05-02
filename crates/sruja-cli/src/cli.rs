@@ -63,7 +63,7 @@ pub enum Commands {
     },
     /// Scan a repository and infer an architecture graph
     Scan {
-        /// Path to repository root (defaults to current directory)
+        /// Repository root (defaults to current directory)
         #[arg(default_value = ".")]
         path: String,
         /// Output path for inferred graph JSON (use "-" for stdout)
@@ -73,7 +73,7 @@ pub enum Commands {
     /// Adversarial architectural critique of proposed changes
     Critique {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Changed file paths to critique
         #[arg(long, short = 'f')]
@@ -105,7 +105,7 @@ pub enum Commands {
         /// Node selector (exact id or substring match against id/label/path)
         target: String,
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Max traversal depth (0 = none, 1 = direct neighbors)
         #[arg(long, default_value_t = 3)]
@@ -119,7 +119,7 @@ pub enum Commands {
         /// Question to ask (e.g. "why did we choose PostgreSQL?")
         question: String,
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
@@ -281,8 +281,8 @@ pub enum Commands {
     /// Quick repo overview with immediate architecture insights
     #[command(visible_alias = "overview")]
     Quickstart {
-        /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         path: String,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
@@ -297,8 +297,8 @@ pub enum Commands {
     /// Set up Sruja in a repo and print the next best steps
     #[command(visible_alias = "start")]
     Init {
-        /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         path: String,
         /// Generate .sruja/init_prompt.txt for use with sruja-architecture skill
         #[arg(long)]
@@ -322,8 +322,8 @@ pub enum Commands {
     /// Quick repo health check: baseline, truth status, and last evidence refresh
     #[command(visible_alias = "doctor")]
     Status {
-        /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         path: String,
         /// Output format (text, json, github-actions)
         #[arg(long, short = 'f', default_value = "text")]
@@ -331,8 +331,8 @@ pub enum Commands {
     },
     /// Keep architecture feedback live while you code
     Watch {
-        /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         path: String,
         /// Clear screen between runs
         #[arg(long)]
@@ -343,8 +343,8 @@ pub enum Commands {
     },
     /// Refresh evidence (write .sruja/context.json) and run drift
     Sync {
-        /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         path: String,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
@@ -353,8 +353,8 @@ pub enum Commands {
     /// Daily review: refresh evidence, detect drift, and suggest next actions
     #[command(visible_alias = "daily")]
     Review {
-        /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         path: String,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
@@ -368,8 +368,8 @@ pub enum Commands {
     },
     /// Check: CI-focused drift check (always exits 0, outputs github-actions format)
     Check {
-        /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         path: String,
         /// Output format (text, json, github-actions)
         #[arg(long, short = 'f', default_value = "github-actions")]
@@ -381,7 +381,7 @@ pub enum Commands {
     /// Baseline: snapshot current violations to ignore them in CI (use with `sruja check --baseline`)
     Baseline {
         /// Path to repository root (defaults to current directory)
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Output path (default: .sruja/violations.baseline.json)
         #[arg(long, short = 'o', default_value = ".sruja/violations.baseline.json")]
@@ -390,7 +390,7 @@ pub enum Commands {
     /// Publish repo truth + evidence to repo.bundle.json (multi-repo federation)
     Publish {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         #[arg(long)]
         repo_id: Option<String>,
@@ -417,7 +417,7 @@ pub enum Commands {
     /// Compliance report: structural drift + intent + policy violations (exit 1 if non-compliant)
     Compliance {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Path to baseline architecture (.sruja file)
         #[arg(long, short = 'a')]
@@ -435,7 +435,7 @@ pub enum Commands {
     /// Generate a paste-ready AI coding brief for the current task or worktree
     Ai {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Natural-language task or intent to give the AI coding assistant
         #[arg(long, short = 't')]
@@ -461,6 +461,67 @@ pub enum Commands {
         /// Max tokens for the embedded task context
         #[arg(long, default_value_t = 8000)]
         max_tokens: usize,
+        /// Output file (defaults to stdout)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+
+        /// Optional enrichment (cmd/openai) to add a narrative plan grounded in the task context.
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout for enrichment in milliseconds (default: 15000)
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from enrichment stdout (default: 20000)
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
+    },
+    /// Produce a single high-signal onboarding brief (humans + AI agents)
+    Onboard {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output format (markdown, json, github-actions)
+        #[arg(long, short = 'f', default_value = "markdown")]
+        format: String,
+        /// Max number of items per section (entrypoints, elements, relationships)
+        #[arg(long, default_value_t = 8)]
+        max_items: usize,
+        /// Optional LLM enrichment (adds a clearly-labeled narrative section; never changes grounded scan output)
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command to run (reads onboard JSON from stdin; writes markdown to stdout).
+        /// This is the recommended enterprise path because Sruja never handles API keys or network.
+        ///
+        /// Example: --enrich-cmd 'claude -p -'  (depending on your CLI)
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout for --enrich-cmd in milliseconds (default: 15000)
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from --enrich-cmd stdout (default: 20000)
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
         /// Output file (defaults to stdout)
         #[arg(long, short = 'o')]
         output: Option<String>,
@@ -513,7 +574,7 @@ pub enum Commands {
         #[arg(long)]
         repomap: bool,
         /// Path to repository (for --context; default current dir)
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Output format for --context/--explain: text (default) or json (machine-readable for agents)
         #[arg(long, default_value = "text")]
@@ -550,7 +611,7 @@ pub enum Commands {
         /// Query string (e.g., "Checkout", "depends_on Payments")
         query: String,
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Path to architecture file
         #[arg(long, short = 'a')]
@@ -569,7 +630,7 @@ pub enum Commands {
     /// Calculate and report architecture health score
     Health {
         /// Repository root to scan
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Path to architecture file
         #[arg(long, short = 'a')]
@@ -583,7 +644,7 @@ pub enum Commands {
     #[command(name = "context-score")]
     ContextScore {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
@@ -596,7 +657,7 @@ pub enum Commands {
     #[command(name = "context-graph")]
     ContextGraph {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Output path for the HTML file (default: context_graph.html)
         #[arg(long, short = 'o', default_value = "context_graph.html")]
@@ -609,7 +670,7 @@ pub enum Commands {
     /// Focus: get a context briefing for a specific file or architecture element
     Focus {
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// File path to focus on (relative to repo root)
         #[arg(long)]
@@ -627,7 +688,7 @@ pub enum Commands {
         /// Files or directories to ingest
         sources: Vec<String>,
         /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
         /// Category tag (adr, design-doc, api-contract, runbook, note)
         #[arg(long, short = 'c')]
@@ -1029,6 +1090,13 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             staged,
             max_tokens,
             output,
+            enrich,
+            enrich_provider,
+            enrich_cmd,
+            enrich_model,
+            enrich_base_url,
+            enrich_timeout_ms,
+            enrich_max_bytes,
         } => {
             commands::ai_brief(commands::AiBriefOptions {
                 repo: &repo,
@@ -1041,7 +1109,47 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 staged,
                 max_tokens,
                 output: output.as_deref(),
+                enrich,
+                enrich_provider: enrich_provider.as_deref(),
+                enrich_cmd: enrich_cmd.as_deref(),
+                enrich_model: enrich_model.as_deref(),
+                enrich_base_url: enrich_base_url.as_deref(),
+                enrich_timeout_ms,
+                enrich_max_bytes,
             })
+            .await
+        }
+        Commands::Onboard {
+            repo,
+            format,
+            max_items,
+            enrich,
+            enrich_provider,
+            enrich_cmd,
+            enrich_model,
+            enrich_base_url,
+            enrich_timeout_ms,
+            enrich_max_bytes,
+            output,
+        } => {
+            commands::onboard(
+                &repo,
+                &format,
+                max_items,
+                enrich,
+                enrich_provider.as_deref(),
+                enrich_cmd.as_deref(),
+                enrich_model.as_deref(),
+                enrich_base_url.as_deref(),
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                commands::LlmConfig {
+                    provider: enrich_provider.as_deref(),
+                    model: enrich_model.as_deref(),
+                    base_url: enrich_base_url.as_deref(),
+                },
+                output.as_deref(),
+            )
             .await
         }
         Commands::Context {
@@ -1254,6 +1362,13 @@ mod tests {
                 staged,
                 max_tokens,
                 output,
+                enrich,
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
             } => {
                 assert_eq!(repo, ".");
                 assert!(task.is_none());
@@ -1265,6 +1380,13 @@ mod tests {
                 assert!(!staged);
                 assert_eq!(max_tokens, 8000);
                 assert!(output.is_none());
+                assert!(!enrich);
+                assert!(enrich_provider.is_none());
+                assert!(enrich_cmd.is_none());
+                assert!(enrich_model.is_none());
+                assert!(enrich_base_url.is_none());
+                assert_eq!(enrich_timeout_ms, 15000);
+                assert_eq!(enrich_max_bytes, 20000);
             }
             _ => panic!("expected Ai command"),
         }

@@ -1,14 +1,17 @@
 # Testing sruja-wasm
 
-The `sruja-wasm` crate is excluded from `cargo llvm-cov` coverage because it is built for `wasm32-unknown-unknown` and is not exercised by normal `cargo test`. You have two complementary options.
+The `sruja-wasm` crate targets `wasm32-unknown-unknown` and is **not** exercised by normal `cargo test`. Standard repo coverage commands therefore **exclude** it from llvm-cov reports so the headline percentage stays meaningful; you verify WASM separately (below).
 
 ---
 
 ## Option 1: Skip from coverage (current)
 
-- **What:** Exclude `sruja-wasm` from the coverage report (e.g. `scripts/coverage.sh` uses `--exclude-from-report sruja-wasm`).
-- **Why:** Keeps the main coverage number meaningful for code that is actually run by `cargo test`. WASM is a thin FFI layer over the same logic already tested in `sruja-language`, `sruja-engine`, and `sruja-export`.
-- **When:** Use this if you are fine with “WASM is covered indirectly by the underlying crates” and don’t need dedicated WASM tests.
+- **What:** Exclude `sruja-wasm` from the host coverage run so the percentage reflects `cargo test` on native targets. The repo does this in three places that should stay aligned:
+  - **`just test-coverage`** — runs `cargo llvm-cov --workspace --exclude sruja-wasm` (see `justfile`).
+  - **`scripts/coverage.sh`** — runs `cargo llvm-cov` with `--exclude-from-report sruja-wasm` (and can pass extra args).
+  - **CI** (`.github/workflows/codecov.yml`) — `cargo llvm-cov ... --exclude-from-report sruja-wasm` when generating `lcov.info`.
+- **Why:** The WASM crate is built for `wasm32-unknown-unknown` and is not exercised by normal `cargo test`. Excluding it avoids a misleading **0%** line that drags down the workspace total. The bindings are still tested via **Option 2** (`wasm-pack test`) and the core logic is covered in `sruja-language`, `sruja-engine`, and `sruja-export`.
+- **When:** Use this for “how good is our Rust test coverage on the host run”; use **Option 2** to validate the WASM API itself.
 
 ---
 
@@ -40,8 +43,8 @@ One **Playwright** E2E test verifies “Show diagram” in the book.
 
 ## Recommendation
 
-1. **Keep excluding sruja-wasm from coverage** so the main coverage percentage reflects code run by `cargo test`.
-2. **Add wasm-bindgen-test** and run `wasm-pack test --node` in CI so the WASM API is tested without a browser.
+1. **Keep excluding sruja-wasm from host llvm-cov** (`just test-coverage`, `scripts/coverage.sh`, Codecov) so the percentage reflects native `cargo test` runs.
+2. **Keep running wasm-bindgen-test** (`just test-wasm` / `wasm-pack test --node`) for the WASM API; add or extend a CI job if this repo does not already run it on every PR.
 3. **Add Playwright (or similar) only if** you need explicit E2E for the book or extension; otherwise skip it.
 
 Summary: **skip from coverage** is correct for reporting; **test with wasm-bindgen-test** is the right way to test the WASM crate; **Playwright** is optional for full UI E2E.

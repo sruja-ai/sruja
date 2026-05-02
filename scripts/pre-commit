@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Use the workspace target dir so hooks don't break when CARGO_TARGET_DIR points at a stale cache.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$REPO_ROOT/target}"
+
 echo "🏗️  Sruja Pre-commit Hook..."
 
 # Find staged .rs files

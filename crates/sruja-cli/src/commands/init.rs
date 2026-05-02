@@ -315,50 +315,97 @@ fn install_github_actions_workflow(repo_path: &Path) -> Result<(), CliError> {
         })?;
     }
 
-    let workflow_path = workflows_dir.join("sruja-check.yml");
+    let check_path = workflows_dir.join("sruja-check.yml");
+    let onboard_path = workflows_dir.join("sruja-onboard.yml");
 
-    let workflow_content = r#"name: Sruja Architecture Check
+    let check_workflow = r#"name: Sruja Check
 
 on:
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [main, master]
   push:
-    branches: [ "main", "master" ]
+    branches: [main, master]
+
+permissions:
+  contents: read
 
 jobs:
-  sruja-check:
+  check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Install Sruja CLI
         run: |
-          # Download the latest Sruja release
-          curl -sL https://github.com/sruja-ai/sruja/releases/latest/download/sruja-linux-amd64.tar.gz | tar xz
-          sudo mv sruja /usr/local/bin/
+          curl -fsSL https://sruja.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Run Sruja Check
-        run: sruja check --format github-actions
+      - name: Run Sruja check (annotations)
+        run: sruja check -r . --format github-actions
 "#;
 
-    fs::write(&workflow_path, workflow_content).map_err(|e| {
+    let onboard_workflow = r#"name: Sruja Onboarding Brief
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  onboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Sruja CLI
+        run: |
+          curl -fsSL https://sruja.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Generate onboarding brief (job summary)
+        run: |
+          sruja onboard -r . -o sruja-onboard.md
+          cat sruja-onboard.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Emit onboarding annotations (GitHub Actions)
+        run: |
+          sruja onboard -r . -f github-actions
+"#;
+
+    fs::write(&check_path, check_workflow).map_err(|e| {
         CliError::Io(std::io::Error::new(
             e.kind(),
             format!(
                 "Failed to write GitHub Actions workflow to {}: {}",
-                workflow_path.display(),
+                check_path.display(),
+                e
+            ),
+        ))
+    })?;
+    fs::write(&onboard_path, onboard_workflow).map_err(|e| {
+        CliError::Io(std::io::Error::new(
+            e.kind(),
+            format!(
+                "Failed to write GitHub Actions workflow to {}: {}",
+                onboard_path.display(),
                 e
             ),
         ))
     })?;
 
-    eprintln!(
-        "✅ Installed Sruja GitHub Actions workflow at {}",
-        workflow_path.display()
-    );
+    eprintln!("✅ Installed Sruja GitHub Actions workflows:");
+    eprintln!("  - {}", check_path.display());
+    eprintln!("  - {}", onboard_path.display());
     Ok(())
 }
 

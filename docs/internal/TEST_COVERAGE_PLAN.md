@@ -110,7 +110,7 @@ The remaining ~10% gap is in areas that require significant test infrastructure.
 | Area | Current coverage | Blocker | Infrastructure / effort |
 |------|------------------|--------|-------------------------|
 | **CLI command handlers** | ~50% | Some handlers still need dedicated tests (LSP, MCP, Watch) | **Integration tests**: temp repos, `run_sruja` helper. Added tests for `compliance`, `explain`, `why`, `index`, `export`, `fmt`, `list`, `tree`, `validate`, `sync`, `status`. |
-| **WASM bindings** | 0% in `cargo test` | Different target | **wasm-pack test**: `wasm32-unknown-unknown`, `wasm-bindgen-test` in `sruja-wasm`, `wasm-pack test --node`. Already documented in `docs/WASM_TESTING.md`; CI job to run it. Excluded from `cargo llvm-cov` by design. |
+| **WASM bindings** | 0% in `cargo test` | Different target | **wasm-pack test**: `wasm32-unknown-unknown`, `wasm-bindgen-test` in `sruja-wasm`, `wasm-pack test --node` (or `just test-wasm` / `just test-coverage-wasm`). Documented in `docs/WASM_TESTING.md`. Excluded from host `llvm-cov` reports via `just test-coverage`, `scripts/coverage.sh`, and Codecov workflow (`--exclude` / `--exclude-from-report sruja-wasm`). |
 | **Tree-sitter language parsers** | 30–40% | Language-specific ASTs | **Fixtures**: per-language sample files (Rust, Go, Java, Python, etc.) in `sruja-scan` tests, and tests that parse them and assert on key nodes. Detector and language modules in `crates/sruja-scan/src/tree_sitter/`. |
 
 ### Recommendations

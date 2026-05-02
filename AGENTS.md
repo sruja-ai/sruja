@@ -54,9 +54,12 @@ cargo test test_name
 # Run tests in a specific crate
 cargo test -p sruja-cli
 
-# Run tests with coverage
+# Run tests with coverage (excludes sruja-wasm — see docs/WASM_TESTING.md)
 make test-coverage
-cargo llvm-cov
+# or: just test-coverage
+# WASM bindings are tested separately: just test-coverage-wasm  (alias for wasm-pack tests)
+# CI/script variant with extra llvm-cov flags:
+#   bash scripts/coverage.sh
 
 # Lint Rust code
 cargo clippy -- -D warnings

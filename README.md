@@ -9,7 +9,42 @@
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
 sruja quickstart -r . --generate-baseline
+sruja onboard -r .
 sruja lint repo.sruja
+```
+
+**Optional (LLM enrichment for onboarding):**
+
+`sruja onboard` is deterministic by default. If you want a narrative onboarding summary (clearly labeled as LLM output), you can opt in:
+
+```bash
+export OPENAI_API_KEY="..."
+sruja onboard -r . --enrich
+```
+
+**Enterprise recommended (bring your own provider via CLI):**
+
+Use `--enrich-cmd` to delegate enrichment to your approved tool (Cursor/Claude/OpenCode/internal wrapper). Sruja passes only the grounded onboard JSON via stdin and reads markdown from stdout.
+
+```bash
+sruja onboard -r . -f markdown --enrich-cmd 'claude -p -'
+```
+
+Config (optional):
+- `SRUJA_ENRICH_PROVIDER` (default: `cmd`)
+- `SRUJA_ENRICH_CMD` (for provider=`cmd`)
+- `SRUJA_ENRICH_MODEL` (default: `gpt-4o-mini`, for provider=`openai`)
+- `SRUJA_ENRICH_BASE_URL` (default: `https://api.openai.com/v1`, for provider=`openai`)
+- `SRUJA_ENRICH_API_KEY` (optional alternative to `OPENAI_API_KEY`)
+
+Repo config (team standard): create `.sruja/config.toml`:
+
+```toml
+[integrations]
+default_provider = "cmd"
+cmd = "claude -p -"
+timeout_ms = 15000
+max_bytes = 20000
 ```
 
 ---
@@ -36,6 +71,7 @@ sruja lint repo.sruja
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
 sruja quickstart -r . --generate-baseline
+sruja onboard -r .
 ```
 
 This scans your repo, prints an inventory + structural health report, and writes a draft `repo.sruja` baseline you can version-control.
@@ -75,6 +111,9 @@ Use the friendlier workflow aliases if you want Sruja to feel like a daily repo 
 ```bash
 # First-time repo setup
 sruja start -r . --prompt
+
+# Install GitHub Actions workflows (check + onboarding brief)
+sruja start -r . --ci
 
 # Day-to-day review: refresh evidence and see what changed
 sruja daily -r .

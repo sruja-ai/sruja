@@ -6,23 +6,16 @@ This directory contains reusable GitHub Actions workflows for Sruja.
 
 | Workflow | Purpose | Triggers |
 |----------|---------|----------|
-| `sruja-drift.yml` | Architecture drift detection | Push, PR |
-| `sruja-stakeholder.yml` | Multi-stakeholder reports | Manual, Schedule |
-| `sruja-security.yml` | Security analysis | Push, Schedule |
-| `sruja-pr.yml` | PR-scoped drift detection | Pull Request |
 | `sruja-architecture-pr.yml` | PR gate: drift + blueprint lint | Pull Request |
-| `sruja-release.yml` | Pre-release checks | Release |
+| `sruja-onboard.yml` | Onboarding brief (job summary + annotations) | Push, PR |
 
 ## Quick Start
 
 Copy the desired workflow to `.github/workflows/`:
 
 ```bash
-# Copy drift detection
-cp templates/github-actions/sruja-drift.yml .github/workflows/
-
-# Copy security scanning (runs daily at 6 AM UTC)
-cp templates/github-actions/sruja-security.yml .github/workflows/
+# Copy onboarding brief (recommended for new repos / teams)
+cp templates/github-actions/sruja-onboard.yml .github/workflows/
 ```
 
 ### Recommended for SDLC “auto architecture maintenance”
@@ -36,12 +29,11 @@ cp templates/github-actions/sruja-security.yml .github/workflows/
 
 ### Required Secrets
 
-None for basic functionality. For enhanced features:
+None for basic functionality. For optional enrichment:
 
 | Secret | Purpose | Required For |
 |--------|---------|--------------|
 | `OPENAI_API_KEY` | LLM-enhanced analysis | Optional enrichment |
-| `GITHUB_TOKEN` | PR comments | `sruja-pr.yml` |
 
 ### Environment Variables
 
@@ -52,32 +44,11 @@ None for basic functionality. For enhanced features:
 
 ## Examples
 
-### Basic Drift Detection
+### PR gate: drift + blueprint lint
 
 ```yaml
-# .github/workflows/sruja-drift.yml
-name: Architecture Drift
-on: [push, pull_request]
-jobs:
-  drift:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Sruja
-        run: curl -fsSL https://sruja.ai/install.sh | bash
-      - name: Check PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Lint baseline
-        run: sruja lint repo.sruja
-      - name: Run drift check (declared vs actual)
-        run: sruja drift -r . -a repo.sruja
-```
-
-### PR-Scoped Analysis
-
-```yaml
-# .github/workflows/sruja-pr.yml
-name: PR Architecture Check
+# .github/workflows/sruja-architecture-pr.yml
+name: Sruja Architecture PR Check
 on: [pull_request]
 jobs:
   analyze:
@@ -90,82 +61,6 @@ jobs:
         run: curl -fsSL https://sruja.ai/install.sh | bash
       - name: Check for new drift
         run: sruja drift-pr -r . -b origin/main -f github-actions
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
-### Scheduled Security Scan
-
-```yaml
-# .github/workflows/sruja-security.yml
-name: Security Analysis
-on:
-  schedule:
-    - cron: '0 6 * * *'  # Daily at 6 AM UTC
-  workflow_dispatch:
-    inputs:
-      repo:
-        description: Repository to scan
-        required: true
-        default: ${{ github.repository }}
-
-jobs:
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.repo }}
-      - name: Install Sruja
-        run: curl -fsSL https://sruja.ai/install.sh | bash
-      - name: Run security analysis
-        run: |
-          sruja security -r . -f json > security-report.json
-          echo "::notice title=Security Report::Security analysis completed"
-          echo "::warning file=security-report.json::Report uploaded as artifact"
-      - name: Upload Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-report
-          path: security-report.json
-```
-
-### CTO Report on Schedule
-
-```yaml
-# .github/workflows/sruja-stakeholder.yml
-name: Weekly Stakeholder Reports
-on:
-  schedule:
-    - cron: '0 8 * * 1'  # Monday 8 AM UTC
-  workflow_dispatch:
-    inputs:
-      report_type:
-        description: Type of report (cto, sre, devops, security, product)
-        required: true
-        default: 'cto'
-      repo:
-        description: Repository to analyze
-        required: true
-        default: ${{ github.repository }}
-
-jobs:
-  report:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.repo }}
-      - name: Install Sruja
-        run: curl -fsSL https://sruja.ai/install.sh | bash
-      - name: Generate Report
-        run: |
-          sruja ${{ inputs.report_type }} -r . -f json > report.json
-      - name: Upload Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.report_type }}-report
-          path: report.json
 ```
 
 ## Customization

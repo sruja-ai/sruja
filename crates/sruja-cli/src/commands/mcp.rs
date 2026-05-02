@@ -7,6 +7,9 @@ use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
 
 use super::CliError;
+use crate::integrations::{
+    resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
+};
 
 const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 
@@ -392,7 +395,14 @@ fn tool_definitions() -> Vec<Value> {
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
                     "id": { "type": "string", "description": "Component ID to hydrate" },
-                    "max_tokens": { "type": "integer", "description": "Maximum tokens for the hydrated context (default: 20000)" }
+                    "max_tokens": { "type": "integer", "description": "Maximum tokens for the hydrated context (default: 20000)" },
+                    "enrich": { "type": "boolean", "description": "If true, add optional enrichment (cmd/openai) grounded in the hydrated context. Default: false." },
+                    "enrich_provider": { "type": "string", "description": "Enrichment provider: cmd|openai. Default: cmd." },
+                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)." },
+                    "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
+                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
+                    "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
+                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
                 },
                 "required": ["id"]
             }
@@ -424,7 +434,14 @@ fn tool_definitions() -> Vec<Value> {
                     "base_ref": { "type": "string", "description": "Git base ref for diff-based context (baseline)" },
                     "head_ref": { "type": "string", "description": "Git head ref for diff-based context (current changes)" },
                     "depth": { "type": "integer", "description": "Depth of neighbor expansion (default: 1, max: 4)", "minimum": 1, "maximum": 4 },
-                    "max_tokens": { "type": "integer", "description": "Maximum tokens for hydrated source code (default: 10000)" }
+                    "max_tokens": { "type": "integer", "description": "Maximum tokens for hydrated source code (default: 10000)" },
+                    "enrich": { "type": "boolean", "description": "If true, add optional enrichment (cmd/openai) grounded in the task context. Default: false." },
+                    "enrich_provider": { "type": "string", "description": "Enrichment provider: cmd|openai. Default: cmd." },
+                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)." },
+                    "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
+                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
+                    "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
+                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
                 }
             }
         }),
@@ -849,6 +866,22 @@ async fn run_tool(
                 .get("max_tokens")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(10000) as usize;
+            let enrich = arguments
+                .get("enrich")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let enrich_provider = arguments.get("enrich_provider").and_then(|v| v.as_str());
+            let enrich_cmd = arguments.get("enrich_cmd").and_then(|v| v.as_str());
+            let enrich_model = arguments.get("enrich_model").and_then(|v| v.as_str());
+            let enrich_base_url = arguments.get("enrich_base_url").and_then(|v| v.as_str());
+            let enrich_timeout_ms = arguments
+                .get("enrich_timeout_ms")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(15000);
+            let enrich_max_bytes = arguments
+                .get("enrich_max_bytes")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(20000) as usize;
 
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
             let selectors = super::context::logic::TaskSelectors {
@@ -862,7 +895,22 @@ async fn run_tool(
 
             let ctx =
                 super::context::logic::build_task_context(&graph, &repo, selectors, max_tokens)?;
-            Ok(serde_json::to_string_pretty(&ctx)?)
+            if !enrich && enrich_cmd.is_none() {
+                return Ok(serde_json::to_string_pretty(&ctx)?);
+            }
+
+            let wrapped = enrich_wrapper_json(
+                Path::new(&repo),
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                "task_context",
+                serde_json::to_value(&ctx)?,
+            );
+            Ok(serde_json::to_string_pretty(&wrapped)?)
         }
         "sruja_get_state_machine" => {
             let element_id = arguments
@@ -1561,8 +1609,40 @@ async fn run_tool(
                 .get("max_tokens")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(20000) as usize;
+            let enrich = arguments
+                .get("enrich")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let enrich_provider = arguments.get("enrich_provider").and_then(|v| v.as_str());
+            let enrich_cmd = arguments.get("enrich_cmd").and_then(|v| v.as_str());
+            let enrich_model = arguments.get("enrich_model").and_then(|v| v.as_str());
+            let enrich_base_url = arguments.get("enrich_base_url").and_then(|v| v.as_str());
+            let enrich_timeout_ms = arguments
+                .get("enrich_timeout_ms")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(15000);
+            let enrich_max_bytes = arguments
+                .get("enrich_max_bytes")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(20000) as usize;
 
-            get_hydrated_context(&repo, id, max_tokens, graph_cache).await
+            let hydrated = get_hydrated_context(&repo, id, max_tokens, graph_cache).await?;
+            if !enrich && enrich_cmd.is_none() {
+                return Ok(hydrated);
+            }
+
+            let wrapped = enrich_wrapper_json(
+                Path::new(&repo),
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                "hydrated_context",
+                json!({ "markdown": hydrated }),
+            );
+            Ok(serde_json::to_string_pretty(&wrapped)?)
         }
         "sruja_semantic_search" => {
             let query = arguments
@@ -1705,6 +1785,132 @@ async fn run_tool(
         }
         _ => Err(CliError::validation(format!("Unknown tool: {name}"))),
     }
+}
+
+// MCP tool payload maps many JSON fields; grouping would not reduce call-site noise meaningfully.
+#[allow(clippy::too_many_arguments)]
+fn enrich_wrapper_json(
+    repo_path: &Path,
+    enrich_provider: Option<&str>,
+    enrich_cmd: Option<&str>,
+    enrich_model: Option<&str>,
+    enrich_base_url: Option<&str>,
+    enrich_timeout_ms: u64,
+    enrich_max_bytes: usize,
+    kind: &str,
+    grounded: Value,
+) -> Value {
+    let plan = resolve_enrichment_plan(
+        repo_path,
+        enrich_cmd,
+        enrich_model,
+        enrich_base_url,
+        Some(enrich_timeout_ms),
+        Some(enrich_max_bytes),
+    );
+    let provider = enrich_provider.unwrap_or(plan.provider.as_str());
+
+    let input = json!({
+        "schema_version": "mcp_enrichment_input/v1",
+        "kind": kind,
+        "grounded": grounded,
+    });
+    let stdin_payload = serde_json::to_vec(&input).unwrap_or_default();
+
+    let enrichment = if provider == "cmd" {
+        match plan.cmd.as_deref() {
+            Some(cmd) => match run_cmd_enrichment(cmd, &stdin_payload, plan.limits) {
+                Ok(md) => json!({
+                    "status": "ok",
+                    "provider": "external_cmd",
+                    "model": Value::Null,
+                    "error": Value::Null,
+                    "narrative_markdown": md
+                }),
+                Err(e) => json!({
+                    "status": "error",
+                    "provider": "external_cmd",
+                    "model": Value::Null,
+                    "error": e,
+                    "narrative_markdown": Value::Null
+                }),
+            },
+            None => json!({
+                "status": "skipped",
+                "provider": "cmd",
+                "model": Value::Null,
+                "error": "No command configured. Provide enrich_cmd or set SRUJA_ENRICH_CMD / .sruja/config.toml [integrations].cmd.",
+                "narrative_markdown": Value::Null
+            }),
+        }
+    } else if provider == "openai" {
+        let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
+        let base_url = plan
+            .base_url
+            .as_deref()
+            .unwrap_or("https://api.openai.com/v1");
+        match resolve_openai_auth() {
+            Some(key) => {
+                let user_prompt = format!(
+                    r#"You are assisting an AI coding agent.
+
+You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
+
+Produce markdown with these sections:
+- "Summary"
+- "Risks / unknowns to verify" (bullets)
+- "Suggested verification steps" (bullets)
+
+JSON facts:
+{}"#,
+                    input
+                );
+                match run_openai_markdown(
+                    "You are a careful repo assistant. Never fabricate.",
+                    &user_prompt,
+                    model,
+                    base_url,
+                    &key,
+                ) {
+                    Ok(md) => json!({
+                        "status": "ok",
+                        "provider": "openai",
+                        "model": model,
+                        "error": Value::Null,
+                        "narrative_markdown": md
+                    }),
+                    Err(e) => json!({
+                        "status": "error",
+                        "provider": "openai",
+                        "model": model,
+                        "error": e,
+                        "narrative_markdown": Value::Null
+                    }),
+                }
+            }
+            None => json!({
+                "status": "skipped",
+                "provider": "openai",
+                "model": model,
+                "error": "Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).",
+                "narrative_markdown": Value::Null
+            }),
+        }
+    } else {
+        json!({
+            "status": "skipped",
+            "provider": provider,
+            "model": Value::Null,
+            "error": "Unsupported provider. Use cmd (recommended) or openai.",
+            "narrative_markdown": Value::Null
+        })
+    };
+
+    json!({
+        "schema_version": "mcp_enriched_output/v1",
+        "grounded": input.get("grounded").cloned().unwrap_or(Value::Null),
+        "enrichment": enrichment
+    })
 }
 
 async fn get_or_scan_graph(

@@ -7,6 +7,7 @@ mod commands;
 mod compliance;
 mod context_detection;
 mod graph_store;
+mod integrations;
 mod modules;
 mod report;
 mod scoring;

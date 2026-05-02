@@ -45,7 +45,11 @@ lint:
 # Run tests with coverage
 test-coverage:
     @echo "Running Rust tests with coverage..."
-    cargo llvm-cov --workspace
+    @echo "Note: sruja-wasm is tested via wasm-pack, so it is excluded from llvm-cov."
+    cargo llvm-cov --workspace --exclude sruja-wasm
+
+# Run WASM tests (separately from llvm-cov)
+test-coverage-wasm: test-wasm
 
 # --- Specialized Tests ---
 

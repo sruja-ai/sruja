@@ -5,6 +5,7 @@ Stable pilot surface:
 | Command | Description |
 |---------|-------------|
 | `sruja quickstart -r .` | First look: structural overview and baseline generation |
+| `sruja onboard -r .` | Single onboarding brief (deterministic; optional LLM enrichment with `--enrich`) |
 | `sruja lint <file>` | Validate `.sruja` file |
 | `sruja sync -r .` | Refresh evidence and cached graph/context |
 | `sruja status -r .` | Repo health and truth status |
@@ -24,6 +25,11 @@ Other commands:
 | `sruja tree <file>` | Print element tree |
 | `sruja watch -r .` | Keep feedback live while coding |
 | `sruja doctor -r .` | Quick repo health and last evidence refresh |
+| `sruja check -r .` | CI-oriented drift check (default format suited for GitHub Actions annotations) |
+| `sruja baseline -r .` | Snapshot violations for baseline ignore in CI |
+| `sruja ai -r . --task "..."` | Paste-ready AI coding brief (optional `--enrich` / `--enrich-cmd`) |
+
+**Repo root:** Prefer `-r` / `--repo` for the repository directory. Some commands also accept `--path` as an alias for backwards compatibility.
 
 Aliases:
 

@@ -24,6 +24,7 @@ mod ingest;
 mod init;
 mod intent;
 mod mcp;
+mod onboard;
 mod preflight;
 mod propose;
 mod review;
@@ -52,6 +53,13 @@ pub use dsl::{
 pub use error::CliError;
 pub use focus::focus;
 pub use ingest::ingest;
+
+#[derive(Debug, Clone, Copy)]
+pub struct LlmConfig<'a> {
+    pub provider: Option<&'a str>,
+    pub model: Option<&'a str>,
+    pub base_url: Option<&'a str>,
+}
 
 pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
     path: P,
@@ -86,6 +94,7 @@ pub use index::{query_registry, registry_dashboard, registry_index, semantic_ind
 pub use init::init;
 pub use intent::{intent_check, intent_propose};
 pub use mcp::mcp;
+pub use onboard::onboard;
 pub use review::review;
 pub use scan::{drift, drift_pr, quickstart, scan};
 pub use status::status;

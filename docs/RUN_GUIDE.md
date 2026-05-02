@@ -198,6 +198,15 @@ just lint         # Clippy
 cargo test -p sruja-cli --test why_e2e   # Why command E2E (optional)
 ```
 
+**Coverage (optional):** Host Rust coverage excludes the WASM crate (it is tested with `wasm-pack`). Run:
+
+```bash
+just test-coverage        # llvm-cov for workspace (excludes sruja-wasm)
+just test-coverage-wasm   # wasm-bindgen tests for sruja-wasm
+```
+
+See [WASM_TESTING.md](WASM_TESTING.md) for rationale and CI alignment.
+
 ---
 
 ## Step 9: Book (mdBook docs, optional)
