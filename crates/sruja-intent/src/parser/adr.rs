@@ -148,7 +148,7 @@ impl AdrParser {
             }
         }
 
-        adrs.sort_by(|a, b| a.number.unwrap_or(9999).cmp(&b.number.unwrap_or(9999)));
+        adrs.sort_by_key(|a| a.number.unwrap_or(9999));
 
         Ok(adrs)
     }
@@ -481,7 +481,7 @@ Use MySQL.
     fn test_extract_tags() {
         let parser = AdrParser::new();
         let content = r#"
-            Tags: architecture, database,  security 
+            Tags: architecture, database,  security
             #rust #fast
         "#;
         let tags = parser.extract_tags(content);
