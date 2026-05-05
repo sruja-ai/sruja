@@ -1306,12 +1306,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
             AgentCommand::Clear { repo, force } => commands::agent_clear(&repo, force).await,
         },
-        Commands::Install { platform, repo } => {
-            commands::agent_install(&repo, &platform).await
-        }
-        Commands::Uninstall { platform, repo } => {
-            commands::agent_uninstall(&repo, &platform).await
-        }
+        Commands::Install { platform, repo } => commands::agent_install(&repo, &platform).await,
+        Commands::Uninstall { platform, repo } => commands::agent_uninstall(&repo, &platform).await,
     };
 
     match result {

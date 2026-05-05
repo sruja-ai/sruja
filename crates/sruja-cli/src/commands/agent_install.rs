@@ -1,6 +1,6 @@
+use crate::commands::CliError;
 use std::fs;
 use std::path::Path;
-use crate::commands::CliError;
 
 const AGENTS_MD_MARKER: &str = "## Sruja";
 const AGENTS_MD_SECTION: &str = r#"## Sruja
@@ -26,48 +26,50 @@ Rules:
 - If asked to propose an architectural change, use `sruja propose` workflow.
 "#;
 
-pub async fn agent_install(
-    repo: &str,
-    platform: &str,
-) -> Result<(), CliError> {
+pub async fn agent_install(repo: &str, platform: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
         return Err(CliError::validation("Repository path does not exist"));
     }
 
     match platform.to_lowercase().as_str() {
-        "codex" | "opencode" | "aider" | "claw" | "droid" | "trae" | "trae-cn" | "kiro" | "hermes" | "gemini" => {
+        "codex" | "opencode" | "aider" | "claw" | "droid" | "trae" | "trae-cn" | "kiro"
+        | "hermes" | "gemini" => {
             install_agents_md(repo_path, platform)?;
         }
         "claude" => {
             install_claude_md(repo_path)?;
         }
         _ => {
-            return Err(CliError::validation(format!("Unsupported platform: {}", platform)));
+            return Err(CliError::validation(format!(
+                "Unsupported platform: {}",
+                platform
+            )));
         }
     }
 
     Ok(())
 }
 
-pub async fn agent_uninstall(
-    repo: &str,
-    platform: &str,
-) -> Result<(), CliError> {
+pub async fn agent_uninstall(repo: &str, platform: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
         return Err(CliError::validation("Repository path does not exist"));
     }
 
     match platform.to_lowercase().as_str() {
-        "codex" | "opencode" | "aider" | "claw" | "droid" | "trae" | "trae-cn" | "kiro" | "hermes" | "gemini" => {
+        "codex" | "opencode" | "aider" | "claw" | "droid" | "trae" | "trae-cn" | "kiro"
+        | "hermes" | "gemini" => {
             uninstall_agents_md(repo_path)?;
         }
         "claude" => {
             uninstall_claude_md(repo_path)?;
         }
         _ => {
-            return Err(CliError::validation(format!("Unsupported platform: {}", platform)));
+            return Err(CliError::validation(format!(
+                "Unsupported platform: {}",
+                platform
+            )));
         }
     }
 
@@ -91,7 +93,10 @@ fn install_agents_md(repo_path: &Path, platform: &str) -> Result<(), CliError> {
         println!("Sruja section written to {}", target.display());
     }
 
-    println!("\n{} will now check the knowledge graph before answering", platform);
+    println!(
+        "\n{} will now check the knowledge graph before answering",
+        platform
+    );
     println!("codebase questions and rebuild it after code changes.");
 
     Ok(())
