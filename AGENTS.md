@@ -346,3 +346,35 @@ Sruja provides specialized configs for different editors:
 - **"Drift Detected"**: Run `sruja drift -r . --fix` (if available) or manually align `.sruja` with code.
 - **"WASM Mismatch"**: If logic changed in `sruja-language` but extension behavior is old, run `make wasm-nodejs`.
 
+## Cursor Cloud specific instructions
+
+### System dependencies
+
+The Cloud VM requires these packages beyond what the update script installs:
+- `libssl-dev`, `pkg-config` (for OpenSSL/`openssl-sys` crate)
+- `g++` / `libstdc++-13-dev` (for C++ linking of tree-sitter grammars and `ort`)
+- A symlink: `ln -sf /usr/lib/gcc/x86_64-linux-gnu/13/libstdc++.so /usr/lib/x86_64-linux-gnu/libstdc++.so`
+- `just` (installed via `curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin`)
+- `wasm-pack` (installed via `cargo install wasm-pack`)
+- Node.js 20 (installed via NodeSource)
+
+### Running the CLI
+
+After `cargo build --release`, the binary is at `./target/release/sruja`. Key commands:
+- `./target/release/sruja lint <file>.sruja` — validate a `.sruja` file
+- `./target/release/sruja discover --context -r . --format json` — scan the repo
+- `./target/release/sruja export mermaid <file>.sruja` — export to Mermaid
+
+### Running tests
+
+- **Rust**: `cargo test --workspace` (all crates)
+- **Extension**: `cd extension && npm test` (199 Jest unit tests)
+- **Lint**: `cargo clippy --workspace` (7 pre-existing warnings in `sruja-scan` and `sruja-cli`)
+
+### Gotchas
+
+- `cargo clippy -- -D warnings` fails on pre-existing clippy warnings (collapsible_match in `go.rs`, sort_by_key suggestions in CLI). Use `cargo clippy --workspace` (without `-D warnings`) if you only need to check your own changes don't introduce new issues.
+- The release profile uses LTO and `opt-level = "z"`, so release builds take ~2-3 minutes. Use `cargo build` (debug) for iteration.
+- `fastembed` / `ort` download ONNX models to `~/.cache/ort.pyke.io/` on first build/run. This is automatic but can be slow on first invocation.
+- Extension WASM tests (`just test-wasm`) require `wasm-pack` and the `wasm32-unknown-unknown` target.
+
