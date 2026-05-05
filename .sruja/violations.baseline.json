@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_unix": 1778020269,
+  "generated_at_unix": 1778020712,
   "fingerprints": [
     "orphan-component|book_code-block-actions_js|Module 'book_code-block-actions_js' has no incoming or outgoing dependencies",
     "orphan-component|book_google-analytics_js|Module 'book_google-analytics_js' has no incoming or outgoing dependencies",
