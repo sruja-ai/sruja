@@ -702,6 +702,22 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: AgentCommand,
     },
+    /// Install Sruja always-on context to AI editors (AGENTS.md, CLAUDE.md)
+    Install {
+        /// Platform to install to (claude, codex, opencode, aider, claw, droid, trae, kiro)
+        platform: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+    /// Uninstall Sruja from AI editors
+    Uninstall {
+        /// Platform to uninstall from
+        platform: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1290,6 +1306,12 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
             AgentCommand::Clear { repo, force } => commands::agent_clear(&repo, force).await,
         },
+        Commands::Install { platform, repo } => {
+            commands::agent_install(&repo, &platform).await
+        }
+        Commands::Uninstall { platform, repo } => {
+            commands::agent_uninstall(&repo, &platform).await
+        }
     };
 
     match result {
