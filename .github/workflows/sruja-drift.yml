@@ -38,10 +38,10 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           git fetch origin ${{ github.base_ref }}
-          git checkout origin/${{ github.base_ref }}
+          git checkout -f origin/${{ github.base_ref }}
           mkdir -p .sruja/cache
           ./target/release/sruja scan -r . -o .sruja/cache/base_graph.json || true
-          git checkout ${{ github.sha }}
+          git checkout -f ${{ github.sha }}
 
       - name: Run PR-scoped drift check
         id: drift
