@@ -14,7 +14,14 @@ pub mod npm;
 pub mod repomap;
 pub mod scan_scope;
 mod scip_ingest;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod tree_sitter;
+
+#[cfg(target_arch = "wasm32")]
+pub mod tree_sitter_wasm;
+
+#[cfg(target_arch = "wasm32")]
+pub use tree_sitter_wasm as tree_sitter;
 
 use std::path::{Path, PathBuf};
 
