@@ -11,6 +11,9 @@ pub use sruja_language::ast::{Criticality, EdgeKind, NodeKind, SourceBinding};
 pub mod centrality;
 pub use centrality::{compute_all_centrality, ComponentImportance};
 
+pub mod community;
+pub use community::{detect_communities, summarize_communities, CommunityInfo};
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Node {
     pub id: String,
@@ -94,6 +97,15 @@ pub struct EdgeEvidence {
     pub detail: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum EdgeConfidence {
+    #[default]
+    Extracted,
+    Inferred,
+    Ambiguous,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Edge {
     pub source: String,
@@ -101,6 +113,8 @@ pub struct Edge {
     pub kind: EdgeKind,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub evidence: Vec<EdgeEvidence>,
+    #[serde(default)]
+    pub confidence: EdgeConfidence,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -340,7 +354,8 @@ impl Graph {
             (e.rule.as_str(), &e.file, &e.line, &e.detail)
         }
 
-        let mut merged: BTreeMap<(String, String, String), Vec<EdgeEvidence>> = BTreeMap::new();
+        let mut merged: BTreeMap<(String, String, String), (Vec<EdgeEvidence>, EdgeConfidence)> =
+            BTreeMap::new();
         for mut edge in self.edges.drain(..) {
             if !node_set.contains(&edge.source) || !node_set.contains(&edge.target) {
                 continue;
@@ -354,11 +369,27 @@ impl Graph {
                 edge.target.clone(),
                 edge.kind.as_str().to_string(),
             );
-            merged.entry(key).or_default().extend(edge.evidence);
+            merged
+                .entry(key)
+                .and_modify(|(evidence, confidence)| {
+                    evidence.extend(edge.evidence.clone());
+                    // Keep the highest confidence (Extracted > Inferred > Ambiguous)
+                    let new_conf = match (*confidence, edge.confidence) {
+                        (EdgeConfidence::Extracted, _) | (_, EdgeConfidence::Extracted) => {
+                            EdgeConfidence::Extracted
+                        }
+                        (EdgeConfidence::Inferred, _) | (_, EdgeConfidence::Inferred) => {
+                            EdgeConfidence::Inferred
+                        }
+                        _ => EdgeConfidence::Ambiguous,
+                    };
+                    *confidence = new_conf;
+                })
+                .or_insert((edge.evidence, edge.confidence));
         }
 
         self.edges = Vec::with_capacity(merged.len());
-        for ((source, target, kind_str), mut evidence) in merged {
+        for ((source, target, kind_str), (mut evidence, confidence)) in merged {
             let Ok(kind) = kind_str.parse::<EdgeKind>() else {
                 continue;
             };
@@ -369,6 +400,7 @@ impl Graph {
                 target,
                 kind,
                 evidence,
+                confidence,
             });
         }
 
@@ -512,6 +544,7 @@ mod tests {
             target: target.to_string(),
             kind: EdgeKind::Calls,
             evidence: Vec::new(),
+            confidence: Default::default(),
         }
     }
 
@@ -542,6 +575,7 @@ mod tests {
                         line: None,
                         detail: None,
                     }],
+                    confidence: Default::default(),
                 },
                 Edge {
                     source: "a".into(),
@@ -561,6 +595,7 @@ mod tests {
                             detail: None,
                         },
                     ],
+                    confidence: Default::default(),
                 },
             ],
             ..Default::default()

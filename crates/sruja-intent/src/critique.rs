@@ -497,6 +497,7 @@ mod tests {
                 target: "CoreLib".to_string(),
                 kind: sruja_scan::EdgeKind::Calls,
                 evidence: vec![],
+                confidence: Default::default(),
             });
         }
 

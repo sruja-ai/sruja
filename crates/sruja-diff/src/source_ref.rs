@@ -108,6 +108,7 @@ mod tests {
             target: target.to_string(),
             kind: EdgeKind::Calls,
             evidence,
+            confidence: Default::default(),
         }
     }
 

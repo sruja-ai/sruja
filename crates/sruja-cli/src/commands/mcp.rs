@@ -460,6 +460,46 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_query_graph",
+            "title": "Sruja Query Graph",
+            "description": "Query the architecture graph using natural language. Grounded in deterministic scan facts, with optional LLM narrative.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "query": { "type": "string", "description": "The natural language query (e.g. 'what connects auth to database?')" },
+                    "enrich": { "type": "boolean", "description": "Add LLM narrative grounded in the matched subgraph context. Default: false." },
+                    "enrich_provider": { "type": "string", "description": "Enrichment provider: cmd|openai. Default: cmd." },
+                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)." },
+                    "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
+                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
+                    "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
+                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
+                },
+                "required": ["query"]
+            }
+        }),
+        json!({
+            "name": "sruja_explain_element",
+            "title": "Sruja Explain Element",
+            "description": "Deep-dive on an architectural element, its centrality, neighbors, and extracted comments with optional LLM narrative.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "id": { "type": "string", "description": "Unique ID of the architectural element (e.g. MySystem.Api)" },
+                    "enrich": { "type": "boolean", "description": "Add LLM narrative grounded in the element context. Default: false." },
+                    "enrich_provider": { "type": "string", "description": "Enrichment provider: cmd|openai. Default: cmd." },
+                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)." },
+                    "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
+                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
+                    "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
+                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
             "name": "sruja_get_context_score",
             "title": "Sruja Context Score",
             "description": "Get the context engineering score (0-100) and AI-readiness breakdown for the repository.",
@@ -1688,6 +1728,232 @@ async fn run_tool(
             }
             Ok(out)
         }
+        "sruja_query_graph" => {
+            let query = arguments
+                .get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing query"))?;
+            let enrich = arguments
+                .get("enrich")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let enrich_provider = arguments.get("enrich_provider").and_then(|v| v.as_str());
+            let enrich_cmd = arguments.get("enrich_cmd").and_then(|v| v.as_str());
+            let enrich_model = arguments.get("enrich_model").and_then(|v| v.as_str());
+            let enrich_base_url = arguments.get("enrich_base_url").and_then(|v| v.as_str());
+            let enrich_timeout_ms = arguments
+                .get("enrich_timeout_ms")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(15000);
+            let enrich_max_bytes = arguments
+                .get("enrich_max_bytes")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(20000) as usize;
+
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+
+            // 1. Semantic Search matching elements
+            let vector_path = std::path::Path::new(&repo)
+                .join(".sruja")
+                .join("vectors.json");
+            let results = if vector_path.exists() {
+                let index_json = tokio::fs::read_to_string(&vector_path).await?;
+                let index: sruja_export::vector::VectorIndex = serde_json::from_str(&index_json)?;
+                let mut searcher = sruja_export::vector::SemanticSearcher::new().map_err(|e| {
+                    CliError::Io(std::io::Error::other(format!(
+                        "Failed to init searcher: {}",
+                        e
+                    )))
+                })?;
+                searcher.search(&index, query, 3).unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+
+            // 2. Gather matched nodes & neighbors & relations
+            let mut matched_nodes = Vec::new();
+            let mut relations = Vec::new();
+            let mut seen_nodes = std::collections::HashSet::new();
+
+            for (id, score) in results {
+                if let Some(node) = graph.nodes.iter().find(|n| n.id == id) {
+                    matched_nodes.push(json!({
+                        "id": node.id,
+                        "label": node.label,
+                        "kind": node.kind.as_str(),
+                        "score": score,
+                        "description": node.metadata.get("description").cloned()
+                    }));
+                    seen_nodes.insert(node.id.clone());
+
+                    // Neighbors
+                    let radius = graph.blast_radius(&node.id, 1);
+                    for u in radius.upstream {
+                        if seen_nodes.insert(u.id.clone()) {
+                            if let Some(unode) = graph.nodes.iter().find(|n| n.id == u.id) {
+                                matched_nodes.push(json!({
+                                    "id": unode.id,
+                                    "label": unode.label,
+                                    "kind": unode.kind.as_str(),
+                                    "score": 0.0,
+                                    "description": unode.metadata.get("description").cloned()
+                                }));
+                            }
+                        }
+                    }
+                    for d in radius.downstream {
+                        if seen_nodes.insert(d.id.clone()) {
+                            if let Some(dnode) = graph.nodes.iter().find(|n| n.id == d.id) {
+                                matched_nodes.push(json!({
+                                    "id": dnode.id,
+                                    "label": dnode.label,
+                                    "kind": dnode.kind.as_str(),
+                                    "score": 0.0,
+                                    "description": dnode.metadata.get("description").cloned()
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Find any relationships between all seen nodes
+            for edge in &graph.edges {
+                if seen_nodes.contains(&edge.source) && seen_nodes.contains(&edge.target) {
+                    relations.push(json!({
+                        "source": edge.source,
+                        "target": edge.target,
+                        "kind": edge.kind.as_str(),
+                        "confidence": edge.confidence
+                    }));
+                }
+            }
+
+            let grounded = json!({
+                "query": query,
+                "matched_nodes": matched_nodes,
+                "relationships": relations
+            });
+
+            if !enrich && enrich_cmd.is_none() {
+                return Ok(serde_json::to_string_pretty(&grounded)?);
+            }
+
+            let wrapped = enrich_wrapper_json(
+                Path::new(&repo),
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                "query_graph",
+                grounded,
+            );
+            Ok(serde_json::to_string_pretty(&wrapped)?)
+        }
+        "sruja_explain_element" => {
+            let element_id = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing id"))?;
+            let enrich = arguments
+                .get("enrich")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let enrich_provider = arguments.get("enrich_provider").and_then(|v| v.as_str());
+            let enrich_cmd = arguments.get("enrich_cmd").and_then(|v| v.as_str());
+            let enrich_model = arguments.get("enrich_model").and_then(|v| v.as_str());
+            let enrich_base_url = arguments.get("enrich_base_url").and_then(|v| v.as_str());
+            let enrich_timeout_ms = arguments
+                .get("enrich_timeout_ms")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(15000);
+            let enrich_max_bytes = arguments
+                .get("enrich_max_bytes")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(20000) as usize;
+
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            let node = graph
+                .nodes
+                .iter()
+                .find(|n| n.id == element_id)
+                .ok_or_else(|| CliError::validation(format!("Element {} not found", element_id)))?;
+
+            // Compute centrality (PageRank)
+            let centrality = sruja_scan::graph::compute_all_centrality(&graph);
+            let pr = centrality.get(&node.id).map(|s| s.pagerank).unwrap_or(0.0);
+
+            // Immediate neighbors
+            let radius = graph.blast_radius(&node.id, 1);
+            let upstream: Vec<String> = radius.upstream.iter().map(|u| u.id.clone()).collect();
+            let downstream: Vec<String> = radius.downstream.iter().map(|d| d.id.clone()).collect();
+
+            // Notes / Explanatory comments from Comment discovery (explained by edges)
+            let mut notes = Vec::new();
+            for edge in &graph.edges {
+                if edge.target == node.id && edge.kind.kind_str() == "explains" {
+                    if let Some(src) = graph.nodes.iter().find(|n| n.id == edge.source) {
+                        notes.push(json!({
+                            "id": src.id,
+                            "label": src.label,
+                            "description": src.metadata.get("description").cloned()
+                        }));
+                    }
+                }
+            }
+
+            // Compute community
+            let raw_communities = sruja_scan::detect_communities(&graph);
+            let community_infos = sruja_scan::summarize_communities(&graph, &raw_communities);
+            let element_community = raw_communities.get(element_id).cloned();
+            let community_detail = element_community.and_then(|cid| {
+                community_infos.iter().find(|c| c.id == cid).map(|c| {
+                    json!({
+                        "id": c.id,
+                        "suggested_label": c.suggested_label,
+                        "cohesion": c.cohesion,
+                        "member_count": c.member_count
+                    })
+                })
+            });
+
+            let grounded = json!({
+                "element": {
+                    "id": node.id,
+                    "label": node.label,
+                    "kind": node.kind.as_str(),
+                    "pagerank": pr,
+                    "description": node.metadata.get("description").cloned(),
+                    "technology": node.technology,
+                    "path": node.path,
+                    "community": community_detail
+                },
+                "neighbors": {
+                    "upstream": upstream,
+                    "downstream": downstream
+                },
+                "notes": notes
+            });
+
+            if !enrich && enrich_cmd.is_none() {
+                return Ok(serde_json::to_string_pretty(&grounded)?);
+            }
+
+            let wrapped = enrich_wrapper_json(
+                Path::new(&repo),
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                "explain_element",
+                grounded,
+            );
+            Ok(serde_json::to_string_pretty(&wrapped)?)
+        }
         "sruja_get_context_score" => {
             let format = arguments
                 .get("format")
@@ -2318,5 +2584,67 @@ mod tests {
         .expect("repomap");
 
         assert!(out.contains("# Repository Map"));
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_query_graph_returns_grounded_json() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).expect("src");
+        fs::write(src.join("main.rs"), "mod sub;\nfn main() {}\n").expect("main");
+        fs::write(src.join("sub.rs"), "pub fn run() {}\n").expect("sub");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_query_graph",
+            &json!({
+                "path": dir.path().to_string_lossy(),
+                "query": "main sub module",
+                "enrich": false
+            }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("query graph");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON output");
+        assert_eq!(
+            parsed.get("query").and_then(|v| v.as_str()),
+            Some("main sub module")
+        );
+        assert!(parsed.get("matched_nodes").is_some());
+        assert!(parsed.get("relationships").is_some());
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_explain_element_returns_grounded_json() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).expect("src");
+        fs::write(src.join("main.rs"), "mod sub;\nfn main() {}\n").expect("main");
+        fs::write(src.join("sub.rs"), "pub fn run() {}\n").expect("sub");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_explain_element",
+            &json!({
+                "path": dir.path().to_string_lossy(),
+                "id": "src_sub_rs",
+                "enrich": false
+            }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("explain element");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON output");
+        assert_eq!(
+            parsed.pointer("/element/id").and_then(|v| v.as_str()),
+            Some("src_sub_rs")
+        );
+        assert!(parsed.get("neighbors").is_some());
+        assert!(parsed.get("notes").is_some());
     }
 }

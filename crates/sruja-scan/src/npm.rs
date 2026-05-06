@@ -195,6 +195,7 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
                     line: None,
                     detail: None,
                 }],
+                confidence: Default::default(),
             });
         }
     }

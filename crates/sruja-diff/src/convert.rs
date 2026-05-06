@@ -102,6 +102,7 @@ pub fn program_to_graph(program: &Program) -> Graph {
                     line: None,
                     detail: rel.label.clone(),
                 }],
+                confidence: Default::default(),
             });
         }
     }

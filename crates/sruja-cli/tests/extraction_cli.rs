@@ -189,3 +189,59 @@ App.A -> App.B "calls"
         stderr
     );
 }
+
+#[test]
+fn test_scan_based_exports() {
+    let temp = create_test_repo();
+    write_file(temp.path(), "src/main.rs", "fn main() {}\n");
+    let repo_str = temp.path().to_str().expect("path utf-8");
+
+    // GraphML export
+    let (success_g, stdout_g, stderr_g) = run_sruja(&[
+        "export",
+        "graphml",
+        "dummy.sruja",
+        "--from-scan",
+        "-r",
+        repo_str,
+    ]);
+    assert!(success_g, "GraphML export failed: {}", stderr_g);
+    assert!(
+        stdout_g.contains("<graphml"),
+        "Output should be GraphML XML"
+    );
+
+    // Neo4j export
+    let (success_n, stdout_n, stderr_n) = run_sruja(&[
+        "export",
+        "neo4j",
+        "dummy.sruja",
+        "--from-scan",
+        "-r",
+        repo_str,
+    ]);
+    assert!(success_n, "Neo4j export failed: {}", stderr_n);
+    assert!(
+        stdout_n.contains("CREATE (n:Component"),
+        "Output should contain CREATE statements"
+    );
+
+    // Obsidian export
+    let obsidian_dir = temp.path().join("obsidian-vault");
+    let obsidian_dir_str = obsidian_dir.to_str().expect("path utf-8");
+    let (success_o, _stdout_o, stderr_o) = run_sruja(&[
+        "export",
+        "obsidian",
+        "dummy.sruja",
+        "--from-scan",
+        "-r",
+        repo_str,
+        "--output-dir",
+        obsidian_dir_str,
+    ]);
+    assert!(success_o, "Obsidian export failed: {}", stderr_o);
+    assert!(
+        obsidian_dir.join("_Index.md").exists(),
+        "Obsidian _Index.md should be created"
+    );
+}

@@ -3,9 +3,12 @@
 //! This crate extracts architecture information from source code using Tree-sitter.
 //! Supports multiple programming languages and can also parse package manifests.
 
+mod assets;
+pub mod ast_cache;
 mod cargo;
 pub mod confidence;
 pub mod graph;
+pub mod manifest;
 mod manifests;
 pub mod npm;
 pub mod repomap;
@@ -18,9 +21,10 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 pub use graph::{
-    BlastRadiusDirection, BlastRadiusNode, BlastRadiusResult, Criticality, Edge, EdgeEvidence,
-    EdgeKind, Graph, Incident, Node, NodeKind, ResolvedContract, ResolvedError, ResolvedField,
-    ResolvedStateMachine, ResolvedTransition,
+    detect_communities, summarize_communities, BlastRadiusDirection, BlastRadiusNode,
+    BlastRadiusResult, CommunityInfo, Criticality, Edge, EdgeEvidence, EdgeKind, Graph, Incident,
+    Node, NodeKind, ResolvedContract, ResolvedError, ResolvedField, ResolvedStateMachine,
+    ResolvedTransition,
 };
 pub use repomap::{generate_repomap, generate_repomap_from_graph, RepoMapOptions};
 pub use scan_scope::{
@@ -80,10 +84,52 @@ pub fn scan_repo(repo_root: &Path) -> Result<Graph, ScanError> {
         graph.merge(manifest_graph);
     }
 
+    // Merge docs and assets
+    if let Ok(assets_graph) = assets::discover_docs_and_assets(repo_root) {
+        tracing::debug!("Merging docs and assets into graph");
+        graph.merge(assets_graph);
+    }
+
     // Calculate discovery confidence
     confidence::ConfidenceScorer::score_graph(&mut graph);
 
     // 4. Enrich with SCIP if available
+    if let Ok(scip_graph) = scip_ingest::enrich_with_scip(repo_root) {
+        graph.merge(scip_graph);
+    }
+
+    Ok(graph)
+}
+
+/// Scan a repository incrementally and return an inferred architecture graph.
+#[tracing::instrument(skip(repo_root))]
+pub fn scan_repo_incremental(repo_root: &Path) -> Result<Graph, ScanError> {
+    tracing::info!("Starting incremental repository scan in {:?}", repo_root);
+    let config = ScanConfig {
+        classification_rules_path: CLASSIFICATION_RULES_PATH
+            .with(|p: &RefCell<Option<PathBuf>>| p.borrow().clone()),
+        incremental: true,
+        ..Default::default()
+    };
+
+    let mut graph = scan_with_tree_sitter(repo_root, &config)?;
+
+    // Merge manifest data (technology labels, monorepo packages, manifests)
+    if let Ok(manifest_graph) = scan_repo_manifests(repo_root) {
+        tracing::debug!("Merging manifest data into graph");
+        graph.merge(manifest_graph);
+    }
+
+    // Merge docs and assets
+    if let Ok(assets_graph) = assets::discover_docs_and_assets(repo_root) {
+        tracing::debug!("Merging docs and assets into graph");
+        graph.merge(assets_graph);
+    }
+
+    // Calculate discovery confidence
+    confidence::ConfidenceScorer::score_graph(&mut graph);
+
+    // Enrich with SCIP if available
     if let Ok(scip_graph) = scip_ingest::enrich_with_scip(repo_root) {
         graph.merge(scip_graph);
     }

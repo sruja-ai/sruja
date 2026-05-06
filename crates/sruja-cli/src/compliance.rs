@@ -330,6 +330,7 @@ Security = policy "No external API to database" {
             target: "db".to_string(),
             kind: sruja_scan::EdgeKind::Calls,
             evidence: vec![],
+            confidence: Default::default(),
         });
 
         let drifts = evaluate_policy_violations(&model, &scan_graph);

@@ -241,6 +241,8 @@ pub struct RelationDump {
     pub head: Option<String>, // arrow type
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tail: Option<String>, // arrow type
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<String>,
 }
 
 /// View dump

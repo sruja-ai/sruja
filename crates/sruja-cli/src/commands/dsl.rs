@@ -391,9 +391,41 @@ pub struct ExportOptions {
     pub all_views: bool,
     pub inject: Option<String>,
     pub hydrate: bool,
+    pub from_scan: bool,
+    pub repo: Option<String>,
+    pub output_dir: Option<String>,
 }
 
 pub async fn export(format: &str, file: &str, options: ExportOptions) -> Result<(), CliError> {
+    if options.from_scan {
+        let repo_path = Path::new(options.repo.as_deref().unwrap_or("."));
+        let graph = super::scan_repo_cached(repo_path)?;
+        match format {
+            "graphml" => {
+                let output = sruja_export::GraphMLExporter::export(&graph);
+                println!("{}", output);
+                return Ok(());
+            }
+            "neo4j" | "cypher" => {
+                let output = sruja_export::Neo4jExporter::export(&graph);
+                println!("{}", output);
+                return Ok(());
+            }
+            "obsidian" => {
+                let out_dir = options.output_dir.as_deref().unwrap_or("./obsidian-vault");
+                sruja_export::ObsidianExporter::export(&graph, Path::new(out_dir))?;
+                println!("Successfully exported Obsidian vault to {}", out_dir);
+                return Ok(());
+            }
+            _ => {
+                return Err(CliError::validation(format!(
+                    "Unsupported scan-based export format: {}. Supported: graphml, neo4j, cypher, obsidian",
+                    format
+                )));
+            }
+        }
+    }
+
     let (_, program) = super::parse_sruja_file(file)?;
 
     let output_str = match format {

@@ -1,10 +1,15 @@
-use crate::graph::{Edge, Graph, NodeKind};
+use crate::graph::{Edge, EdgeConfidence, Graph, NodeKind};
 
 pub struct ConfidenceScorer;
 
 impl ConfidenceScorer {
     pub fn score_graph(graph: &mut Graph) {
         let node_count = graph.nodes.len();
+
+        // Score edges
+        for edge in &mut graph.edges {
+            edge.confidence = Self::calculate_edge_confidence(edge);
+        }
 
         if node_count == 0 {
             graph.confidence = Some(100);
@@ -26,6 +31,43 @@ impl ConfidenceScorer {
 
         let avg_score = (total_score / node_count) as u8;
         graph.confidence = Some(avg_score);
+    }
+
+    fn calculate_edge_confidence(edge: &Edge) -> EdgeConfidence {
+        if edge.evidence.is_empty() {
+            return EdgeConfidence::Ambiguous;
+        }
+
+        let mut has_extracted = false;
+        let mut has_inferred = false;
+
+        for ev in &edge.evidence {
+            let rule = ev.rule.to_lowercase();
+            if rule.contains("import")
+                || rule.contains("use")
+                || rule.contains("require")
+                || rule.contains("dependency")
+                || rule.contains("manifest")
+                || rule.contains("ast")
+            {
+                has_extracted = true;
+            } else if rule.contains("path")
+                || rule.contains("pattern")
+                || rule.contains("naming")
+                || rule.contains("proximity")
+                || rule.contains("structure")
+            {
+                has_inferred = true;
+            }
+        }
+
+        if has_extracted {
+            EdgeConfidence::Extracted
+        } else if has_inferred {
+            EdgeConfidence::Inferred
+        } else {
+            EdgeConfidence::Ambiguous
+        }
     }
 
     fn calculate_node_confidence(node: &crate::graph::Node, edges: &[Edge]) -> u8 {

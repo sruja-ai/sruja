@@ -871,6 +871,7 @@ mod tests {
                 target: "db".to_string(),
                 kind: EdgeKind::Calls,
                 evidence: vec![],
+                confidence: Default::default(),
             }],
             confidence: None,
             incidents: vec![],
@@ -1040,12 +1041,14 @@ mod tests {
             target: "backend".to_string(),
             kind: EdgeKind::Calls,
             evidence: Vec::new(),
+            confidence: Default::default(),
         });
         reality.edges.push(Edge {
             source: "backend".to_string(),
             target: "users_db".to_string(),
             kind: EdgeKind::WritesTo,
             evidence: Vec::new(),
+            confidence: Default::default(),
         });
 
         let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
@@ -1236,6 +1239,7 @@ mod tests {
             target: "db".to_string(),
             kind: EdgeKind::Calls,
             evidence: vec![],
+            confidence: Default::default(),
         });
 
         let report = detector.detect(&intent, &reality, &DomainSchema::architecture());

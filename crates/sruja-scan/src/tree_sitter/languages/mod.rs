@@ -13,7 +13,7 @@ pub mod rust;
 pub mod scala;
 pub mod typescript;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[allow(dead_code)]
 pub enum Language {
     TypeScript,
@@ -33,7 +33,7 @@ pub enum Language {
 
 use std::path::Path;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[allow(dead_code)]
 pub struct ParsedFile {
     pub name: String,
@@ -43,7 +43,7 @@ pub struct ParsedFile {
     pub definitions: Vec<Definition>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[allow(dead_code)]
 pub struct Definition {
     pub name: String,
@@ -51,7 +51,7 @@ pub struct Definition {
     pub line: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DefinitionKind {
     Function,
     Class,

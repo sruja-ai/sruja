@@ -424,7 +424,16 @@ mod empty_repo {
         write_file(repo.path(), "data.txt", "some text");
 
         let graph = sruja_scan::scan_repo(repo.path()).expect("Scan should succeed");
-        assert!(graph.nodes.is_empty(), "Non-source files should be ignored");
+        // config.json should be ignored, but README.md and data.txt are parsed as docs
+        assert_eq!(
+            graph.nodes.len(),
+            2,
+            "README.md and data.txt should be parsed as Doc nodes"
+        );
+        assert!(graph
+            .nodes
+            .iter()
+            .all(|n| matches!(n.kind, sruja_scan::NodeKind::Custom(ref s) if s == "Doc")));
     }
 }
 

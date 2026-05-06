@@ -81,6 +81,7 @@ pub fn enrich_with_scip(repo_root: &Path) -> Result<Graph, Box<dyn Error>> {
                             line: Some(occ.line as u32 + 1), // SCIP is 0-indexed
                             detail: Some(format!("SCIP resolved symbol: {}", occ.symbol)),
                         }],
+                        confidence: Default::default(),
                     });
                 }
             }

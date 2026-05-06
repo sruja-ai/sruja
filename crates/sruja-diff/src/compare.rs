@@ -426,6 +426,7 @@ mod tests {
             target: target.to_string(),
             kind,
             evidence: vec![],
+            confidence: Default::default(),
         }
     }
 

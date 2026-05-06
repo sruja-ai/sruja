@@ -14,13 +14,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::graph::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
+use crate::scan_scope::should_exclude_with_config;
 use crate::ScanError;
 use rayon::prelude::*;
 
-use self::detector::Language;
-use crate::scan_scope::should_exclude_with_config;
-
-pub use detector::detect_language;
+pub use detector::{detect_language, Language};
 pub use languages::{Definition, DefinitionKind, ParsedFile};
 
 #[derive(Clone)]
@@ -33,6 +31,7 @@ pub struct ScanConfig {
     pub exclude_docs: bool,
     pub max_file_size: usize,
     pub classification_rules_path: Option<PathBuf>,
+    pub incremental: bool,
 }
 
 impl Default for ScanConfig {
@@ -46,6 +45,7 @@ impl Default for ScanConfig {
             exclude_docs: true,
             max_file_size: 500 * 1024,
             classification_rules_path: None,
+            incremental: false,
         }
     }
 }
@@ -84,11 +84,26 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 .map(|l| l.trim_start_matches("module ").trim().to_string())
         });
 
+    let mut manifest = if config.incremental {
+        crate::manifest::ScanManifest::load(repo_root).unwrap_or_default()
+    } else {
+        crate::manifest::ScanManifest::new()
+    };
+
+    let mut ast_cache = if config.incremental {
+        crate::ast_cache::AstCache::load(repo_root).unwrap_or_default()
+    } else {
+        crate::ast_cache::AstCache::new()
+    };
+
+    let mut visited_paths = std::collections::HashSet::new();
+    let mut parsed: Vec<(PathBuf, String, Language, ParsedFile)> = Vec::new();
+    let mut collected = Vec::new();
+    let mut diagnostics = ScanDiagnostics::default();
+
     // 1. Walk and collect eligible (path, content, language).
-    let (collected, diagnostics): (Vec<(PathBuf, String, Language)>, ScanDiagnostics) = {
+    {
         let walker = build_walker(repo_root, config);
-        let mut out = Vec::new();
-        let mut diagnostics = ScanDiagnostics::default();
         for entry in walker {
             let entry = entry.map_err(|e| ScanError::Walk(e.to_string()))?;
             let path = entry.path();
@@ -97,47 +112,67 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             }
             if let Some(language) = detect_language(path) {
                 diagnostics.language_files_seen += 1;
-                match std::fs::read_to_string(path) {
-                    Ok(content) => {
-                        if content.len() <= config.max_file_size {
-                            diagnostics.collected_files += 1;
-                            out.push((path.to_path_buf(), content, language));
-                        } else {
-                            diagnostics.skipped_large += 1;
+                let path_key = rel_path(repo_root, &repo_canon, path);
+                visited_paths.insert(path_key.clone());
+
+                let metadata_res = std::fs::metadata(path);
+                let size = metadata_res.as_ref().map(|m| m.len()).unwrap_or(0);
+
+                let mut use_cache = false;
+                if config.incremental {
+                    if let Some(entry) = manifest.entries.get(&path_key) {
+                        if entry.size_bytes == size {
+                            if let Ok(current_hash) = crate::manifest::ScanManifest::hash_file(path)
+                            {
+                                if entry.blake3_hash == current_hash {
+                                    if let Some((cached_lang, cached_pf)) =
+                                        ast_cache.files.get(&path_key)
+                                    {
+                                        if let Ok(content) = std::fs::read_to_string(path) {
+                                            diagnostics.collected_files += 1;
+                                            parsed.push((
+                                                path.to_path_buf(),
+                                                content,
+                                                *cached_lang,
+                                                cached_pf.clone(),
+                                            ));
+                                            use_cache = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !use_cache {
+                    match std::fs::read_to_string(path) {
+                        Ok(content) => {
+                            if content.len() <= config.max_file_size {
+                                diagnostics.collected_files += 1;
+                                collected.push((path.to_path_buf(), content, language));
+                            } else {
+                                diagnostics.skipped_large += 1;
+                                push_example(
+                                    &mut diagnostics.skipped_large_examples,
+                                    rel_path(repo_root, &repo_canon, path),
+                                );
+                            }
+                        }
+                        Err(_) => {
+                            diagnostics.read_failed += 1;
                             push_example(
-                                &mut diagnostics.skipped_large_examples,
+                                &mut diagnostics.read_failed_examples,
                                 rel_path(repo_root, &repo_canon, path),
                             );
                         }
                     }
-                    Err(_) => {
-                        diagnostics.read_failed += 1;
-                        push_example(
-                            &mut diagnostics.read_failed_examples,
-                            rel_path(repo_root, &repo_canon, path),
-                        );
-                    }
                 }
             }
         }
-        (out, diagnostics)
-    };
+    }
 
-    // 2. Build file_path_to_id from paths so resolve_import_improved works in merge.
-    let file_path_to_id: HashMap<String, String> = collected
-        .iter()
-        .filter_map(|(path, _, _)| {
-            let file_id = file_to_id(repo_root, path);
-            path.canonicalize().ok().and_then(|canon_path| {
-                canon_path
-                    .strip_prefix(&repo_canon)
-                    .ok()
-                    .map(|rel| (rel.to_string_lossy().to_string(), file_id))
-            })
-        })
-        .collect();
-
-    // 3. Parallel parse; keep content for merge (infer_node_kind needs it).
+    // 2. Parallel parse; keep content for merge (infer_node_kind needs it).
     enum ParseOutcome {
         Ok(PathBuf, String, Language, ParsedFile),
         Err(String),
@@ -153,11 +188,27 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         })
         .collect();
 
-    let mut parsed: Vec<(PathBuf, String, Language, ParsedFile)> = Vec::new();
-    let mut diagnostics = diagnostics;
     for outcome in outcomes {
         match outcome {
             ParseOutcome::Ok(path, content, language, parsed_file) => {
+                let path_key = rel_path(repo_root, &repo_canon, &path);
+
+                if config.incremental {
+                    if let Ok(hash) = crate::manifest::ScanManifest::hash_file(&path) {
+                        let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                        manifest.entries.insert(
+                            path_key.clone(),
+                            crate::manifest::ManifestEntry {
+                                size_bytes: size,
+                                blake3_hash: hash,
+                            },
+                        );
+                        ast_cache
+                            .files
+                            .insert(path_key.clone(), (language, parsed_file.clone()));
+                    }
+                }
+
                 parsed.push((path, content, language, parsed_file));
             }
             ParseOutcome::Err(rel) => {
@@ -166,6 +217,36 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             }
         }
     }
+
+    if config.incremental {
+        let mut deleted_keys = Vec::new();
+        for key in manifest.entries.keys() {
+            if !visited_paths.contains(key) {
+                deleted_keys.push(key.clone());
+            }
+        }
+        for key in deleted_keys {
+            manifest.entries.remove(&key);
+            ast_cache.files.remove(&key);
+        }
+
+        let _ = manifest.save(repo_root);
+        let _ = ast_cache.save(repo_root);
+    }
+
+    // 3. Build file_path_to_id from paths so resolve_import_improved works in merge.
+    let file_path_to_id: HashMap<String, String> = parsed
+        .iter()
+        .filter_map(|(path, _, _, _)| {
+            let file_id = file_to_id(repo_root, path);
+            path.canonicalize().ok().and_then(|canon_path| {
+                canon_path
+                    .strip_prefix(&repo_canon)
+                    .ok()
+                    .map(|rel| (rel.to_string_lossy().to_string(), file_id))
+            })
+        })
+        .collect();
 
     // 4. Single-threaded merge: same logic as before.
     let mut nodes: Vec<Node> = Vec::new();
@@ -243,6 +324,37 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         };
         nodes.push(node);
 
+        let extracted_comments = extract_comments_from_content(content);
+        for comment in extracted_comments {
+            let note_id = format!("note:{}:line{}", file_id, comment.line);
+            nodes.push(Node {
+                id: note_id.clone(),
+                kind: NodeKind::Custom("Note".to_string()),
+                label: format!("{}: {}", comment.keyword, comment.text),
+                technology: Some(language.to_string()),
+                path: Some(path.to_string_lossy().to_string()),
+                metadata: {
+                    let mut meta = HashMap::new();
+                    meta.insert("line".to_string(), comment.line.to_string());
+                    meta.insert("keyword".to_string(), comment.keyword);
+                    meta
+                },
+                ..Default::default()
+            });
+            edges.push(Edge {
+                source: note_id,
+                target: file_id.clone(),
+                kind: EdgeKind::Custom("explains".to_string()),
+                evidence: vec![EdgeEvidence {
+                    rule: "extracted_comment".to_string(),
+                    file: Some(path.to_string_lossy().to_string()),
+                    line: Some(comment.line as u32),
+                    detail: Some(format!("explains line {}", comment.line)),
+                }],
+                confidence: Default::default(),
+            });
+        }
+
         edges.push(Edge {
             source: module_id.clone(),
             target: file_id.clone(),
@@ -253,6 +365,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 line: None,
                 detail: Some("module contains this file".to_string()),
             }],
+            confidence: Default::default(),
         });
 
         for import in &parsed.imports {
@@ -307,6 +420,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                     line: None,
                     detail: Some(format!("exports {}", export)),
                 }],
+                confidence: Default::default(),
             });
         }
     }
@@ -327,6 +441,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                     line: None,
                     detail: Some(format!("imports from {}", target)),
                 }],
+                confidence: Default::default(),
             });
         }
     }
@@ -346,6 +461,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                     line: None,
                     detail: Some(format!("module imports from {}", target_module)),
                 }],
+                confidence: Default::default(),
             });
         }
     }
@@ -772,4 +888,86 @@ public class Helper {
             "Should include Main.java node"
         );
     }
+
+    #[test]
+    fn test_incremental_scan() {
+        let dir = tempfile::tempdir().unwrap();
+        let ts_file = dir.path().join("service.ts");
+        std::fs::write(
+            &ts_file,
+            r#"
+import { db } from './database';
+export class UserService {
+    getUser(id: string) { return db.find(id); }
+}
+"#,
+        )
+        .unwrap();
+
+        let mut config = ScanConfig::default();
+        config.incremental = true;
+
+        // First scan - builds cache
+        let graph1 = scan_with_tree_sitter(dir.path(), &config).unwrap();
+        assert!(!graph1.nodes.is_empty());
+        assert!(dir
+            .path()
+            .join(".sruja")
+            .join("scan_manifest.json")
+            .exists());
+        assert!(dir.path().join(".sruja").join("ast_cache.json").exists());
+
+        // Second scan - unchanged, should hit cache
+        let graph2 = scan_with_tree_sitter(dir.path(), &config).unwrap();
+        assert_eq!(graph1.nodes.len(), graph2.nodes.len());
+
+        // Modify file - should invalidate cache and update successfully
+        std::fs::write(
+            &ts_file,
+            r#"
+import { db } from './database';
+import { logger } from './logger';
+export class UserService {
+    getUser(id: string) { logger.info(id); return db.find(id); }
+}
+"#,
+        )
+        .unwrap();
+
+        let graph3 = scan_with_tree_sitter(dir.path(), &config).unwrap();
+        assert!(!graph3.nodes.is_empty());
+    }
+}
+
+struct ExtractedComment {
+    text: String,
+    line: usize,
+    keyword: String,
+}
+
+fn extract_comments_from_content(content: &str) -> Vec<ExtractedComment> {
+    let mut comments = Vec::new();
+    for (i, line) in content.lines().enumerate() {
+        let line_num = i + 1;
+        let trimmed = line.trim();
+        if trimmed.starts_with("//")
+            || trimmed.starts_with("#")
+            || trimmed.starts_with("///")
+            || trimmed.starts_with('*')
+        {
+            for keyword in &["NOTE:", "WHY:", "HACK:", "TODO:"] {
+                if let Some(idx) = trimmed.find(keyword) {
+                    let comment_text = trimmed[idx + keyword.len()..].trim().to_string();
+                    if !comment_text.is_empty() {
+                        comments.push(ExtractedComment {
+                            text: comment_text,
+                            line: line_num,
+                            keyword: keyword.trim_end_matches(':').to_string(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    comments
 }

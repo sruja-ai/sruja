@@ -107,16 +107,36 @@ mod context;
 pub use context::{context_export, ContextRequest};
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
+    scan_repo_cached_with_opts(repo_path, false)
+}
+
+pub(crate) fn scan_repo_cached_with_opts(
+    repo_path: &std::path::Path,
+    incremental: bool,
+) -> Result<sruja_scan::Graph, CliError> {
     let graph_path = repo_path.join(".sruja").join("graph.json");
 
-    if graph_path.exists() {
+    if !incremental && graph_path.exists() {
         let content = std::fs::read_to_string(&graph_path)?;
         if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
             return Ok(graph);
         }
     }
 
-    Ok(sruja_scan::scan_repo(repo_path)?)
+    let graph = if incremental {
+        sruja_scan::scan_repo_incremental(repo_path)?
+    } else {
+        sruja_scan::scan_repo(repo_path)?
+    };
+
+    let dir = repo_path.join(".sruja");
+    if !dir.exists() {
+        std::fs::create_dir_all(&dir)?;
+    }
+    let content = serde_json::to_string_pretty(&graph)?;
+    let _ = std::fs::write(graph_path, content);
+
+    Ok(graph)
 }
 
 #[cfg(test)]

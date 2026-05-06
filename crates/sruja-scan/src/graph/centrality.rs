@@ -369,12 +369,14 @@ mod tests {
                     target: "b".into(),
                     kind: EdgeKind::DependsOn,
                     evidence: vec![],
+                    confidence: Default::default(),
                 },
                 Edge {
                     source: "b".into(),
                     target: "c".into(),
                     kind: EdgeKind::DependsOn,
                     evidence: vec![],
+                    confidence: Default::default(),
                 },
             ],
             ..Graph::default()

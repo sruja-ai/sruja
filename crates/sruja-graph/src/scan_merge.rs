@@ -260,6 +260,7 @@ mod tests {
                     line: Some(1),
                     detail: Some("import { utils } from './utils'".to_string()),
                 }],
+                confidence: Default::default(),
             }],
             ..Graph::default()
         }
@@ -392,6 +393,7 @@ mod tests {
                     target: format!("target.{}", i),
                     kind: kind.clone(),
                     evidence: vec![],
+                    confidence: Default::default(),
                 }],
                 ..Graph::default()
             };

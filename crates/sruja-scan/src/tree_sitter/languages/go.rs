@@ -162,28 +162,26 @@ fn extract_type_declaration(
                                     }
                                 }
                             }
-                            "struct_type" | "interface_type" => {
-                                if j > 0 {
-                                    if let Some(prev) = child.child((j - 1) as u32) {
-                                        if prev.kind() == "type_identifier" {
-                                            if let Ok(name) = prev.utf8_text(content.as_bytes()) {
-                                                let is_exported = name
-                                                    .chars()
-                                                    .next()
-                                                    .map(|c| c.is_uppercase())
-                                                    .unwrap_or(false);
-                                                definitions.push(Definition {
-                                                    name: name.to_string(),
-                                                    kind: if type_node.kind() == "interface_type" {
-                                                        DefinitionKind::Interface
-                                                    } else {
-                                                        DefinitionKind::Struct
-                                                    },
-                                                    line: node.start_position().row + 1,
-                                                });
-                                                if is_exported {
-                                                    exports.push(name.to_string());
-                                                }
+                            "struct_type" | "interface_type" if j > 0 => {
+                                if let Some(prev) = child.child((j - 1) as u32) {
+                                    if prev.kind() == "type_identifier" {
+                                        if let Ok(name) = prev.utf8_text(content.as_bytes()) {
+                                            let is_exported = name
+                                                .chars()
+                                                .next()
+                                                .map(|c| c.is_uppercase())
+                                                .unwrap_or(false);
+                                            definitions.push(Definition {
+                                                name: name.to_string(),
+                                                kind: if type_node.kind() == "interface_type" {
+                                                    DefinitionKind::Interface
+                                                } else {
+                                                    DefinitionKind::Struct
+                                                },
+                                                line: node.start_position().row + 1,
+                                            });
+                                            if is_exported {
+                                                exports.push(name.to_string());
                                             }
                                         }
                                     }

@@ -166,6 +166,15 @@ pub enum Commands {
         /// Hydrate architecture elements with source code content (JSON only)
         #[arg(long)]
         hydrate: bool,
+        /// Export from scan graph instead of .sruja file (for graphml, neo4j, obsidian)
+        #[arg(long)]
+        from_scan: bool,
+        /// Repository path for scan-based export (requires --from-scan)
+        #[arg(long, short = 'r')]
+        repo: Option<String>,
+        /// Output directory for file-based exports (obsidian)
+        #[arg(long)]
+        output_dir: Option<String>,
     },
     /// Format a Sruja file
     Fmt {
@@ -585,6 +594,33 @@ pub enum Commands {
         /// Maximum tokens for repomap (default: 5000)
         #[arg(long, default_value_t = 5000)]
         max_tokens: usize,
+        /// Export the explanation report to a markdown file (e.g. GRAPH_REPORT.md)
+        #[arg(long)]
+        export_report: Option<String>,
+        /// Optional LLM enrichment (adds a clearly-labeled narrative section to --explain; never changes grounded scan output)
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command to run (reads explain JSON from stdin; writes markdown to stdout).
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout for --enrich-cmd in milliseconds (default: 15000)
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from --enrich-cmd stdout (default: 20000)
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
+        /// Run an incremental scan using AST caching (re-scan only modified files)
+        #[arg(long, short = 'u', alias = "incremental")]
+        update: bool,
     },
     /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
     Generate {
@@ -923,6 +959,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             all_views,
             inject,
             hydrate,
+            from_scan,
+            repo,
+            output_dir,
         } => {
             commands::export(
                 &format,
@@ -935,6 +974,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     all_views,
                     inject,
                     hydrate,
+                    from_scan,
+                    repo,
+                    output_dir,
                 },
             )
             .await
@@ -1190,14 +1232,42 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             format,
             max_files,
             max_tokens,
+            export_report,
+            enrich,
+            enrich_provider,
+            enrich_cmd,
+            enrich_model,
+            enrich_base_url,
+            enrich_timeout_ms,
+            enrich_max_bytes,
+            update,
         } => {
             if repomap {
                 commands::discover_repomap_cmd(&repo, max_files, max_tokens).await
             } else if explain {
-                commands::discover_explain(&repo, &format).await
+                commands::discover_explain(
+                    &repo,
+                    &format,
+                    export_report.as_deref(),
+                    enrich,
+                    enrich_provider.as_deref(),
+                    enrich_cmd.as_deref(),
+                    enrich_model.as_deref(),
+                    enrich_base_url.as_deref(),
+                    enrich_timeout_ms,
+                    enrich_max_bytes,
+                    update,
+                )
+                .await
             } else if context {
+                if update {
+                    let _ = commands::scan_repo_cached_with_opts(std::path::Path::new(&repo), true);
+                }
                 commands::discover_context(&repo, &format).await
             } else {
+                if update {
+                    let _ = commands::scan_repo_cached_with_opts(std::path::Path::new(&repo), true);
+                }
                 commands::discover_questions()
             }
         }

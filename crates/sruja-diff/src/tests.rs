@@ -43,6 +43,7 @@ mod cases {
             target: target.to_string(),
             kind,
             evidence: Vec::new(),
+            confidence: Default::default(),
         }
     }
 
@@ -69,6 +70,7 @@ mod cases {
             target: target.to_string(),
             kind,
             evidence,
+            confidence: Default::default(),
         }
     }
 

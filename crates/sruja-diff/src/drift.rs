@@ -691,6 +691,7 @@ mod tests {
             target: target.to_string(),
             kind: EdgeKind::Calls,
             evidence: vec![],
+            confidence: Default::default(),
         }
     }
 
@@ -815,6 +816,7 @@ mod tests {
                 line: Some(12),
                 detail: Some("db.query".to_string()),
             }],
+            confidence: Default::default(),
         });
 
         for i in 0..2 {

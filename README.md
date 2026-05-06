@@ -248,7 +248,8 @@ In your AI editor, use the **sruja-architecture skill**. It runs discovery and d
 sruja discover --context -r . --format json
 
 # Plain-English explanation of what Sruja found and why
-sruja discover --explain -r .
+# Use --update (alias --incremental) to run instantly using AST caching
+sruja discover --explain -r . --update
 
 # Validate
 sruja lint repo.sruja
@@ -256,6 +257,9 @@ sruja lint repo.sruja
 # Drift (when you have a baseline; the skill uses this too)
 sruja drift -r . -a repo.sruja
 ```
+
+### Automatic Community Detection
+When running `sruja discover --explain`, Sruja automatically partitions your architecture graph into highly cohesive modules using the Label Propagation Algorithm (LPA). It generates clear module labels, cohesion scores, and boundaries (flagging `Weakly Bounded` areas) to give you deep insights into your codebase's component groupings.
 
 ### Export for documentation
 
@@ -268,6 +272,15 @@ sruja export mermaid repo.sruja > ARCHITECTURE.mmd
 
 # JSON (machine-readable)
 sruja export json repo.sruja > ARCHITECTURE.json
+
+# GraphML (XML format for Gephi, Cytoscape)
+sruja export graphml repo.sruja --output-dir ./exports
+
+# Neo4j (Cypher statements for graph databases)
+sruja export neo4j repo.sruja --output-dir ./exports
+
+# Obsidian (interactive Markdown vault with dual-linked wiki-links and Mermaid graphs)
+sruja export obsidian repo.sruja --output-dir ./obsidian_vault
 ```
 
 ### Catch Architectural Drift in CI/CD

@@ -244,6 +244,7 @@ impl Exporter {
                 line: None,
                 head: None,
                 tail: None,
+                confidence: None,
             };
 
             dump.relations.push(relation_dump);
