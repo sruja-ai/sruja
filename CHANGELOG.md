@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.40.0...sruja-v0.41.0) (2026-05-06)
+
+
+### Features
+
+* **cli:** onboard flow, enrichment parity, coverage/docs alignment ([e26957d](https://github.com/sruja-ai/sruja/commit/e26957d532ae55c3bc067c470083d124b7c11377))
+* implement incremental scan, community detection, and exporters ([9d6c906](https://github.com/sruja-ai/sruja/commit/9d6c906a204fa88e068b45b26c7d2fc530206fa4))
+
 ## [0.40.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.39.0...sruja-v0.40.0) (2026-04-30)
 
 
