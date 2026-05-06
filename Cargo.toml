@@ -47,7 +47,7 @@ scip = "0.7.0"
 protobuf = "3"
 prost = "0.13"
 prost-types = "0.13"
-fastembed = "5.0"
+fastembed = "5.13"
 hnsw_rs = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
