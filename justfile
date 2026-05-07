@@ -12,16 +12,20 @@ default: help
 check: fmt lint test
     @echo "✅ All checks passed!"
 
+# CI-friendly meta target (reproducible + non-interactive)
+ci: check test-wasm extension-check
+    @echo "✅ CI suite passed!"
+
 # Build Rust libraries
 build:
     @echo "Building Rust libraries..."
-    cargo build --release
+    cargo build --release --locked
     @echo "✅ Build complete!"
 
 # Run Rust tests
 test:
     @echo "Testing Rust code..."
-    cargo test --workspace
+    cargo test --workspace --locked
     @echo "✅ Tests complete!"
 
 # Setup development environment
@@ -39,14 +43,14 @@ fmt:
 # Lint Rust code
 lint:
     @echo "Linting Rust code..."
-    cargo clippy --workspace -- -D warnings
+    cargo clippy --workspace --locked -- -D warnings
     @echo "✅ Linting complete!"
 
 # Run tests with coverage
 test-coverage:
     @echo "Running Rust tests with coverage..."
     @echo "Note: sruja-wasm is tested via wasm-pack, so it is excluded from llvm-cov."
-    cargo llvm-cov --workspace --exclude sruja-wasm
+    cargo llvm-cov --workspace --locked --exclude sruja-wasm
 
 # Run WASM tests (separately from llvm-cov)
 test-coverage-wasm: test-wasm
@@ -68,12 +72,14 @@ test-extraction:
 # Run WASM unit tests
 test-wasm:
     @echo "Testing WASM (sruja-wasm)..."
+    @command -v wasm-pack >/dev/null 2>&1 || (echo "❌ wasm-pack not found. Install it, then re-run: just test-wasm" && exit 1)
     cd crates/sruja-wasm && wasm-pack test --node
     @echo "✅ WASM tests passed"
 
 # Run Playwright E2E test
 test-e2e:
     @echo "Running E2E (Playwright)..."
+    @command -v npm >/dev/null 2>&1 || (echo "❌ npm not found. Install Node.js, then re-run: just test-e2e" && exit 1)
     npm run e2e
     @echo "✅ E2E tests passed"
 
@@ -93,6 +99,7 @@ install:
 # Build WASM (web target)
 wasm:
     @echo "Building Rust WASM (web)..."
+    @command -v wasm-pack >/dev/null 2>&1 || (echo "❌ wasm-pack not found. Install it, then re-run: just wasm" && exit 1)
     wasm-pack build --target web --out-dir crates/sruja-wasm/pkg crates/sruja-wasm --release
     @if command -v wasm-opt >/dev/null 2>&1; then \
         wasm-opt --enable-bulk-memory --enable-sign-ext --enable-nontrapping-float-to-int -Oz --strip-debug crates/sruja-wasm/pkg/sruja_wasm_bg.wasm -o crates/sruja-wasm/pkg/sruja_wasm_bg.wasm.tmp && mv crates/sruja-wasm/pkg/sruja_wasm_bg.wasm.tmp crates/sruja-wasm/pkg/sruja_wasm_bg.wasm; \
@@ -102,13 +109,25 @@ wasm:
 # Build WASM for Node.js
 wasm-nodejs:
     @echo "Building Rust WASM (nodejs target)..."
+    @command -v wasm-pack >/dev/null 2>&1 || (echo "❌ wasm-pack not found. Install it, then re-run: just wasm-nodejs" && exit 1)
     wasm-pack build --target nodejs --out-dir crates/sruja-wasm/pkg-nodejs crates/sruja-wasm --release
     @echo "✅ Node.js WASM build complete"
+
+# Compile + test the VS Code extension (no packaging)
+extension-check:
+    @echo "Checking VS Code extension..."
+    @command -v npm >/dev/null 2>&1 || (echo "❌ npm not found. Install Node.js, then re-run: just extension-check" && exit 1)
+    cd extension && npm ci --silent
+    cd extension && npm run copy:assets
+    cd extension && npm run compile
+    cd extension && npm test
+    @echo "✅ Extension checks passed"
 
 # Build VS Code extension package
 build-extension:
     @echo "Building Sruja VS Code extension..."
-    cd extension && npm install --silent
+    @command -v npm >/dev/null 2>&1 || (echo "❌ npm not found. Install Node.js, then re-run: just build-extension" && exit 1)
+    cd extension && npm ci --silent
     cd extension && npm run copy:assets
     cd extension && npm run compile
     cd extension && npx --yes @vscode/vsce package --no-dependencies
@@ -157,14 +176,20 @@ daily: setup check federate context-sync
 # Update AI editor context files
 context-sync:
     @echo "Updating AI editor context..."
-    @./target/release/sruja context -r . -f cursor-rules -o .cursorrules
-    @echo -e "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .cursorrules
-    @./target/release/sruja context -r . -f copilot-instructions -o .github/copilot-instructions.md
-    @echo -e "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .github/copilot-instructions.md
-    @./target/release/sruja context -r . -f cursor-rules -o CLAUDE.md
-    @echo -e "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> CLAUDE.md
-    @./target/release/sruja context -r . -f cursor-rules -o .gemini/AGENTS.md
-    @echo -e "\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in \`AGENTS.md\` before proceeding with any task." >> .gemini/AGENTS.md
+    @set -euo pipefail; \
+      FOOTER=$'\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in `AGENTS.md` before proceeding with any task.\n'; \
+      ./target/release/sruja context -r . -f cursor-rules -o .cursorrules.tmp; \
+      printf "%s" "$$FOOTER" >> .cursorrules.tmp; \
+      mv .cursorrules.tmp .cursorrules; \
+      ./target/release/sruja context -r . -f copilot-instructions -o .github/copilot-instructions.md.tmp; \
+      printf "%s" "$$FOOTER" >> .github/copilot-instructions.md.tmp; \
+      mv .github/copilot-instructions.md.tmp .github/copilot-instructions.md; \
+      ./target/release/sruja context -r . -f cursor-rules -o CLAUDE.md.tmp; \
+      printf "%s" "$$FOOTER" >> CLAUDE.md.tmp; \
+      mv CLAUDE.md.tmp CLAUDE.md; \
+      ./target/release/sruja context -r . -f cursor-rules -o .gemini/AGENTS.md.tmp; \
+      printf "%s" "$$FOOTER" >> .gemini/AGENTS.md.tmp; \
+      mv .gemini/AGENTS.md.tmp .gemini/AGENTS.md
     @echo "✅ AI context synchronized"
 
 # Federated Architecture
@@ -255,8 +280,14 @@ demo-intel:
 # Clean build artifacts
 clean:
     @echo "Cleaning build artifacts..."
-    rm -rf target/ Cargo.lock bin/
+    rm -rf target/ bin/
     @echo "✅ Clean complete!"
+
+# Deep clean (includes lockfiles and Node artifacts). Use with care.
+clean-all: clean
+    @echo "Deep cleaning (lockfiles + node_modules)..."
+    rm -rf Cargo.lock extension/node_modules extension/out
+    @echo "✅ Deep clean complete!"
 
 # Show help
 help:

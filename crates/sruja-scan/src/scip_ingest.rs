@@ -115,3 +115,50 @@ fn resolve_symbol_to_id(symbol: &str) -> String {
 fn is_interesting_symbol(symbol: &str) -> bool {
     !symbol.starts_with("local ") && !symbol.is_empty()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_temp_dir(prefix: &str) -> std::path::PathBuf {
+        let mut dir = std::env::temp_dir();
+        let uniq = format!(
+            "{}-{}-{}",
+            prefix,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
+        dir.push(uniq);
+        std::fs::create_dir_all(&dir).expect("create temp dir");
+        dir
+    }
+
+    #[test]
+    fn interesting_symbol_filters_local_and_empty() {
+        assert!(is_interesting_symbol("scip-java foo/bar"));
+        assert!(!is_interesting_symbol(""));
+        assert!(!is_interesting_symbol("local foo"));
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_is_deterministic_and_sanitizes() {
+        let id1 = resolve_symbol_to_id("scip-typescript npm://pkg/foo bar/baz.ts");
+        let id2 = resolve_symbol_to_id("scip-typescript npm://pkg/foo bar/baz.ts");
+        assert_eq!(id1, id2);
+        assert!(!id1.contains('/'));
+        assert!(!id1.contains('.'));
+        assert!(!id1.contains(' '));
+    }
+
+    #[test]
+    fn enrich_with_scip_errors_when_index_missing() {
+        let dir = make_temp_dir("sruja-scip-missing");
+        let err = enrich_with_scip(&dir).expect_err("expected missing index.scip error");
+        assert!(err.to_string().contains("No index.scip"));
+        // Best-effort cleanup (avoid failing the test if deletion fails).
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
