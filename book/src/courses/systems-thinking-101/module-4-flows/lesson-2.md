@@ -50,6 +50,7 @@ I've built countless data systems over the years, and data flows are always the 
 Data flows tell you the complete history of data—where it started and every transformation it went through.
 
 ```sruja
+// partial
 CustomerAnalyticsFlow = flow "Customer Data Lineage" {
   // Source: Where data starts
   Customer -> CRMSystem "Creates customer profile"
@@ -83,6 +84,7 @@ I once worked on a project where nobody knew where analytics data came from. We 
 Data flows reveal the processing steps your data goes through—the "how" not just the "what."
 
 ```sruja
+// partial
 ETLPipelineFlow = flow "ETL Pipeline Steps" {
   // Step 1: Extraction
   SourceDatabase -> IngestionService "Pulls raw transactions"
@@ -107,6 +109,7 @@ When something breaks—a data quality issue, a failed load, a malformed record�
 Data flows document how data transforms at each step—what shape it takes, what format it's in.
 
 ```sruja
+// partial
 TransformationFlow = flow "Data Transformations" {
   RawSource -> ETLService "Raw CSV file"
   
@@ -139,6 +142,7 @@ I once inherited a system where nobody documented data transformations. We found
 Data flows make bottlenecks obvious—where processing might slow down, where queues might form, where latency will be worst.
 
 ```sruja
+// partial
 AnalyticsFlow = flow "Analytics Pipeline" {
   UserActions -> TrackingService "Captures events" [fast]
   TrackingService -> EventStream "Publishes events" [fast]
@@ -159,6 +163,7 @@ Sruja gives you the `flow` keyword for creating DFD-style data flows. It's desig
 ### Using `flow` for Data Pipelines
 
 ```sruja
+// partial
 OrderDataFlow = flow "Order Data Processing" {
   Customer -> WebApp "Order form submission"
   WebApp -> API "Order JSON payload"
@@ -175,6 +180,7 @@ OrderDataFlow = flow "Order Data Processing" {
 You can add metadata to document what each step does:
 
 ```sruja
+// partial
 ETLService = container "ETL Service" {
   metadata {
     transformations [
@@ -205,6 +211,7 @@ After building data systems for years, I've noticed patterns that repeat constan
 Extract, Transform, Load—the classic pattern for moving data from operational systems to analytics.
 
 ```sruja
+// partial
 ETLPipelineFlow = flow "Classic ETL Pipeline" {
   // Extract: Pull from source systems
   TransactionDB -> DataCollector "Extracts daily transactions"
@@ -234,6 +241,7 @@ ETLPipelineFlow = flow "Classic ETL Pipeline" {
 Every change to data is captured as an event, and different services project events into read models.
 
 ```sruja
+// partial
 EventSourcingFlow = flow "Event Sourcing Pattern" {
   // Events captured
   OrderAPI -> EventStore "Persist OrderCreated event"
@@ -265,6 +273,7 @@ EventSourcingFlow = flow "Event Sourcing Pattern" {
 Events flow through a real-time processing pipeline for immediate insights.
 
 ```sruja
+// partial
 RealTimeAnalyticsFlow = flow "Real-Time Analytics Pipeline" {
   // Events captured
   UserActions -> EventCollector "Captures clickstream events"
@@ -294,6 +303,7 @@ RealTimeAnalyticsFlow = flow "Real-Time Analytics Pipeline" {
 Batch processing for comprehensive analytics plus real-time for speed.
 
 ```sruja
+// partial
 LambdaArchitectureFlow = flow "Lambda Architecture" {
   // Speed layer: Real-time
   Events -> StreamProcessing "Real-time processing"
@@ -325,6 +335,7 @@ One of the most important things you can do in data flows is document transforma
 ### Using Relationship Labels
 
 ```sruja
+// partial
 TransformFlow = flow "Data Transformations" {
   RawSource -> ETLService "Raw CSV data"
   ETLService -> ValidatedData "Validated (removed invalids)"
@@ -339,6 +350,7 @@ Each label describes what transformation happened at that step.
 ### Adding Metadata
 
 ```sruja
+// partial
 ETLService = container "ETL Service" {
   metadata {
     transformations [
@@ -361,6 +373,7 @@ This metadata provides complete documentation of what transformations happen.
 Let me show you a complete example that brings everything together.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // People
@@ -478,6 +491,7 @@ You're creating a data flow for an e-commerce platform. Which structure best doc
 
 **A)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   TransactionDB -> ETLService "Extract"
   ETLService -> DataWarehouse "Load"
@@ -486,6 +500,7 @@ ETLPipeline = flow "ETL Pipeline" {
 
 **B)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   TransactionDB -> ETLService "Extract transactions"
   ETLService -> ValidatedData "Validate and remove errors"
@@ -497,6 +512,7 @@ ETLPipeline = flow "ETL Pipeline" {
 
 **C)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   TransactionDB -> DataWarehouse "Move data"
 }
@@ -504,6 +520,7 @@ ETLPipeline = flow "ETL Pipeline" {
 
 **D)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   TransactionDB -> ETLService "Extract"
   ETLService -> ValidatedData "?"

@@ -102,6 +102,7 @@ Order -> Payment "Triggers"
 ### Level 1: Beginner (C4 Style)
 
 ```sruja
+// partial
 // Element kinds
 person = kind "Person"
 system = kind "System"
@@ -128,6 +129,7 @@ shop.webApp -> shop.db "Reads/Writes"
 ### Level 2: Intermediate (Detailed Architecture)
 
 ```sruja
+// partial
 // Element kinds
 system = kind "System"
 container = kind "Container"
@@ -159,6 +161,7 @@ ShopAPI.API -> ShopAPI.DB "Reads/Writes"
 ### Level 3: Advanced (Governance + Operations)
 
 ```sruja
+// partial
 // Element kinds
 person = kind "Person"
 system = kind "System"
@@ -471,6 +474,7 @@ ShopAPI -> PaymentGateway "Processes payments"
 **Beginner**: Just model the parts and connections
 
 ```sruja
+// partial
 // Element kinds
 system = kind "System"
 container = kind "Container"

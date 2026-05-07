@@ -17,6 +17,7 @@ This quiz covers all three lessons in Module 3. Take your time, think through ea
 You're reviewing an architecture diagram for a healthcare platform and notice this structure:
 
 ```sruja
+// partial
 // People
 Patient = person "Patient"
 Doctor = person "Doctor"
@@ -46,6 +47,7 @@ The diagram has three systems, but there's no way to tell which one is being bui
 **What the diagram should include:**
 
 ```sruja
+// partial
 // Internal system (what you own and control)
 HospitalSystem = system "Hospital Scheduling" {
   // No tags = internal by default
@@ -118,6 +120,7 @@ These are internal systems (same company), but different teams are responsible f
 **What this looks like in Sruja:**
 
 ```sruja
+// partial
 // Team A's system
 Shop = system "Shop" {
   metadata {
@@ -185,6 +188,7 @@ Request-response is the right choice here because:
 **What this looks like:**
 
 ```sruja
+// partial
 TradingApp = system "Trading App" {
   WebApp = container "Web Application"
   API = container "API Service"
@@ -312,6 +316,7 @@ This is the best structure because:
 **Why this works:**
 
 ```sruja
+// partial
 GoogleMaps = system "Google Maps" {
   metadata {
     tags ["external"]  // Clearly external
@@ -383,6 +388,7 @@ Let's analyze what 99.9% uptime actually means:
 **The right approach:**
 
 ```sruja
+// partial
 // Primary payment provider
 Stripe = system "Stripe" {
   metadata {

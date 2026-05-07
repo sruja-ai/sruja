@@ -30,6 +30,7 @@ Every example here follows our ["FAANG-level" quality standards](docs/style-guid
 - **Complexity**: Models the "Legacy Core" vs "Modern Interface" pattern often seen in enterprise.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -113,6 +114,7 @@ include *
 - **Caching**: Strategic placement of Redis caches.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

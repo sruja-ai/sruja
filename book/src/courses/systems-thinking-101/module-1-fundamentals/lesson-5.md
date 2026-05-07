@@ -23,6 +23,7 @@ Boundaries clarify scope (what you own vs. what you depend on), guide integratio
 ## Practical Example
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // OUTSIDE: Stakeholders and dependencies

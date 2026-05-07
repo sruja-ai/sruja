@@ -152,6 +152,7 @@ end
 
 With this view definition:
 ```sruja
+// partial
 view all_containers {
     title "All Containers"
     include Shop.*

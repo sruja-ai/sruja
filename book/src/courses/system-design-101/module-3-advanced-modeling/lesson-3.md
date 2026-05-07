@@ -99,6 +99,7 @@ User flows show what the user experiences, not technical details. They answer: "
 **Example: Buying a Ticket**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 User = person "Customer"
@@ -152,6 +153,7 @@ Technical sequences show how containers and components interact. They answer: "W
 **Example: Authentication Flow**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 User = person "End User"
@@ -199,6 +201,7 @@ view index {
 Scenarios become more valuable when you add metadata. Sruja supports properties on each step:
 
 ```sruja
+// partial
 PaymentFlow = scenario "Payment Processing" {
     Customer -> ECommerce.Cart "Initiates checkout" {
         latency "50ms"
@@ -238,6 +241,7 @@ After years of writing scenarios, I've found a few patterns that work well.
 Don't try to model every possible path. Model the happy path and the important edge cases:
 
 ```sruja
+// partial
 // Happy path
 CheckoutSuccess = story "Successful checkout" {
     Customer -> Cart "Initiates checkout"
@@ -270,6 +274,7 @@ Three scenarios cover 95% of checkout behavior. You don't need 20 scenarios for 
 For complex user journeys, break them into phases:
 
 ```sruja
+// partial
 // Phase 1: Discovery
 OnboardingDiscovery = story "User discovers features" {
     User -> App "Opens app"
@@ -299,6 +304,7 @@ This helps product teams understand user behavior at each stage.
 Model what happens when things break:
 
 ```sruja
+// partial
 // Service failure
 PaymentServiceDown = scenario "Payment service unavailable" {
     Customer -> Cart "Initiates checkout"
@@ -357,6 +363,7 @@ I've seen teams misuse scenarios in predictable ways.
 Let me show you a complete example with all the patterns:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"
@@ -451,6 +458,7 @@ Sruja supports both simple and formal syntax for scenarios.
 Quick and lightweight:
 
 ```sruja
+// partial
 LoginFailure = scenario "Login Failure" {
     User -> AuthSystem.WebApp "Enters wrong password"
     AuthSystem.WebApp -> User "Shows error message"
@@ -464,6 +472,7 @@ LoginFailure = scenario "Login Failure" {
 More structure for important scenarios:
 
 ```sruja
+// partial
 CheckoutProcess = scenario "Checkout Process" {
     description "The complete checkout flow including payment and inventory check"
     

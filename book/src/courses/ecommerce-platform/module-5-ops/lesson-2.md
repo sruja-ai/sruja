@@ -17,6 +17,7 @@ Start reading random logs or guessing which database query is slow.
 Look at your Sruja **User Journey** for "Purchase".
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -59,6 +60,7 @@ We need to decouple the user request from the payment processing.
 Let's update the architecture:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

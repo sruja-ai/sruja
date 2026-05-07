@@ -38,6 +38,7 @@ Here's the beautiful thing about Sruja: you define your architecture **once**, t
 Let me show you how this works with a real example:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Define people who interact with the system

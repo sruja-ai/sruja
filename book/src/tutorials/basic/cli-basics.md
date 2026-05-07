@@ -38,6 +38,7 @@ If `sruja` is not found, ensure the install directory is on your `PATH` (install
 ## Create a Model
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

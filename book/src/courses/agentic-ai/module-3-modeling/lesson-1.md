@@ -34,6 +34,7 @@ include *
 If you are designing the internals, agents are often **Containers** (deployable units).
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -49,6 +50,7 @@ VectorDB = database "Memory"
 If you are designing a single agent's logic, the specific tools and chains are **Components**.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -66,6 +68,7 @@ SearchAgent = container "Search Agent" {
 Use metadata to capture AI-specific details:
 
 ```sruja
+// partial
 container GPT4Agent {
   metadata {
     model "gpt-4-turbo"

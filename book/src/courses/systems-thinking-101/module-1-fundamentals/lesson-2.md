@@ -76,6 +76,7 @@ Let's make this concrete with a real example.
 Imagine you're working on an e-commerce platform, and you're dealing with slow page loads. Here's how the iceberg model helps you diagnose the problem:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Event: Slow page loads

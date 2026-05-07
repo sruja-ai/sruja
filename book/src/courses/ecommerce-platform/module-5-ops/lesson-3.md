@@ -26,6 +26,7 @@ Your Sruja components should map 1:1 to your observability dashboards.
 You can enforce observability standards using Sruja Policies.
 
 ```sruja
+// partial
 policy Observability "Must have metrics" {
     rule "HealthCheck" {
         check "all containers must have health check endpoint"

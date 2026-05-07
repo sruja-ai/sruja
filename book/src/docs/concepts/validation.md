@@ -21,6 +21,7 @@ Sruja validates your model to catch issues early.
 ## Example
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

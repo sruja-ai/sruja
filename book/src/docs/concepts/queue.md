@@ -11,6 +11,7 @@ A **Queue** represents a message queue, topic, or event stream. It is a speciali
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -23,6 +24,7 @@ technology "Technology"
 ## Example
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

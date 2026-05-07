@@ -39,10 +39,32 @@ for md_file in $(find "$BOOK_SRC" -name "*.md" -type f); do
       continue
     fi
     
-    # Write to temp file
+    # Write to temp file with prepended standard kinds if not already imported or defined
     tmp_name="${rel//\//_}"
     tmp_name="${tmp_name%.md}_${block_num}.sruja"
-    echo "$content" > "$TMP_DIR/$tmp_name"
+    {
+      if ! echo "$content" | grep -qi "import"; then
+        if ! echo "$content" | grep -qi "person\s*=\s*kind"; then
+          echo 'person = kind "Person"'
+        fi
+        if ! echo "$content" | grep -qi "system\s*=\s*kind"; then
+          echo 'system = kind "System"'
+        fi
+        if ! echo "$content" | grep -qi "container\s*=\s*kind"; then
+          echo 'container = kind "Container"'
+        fi
+        if ! echo "$content" | grep -qi "component\s*=\s*kind"; then
+          echo 'component = kind "Component"'
+        fi
+        if ! echo "$content" | grep -qiE "(database|datastore)\s*=\s*kind"; then
+          echo 'database = kind "Database"'
+        fi
+        if ! echo "$content" | grep -qi "queue\s*=\s*kind"; then
+          echo 'queue = kind "Queue"'
+        fi
+      fi
+      echo "$content"
+    } > "$TMP_DIR/$tmp_name"
     
     # Run sruja lint
     if $SRUJA lint "$TMP_DIR/$tmp_name" > /dev/null 2>&1; then

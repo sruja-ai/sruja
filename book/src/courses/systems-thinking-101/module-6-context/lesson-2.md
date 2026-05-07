@@ -171,6 +171,7 @@ These stakeholders can block your launch. They don't use the system, but they re
 **Example:**
 
 ```sruja
+// partial
 ComplianceOfficer = person "Compliance Officer" {
   description "Ensures regulatory compliance"
   metadata {
@@ -204,6 +205,7 @@ Let me share a specific example that taught me why stakeholder modeling matters.
 **The solution:** We modeled both stakeholders explicitly:
 
 ```sruja
+// partial
 ProductManager = person "Product Manager" {
   metadata {
     vision "Clean, minimal, modern interface"
@@ -266,6 +268,7 @@ Use this for primary stakeholders where you need to capture their full context.
 ### Stakeholder With Relationships
 
 ```sruja
+// partial
 Customer = person "Customer"
 Shop = system "Shop"
 
@@ -280,6 +283,7 @@ Relationships show how stakeholders interact with the system. Notice the bidirec
 For critical user types, create detailed personas:
 
 ```sruja
+// partial
 Sarah = person "Sarah (Customer Persona)" {
   description "Busy professional, 35, shops on mobile during commute"
   metadata {
@@ -310,6 +314,7 @@ Personas bring stakeholders to life. They're especially useful when you need to 
 Let me show you how all this comes together in a real architecture:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // =========== STAKEHOLDERS ===========

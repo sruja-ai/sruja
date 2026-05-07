@@ -13,6 +13,7 @@ Focus on hot paths to reason about scaling, backpressure, and caching. High-thro
 ## Sruja: High‑Throughput View
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

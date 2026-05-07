@@ -34,6 +34,7 @@ At its simplest level, a flow shows **sequence**—how something moves from poin
 Let me show you the difference:
 
 ```sruja
+// partial
 // Static relationship: Just shows connection
 Customer -> Shop.WebApp "Uses"
 
@@ -66,6 +67,7 @@ After years of modeling systems, I've found flows reveal things static relations
 Flows show you the complete path data takes through your system—where it starts, how it's transformed, and where it ends up.
 
 ```sruja
+// partial
 OrderAnalyticsFlow = flow "Order Data Lineage" {
   // Where data starts
   Customer -> Shop.WebApp "Order details"
@@ -94,6 +96,7 @@ Without this flow, would you know the order data goes to a data warehouse? Would
 Flows show you the exact sequence of actions that happen when something occurs. This is crucial for understanding how your system actually works.
 
 ```sruja
+// partial
 OrderProcessFlow = scenario "Order Processing Sequence" {
   // Customer action
   Customer -> Shop.WebApp "Submits order"
@@ -121,6 +124,7 @@ This flow reveals the complete sequence of what happens when an order is submitt
 Flows make bottlenecks obvious. You can see which steps might become slow, where queues might form, and where performance issues will surface first.
 
 ```sruja
+// partial
 FileUploadFlow = scenario "File Upload" {
   // Fast steps
   User -> Frontend "Selects file and clicks upload"
@@ -145,6 +149,7 @@ I've used this pattern countless times. A team would spend weeks optimizing the 
 Static relationships show you the happy path. Flows let you model what happens when things go wrong.
 
 ```sruja
+// partial
 OrderWithErrorsFlow = scenario "Order Processing with Error Handling" {
   Customer -> Shop.API "Submits order"
   Shop.API -> PaymentGateway "Charges payment"
@@ -174,6 +179,7 @@ After modeling systems for years, I've found there are really four main types of
 Data flows show how data moves and transforms as it passes through your system. Think of them like a pipeline—data goes in one end, gets transformed, and comes out the other.
 
 ```sruja
+// partial
 OrderDataFlow = flow "Order Data Pipeline" {
   // Data originates from customer
   Customer -> Shop.WebApp "Order details"
@@ -209,6 +215,7 @@ OrderDataFlow = flow "Order Data Pipeline" {
 User journeys show how a person interacts with your system to achieve a goal. These are behavioral flows from the user's perspective.
 
 ```sruja
+// partial
 CheckoutJourney = scenario "Customer Checkout Experience" {
   // User actions
   Customer -> Shop.WebApp "Clicks checkout button"
@@ -245,6 +252,7 @@ CheckoutJourney = scenario "Customer Checkout Experience" {
 Control flows show decision points and branching logic. They model the "if this, then that" parts of your system.
 
 ```sruja
+// partial
 ApprovalFlow = scenario "Order Approval Workflow" {
   Order -> ApprovalService "Submits for approval"
   
@@ -277,6 +285,7 @@ ApprovalFlow = scenario "Order Approval Workflow" {
 Event flows show how events propagate through an event-driven system. They model pub/sub patterns and event sourcing architectures.
 
 ```sruja
+// partial
 OrderEventFlow = flow "Order Event Propagation" {
   // Event published
   OrderAPI -> EventBus "Publishes OrderCreated event"
@@ -309,6 +318,7 @@ Beyond types, there are structural patterns for how flows behave. Understanding 
 The simplest pattern—things happen one after another in a straight line.
 
 ```sruja
+// partial
 LinearFlow = scenario "Simple Three-Step Process" {
   Step1 -> Step2 "Process A"
   Step2 -> Step3 "Process B"
@@ -327,6 +337,7 @@ LinearFlow = scenario "Simple Three-Step Process" {
 One step branches into multiple possible paths. This is where your control flow logic lives.
 
 ```sruja
+// partial
 BranchingFlow = scenario "Conditional Processing" {
   Start -> DecisionPoint "Initial processing"
   
@@ -352,6 +363,7 @@ BranchingFlow = scenario "Conditional Processing" {
 Multiple paths start separately but eventually come back together.
 
 ```sruja
+// partial
 ConvergingFlow = scenario "Parallel then Merge" {
   // Parallel paths
   Start -> PathA "Process A"
@@ -377,6 +389,7 @@ ConvergingFlow = scenario "Parallel then Merge" {
 A step repeats multiple times until a condition is met.
 
 ```sruja
+// partial
 RetryingFlow = scenario "Payment with Retry Logic" {
   API -> PaymentGateway "Process payment"
   
@@ -409,6 +422,7 @@ Sruja gives you three keywords for flows, and they're essentially interchangeabl
 Use `scenario` for behavioral flows, especially user journeys and BDD-style scenarios.
 
 ```sruja
+// partial
 MyScenario = scenario "User Logs In" {
   User -> WebApp "Enters credentials"
   WebApp -> API "Submits login"
@@ -424,6 +438,7 @@ MyScenario = scenario "User Logs In" {
 Use `story` as an alias for `scenario`. It's the same thing, just a different keyword that some teams prefer for user stories.
 
 ```sruja
+// partial
 MyStory = story "As a customer, I want to purchase products" {
   Customer -> WebApp "Browses products"
   Customer -> WebApp "Adds to cart"
@@ -438,6 +453,7 @@ MyStory = story "As a customer, I want to purchase products" {
 Use `flow` for data-oriented flows, especially DFD-style data flows and event flows.
 
 ```sruja
+// partial
 MyFlow = flow "Data Processing Pipeline" {
   Source -> Ingestion "Raw data"
   Ingestion -> Processing "Transformed data"
@@ -473,6 +489,7 @@ Let me share some mistakes I've made and seen others make. Hopefully, you can av
 ### Mistake 1: Too Much Detail
 
 ```sruja
+// partial
 // Bad: Way too detailed
 LoginFlow = scenario "User Login (Too Detailed)" {
   User -> UI "Clicks login button"
@@ -492,6 +509,7 @@ This is ridiculous. We're showing database queries, HTTP methods, password hashi
 
 **Better approach:** Group related steps together.
 ```sruja
+// partial
 // Good: Right level of detail
 LoginFlow = scenario "User Login" {
   User -> UI "Submits credentials"
@@ -507,6 +525,7 @@ LoginFlow = scenario "User Login" {
 ### Mistake 2: Too Abstract
 
 ```sruja
+// partial
 // Bad: Not useful
 ProcessFlow = scenario "Data Processing (Too Abstract)" {
   Start -> End "Data gets processed"
@@ -517,6 +536,7 @@ This tells you nothing. What kind of data? How is it processed? What happens in 
 
 **Better approach:** Add meaningful intermediate steps that explain what's actually happening.
 ```sruja
+// partial
 // Good: Meaningful steps
 ProcessFlow = scenario "Order Processing" {
   Order -> API "Submits order"
@@ -529,6 +549,7 @@ ProcessFlow = scenario "Order Processing" {
 ### Mistake 3: Mixing Flows with Static Relationships
 
 ```sruja
+// partial
 // Bad: Confusing mix
 Customer -> Shop.WebApp "Uses"  // Static relationship
 
@@ -542,6 +563,7 @@ This is confusing. You have both a static relationship and a flow between the sa
 
 **Better approach:** Keep flows and static relationships separate. Use flows for sequences, static relationships for overall structure.
 ```sruja
+// partial
 // Static architecture view
 view architecture {
   title "System Architecture"
@@ -561,6 +583,7 @@ view checkout_flow {
 ### Mistake 4: One Path Assumes Success
 
 ```sruja
+// partial
 // Bad: Only shows happy path
 OrderFlow = scenario "Order Processing" {
   Customer -> Shop.API "Submits order"
@@ -574,6 +597,7 @@ This only works if everything goes perfectly. But what happens if payment fails?
 
 **Better approach:** Model both success and failure paths.
 ```sruja
+// partial
 // Good: Shows both paths
 OrderFlow = scenario "Order Processing with Errors" {
   Customer -> Shop.API "Submits order"

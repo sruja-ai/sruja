@@ -52,6 +52,7 @@ This is one of the **most common system design interview questions**. It tests:
 Model each microservice as a **separate system** within the architecture. This clearly shows service boundaries.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -274,6 +275,7 @@ include *
 Add them to your design (extending the main architecture):
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

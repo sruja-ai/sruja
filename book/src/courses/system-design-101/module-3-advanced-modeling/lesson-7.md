@@ -122,6 +122,7 @@ Views aren't static. They're living documentation that needs maintenance. Here's
 ### Stage 1: Creation
 
 ```sruja
+// partial
 view security {
   title "Security Architecture"
   description "Shows trust boundaries, data encryption, and external integrations. Use for security reviews and compliance audits."
@@ -175,6 +176,7 @@ Views need updates when:
 4. Keep for 30 days, then delete
 
 ```sruja
+// partial
 view old-performance {
   title "Performance View (DEPRECATED)"
   description "DEPRECATED: Use 'performance-v2' instead. This view doesn't include the new caching layer."
@@ -208,6 +210,7 @@ Bad names kill view discoverability. Here's what works:
 ### Pattern 1: Audience-Based Names
 
 ```sruja
+// partial
 view executive { /* for executives */ }
 view product { /* for product managers */ }
 view architect { /* for architects */ }
@@ -220,6 +223,7 @@ view operations { /* for ops team */ }
 ### Pattern 2: Concern-Based Names
 
 ```sruja
+// partial
 view security { /* security focus */ }
 view performance { /* performance focus */ }
 view dataflow { /* data dependencies */ }
@@ -231,6 +235,7 @@ view deployment { /* deployment architecture */ }
 ### Pattern 3: Feature-Based Names
 
 ```sruja
+// partial
 view checkout { /* checkout feature */ }
 view search { /* search functionality */ }
 view analytics { /* analytics pipeline */ }
@@ -242,6 +247,7 @@ view notifications { /* notification system */ }
 ### Pattern 4: Layer-Based Names
 
 ```sruja
+// partial
 view context { /* C4 context layer */ }
 view containers { /* C4 container layer */ }
 view components { /* C4 component layer */ }
@@ -275,6 +281,7 @@ When your architecture grows beyond 10 services, you need organization strategie
 Every system should have these 5 views minimum:
 
 ```sruja
+// partial
 view index { /* Complete system */ }
 view executive { /* Business context */ }
 view architect { /* Technical architecture */ }
@@ -289,6 +296,7 @@ These cover 90% of use cases.
 Add concern-specific views as needed:
 
 ```sruja
+// partial
 view performance { /* When performance matters */ }
 view dataflow { /* When data pipelines exist */ }
 view deployment { /* When deployment is complex */ }
@@ -300,6 +308,7 @@ view integration { /* When many external APIs */ }
 For large systems, create feature-specific views:
 
 ```sruja
+// partial
 view checkout { /* Checkout feature */ }
 view search { /* Search feature */ }
 view recommendations { /* Recommendations feature */ }
@@ -310,6 +319,7 @@ view recommendations { /* Recommendations feature */ }
 For orgs with domain-driven design:
 
 ```sruja
+// partial
 view catalog-domain { /* Catalog team */ }
 view order-domain { /* Order team */ }
 view payment-domain { /* Payment team */ }
@@ -516,6 +526,7 @@ For managing views at scale, use this framework:
 Let me show you a well-organized view structure for a growing e-commerce platform:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"

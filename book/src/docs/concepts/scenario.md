@@ -11,6 +11,7 @@ Scenarios describe behavioral flows as ordered steps. They focus on interactions
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -50,6 +51,7 @@ Sruja provides three keywords that are **structurally identical** (sharing the s
 While the syntax is the same, using the appropriate keyword helps readers understand the _nature_ of the interaction being modeled.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -82,6 +84,7 @@ OrderProcess = flow "Order Processing" {
 Scenario/story steps support optional tags and ordering:
 
 ```sruja
+// partial
 HappyCheckout = scenario "Checkout (happy path)" {
   step Customer -> Shop.WebApp "add items" [happy_path] order "1"
   step Shop.WebApp -> Shop.API "submit cart" [happy_path] order "2"
@@ -95,6 +98,7 @@ Flow steps focus on the connection and description; tags and ordering are not cu
 You can also use a block form that keeps metadata and steps visually separated:
 
 ```sruja
+// partial
 Checkout = scenario {
   title "Checkout"
   description "Happy-path behavior for placing an order."
@@ -119,6 +123,7 @@ Policy rules can also be enforced on scenario/flow steps.
 Today, `deny edge` policy rules are evaluated against each `step from -> to` in a scenario/flow, using the same selector semantics as graph edges:
 
 ```sruja
+// partial
 NoExternalToDb = policy "No external to db" {
   enforcement "required"
   rule deny edge from { kind "container" tag "external" } to { kind "database" }

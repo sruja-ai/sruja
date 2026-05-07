@@ -21,6 +21,7 @@ We decide to extract `Inventory` into its own microservice with its own database
 We change `Inventory` from a logical domain inside the monolith to a physical `system`.
 
 ```sruja
+// partial
 // Before
 domain Inventory { ... }
 
@@ -39,6 +40,7 @@ Database = container "Inventory DB"
 The `OrderService` can no longer call `Inventory` functions directly. It must make a gRPC call. Update your OpenAPI specs to reflect the new gRPC interfaces.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

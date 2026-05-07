@@ -48,6 +48,7 @@ This is a **senior/staff level interview question** that tests:
 This is where Sruja's `policy` feature is perfect! Show how you enforce compliance:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -216,6 +217,7 @@ include *
 Add data retention policy:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

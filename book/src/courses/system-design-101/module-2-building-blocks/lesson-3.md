@@ -597,6 +597,7 @@ Modeling caches in your architecture provides:
 ### Example: E-Commerce Caching Architecture
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce Platform" {

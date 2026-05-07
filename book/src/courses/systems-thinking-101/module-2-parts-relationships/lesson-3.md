@@ -36,6 +36,7 @@ But here's the thing I've learned over the years: relationships aren't just tech
 Sruja keeps it simple:
 
 ```sruja
+// partial
 From -> To "Label"
 ```
 
@@ -46,6 +47,7 @@ From -> To "Label"
 Here are some examples:
 
 ```sruja
+// partial
 // Person to System
 Customer -> Shop "Browses products"
 Administrator -> Shop "Manages inventory"
@@ -67,6 +69,7 @@ The difference between a good architecture diagram and a great one often comes d
 ### Good Labels Tell a Story
 
 ```sruja
+// partial
 Customer -> Shop.WebApp "Browses products"
 Shop.API -> Shop.Database "Queries data"
 Shop.API -> PaymentGateway "Processes payment"
@@ -80,6 +83,7 @@ Each label tells you something meaningful:
 ### Bad Labels Are Mysterious
 
 ```sruja
+// partial
 Customer -> Shop.WebApp "Uses"  // Too generic—what do they do?
 Shop.API -> Shop.Database "Connects"  // Doesn't describe the interaction
 Shop.API -> PaymentGateway "Integration"  // Technical term, not behavioral
@@ -106,6 +110,7 @@ After modeling hundreds of systems, I've noticed patterns that repeat constantly
 This pattern shows what people actually do with your system:
 
 ```sruja
+// partial
 Customer -> Shop.WebApp "Logs in"
 Customer -> Shop.WebApp "Views products"
 Customer -> Shop.WebApp "Adds to cart"
@@ -119,6 +124,7 @@ I model each user action as a separate relationship. This makes it clear what fu
 This pattern shows how your backend services talk to each other:
 
 ```sruja
+// partial
 WebApp -> API "Sends requests"
 API -> Database "Persists data"
 API -> Cache "Reads cache"
@@ -132,6 +138,7 @@ Notice the bidirectional communication? The API writes to the cache, but also re
 This pattern shows systems you depend on outside your control:
 
 ```sruja
+// partial
 API -> PaymentGateway "Process payment"
 API -> EmailService "Send notifications"
 API -> AnalyticsService "Track events"
@@ -146,6 +153,7 @@ One of Sruja's powerful features is dot notation for nested elements. Let me sho
 ### Direct Child Reference
 
 ```sruja
+// partial
 Customer -> Shop.WebApp "Uses"
 ```
 
@@ -154,6 +162,7 @@ This is straightforward—you're referencing a direct child.
 ### Nested Component Reference
 
 ```sruja
+// partial
 Shop.API.ProductService -> Shop.API.CartService "Get product info"
 ```
 
@@ -162,6 +171,7 @@ Here, both products and carts live inside the API container. The dot notation ma
 ### Cross-System Reference
 
 ```sruja
+// partial
 Shop.API -> PaymentGateway.ChargeService "Process payment"
 ```
 
@@ -174,6 +184,7 @@ Tags are optional but incredibly useful for adding context to your relationships
 ### Common Tags I Use
 
 ```sruja
+// partial
 // Protocol information
 Shop.WebApp -> Shop.API "Sends requests" [http]
 Shop.API -> Shop.Database "Queries data" [sql]
@@ -200,6 +211,7 @@ Elements rarely have just one relationship—they're connected to many things. T
 ### A Typical Container with Multiple Connections
 
 ```sruja
+// partial
 // WebApp connects to several things
 Customer -> Shop.WebApp "Browses"
 Shop.WebApp -> Shop.API "Queries products"
@@ -229,6 +241,7 @@ Direction matters. It tells you who initiates the interaction and who responds.
 ### One-Way Relationships
 
 ```sruja
+// partial
 Customer -> Shop.WebApp "Browses"
 ```
 
@@ -237,6 +250,7 @@ The customer acts, the web app responds. Simple.
 ### Two-Way Relationships (Separate Connections)
 
 ```sruja
+// partial
 User -> App.API "Submits data"
 App.API -> User "Returns result"
 ```
@@ -246,6 +260,7 @@ Here, the user sends data, and the API sends data back. They're two separate rel
 ### Feedback Loops (Cycles)
 
 ```sruja
+// partial
 User -> App.WebApp "Submits form"
 App.WebApp -> App.API "Validates"
 App.API -> App.WebApp "Returns errors"
@@ -260,6 +275,7 @@ This creates a feedback loop: submit → validate → error → show → resubmi
 Let me show you a complete example that uses everything we've covered:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // People

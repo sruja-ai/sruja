@@ -169,6 +169,7 @@ These are the technical realities you can't ignore.
 **Examples:** "Must use PostgreSQL for ACID transactions," "Must deploy to AWS," "API response time under 200ms," "Support 10k concurrent users."
 
 ```sruja
+// partial
 Shop = system "Shop" {
   metadata {
     technical_constraints {
@@ -198,6 +199,7 @@ These are the business realities: budgets, timelines, team size, strategic goals
 **Examples:** "Launch by Q4," "Budget is $500k/year," "Team of 3 engineers," "Must support international currencies."
 
 ```sruja
+// partial
 Shop = system "Shop" {
   metadata {
     business_constraints {
@@ -227,6 +229,7 @@ These are regulatory and legal requirements. You don't get to choose them; they 
 **Examples:** "PCI-DSS for payments," "GDPR for EU users," "HIPAA for health data," "SOC 2 for enterprise customers."
 
 ```sruja
+// partial
 Shop = system "Shop" {
   metadata {
     compliance_constraints {
@@ -255,6 +258,7 @@ These are security requirements that shape how you build.
 **Examples:** "All data encrypted at rest," "All API calls authenticated," "No PII in logs," "Minimum TLS 1.3."
 
 ```sruja
+// partial
 Shop = system "Shop" {
   metadata {
     security_constraints {
@@ -283,6 +287,7 @@ I've learned to define success at two levels: business outcomes and system prope
 These are the business reasons the system exists:
 
 ```sruja
+// partial
 overview {
   summary "E-commerce platform for online retail"
   
@@ -309,6 +314,7 @@ These criteria connect the system to business value. They answer "why are we bui
 These are measurable system behaviors that support business outcomes. I use SLOs (Service Level Objectives):
 
 ```sruja
+// partial
 Shop = system "Shop" {
   slo {
     availability {
@@ -369,6 +375,7 @@ Non-goals are liberating. They let you say "that's a good idea, but it's out of 
 Let me show you how everything in this module comes together. This is what a complete context model looks like—stakeholders, dependencies, constraints, and success criteria all in one place:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // ============ OVERVIEW ============
@@ -588,6 +595,7 @@ When you choose PostgreSQL over MongoDB, write down why. When you choose Stripe 
 I use Architecture Decision Records (ADRs):
 
 ```sruja
+// partial
 ADR001 = adr "Use PostgreSQL for primary database" {
   status "accepted"
   date "2024-06-15"

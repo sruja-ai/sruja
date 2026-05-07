@@ -12,6 +12,7 @@ Cloud bills kill startups. Sruja helps you visualize where the money is going.
 We can add cost metadata to our deployment nodes.
 
 ```sruja
+// partial
 deployment Production {
     node DB "RDS Large" {
         metadata {
@@ -26,6 +27,7 @@ deployment Production {
 Use metadata and CI checks to prevent expensive mistakes in non‑production environments.
 
 ```sruja
+// partial
 deployment Dev {
     node App "Small Instance" {
         metadata {

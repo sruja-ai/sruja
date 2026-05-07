@@ -106,6 +106,7 @@ This means: "Over any 30-day period, our service must be available 99.9% of the 
 
 **Example:**
 ```sruja
+// partial
 slo {
   availability {
     target "99.9%"  // 8.76 hours downtime/year allowed
@@ -127,6 +128,7 @@ Netflix targets 99.99% availability for their streaming service. That's 52 minut
 
 **Example:**
 ```sruja
+// partial
 slo {
   latency {
     p95 "200ms"  // 95% of requests faster than 200ms
@@ -160,6 +162,7 @@ Amazon found that every 100ms of latency cost 1% in sales. They have strict late
 
 **Example:**
 ```sruja
+// partial
 slo {
   error_rate {
     target "< 0.1%"  // Fewer than 1 in 1000 requests fail
@@ -181,6 +184,7 @@ Stripe processes billions in payments. Their error rate SLO is < 0.01% (1 in 10,
 
 **Example:**
 ```sruja
+// partial
 slo {
   throughput {
     target "1000 req/s"  // Handle 1000 requests per second
@@ -279,6 +283,7 @@ Best practice: Run at 50-70% capacity. Have 30-50% headroom.
 ### Sruja: Modeling Scale with SLOs
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce Platform" {
@@ -655,6 +660,7 @@ Take a service you work on (real or hypothetical):
 ## Complete Example: E-Commerce Platform
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // ============ SERVICE DEFINITION ============

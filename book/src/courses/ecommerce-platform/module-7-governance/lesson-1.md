@@ -17,6 +17,7 @@ Security isn't something you "add on" at the end. It must be baked into the arch
 Use tags and metadata to make security posture explicit.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

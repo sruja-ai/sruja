@@ -45,6 +45,7 @@ Start with the core components:
 Let's model this architecture:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -191,6 +192,7 @@ include *
 Add caching to your design:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

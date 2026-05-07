@@ -49,6 +49,7 @@ App -> Stripe "Process Payments"
 - **Audience:** Architects, Developers, Ops.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

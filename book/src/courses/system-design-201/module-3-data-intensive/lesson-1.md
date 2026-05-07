@@ -54,6 +54,7 @@ The player automatically switches quality based on the user's internet speed.
 We can use Sruja's `deployment` nodes to visualize the global distribution of content.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

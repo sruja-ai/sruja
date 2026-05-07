@@ -12,6 +12,7 @@ Sruja is an architecture DSL. This tutorial introduces its core elements.
 ## Elements
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -53,6 +54,7 @@ Payments = system "Payments" {
 ## Component‑level Modeling
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

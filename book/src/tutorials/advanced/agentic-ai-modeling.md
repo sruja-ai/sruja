@@ -14,6 +14,7 @@ This tutorial shows how to model agent-based systems with orchestrators, planner
 ## Core Structure
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -52,6 +53,7 @@ R2 = requirement constraint "No PII exfiltration"
 ## Integrate RAG
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

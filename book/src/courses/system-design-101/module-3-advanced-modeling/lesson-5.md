@@ -45,6 +45,7 @@ Let me show you the difference.
 ### Before: The Uniform Diagram
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Everything looks the same. No visual hierarchy.
@@ -71,6 +72,7 @@ Everything has equal visual weight. Your eye doesn't know where to go. You have 
 ### After: Styled with Purpose
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"
@@ -119,6 +121,7 @@ Sruja gives you two levels of styling:
 Apply to all views. Use for consistent element types:
 
 ```sruja
+// partial
 // Define once, apply everywhere
 style {
   element "Database" {
@@ -143,6 +146,7 @@ style {
 Apply to one view. Use to highlight what matters in that context:
 
 ```sruja
+// partial
 view security {
   title "Security View"
   include PaymentGateway Shop.API Shop.DB
@@ -167,6 +171,7 @@ View-specific styles override global styles. This lets you maintain consistency 
 Let me show you a real-world example with intentional styling:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"

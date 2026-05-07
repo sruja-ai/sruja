@@ -27,6 +27,7 @@ Every system has two architectures that most teams confuse:
 **What your system does** - the software components and their interactions.
 
 ```sruja
+// partial
 // This is LOGICAL architecture
 ECommerce = system "E-Commerce Platform" {
   API = container "REST API" {
@@ -59,6 +60,7 @@ This shows:
 **Where your system runs** - the infrastructure and deployment topology.
 
 ```sruja
+// partial
 // This is PHYSICAL architecture
 deployment Production "Production Environment" {
   node AWS "AWS Cloud" {
@@ -211,6 +213,7 @@ Amazon uses Blue/Green for most services. Their deployment philosophy: "If you c
 **Sruja model:**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce" {
@@ -275,6 +278,7 @@ Netflix's deployment philosophy: "Deploy to 1%, watch for 30 minutes. If good, d
 **Sruja model:**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce" {
@@ -344,6 +348,7 @@ Uber deploys 1,000+ times per day using rolling deployments. Each service has mu
 **Sruja model:**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce" {
@@ -437,6 +442,7 @@ Netflix runs active-active across three AWS regions (US-East, US-West, EU). Each
 **Sruja model:**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Netflix = system "Netflix Platform" {
@@ -514,6 +520,7 @@ Etsy deploys 50+ times per day. Their deployment process is so reliable it's bor
 ### Modeling Your Pipeline
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 CICD = system "CI/CD Pipeline" {
@@ -574,6 +581,7 @@ Google popularized SLOs. Every service has defined reliability targets. If you'r
 ### Modeling SLOs
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce Platform" {
@@ -656,6 +664,7 @@ Stripe's observability is legendary. They can diagnose almost any issue in minut
 ### Modeling Observability
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Observability = system "Observability Stack" {
@@ -813,6 +822,7 @@ Before every production deployment:
 Let me show you a complete deployment architecture for a growing e-commerce platform:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Logical Architecture

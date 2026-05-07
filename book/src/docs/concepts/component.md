@@ -11,6 +11,7 @@ A **Component** is a grouping of related functionality encapsulated behind a wel
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -23,6 +24,7 @@ technology "Technology"
 ## Example
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

@@ -53,6 +53,7 @@ ADRs aren't static documents. They have a lifecycle that matches your decision-m
 When someone has an architectural idea that needs discussion:
 
 ```sruja
+// partial
 ADR003 = adr "Use GraphQL for API layer" {
   status "Proposed"
   
@@ -113,6 +114,7 @@ ADR003 = adr "Use GraphQL for API layer" {
 During implementation, the ADR guides work:
 
 ```sruja
+// partial
 GraphQL API = container "GraphQL API Service" {
   technology "Apollo Server"
   description "Implements ADR003 - GraphQL API layer"
@@ -186,6 +188,7 @@ ADR005 = adr "Use PostgreSQL for transactional data" {
 Here's a comprehensive ADR template you can adapt:
 
 ```sruja
+// partial
 ADR### = adr "[Short Title]" {
   // REQUIRED: Current status
   status "Proposed" | "Accepted" | "Deprecated" | "Superseded"
@@ -542,6 +545,7 @@ Use sequential numbering: ADR001, ADR002, ADR003...
 Always record when decisions were made:
 
 ```sruja
+// partial
 ADR003 = adr "Use GraphQL" {
   metadata {
     created "2024-01-15"
@@ -558,6 +562,7 @@ ADR003 = adr "Use GraphQL" {
 Always show what you considered and rejected:
 
 ```sruja
+// partial
 option "Alternative 1" {
   pros "Why it was attractive"
   cons "Why it had issues"
@@ -572,6 +577,7 @@ option "Alternative 1" {
 Don't just say "pros and cons". Be concrete:
 
 ```sruja
+// partial
 consequences {
   positive "
     - Reduces API calls by 60% (measured in prototype)
@@ -691,6 +697,7 @@ When reviewing an ADR, ask:
 Let me show you a complete, production-ready ADR:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ADR003 = adr "Use Stripe for payment processing" {

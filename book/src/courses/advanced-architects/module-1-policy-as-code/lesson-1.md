@@ -31,6 +31,7 @@ Sruja lets you codify architectural standards as **constraints** and **conventio
 Constraints define **hard rules** that must be followed. Violations block CI/CD.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -97,6 +98,7 @@ include *
 Conventions define **best practices** and **naming standards**. They're warnings, not blockers.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -134,6 +136,7 @@ include *
 Here's how a large organization enforces standards across teams:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

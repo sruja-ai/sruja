@@ -150,6 +150,7 @@ Now let's translate these concepts into software architecture. Feedback loops ar
 Modern cloud applications automatically scale up and down based on traffic. This is a feedback loop:
 
 ```sruja
+// partial
 // Self-regulating feedback loop
 AutoScaling = scenario "Auto-Scaling Based on CPU" {
   // System monitors itself
@@ -184,6 +185,7 @@ The lesson: Feedback loops enable systems to self-regulate—adjusting automatic
 Many systems improve user experience through feedback loops:
 
 ```sruja
+// partial
 // Learning feedback loop
 UserExperience = scenario "Feature Usage Feedback" {
   // User tries new feature
@@ -216,6 +218,7 @@ The lesson: Always build feedback loops into your systems. Don't assume—measur
 Systems often optimize themselves through feedback loops:
 
 ```sruja
+// partial
 // Resource optimization feedback loop
 CacheOptimization = scenario "Cache Learning" {
   // System checks cache performance
@@ -273,6 +276,7 @@ Output amplifies the input, leading to growth or collapse.
 **Virtuous Cycle Example:**
 
 ```sruja
+// partial
 // Viral growth loop
 ViralGrowth = scenario "Social Network Effects" {
   UserA -> App.Share "Shares content"
@@ -290,6 +294,7 @@ This is a virtuous cycle—each share brings more users, which leads to more sha
 **Vicious Cycle Example:**
 
 ```sruja
+// partial
 // Performance collapse loop
 PerformanceCollapse = scenario "Performance Degradation" {
   // System gets slow
@@ -326,6 +331,7 @@ Output counteracts the input, maintaining stability and equilibrium.
 **Thermostat Example (Balancing):**
 
 ```sruja
+// partial
 // Thermostat maintains equilibrium
 Thermostat = scenario "Temperature Regulation" {
   // Temperature drops
@@ -360,6 +366,7 @@ The thermostat doesn't try to make the room hotter or colder—it tries to maint
 **Load Balancing Example (Balancing):**
 
 ```sruja
+// partial
 // Load balancer distributes work
 LoadBalancing = scenario "Request Distribution" {
   // Server A is overloaded
@@ -398,6 +405,7 @@ Output affects input after a delay, which can cause oscillation.
 **Inventory Example (Delayed):**
 
 ```sruja
+// partial
 // Inventory management with delayed feedback
 InventoryManagement = scenario "Inventory Replenishment" {
   // Item sells, stock decreases

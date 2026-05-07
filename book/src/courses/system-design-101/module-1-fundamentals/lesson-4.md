@@ -408,6 +408,7 @@ It's commonly used in distributed databases to provide a good balance of perform
     In Sruja, you explicitly document consistency guarantees:
 
 ```sruja
+// partial
 UserDB = database "User Database" {
     technology "Cassandra"
     description "Replication factor 3, eventual consistency for high availability"

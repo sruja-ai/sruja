@@ -16,6 +16,7 @@ For complex domains, a single agent can get confused. **Multi-Agent Systems (MAS
 A central "Supervisor" agent routes tasks to worker agents and aggregates results.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

@@ -32,6 +32,7 @@ include *
 Add containers and datastores:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -56,6 +57,7 @@ include *
 Drill down into components:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

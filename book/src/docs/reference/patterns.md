@@ -9,6 +9,7 @@ summary: "Reusable patterns: request/response, event-driven, saga, CQRS."
 ## Request/Response
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -74,6 +75,7 @@ include *
 ## CQRS
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -95,6 +97,7 @@ include *
 ## RAG (Retrieval-Augmented Generation)
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -115,6 +118,7 @@ See `book/valid-examples/pattern-rag-pipeline.sruja` for a production-ready mode
 ## Agentic Orchestration
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

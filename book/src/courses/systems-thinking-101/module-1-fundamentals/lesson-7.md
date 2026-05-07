@@ -107,6 +107,7 @@ Your application automatically scales based on load.
 
 **Sruja model:**
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // System components
@@ -135,6 +136,7 @@ User behavior creates feedback that affects system usage.
 
 **Sruja model:**
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // People
@@ -166,6 +168,7 @@ Business metrics drive decisions that affect system behavior.
 
 **Sruja model:**
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // People
@@ -230,6 +233,7 @@ Understanding the type helps you predict behavior.
 In Sruja, feedback loops are modeled using scenarios that show cycles:
 
 ```sruja
+// partial
 scenario LoopName "Description" {
   Step1 -> Step2 "Action"
   Step2 -> Step3 "Reaction"

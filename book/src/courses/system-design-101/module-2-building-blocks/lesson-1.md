@@ -303,6 +303,7 @@ Modeling load balancers in your architecture provides:
 ### Example: E-Commerce Platform Load Balancing
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce Platform" {

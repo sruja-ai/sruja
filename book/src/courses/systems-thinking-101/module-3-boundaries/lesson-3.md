@@ -29,6 +29,7 @@ By the end of this lesson, you'll be able to:
 Every relationship that goes from internal to external (or external to internal) is a boundary crossing. These are the riskiest parts of your system.
 
 ```sruja
+// partial
 // Internal → External = Boundary crossing
 Shop.API -> PaymentGateway "Process payment"
 
@@ -51,6 +52,7 @@ After years of building systems, I've found there are really three main integrat
 This is the most common pattern. You send a request, you wait for a response.
 
 ```sruja
+// partial
 Shop.API -> PaymentGateway "Process payment"
 PaymentGateway -> Shop.API "Payment result"
 ```
@@ -78,6 +80,7 @@ This is the pattern I see most often. It's simple, but it's fragile if you don't
 You publish an event, and other systems process it whenever they can.
 
 ```sruja
+// partial
 Shop.API -> EventQueue "Publish order created"
 EventQueue -> PaymentProcessor "Consume order event"
 EventQueue -> EmailService "Consume order event"
@@ -106,6 +109,7 @@ I used to think event-driven was overkill for small systems. Then I built a noti
 Your system periodically checks for updates from an external service.
 
 ```sruja
+// partial
 Shop.API -> ExternalAPI "Check order status"
 ExternalAPI -> Shop.API "Return status"
 ```
@@ -137,6 +141,7 @@ Now that you know the patterns, let's talk about what you actually need to think
 External services fail. It's not a question of "if," it's "when."
 
 ```sruja
+// partial
 // Document expected failure modes
 PaymentGateway = system "Payment Gateway" {
   metadata {
@@ -160,6 +165,7 @@ Document this upfront. It saves hours of debugging later.
 External services can be slow. You need to configure timeouts that protect your system without being too aggressive.
 
 ```sruja
+// partial
 PaymentGateway = system "Payment Gateway" {
   metadata {
     tags ["external"]
@@ -188,6 +194,7 @@ Set timeouts. Always. Even if the external service is usually fast.
 What if the payment succeeds but saving the order fails? Or the order saves but the payment fails?
 
 ```sruja
+// partial
 Shop.API -> PaymentGateway "Process payment"
 Shop.API -> Shop.Database "Save order"
 
@@ -212,6 +219,7 @@ Plan for consistency issues at boundaries. They will happen.
 Crossing a boundary is where attacks happen. This is where you need to be most careful.
 
 ```sruja
+// partial
 // Security at the boundary
 Shop.API -> PaymentGateway "Process payment" [encrypted, authenticated, tls1.3]
 
@@ -241,6 +249,7 @@ One of the most important things you can do for boundary crossings is document t
 ### API Contract
 
 ```sruja
+// partial
 PaymentGateway = system "Payment Gateway" {
   metadata {
     tags ["external"]
@@ -326,6 +335,7 @@ External systems fail. You need fallback strategies. Here are the ones I use mos
 Have a backup provider you can switch to if the primary fails.
 
 ```sruja
+// partial
 // Primary provider
 PrimaryPayment = system "Stripe" {
   metadata {
@@ -360,6 +370,7 @@ I've used this strategy for critical paths (payments, messaging, notifications).
 Stop calling a failing service automatically instead of hammering it with requests.
 
 ```sruja
+// partial
 Shop.API = container "API Service" {
   metadata {
     circuit_breaker {
@@ -387,6 +398,7 @@ This is one of my favorite patterns. It's saved me from cascading failures more 
 Continue operating even if a non-critical external service is down.
 
 ```sruja
+// partial
 // Non-critical: If analytics fails, continue
 Shop.API -> AnalyticsService "Track events" [non_critical]
 
@@ -408,6 +420,7 @@ I used to treat all dependencies as critical. Then I realized: if analytics is d
 Cache responses from external APIs so you can serve from cache if the external service is down.
 
 ```sruja
+// partial
 // External API call
 Shop.API -> ExchangeRateAPI "Get exchange rates"
 
@@ -433,6 +446,7 @@ I've used this for exchange rates, product catalogs, weather data—anything tha
 Let me show you a complete example that brings everything together.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // People

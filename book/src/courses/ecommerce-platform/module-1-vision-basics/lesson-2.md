@@ -108,6 +108,7 @@ include *
 Now let's model the system context:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

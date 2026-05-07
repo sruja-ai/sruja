@@ -242,7 +242,7 @@ ECommerce = system "E-Commerce Platform" {
         technology "PostgreSQL with Read Replicas"
         description "Optimized for READ operations (99% of traffic is reads)"
         
-        tradeoff {
+        metadata {
             decision "Use read replicas for product browsing"
             sacrifice "Write latency (updates take longer to propagate)"
             reason "Users browse products 100x more than they add products"
@@ -255,7 +255,7 @@ ECommerce = system "E-Commerce Platform" {
         technology "Redis"
         description "In-memory cache for cart state"
         
-        tradeoff {
+        metadata {
             decision "Use Redis (in-memory) for cart storage"
             sacrifice "Durability (cart data lost if Redis crashes)"
             reason "Cart data is temporary and can be recreated from product catalog"
@@ -268,7 +268,7 @@ ECommerce = system "E-Commerce Platform" {
         technology "Elasticsearch"
         description "Full-text search with caching layer"
         
-        tradeoff {
+        metadata {
             decision "Use expensive Elasticsearch cluster"
             sacrifice "Infrastructure cost ($5K/month)"
             reason "Search performance directly impacts conversion rates (1% latency = 1% revenue loss)"
@@ -281,7 +281,7 @@ ECommerce = system "E-Commerce Platform" {
         technology "Kafka + Microservices"
         description "Async order processing pipeline"
         
-        tradeoff {
+        metadata {
             decision "Use async messaging (eventual consistency)"
             sacrifice "Real-time inventory accuracy"
             reason "Better availability and scalability during peak traffic"
@@ -392,10 +392,10 @@ title "Twitter Platform Overview"
 include *
 }
 
-// Performance-focused view
 view performance {
 title "Performance View"
-include Twitter.TimelineAPI Twitter.TweetDB
+include Twitter.TimelineAPI
+include Twitter.TweetDB
 }
 ```
 

@@ -62,6 +62,7 @@ Netflix has a guardrail: "No service can depend on a single availability zone." 
 **Sruja example:**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Define the policy
@@ -113,6 +114,7 @@ Google has thousands of services, but they all follow the same API design guidel
 **Sruja example:**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 policy LoggingStandard "Services must have structured logging" {
@@ -177,6 +179,7 @@ Amazon learned the hard way that services with too many dependencies become bott
 **Sruja example:**
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 policy DependencyLimit "Services should not have too many dependencies" {
@@ -270,6 +273,7 @@ Here are the governance rules I see most often in production systems:
 ### Security Rules
 
 ```sruja
+// partial
 // Rule 1: All databases encrypted
 policy EncryptionPolicy "All databases must be encrypted" {
   rule {
@@ -309,6 +313,7 @@ policy DataResidencyPolicy "Data must stay in approved regions" {
 ### Architecture Rules
 
 ```sruja
+// partial
 // Rule 5: No circular dependencies
 policy NoCircularDeps "Services cannot have circular dependencies" {
   rule {
@@ -348,6 +353,7 @@ policy LayerPolicy "Respect architectural layers" {
 ### Operations Rules
 
 ```sruja
+// partial
 // Rule 9: All services must have SLOs
 policy SLOPolicy "Services must have SLOs defined" {
   rule {
@@ -385,6 +391,7 @@ policy HealthCheckPolicy "Services must implement health checks" {
 ### Compliance Rules
 
 ```sruja
+// partial
 // Rule 13: PII handling requirements
 policy PIIHandlingPolicy "PII must be handled correctly" {
   rule {
@@ -597,6 +604,7 @@ Where is your organization on the governance journey?
 
 **Example:**
 ```sruja
+// partial
 // BAD: No explanation
 policy Rule42 "Services must have tag X" {
   // Why? What's the purpose?
@@ -610,6 +618,7 @@ policy Rule42 "Services must have tag X" {
 - How to comply
 
 ```sruja
+// partial
 // GOOD: Clear context
 policy EncryptionPolicy "All databases must be encrypted" {
   category "security"
@@ -784,6 +793,7 @@ Implement governance for a real or hypothetical system:
 ## Complete Example: Production Governance
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // ============ GOVERNANCE POLICIES ============

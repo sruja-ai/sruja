@@ -22,6 +22,7 @@ For Shopify-lite, we will start with a **Modular Monolith**. We will have clear 
 We don't just make this decision; we _document_ it so future engineers know why.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

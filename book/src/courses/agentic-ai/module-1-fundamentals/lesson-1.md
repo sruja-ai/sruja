@@ -39,6 +39,7 @@ Modeling agents is complex because relationships are often dynamic. Sruja helps 
 - **Documenting Flows**: Tracing the decision loop.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

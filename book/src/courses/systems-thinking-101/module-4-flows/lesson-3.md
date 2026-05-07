@@ -62,6 +62,7 @@ User journeys turn vague requirements into concrete scenarios:
 
 **User journey makes it concrete:**
 ```sruja
+// partial
 CheckoutJourney = scenario "Customer Checkout" {
   Customer -> WebApp "Clicks checkout button"
   WebApp -> API "Validates cart"
@@ -82,6 +83,7 @@ Now everyone knows exactly what "checkout" means—every step, every system invo
 User journeys become test cases automatically:
 
 ```sruja
+// partial
 HappyPathTest = scenario "Test: Successful Checkout" {
   // From the user journey
   Customer -> WebApp "Clicks checkout"
@@ -106,6 +108,7 @@ I've worked on teams where we spent weeks writing test cases manually. With user
 User journeys show the complete experience—not just what works, but how it feels:
 
 ```sruja
+// partial
 RegistrationJourney = scenario "User Registration" {
   Customer -> WebApp "Opens registration form"
   Customer -> WebApp "Enters name and email"
@@ -126,6 +129,7 @@ See how this shows the full experience? Form entry → submission → success me
 When you model user journeys, you naturally think about edge cases:
 
 ```sruja
+// partial
 RegistrationEdgeCases = scenario "Registration Edge Cases" {
   // Edge case 1: Duplicate email
   Customer -> WebApp "Registers with existing email"
@@ -156,6 +160,7 @@ Sruja gives you two keywords for user journeys, and they're interchangeable:
 Use `scenario` for behavioral flows—it's the most common and descriptive choice:
 
 ```sruja
+// partial
 CheckoutScenario = scenario "Customer Checkout Experience" {
   Customer -> Shop.WebApp "Clicks checkout button"
   Shop.WebApp -> Shop.API "Validates shopping cart"
@@ -169,6 +174,7 @@ CheckoutScenario = scenario "Customer Checkout Experience" {
 Use `story` when you want to emphasize the narrative or story aspect:
 
 ```sruja
+// partial
 CheckoutStory = story "As a customer, I want to checkout so I can purchase my items" {
   Customer -> Shop.WebApp "Clicks checkout button"
   Shop.WebApp -> Shop.API "Validates shopping cart"
@@ -186,6 +192,7 @@ BDD is about writing requirements as behavior, not specifications. User journeys
 ### The Given-When-Then Pattern
 
 ```sruja
+// partial
 // GIVEN: Customer has items in shopping cart
 // WHEN: Customer clicks checkout and completes payment
 // THEN: Order is created and confirmation is shown
@@ -229,6 +236,7 @@ After modeling user journeys for years, I've found patterns that repeat constant
 The ideal scenario where everything works perfectly:
 
 ```sruja
+// partial
 HappyRegistration = scenario "User Registration (Happy Path)" {
   Customer -> WebApp "Opens registration form"
   Customer -> WebApp "Enters name, email, password"
@@ -260,6 +268,7 @@ HappyRegistration = scenario "User Registration (Happy Path)" {
 What happens when things go wrong:
 
 ```sruja
+// partial
 ErrorRegistration = scenario "User Registration (Error Path: Duplicate Email)" {
   Customer -> WebApp "Opens registration form"
   Customer -> WebApp "Enters existing email: john@example.com"
@@ -298,6 +307,7 @@ I once worked on a system where error messages were like "ERR_500_CHECKOUT_FAILE
 Different things happen based on conditions:
 
 ```sruja
+// partial
 BranchingApproval = scenario "Order Approval (Branching Based on Value)" {
   Manager -> WebApp "Submits order for approval"
   WebApp -> API "Processes approval request"
@@ -340,6 +350,7 @@ BranchingApproval = scenario "Order Approval (Branching Based on Value)" {
 System tries multiple times before succeeding or failing:
 
 ```sruja
+// partial
 RetryPayment = scenario "Payment with Automatic Retry" {
   Customer -> WebApp "Clicks 'Place Order'"
   WebApp -> API "Submits order for payment"
@@ -381,6 +392,7 @@ RetryPayment = scenario "Payment with Automatic Retry" {
 Let me show you a complete user journey that brings everything together:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Person
@@ -466,6 +478,7 @@ One of the most powerful things about user journeys: they become test cases auto
 ### Acceptance Criteria as Scenarios
 
 ```sruja
+// partial
 // Acceptance criteria: As a customer, I want to checkout so that I can purchase products
 
 // AC1: Customer can checkout with valid payment
@@ -505,6 +518,7 @@ Don't just model happy paths. Edge cases are where systems break.
 ### Common Edge Cases to Model
 
 ```sruja
+// partial
 // Edge case 1: Checkout with expired card
 ExpiredCardCheckout = scenario "Checkout with Expired Card" {
   Customer -> Shop.WebApp "Attempts checkout with expired card"
@@ -569,6 +583,7 @@ You're modeling a user registration flow for a social media app. Which scenario 
 
 **A)**
 ```sruja
+// partial
 RegistrationFlow = scenario "User Registration" {
   Customer -> WebApp "Registers"
   WebApp -> API "Saves user"
@@ -578,6 +593,7 @@ RegistrationFlow = scenario "User Registration" {
 
 **B)**
 ```sruja
+// partial
 RegistrationFlow = scenario "As a new user, I want to register so I can use the app" {
   // GIVEN: User is on registration page
   Customer -> WebApp "Views registration form"
@@ -596,6 +612,7 @@ RegistrationFlow = scenario "As a new user, I want to register so I can use the 
 
 **C)**
 ```sruja
+// partial
 RegistrationFlow = scenario "Registration Process" {
   Start -> Database "Create user"
   Database -> Email "Send welcome"
@@ -604,6 +621,7 @@ RegistrationFlow = scenario "Registration Process" {
 
 **D)**
 ```sruja
+// partial
 RegistrationFlow = story "User Registration Story" {
   WebApp -> API "Register"
   API -> Database "Save"
@@ -655,6 +673,7 @@ You're modeling a login flow and want to document an error path. Which scenario 
 
 **A)**
 ```sruja
+// partial
 LoginError = scenario "Login Error" {
   User -> WebApp "Login with wrong password"
   WebApp -> API "Authenticate"
@@ -666,6 +685,7 @@ LoginError = scenario "Login Error" {
 
 **B)**
 ```sruja
+// partial
 LoginError = scenario "Login Error" {
   User -> WebApp "Login with wrong password"
   WebApp -> API "Authenticate"
@@ -677,6 +697,7 @@ LoginError = scenario "Login Error" {
 
 **C)**
 ```sruja
+// partial
 LoginError = scenario "Login with Incorrect Password" {
   User -> WebApp "Enters email: user@example.com and wrong password"
   User -> WebApp "Clicks 'Log In'"
@@ -689,6 +710,7 @@ LoginError = scenario "Login with Incorrect Password" {
 
 **D)**
 ```sruja
+// partial
 LoginError = scenario "Login Failed" {
   API -> Database "Check"
   Database -> API "No match"

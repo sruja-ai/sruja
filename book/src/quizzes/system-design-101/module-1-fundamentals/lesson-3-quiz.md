@@ -292,6 +292,7 @@ Achieving this requires Active-Active setup across multiple regions with automat
     In Sruja, you explicitly model redundant components:
 
 ```sruja
+// partial
 PrimaryDB = database "Primary Database" { ... }
 StandbyDB = database "Standby Database" {
     description "Replicates from PrimaryDB. Promoted to primary if PrimaryDB fails."

@@ -231,6 +231,7 @@ Now let's see how to model context in Sruja.
 ### Stakeholders
 
 ```sruja
+// partial
 // People who interact with or influence your system
 Customer = person "Customer"
 Administrator = person "Administrator"
@@ -242,6 +243,7 @@ ComplianceOfficer = person "Compliance Officer"
 ### Dependencies
 
 ```sruja
+// partial
 // External systems you depend on
 PaymentGateway = system "Payment Gateway" {
   metadata {
@@ -273,6 +275,7 @@ CDN = system "Content Delivery Network" {
 ### Constraints
 
 ```sruja
+// partial
 // Your system with constraints
 Shop = system "E-Commerce Platform" {
   WebApp = container "Web Application"
@@ -301,6 +304,7 @@ Shop = system "E-Commerce Platform" {
 ### Putting It Together
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Stakeholders

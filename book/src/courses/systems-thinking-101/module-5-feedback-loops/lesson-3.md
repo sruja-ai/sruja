@@ -13,6 +13,7 @@ Unlike circular dependencies (bad), feedback loops (good) are valid cycles in Sr
 ### Basic Cycle Syntax
 
 ```sruja
+// partial
 // Valid feedback loop
 User -> App.WebApp "Submits form"
 App.WebApp -> App.API "Validates"
@@ -27,6 +28,7 @@ App.WebApp -> User "Shows feedback"
 ### Example 1: User Feedback Loop
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 User = person "User"
@@ -59,6 +61,7 @@ UserFeedback = scenario "User Form Feedback" {
 ### Example 2: System Self-Regulation
 
 ```sruja
+// partial
 AutoScaling = system "Auto-Scaling System" {
   Monitor = container "Monitoring Service"
   Scaling = container "Scaling Service"
@@ -93,6 +96,7 @@ ScalingLoop = scenario "Auto-Scaling Feedback" {
 ### Example 3: Inventory Management
 
 ```sruja
+// partial
 Admin = person "Administrator"
 
 Shop = system "Shop" {
@@ -123,6 +127,7 @@ InventoryLoop = scenario "Inventory Feedback" {
 ### Example 4: Learning System
 
 ```sruja
+// partial
 User = person "User"
 
 MLSystem = system "ML Recommendation System" {
@@ -156,6 +161,7 @@ LearningLoop = scenario "ML Learning Cycle" {
 ### Explicit Cycle (Clear Feedback)
 
 ```sruja
+// partial
 // Shows the complete feedback path
 User -> App "Submit data"
 App -> User "Show result"
@@ -167,6 +173,7 @@ User -> App "Adjust and resubmit"
 ### Implicit Cycle (Inferred)
 
 ```sruja
+// partial
 // Relationships imply the cycle exists
 User -> App "Uses"
 App -> User "Responds"
@@ -181,6 +188,7 @@ App -> User "Responds"
 ### Circular Dependency (Bad)
 
 ```sruja
+// partial
 // Static compile-time dependency
 ModuleA -> ModuleB "Imports"
 ModuleB -> ModuleA "Imports"
@@ -194,6 +202,7 @@ ModuleB -> ModuleA "Imports"
 ### Feedback Loop (Good)
 
 ```sruja
+// partial
 // Dynamic runtime feedback
 User -> App "Submits data"
 App -> User "Shows result"
@@ -209,6 +218,7 @@ App -> User "Shows result"
 ### Pattern 1: Immediate Feedback
 
 ```sruja
+// partial
 InstantFeedback = scenario "Form Validation" {
   User -> WebApp "Type in field"
   WebApp -> API "Validate"
@@ -220,6 +230,7 @@ InstantFeedback = scenario "Form Validation" {
 ### Pattern 2: Delayed Feedback
 
 ```sruja
+// partial
 DelayedFeedback = scenario "Performance Monitoring" {
   App -> Monitoring "Log metrics"
 
@@ -235,6 +246,7 @@ DelayedFeedback = scenario "Performance Monitoring" {
 ### Pattern 3: Aggregated Feedback
 
 ```sruja
+// partial
 AggregatedFeedback = scenario "A/B Testing" {
   Users -> App "Use feature A"
 
@@ -252,6 +264,7 @@ AggregatedFeedback = scenario "A/B Testing" {
 ### Prevent Runaway Behavior
 
 ```sruja
+// partial
 AutoScaling = container "Auto-Scaling Service" {
   scale {
     min 2
@@ -265,6 +278,7 @@ AutoScaling = container "Auto-Scaling Service" {
 ### Circuit Breaker Pattern
 
 ```sruja
+// partial
 CircuitBreaker = scenario "Circuit Breaker Feedback" {
   App -> Service "Make request"
 
@@ -285,6 +299,7 @@ CircuitBreaker = scenario "Circuit Breaker Feedback" {
 ### Rate Limiting
 
 ```sruja
+// partial
 RateLimited = scenario "Rate Limited Requests" {
   User -> API "Send request"
 
@@ -311,6 +326,7 @@ RateLimited = scenario "Rate Limited Requests" {
 ### Add Metadata
 
 ```sruja
+// partial
 AutoScaling = system "Auto-Scaling" {
   metadata {
     feedback_loop {
@@ -327,6 +343,7 @@ AutoScaling = system "Auto-Scaling" {
 ## Complete Example: E-Commerce Feedback Loops
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"

@@ -15,6 +15,7 @@ Well-designed APIs define stable interfaces between services; they reduce coupli
 Sruja focuses on **architectural concerns**: which services exist, how they relate, and what they do. For detailed API schemas, use OpenAPI/Swagger.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

@@ -147,6 +147,7 @@ Ensure the `sruja` binary is on your `PATH` (install script uses `~/.local/bin` 
 This is the **minimal style** (explicit kinds, no import). For the full Getting Started guide using stdlib imports, see [Getting Started](docs/getting-started.md). Both styles are valid; use whichever you prefer.
 
 ```sruja
+// partial
 person = kind "Person"
 system = kind "System"
 container = kind "Container"

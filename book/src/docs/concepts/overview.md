@@ -11,6 +11,7 @@ Use `overview` to provide a concise system description shown in docs/exports.
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

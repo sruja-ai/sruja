@@ -14,6 +14,7 @@ This tutorial provides a quick 10-minute walkthrough to demonstrate Sruja's core
 Create a simple e-commerce architecture:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -47,6 +48,7 @@ sruja lint architecture.sruja
 Add SLOs and scaling configuration:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

@@ -49,6 +49,7 @@ A structural element within a container that represents a major building block. 
 **Example:**
 
 ```sruja
+// partial
 App = system "App" {
   API = container "API" {
     Auth = component "Authentication"
@@ -70,6 +71,7 @@ A deployable unit within a system. In C4 terminology, a container is NOT a Docke
 **Example:**
 
 ```sruja
+// partial
 App = system "E-commerce" {
   Web = container "React App"
   API = container "Node.js API"
@@ -86,6 +88,7 @@ A type of container that represents a data store. In Sruja, databases are define
 **Example:**
 
 ```sruja
+// partial
 DB = database "PostgreSQL"
 ```
 
@@ -156,6 +159,7 @@ A message queue or event stream used for asynchronous communication between cont
 **Example:**
 
 ```sruja
+// partial
 EventQueue = queue "Kafka Topic"
 ```
 
