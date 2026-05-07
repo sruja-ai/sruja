@@ -3,56 +3,28 @@
 //! Commands are split by domain: dsl, scan, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
-mod agent;
-mod ai;
-mod check;
-mod completions;
-pub mod compliance;
-mod context_graph;
-mod context_score;
-pub mod critique;
-mod discover;
-mod dsl;
-mod error;
-mod federation;
-mod focus;
-mod generate;
-mod health;
-mod impact;
-mod index;
-mod ingest;
-mod init;
-mod intent;
-mod mcp;
-mod onboard;
-mod preflight;
-mod propose;
-mod review;
-mod scan;
-mod status;
-mod sync_cmd;
-mod version;
-pub mod violation_shared;
-mod watch;
-mod why;
+pub mod dsl_domain;
+pub mod intent_domain;
+pub mod scan_domain;
+pub mod utility_domain;
 
-pub use agent::{agent_clear, agent_history, agent_record};
-pub use ai::{ai_brief, AiBriefOptions};
-pub use propose::*;
+pub use intent_domain::agent::{agent_clear, agent_history, agent_record};
+pub use intent_domain::ai::{ai_brief, AiBriefOptions};
+pub use intent_domain::propose::*;
 
-pub use check::{baseline, check};
-pub use compliance::compliance;
-pub use context_graph::context_graph;
-pub use context_score::context_score;
-pub use critique::critique;
-pub use discover::{discover_context, discover_explain, discover_questions, discover_repomap_cmd};
-pub use dsl::{
+pub use dsl_domain::check::{baseline, check};
+pub use dsl_domain::dsl::{
     compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
     ExportOptions,
 };
-pub use error::CliError;
-pub use focus::focus;
-pub use ingest::ingest;
+pub use intent_domain::focus::focus;
+pub use intent_domain::ingest::ingest;
+pub use scan_domain::context_graph::context_graph;
+pub use scan_domain::context_score::context_score;
+pub use scan_domain::discover::{
+    discover_context, discover_explain, discover_questions, discover_repomap_cmd,
+};
+pub use utility_domain::error::CliError;
 
 #[derive(Debug, Clone, Copy)]
 pub struct LlmConfig<'a> {
@@ -85,24 +57,39 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
         }
     }
 }
-pub use completions::completions;
-pub use federation::{compose, publish};
-pub use generate::generate_prompt;
-pub use health::health;
-pub use impact::impact;
-pub use index::{query_registry, registry_dashboard, registry_index, semantic_index};
-pub use init::init;
-pub use intent::{intent_check, intent_propose};
-pub use mcp::mcp;
-pub use onboard::onboard;
-pub use review::review;
-pub use scan::{drift, drift_pr, quickstart, scan};
-pub use status::status;
-pub use sync_cmd::sync;
-pub use version::version;
-pub use watch::watch;
-pub use why::why;
-mod context;
+pub use dsl_domain::completions::completions;
+pub use dsl_domain::generate::generate_prompt;
+pub use dsl_domain::watch::watch;
+pub use intent_domain::intent::{intent_check, intent_propose};
+pub use intent_domain::onboard::onboard;
+pub use scan_domain::health::health;
+pub use scan_domain::impact::impact;
+pub use scan_domain::index::{query_registry, registry_dashboard, registry_index, semantic_index};
+pub use scan_domain::mcp::mcp;
+pub use scan_domain::review::review;
+pub use scan_domain::scan::{drift, drift_pr, quickstart, scan};
+pub use scan_domain::status::status;
+pub use scan_domain::sync_cmd::sync;
+pub use scan_domain::why::why;
+pub use utility_domain::init::init;
+pub use utility_domain::version::version;
+
+pub use dsl_domain::check;
+pub use intent_domain::critique;
+pub use intent_domain::focus;
+pub use scan_domain::discover;
+pub use scan_domain::scan;
+pub use scan_domain::sync_cmd;
+pub use utility_domain::error;
+pub use utility_domain::federation;
+pub use utility_domain::preflight;
+pub use utility_domain::violation_shared;
+
+pub use intent_domain::critique::critique;
+pub use utility_domain::compliance::compliance;
+pub use utility_domain::federation::{compose, publish};
+
+pub(crate) mod context;
 
 pub use context::{context_export, ContextRequest};
 
