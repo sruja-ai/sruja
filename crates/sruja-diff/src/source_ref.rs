@@ -41,20 +41,21 @@ pub(super) fn collect_cycle_sources(graph: &Graph, cycle: &[String]) -> Vec<Sour
         }
     }
     if cycle.len() > 1 {
-        let (last, first) = (cycle.last().unwrap(), cycle.first().unwrap());
-        for edge in &graph.edges {
-            if edge.source == *last && edge.target == *first {
-                for ev in &edge.evidence {
-                    let key = (ev.file.clone(), ev.line);
-                    if seen.insert(key) {
-                        out.push(SourceRef {
-                            file: ev.file.clone(),
-                            line: ev.line,
-                            detail: ev.detail.clone(),
-                        });
+        if let (Some(last), Some(first)) = (cycle.last(), cycle.first()) {
+            for edge in &graph.edges {
+                if edge.source == *last && edge.target == *first {
+                    for ev in &edge.evidence {
+                        let key = (ev.file.clone(), ev.line);
+                        if seen.insert(key) {
+                            out.push(SourceRef {
+                                file: ev.file.clone(),
+                                line: ev.line,
+                                detail: ev.detail.clone(),
+                            });
+                        }
                     }
+                    break;
                 }
-                break;
             }
         }
     }

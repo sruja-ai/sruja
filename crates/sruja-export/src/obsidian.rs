@@ -114,7 +114,7 @@ impl ObsidianExporter {
 
         for kind in kinds {
             index.push_str(&format!("### {}\n\n", capitalize(&kind)));
-            let mut members = grouped.remove(&kind).unwrap();
+            let mut members = grouped.remove(&kind).unwrap_or_default();
             members.sort();
             for (label, id) in members {
                 index.push_str(&format!("- [[{}]] - *{}*\n", sanitize_filename(&id), label));

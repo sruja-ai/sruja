@@ -279,8 +279,7 @@ fn tarjan_strongconnect<'a>(
 
     if lowlinks.get(node) == indices.get(node) {
         let mut scc = Vec::new();
-        loop {
-            let top = stack.pop().unwrap();
+        while let Some(top) = stack.pop() {
             on_stack.remove(top);
             scc.push(top);
             if top == node {

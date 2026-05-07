@@ -176,24 +176,23 @@ fn strongconnect(
                     sccs,
                 );
 
-                let neighbor_lowlink = *lowlinks.get(neighbor).unwrap();
-                let node_lowlink = *lowlinks.get(node).unwrap();
+                let neighbor_lowlink = lowlinks.get(neighbor).copied().unwrap_or(0);
+                let node_lowlink = lowlinks.get(node).copied().unwrap_or(0);
                 lowlinks.insert(node.to_string(), node_lowlink.min(neighbor_lowlink));
             } else if on_stack.contains(neighbor) {
-                let neighbor_index = *indices.get(neighbor).unwrap();
-                let node_lowlink = *lowlinks.get(node).unwrap();
+                let neighbor_index = indices.get(neighbor).copied().unwrap_or(0);
+                let node_lowlink = lowlinks.get(node).copied().unwrap_or(0);
                 lowlinks.insert(node.to_string(), node_lowlink.min(neighbor_index));
             }
         }
     }
 
-    let node_lowlink = *lowlinks.get(node).unwrap();
-    let node_index = *indices.get(node).unwrap();
+    let node_lowlink = lowlinks.get(node).copied().unwrap_or(0);
+    let node_index = indices.get(node).copied().unwrap_or(0);
 
     if node_lowlink == node_index {
         let mut scc: Vec<String> = Vec::new();
-        loop {
-            let w = stack.pop().unwrap();
+        while let Some(w) = stack.pop() {
             on_stack.remove(&w);
             scc.push(w.clone());
             if w == node {
