@@ -377,4 +377,39 @@ mod tests {
         let density = calculate_internal_density(&nodes, &edges);
         assert!(density > 0.0);
     }
+
+    #[test]
+    fn test_scc_with_min_size() {
+        let analyzer = SccAnalyzer::with_min_size(2);
+        let nodes = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let edges = vec![
+            ("a".to_string(), "b".to_string()),
+            ("b".to_string(), "a".to_string()),
+            ("b".to_string(), "c".to_string()),
+        ];
+        let result = analyzer.analyze(&nodes, &edges);
+        assert_eq!(result.components.len(), 1);
+        assert_eq!(result.components[0].nodes.len(), 2);
+    }
+
+    #[test]
+    fn test_find_common_prefix_advanced() {
+        let nodes = vec!["foo_bar_baz".to_string(), "foo_bar_qux".to_string()];
+        let prefix = find_common_prefix(&nodes);
+        assert_eq!(prefix, "foo_bar");
+
+        let empty_nodes: Vec<String> = vec![];
+        assert_eq!(find_common_prefix(&empty_nodes), "");
+    }
+
+    #[test]
+    fn test_suggest_boundary() {
+        let nodes = vec!["com_app_service".to_string(), "com_app_db".to_string()];
+        let boundary = suggest_boundary(&nodes);
+        assert_eq!(boundary, "com_app_context");
+
+        let disconnected_nodes = vec!["apple".to_string(), "orange".to_string()];
+        let boundary2 = suggest_boundary(&disconnected_nodes);
+        assert_eq!(boundary2, "shared_context");
+    }
 }

@@ -838,4 +838,63 @@ mod tests {
         let violations = graph.find_policy_violations();
         assert!(violations.is_empty());
     }
+
+    #[test]
+    fn test_query_why_entity() {
+        let mut graph = create_test_graph();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api_to_db".to_string(),
+                source: "api".to_string(),
+                target: "db".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("SQL".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+
+        let result = graph.query("why api?").unwrap();
+        assert!(result.answer.contains("API Service"));
+        assert!(result.answer.contains("depends on"));
+        assert_eq!(result.evidence.len(), 1);
+        assert!(result.confidence > 0.5);
+    }
+
+    #[test]
+    fn test_query_what_entity() {
+        let graph = create_test_graph();
+        let result = graph.query("what is api?").unwrap();
+        assert!(result.answer.contains("API Service"));
+        assert!(result.answer.contains("service"));
+        assert_eq!(result.evidence.len(), 1);
+    }
+
+    #[test]
+    fn test_query_connections() {
+        let mut graph = create_test_graph();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api_to_db".to_string(),
+                source: "api".to_string(),
+                target: "db".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("SQL".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+
+        let result = graph.query("how does api connect?").unwrap();
+        assert!(result.answer.contains("connects to"));
+        assert_eq!(result.evidence.len(), 1);
+    }
+
+    #[test]
+    fn test_query_describe() {
+        let graph = create_test_graph();
+        let result = graph.query("tell me about api").unwrap();
+        assert!(result.answer.contains("API Service"));
+        assert!(result.answer.contains("service"));
+    }
 }

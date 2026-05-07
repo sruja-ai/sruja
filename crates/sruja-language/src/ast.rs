@@ -1383,6 +1383,145 @@ mod tests {
 
         assert_eq!(program.items.len(), 2);
     }
+
+    #[test]
+    fn test_node_kind_parsing_and_display() {
+        use std::str::FromStr;
+
+        assert_eq!(NodeKind::from_str("system").unwrap(), NodeKind::System);
+        assert_eq!(NodeKind::from_str("service").unwrap(), NodeKind::Service);
+        assert_eq!(
+            NodeKind::from_str("container").unwrap(),
+            NodeKind::Container
+        );
+        assert_eq!(
+            NodeKind::from_str("component").unwrap(),
+            NodeKind::Component
+        );
+        assert_eq!(NodeKind::from_str("database").unwrap(), NodeKind::Database);
+        assert_eq!(NodeKind::from_str("queue").unwrap(), NodeKind::Queue);
+        assert_eq!(
+            NodeKind::from_str("external_api").unwrap(),
+            NodeKind::ExternalApi
+        );
+        assert_eq!(NodeKind::from_str("frontend").unwrap(), NodeKind::Frontend);
+        assert_eq!(NodeKind::from_str("module").unwrap(), NodeKind::Module);
+        assert!(NodeKind::from_str("invalid_kind").is_err());
+
+        assert_eq!(NodeKind::System.as_str(), "system");
+        assert_eq!(format!("{}", NodeKind::Database), "database");
+        assert_eq!(
+            NodeKind::Custom("custom_node".to_string()).kind_str(),
+            "custom_node"
+        );
+        assert_eq!(NodeKind::System.kind_str(), "system");
+        assert_eq!(
+            NodeKind::Custom("custom_node".to_string()).to_string_kind(),
+            "custom_node"
+        );
+        assert_eq!(NodeKind::System.to_string_kind(), "system");
+    }
+
+    #[test]
+    fn test_edge_kind_parsing_and_display() {
+        use std::str::FromStr;
+
+        assert_eq!(
+            EdgeKind::from_str("depends_on").unwrap(),
+            EdgeKind::DependsOn
+        );
+        assert_eq!(EdgeKind::from_str("calls").unwrap(), EdgeKind::Calls);
+        assert_eq!(
+            EdgeKind::from_str("reads_from").unwrap(),
+            EdgeKind::ReadsFrom
+        );
+        assert_eq!(EdgeKind::from_str("writes_to").unwrap(), EdgeKind::WritesTo);
+        assert_eq!(
+            EdgeKind::from_str("publishes_to").unwrap(),
+            EdgeKind::PublishesTo
+        );
+        assert_eq!(
+            EdgeKind::from_str("subscribes_to").unwrap(),
+            EdgeKind::SubscribesTo
+        );
+        assert_eq!(EdgeKind::from_str("owns").unwrap(), EdgeKind::Owns);
+        assert_eq!(EdgeKind::from_str("contains").unwrap(), EdgeKind::Contains);
+        assert_eq!(EdgeKind::from_str("uses").unwrap(), EdgeKind::Uses);
+        assert!(EdgeKind::from_str("invalid_edge").is_err());
+
+        assert_eq!(EdgeKind::Calls.as_str(), "calls");
+        assert_eq!(format!("{}", EdgeKind::ReadsFrom), "reads_from");
+        assert_eq!(
+            EdgeKind::Custom("custom_edge".to_string()).kind_str(),
+            "custom_edge"
+        );
+        assert_eq!(EdgeKind::Calls.kind_str(), "calls");
+        assert_eq!(
+            EdgeKind::Custom("custom_edge".to_string()).to_string_kind(),
+            "custom_edge"
+        );
+        assert_eq!(EdgeKind::Calls.to_string_kind(), "calls");
+    }
+
+    #[test]
+    fn test_criticality_parsing_and_display() {
+        use std::str::FromStr;
+
+        assert_eq!(Criticality::from_str("low").unwrap(), Criticality::Low);
+        assert_eq!(
+            Criticality::from_str("medium").unwrap(),
+            Criticality::Medium
+        );
+        assert_eq!(Criticality::from_str("med").unwrap(), Criticality::Medium);
+        assert_eq!(Criticality::from_str("high").unwrap(), Criticality::High);
+        assert_eq!(
+            Criticality::from_str("critical").unwrap(),
+            Criticality::Critical
+        );
+        assert!(Criticality::from_str("invalid_criticality").is_err());
+
+        assert_eq!(Criticality::Low.as_str(), "low");
+        assert_eq!(format!("{}", Criticality::High), "high");
+    }
+
+    #[test]
+    fn test_source_kind_parsing_and_display() {
+        use std::str::FromStr;
+
+        assert_eq!(SourceKind::parse("openapi"), SourceKind::OpenApi);
+        assert_eq!(SourceKind::parse("asyncapi"), SourceKind::AsyncApi);
+        assert_eq!(SourceKind::parse("kubernetes"), SourceKind::Kubernetes);
+        assert_eq!(SourceKind::parse("k8s"), SourceKind::Kubernetes);
+        assert_eq!(SourceKind::parse("dockerfile"), SourceKind::Dockerfile);
+        assert_eq!(SourceKind::parse("docker"), SourceKind::Dockerfile);
+        assert_eq!(SourceKind::parse("terraform"), SourceKind::Terraform);
+        assert_eq!(SourceKind::parse("tf"), SourceKind::Terraform);
+        assert_eq!(SourceKind::parse("docs"), SourceKind::Docs);
+        assert_eq!(SourceKind::parse("doc"), SourceKind::Docs);
+        assert_eq!(SourceKind::parse("readme"), SourceKind::Readme);
+        assert_eq!(SourceKind::parse("proto"), SourceKind::Proto);
+        assert_eq!(SourceKind::parse("protobuf"), SourceKind::Proto);
+        assert_eq!(SourceKind::parse("config"), SourceKind::Config);
+        assert_eq!(SourceKind::parse("graphql"), SourceKind::GraphQL);
+        assert_eq!(SourceKind::parse("gql"), SourceKind::GraphQL);
+        assert_eq!(SourceKind::parse("helm"), SourceKind::Helm);
+        assert_eq!(
+            SourceKind::parse("custom_kind"),
+            SourceKind::Custom("custom_kind".to_string())
+        );
+
+        assert_eq!(SourceKind::OpenApi.as_str(), "openapi");
+        assert_eq!(format!("{}", SourceKind::Kubernetes), "kubernetes");
+        assert_eq!(
+            format!("{}", SourceKind::Custom("custom".to_string())),
+            "custom"
+        );
+
+        assert_eq!(
+            SourceKind::from_str("openapi").unwrap(),
+            SourceKind::OpenApi
+        );
+    }
 }
 
 /// Operational incident definition
