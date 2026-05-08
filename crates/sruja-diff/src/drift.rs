@@ -125,6 +125,19 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         });
     }
 
+    for v in &mut violations {
+        let mut prod_rel = true;
+        for s in &v.sources {
+            if let Some(ref file) = s.file {
+                if is_likely_doc_or_tool_path(file, &v.location.clone().unwrap_or_default()) {
+                    prod_rel = false;
+                    break;
+                }
+            }
+        }
+        v.production_relevant = Some(prod_rel);
+    }
+
     if !circular.is_empty() {
         suggestions.push("Fix circular dependencies to improve maintainability".to_string());
     }
@@ -853,6 +866,42 @@ mod tests {
                 .iter()
                 .any(|s| s.file.as_deref() == Some("src/god.rs")),
             "god module violation should include node path source"
+        );
+    }
+
+    #[test]
+    fn detect_architectural_drift_ignores_non_production_violations_for_health() {
+        let mut g = Graph::default();
+        g.nodes
+            .push(node("web", NodeKind::Module, Some("src/test/web.rs")));
+        g.nodes
+            .push(node("db", NodeKind::Database, Some("src/db.rs")));
+
+        g.edges.push(Edge {
+            source: "web".to_string(),
+            target: "db".to_string(),
+            kind: EdgeKind::Calls,
+            evidence: vec![EdgeEvidence {
+                rule: "scan".to_string(),
+                file: Some("src/test/web.rs".to_string()),
+                line: Some(12),
+                detail: Some("db.query".to_string()),
+            }],
+            confidence: Default::default(),
+        });
+
+        let config = DriftConfig::default();
+        let report = detect_architectural_drift_with_config(&g, &config);
+
+        let layer = report
+            .violations
+            .iter()
+            .find(|v| v.kind == ViolationKind::LayerViolation)
+            .expect("layer violation");
+        assert_eq!(layer.production_relevant, Some(false));
+        assert_eq!(
+            report.health_score, 100,
+            "non-production violation shouldn't penalize health score"
         );
     }
 }

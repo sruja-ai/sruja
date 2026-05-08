@@ -3,6 +3,8 @@
 //! This crate provides the core language infrastructure for the Sruja DSL,
 //! including parsing, AST representation, and architectural traversal.
 //!
+
+#![warn(missing_docs)]
 //! ## DSL Structure
 //!
 //! The Sruja DSL follows a hierarchical C4-style structure:
@@ -19,6 +21,7 @@
 //! - [`schema`]: Domain-specific validation schemas (e.g., Architecture, Threat Model).
 //! - [`token`]: Lexical tokens used by the parser.
 
+#[allow(missing_docs)]
 pub mod ast;
 pub mod parser;
 pub mod schema;
@@ -356,5 +359,29 @@ AdminFeedback = causal_loop "Admin Feedback Loop" {
                 ))
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn test_parse_missing_brace_error() {
+        let input = "MySystem = system \"My System\" {";
+        let parser = Parser::new("test.sruja".to_string());
+        let result = parser.parse(input);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(!errors.is_empty());
+        assert!(errors[0].message.contains("Missing closing `}`"));
+        assert!(errors[0].suggestions[0].contains("Add a matching `}`"));
+    }
+
+    #[test]
+    fn test_parse_unterminated_string_error() {
+        let input = "MySystem = system \"My System";
+        let parser = Parser::new("test.sruja".to_string());
+        let result = parser.parse(input);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(!errors.is_empty());
+        assert!(errors[0].message.contains("Unterminated string literal"));
+        assert!(errors[0].suggestions[0].contains("Close the string"));
     }
 }

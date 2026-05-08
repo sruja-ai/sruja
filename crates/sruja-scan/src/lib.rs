@@ -1,23 +1,38 @@
 //! Repo scanner that infers an architecture graph.
 //!
+
+#![warn(missing_docs)]
 //! This crate extracts architecture information from source code using Tree-sitter.
 //! Supports multiple programming languages and can also parse package manifests.
 
+#[allow(missing_docs)]
 mod assets;
+#[allow(missing_docs)]
 pub mod ast_cache;
+#[allow(missing_docs)]
 mod cargo;
+#[allow(missing_docs)]
 pub mod confidence;
+#[allow(missing_docs)]
 pub mod graph;
+#[allow(missing_docs)]
 pub mod manifest;
+#[allow(missing_docs)]
 mod manifests;
+#[allow(missing_docs)]
 pub mod npm;
+#[allow(missing_docs)]
 pub mod repomap;
+#[allow(missing_docs)]
 pub mod scan_scope;
+#[allow(missing_docs)]
 mod scip_ingest;
 #[cfg(not(target_arch = "wasm32"))]
+#[allow(missing_docs)]
 pub mod tree_sitter;
 
 #[cfg(target_arch = "wasm32")]
+#[allow(missing_docs)]
 pub mod tree_sitter_wasm;
 
 #[cfg(target_arch = "wasm32")]
@@ -39,20 +54,32 @@ pub use scan_scope::{
 };
 pub use tree_sitter::{detect_language, parse_file, scan_with_tree_sitter, ScanConfig};
 
+/// Errors that can occur during repository scanning
 #[derive(Debug, Error)]
 pub enum ScanError {
+    /// No supported source files found in the specified path
     #[error("no supported source files found in {path}")]
-    UnsupportedRepo { path: String },
+    UnsupportedRepo {
+        /// The path of the unsupported repository
+        path: String,
+    },
 
+    /// Cargo metadata command failed
     #[error("cargo metadata failed: {message}")]
-    CargoMetadata { message: String },
+    CargoMetadata {
+        /// The error message returned from cargo metadata
+        message: String,
+    },
 
+    /// JSON or configuration parsing error
     #[error("parse error: {0}")]
     Parse(#[from] serde_json::Error),
 
+    /// Input/output error
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// Directory traversal/walking error
     #[error("walk error: {0}")]
     Walk(String),
 }

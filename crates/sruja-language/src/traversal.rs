@@ -11,6 +11,7 @@ use sruja_diagnostics::SourceLocation;
 /// A relation paired with the scope (parent FQN) it was declared within.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelationWithScope {
+    /// The actual relation instance
     pub relation: Relation,
     /// Parent FQN for nested relations; empty for top-level.
     pub scope: String,
@@ -360,6 +361,7 @@ fn is_unset_location(loc: &SourceLocation) -> bool {
     loc.line == 0 && loc.column == 0
 }
 
+/// Populates source locations for AST items using heuristics if they are unset.
 pub fn populate_locations(program: &mut Program, source: &str, filename: &str) {
     for item in &mut program.items {
         match item {
@@ -455,6 +457,7 @@ fn find_schema_definition_line(source: &str, identifier: &str) -> Option<(u32, u
 
 /// Get element location from various AST types
 pub trait HasLocation {
+    /// Retrieve the source location for this AST item
     fn location(&self) -> &SourceLocation;
 }
 

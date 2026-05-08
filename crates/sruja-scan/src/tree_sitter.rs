@@ -904,8 +904,10 @@ export class UserService {
         )
         .unwrap();
 
-        let mut config = ScanConfig::default();
-        config.incremental = true;
+        let config = ScanConfig {
+            incremental: true,
+            ..ScanConfig::default()
+        };
 
         // First scan - builds cache
         let graph1 = scan_with_tree_sitter(dir.path(), &config).unwrap();

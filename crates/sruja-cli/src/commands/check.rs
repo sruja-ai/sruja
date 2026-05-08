@@ -304,7 +304,7 @@ pub async fn check(
                 output.truth_status, output.violations_count
             );
             if let Some(score) = output.health_score {
-                println!("Health score: {}/100", score);
+                println!("Health:       {}", colors::health_bar(score, 15));
             }
             println!();
 

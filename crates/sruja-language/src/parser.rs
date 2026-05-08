@@ -178,6 +178,37 @@ fn detect_common_syntax_diagnostic(
         ));
     }
 
+    let trimmed_all = remaining_trimmed.trim();
+    if trimmed_all.starts_with("system")
+        || trimmed_all.starts_with("container")
+        || trimmed_all.starts_with("component")
+        || trimmed_all.starts_with("person")
+        || trimmed_all.starts_with("database")
+        || trimmed_all.starts_with("queue")
+    {
+        let kw = trimmed_all.split_whitespace().next().unwrap_or("element");
+        return Some((
+            sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+            format!("Missing identifier assignment before keyword `{}`. Elements must be defined as `ID = {} \"Label\"`.", kw, kw),
+            vec![
+                format!("Add an identifier and `=` before the keyword, e.g. `MyElement = {} \"Label\"`", kw),
+                "Element IDs must be PascalCase".to_string(),
+            ],
+        ));
+    }
+
+    if trimmed_all.contains("->") && !trimmed_all.contains('"') {
+        return Some((
+            sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+            "Relationships must have a double-quoted label, e.g., `A -> B \"label\"`".to_string(),
+            vec![
+                "Add a double-quoted label after the target component: `A -> B \"calls\"`"
+                    .to_string(),
+                "Single quotes are not supported; use double quotes: \"label\"".to_string(),
+            ],
+        ));
+    }
+
     None
 }
 

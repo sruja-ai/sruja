@@ -794,6 +794,15 @@ fn init_fails_when_repo_not_found() {
 }
 
 #[test]
+fn watch_fails_when_repo_not_found() {
+    let (success, _stdout, stderr) =
+        run_sruja(&["watch", "-r", "/nonexistent/path/that/does/not/exist"]);
+
+    assert!(!success, "watch should fail for nonexistent repo");
+    assert!(stderr.contains("Repository not found") || stderr.contains("not found"));
+}
+
+#[test]
 fn impact_fails_when_node_not_found() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());

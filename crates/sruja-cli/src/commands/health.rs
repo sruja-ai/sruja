@@ -145,6 +145,18 @@ pub async fn health(
                 trend_icon
             );
             println!("  File:  {}", arch_path.display());
+
+            if let Ok(kg) = crate::graph_store::load_or_build_graph(repo_path) {
+                let coupling = sruja_graph::CouplingAnalyzer.analyze_graph(&kg);
+                let treewidth_res = sruja_graph::TreewidthAnalyzer::default().analyze_graph(&kg);
+                println!(
+                    "  Treewidth:      {} ({})\n  Avg Instability:  {:.2}\n  Pain Zones:     {} modules",
+                    treewidth_res.treewidth,
+                    treewidth_res.complexity_rating,
+                    coupling.summary.avg_instability,
+                    coupling.summary.pain_zone_count
+                );
+            }
             println!();
 
             if health.deductions.is_empty() {

@@ -1,16 +1,28 @@
 //! Sruja CLI
 //!
+
+#![warn(missing_docs)]
 //! Command-line interface for the Sruja DSL tool.
 
+#[allow(missing_docs)]
 mod cli;
+#[allow(missing_docs)]
 mod commands;
+#[allow(missing_docs)]
 mod compliance;
+#[allow(missing_docs)]
 mod context_detection;
+#[allow(missing_docs)]
 mod graph_store;
+#[allow(missing_docs)]
 mod integrations;
+#[allow(missing_docs)]
 mod modules;
+#[allow(missing_docs)]
 mod report;
+#[allow(missing_docs)]
 mod scoring;
+#[allow(missing_docs)]
 mod utils;
 
 use clap::Parser;

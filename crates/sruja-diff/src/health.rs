@@ -129,6 +129,10 @@ pub fn calculate_health_score_with_breakdown(
     let mut other_penalty: u8 = 0;
 
     for v in violations {
+        if v.production_relevant == Some(false) {
+            continue;
+        }
+
         match v.kind {
             ViolationKind::CircularDependency => cycle_count += 1,
             ViolationKind::OrphanComponent => orphan_count += 1,
@@ -242,6 +246,9 @@ pub fn calculate_health_score_with_density(
     let mut layer_count: usize = 0;
 
     for v in violations {
+        if v.production_relevant == Some(false) {
+            continue;
+        }
         match v.kind {
             ViolationKind::CircularDependency => cycle_count += 1,
             ViolationKind::OrphanComponent => orphan_count += 1,

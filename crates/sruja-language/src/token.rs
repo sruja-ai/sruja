@@ -6,85 +6,143 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TokenType {
     // Special
+    /// End of File
     Eof,
+    /// Illegal/unrecognized character sequence
     Illegal,
 
     // Identifiers + Literals
+    /// An identifier (e.g. name of a system, component, container)
     Ident,
+    /// A double-quoted string literal
     String,
+    /// A number literal
     Number,
 
     // Operators
-    Assign,    // =
-    Arrow,     // ->
+    /// Assignment operator `=`
+    Assign, // =
+    /// Outgoing relationship arrow `->`
+    Arrow, // ->
+    /// Incoming relationship arrow `<-`
     BackArrow, // <-
-    BiArrow,   // <->
+    /// Bidirectional relationship arrow `<->`
+    BiArrow, // <->
 
     // Delimiters
-    Colon,    // :
-    Comma,    // ,
-    Dot,      // .
-    Star,     // *
-    TagRef,   // #tagname
-    LBrace,   // {
-    RBrace,   // }
+    /// Colon delimiter `:`
+    Colon, // :
+    /// Comma delimiter `,`
+    Comma, // ,
+    /// Dot delimiter `.` for nested references
+    Dot, // .
+    /// Star/wildcard `*`
+    Star, // *
+    /// Tag reference (e.g., `#tagname`)
+    TagRef, // #tagname
+    /// Left curly brace `{`
+    LBrace, // {
+    /// Right curly brace `}`
+    RBrace, // }
+    /// Left bracket `[`
     LBracket, // [
+    /// Right bracket `]`
     RBracket, // ]
 
     // Structure Keywords
+    /// `specification` keyword
     Specification,
+    /// `model` keyword
     Model,
+    /// `views` keyword
     Views,
+    /// `view` keyword
     View,
 
     // View Predicates
+    /// `include` keyword
     Include,
+    /// `exclude` keyword
     Exclude,
+    /// `of` keyword
     Of,
+    /// `title` keyword
     Title,
+    /// `import` keyword
     Import,
+    /// `from` keyword
     From,
 
     // Element Types
+    /// `element` keyword
     Element,
+    /// `person` keyword
     Person,
+    /// `system` keyword
     System,
+    /// `container` keyword
     Container,
+    /// `component` keyword
     Component,
+    /// `database` keyword
     Database,
+    /// `queue` keyword
     Queue,
 
     // Properties
+    /// `description` keyword
     Description,
+    /// `technology` keyword
     Technology,
+    /// `metadata` keyword
     Metadata,
 
     // Booleans
+    /// `true` boolean keyword
     True,
+    /// `false` boolean keyword
     False,
 
     // Flow Keywords
+    /// `step` keyword
     Step,
+    /// `flow` keyword
     Flow,
+    /// `actor` keyword
     Actor,
+    /// `kind` keyword
     Kind,
 
     // Sruja-specific keywords
+    /// `relation` keyword
     Relation,
+    /// `functional` keyword
     Functional,
+    /// `nonfunctional` keyword
     Nonfunctional,
+    /// `constraint` keyword
     Constraint,
+    /// `story` keyword
     Story,
+    /// `scenario` keyword
     Scenario,
+    /// `requirement` keyword
     Requirement,
+    /// `adr` keyword
     Adr,
+    /// `style` keyword
     Style,
+    /// `styles` keyword
     Styles,
+    /// `properties` keyword
     Properties,
+    /// `tech` keyword
     Tech,
 
     // Legacy (not used in parser)
+    /// `requirements` keyword
     Requirements,
+    /// `adrs` keyword
     Adrs,
 }
 

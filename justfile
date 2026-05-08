@@ -8,8 +8,8 @@ default: help
 
 # --- Core Development ---
 
-# Run all checks (fmt, lint, test)
-check: fmt lint test
+# Run all checks (fmt, lint, test, validate-book-dsl)
+check: fmt lint test validate-book-dsl
     @echo "✅ All checks passed!"
 
 # CI-friendly meta target (reproducible + non-interactive)
@@ -45,6 +45,12 @@ lint:
     @echo "Linting Rust code..."
     cargo clippy --workspace --locked -- -D warnings
     @echo "✅ Linting complete!"
+
+# Validate Sruja DSL in documentation book
+validate-book-dsl:
+    @echo "Validating DSL examples in the book..."
+    SRUJA="cargo run --bin sruja --" ./book/validate_book_dsl.sh
+    @echo "✅ DSL examples validation complete!"
 
 # Run tests with coverage
 test-coverage:
