@@ -337,6 +337,9 @@ pub enum Commands {
         /// Output format (text, json, github-actions)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Show evolutionary health and metrics
+        #[arg(long = "evolution", short = 'e')]
+        evolution: bool,
     },
     /// Keep architecture feedback live while you code
     Watch {
@@ -738,6 +741,27 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: AgentCommand,
     },
+    /// Evaluate fitness functions declared in .sruja files
+    Evaluate {
+        /// Path to .sruja file or directory
+        #[arg(long, short = 'a', default_value = "repo.sruja")]
+        architecture: String,
+    },
+    /// Evolutionary history, log, and management
+    Evolution {
+        #[command(subcommand)]
+        cmd: EvolutionCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum EvolutionCommand {
+    /// Show evolution log/history of mutations and fitness scores
+    Log {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1066,7 +1090,11 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             ci,
             dry_run,
         } => commands::init(&path, prompt, auto, force, hook, ci, dry_run).await,
-        Commands::Status { path, format } => commands::status(&path, &format).await,
+        Commands::Status {
+            path,
+            format,
+            evolution,
+        } => commands::status(&path, &format, evolution).await,
         Commands::Watch { path, clear, focus } => commands::watch(&path, clear, focus).await,
         Commands::Sync { path, format } => commands::sync(&path, &format).await,
         Commands::Review {
@@ -1359,6 +1387,10 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await
             }
             AgentCommand::Clear { repo, force } => commands::agent_clear(&repo, force).await,
+        },
+        Commands::Evaluate { architecture } => commands::evaluate(&architecture).await,
+        Commands::Evolution { cmd } => match cmd {
+            EvolutionCommand::Log { repo } => commands::evolution_log(&repo).await,
         },
     };
 

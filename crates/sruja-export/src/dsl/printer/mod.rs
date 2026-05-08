@@ -65,6 +65,12 @@ impl DslPrinter {
                 }
                 TopLevelItem::Incident(inc) => governance::print_incident(&mut out, inc),
                 TopLevelItem::Schema(_) => {}
+                TopLevelItem::Fitness(fit) => {
+                    out.push_str(&format!(
+                        "fitness {} {{\n  target \"{}\"\n  measure \"{}\"\n}}\n\n",
+                        fit.id, fit.target, fit.measure
+                    ));
+                }
             }
         }
 

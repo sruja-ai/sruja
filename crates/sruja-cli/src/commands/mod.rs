@@ -10,6 +10,7 @@ pub mod utility_domain;
 
 pub use intent_domain::agent::{agent_clear, agent_history, agent_record};
 pub use intent_domain::ai::{ai_brief, AiBriefOptions};
+pub use intent_domain::evolution::{evaluate, evolution_log};
 pub use intent_domain::propose::*;
 
 pub use dsl_domain::check::{baseline, check};

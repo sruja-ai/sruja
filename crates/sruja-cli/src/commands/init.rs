@@ -226,22 +226,81 @@ pub async fn init(
 
     if !should_auto {
         let baseline_path = architecture_path::resolve_architecture_path(repo_path);
-        if let Some(ref p) = baseline_path {
+        let mut scaffolded = false;
+
+        if let Some(ref path) = baseline_path {
             if is_interactive || dry_run {
                 println!(
                     "  {} Existing architecture file: {}",
                     colors::info("i"),
-                    p.display()
+                    path.display()
                 );
             }
-        } else if is_interactive || dry_run {
-            println!(
-                "  {} No architecture file found. Creating manual skeleton recommended.",
-                colors::warning("!")
-            );
+        } else {
+            if is_interactive || dry_run {
+                println!(
+                    "  {} No architecture file found. Creating manual skeleton recommended.",
+                    colors::warning("!")
+                );
+            }
+
+            if is_interactive {
+                let scaffold_template = Confirm::new()
+                    .with_prompt(
+                        "Would you like to scaffold the multi-agent team evolutionary template?",
+                    )
+                    .default(true)
+                    .interact()
+                    .unwrap_or(false);
+
+                if scaffold_template {
+                    let dest = repo_path.join("repo.sruja");
+                    if !dry_run {
+                        let blueprint_content =
+                            include_str!("../../../../templates/blueprints/agent-team.sruja");
+                        fs::write(&dest, blueprint_content)?;
+
+                        // Create mock scripts so evaluate works immediately!
+                        let scripts_dir = repo_path.join("scripts");
+                        fs::create_dir_all(&scripts_dir).ok();
+                        let script_accuracy = scripts_dir.join("evaluate_accuracy.sh");
+                        let script_cost = scripts_dir.join("calculate_token_costs.sh");
+                        fs::write(
+                            &script_accuracy,
+                            "#!/bin/sh\necho \"success_rate: 99.5%\"\nexit 0\n",
+                        )
+                        .ok();
+                        fs::write(
+                            &script_cost,
+                            "#!/bin/sh\necho \"cost_per_job: $0.12\"\nexit 0\n",
+                        )
+                        .ok();
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            if let Ok(m) = fs::metadata(&script_accuracy) {
+                                let mut perms = m.permissions();
+                                perms.set_mode(0o755);
+                                let _ = fs::set_permissions(&script_accuracy, perms);
+                            }
+                            if let Ok(m) = fs::metadata(&script_cost) {
+                                let mut perms = m.permissions();
+                                perms.set_mode(0o755);
+                                let _ = fs::set_permissions(&script_cost, perms);
+                            }
+                        }
+                    }
+                    println!(
+                        "  {} Scaffolded multi-agent team template to {}",
+                        colors::success("✓"),
+                        colors::info("repo.sruja")
+                    );
+                    scaffolded = true;
+                }
+            }
         }
 
-        if !dry_run {
+        if !dry_run && !scaffolded {
             quickstart(repo_root, "text", false, None).await?;
         }
     }

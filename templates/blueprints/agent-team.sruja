@@ -1,0 +1,75 @@
+// templates/blueprints/agent-team.sruja
+// Blueprint for an outcome-driven, self-evolving multi-agent team.
+
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+Customer = person "Customer" {
+  description "Client uploading invoices for automated extraction"
+}
+
+InvoiceSystem = system "Invoice Intelligence System" {
+  description "Outcome-driven autonomous processing team"
+
+  QueenBee = container "Orchestrator Agent" {
+    technology "GPT-4o"
+    description "Core coordinator; plans trajectories, handles failures, and delegates subtasks"
+    criticality critical
+    
+    gotcha "Can loop endlessly on highly ambiguous inputs; ensure Sisyphus enforcer limits are active."
+  }
+
+  Classifier = container "Classifier Agent" {
+    technology "Mistral-7B"
+    description "Fast SLM that classifies invoices by department or type"
+    criticality medium
+    
+    slo {
+      latency {
+        p95 "150ms"
+      }
+    }
+  }
+
+  Extractor = container "Data Extractor Agent" {
+    technology "Claude Haiku"
+    description "Extracts structured line-item data from verified invoices"
+    criticality high
+    
+    slo {
+      latency {
+        p95 "1200ms"
+      }
+    }
+  }
+
+  InvoiceDB = database "Invoice Store" {
+    technology "PostgreSQL"
+    description "Secure storage for final extracted invoice records"
+  }
+}
+
+// Operational Topology & Task Delegation
+Customer -> InvoiceSystem.QueenBee "Uploads PDF Invoice (HTTPS)"
+InvoiceSystem.QueenBee -> InvoiceSystem.Classifier "Delegates type classification"
+InvoiceSystem.QueenBee -> InvoiceSystem.Extractor "Delegates value extraction"
+InvoiceSystem.Classifier -> InvoiceSystem.Extractor "Passes classified meta"
+InvoiceSystem.Extractor -> InvoiceSystem.InvoiceDB "Persists line items (SQL)"
+
+// Future Evolutionary Fitness Metrics (Activated via extended parser)
+fitness AccuracyTarget {
+  target "success_rate > 99.0%"
+  measure "scripts/evaluate_accuracy.sh"
+}
+
+fitness CostOptimization {
+  target "cost_per_job < $0.15"
+  measure "scripts/calculate_token_costs.sh"
+}
+
+view index {
+  title "AI Agent Team Topology"
+  include *
+}

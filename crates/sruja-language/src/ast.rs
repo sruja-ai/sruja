@@ -78,6 +78,8 @@ pub enum TopLevelItem {
     Schema(SchemaBlock),
     /// Operational incident definition
     Incident(Incident),
+    /// Fitness function definition for self-healing and optimization
+    Fitness(FitnessDef),
 }
 
 /// Element definition (person, system, container, component, database, queue)
@@ -486,6 +488,8 @@ pub struct ElementDefBody {
     pub sources: Vec<SourceBinding>,
     pub state_machines: Vec<StateMachine>,
     pub contracts: Vec<Contract>,
+    /// Fitness functions for self-healing and evolutionary tracking
+    pub fitness_functions: Vec<FitnessDef>,
 }
 
 /// Items that can appear in an element body
@@ -530,6 +534,8 @@ pub enum ElementDefBodyItem {
     OperationalConstraint(String),
     /// Runbook path
     Runbook(String),
+    /// Fitness function definition
+    Fitness(FitnessDef),
 }
 
 /// System element (specialized ElementDef)
@@ -1098,6 +1104,15 @@ pub struct CausalLoop {
     pub description: Option<String>,
     pub variables: Vec<CausalLoopVariable>,
     pub relationships: Vec<CausalRelationship>,
+}
+
+/// Fitness function definition for self-healing and optimization
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct FitnessDef {
+    pub location: SourceLocation,
+    pub id: String,
+    pub target: String,
+    pub measure: String,
 }
 
 /// Result of an incremental parse: updated AST plus change metadata and timing.

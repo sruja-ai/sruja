@@ -13,13 +13,97 @@ fn escape_github_actions_message(input: &str) -> String {
 }
 
 /// Run status and print text or JSON.
-pub async fn status(repo_root: &str, format: &str) -> Result<(), CliError> {
+pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
     if !repo_path.join(".sruja").exists() {
         return Err(CliError::NotInitialized {
             path: repo_root.to_string(),
         });
+    }
+
+    if evolution {
+        let log_path = repo_path.join(".sruja").join("evolution.log");
+        println!("====================================================");
+        println!("📊 SRUJA EVOLUTIONARY HEALTH & METRICS");
+        println!("====================================================");
+
+        if !log_path.exists() {
+            println!("No evolution history found under .sruja/evolution.log.");
+            println!("Run 'sruja evaluate' to execute fitness functions and populate history.");
+            return Ok(());
+        }
+
+        let contents = std::fs::read_to_string(&log_path)?;
+        let lines: Vec<&str> = contents.lines().filter(|l| !l.trim().is_empty()).collect();
+        let total = lines.len();
+
+        let mut passed = 0;
+        let mut failed = 0;
+        let mut error = 0;
+        let mut latest_mutation = "None".to_string();
+
+        for line in &lines {
+            if line.contains("Result: PASS") {
+                passed += 1;
+            } else if line.contains("Result: FAIL") {
+                failed += 1;
+            } else if line.contains("Result: ERROR") {
+                error += 1;
+            }
+        }
+
+        if let Some(last) = lines.last() {
+            latest_mutation = last.to_string();
+        }
+
+        let pass_ratio = if total > 0 {
+            (passed as f64 / total as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        use crate::utils::table_formatter::TableFormatter;
+        let formatter = TableFormatter::auto();
+        let mut blocks = Vec::new();
+
+        let mut metrics_info = String::new();
+        metrics_info.push_str(&format!(
+            "Total Evaluations: {}\n",
+            colors::info(&total.to_string())
+        ));
+        metrics_info.push_str(&format!(
+            "Passed Checks:     {}\n",
+            colors::success(&passed.to_string())
+        ));
+        metrics_info.push_str(&format!(
+            "Failed Checks:     {}\n",
+            colors::error(&failed.to_string())
+        ));
+        if error > 0 {
+            metrics_info.push_str(&format!(
+                "Exec Errors:       {}\n",
+                colors::warning(&error.to_string())
+            ));
+        }
+        let bar_score = pass_ratio as u8;
+        let pass_bar = colors::health_bar(bar_score, 20);
+        metrics_info.push_str(&format!(
+            "Pass Ratio:        {} ({:.1}%)\n",
+            pass_bar, pass_ratio
+        ));
+        blocks.push(("Evolutionary Metrics".to_string(), metrics_info));
+
+        let mut history_info = String::new();
+        history_info.push_str(&format!("Latest Mutation:\n{}\n", latest_mutation));
+        blocks.push(("Activity Ledger".to_string(), history_info));
+
+        println!(
+            "{}",
+            formatter.format_dashboard("EVOLUTIONARY HEALTH", blocks)
+        );
+
+        return Ok(());
     }
 
     let out = status_result(repo_root).await?;

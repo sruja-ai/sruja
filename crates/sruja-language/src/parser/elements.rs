@@ -19,7 +19,8 @@ use crate::ast::{
 
 use super::assignments::parse_scenario_step;
 use super::blocks::{
-    parse_constraints_block, parse_conventions_block, parse_metadata_block, parse_style_decl,
+    parse_constraints_block, parse_conventions_block, parse_fitness, parse_metadata_block,
+    parse_style_decl,
 };
 use super::contracts::parse_contract;
 use super::primitives::{
@@ -347,6 +348,7 @@ pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBod
             ElementDefBodyItem::Runbook(r) => body.runbooks.push(r),
             ElementDefBodyItem::StateMachine(sm) => body.state_machines.push(sm),
             ElementDefBodyItem::Contract(c) => body.contracts.push(c),
+            ElementDefBodyItem::Fitness(f) => body.fitness_functions.push(f),
             #[allow(unreachable_patterns)]
             _ => {}
         }
@@ -440,6 +442,7 @@ fn parse_element_body_item(input: &str) -> IResult<&str, ElementDefBodyItem> {
             ),
             map(parse_state_machine, ElementDefBodyItem::StateMachine),
             map(parse_contract, ElementDefBodyItem::Contract),
+            map(parse_fitness, ElementDefBodyItem::Fitness),
         )),
     ))
     .parse(input)

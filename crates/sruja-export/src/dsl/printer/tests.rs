@@ -655,6 +655,23 @@ fn test_print_style() {
 }
 
 #[test]
+fn test_print_fitness_roundtrip() {
+    let input = r#"fitness AccuracyTarget {
+  target "success_rate > 99.0%"
+  measure "scripts/evaluate_accuracy.sh"
+}
+"#;
+    let program = parse(input);
+    let printer = DslPrinter::new();
+    let out = printer.print(&program);
+
+    assert!(out.contains("fitness"));
+    assert!(out.contains("AccuracyTarget"));
+    assert!(out.contains("target \"success_rate > 99.0%\""));
+    assert!(out.contains("measure \"scripts/evaluate_accuracy.sh\""));
+}
+
+#[test]
 fn test_roundtrip_and_idempotency_on_book_golden_files() {
     let dir = workspace_root().join("book/valid-examples");
     let mut files = Vec::new();

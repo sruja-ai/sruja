@@ -293,6 +293,71 @@ pub(crate) fn parse_style_decl(input: &str) -> IResult<&str, StyleDecl> {
     ))
 }
 
+pub(crate) fn parse_fitness(input: &str) -> IResult<&str, crate::ast::FitnessDef> {
+    use nom::branch::alt;
+    let (input, _) = tag("fitness").parse(input)?;
+    let (input, _) = ws1(input)?;
+    let (input, id) = parse_identifier(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, _) = char('{').parse(input)?;
+
+    let mut target = String::new();
+    let mut measure = String::new();
+
+    let mut current = input;
+    loop {
+        let (rest, _) = ws(current)?;
+        if rest.is_empty() {
+            break;
+        }
+        if rest.trim_start().starts_with('}') {
+            current = rest;
+            break;
+        }
+
+        let result: IResult<&str, (&str, String)> = alt((
+            map(preceded(tag("target"), preceded(ws1, parse_string)), |s| {
+                ("target", s)
+            }),
+            map(preceded(tag("measure"), preceded(ws1, parse_string)), |s| {
+                ("measure", s)
+            }),
+        ))
+        .parse(rest);
+
+        match result {
+            Ok((next, (key, s))) => {
+                match key {
+                    "target" => target = s,
+                    "measure" => measure = s,
+                    _ => {}
+                }
+                current = next;
+            }
+            Err(_) => {
+                if let Some(newline_pos) = rest.find('\n') {
+                    current = &rest[newline_pos + 1..];
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    let (input, _) = ws0(current)?;
+    let (input, _) = char('}').parse(input)?;
+
+    Ok((
+        input,
+        crate::ast::FitnessDef {
+            location: SourceLocation::new(String::new(), 0, 0),
+            id,
+            target,
+            measure,
+        },
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -410,5 +475,15 @@ mod tests {
         let (_, entry) = result.unwrap();
         assert_eq!(entry.key, "format");
         assert_eq!(entry.value, "json");
+    }
+
+    #[test]
+    fn test_parse_fitness_basic() {
+        let result = parse_fitness("fitness AccuracyTarget { target \"success_rate > 99.0%\" measure \"scripts/evaluate_accuracy.sh\" }");
+        assert!(result.is_ok());
+        let (_, fit) = result.unwrap();
+        assert_eq!(fit.id, "AccuracyTarget");
+        assert_eq!(fit.target, "success_rate > 99.0%");
+        assert_eq!(fit.measure, "scripts/evaluate_accuracy.sh");
     }
 }

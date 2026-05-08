@@ -270,6 +270,48 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_evaluate_mutation",
+            "title": "Sruja Evaluate Mutation",
+            "description": "Evaluate declared fitness functions on a .sruja file to check architectural and behavioral scores.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "architecture": { "type": "string", "description": "Path to the .sruja architecture file (defaults to repo.sruja)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_propose_topology_change",
+            "title": "Sruja Propose Topology Change",
+            "description": "Propose an architectural topology mutation and run impact analysis and drift checks before committing.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "description": { "type": "string", "description": "Description of the proposed change" },
+                    "add_elements": { "type": "array", "items": { "type": "string" }, "description": "List of elements in format 'id:kind:label[:tech]'" },
+                    "add_relationships": { "type": "array", "items": { "type": "string" }, "description": "List of relationships in format 'source->target[:label]'" }
+                },
+                "required": ["description"]
+            }
+        }),
+        json!({
+            "name": "sruja_commit_evolution",
+            "title": "Sruja Commit Evolution",
+            "description": "Commit an evolutionary mutation log record into the history log.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "id": { "type": "string", "description": "Fitness ID of the evaluated function" },
+                    "target": { "type": "string", "description": "Target criteria of the function" },
+                    "result": { "type": "string", "description": "Evaluation result (PASS/FAIL/ERROR)" },
+                    "detail": { "type": "string", "description": "Detailed log or command output" }
+                },
+                "required": ["id", "target", "result"]
+            }
+        }),
+        json!({
             "name": "sruja_add_element",
             "title": "Sruja Add Element",
             "description": "Add a new element (system, container, component, database, person) to the architecture.",
@@ -885,6 +927,85 @@ async fn run_tool(
                     format
                 ))),
             }
+        }
+        "sruja_evaluate_mutation" => {
+            let architecture = arguments
+                .get("architecture")
+                .and_then(|v| v.as_str())
+                .unwrap_or("repo.sruja");
+
+            // Execute the evaluation logic
+            crate::commands::evaluate(architecture).await?;
+            Ok("Fitness functions evaluated successfully. Check output logs/terminal or evolution log.".to_string())
+        }
+        "sruja_propose_topology_change" => {
+            let desc = arguments
+                .get("description")
+                .and_then(|v| v.as_str())
+                .unwrap();
+            let add_elements: Vec<String> = arguments
+                .get("add_elements")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let add_relationships: Vec<String> = arguments
+                .get("add_relationships")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            // Run proposal create simulation and return feedback
+            crate::commands::propose_create(
+                &repo,
+                desc,
+                add_elements,
+                add_relationships,
+                Vec::new(),
+            )
+            .await?;
+            Ok("Architecture topology change proposed successfully. Proposal ID and details generated.".to_string())
+        }
+        "sruja_commit_evolution" => {
+            let id = arguments.get("id").and_then(|v| v.as_str()).unwrap();
+            let target = arguments.get("target").and_then(|v| v.as_str()).unwrap();
+            let result = arguments.get("result").and_then(|v| v.as_str()).unwrap();
+            let detail = arguments
+                .get("detail")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            // Write mutation record directly using our internal helper
+            let sruja_dir = std::path::Path::new(&repo).join(".sruja");
+            if !sruja_dir.exists() {
+                std::fs::create_dir_all(&sruja_dir)?;
+            }
+            let log_path = sruja_dir.join("evolution.log");
+            use std::fs::OpenOptions;
+            use std::io::Write;
+            let mut file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(log_path)?;
+
+            let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+            writeln!(
+                file,
+                "[{}] ID: {} | Target: {} | Result: {} | Output: {}",
+                timestamp,
+                id,
+                target,
+                result.to_uppercase(),
+                detail
+            )?;
+            Ok("Evolution mutation successfully committed to history log.".to_string())
         }
         "sruja_check_drift" => {
             let architecture = arguments

@@ -10,6 +10,8 @@ pub mod agent;
 pub mod ai;
 #[path = "critique.rs"]
 pub mod critique;
+#[path = "evolution.rs"]
+pub mod evolution;
 #[path = "focus.rs"]
 pub mod focus;
 #[path = "ingest.rs"]
