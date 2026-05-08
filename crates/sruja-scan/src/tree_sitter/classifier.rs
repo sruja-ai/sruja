@@ -280,3 +280,89 @@ impl Default for ClassificationEngine {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tree_sitter::languages::{Definition, DefinitionKind};
+
+    fn parsed_with_definitions(definitions: Vec<Definition>) -> ParsedFile {
+        ParsedFile {
+            name: "test".to_string(),
+            path: "test".to_string(),
+            imports: Vec::new(),
+            exports: Vec::new(),
+            definitions,
+        }
+    }
+
+    #[test]
+    fn classifies_rust_web_server_as_service() {
+        let parsed = parsed_with_definitions(vec![Definition {
+            name: "main".to_string(),
+            kind: DefinitionKind::Function,
+            line: 1,
+        }]);
+
+        let ctx = ClassificationContext {
+            path_str: "src/main.rs".to_string(),
+            content_lower: "use axum::router; fn main() { serve(); }".to_string(),
+            parsed: &parsed,
+        };
+
+        let engine = ClassificationEngine::new();
+        let (kind, confidence, signals) = engine.classify(&ctx);
+
+        assert_eq!(kind, NodeKind::Service);
+        assert_eq!(confidence, 90);
+        assert!(signals.iter().any(|s| s.name == "rust_web_server"));
+    }
+
+    #[test]
+    fn cli_tool_negative_signal_defaults_to_low_confidence_module() {
+        let parsed = parsed_with_definitions(Vec::new());
+        let ctx = ClassificationContext {
+            path_str: "/cmd/foo/main.go".to_string(),
+            content_lower:
+                "package main\nimport \"flag\"\nfunc main() { flag.String(\"x\", \"\", \"\") }"
+                    .to_string(),
+            parsed: &parsed,
+        };
+
+        let engine = ClassificationEngine::new();
+        let (kind, confidence, signals) = engine.classify(&ctx);
+
+        assert_eq!(kind, NodeKind::Module);
+        assert_eq!(confidence, 10);
+        assert!(signals.iter().any(|s| s.name == "cli_tool_match"));
+    }
+
+    #[test]
+    fn custom_rules_are_applied_and_can_override_defaults() {
+        let parsed = parsed_with_definitions(Vec::new());
+        let engine = ClassificationEngine::from_config(ClassificationConfig {
+            rules: vec![CustomRuleConfig {
+                name: "test_queue_rule".to_string(),
+                weight: 99,
+                kind: NodeKind::Queue,
+                match_patterns: MatchPatterns {
+                    path_ends_with: Some(".rs".to_string()),
+                    path_contains: Some("/consumer/".to_string()),
+                    content_contains: Some(vec!["kafkajs".to_string(), "consume".to_string()]),
+                },
+            }],
+        });
+
+        let ctx = ClassificationContext {
+            path_str: "src/consumer/worker.rs".to_string(),
+            content_lower: "use kafkajs; fn consume() {}".to_string(),
+            parsed: &parsed,
+        };
+
+        let (kind, confidence, signals) = engine.classify(&ctx);
+
+        assert_eq!(kind, NodeKind::Queue);
+        assert_eq!(confidence, 100);
+        assert!(signals.iter().any(|s| s.name == "test_queue_rule"));
+    }
+}

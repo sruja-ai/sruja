@@ -103,3 +103,111 @@ impl ComplianceReport {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_diff::{Severity, ViolationKind};
+
+    fn sample_violation(message: &str) -> Violation {
+        Violation {
+            kind: ViolationKind::CircularDependency,
+            severity: Severity::Error,
+            message: message.to_string(),
+            location: None,
+            suggestion: None,
+            sources: Vec::new(),
+            confidence: None,
+            evidence_count: None,
+            production_relevant: None,
+            baseline_delta: None,
+            suppressed: None,
+            rule_id: None,
+            rationale: None,
+        }
+    }
+
+    #[test]
+    fn from_parts_returns_compliant_when_no_structural_policy_or_boundary() {
+        let report = ComplianceReport::from_parts(Vec::new(), Vec::new(), Vec::new(), 0, 100);
+        assert_eq!(report.status, ComplianceStatus::Compliant);
+        assert!(report.remediation_checklist.is_empty());
+    }
+
+    #[test]
+    fn from_parts_flags_non_compliant_for_structural_violations_and_adds_checklist_item() {
+        let report = ComplianceReport::from_parts(
+            vec![sample_violation("cycle")],
+            Vec::new(),
+            Vec::new(),
+            0,
+            80,
+        );
+        assert_eq!(report.status, ComplianceStatus::NonCompliant);
+        assert!(report
+            .remediation_checklist
+            .iter()
+            .any(|s| s.contains("Fix 1 structural violation")));
+    }
+
+    #[test]
+    fn from_parts_flags_non_compliant_for_policy_violations_and_adds_checklist_item() {
+        let report = ComplianceReport::from_parts(
+            Vec::new(),
+            vec![DriftEntry {
+                kind: "PolicyViolation".to_string(),
+                severity: "Error".to_string(),
+                description: "nope".to_string(),
+                suggestion: None,
+            }],
+            vec![PolicyViolationEntry {
+                policy_name: "NoProdDb".to_string(),
+                message: "db access".to_string(),
+                source: "A".to_string(),
+                target: "B".to_string(),
+            }],
+            0,
+            90,
+        );
+        assert_eq!(report.status, ComplianceStatus::NonCompliant);
+        assert!(report
+            .remediation_checklist
+            .iter()
+            .any(|s| s.contains("Resolve 1 policy violation")));
+        assert!(!report
+            .remediation_checklist
+            .iter()
+            .any(|s| s.contains("Address 1 intent drift")));
+    }
+
+    #[test]
+    fn from_parts_flags_non_compliant_for_boundary_violations_and_adds_checklist_item() {
+        let report = ComplianceReport::from_parts(Vec::new(), Vec::new(), Vec::new(), 2, 95);
+        assert_eq!(report.status, ComplianceStatus::NonCompliant);
+        assert!(report
+            .remediation_checklist
+            .iter()
+            .any(|s| s.contains("Fix 2 boundary violation")));
+    }
+
+    #[test]
+    fn from_parts_adds_intent_drift_checklist_item_when_only_intent_drifts_exist() {
+        let report = ComplianceReport::from_parts(
+            Vec::new(),
+            vec![DriftEntry {
+                kind: "UndocumentedComponent".to_string(),
+                severity: "Warning".to_string(),
+                description: "missing docs".to_string(),
+                suggestion: Some("document it".to_string()),
+            }],
+            Vec::new(),
+            0,
+            100,
+        );
+        assert_eq!(report.status, ComplianceStatus::Compliant);
+        assert!(report
+            .remediation_checklist
+            .iter()
+            .any(|s| s.contains("Address 1 intent drift")));
+    }
+}
