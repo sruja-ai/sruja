@@ -1,0 +1,66 @@
+import { * } from 'sruja.ai/stdlib'
+
+Developer = person "Developer" {
+  description "Uses Sruja CLI and VS Code extension during day-to-day development"
+}
+
+Sruja = system "Sruja Platform" {
+  description "Tools for defining, validating, and exporting architecture-as-code, plus context engineering for AI-assisted development"
+  tags ["platform", "architecture-as-code"]
+
+  CLI = container "Sruja CLI" {
+    technology "Rust, clap"
+    description "Command-line interface for Sruja operations (lint, export, drift, context, and more)"
+    tags ["cli"]
+  }
+
+  Core = container "Core (Language + Validation + Diagnostics)" {
+    technology "Rust"
+    description "Parsing, validation rules, and diagnostic formatting"
+    tags ["core"]
+  }
+
+  Context = container "Context Engineering (Scan + Graph + Drift + Intent)" {
+    technology "Rust, Tree-sitter"
+    description "Repository scanning, dependency graph extraction, drift detection, intent checks, and agent memory"
+    tags ["context"]
+  }
+
+  Export = container "Export System" {
+    technology "Rust"
+    description "Exports validated architecture models to multiple formats"
+    tags ["export"]
+  }
+
+  Book = container "Documentation Site (mdBook)" {
+    technology "Rust, mdBook"
+    description "Docs site and courses built from markdown; published as a static site"
+    tags ["docs"]
+  }
+
+  IDE = container "IDE Support (VS Code + WASM)" {
+    technology "TypeScript, WASM"
+    description "Editor validation, diagnostics, and preview powered by the WASM build"
+    tags ["ide"]
+  }
+
+  CLI -> Core "Parses and validates"
+  CLI -> Context "Scans repos and checks drift"
+  CLI -> Export "Exports outputs"
+  CLI -> Book "Builds and validates examples"
+
+  Core -> Export "Validates before export"
+
+  IDE -> Core "Parses and validates"
+  IDE -> Export "Renders exports and diagrams"
+}
+
+Developer -> Sruja "Uses"
+Developer -> Sruja.CLI "Runs quickstart/sync/context/drift/critique/focus"
+Developer -> Sruja.IDE "Edits architecture"
+Developer -> Sruja.Book "Reads docs"
+
+view index {
+  title "Sruja Repo Overview"
+  include *
+}
