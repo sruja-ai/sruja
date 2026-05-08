@@ -110,6 +110,7 @@ Let's see how this looks in practice with a real e-commerce system.
 ### Example: E-Commerce Platform
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // People (stakeholders)

@@ -39,8 +39,12 @@ pub fn detect_communities(graph: &Graph) -> HashMap<String, u32> {
             && labels.contains_key(&edge.source)
             && labels.contains_key(&edge.target)
         {
-            adj.get_mut(&edge.source).unwrap().push(edge.target.clone());
-            adj.get_mut(&edge.target).unwrap().push(edge.source.clone());
+            if let Some(source_vec) = adj.get_mut(&edge.source) {
+                source_vec.push(edge.target.clone());
+            }
+            if let Some(target_vec) = adj.get_mut(&edge.target) {
+                target_vec.push(edge.source.clone());
+            }
         }
     }
 

@@ -14,6 +14,7 @@ Custom views let you define focused, role-specific architecture diagrams in your
 Define views in your `.sruja` file:
 
 ```sruja
+// partial
 person = kind "Person"
 system = kind "System"
 container = kind "Container"
@@ -118,6 +119,7 @@ graph LR
 Use `*` to include an element and all its children:
 
 ```sruja
+// partial
 view all_components {
     include Shop.*
 }
@@ -128,6 +130,7 @@ view all_components {
 Use `view of [System]` to scope within a system:
 
 ```sruja
+// partial
 view containers of Shop {
     include Shop.WebApp Shop.API Shop.DB
 }
@@ -138,6 +141,7 @@ view containers of Shop {
 Combine include with exclude for fine-grained control:
 
 ```sruja
+// partial
 view api_without_db {
     include Shop.*
     exclude Shop.DB

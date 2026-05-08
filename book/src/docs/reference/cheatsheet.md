@@ -8,6 +8,7 @@ summary: "Quick syntax and common patterns for fast modeling."
 ## Elements
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 User = person "User"
@@ -31,6 +32,7 @@ view index {
 ## Component
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 App = system "App" {
@@ -43,6 +45,7 @@ App = system "App" {
 ## Scenario
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 User = person "User"

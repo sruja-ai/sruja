@@ -33,6 +33,7 @@ technology "HTTPS/JSON"
 ## Example
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

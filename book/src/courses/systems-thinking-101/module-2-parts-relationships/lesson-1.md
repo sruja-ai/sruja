@@ -89,6 +89,7 @@ Now we get to the interesting part. What are the deployable units that make up o
 For our e-commerce platform, a sensible breakdown might be:
 
 ```sruja
+// partial
 ECommerce = system "E-Commerce Platform" {
   WebApp = container "Web Application" {
     technology "React"
@@ -116,6 +117,7 @@ If you're talking to developers who need to understand the internal architecture
 For example, if we were documenting the API's internal structure for our engineering team:
 
 ```sruja
+// partial
 API = container "API Service" {
   ProductService = component "Product Service"
   CartService = component "Cart Service"
@@ -135,6 +137,7 @@ After building systems for years, you start to recognize patterns that repeat ac
 This is probably the most common pattern you'll encounter. It's simple, it works, and it's a great starting point for most web applications.
 
 ```sruja
+// partial
 App = system "Application" {
   Frontend = container "Web App" {
     technology "React"
@@ -155,6 +158,7 @@ I've used this pattern more times than I can count. It's a solid foundation that
 When your system grows, you might need to split it into smaller, independently deployable services. That's where this pattern comes in.
 
 ```sruja
+// partial
 App = system "Microservice Application" {
   APIGateway = container "API Gateway"
   UserService = container "User Service"
@@ -170,6 +174,7 @@ The trick here is knowing when to use this. Don't start with microservices just 
 When you need systems to react to events in real-time, this pattern shines. It's more complex but incredibly powerful for the right use cases.
 
 ```sruja
+// partial
 App = system "Event-Driven System" {
   Producer = container "Event Producer"
   Consumer = container "Event Consumer"
@@ -195,6 +200,7 @@ App = system "The App"
 This tells you nothing about how the system is structured. Anyone looking at this diagram will be left with more questions than answers.
 
 ```sruja
+// partial
 // This is better—it shows structure
 App = system "The App" {
   Frontend = container "Frontend"
@@ -208,6 +214,7 @@ App = system "The App" {
 On the flip side, I've seen people model every single class and component, creating diagrams that are essentially unreadable:
 
 ```sruja
+// partial
 // Don't do this—it's too detailed
 App = system "The App" {
   Frontend = container "Frontend" {
@@ -221,6 +228,7 @@ App = system "The App" {
 Who cares about the header, body, and footer at the architecture level? No one. That's implementation detail, not architecture.
 
 ```sruja
+// partial
 // This is the right level of detail
 App = system "The App" {
   Frontend = container "Frontend"
@@ -233,6 +241,7 @@ App = system "The App" {
 This one trips up even experienced architects. You might have some parts modeled at the container level and others at the component level, creating confusion:
 
 ```sruja
+// partial
 // Don't do this—inconsistent detail
 App = system "The App" {
   Frontend = container "Frontend"
@@ -244,6 +253,7 @@ App = system "The App" {
 What's the UserService doing here without a parent container? Is it a standalone service? Part of another system? It's confusing.
 
 ```sruja
+// partial
 // This is consistent and clear
 App = system "The App" {
   Frontend = container "Frontend"

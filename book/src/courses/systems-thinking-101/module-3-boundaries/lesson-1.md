@@ -63,6 +63,7 @@ Let me show you why boundaries matter in practice.
 This is the most common reason I see teams argue. When boundaries are unclear, nobody knows who fixes what.
 
 ```sruja
+// partial
 // Inside: Your team owns this
 Shop = system "Shop" {
   WebApp = container "Web App"
@@ -82,6 +83,7 @@ I once worked on a project where a team spent three days arguing about who owned
 Every time you cross a boundary, you're introducing risk. You're depending on something outside your control.
 
 ```sruja
+// partial
 // External dependency = external risk
 Shop.API -> PaymentGateway "Process payment"
 
@@ -98,6 +100,7 @@ When I model systems, I always ask: "What happens if this external thing breaks?
 Boundaries tell you what kind of testing you need.
 
 ```sruja
+// partial
 // Internal: Unit tests are sufficient
 Shop.WebApp -> Shop.API
 
@@ -112,6 +115,7 @@ You can unit test internal interactions all day. But when you cross a boundary? 
 Security controls should be strongest at your boundaries. That's where attacks happen.
 
 ```sruja
+// partial
 // Inside boundary: Apply internal controls
 Shop.WebApp -> Shop.API
 
@@ -130,6 +134,7 @@ After years of modeling systems, I've noticed there are really five main types o
 This is the most common boundary—your main application versus everything else.
 
 ```sruja
+// partial
 // Inside: Your system
 Shop = system "Shop" {
   WebApp = container "Web App"
@@ -149,6 +154,7 @@ The system boundary defines your overall scope. Everything inside is yours. Ever
 In larger organizations, different teams own different systems. These team boundaries matter for communication and coordination.
 
 ```sruja
+// partial
 // Your team's system
 Shop = system "Shop" {
   WebApp = container "Web App"
@@ -190,6 +196,7 @@ Vendor relationships are fundamentally different from internal relationships. Di
 Sometimes the same team owns systems, but they deploy independently. That's a deployment boundary.
 
 ```sruja
+// partial
 // Same deployment
 Shop = system "Shop" {
   WebApp = container "Web App"
@@ -212,6 +219,7 @@ Deployment boundaries tell you about failure domains. If the API and database de
 This is one of the most important boundaries from a security perspective. It defines what's trusted versus untrusted.
 
 ```sruja
+// partial
 // Trusted: Internal network, internal users
 InternalAPI = container "Internal API"
 
@@ -228,6 +236,7 @@ Let me show you some examples of boundaries in action.
 ### Example 1: A Typical E-Commerce Platform
 
 ```sruja
+// partial
 // ┌──────────── EXTERNAL WORLD ────────────┐
 // │                                        │
 // │   Customer (person)                    │
@@ -262,6 +271,7 @@ See how clear the boundary is? Everything inside "Your System" is yours. Everyth
 ### Example 2: Microservices with Internal Boundaries
 
 ```sruja
+// partial
 // Even within an organization, you can have boundaries
 
 OrderService = system "Order Service" {
@@ -300,6 +310,7 @@ Let me share some boundary mistakes I've made or seen others make. Hopefully, yo
 ### Mistake 1: No Clear Boundary
 
 ```sruja
+// partial
 // Bad: Everything looks the same
 Customer = person "Customer"
 Shop = system "Shop"
@@ -323,6 +334,7 @@ PaymentGateway = system "Payment Gateway" {
 ### Mistake 2: Everything Marked External
 
 ```sruja
+// partial
 // Bad: Everything marked external, no ownership
 Shop = system "Shop" {
   tags ["external"]
@@ -336,6 +348,7 @@ This is the opposite problem. If everything is external, who owns anything? Who'
 
 **Fix**: Only mark truly external systems:
 ```sruja
+// partial
 Shop = system "Shop" {
   // No tags = internal
   WebApp = container "Web App"
@@ -351,6 +364,7 @@ PaymentGateway = system "Payment Gateway" {
 ### Mistake 3: Too Many Fragmented Boundaries
 
 ```sruja
+// partial
 // Bad: Overly fragmented, hard to understand
 System1 = system "System 1"
 System2 = system "System 2"
@@ -364,6 +378,7 @@ I've seen teams create a separate system boundary for every tiny piece of functi
 
 **Fix**: Group related functionality into coherent systems:
 ```sruja
+// partial
 Shop = system "Shop" {
   // Group all shop-related containers
   WebApp = container "Web App"
@@ -387,6 +402,7 @@ Sruja gives you the tools to define boundaries clearly. Here's how I use them.
 Your main application is a system. Everything you own goes inside it.
 
 ```sruja
+// partial
 Shop = system "Shop" {
   // Everything you control goes here
   WebApp = container "Web App"
@@ -416,6 +432,7 @@ I always add context to external systems: who owns it, what the SLA is, any rele
 Remember: people are always outside your system boundary.
 
 ```sruja
+// partial
 // Users are external to your system
 Customer = person "Customer"
 Administrator = person "Administrator"
@@ -502,6 +519,7 @@ Let's break this down:
 You're reviewing an architecture diagram and notice this structure:
 
 ```sruja
+// partial
 Shop = system "Shop"
 PaymentGateway = system "Payment Gateway"
 EmailService = system "Email Service"
@@ -530,6 +548,7 @@ The problem is that **all four systems look identical**. There's no way to tell 
 **What should it look like?**
 
 ```sruja
+// partial
 // Your system (no tags = internal)
 Shop = system "Shop" {
   WebApp = container "Web App"

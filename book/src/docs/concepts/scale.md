@@ -11,6 +11,7 @@ Use `scale` to capture expected capacity, concurrency, or throughput ranges.
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

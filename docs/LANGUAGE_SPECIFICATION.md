@@ -61,6 +61,21 @@ Catalog = microservice "Catalog Service"
 Kafka = eventBus "Kafka Cluster"
 ```
 
+### Schemas
+
+Schemas allow you to define strict custom metamodels, specifying valid node kinds, edge kinds, and nesting rules for validation.
+
+```sruja
+schema "compliance" {
+  node_kinds: ["regulation", "policy", "system"]
+  edge_kinds: ["mandates", "violates"]
+  nesting {
+    regulation -> policy
+    system -> policy
+  }
+}
+```
+
 ### Imports
 
 Import kinds and tags from the standard library or other Sruja files.
@@ -451,6 +466,90 @@ deployment Prod "Production" {
 }
 ```
 
+### API Contracts
+
+API Contracts allow you to model precise request-response specifications, input/output structures, error conditions, and constraints.
+
+```sruja
+// partial
+contract "GetUserContract" {
+  description "Fetch user details by ID"
+  input {
+    userId "string"
+  }
+  output {
+    email "string"
+    isActive "boolean"
+  }
+  error {
+    "404" "User not found"
+    "401" "Unauthorized access"
+  }
+  constraint "Response time must be < 50ms"
+}
+```
+
+### State Machines
+
+State Machines let you model component lifecycles, states, and transition behaviors based on events, actions, and guards.
+
+```sruja
+// partial
+state_machine "OrderLifecycle" {
+  description "Order lifecycle state machine"
+  initial "Created"
+  terminal ["Completed", "Cancelled"]
+
+  "Created" -> "Processing" on "payment_received" {
+    guard "payment.amount > 0"
+    action "send_receipt()"
+    description "Transition order to processing after successful payment"
+  }
+  "Processing" -> "Completed" on "shipment_delivered"
+}
+```
+
+### Systems Thinking Loops
+
+Sruja supports causal loop diagrams and feedback loops to model complex system dynamics, reinforcing/balancing feedback loops, polarities, and delays.
+
+#### Feedback Loops
+
+```sruja
+// partial
+UserLoop = feedback "User Growth" {
+  loop_type "reinforcing"
+  loop_id "R1"
+  description "Growth in users leads to more word-of-mouth referrals"
+  
+  UserBase -> Referrals "increases"
+  Referrals -> UserBase "leads to"
+}
+```
+
+#### Causal Loops
+
+```sruja
+// partial
+InventoryLoop = causal_loop "Supply & Demand" {
+  loop_type "balancing"
+  loop_id "B1"
+  
+  variable Demand "Customer Demand"
+  variable Price "Product Price"
+  
+  Demand -> Price {
+    effect "increases"
+    polarity "+"
+  }
+  Price -> Demand {
+    effect "decreases"
+    polarity "-"
+    delay "2 days"
+  }
+}
+```
+
 ### Governance
 
 #### Policies
@@ -506,6 +605,22 @@ constraints {
 conventions {
   "Convention description"
   "Another convention"
+}
+```
+
+### Incidents
+
+Incidents allow you to track production outages, capture post-mortems, and link them directly to affected architecture components.
+
+```sruja
+// partial
+incident INC001 "API Gateway Outage" {
+  date "2026-05-01"
+  severity "high"
+  affected [Shop.API]
+  cause "Memory leak under high load"
+  resolution "Restarted cluster and updated memory limits"
+  lesson "Implement auto-scaling based on memory thresholds"
 }
 ```
 

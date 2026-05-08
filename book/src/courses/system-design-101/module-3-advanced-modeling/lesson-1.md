@@ -243,6 +243,7 @@ Now that you understand the concepts, let's see how to model microservices in Sr
 ### Basic Example: E-Commerce Platform
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Customer interacts with the system
@@ -299,6 +300,7 @@ Notice how each system owns its database. This is critical—shared databases de
 One of the most powerful features of Sruja is the ability to create different views for different audiences:
 
 ```sruja
+// partial
 // System Overview: Shows the big picture
 view index {
     title "System Overview"

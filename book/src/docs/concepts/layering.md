@@ -11,6 +11,7 @@ Layering keeps your architecture modular. Higher layers depend on lower ones, no
 ## Allowed Direction
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

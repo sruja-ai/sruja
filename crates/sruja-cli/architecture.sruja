@@ -4,9 +4,24 @@
 cli = system "sruja-cli" {
   description "Core CLI and user interaction layer for Sruja"
 
-  Commands = container "Commands" {
+  DslCommands = container "DSL Domain Commands" {
     technology "Rust, clap"
-    description "Sub-command dispatch logic (check, context, drift, etc.)"
+    description "Sub-commands for DSL actions (lint, fmt, diff, etc.)"
+  }
+
+  ScanCommands = container "Scan Domain Commands" {
+    technology "Rust, clap"
+    description "Sub-commands for scan and graph actions (drift, why, health, etc.)"
+  }
+
+  IntentCommands = container "Intent Domain Commands" {
+    technology "Rust, clap"
+    description "Sub-commands for intent check and agent propose actions"
+  }
+
+  UtilityCommands = container "Utility Domain Commands" {
+    technology "Rust, clap"
+    description "Sub-commands for onboarding, version, compliance, etc."
   }
 
   Federation = container "Federated Engine" {
@@ -25,8 +40,11 @@ cli = system "sruja-cli" {
   }
 }
 
-cli -> cli.Commands "dispatches via"
+cli -> cli.DslCommands "dispatches via"
+cli -> cli.ScanCommands "dispatches via"
+cli -> cli.IntentCommands "dispatches via"
+cli -> cli.UtilityCommands "dispatches via"
 
-cli.Commands -> cli.Federation "uses for multi-repo composition"
-cli.Commands -> cli.Context "invokes for task-scoped context"
+cli.UtilityCommands -> cli.Federation "uses for multi-repo composition"
+cli.IntentCommands -> cli.Context "invokes for task-scoped context"
 cli.MCP -> cli.Context "exposes resolution tools via"

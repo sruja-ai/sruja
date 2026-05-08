@@ -13,6 +13,7 @@ Use SLOs to set thresholds for alerts and capacity changes.
 ## Sruja: Model SLOs & Validate
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

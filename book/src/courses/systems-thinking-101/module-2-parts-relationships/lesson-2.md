@@ -72,6 +72,7 @@ I use descriptions when the name alone might be ambiguous. For example, "Admin" 
 Here are some people I've modeled in different projects:
 
 ```sruja
+// partial
 // Internal users
 Developer = person "Developer"
 ProductManager = person "Product Manager"
@@ -129,6 +130,7 @@ I love that Sruja lets you add SLOs (Service Level Objectives) directly to syste
 One distinction I always make:
 
 ```sruja
+// partial
 // Systems you own and maintain
 Platform = system "Sruja Platform"
 Dashboard = system "Analytics Dashboard"
@@ -159,6 +161,7 @@ The name "container" can be confusing because people think of Docker containers.
 Sruja gives you specific types for common containers:
 
 ```sruja
+// partial
 // Regular containers
 WebApp = container "Web Application"
 API = container "API Service"
@@ -179,6 +182,7 @@ I use `database` for relational databases (PostgreSQL, MySQL) and `datastore` fo
 When documenting containers for developers, I add a lot of useful information:
 
 ```sruja
+// partial
 API = container "API Service" {
   technology "Node.js"
   description "RESTful API handling all business logic"
@@ -220,6 +224,7 @@ Skip components when:
 Here's how you model them:
 
 ```sruja
+// partial
 API = container "API Service" {
   AuthService = component "Authentication Service"
   ProductService = component "Product Service"
@@ -233,6 +238,7 @@ API = container "API Service" {
 You can add the same details to components that you add to containers:
 
 ```sruja
+// partial
 AuthService = component "Authentication Service" {
   technology "Rust"
   description "Handles user login, registration, and JWT validation"
@@ -253,6 +259,7 @@ AuthService = component "Authentication Service" {
 Let me show you a complete example that uses all four element types. This is a typical e-commerce platform:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Level 1: People
@@ -321,6 +328,7 @@ After years of modeling systems, I've settled on some naming conventions that ke
 ### Element IDs: Use PascalCase
 
 ```sruja
+// partial
 // Good
 Customer = person "Customer"
 WebApp = container "Web App"
@@ -335,6 +343,7 @@ webapp = container "Web App"      // Lowercase is inconsistent
 ### Display Names: Be Descriptive
 
 ```sruja
+// partial
 // Good
 User = person "End User"
 API = container "API Service"
@@ -349,6 +358,7 @@ API = container "api"             // Lowercase looks like a typo
 This is the one that trips people up most often. If you name one thing a "Service," call all similar things "Service":
 
 ```sruja
+// partial
 // Good: Consistent naming
 UserService = component "User Service"
 OrderService = component "Order Service"
@@ -367,6 +377,7 @@ I create a style guide for each project that lists the naming conventions we're 
 Metadata is where you add context that makes your diagrams actually useful. Don't add metadata just for the sake of it—add metadata that helps your audience understand what they're looking at.
 
 ```sruja
+// partial
 API = container "API Service" {
   technology "Rust"
   version "2.0.1"

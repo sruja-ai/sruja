@@ -1,0 +1,22 @@
+//! Intent and AI domain commands
+
+pub(crate) use super::context;
+pub(crate) use super::scan;
+pub(crate) use super::{parse_sruja_file, scan_repo_cached, CliError};
+
+#[path = "agent.rs"]
+pub mod agent;
+#[path = "ai.rs"]
+pub mod ai;
+#[path = "critique.rs"]
+pub mod critique;
+#[path = "focus.rs"]
+pub mod focus;
+#[path = "ingest.rs"]
+pub mod ingest;
+#[path = "intent.rs"]
+pub mod intent;
+#[path = "onboard.rs"]
+pub mod onboard;
+#[path = "propose.rs"]
+pub mod propose;

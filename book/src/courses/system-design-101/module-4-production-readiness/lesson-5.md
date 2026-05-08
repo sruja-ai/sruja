@@ -111,6 +111,7 @@ a3b7d1f Split payment service from main API
 ADRs track **why** changes were made:
 
 ```sruja
+// partial
 ADR005 = adr "Add Redis cache layer" {
   status "accepted"
   accepted_date "2024-03-15"
@@ -189,6 +190,7 @@ ADR005 = adr "Add Redis cache layer" {
 SLOs track the **impact** of changes:
 
 ```sruja
+// partial
 API = container "API Service" {
   slo {
     latency {
@@ -333,6 +335,7 @@ git show v2024.01:architecture.sruja | sruja export
 Create ADR for every significant change:
 
 ```sruja
+// partial
 ADR### = adr "[Title]" {
   // Standard ADR format
   context "..."
@@ -351,6 +354,7 @@ ADR### = adr "[Title]" {
 Measure SLO changes after architectural changes:
 
 ```sruja
+// partial
 slo {
   latency {
     p95 "200ms"
@@ -373,6 +377,7 @@ slo {
 Link Git commits → ADRs → SLO changes:
 
 ```sruja
+// partial
 // In ADR
 related_commits ["e4f8c2a"]
 slo_impact ["latency p95: 500ms → 250ms"]
@@ -569,6 +574,7 @@ Keep a high-level timeline of your architecture's evolution:
 ## Complete Example: E-Commerce Platform Evolution
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // ============ ARCHITECTURE DEFINITION ============

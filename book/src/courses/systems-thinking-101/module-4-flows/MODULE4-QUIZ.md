@@ -46,6 +46,7 @@ Let's analyze each option:
 Here's what the flow would look like:
 
 ```sruja
+// partial
 OrderFlow = scenario "Order Processing" {
   Customer -> WebApp "Places order"
   WebApp -> API "Validates cart"
@@ -112,6 +113,7 @@ Let's analyze each option:
 Here's what the event flow would look like:
 
 ```sruja
+// partial
 FraudDetectionFlow = flow "Real-Time Fraud Detection" {
   // Events from multiple sources
   Web -> TransactionStream "Web transactions"
@@ -144,6 +146,7 @@ You're documenting an ETL (Extract, Transform, Load) pipeline that moves custome
 
 **A)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   CRM -> DataWarehouse "Move data"
 }
@@ -151,6 +154,7 @@ ETLPipeline = flow "ETL Pipeline" {
 
 **B)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   CRM -> ETLService "Extract"
   ETLService -> DataWarehouse "Load"
@@ -159,6 +163,7 @@ ETLPipeline = flow "ETL Pipeline" {
 
 **C)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   CRM -> ETLService "Extract customer records"
   ETLService -> ValidatedData "Validate emails, remove invalids"
@@ -170,6 +175,7 @@ ETLPipeline = flow "ETL Pipeline" {
 
 **D)**
 ```sruja
+// partial
 ETLPipeline = flow "ETL Pipeline" {
   CRM -> ETLService "?"
   ETLService -> DataWarehouse "?"
@@ -227,6 +233,7 @@ You're documenting the login flow for a banking application and want to use BDD-
 
 **A)**
 ```sruja
+// partial
 LoginFlow = scenario "Login" {
   User -> WebApp "Login"
   WebApp -> API "Authenticate"
@@ -239,6 +246,7 @@ LoginFlow = scenario "Login" {
 
 **B)**
 ```sruja
+// partial
 LoginFlow = scenario "Successful Login" {
   // GIVEN: User has valid credentials
   User -> WebApp "Enters username and password"
@@ -257,6 +265,7 @@ LoginFlow = scenario "Successful Login" {
 
 **C)**
 ```sruja
+// partial
 LoginFlow = scenario "As a user, I want to log in" {
   Start -> End "Login completes"
 }
@@ -264,6 +273,7 @@ LoginFlow = scenario "As a user, I want to log in" {
 
 **D)**
 ```sruja
+// partial
 LoginFlow = scenario "Login Flow" {
   WebApp -> API "Login request"
   API -> Database "Verify user"
@@ -333,6 +343,7 @@ You're modeling a checkout flow and want to document an error path for when paym
 
 **A)**
 ```sruja
+// partial
 PaymentError = scenario "Payment Error" {
   Customer -> WebApp "Checkout"
   WebApp -> API "Process order"
@@ -345,6 +356,7 @@ PaymentError = scenario "Payment Error" {
 
 **B)**
 ```sruja
+// partial
 PaymentError = scenario "Payment Error" {
   Customer -> WebApp "Checkout"
   WebApp -> API "Process order"
@@ -357,6 +369,7 @@ PaymentError = scenario "Payment Error" {
 
 **C)**
 ```sruja
+// partial
 PaymentError = scenario "Checkout with Payment Error" {
   Customer -> WebApp "Adds items to cart and clicks checkout"
   WebApp -> API "Initiates checkout"
@@ -372,6 +385,7 @@ PaymentError = scenario "Checkout with Payment Error" {
 
 **D)**
 ```sruja
+// partial
 PaymentError = scenario "Payment Failed" {
   API -> PaymentGateway "Payment"
   PaymentGateway -> API "Failed"

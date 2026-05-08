@@ -63,6 +63,7 @@ Consider an e-commerce application:
 ## Sruja Example: E-Commerce Platform
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "End User"
@@ -102,6 +103,7 @@ EmailService -> Customer "Order confirmation"
 ### Extended Example: What About Edge Cases?
 
 ```sruja
+// partial
 // What happens when things go wrong?
 
 scenario CacheMiss "Cache Miss Scenario" {

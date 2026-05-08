@@ -105,6 +105,7 @@ This is where architecture diagrams become powerful. Sruja gives you specific to
 Use `person` to capture who cares about your system:
 
 ```sruja
+// partial
 // The people who matter
 Customer = person "Customer"
 Administrator = person "Administrator"
@@ -151,6 +152,7 @@ The metadata captures critical information: Is this dependency critical? What ha
 Relationships reveal what different stakeholders need:
 
 ```sruja
+// partial
 // Different stakeholders, different needs
 Customer -> Shop "Wants fast checkout"
 Administrator -> Shop "Wants easy management"
@@ -165,6 +167,7 @@ These arrows seem simple, but they remind you that you're balancing competing ne
 Use `metadata` to capture organizational realities:
 
 ```sruja
+// partial
 Shop = system "Shop" {
   metadata {
     constraints {
@@ -184,6 +187,7 @@ These constraints are just as real as technical constraints. A $500/month budget
 Use `slo` and `success_criteria` to define what "good" looks like:
 
 ```sruja
+// partial
 Shop = system "Shop" {
   slo {
     availability {
@@ -211,6 +215,7 @@ Without explicit success criteria, how do you know if you've succeeded? How do y
 Let me show you how this comes together in a real architecture:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 // Stakeholder context: Who cares?

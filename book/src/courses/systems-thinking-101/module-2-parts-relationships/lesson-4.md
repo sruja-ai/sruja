@@ -52,6 +52,7 @@ Systems contain containers. This is where most of the action happens.
 ### The Basic Pattern
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce Platform" {
@@ -137,6 +138,7 @@ I use this simple framework to decide whether to add components:
 Let me show you an example where components make sense:
 
 ```sruja
+// partial
 API = container "API Service" {
   technology "Node.js"
   description "RESTful API handling all business logic"
@@ -185,6 +187,7 @@ This makes sense because:
 Now, here's an example where I would **not** use components:
 
 ```sruja
+// partial
 SimpleAPI = container "Simple API" {
   technology "Node.js"
   description "Basic CRUD API for a small application"
@@ -205,6 +208,7 @@ Once you have nested elements, you need to know how to reference them. Sruja use
 ### The Reference Patterns
 
 ```sruja
+// partial
 // Level 1 to Level 2 (Person to System)
 Customer -> ECommerce "Uses platform"
 
@@ -228,6 +232,7 @@ ECommerce.API.AuthService -> ECommerce.API.UserService "Fetches user profile"
 What if you need to reference something inside another system? Dot notation still works:
 
 ```sruja
+// partial
 // Reference a service inside an external system
 ECommerce.API.PaymentService -> Stripe.ChargeService "Process payment"
 
@@ -246,6 +251,7 @@ If there's one thing I've learned from years of modeling systems, it's this: **c
 Don't mix levels inconsistently:
 
 ```sruja
+// partial
 // Bad: Inconsistent nesting
 App = system "App" {
   Frontend = container "Frontend"
@@ -274,6 +280,7 @@ In the bad example, why does Backend have components but Frontend doesn't? Is Fr
 Use consistent naming conventions across your hierarchy:
 
 ```sruja
+// partial
 // Good: Consistent suffixes
 UserService = component "User Service"
 OrderService = component "Order Service"
@@ -294,6 +301,7 @@ Let me share some mistakes I've made and seen others make. Hopefully, you can av
 ### Pitfall 1: Deep Nesting
 
 ```sruja
+// partial
 // Bad: Too deep (5+ levels)
 App = system "App" {
   Frontend = container "Frontend" {
@@ -315,6 +323,7 @@ This is unreadable. Who can understand a 5-level deep structure? Nobody. The dia
 ### Pitfall 2: Orphaned Elements
 
 ```sruja
+// partial
 // Bad: Component without container
 Shop = system "Shop"
 WebApp = container "Web App"
@@ -330,6 +339,7 @@ Where does AuthService belong? Is it in WebApp? In API? Orphaned elements confus
 ### Pitfall 3: Flat Everything
 
 ```sruja
+// partial
 // Bad: Everything at same level
 Customer = person "Customer"
 WebApp = container "Web App"
@@ -371,6 +381,7 @@ This view shows a single system and all its containers. Great for developers who
 ### Level 3: Container View
 
 ```sruja
+// partial
 view container_view of ECommerce.API {
   title "API Containers"
   include ECommerce.API.*
@@ -383,6 +394,7 @@ This view shows the internals of a container. Perfect for teams working on that 
 ### Level 4: Component View
 
 ```sruja
+// partial
 view component_view of ECommerce.API {
   title "API Components"
   include ECommerce.API.*

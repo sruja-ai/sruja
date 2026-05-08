@@ -53,6 +53,7 @@ These loops amplify change, leading to exponential growth or collapse. They're p
 Output amplifies input, creating runaway growth:
 
 ```sruja
+// partial
 // Example: Viral content recommendation
 ViralGrowth = scenario "Viral Growth Loop" {
   User -> Platform "Shares content"
@@ -90,6 +91,7 @@ I once worked on a social media algorithm that showed viral content more aggress
 Output counteracts input, leading to runaway collapse:
 
 ```sruja
+// partial
 // Example: Performance degradation
 PerformanceCollapse = scenario "Performance Vicious Cycle" {
   User -> WebApp "Submits request"
@@ -133,6 +135,7 @@ These loops counteract change, maintaining stability and preventing extremes. Th
 System maintains a target state by adjusting based on output:
 
 ```sruja
+// partial
 // Example: Auto-scaling
 AutoScaling = scenario "Self-Regulating System" {
   Monitoring -> App "Reports CPU: 90%"
@@ -167,6 +170,7 @@ In software, self-regulating loops are everywhere. Auto-scaling systems maintain
 System detects errors and automatically corrects:
 
 ```sruja
+// partial
 // Example: Retry with backoff
 RetryWithBackoff = scenario "Error-Correcting Loop" {
   User -> App "Submits order"
@@ -204,6 +208,7 @@ I've worked on systems that didn't have proper error handling. A payment gateway
 System actively manages resources to prevent oscillation:
 
 ```sruja
+// partial
 // Example: Rate limiting with hysteresis
 RateLimiting = scenario "Stabilizing Control" {
   User -> API "Send request"
@@ -251,6 +256,7 @@ Feedback that occurs after a delay can cause oscillation or overcorrection:
 System alternates between states due to delayed feedback:
 
 ```sruja
+// partial
 // Example: Temperature control with delay
 DelayedFeedback = scenario "Oscillating Control" {
   Thermostat -> Heater "Turn on (too cold)"
@@ -305,6 +311,7 @@ Different feedback loops serve different purposes:
 What creates the feedback? Who acts? Who adjusts?
 
 ```sruja
+// partial
 // Example: Auto-scaling feedback
 AutoScalingFeedback = flow "Auto-Scaling Feedback Path" {
   // Who creates feedback?
@@ -328,6 +335,7 @@ AutoScalingFeedback = flow "Auto-Scaling Feedback Path" {
 Based on the effect, classify the loop:
 
 ```sruja
+// partial
 // Classifying feedback loops
 ViralGrowth = scenario "Viral Growth" {
   type "positive"
@@ -357,6 +365,7 @@ AutoScaling = scenario "Auto-Scaling" {
 Prevent unwanted behavior and add safety limits:
 
 ```sruja
+// partial
 // Adding controls to positive feedback loop
 ControlledGrowth = scenario "Controlled Viral Growth" {
   User -> Platform "Shares content"
@@ -384,6 +393,7 @@ ControlledGrowth = scenario "Controlled Viral Growth" {
 Track the behavior of your feedback loop over time:
 
 ```sruja
+// partial
 // Monitoring feedback loop behavior
 FeedbackMonitoring = scenario "Feedback Loop Monitoring" {
   // Metrics to track
@@ -439,6 +449,7 @@ NoFeedbackSystem = system "Static System" {
 I've seen teams misuse positive feedback loops for situations that need negative (balancing) loops:
 
 ```sruja
+// partial
 // Bad: Using positive feedback for stability
 PositiveForStability = scenario "Misclassified Feedback" {
   // Trying to grow load when you should stabilize
@@ -464,6 +475,7 @@ PositiveForStability = scenario "Misclassified Feedback" {
 I've seen teams ignore delayed feedback because it's "not real-time," only to have it cause major problems:
 
 ```sruja
+// partial
 // Bad: Ignoring delayed feedback causes oscillation
 IgnoreDelayed = scenario "Ignoring Delayed Feedback" {
   User -> App "Submits data"
@@ -602,6 +614,7 @@ A deadband zone (min CPU and max CPU) would prevent oscillation by restricting t
 Adding hysteresis (memory of past states) to the scaling algorithm would solve the oscillation:
 
 ```sruja
+// partial
 // Hysteresis-based auto-scaling
 HysteresisScaling = scenario "Auto-Scaling with Hysteresis" {
   // Track past CPU values

@@ -27,6 +27,7 @@ By the end of this lesson, you'll be able to:
 The simplest way to mark something as external is using metadata tags. Let me show you the pattern I use consistently:
 
 ```sruja
+// partial
 // Internal: Your system (no tags = internal by default)
 Shop = system "Shop" {
   WebApp = container "Web App"
@@ -119,6 +120,7 @@ After modeling hundreds of systems, I've noticed patterns that repeat constantly
 This is the most common pattern—integrating with vendors who provide specialized services.
 
 ```sruja
+// partial
 // Your system
 Shop = system "Shop"
 
@@ -168,6 +170,7 @@ The key insight: **add metadata that matters for that specific integration**. Do
 Partners are different from vendors—they're external organizations you have contractual relationships with.
 
 ```sruja
+// partial
 // Your system
 Shop = system "Shop"
 
@@ -209,6 +212,7 @@ I always add contract references for partner systems. When disputes arise about 
 Sometimes the boundary isn't between your company and outside world—it's between teams within your organization.
 
 ```sruja
+// partial
 // Your team's system
 Shop = system "Shop" {
   metadata {
@@ -261,6 +265,7 @@ Here's a rule I never break: **people are always outside your system boundary**.
 They're not "inside" your system—they're actors who interact with it from the outside.
 
 ```sruja
+// partial
 // External actors (always outside boundary)
 Customer = person "Customer"
 Administrator = person "Administrator"
@@ -299,6 +304,7 @@ Every relationship that goes from internal to external (or vice versa) crosses a
 ### Single Boundary Crossing
 
 ```sruja
+// partial
 // Internal system
 Shop = system "Shop" {
   API = container "API"
@@ -324,6 +330,7 @@ This relationship crosses from internal (your API) to external (payment gateway)
 ### Multiple Boundary Crossings
 
 ```sruja
+// partial
 Customer = person "Customer"
 
 // Internal
@@ -373,6 +380,7 @@ Let me show you a real-world example of how team boundaries work in a larger org
 ### Single Team, One System (Simple)
 
 ```sruja
+// partial
 // One team owns everything
 Shop = system "Shop" {
   metadata {
@@ -391,6 +399,7 @@ This is the ideal scenario. One team, one system, clear ownership. Everything in
 ### Multiple Teams, Bounded Contexts (Realistic)
 
 ```sruja
+// partial
 // Team A: Shop team
 Shop = system "Shop" {
   metadata {
@@ -463,6 +472,7 @@ Perfect for stakeholders who want to see the big picture, including dependencies
 ### Internal-Only View (Shows Just Your System)
 
 ```sruja
+// partial
 view internal_view of Shop {
   title "Internal Architecture"
   include Shop.*
@@ -479,6 +489,7 @@ Perfect for developers who are working on the system and don't need to see exter
 ### External-Only View (Shows Dependencies)
 
 ```sruja
+// partial
 view external_view of Shop {
   title "External Dependencies"
   exclude Shop.*
@@ -588,6 +599,7 @@ This metadata provides all the context someone needs to understand the dependenc
 You're reviewing an architecture diagram and notice this structure:
 
 ```sruja
+// partial
 Shop = system "Shop"
 PaymentGateway = system "Payment Gateway"
 EmailService = system "Email Service"
@@ -613,6 +625,7 @@ The diagram has three systems, but there's no way to tell which one is yours (in
 **What the diagram should include:**
 
 ```sruja
+// partial
 // Your system (internal)
 Shop = system "Shop" {
   metadata {

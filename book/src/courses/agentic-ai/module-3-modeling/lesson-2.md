@@ -16,6 +16,7 @@ Autonomous agents can be unpredictable. Architecture-as-Code allows us to define
 Use `requirement` blocks to specify safety properties.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -47,6 +48,7 @@ You can enforce rules about which agents can access which tools.
 Model your guardrails explicitly as components that intercept messages.
 
 ```sruja
+// partial
 container AgentSystem {
   component UserProxy "Input Guardrail"
   component LLM

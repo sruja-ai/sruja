@@ -29,6 +29,7 @@ Flows show data lineage, process sequences, bottlenecks, and error paths.
 ## Sruja Example: Order Processing Flow
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"

@@ -11,6 +11,7 @@ Define `views` to customize what elements appear and how they render.
 ## Syntax
 
 ```sruja
+// partial
 person = kind "Person"
 system = kind "System"
 container = kind "Container"

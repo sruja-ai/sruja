@@ -18,6 +18,7 @@ Sruja uses a **nested syntax** that follows the C4 model hierarchy:
 - **Persons** can be defined at the top level (external actors)
 
 ```sruja
+// partial
 // Element kinds (required at top of file)
 person = kind "Person"
 system = kind "System"
@@ -91,6 +92,7 @@ queue = kind "Queue"
 You can define custom element types for your domain:
 
 ```sruja
+// partial
 // Custom kinds for microservices
 microservice = kind "Microservice"
 eventBus = kind "Event Bus"
@@ -99,6 +101,21 @@ gateway = kind "API Gateway"
 // Now use them
 Catalog = microservice "Catalog Service"
 Kafka = eventBus "Kafka Cluster"
+```
+
+### Schemas
+
+Schemas allow you to define strict custom metamodels, specifying valid node kinds, edge kinds, and nesting rules for validation.
+
+```sruja
+schema "compliance" {
+  node_kinds: ["regulation", "policy", "system"]
+  edge_kinds: ["mandates", "violates"]
+  nesting {
+    regulation -> policy
+    system -> policy
+  }
+}
 ```
 
 ### Imports
@@ -167,6 +184,7 @@ MySystem = system "My System" {
 #### Containers
 
 ```sruja
+// partial
 MyContainer = container "My Container" {
     technology "Technology stack"
     description "Optional description"
@@ -189,6 +207,7 @@ MyContainer = container "My Container" {
 #### Components
 
 ```sruja
+// partial
 MyComponent = component "My Component" {
     technology "Technology"
     description "Optional description"
@@ -202,6 +221,7 @@ MyComponent = component "My Component" {
 #### Data Stores
 
 ```sruja
+// partial
 MyDB = database "My Database" {
     technology "PostgreSQL"
     description "Optional description"
@@ -211,6 +231,7 @@ MyDB = database "My Database" {
 #### Queues
 
 ```sruja
+// partial
 MyQueue = queue "My Queue" {
     technology "RabbitMQ"
     description "Optional description"
@@ -245,6 +266,7 @@ All element types (person, system, container, component, database, queue) suppor
 | `url` | External URL | `https://stripe.com/docs/api` |
 
 ```sruja
+// partial
 Payments = container "Payment Service" {
     technology "Node.js"
     description "Handles payment processing with Stripe integration"
@@ -266,6 +288,7 @@ Payments = container "Payment Service" {
 ```
 
 ```sruja
+// partial
 StripeAPI = system "Stripe Payment API" {
     description "Third-party payment processing"
     canonical_id "ext.stripe"
@@ -280,6 +303,7 @@ StripeAPI = system "Stripe Payment API" {
 ### Relationships
 
 ```sruja
+// partial
 // Basic relationship
 From -> To "Label"
 
@@ -293,6 +317,7 @@ From -> To "Label" [tag1, tag2]
 ### Requirements
 
 ```sruja
+// partial
 R1 = requirement functional "Description"
 R2 = requirement nonfunctional "Description"
 R3 = requirement constraint "Description"
@@ -324,6 +349,7 @@ ADR001 = adr "Title" {
 #### Scenarios
 
 ```sruja
+// partial
 MyScenario = scenario "Scenario Title" {
     step User -> System.WebApp "Credentials"
     step System.WebApp -> System.DB "Verify"
@@ -343,6 +369,7 @@ CheckoutStory = story "User Checkout Flow" {
 #### Flows (DFD-style data flows)
 
 ```sruja
+// partial
 OrderProcess = flow "Order Processing" {
     step Customer -> Shop.WebApp "Order Details"
     step Shop.WebApp -> Shop.Database "Save Order"
@@ -378,6 +405,7 @@ overview {
 ### SLO (Service Level Objectives)
 
 ```sruja
+// partial
 slo {
     availability {
         target "99.9%"
@@ -415,6 +443,7 @@ SLO blocks can be defined at:
 ### Scale Block
 
 ```sruja
+// partial
 scale {
     min 3
     max 10
@@ -440,11 +469,96 @@ deployment Prod "Production" {
 }
 ```
 
+### API Contracts
+
+API Contracts allow you to model precise request-response specifications, input/output structures, error conditions, and constraints.
+
+```sruja
+// partial
+contract "GetUserContract" {
+  description "Fetch user details by ID"
+  input {
+    userId "string"
+  }
+  output {
+    email "string"
+    isActive "boolean"
+  }
+  error {
+    "404" "User not found"
+    "401" "Unauthorized access"
+  }
+  constraint "Response time must be < 50ms"
+}
+```
+
+### State Machines
+
+State Machines let you model component lifecycles, states, and transition behaviors based on events, actions, and guards.
+
+```sruja
+// partial
+state_machine "OrderLifecycle" {
+  description "Order lifecycle state machine"
+  initial "Created"
+  terminal ["Completed", "Cancelled"]
+
+  "Created" -> "Processing" on "payment_received" {
+    guard "payment.amount > 0"
+    action "send_receipt()"
+    description "Transition order to processing after successful payment"
+  }
+  "Processing" -> "Completed" on "shipment_delivered"
+}
+```
+
+### Systems Thinking Loops
+
+Sruja supports causal loop diagrams and feedback loops to model complex system dynamics, reinforcing/balancing feedback loops, polarities, and delays.
+
+#### Feedback Loops
+
+```sruja
+// partial
+UserLoop = feedback "User Growth" {
+  loop_type "reinforcing"
+  loop_id "R1"
+  description "Growth in users leads to more word-of-mouth referrals"
+  
+  UserBase -> Referrals "increases"
+  Referrals -> UserBase "leads to"
+}
+```
+
+#### Causal Loops
+
+```sruja
+// partial
+InventoryLoop = causal_loop "Supply & Demand" {
+  loop_type "balancing"
+  loop_id "B1"
+  
+  variable Demand "Customer Demand"
+  variable Price "Product Price"
+  
+  Demand -> Price {
+    effect "increases"
+    polarity "+"
+  }
+  Price -> Demand {
+    effect "decreases"
+    polarity "-"
+    delay "2 days"
+  }
+}
+```
+
 ### Governance
 
 #### Policies
 
 ```sruja
+// partial
 // Two equivalent forms:
 SecurityPolicy = policy "Enforce TLS 1.3" {
     category "security"
@@ -485,11 +599,28 @@ conventions {
 }
 ```
 
+### Incidents
+
+Incidents allow you to track production outages, capture post-mortems, and link them directly to affected architecture components.
+
+```sruja
+// partial
+incident INC001 "API Gateway Outage" {
+  date "2026-05-01"
+  severity "high"
+  affected [Shop.API]
+  cause "Memory leak under high load"
+  resolution "Restarted cluster and updated memory limits"
+  lesson "Implement auto-scaling based on memory thresholds"
+}
+```
+
 ### Views (Optional)
 
 Views are **optional** — if not specified, standard C4 views are automatically generated.
 
 ```sruja
+// partial
 view index {
     title "System Context"
     include *
@@ -529,6 +660,7 @@ styles {
 Relationships are automatically inferred when child relationships exist:
 
 ```sruja
+// partial
 User -> API.WebApp "Uses"
 // Automatically infers: User -> API
 ```
@@ -538,6 +670,7 @@ This reduces boilerplate while maintaining clarity.
 ## Complete Example
 
 ```sruja
+// partial
 // Element Kinds (required)
 person = kind "Person"
 system = kind "System"

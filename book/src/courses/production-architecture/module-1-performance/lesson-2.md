@@ -40,6 +40,7 @@ This is where SLOs (Service Level Objectives) come in. **Interviewers love when 
 Let's model the payment system with explicit SLOs:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -193,6 +194,7 @@ include *
 **Your answer with SLO**:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -222,6 +224,7 @@ include *
 **Your answer with SLO**:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -251,6 +254,7 @@ include *
 **Your answer with SLO**:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

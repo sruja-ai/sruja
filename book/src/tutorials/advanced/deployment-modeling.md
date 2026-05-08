@@ -10,6 +10,7 @@ tags: ["deployment", "infrastructure"]
 Model production environments and map containers onto infrastructure nodes.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

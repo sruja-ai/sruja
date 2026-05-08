@@ -49,6 +49,7 @@ Parts tell you *what exists* in your system.
 
 In Sruja, you show relationships with arrows and labels:
 ```sruja
+// partial
 Customer -> WebApp "Browses"
 WebApp -> API "Fetches data"
 API -> Database "Queries"
@@ -62,6 +63,7 @@ Here's a real example of why this matters:
 
 Imagine you see this diagram:
 ```sruja
+// partial
 API -> Database "Uses"
 ```
 
@@ -69,6 +71,7 @@ What does that tell you? Not much. "Uses" could mean anything—reads, writes, q
 
 Now imagine you see this:
 ```sruja
+// partial
 API -> Database "PostgreSQL/Reads"
 ```
 
@@ -170,6 +173,7 @@ When in doubt? Start with Person → System → Container. You can always drill 
 ### What This Looks Like in Sruja
 
 ```sruja
+// partial
 // Step 1: People
 Customer = person "Customer"
 Admin = person "Administrator"
@@ -204,6 +208,7 @@ Let's compare:
 
 **Vague labels:**
 ```sruja
+// partial
 Customer -> WebApp "Uses"
 WebApp -> API "Connects to"
 API -> Database "Uses"
@@ -213,6 +218,7 @@ This tells you something is happening, but not what. "Uses" could mean anything.
 
 **Specific labels:**
 ```sruja
+// partial
 Customer -> WebApp "HTTPS/REST (Browses)"
 WebApp -> API "HTTP/JSON (Submits data)"
 API -> Database "PostgreSQL/Reads"
@@ -242,6 +248,7 @@ The type of relationship affects how you design your system. Synchronous relatio
 ### Example in Sruja
 
 ```sruja
+// partial
 Customer = person "Customer"
 ECommerce = system "E-Commerce Platform" {
   WebApp = container "Web Application"

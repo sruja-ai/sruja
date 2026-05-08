@@ -387,7 +387,7 @@ pub fn compute_context_score(
     let score = raw_score.round().clamp(0.0, 100.0) as u8;
 
     // Sort quick wins by impact
-    quick_wins.sort_by(|a, b| b.impact_points.cmp(&a.impact_points));
+    quick_wins.sort_by_key(|b| std::cmp::Reverse(b.impact_points));
     quick_wins.truncate(5);
 
     ContextScore {

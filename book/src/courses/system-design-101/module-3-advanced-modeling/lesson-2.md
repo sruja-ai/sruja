@@ -279,6 +279,7 @@ Now that you understand the concepts, let's see how to model event-driven archit
 ### Example: User Registration with Events
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 User = person "End User"

@@ -41,6 +41,7 @@ Sruja validates:
 Let's validate a real architecture:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -96,6 +97,7 @@ include *
 **Fix:**
 
 ```sruja
+// partial
 // ❌ Wrong
 ECommerce.API -> ECommerce.NonExistent "Calls"
 
@@ -155,6 +157,7 @@ GraphQLAPI = container "GraphQL API"
 1. **Add a relation** (if the element should be used):
 
 ```sruja
+// partial
 // Add relation to use the cache
 ECommerce.API -> ECommerce.Cache "Reads cache"
 ```
@@ -169,6 +172,7 @@ ECommerce.API -> ECommerce.Cache "Reads cache"
 3. **Document why it's isolated** (if intentional):
 
 ```sruja
+// partial
 datastore Cache "Cache" {
     description "Future: Will be used for product catalog caching"
     metadata {
@@ -217,6 +221,7 @@ Sruja detects cycles but **doesn't block them** - cycles are valid architectural
 - **Bidirectional flows**: API ↔ Database (read/write)
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -329,6 +334,7 @@ fi
 Use constraints and conventions for custom validation:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -365,6 +371,7 @@ include *
 ### Step 1: Write Architecture
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

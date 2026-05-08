@@ -11,6 +11,7 @@ Use `style` to set global visual defaults across diagrams and exports.
 ## Syntax
 
 ```sruja
+// partial
 system = kind "System"
 container = kind "Container"
 database = kind "Database"

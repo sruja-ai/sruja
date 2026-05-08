@@ -14,6 +14,7 @@ Systems thinking helps you understand how components interact as part of a whole
 Systems thinking starts with understanding **what** the system contains (parts) and **how** they connect (relationships).
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -50,6 +51,7 @@ include *
 Boundaries define what's **inside** the system vs. what's **outside** (the environment).
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -194,6 +196,7 @@ App.WebApp -> User "Shows Feedback"
 ### System Feedback Loop
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -222,6 +225,7 @@ include *
 Context defines the **environment** the system operates in - external dependencies, stakeholders, and surrounding systems.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

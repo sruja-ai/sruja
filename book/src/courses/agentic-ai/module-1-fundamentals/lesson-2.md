@@ -37,6 +37,7 @@ We can map these components to Sruja elements:
 - **Memory** -> `datastore`
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

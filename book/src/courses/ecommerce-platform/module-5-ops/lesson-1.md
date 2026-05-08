@@ -35,6 +35,7 @@ You have two identical environments (Blue and Green). One is live, the other is 
 ### Real-World Example: E-Commerce Platform
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -135,6 +136,7 @@ You roll out the new version to a small percentage of users (e.g., 5%) and monit
 ### Real-World Example: API Service
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -180,6 +182,7 @@ include *
 Document the rollout plan in metadata:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -238,6 +241,7 @@ include *
 Gradually replace old instances with new ones, one at a time.
 
 ```sruja
+// partial
 deployment Production "Production Environment" {
     node Cluster "Kubernetes Cluster" {
         containerInstance API {
@@ -265,6 +269,7 @@ deployment Production "Production Environment" {
 Sometimes you don't need a deployment strategy—use feature flags instead:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -291,6 +296,7 @@ include *
 Model your observability during deployments:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

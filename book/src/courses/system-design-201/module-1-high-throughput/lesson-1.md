@@ -45,6 +45,7 @@ How do we generate the alias?
 We can use Sruja to model the system components and the user scenario for redirection.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

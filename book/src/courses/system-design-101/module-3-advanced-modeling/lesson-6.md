@@ -68,6 +68,7 @@ This isn't just about naming. It enables:
 **1. Early Validation**
 
 ```sruja
+// partial
 // This will fail validation - "datasource" isn't a valid kind
 MyDB = datasource "Database"  // ❌ Typo caught immediately
 
@@ -82,6 +83,7 @@ MyDB = datastore "Database"   // ✅ Validates successfully
 
 **3. Self-Documenting Models**
 ```sruja
+// partial
 // Anyone reading this knows these are the valid element types
 // No guessing, no inconsistencies
 Customer = person "Customer"
@@ -106,6 +108,7 @@ We covered this extensively in Lesson 4, so I'll keep this brief.
 **The mistake to avoid:** Creating separate models for each audience. Instead, create multiple `view` blocks from one model.
 
 ```sruja
+// partial
 // Define once...
 Customer = person "Customer"
 ECommerce = system "E-Commerce Platform" {
@@ -166,6 +169,7 @@ Scenarios capture **behavioral flows** - sequences of actions that happen when u
 ### Real-World Example: E-Commerce Checkout
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"
@@ -303,6 +307,7 @@ Flows capture **data-oriented processes** - how data moves, transforms, and gets
 ### Real-World Example: Analytics Pipeline
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Analytics = system "Analytics Platform" {
@@ -381,6 +386,7 @@ This is the question I get most often. Here's the framework:
 **Example:**
 
 ```sruja
+// partial
 // User behavior = SCENARIO
 UserCheckout = scenario "User Checks Out" {
   Customer -> WebApp "Clicks checkout"
@@ -502,6 +508,7 @@ ScalingPolicy = policy "Services must implement health checks" {
 Here's how requirements, ADRs, and architecture integrate:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 Customer = person "Customer"

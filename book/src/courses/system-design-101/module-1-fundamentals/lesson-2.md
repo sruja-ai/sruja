@@ -66,6 +66,7 @@ In interviews, never just say "it needs to be fast". Be specific.
 Sruja allows you to define horizontal scaling requirements explicitly using the `scale` block.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

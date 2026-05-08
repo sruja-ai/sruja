@@ -22,6 +22,7 @@ This loop continues until the agent decides it has enough information to answer.
 We can model this flow using a `scenario` or `story` in Sruja to visualize the sequence.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

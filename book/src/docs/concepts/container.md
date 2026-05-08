@@ -19,6 +19,7 @@ A **Container** represents an application or a data store. It is something that 
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -32,6 +33,7 @@ tags ["tag1", "tag2"]
 ## Example
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -48,6 +50,7 @@ WebApp = container "Web Application" {
 Containers can define horizontal scaling properties using the `scale` block:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

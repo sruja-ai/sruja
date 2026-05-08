@@ -57,6 +57,7 @@ view index {
 ## Example: Security Policies
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -136,6 +137,7 @@ Policies can include **structured rules** that are evaluated by the rule engine 
 Policy rules match elements using **selectors**:
 
 ```sruja
+// partial
 { 
   kind "database"
   id "Shop.DB"

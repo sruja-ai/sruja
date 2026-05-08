@@ -100,6 +100,7 @@ This hierarchy makes architecture clear and understandable.
 Here's a simple example to get you started:
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 App = system "My App" {

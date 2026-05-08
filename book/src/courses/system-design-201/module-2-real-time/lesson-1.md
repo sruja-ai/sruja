@@ -48,6 +48,7 @@ HTTP is request/response (pull). For chat, we need **push**.
 We can use Sruja to model the WebSocket connections and the async message processing.
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

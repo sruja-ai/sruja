@@ -118,6 +118,7 @@ Good relationship labels tell a story about what's actually happening. They're s
 You're reviewing a team's architecture diagram and notice this structure:
 
 ```sruja
+// partial
 ECommerce = system "E-Commerce Platform" {
   Frontend = container "Web App"
   API = container "API Service" {
@@ -197,6 +198,7 @@ The golden rule: **match the level of detail to your audience**. Business stakeh
 **What the diagram should look like:**
 
 ```sruja
+// partial
 // People (who uses the system?)
 User = person "User"
 

@@ -483,6 +483,7 @@ Modeling databases in your architecture provides:
 ### Example: E-Commerce Database Architecture
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 ECommerce = system "E-Commerce Platform" {

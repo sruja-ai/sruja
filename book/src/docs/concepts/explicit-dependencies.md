@@ -11,6 +11,7 @@ Use `depends_on` to note upstreams when a full relation is overkill or for stati
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 

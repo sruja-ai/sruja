@@ -11,6 +11,7 @@ A **Database** represents a database, file system, or any other system that stor
 ## Syntax
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
@@ -23,6 +24,7 @@ ID = database "Label" {
 ## Example
 
 ```sruja
+// partial
 import { * } from 'sruja.ai/stdlib'
 
 
