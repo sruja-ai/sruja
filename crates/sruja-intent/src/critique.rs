@@ -140,7 +140,7 @@ impl CritiqueEngine {
         }
 
         // Sort findings by severity
-        findings.sort_by(|a, b| b.severity.cmp(&a.severity));
+        findings.sort_by_key(|b| std::cmp::Reverse(b.severity));
 
         let risk_level = self.compute_risk_level(&findings);
         let summary = self.generate_summary(&findings, &affected, &blast_summary);
