@@ -5,6 +5,21 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.42.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.41.1...sruja-v0.42.0) (2026-05-08)
+
+
+### Features
+
+* **cli:** agent run + enrichment plumbing ([82b7e00](https://github.com/sruja-ai/sruja/commit/82b7e00fbb82cc46f18a4faf1371f3248438f2d2))
+* harden sruja and integrate enterprise graph health metrics and book dsl validation ([cdfc72f](https://github.com/sruja-ai/sruja/commit/cdfc72fedcbb21a68c0b62f49f35dbf54872cd08))
+* implement outcome-driven evolutionary architectures, fitness evaluation, and health status dashboard ([539f024](https://github.com/sruja-ai/sruja/commit/539f0241d551c004ecfd97ce3cbd53193da06142))
+
+
+### Bug Fixes
+
+* **clippy:** resolve unnecessary_sort_by warning in context_score.rs ([237ed13](https://github.com/sruja-ai/sruja/commit/237ed13080677337dec4b7cc7f032415f638ceac))
+* resolve clippy sort recommendations and C4 nesting and complexity linting for blueprints ([3278b72](https://github.com/sruja-ai/sruja/commit/3278b72ad95b7788ea68fcd5af5e282308107d7f))
+
 ## [0.41.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.41.0...sruja-v0.41.1) (2026-05-06)
 
 
