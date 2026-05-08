@@ -148,7 +148,7 @@ impl AdrParser {
             }
         }
 
-        adrs.sort_by(|a, b| a.number.unwrap_or(9999).cmp(&b.number.unwrap_or(9999)));
+        adrs.sort_by_key(|a| a.number.unwrap_or(9999));
 
         Ok(adrs)
     }

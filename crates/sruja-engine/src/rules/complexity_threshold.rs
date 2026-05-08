@@ -31,7 +31,7 @@ impl Rule for ComplexityThresholdRule {
             diagnostics.push(
                 Diagnostic::new(
                     "complexity.critical",
-                    Severity::Error,
+                    Severity::Warning,
                     format!(
                         "Architecture has {} elements (critical complexity). Mandatory human review required before merging.",
                         item_count

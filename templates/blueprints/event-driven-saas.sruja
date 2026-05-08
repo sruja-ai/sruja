@@ -12,49 +12,47 @@ Customer = person "Customer" {
 
 SaaS = system "SaaS Platform" {
   description "API-driven product with asynchronous processing via an event stream"
-}
 
-Web = container "Web App" {
-  technology "Next.js"
-  description "Web UI for customers"
-}
+  Web = container "Web App" {
+    technology "Next.js"
+    description "Web UI for customers"
+  }
 
-API = container "Public API" {
-  technology "Go"
-  description "Handles customer requests and publishes domain events"
-}
+  API = container "Public API" {
+    technology "Go"
+    description "Handles customer requests and publishes domain events"
+  }
 
-Events = container "Event Stream" {
-  technology "Kafka"
-  description "Durable stream for domain events and async workflows"
-}
+  Events = container "Event Stream" {
+    technology "Kafka"
+    description "Durable stream for domain events and async workflows"
+  }
 
-Worker = container "Async Worker" {
-  technology "Python"
-  description "Consumes events and performs background processing"
-}
+  Worker = container "Async Worker" {
+    technology "Python"
+    description "Consumes events and performs background processing"
+  }
 
-API_DB = database "API Database" {
-  technology "PostgreSQL"
-  description "API-owned relational datastore"
-}
+  API_DB = database "API Database" {
+    technology "PostgreSQL"
+    description "API-owned relational datastore"
+  }
 
-Worker_DB = database "Worker Database" {
-  technology "PostgreSQL"
-  description "Worker-owned relational datastore (outbox, projections, job state)"
+  Worker_DB = database "Worker Database" {
+    technology "PostgreSQL"
+    description "Worker-owned relational datastore (outbox, projections, job state)"
+  }
 }
 
 Customer -> SaaS "Uses"
-SaaS -> Web "Delivers UI"
-Customer -> Web "HTTPS"
-Web -> API "HTTPS (JSON)"
-API -> API_DB "Reads/writes"
-API -> Events "Publishes domain events"
-Worker -> Events "Consumes domain events"
-Worker -> Worker_DB "Reads/writes"
+Customer -> SaaS.Web "HTTPS"
+SaaS.Web -> SaaS.API "HTTPS (JSON)"
+SaaS.API -> SaaS.API_DB "Reads/writes"
+SaaS.API -> SaaS.Events "Publishes domain events"
+SaaS.Worker -> SaaS.Events "Consumes domain events"
+SaaS.Worker -> SaaS.Worker_DB "Reads/writes"
 
 view index {
   title "SaaS Platform (event-driven starter)"
   include *
 }
-
