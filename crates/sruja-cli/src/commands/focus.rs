@@ -11,6 +11,9 @@ use std::path::Path;
 
 use crate::commands::CliError;
 use crate::graph_store;
+use crate::integrations::{
+    resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
+};
 use crate::utils::colors;
 use sruja_agent::AgenticMemory;
 use sruja_graph::{compute_context_score, KnowledgeGraph};
@@ -27,6 +30,20 @@ pub struct FocusBriefing {
     pub anti_patterns: Vec<String>,
     pub pointer_traces: Vec<String>,
     pub context_score: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enrichment: Option<FocusEnrichment>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FocusEnrichment {
+    pub status: String,
+    pub provider: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub narrative_markdown: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -100,12 +117,13 @@ pub fn resolve_target(
         }
         // Fuzzy match
         let q = eid.to_lowercase();
-        let matches: Vec<&str> = graph
+        let mut matches: Vec<&str> = graph
             .nodes
             .keys()
             .filter(|k| k.to_lowercase().contains(&q))
             .map(|k| k.as_str())
             .collect();
+        matches.sort_unstable();
         match matches.len() {
             0 => {
                 return Err(CliError::validation(format!(
@@ -376,6 +394,137 @@ pub fn build_focus_briefing(
         anti_patterns,
         pointer_traces,
         context_score: score.score,
+        enrichment: None,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_focus_enrichment(
+    repo_path: &Path,
+    briefing: &FocusBriefing,
+    enrich: bool,
+    enrich_provider: Option<&str>,
+    enrich_cmd: Option<&str>,
+    enrich_model: Option<&str>,
+    enrich_base_url: Option<&str>,
+    enrich_timeout_ms: u64,
+    enrich_max_bytes: usize,
+) -> Option<FocusEnrichment> {
+    if !enrich && enrich_cmd.is_none() {
+        return None;
+    }
+
+    let plan = resolve_enrichment_plan(
+        repo_path,
+        enrich_cmd,
+        enrich_model,
+        enrich_base_url,
+        Some(enrich_timeout_ms),
+        Some(enrich_max_bytes),
+    );
+    let provider = enrich_provider.unwrap_or(plan.provider.as_str());
+    let limits = plan.limits;
+
+    let payload = serde_json::json!({
+        "schema_version": "focus_enrichment_input/v1",
+        "repo": repo_path.display().to_string(),
+        "briefing": briefing,
+    });
+    let stdin_payload = serde_json::to_vec(&payload).unwrap_or_default();
+
+    if provider == "cmd" {
+        let Some(cmd) = plan.cmd.as_deref() else {
+            return Some(FocusEnrichment {
+                status: "skipped".to_string(),
+                provider: "cmd".to_string(),
+                model: None,
+                error: Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
+                narrative_markdown: None,
+            });
+        };
+        return Some(match run_cmd_enrichment(cmd, &stdin_payload, limits) {
+            Ok(md) => FocusEnrichment {
+                status: "ok".to_string(),
+                provider: "cmd".to_string(),
+                model: None,
+                error: None,
+                narrative_markdown: Some(md),
+            },
+            Err(e) => FocusEnrichment {
+                status: "error".to_string(),
+                provider: "cmd".to_string(),
+                model: None,
+                error: Some(e),
+                narrative_markdown: None,
+            },
+        });
+    }
+
+    if provider != "openai" {
+        return Some(FocusEnrichment {
+            status: "skipped".to_string(),
+            provider: provider.to_string(),
+            model: None,
+            error: Some(
+                "Unsupported provider. Use provider=cmd (recommended) or provider=openai."
+                    .to_string(),
+            ),
+            narrative_markdown: None,
+        });
+    }
+
+    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
+    let base_url = plan
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1");
+    let Some(api_key) = resolve_openai_auth() else {
+        return Some(FocusEnrichment {
+            status: "skipped".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
+            narrative_markdown: None,
+        });
+    };
+
+    let user_prompt = format!(
+        r#"You are assisting an AI coding agent.
+
+You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
+
+Produce markdown with these sections:
+- "One-paragraph plan"
+- "Risks / unknowns to verify" (bullets)
+- "Suggested test/verification steps" (bullets)
+- "Clarifying questions" (bullets)
+
+JSON facts:
+{}"#,
+        payload
+    );
+
+    match run_openai_markdown(
+        "You are a careful repo assistant. Never fabricate.",
+        &user_prompt,
+        model,
+        base_url,
+        &api_key,
+    ) {
+        Ok(md) => Some(FocusEnrichment {
+            status: "ok".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: None,
+            narrative_markdown: Some(md),
+        }),
+        Err(e) => Some(FocusEnrichment {
+            status: "error".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: Some(e),
+            narrative_markdown: None,
+        }),
     }
 }
 
@@ -598,10 +747,16 @@ fn extract_relevant_excerpt(content: &str, target: &str, max_len: usize) -> Stri
 }
 
 fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
+    if s.chars().count() <= max_len {
         s.to_string()
     } else {
-        format!("{}...", &s[..max_len.saturating_sub(3)])
+        if max_len <= 3 {
+            ".".repeat(max_len)
+        } else {
+            let keep = max_len.saturating_sub(3);
+            let prefix: String = s.chars().take(keep).collect();
+            format!("{}...", prefix)
+        }
     }
 }
 
@@ -609,11 +764,19 @@ fn truncate(s: &str, max_len: usize) -> String {
 // CLI entry point
 // ──────────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_arguments)]
 pub async fn focus(
     repo: &str,
     file: Option<&str>,
     element_id: Option<&str>,
     format: &str,
+    enrich: bool,
+    enrich_provider: Option<&str>,
+    enrich_cmd: Option<&str>,
+    enrich_model: Option<&str>,
+    enrich_base_url: Option<&str>,
+    enrich_timeout_ms: u64,
+    enrich_max_bytes: usize,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
@@ -634,7 +797,18 @@ pub async fn focus(
 
     // Resolve the target
     let target_id = resolve_target(&kg, file, element_id)?;
-    let briefing = build_focus_briefing(&kg, &target_id, repo_path, scan_node_count);
+    let mut briefing = build_focus_briefing(&kg, &target_id, repo_path, scan_node_count);
+    briefing.enrichment = build_focus_enrichment(
+        repo_path,
+        &briefing,
+        enrich,
+        enrich_provider,
+        enrich_cmd,
+        enrich_model,
+        enrich_base_url,
+        enrich_timeout_ms,
+        enrich_max_bytes,
+    );
 
     match format {
         "json" | "for-ai" => {
@@ -642,6 +816,12 @@ pub async fn focus(
         }
         _ => {
             print_focus_briefing(&briefing);
+            if let Some(enrichment) = &briefing.enrichment {
+                if let Some(md) = enrichment.narrative_markdown.as_deref() {
+                    println!();
+                    println!("{}", md);
+                }
+            }
         }
     }
 

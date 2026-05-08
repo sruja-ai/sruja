@@ -5,8 +5,8 @@ Developer = person "Developer" {
 }
 
 Sruja = system "Sruja Platform" {
-  description "Tools for defining, validating, and exporting architecture-as-code, plus context engineering for AI-assisted development"
-  tags ["platform", "architecture-as-code"]
+  description "AI-first tools for defining, validating, and exporting architecture-as-code, grounded in evidence from the repo (code, dependency graphs, and specs) to steer AI-assisted development"
+  tags ["platform", "architecture-as-code", "ai-first"]
 
   CLI = container "Sruja CLI" {
     technology "Rust, clap"
@@ -22,7 +22,7 @@ Sruja = system "Sruja Platform" {
 
   Context = container "Context Engineering (Scan + Graph + Drift + Intent)" {
     technology "Rust, Tree-sitter"
-    description "Repository scanning, dependency graph extraction, drift detection, intent checks, and agent memory"
+    description "Evidence capture (scan + graph), drift detection, intent checks, and context that grounds AI suggestions in repo truth"
     tags ["context"]
   }
 

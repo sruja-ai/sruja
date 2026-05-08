@@ -7,6 +7,7 @@ use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
 
 use super::CliError;
+use crate::commands::{agent_run_to_string, AgentRunOptions};
 use crate::integrations::{
     resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
 };
@@ -736,6 +737,34 @@ fn tool_definitions() -> Vec<Value> {
                 "required": ["context", "hypothesis", "outcome", "guardrail_advice"]
             }
         }),
+        json!({
+            "name": "sruja_agent_run",
+            "title": "Sruja Agent Run",
+            "description": "Run Sruja's agent loop (observe→plan→optional apply→verify) and return structured JSON output.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "goal": { "type": "string", "description": "Natural language goal for the agent" },
+                    "file": { "type": "string", "description": "Optional file focus (exactly one of file/element_id/query)" },
+                    "element_id": { "type": "string", "description": "Optional element id focus (exactly one of file/element_id/query)" },
+                    "query": { "type": "string", "description": "Optional query focus (exactly one of file/element_id/query)" },
+                    "mode": { "type": "string", "description": "plan|apply (default: plan)" },
+                    "ai_mode": { "type": "string", "description": "standard|conservative|aggressive (default: standard)" },
+                    "max_steps": { "type": "integer", "description": "Optional max steps override" },
+                    "max_runtime_ms_per_step": { "type": "integer", "description": "Optional per-step timeout override (ms)" },
+                    "enrich": { "type": "boolean", "description": "Optional enrichment grounded in facts (default: false)" },
+                    "enrich_provider": { "type": "string", "description": "cmd|openai (or configured default)" },
+                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)" },
+                    "enrich_model": { "type": "string", "description": "Model name for provider=openai" },
+                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (OpenAI-compatible supported)" },
+                    "enrich_timeout_ms": { "type": "integer", "description": "Enrichment timeout (ms)" },
+                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment output" },
+                    "continue_on_error": { "type": "boolean", "description": "If true, continue verification after errors" }
+                },
+                "required": ["goal"]
+            }
+        }),
     ]
 }
 
@@ -855,6 +884,73 @@ async fn run_tool(
                 )),
                 None => Ok(format!("No path found from {} to {}", source, target)),
             }
+        }
+        "sruja_agent_run" => {
+            let goal = arguments
+                .get("goal")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing goal"))?;
+            let file = arguments.get("file").and_then(|v| v.as_str());
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str());
+            let query = arguments.get("query").and_then(|v| v.as_str());
+            let mode = arguments
+                .get("mode")
+                .and_then(|v| v.as_str())
+                .unwrap_or("plan");
+            let ai_mode = arguments
+                .get("ai_mode")
+                .and_then(|v| v.as_str())
+                .unwrap_or("standard");
+            let max_steps = arguments
+                .get("max_steps")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as usize);
+            let max_runtime_ms_per_step = arguments
+                .get("max_runtime_ms_per_step")
+                .and_then(|v| v.as_u64());
+            let enrich = arguments
+                .get("enrich")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let enrich_provider = arguments.get("enrich_provider").and_then(|v| v.as_str());
+            let enrich_cmd = arguments.get("enrich_cmd").and_then(|v| v.as_str());
+            let enrich_model = arguments.get("enrich_model").and_then(|v| v.as_str());
+            let enrich_base_url = arguments.get("enrich_base_url").and_then(|v| v.as_str());
+            let enrich_timeout_ms = arguments
+                .get("enrich_timeout_ms")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(15_000);
+            let enrich_max_bytes = arguments
+                .get("enrich_max_bytes")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(20_000) as usize;
+            let continue_on_error = arguments
+                .get("continue_on_error")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
+            let text = agent_run_to_string(AgentRunOptions {
+                repo: &repo,
+                goal,
+                file,
+                element_id,
+                query,
+                mode,
+                ai_mode,
+                format: "for-ai",
+                max_steps,
+                max_runtime_ms_per_step,
+                enrich,
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                continue_on_error,
+            })
+            .await?;
+            Ok(text)
         }
         "sruja_get_entrypoints" => {
             let graph = get_or_scan_graph(graph_cache, &repo).await?;

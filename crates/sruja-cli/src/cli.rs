@@ -93,9 +93,30 @@ pub enum Commands {
         /// Critique staged git changes
         #[arg(long)]
         staged: bool,
-        /// Output format (text or json)
+        /// Output format (text, json, for-ai)
         #[arg(long, default_value = "text")]
         format: String,
+        /// Optional enrichment (cmd/openai) to add a narrative review grounded in the critique report.
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout for enrichment in milliseconds (default: 15000)
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from enrichment stdout (default: 20000)
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
         /// Fail the command (exit 1) if findings of this level or higher are found
         #[arg(long)]
         fail_on: Option<String>,
@@ -720,6 +741,27 @@ pub enum Commands {
         /// Output format (text, json, for-ai)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Optional enrichment (cmd/openai) to add a narrative plan grounded in the focus JSON.
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout for enrichment in milliseconds (default: 15000)
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from enrichment stdout (default: 20000)
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
     },
 
     /// Ingest external context (ADRs, design docs, API contracts) into .sruja/context/
@@ -810,6 +852,63 @@ pub enum AgentCommand {
         /// Skip confirmation prompt
         #[arg(long, short = 'y')]
         force: bool,
+    },
+    /// Run the agent loop: observe → plan → (optional) apply → verify → record learnings
+    Run {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Natural language goal (e.g. "Add agent loop to CLI")
+        #[arg(long)]
+        goal: String,
+        /// File path focus (relative to repo root). Exactly one of --file/--element-id/--query is required.
+        #[arg(long)]
+        file: Option<String>,
+        /// Architecture element ID focus. Exactly one of --file/--element-id/--query is required.
+        #[arg(long)]
+        element_id: Option<String>,
+        /// Natural language query focus. Exactly one of --file/--element-id/--query is required.
+        #[arg(long)]
+        query: Option<String>,
+        /// Execution mode (plan|apply). Default: plan
+        #[arg(long, default_value = "plan")]
+        mode: String,
+        /// AI mode profile (standard|conservative|aggressive). Default: standard
+        #[arg(long, default_value = "standard")]
+        ai_mode: String,
+        /// Output format (text|json|for-ai)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Max steps to execute in apply mode (bounded by config)
+        #[arg(long)]
+        max_steps: Option<usize>,
+        /// Max runtime per step in milliseconds (bounded by config)
+        #[arg(long)]
+        max_runtime_ms_per_step: Option<u64>,
+        /// Optional enrichment (cmd/openai) to add narrative grounded in gathered facts.
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout for enrichment in milliseconds (default: 15000)
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from enrichment stdout (default: 20000)
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
+        /// Continue running verification even if an apply step fails
+        #[arg(long)]
+        continue_on_error: bool,
     },
 }
 
@@ -1017,6 +1116,13 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             head,
             staged,
             format,
+            enrich,
+            enrich_provider,
+            enrich_cmd,
+            enrich_model,
+            enrich_base_url,
+            enrich_timeout_ms,
+            enrich_max_bytes,
             fail_on,
         } => {
             commands::critique(
@@ -1028,6 +1134,13 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 head,
                 staged,
                 &format,
+                enrich,
+                enrich_provider.as_deref(),
+                enrich_cmd.as_deref(),
+                enrich_model.as_deref(),
+                enrich_base_url.as_deref(),
+                enrich_timeout_ms,
+                enrich_max_bytes,
                 fail_on.as_deref(),
             )
             .await
@@ -1353,7 +1466,29 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             file,
             element_id,
             format,
-        } => commands::focus(&repo, file.as_deref(), element_id.as_deref(), &format).await,
+            enrich,
+            enrich_provider,
+            enrich_cmd,
+            enrich_model,
+            enrich_base_url,
+            enrich_timeout_ms,
+            enrich_max_bytes,
+        } => {
+            commands::focus(
+                &repo,
+                file.as_deref(),
+                element_id.as_deref(),
+                &format,
+                enrich,
+                enrich_provider.as_deref(),
+                enrich_cmd.as_deref(),
+                enrich_model.as_deref(),
+                enrich_base_url.as_deref(),
+                enrich_timeout_ms,
+                enrich_max_bytes,
+            )
+            .await
+        }
         Commands::Ingest {
             sources,
             repo,
@@ -1387,6 +1522,48 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await
             }
             AgentCommand::Clear { repo, force } => commands::agent_clear(&repo, force).await,
+            AgentCommand::Run {
+                repo,
+                goal,
+                file,
+                element_id,
+                query,
+                mode,
+                ai_mode,
+                format,
+                max_steps,
+                max_runtime_ms_per_step,
+                enrich,
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                continue_on_error,
+            } => {
+                commands::agent_run(commands::AgentRunOptions {
+                    repo: &repo,
+                    goal: &goal,
+                    file: file.as_deref(),
+                    element_id: element_id.as_deref(),
+                    query: query.as_deref(),
+                    mode: &mode,
+                    ai_mode: &ai_mode,
+                    format: &format,
+                    max_steps,
+                    max_runtime_ms_per_step,
+                    enrich,
+                    enrich_provider: enrich_provider.as_deref(),
+                    enrich_cmd: enrich_cmd.as_deref(),
+                    enrich_model: enrich_model.as_deref(),
+                    enrich_base_url: enrich_base_url.as_deref(),
+                    enrich_timeout_ms,
+                    enrich_max_bytes,
+                    continue_on_error,
+                })
+                .await
+            }
         },
         Commands::Evaluate { architecture } => commands::evaluate(&architecture).await,
         Commands::Evolution { cmd } => match cmd {
@@ -1418,133 +1595,215 @@ mod tests {
 
     #[test]
     fn parses_context_defaults() {
-        let cli = Cli::try_parse_from(["sruja", "context"]).expect("parse");
-        match cli.command {
-            Commands::Context {
-                format,
-                repo,
-                output,
-                file,
-                element_id,
-                query,
-                base_ref,
-                head_ref,
-                intent,
-                depth,
-                max_tokens,
-            } => {
-                assert_eq!(format, "cursor-rules");
-                assert!(repo.is_empty());
-                assert!(output.is_none());
-                assert!(file.is_none());
-                assert!(element_id.is_none());
-                assert!(query.is_none());
-                assert!(base_ref.is_none());
-                assert!(head_ref.is_none());
-                assert!(intent.is_none());
-                assert_eq!(depth, 2);
-                assert_eq!(max_tokens, 10000);
-            }
-            _ => panic!("expected Context command"),
-        }
+        std::thread::Builder::new()
+            .name("clap_parse_large_stack".to_string())
+            .stack_size(16 * 1024 * 1024)
+            .spawn(|| {
+                let cli = Cli::try_parse_from(["sruja", "context"]).expect("parse");
+                match cli.command {
+                    Commands::Context {
+                        format,
+                        repo,
+                        output,
+                        file,
+                        element_id,
+                        query,
+                        base_ref,
+                        head_ref,
+                        intent,
+                        depth,
+                        max_tokens,
+                    } => {
+                        assert_eq!(format, "cursor-rules");
+                        assert!(repo.is_empty());
+                        assert!(output.is_none());
+                        assert!(file.is_none());
+                        assert!(element_id.is_none());
+                        assert!(query.is_none());
+                        assert!(base_ref.is_none());
+                        assert!(head_ref.is_none());
+                        assert!(intent.is_none());
+                        assert_eq!(depth, 2);
+                        assert_eq!(max_tokens, 10000);
+                    }
+                    _ => panic!("expected Context command"),
+                }
+            })
+            .expect("spawn")
+            .join()
+            .expect("join");
     }
 
     #[test]
     fn parses_ai_brief_defaults() {
-        let cli = Cli::try_parse_from(["sruja", "ai"]).expect("parse");
-        match cli.command {
-            Commands::Ai {
-                repo,
-                task,
-                file,
-                element_id,
-                query,
-                base_ref,
-                head_ref,
-                staged,
-                max_tokens,
-                output,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
-            } => {
-                assert_eq!(repo, ".");
-                assert!(task.is_none());
-                assert!(file.is_none());
-                assert!(element_id.is_none());
-                assert!(query.is_none());
-                assert!(base_ref.is_none());
-                assert!(head_ref.is_none());
-                assert!(!staged);
-                assert_eq!(max_tokens, 8000);
-                assert!(output.is_none());
-                assert!(!enrich);
-                assert!(enrich_provider.is_none());
-                assert!(enrich_cmd.is_none());
-                assert!(enrich_model.is_none());
-                assert!(enrich_base_url.is_none());
-                assert_eq!(enrich_timeout_ms, 15000);
-                assert_eq!(enrich_max_bytes, 20000);
-            }
-            _ => panic!("expected Ai command"),
-        }
+        std::thread::Builder::new()
+            .name("clap_parse_large_stack".to_string())
+            .stack_size(16 * 1024 * 1024)
+            .spawn(|| {
+                let cli = Cli::try_parse_from(["sruja", "ai"]).expect("parse");
+                match cli.command {
+                    Commands::Ai {
+                        repo,
+                        task,
+                        file,
+                        element_id,
+                        query,
+                        base_ref,
+                        head_ref,
+                        staged,
+                        max_tokens,
+                        output,
+                        enrich,
+                        enrich_provider,
+                        enrich_cmd,
+                        enrich_model,
+                        enrich_base_url,
+                        enrich_timeout_ms,
+                        enrich_max_bytes,
+                    } => {
+                        assert_eq!(repo, ".");
+                        assert!(task.is_none());
+                        assert!(file.is_none());
+                        assert!(element_id.is_none());
+                        assert!(query.is_none());
+                        assert!(base_ref.is_none());
+                        assert!(head_ref.is_none());
+                        assert!(!staged);
+                        assert_eq!(max_tokens, 8000);
+                        assert!(output.is_none());
+                        assert!(!enrich);
+                        assert!(enrich_provider.is_none());
+                        assert!(enrich_cmd.is_none());
+                        assert!(enrich_model.is_none());
+                        assert!(enrich_base_url.is_none());
+                        assert_eq!(enrich_timeout_ms, 15000);
+                        assert_eq!(enrich_max_bytes, 20000);
+                    }
+                    _ => panic!("expected Ai command"),
+                }
+            })
+            .expect("spawn")
+            .join()
+            .expect("join");
     }
 
     #[test]
     fn parses_ai_brief_focus_options() {
-        let cli = Cli::try_parse_from([
-            "sruja",
-            "ai",
-            "--task",
-            "Fix parser diagnostics",
-            "--file",
-            "crates/sruja-language/src/parser/mod.rs",
-            "--element-id",
-            "Sruja.Language",
-            "--query",
-            "parser",
-            "--base-ref",
-            "main",
-            "--head-ref",
-            "HEAD",
-            "--staged",
-            "--max-tokens",
-            "12000",
-            "-o",
-            "brief.md",
-        ])
-        .expect("parse");
-        match cli.command {
-            Commands::Ai {
-                task,
-                file,
-                element_id,
-                query,
-                base_ref,
-                head_ref,
-                staged,
-                max_tokens,
-                output,
-                ..
-            } => {
-                assert_eq!(task.as_deref(), Some("Fix parser diagnostics"));
-                assert_eq!(
-                    file.as_deref(),
-                    Some("crates/sruja-language/src/parser/mod.rs")
-                );
-                assert_eq!(element_id.as_deref(), Some("Sruja.Language"));
-                assert_eq!(query.as_deref(), Some("parser"));
-                assert_eq!(base_ref.as_deref(), Some("main"));
-                assert_eq!(head_ref.as_deref(), Some("HEAD"));
-                assert!(staged);
-                assert_eq!(max_tokens, 12000);
-                assert_eq!(output.as_deref(), Some("brief.md"));
-            }
-            _ => panic!("expected Ai command"),
-        }
+        // Clap can use substantial stack for deeply-nested subcommands/args.
+        // Keep this test stable by running parse on a larger stack.
+        std::thread::Builder::new()
+            .name("clap_parse_large_stack".to_string())
+            .stack_size(16 * 1024 * 1024)
+            .spawn(|| {
+                let cli = Cli::try_parse_from([
+                    "sruja",
+                    "ai",
+                    "--task",
+                    "Fix parser diagnostics",
+                    "--file",
+                    "crates/sruja-language/src/parser/mod.rs",
+                    "--element-id",
+                    "Sruja.Language",
+                    "--query",
+                    "parser",
+                    "--base-ref",
+                    "main",
+                    "--head-ref",
+                    "HEAD",
+                    "--staged",
+                    "--max-tokens",
+                    "12000",
+                    "-o",
+                    "brief.md",
+                ])
+                .expect("parse");
+                match cli.command {
+                    Commands::Ai {
+                        task,
+                        file,
+                        element_id,
+                        query,
+                        base_ref,
+                        head_ref,
+                        staged,
+                        max_tokens,
+                        output,
+                        ..
+                    } => {
+                        assert_eq!(task.as_deref(), Some("Fix parser diagnostics"));
+                        assert_eq!(
+                            file.as_deref(),
+                            Some("crates/sruja-language/src/parser/mod.rs")
+                        );
+                        assert_eq!(element_id.as_deref(), Some("Sruja.Language"));
+                        assert_eq!(query.as_deref(), Some("parser"));
+                        assert_eq!(base_ref.as_deref(), Some("main"));
+                        assert_eq!(head_ref.as_deref(), Some("HEAD"));
+                        assert!(staged);
+                        assert_eq!(max_tokens, 12000);
+                        assert_eq!(output.as_deref(), Some("brief.md"));
+                    }
+                    _ => panic!("expected Ai command"),
+                }
+            })
+            .expect("spawn")
+            .join()
+            .expect("join");
+    }
+
+    #[test]
+    fn parses_agent_run_defaults() {
+        std::thread::Builder::new()
+            .name("clap_parse_large_stack".to_string())
+            .stack_size(16 * 1024 * 1024)
+            .spawn(|| {
+                let cli = Cli::try_parse_from([
+                    "sruja",
+                    "agent",
+                    "run",
+                    "--goal",
+                    "Add agent loop",
+                    "--file",
+                    "crates/sruja-cli/src/cli.rs",
+                ])
+                .expect("parse");
+                match cli.command {
+                    Commands::Agent { cmd } => match cmd {
+                        AgentCommand::Run {
+                            repo,
+                            goal,
+                            file,
+                            element_id,
+                            query,
+                            mode,
+                            ai_mode,
+                            format,
+                            max_steps,
+                            max_runtime_ms_per_step,
+                            enrich,
+                            continue_on_error,
+                            ..
+                        } => {
+                            assert_eq!(repo, ".");
+                            assert_eq!(goal, "Add agent loop");
+                            assert_eq!(file.as_deref(), Some("crates/sruja-cli/src/cli.rs"));
+                            assert!(element_id.is_none());
+                            assert!(query.is_none());
+                            assert_eq!(mode, "plan");
+                            assert_eq!(ai_mode, "standard");
+                            assert_eq!(format, "text");
+                            assert!(max_steps.is_none());
+                            assert!(max_runtime_ms_per_step.is_none());
+                            assert!(!enrich);
+                            assert!(!continue_on_error);
+                        }
+                        _ => panic!("expected Agent run subcommand"),
+                    },
+                    _ => panic!("expected Agent command"),
+                }
+            })
+            .expect("spawn")
+            .join()
+            .expect("join");
     }
 }

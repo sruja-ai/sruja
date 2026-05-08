@@ -7,6 +7,8 @@ use std::time::{Duration, Instant};
 pub struct SrujaConfigFile {
     #[serde(default)]
     pub integrations: IntegrationsConfig,
+    #[serde(default)]
+    pub agent: AgentConfig,
 }
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
@@ -23,6 +25,19 @@ pub struct IntegrationsConfig {
     pub timeout_ms: Option<u64>,
     /// Max bytes to read from enrichment output
     pub max_bytes: Option<usize>,
+}
+
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct AgentConfig {
+    /// Allowlisted Sruja subcommands that the agent may execute in `--mode apply`.
+    /// Example: ["sync","drift","review","lint","intent-check"]
+    pub allowed_sruja_subcommands: Option<Vec<String>>,
+    /// Allowlisted top-level executables for verification commands (e.g. ["cargo","npm"]).
+    pub allowed_verify_executables: Option<Vec<String>>,
+    /// Default maximum steps for `agent run` in apply mode.
+    pub max_steps: Option<usize>,
+    /// Default maximum runtime per step (ms).
+    pub max_runtime_ms_per_step: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -204,6 +219,38 @@ pub fn resolve_openai_auth() -> Option<String> {
         .or_else(|| std::env::var("SRUJA_ENRICH_API_KEY").ok())
         // Back-compat
         .or_else(|| std::env::var("SRUJA_LLM_API_KEY").ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_agent_config_defaults_and_fields() {
+        let toml = r#"
+[integrations]
+default_provider = "cmd"
+cmd = "echo ok"
+
+[agent]
+allowed_sruja_subcommands = ["sync", "drift"]
+allowed_verify_executables = ["cargo"]
+max_steps = 3
+max_runtime_ms_per_step = 1000
+"#;
+        let cfg: SrujaConfigFile = toml::from_str(toml).expect("parse toml");
+        assert_eq!(cfg.integrations.default_provider.as_deref(), Some("cmd"));
+        assert_eq!(
+            cfg.agent.allowed_sruja_subcommands.as_deref(),
+            Some(["sync".to_string(), "drift".to_string()].as_slice())
+        );
+        assert_eq!(
+            cfg.agent.allowed_verify_executables.as_deref(),
+            Some(["cargo".to_string()].as_slice())
+        );
+        assert_eq!(cfg.agent.max_steps, Some(3));
+        assert_eq!(cfg.agent.max_runtime_ms_per_step, Some(1000));
+    }
 }
 
 pub fn run_openai_markdown(

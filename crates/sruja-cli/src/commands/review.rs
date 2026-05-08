@@ -71,7 +71,8 @@ pub async fn review(
         if !files.is_empty() {
             // We just print it to stdout for now as part of the dashboard
             super::critique::critique(
-                repo_root, files, None, None, None, None, false, format, None,
+                repo_root, files, None, None, None, None, false, format, false, None, None, None,
+                None, 15_000, 20_000, None,
             )
             .await?;
             println!();

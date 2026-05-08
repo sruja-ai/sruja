@@ -6,6 +6,8 @@ pub(crate) use super::{parse_sruja_file, scan_repo_cached, CliError};
 
 #[path = "agent.rs"]
 pub mod agent;
+#[path = "agent_run.rs"]
+pub mod agent_run;
 #[path = "ai.rs"]
 pub mod ai;
 #[path = "critique.rs"]
