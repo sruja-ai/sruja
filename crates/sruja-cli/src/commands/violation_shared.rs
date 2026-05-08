@@ -155,45 +155,67 @@ pub fn generate_suggestions(
     truth_status: &str,
     violations: &[Violation],
 ) -> Vec<String> {
-    let mut suggestions = Vec::new();
+    fn uniq_limit(items: Vec<String>, limit: usize) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for s in items {
+            if seen.insert(s.clone()) {
+                out.push(s);
+            }
+            if out.len() >= limit {
+                break;
+            }
+        }
+        out
+    }
+
+    let mut suggestions: Vec<String> = Vec::new();
+
+    let repo_path = Path::new(repo_root);
+    if repo_path.join("justfile").exists() {
+        suggestions.push("just check".to_string());
+    } else if repo_path.join("Makefile").exists() {
+        suggestions.push("make check".to_string());
+    }
 
     if baseline_path.is_none() {
-        suggestions.push(format!("Start here: sruja start -r {} --prompt", repo_root));
-        suggestions.push(
-            "Use the generated prompt with the sruja-architecture skill, save as repo.sruja, then: sruja lint repo.sruja".to_string(),
-        );
-        return suggestions;
+        suggestions.push(format!("sruja start -r {} --prompt", repo_root));
+        suggestions.push("sruja lint repo.sruja".to_string());
+        suggestions.push(format!("sruja daily -r {}", repo_root));
+        return uniq_limit(suggestions, 3);
     }
 
     let baseline_hint = baseline_path
         .and_then(|p| p.to_str())
         .unwrap_or("repo.sruja");
-    if truth_status == "drifted" {
-        suggestions.push(format!(
-            "Review drift: sruja drift -r {} -a {}",
-            repo_root, baseline_hint
-        ));
-        suggestions.push(format!(
-            "If the change is intentional, update {} and run 'sruja lint'",
-            baseline_hint
-        ));
-    } else if truth_status == "reviewed" {
-        suggestions.push("Architecture is in sync. Keep running 'sruja daily'.".to_string());
+
+    match truth_status {
+        "drifted" => {
+            suggestions.push(format!(
+                "sruja drift -r {} -a {} --violations-only",
+                repo_root, baseline_hint
+            ));
+            suggestions.push(format!("sruja lint {}", baseline_hint));
+            suggestions.push(format!("sruja drift-pr -r {} -f text", repo_root));
+        }
+        "reviewed" => {
+            suggestions.push(format!("sruja daily -r {}", repo_root));
+            suggestions.push(format!("sruja watch -r {}", repo_root));
+            suggestions.push(format!("sruja drift-pr -r {} -f text", repo_root));
+        }
+        _ => {
+            suggestions.push(format!(
+                "sruja drift -r {} -a {} --violations-only",
+                repo_root, baseline_hint
+            ));
+            suggestions.push(format!("sruja daily -r {}", repo_root));
+            suggestions.push(format!("sruja drift-pr -r {} -f text", repo_root));
+        }
     }
 
-    let has_god = violations
-        .iter()
-        .any(|v| v.kind == ViolationKind::GodModule);
-    if has_god {
-        suggestions.push("Consider splitting god modules into smaller services.".to_string());
-    }
+    let _ = violations;
 
-    suggestions.push(format!(
-        "Keep live feedback while coding with: sruja watch -r {}",
-        repo_root
-    ));
-
-    suggestions
+    uniq_limit(suggestions, 3)
 }
 
 pub fn summarize_violation(v: &Violation) -> ViolationSummary {

@@ -320,9 +320,9 @@ pub async fn review(
 
             // Suggestions
             if !output.suggestions.is_empty() {
-                println!("{}", colors::style("Recommended Actions:").bold());
-                for s in &output.suggestions {
-                    println!("  {} {}", colors::success(">"), s);
+                println!("{}", colors::style("Top Actions:").bold());
+                for (i, s) in output.suggestions.iter().take(3).enumerate() {
+                    println!("  {}. {}", i + 1, s);
                 }
             }
 

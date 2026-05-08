@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::Path;
+use std::time::{Duration, SystemTime};
 
 use super::discover::{discover_context_json_from_graph, discover_explanation_json};
 use super::violation_shared::*;
@@ -10,6 +11,106 @@ use crate::utils::{architecture_path, colors};
 use sruja_diff::Violation;
 use sruja_scan::scan_repo;
 use std::collections::HashSet;
+
+struct RepoWriteLock {
+    path: std::path::PathBuf,
+}
+
+impl Drop for RepoWriteLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
+
+async fn acquire_repo_write_lock(repo_path: &Path) -> Result<RepoWriteLock, CliError> {
+    let lock_path = repo_path.join(".sruja").join("write.lock");
+    if let Some(parent) = lock_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let started = SystemTime::now();
+    let stale_after = Duration::from_secs(10 * 60);
+    let timeout = Duration::from_secs(30);
+    let poll = Duration::from_millis(100);
+
+    loop {
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock_path)
+        {
+            Ok(mut f) => {
+                use std::io::Write;
+                let pid = std::process::id();
+                let now = chrono::Utc::now().to_rfc3339();
+                let _ = writeln!(f, "pid={pid}\nstarted_at={now}");
+                let _ = f.sync_all();
+                return Ok(RepoWriteLock { path: lock_path });
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                if let Ok(meta) = std::fs::metadata(&lock_path) {
+                    if let Ok(modified) = meta.modified() {
+                        if SystemTime::now()
+                            .duration_since(modified)
+                            .unwrap_or_default()
+                            > stale_after
+                        {
+                            let _ = std::fs::remove_file(&lock_path);
+                            continue;
+                        }
+                    }
+                }
+
+                if started.elapsed().unwrap_or_default() > timeout {
+                    return Err(CliError::validation(format!(
+                        "Timed out waiting for Sruja write lock: {}",
+                        lock_path.display()
+                    )));
+                }
+                tokio::time::sleep(poll).await;
+            }
+            Err(e) => return Err(CliError::Io(e)),
+        }
+    }
+}
+
+fn atomic_write_file(path: &Path, contents: &[u8]) -> Result<(), CliError> {
+    use std::io::Write;
+
+    let parent = path.parent().ok_or_else(|| {
+        CliError::validation(format!(
+            "Invalid path (no parent directory): {}",
+            path.display()
+        ))
+    })?;
+    fs::create_dir_all(parent)?;
+
+    let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("file");
+    let unique = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let tmp_path = parent.join(format!(
+        ".{file_name}.tmp.{}.{}",
+        std::process::id(),
+        unique
+    ));
+
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp_path)?;
+    f.write_all(contents)?;
+    f.sync_all()?;
+
+    #[cfg(windows)]
+    {
+        let _ = std::fs::remove_file(path);
+    }
+
+    std::fs::rename(&tmp_path, path)?;
+    Ok(())
+}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct SyncOutput {
@@ -162,27 +263,27 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
 
     let path = dot_sruja.join("context.json");
     let context_path = path.display().to_string();
-    fs::write(
-        &path,
-        serde_json::to_string_pretty(&value).map_err(|e| CliError::validation(e.to_string()))?,
-    )
-    .map_err(|e| {
-        CliError::Io(std::io::Error::new(
-            e.kind(),
-            format!("Failed to write {}: {}", path.display(), e),
-        ))
+    let graph_path = dot_sruja.join("graph.json");
+    let _lock = acquire_repo_write_lock(repo_path).await?;
+
+    let context_json =
+        serde_json::to_string_pretty(&value).map_err(|e| CliError::validation(e.to_string()))?;
+    atomic_write_file(&path, context_json.as_bytes()).map_err(|e| match e {
+        CliError::Io(io) => CliError::Io(std::io::Error::new(
+            io.kind(),
+            format!("Failed to write {}: {}", path.display(), io),
+        )),
+        other => other,
     })?;
 
-    let graph_path = dot_sruja.join("graph.json");
-    fs::write(
-        &graph_path,
-        serde_json::to_string_pretty(&graph).map_err(|e| CliError::validation(e.to_string()))?,
-    )
-    .map_err(|e| {
-        CliError::Io(std::io::Error::new(
-            e.kind(),
-            format!("Failed to write {}: {}", graph_path.display(), e),
-        ))
+    let graph_json =
+        serde_json::to_string_pretty(&graph).map_err(|e| CliError::validation(e.to_string()))?;
+    atomic_write_file(&graph_path, graph_json.as_bytes()).map_err(|e| match e {
+        CliError::Io(io) => CliError::Io(std::io::Error::new(
+            io.kind(),
+            format!("Failed to write {}: {}", graph_path.display(), io),
+        )),
+        other => other,
     })?;
 
     let output = SyncOutput {

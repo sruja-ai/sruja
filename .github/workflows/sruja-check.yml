@@ -13,5 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - run: cargo install --path crates/sruja-cli
-      - run: sruja check -r . --format github-actions
+      - name: PR-scoped drift gate (new violations only)
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
+      - name: Sruja check (annotations)
+        run: sruja check -r . --format github-actions

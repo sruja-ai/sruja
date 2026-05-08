@@ -5,10 +5,49 @@
 use sruja_graph::KnowledgeGraph;
 use std::path::Path;
 use std::process::Command;
+use std::time::SystemTime;
 
 use crate::commands::CliError;
 
 const GRAPH_FILE: &str = ".sruja/graph.json";
+
+fn atomic_write_file(path: &std::path::Path, contents: &[u8]) -> Result<(), CliError> {
+    use std::io::Write;
+
+    let parent = path.parent().ok_or_else(|| {
+        CliError::validation(format!(
+            "Invalid path (no parent directory): {}",
+            path.display()
+        ))
+    })?;
+    std::fs::create_dir_all(parent)?;
+
+    let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("file");
+    let unique = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let tmp_path = parent.join(format!(
+        ".{file_name}.tmp.{}.{}",
+        std::process::id(),
+        unique
+    ));
+
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp_path)?;
+    f.write_all(contents)?;
+    f.sync_all()?;
+
+    #[cfg(windows)]
+    {
+        let _ = std::fs::remove_file(path);
+    }
+
+    std::fs::rename(&tmp_path, path)?;
+    Ok(())
+}
 
 /// Load existing graph or build a new one from repository scan
 pub fn load_or_build_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
@@ -75,8 +114,7 @@ pub fn save_graph(repo: &Path, graph: &KnowledgeGraph) -> Result<(), CliError> {
     std::fs::create_dir_all(&sruja_dir)?;
 
     let json = serde_json::to_string_pretty(graph)?;
-
-    std::fs::write(sruja_dir.join("graph.json"), json)?;
+    atomic_write_file(&sruja_dir.join("graph.json"), json.as_bytes())?;
 
     Ok(())
 }
