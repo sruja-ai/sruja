@@ -361,7 +361,7 @@
     "@vscode/test-electron": "^2.5.0",
     "@vscode/vsce": "^3.3.2",
     "glob": "^13.0.6",
-    "jest": "^30.3.0",
+    "jest": "^30.4.2",
     "ts-jest": "^29.4.9",
     "typescript": "~5.9.0"
   },
