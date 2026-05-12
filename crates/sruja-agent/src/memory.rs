@@ -367,7 +367,7 @@ impl AgenticMemory {
             }
         }
 
-        scored.sort_by(|a, b| b.1.cmp(&a.1));
+        scored.sort_by_key(|item| std::cmp::Reverse(item.1));
         scored.truncate(5);
         scored.into_iter().map(|(idx, _)| idx).collect()
     }
