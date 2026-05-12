@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.44.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.43.1...sruja-v0.44.0) (2026-05-12)
+
+
+### Features
+
+* add context engineering capabilities — BM25 retrieval, adaptive hybrid query, MaTTS, Zettelkasten memory ([58286c3](https://github.com/sruja-ai/sruja/commit/58286c399aaae8031b6b3261fdde512b53e13076))
+* **book:** Add new courses for Sruja features ([3948b38](https://github.com/sruja-ai/sruja/commit/3948b383f45fa32c9d6e83e1200ab51d609f0264))
+
 ## [0.43.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.43.0...sruja-v0.43.1) (2026-05-12)
 
 
