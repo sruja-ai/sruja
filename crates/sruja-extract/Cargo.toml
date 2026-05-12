@@ -8,14 +8,11 @@ repository.workspace = true
 
 [dependencies]
 sruja-language = { path = "../sruja-language" }
-sruja-scan = { path = "../sruja-scan" }
-sruja-diagnostics = { path = "../sruja-diagnostics" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-glob = "0.3"
 log = "0.4"
-walkdir = "2.5"
+ignore = "0.4"
 
 [dev-dependencies]
 tempfile = "3.16"

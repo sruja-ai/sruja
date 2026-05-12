@@ -1,6 +1,43 @@
-use crate::{DiscoveredSource, Extractor};
+//! Extractor for Kubernetes manifest files.
+//!
+//! Detects Deployments, Services, StatefulSets, DaemonSets, Jobs, CronJobs,
+//! Ingresses, ConfigMaps, HPAs, and other common resource types.
+
+use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
-use std::path::Path;
+
+const K8S_RESOURCE_KINDS: &[&str] = &[
+    "Deployment",
+    "Service",
+    "StatefulSet",
+    "DaemonSet",
+    "Job",
+    "CronJob",
+    "Ingress",
+    "ConfigMap",
+    "Secret",
+    "HorizontalPodAutoscaler",
+    "PersistentVolumeClaim",
+    "NetworkPolicy",
+    "ServiceAccount",
+    "Role",
+    "ClusterRole",
+    "RoleBinding",
+    "ClusterRoleBinding",
+    "Namespace",
+    "Pod",
+    "ReplicaSet",
+];
+
+const WORKLOAD_KINDS: &[&str] = &[
+    "Deployment",
+    "StatefulSet",
+    "DaemonSet",
+    "Job",
+    "CronJob",
+    "Pod",
+    "ReplicaSet",
+];
 
 pub struct KubernetesExtractor;
 
@@ -15,25 +52,54 @@ impl KubernetesExtractor {
         Self
     }
 
-    fn is_k8s_file(path: &Path) -> bool {
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        if !name.ends_with(".yaml") && !name.ends_with(".yml") {
-            return false;
+    fn parse_k8s_resources(content: &str) -> Vec<(String, String)> {
+        let mut results = Vec::new();
+        let mut current_kind: Option<String> = None;
+        let mut current_name: Option<String> = None;
+        let mut in_metadata = false;
+
+        for line in content.lines() {
+            let trimmed = line.trim();
+
+            if trimmed == "---" {
+                if let (Some(kind), Some(name)) = (current_kind.take(), current_name.take()) {
+                    results.push((kind, name));
+                }
+                in_metadata = false;
+                continue;
+            }
+
+            if let Some(kind_str) = trimmed.strip_prefix("kind:") {
+                let kind = kind_str.trim().trim_matches('"').to_string();
+                if K8S_RESOURCE_KINDS.contains(&kind.as_str()) {
+                    current_kind = Some(kind);
+                }
+            } else if trimmed == "metadata:" {
+                in_metadata = true;
+            } else if in_metadata && trimmed.starts_with("name:") {
+                let indent = line.len() - line.trim_start().len();
+                if indent <= 4 {
+                    current_name = Some(
+                        trimmed["name:".len()..]
+                            .trim()
+                            .trim_matches('"')
+                            .to_string(),
+                    );
+                    in_metadata = false;
+                }
+            } else if !trimmed.is_empty() && !trimmed.starts_with('#') {
+                let indent = line.len() - line.trim_start().len();
+                if indent == 0 && trimmed != "apiVersion:" && !trimmed.starts_with("apiVersion:") {
+                    in_metadata = false;
+                }
+            }
         }
 
-        // check content for "apiVersion:" (minimal check)
-        if let Ok(content) = std::fs::read_to_string(path) {
-            content.contains("apiVersion:")
-                && (content.contains("kind: Deployment")
-                    || content.contains("kind: Service")
-                    || content.contains("kind: StatefulSet"))
-        } else {
-            false
+        if let (Some(kind), Some(name)) = (current_kind, current_name) {
+            results.push((kind, name));
         }
+
+        results
     }
 }
 
@@ -42,43 +108,46 @@ impl Extractor for KubernetesExtractor {
         "kubernetes"
     }
 
-    fn check_file(&self, path: &Path, repo_root: &Path) -> Vec<DiscoveredSource> {
+    fn check_file(&self, ctx: &FileContext) -> Result<Vec<DiscoveredSource>, ExtractError> {
+        let ext = ctx.extension().to_lowercase();
+        if !matches!(ext.as_str(), "yaml" | "yml") {
+            return Ok(Vec::new());
+        }
+
+        let content = match ctx.content() {
+            Some(c) => c,
+            None => return Ok(Vec::new()),
+        };
+
+        if !content.contains("apiVersion:") {
+            return Ok(Vec::new());
+        }
+
+        let resources = Self::parse_k8s_resources(content);
+        if resources.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let mut results = Vec::new();
-
-        if Self::is_k8s_file(path) {
-            let relative_path = path
-                .strip_prefix(repo_root)
-                .unwrap_or(path)
-                .to_string_lossy()
-                .to_string();
-
-            // Heuristic: try to find 'name:' in metadata
-            let mut suggested_element = None;
-            if let Ok(content) = std::fs::read_to_string(path) {
-                for line in content.lines() {
-                    if line.trim().starts_with("name:") {
-                        suggested_element = Some(
-                            line.trim()["name:".len()..]
-                                .trim()
-                                .trim_matches('"')
-                                .to_string(),
-                        );
-                        break;
-                    }
-                }
-            }
+        for (kind, name) in resources {
+            let is_workload = WORKLOAD_KINDS.contains(&kind.as_str());
+            let confidence = if is_workload { 0.8 } else { 0.6 };
 
             results.push(DiscoveredSource {
                 binding: SourceBinding {
                     kind: SourceKind::Kubernetes,
-                    path: relative_path,
-                    description: Some("Discovered Kubernetes manifest".to_string()),
+                    path: ctx.relative_path().to_string(),
+                    description: Some(format!("Kubernetes {kind}: {name}")),
                 },
-                suggested_element,
-                confidence: 0.7,
+                suggested_element: if is_workload || kind == "Service" || kind == "Ingress" {
+                    Some(name)
+                } else {
+                    None
+                },
+                confidence,
             });
         }
 
-        results
+        Ok(results)
     }
 }

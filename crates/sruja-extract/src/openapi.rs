@@ -1,6 +1,7 @@
-use crate::{DiscoveredSource, Extractor};
+//! Extractor for OpenAPI / Swagger specifications.
+
+use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
-use std::path::Path;
 
 pub struct OpenApiExtractor;
 
@@ -15,30 +16,34 @@ impl OpenApiExtractor {
         Self
     }
 
-    fn is_openapi_file(path: &Path) -> bool {
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        if !name.ends_with(".yaml") && !name.ends_with(".yml") && !name.ends_with(".json") {
+    fn is_candidate(name: &str, ext: &str) -> bool {
+        if !matches!(ext, "yaml" | "yml" | "json") {
             return false;
         }
+        name.contains("openapi")
+            || name.contains("swagger")
+            || name.contains("api-spec")
+            || name.contains("api_spec")
+    }
 
-        // common names
-        if name.contains("openapi") || name.contains("swagger") || name.contains("api-spec") {
-            return true;
-        }
+    fn has_openapi_content(content: &str) -> bool {
+        content.contains("openapi:")
+            || content.contains("\"openapi\":")
+            || content.contains("swagger:")
+            || content.contains("\"swagger\":")
+    }
 
-        // check content for "openapi:" or "\"openapi\":" (minimal check)
-        if let Ok(content) = std::fs::read_to_string(path) {
-            content.contains("openapi:")
-                || content.contains("\"openapi\":")
-                || content.contains("swagger:")
-                || content.contains("\"swagger\":")
-        } else {
-            false
+    fn extract_title(content: &str) -> Option<String> {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if let Some(rest) = trimmed.strip_prefix("title:") {
+                return Some(rest.trim().trim_matches('"').trim_matches('\'').to_string());
+            }
+            if let Some(rest) = trimmed.strip_prefix("\"title\":") {
+                return Some(rest.trim().trim_matches('"').trim_matches(',').to_string());
+            }
         }
+        None
     }
 }
 
@@ -47,34 +52,40 @@ impl Extractor for OpenApiExtractor {
         "openapi"
     }
 
-    fn check_file(&self, path: &Path, repo_root: &Path) -> Vec<DiscoveredSource> {
-        let mut results = Vec::new();
+    fn check_file(&self, ctx: &FileContext) -> Result<Vec<DiscoveredSource>, ExtractError> {
+        let name = ctx.file_name_lower();
+        let ext = ctx.extension().to_lowercase();
 
-        if Self::is_openapi_file(path) {
-            let relative_path = path
-                .strip_prefix(repo_root)
-                .unwrap_or(path)
-                .to_string_lossy()
-                .to_string();
+        let is_match = if Self::is_candidate(&name, &ext) {
+            true
+        } else if matches!(ext.as_str(), "yaml" | "yml" | "json") {
+            ctx.content()
+                .map(Self::has_openapi_content)
+                .unwrap_or(false)
+        } else {
+            false
+        };
 
-            // Heuristic for suggested element: use parent directory name
-            let suggested_element = path
-                .parent()
-                .and_then(|p| p.file_name())
-                .and_then(|n| n.to_str())
-                .map(|s| s.to_string());
-
-            results.push(DiscoveredSource {
-                binding: SourceBinding {
-                    kind: SourceKind::OpenApi,
-                    path: relative_path,
-                    description: Some("Discovered OpenAPI specification".to_string()),
-                },
-                suggested_element,
-                confidence: 0.8,
-            });
+        if !is_match {
+            return Ok(Vec::new());
         }
 
-        results
+        let description = ctx
+            .content()
+            .and_then(Self::extract_title)
+            .map(|t| format!("OpenAPI: {t}"))
+            .unwrap_or_else(|| "Discovered OpenAPI specification".to_string());
+
+        let suggested_element = ctx.parent_dir_name().map(|s| s.to_string());
+
+        Ok(vec![DiscoveredSource {
+            binding: SourceBinding {
+                kind: SourceKind::OpenApi,
+                path: ctx.relative_path().to_string(),
+                description: Some(description),
+            },
+            suggested_element,
+            confidence: 0.8,
+        }])
     }
 }

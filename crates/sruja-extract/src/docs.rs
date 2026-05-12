@@ -1,6 +1,7 @@
-use crate::{DiscoveredSource, Extractor};
+//! Extractor for documentation files (Markdown, AsciiDoc, reStructuredText).
+
+use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
-use std::path::Path;
 
 pub struct DocExtractor;
 
@@ -15,26 +16,43 @@ impl DocExtractor {
         Self
     }
 
-    fn is_doc_file(path: &Path) -> bool {
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        name.ends_with(".md") || name.ends_with(".adoc") || name.ends_with(".rst")
+    fn is_doc_file(name: &str) -> bool {
+        name.ends_with(".md")
+            || name.ends_with(".adoc")
+            || name.ends_with(".rst")
+            || (name.ends_with(".txt") && Self::is_doc_name(name))
     }
 
-    fn source_kind(path: &Path) -> SourceKind {
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        if name.starts_with("readme") {
+    fn is_doc_name(name: &str) -> bool {
+        let upper = name.to_uppercase();
+        upper.starts_with("README")
+            || upper.starts_with("CHANGELOG")
+            || upper.starts_with("CONTRIBUTING")
+            || upper.starts_with("LICENSE")
+            || upper.starts_with("AUTHORS")
+            || upper.starts_with("ARCHITECTURE")
+            || upper.starts_with("ADR")
+    }
+
+    fn source_kind(name: &str) -> SourceKind {
+        if name.to_lowercase().starts_with("readme") {
             SourceKind::Readme
         } else {
             SourceKind::Docs
         }
+    }
+
+    fn extract_title(content: &str) -> Option<String> {
+        for line in content.lines().take(10) {
+            let trimmed = line.trim();
+            if let Some(title) = trimmed.strip_prefix("# ") {
+                return Some(title.trim().to_string());
+            }
+            if let Some(title) = trimmed.strip_prefix("= ") {
+                return Some(title.trim().to_string());
+            }
+        }
+        None
     }
 }
 
@@ -43,34 +61,35 @@ impl Extractor for DocExtractor {
         "docs"
     }
 
-    fn check_file(&self, path: &Path, repo_root: &Path) -> Vec<DiscoveredSource> {
-        let mut results = Vec::new();
-
-        if Self::is_doc_file(path) {
-            let relative_path = path
-                .strip_prefix(repo_root)
-                .unwrap_or(path)
-                .to_string_lossy()
-                .to_string();
-
-            // Heuristic: use directory name for suggested element
-            let suggested_element = path
-                .parent()
-                .and_then(|p| p.file_name())
-                .and_then(|n| n.to_str())
-                .map(|s| s.to_string());
-
-            results.push(DiscoveredSource {
-                binding: SourceBinding {
-                    kind: Self::source_kind(path),
-                    path: relative_path,
-                    description: Some("Discovered documentation".to_string()),
-                },
-                suggested_element,
-                confidence: 0.6,
-            });
+    fn check_file(&self, ctx: &FileContext) -> Result<Vec<DiscoveredSource>, ExtractError> {
+        let name = ctx.file_name_lower();
+        if !Self::is_doc_file(&name) {
+            return Ok(Vec::new());
         }
 
-        results
+        let description = ctx
+            .content()
+            .and_then(Self::extract_title)
+            .unwrap_or_else(|| "Discovered documentation".to_string());
+
+        let suggested_element = ctx.parent_dir_name().map(|s| s.to_string());
+
+        let confidence = if name.starts_with("readme") {
+            0.7
+        } else if Self::is_doc_name(&name) {
+            0.65
+        } else {
+            0.5
+        };
+
+        Ok(vec![DiscoveredSource {
+            binding: SourceBinding {
+                kind: Self::source_kind(&name),
+                path: ctx.relative_path().to_string(),
+                description: Some(description),
+            },
+            suggested_element,
+            confidence,
+        }])
     }
 }
