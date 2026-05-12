@@ -26,7 +26,7 @@ mod scoring;
 mod utils;
 
 use clap::Parser;
-pub use cli::{run_command, Cli, Commands, ContextIntent, IntentCommand};
+pub use cli::{run_command, Cli, Commands, ContextIntent, DiscoverCommand, IntentCommand};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

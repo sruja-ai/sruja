@@ -320,7 +320,7 @@ Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, Cl
 3. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
    - **Command**: `sruja mcp -r .`
    - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.
-4. **Cross-Repo Context**: Use `sruja context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
+4. **Cross-Repo Context**: Use `sruja ai-context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
 
 When using AI agents, leverage Sruja's context tools:
 - **`sruja focus --file <path>`**: Generates a task-scoped briefing (blast radius, decisions, boundaries, AI instructions).

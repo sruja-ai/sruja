@@ -783,7 +783,7 @@ fn discover_next_steps(graph: &Graph) -> Vec<String> {
     if graph.nodes.is_empty() {
         return vec![
             "Verify you are at the repo root and that the repo uses a supported language before relying on this scan.".to_string(),
-            "Run `sruja discover --context -r . --format json` to inspect what Sruja can detect from manifests and paths.".to_string(),
+            "Run `sruja discover context -r . --format json` to inspect what Sruja can detect from manifests and paths.".to_string(),
             "If the repo should have been discovered, capture a minimal repro and open an issue so scanner coverage can improve.".to_string(),
         ];
     }

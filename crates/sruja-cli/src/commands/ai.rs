@@ -232,7 +232,7 @@ fn format_brief(render: AiBriefRender<'_>) -> String {
 
     out.push_str("\n## Useful Follow-Up Commands\n\n");
     out.push_str("- `sruja doctor -r .`\n");
-    out.push_str("- `sruja context -r . -f for-ai --max-tokens ");
+    out.push_str("- `sruja ai-context -r . -f for-ai --max-tokens ");
     out.push_str(&render.options.max_tokens.to_string());
     if let Some(file) = render.selected_file {
         out.push_str(" --file ");
