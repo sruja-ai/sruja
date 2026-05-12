@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.43.0...sruja-v0.43.1) (2026-05-12)
+
+
+### Bug Fixes
+
+* **clippy:** resolve collapsible_match and unnecessary_sort_by for Rust 1.95 ([1b97167](https://github.com/sruja-ai/sruja/commit/1b971672326bf623bec54377387ee6cb1e90e77c))
+
 ## [0.43.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.42.0...sruja-v0.43.0) (2026-05-12)
 
 
