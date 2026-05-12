@@ -874,7 +874,7 @@ pub(crate) fn print_quickstart_summary(
     }
 
     let mut sorted_domains: Vec<_> = domains.into_iter().collect();
-    sorted_domains.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted_domains.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     if sorted_domains.is_empty() {
         println!("\n  No clear domains identified.");

@@ -20,45 +20,40 @@ pub(crate) fn should_fail_on_violations(
 
         for criterion in criteria_list {
             match criterion {
-                "all" => {
+                "all"
                     if violations
                         .iter()
-                        .any(|v| matches!(v.severity, sruja_diff::Severity::Error))
-                    {
-                        return true;
-                    }
+                        .any(|v| matches!(v.severity, sruja_diff::Severity::Error)) =>
+                {
+                    return true;
                 }
-                "cycles" | "circular" => {
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::CircularDependency))
-                    {
-                        return true;
-                    }
+                "cycles" | "circular"
+                    if violations.iter().any(|v| {
+                        matches!(v.kind, sruja_diff::ViolationKind::CircularDependency)
+                    }) =>
+                {
+                    return true;
                 }
-                "layer-violations" | "layer" => {
+                "layer-violations" | "layer"
                     if violations
                         .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation))
-                    {
-                        return true;
-                    }
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation)) =>
+                {
+                    return true;
                 }
-                "god-modules" | "god" => {
+                "god-modules" | "god"
                     if violations
                         .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule))
-                    {
-                        return true;
-                    }
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule)) =>
+                {
+                    return true;
                 }
-                "orphans" => {
+                "orphans"
                     if violations
                         .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent))
-                    {
-                        return true;
-                    }
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent)) =>
+                {
+                    return true;
                 }
                 _ => {}
             }
