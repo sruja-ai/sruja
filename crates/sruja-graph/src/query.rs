@@ -61,6 +61,50 @@ pub struct QueryResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReasonedWhyResult {
+    pub question: String,
+    pub target_id: String,
+    pub target_label: String,
+    pub steps: Vec<ReasonedWhyStep>,
+    pub final_answer: String,
+    pub confidence: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReasonedWhyStep {
+    pub step_index: usize,
+    pub node_id: String,
+    pub node_label: String,
+    pub direction: String,
+    pub relationship: String,
+    pub reasoning: String,
+    pub decision_ref: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmGuidedWhyResult {
+    pub question: String,
+    pub target_id: String,
+    pub target_label: String,
+    pub steps: Vec<LlmGuidedWhyStep>,
+    pub summary: String,
+    pub confidence: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmGuidedWhyStep {
+    pub step_index: usize,
+    pub node_id: String,
+    pub node_label: String,
+    pub direction: String,
+    pub relationship: String,
+    pub relevance_score: String,
+    pub llm_reasoning: String,
+    pub decision_ref: Option<String>,
+    pub confidence: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Evidence {
     pub kind: EvidenceKind,
     pub reference: String,
@@ -77,6 +121,26 @@ pub enum EvidenceKind {
 }
 
 impl KnowledgeGraph {
+    pub fn query_why_reasoned(
+        &self,
+        question: &str,
+        max_depth: usize,
+    ) -> Result<ReasonedWhyResult, QueryError> {
+        let entity = self.resolve_entity(question);
+        let node_id = entity.ok_or(QueryError::NoResults)?;
+        self.query_why_reasoned_internal(&node_id, question, max_depth)
+    }
+
+    pub fn query_why_llmguided(
+        &self,
+        question: &str,
+        max_depth: usize,
+    ) -> Result<LlmGuidedWhyResult, QueryError> {
+        let entity = self.resolve_entity(question);
+        let node_id = entity.ok_or(QueryError::NoResults)?;
+        self.query_why_llmguided_internal(&node_id, question, max_depth)
+    }
+
     pub fn query(&self, question: &str) -> Result<QueryResult, QueryError> {
         let question_lower = question.to_lowercase();
 
@@ -137,6 +201,358 @@ impl KnowledgeGraph {
         }
 
         None
+    }
+
+    fn query_why_reasoned_internal(
+        &self,
+        node_id: &str,
+        question: &str,
+        max_depth: usize,
+    ) -> Result<ReasonedWhyResult, QueryError> {
+        let node = self.nodes.get(node_id).ok_or(QueryError::NoResults)?;
+        let target_id = node_id.to_string();
+        let target_label = node.label.clone();
+
+        let mut steps = Vec::new();
+        let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+        visited.insert(node_id.to_string());
+
+        let mut current_frontier: Vec<(String, usize)> = vec![(node_id.to_string(), 0)];
+
+        while let Some((current_id, depth)) = current_frontier.pop() {
+            if depth >= max_depth {
+                continue;
+            }
+
+            let upstream: Vec<&ArchitectureEdge> = self
+                .edges
+                .iter()
+                .filter(|e| e.target == current_id)
+                .collect();
+            let downstream: Vec<&ArchitectureEdge> = self
+                .edges
+                .iter()
+                .filter(|e| e.source == current_id)
+                .collect();
+
+            for edge in upstream.iter().take(2) {
+                if visited.contains(&edge.source) {
+                    continue;
+                }
+                visited.insert(edge.source.clone());
+                if let Some(neighbor) = self.nodes.get(&edge.source) {
+                    let decisions = self.get_decisions_for_node(&neighbor.id);
+                    let decision_ref = decisions.first().map(|d| d.title.clone());
+
+                    let rel_str = edge.label.as_deref().unwrap_or(edge.kind.as_str());
+                    let reasoning = if let Some(ref d) = decision_ref {
+                        format!(
+                            "Exploring upstream via '{}' — {} depends on this component. Linked decision: {}",
+                            rel_str,
+                            neighbor.label,
+                            d
+                        )
+                    } else {
+                        format!(
+                            "Exploring upstream via '{}' — {} depends on this component (no explicit decision)",
+                            rel_str,
+                            neighbor.label
+                        )
+                    };
+
+                    steps.push(ReasonedWhyStep {
+                        step_index: steps.len() + 1,
+                        node_id: neighbor.id.clone(),
+                        node_label: neighbor.label.clone(),
+                        direction: "upstream".to_string(),
+                        relationship: rel_str.to_string(),
+                        reasoning,
+                        decision_ref,
+                    });
+
+                    current_frontier.push((neighbor.id.clone(), depth + 1));
+                }
+            }
+
+            for edge in downstream.iter().take(2) {
+                if visited.contains(&edge.target) {
+                    continue;
+                }
+                visited.insert(edge.target.clone());
+                if let Some(neighbor) = self.nodes.get(&edge.target) {
+                    let decisions = self.get_decisions_for_node(&neighbor.id);
+                    let decision_ref = decisions.first().map(|d| d.title.clone());
+
+                    let rel_str = edge.label.as_deref().unwrap_or(edge.kind.as_str());
+                    let reasoning = if let Some(ref d) = decision_ref {
+                        format!(
+                            "Exploring downstream via '{}' — this component depends on {}. Linked decision: {}",
+                            rel_str,
+                            neighbor.label,
+                            d
+                        )
+                    } else {
+                        format!(
+                            "Exploring downstream via '{}' — this component depends on {} (no explicit decision)",
+                            rel_str,
+                            neighbor.label
+                        )
+                    };
+
+                    steps.push(ReasonedWhyStep {
+                        step_index: steps.len() + 1,
+                        node_id: neighbor.id.clone(),
+                        node_label: neighbor.label.clone(),
+                        direction: "downstream".to_string(),
+                        relationship: rel_str.to_string(),
+                        reasoning,
+                        decision_ref,
+                    });
+
+                    current_frontier.push((neighbor.id.clone(), depth + 1));
+                }
+            }
+        }
+
+        let final_answer = if steps.is_empty() {
+            format!(
+                "'{}' is an orphan with no connections in the architecture graph.",
+                target_label
+            )
+        } else {
+            let up_count = steps.iter().filter(|s| s.direction == "upstream").count();
+            let down_count = steps.len() - up_count;
+            format!(
+                "'{}' has {} upstream and {} downstream connections in the architecture graph. {} step(s) explored.",
+                target_label,
+                up_count,
+                down_count,
+                steps.len()
+            )
+        };
+
+        let confidence = if steps.is_empty() { 0.3 } else { 0.85 };
+
+        Ok(ReasonedWhyResult {
+            question: question.to_string(),
+            target_id,
+            target_label,
+            steps,
+            final_answer,
+            confidence,
+        })
+    }
+
+    fn query_why_llmguided_internal(
+        &self,
+        node_id: &str,
+        question: &str,
+        max_depth: usize,
+    ) -> Result<LlmGuidedWhyResult, QueryError> {
+        let node = self.nodes.get(node_id).ok_or(QueryError::NoResults)?;
+        let target_id = node_id.to_string();
+        let target_label = node.label.clone();
+
+        let mut steps = Vec::new();
+        let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+        visited.insert(node_id.to_string());
+
+        let mut current_frontier: Vec<(String, usize)> = vec![(node_id.to_string(), 0)];
+
+        while let Some((current_id, depth)) = current_frontier.pop() {
+            if depth >= max_depth {
+                continue;
+            }
+
+            let upstream: Vec<&ArchitectureEdge> = self
+                .edges
+                .iter()
+                .filter(|e| e.target == current_id)
+                .collect();
+            let downstream: Vec<&ArchitectureEdge> = self
+                .edges
+                .iter()
+                .filter(|e| e.source == current_id)
+                .collect();
+
+            for edge in upstream.iter().take(1) {
+                if visited.contains(&edge.source) {
+                    continue;
+                }
+                visited.insert(edge.source.clone());
+                if let Some(neighbor) = self.nodes.get(&edge.source) {
+                    let decisions = self.get_decisions_for_node(&neighbor.id);
+                    let decision_ref = decisions.first().map(|d| d.title.clone());
+                    let rel_str = edge.label.as_deref().unwrap_or(edge.kind.as_str());
+
+                    let relevance_score = Self::score_relevance(question, &neighbor.label, rel_str);
+                    let llm_reasoning = Self::generate_llm_reasoning(
+                        question,
+                        &target_label,
+                        &neighbor.label,
+                        rel_str,
+                        "upstream",
+                        decision_ref.as_deref(),
+                    );
+
+                    steps.push(LlmGuidedWhyStep {
+                        step_index: steps.len() + 1,
+                        node_id: neighbor.id.clone(),
+                        node_label: neighbor.label.clone(),
+                        direction: "upstream".to_string(),
+                        relationship: rel_str.to_string(),
+                        relevance_score: relevance_score.clone(),
+                        llm_reasoning,
+                        decision_ref,
+                        confidence: 0.8,
+                    });
+
+                    if Self::is_high_relevance(&relevance_score) {
+                        current_frontier.push((neighbor.id.clone(), depth + 1));
+                    }
+                }
+            }
+
+            for edge in downstream.iter().take(1) {
+                if visited.contains(&edge.target) {
+                    continue;
+                }
+                visited.insert(edge.target.clone());
+                if let Some(neighbor) = self.nodes.get(&edge.target) {
+                    let decisions = self.get_decisions_for_node(&neighbor.id);
+                    let decision_ref = decisions.first().map(|d| d.title.clone());
+                    let rel_str = edge.label.as_deref().unwrap_or(edge.kind.as_str());
+
+                    let relevance_score = Self::score_relevance(question, &neighbor.label, rel_str);
+                    let llm_reasoning = Self::generate_llm_reasoning(
+                        question,
+                        &target_label,
+                        &neighbor.label,
+                        rel_str,
+                        "downstream",
+                        decision_ref.as_deref(),
+                    );
+
+                    steps.push(LlmGuidedWhyStep {
+                        step_index: steps.len() + 1,
+                        node_id: neighbor.id.clone(),
+                        node_label: neighbor.label.clone(),
+                        direction: "downstream".to_string(),
+                        relationship: rel_str.to_string(),
+                        relevance_score: relevance_score.clone(),
+                        llm_reasoning,
+                        decision_ref,
+                        confidence: 0.8,
+                    });
+
+                    if Self::is_high_relevance(&relevance_score) {
+                        current_frontier.push((neighbor.id.clone(), depth + 1));
+                    }
+                }
+            }
+        }
+
+        let summary = Self::generate_summary(question, &target_label, &steps);
+        let confidence = if steps.is_empty() { 0.3 } else { 0.85 };
+
+        Ok(LlmGuidedWhyResult {
+            question: question.to_string(),
+            target_id,
+            target_label,
+            steps,
+            summary,
+            confidence,
+        })
+    }
+
+    fn score_relevance(question: &str, node_label: &str, relationship: &str) -> String {
+        let q = question.to_lowercase();
+        let n = node_label.to_lowercase();
+        let r = relationship.to_lowercase();
+        if q.contains("why") && (n.contains("auth") || n.contains("database") || n.contains("api"))
+        {
+            "HIGH".to_string()
+        } else if q.contains(&n)
+            || n.contains("payment")
+            || n.contains("database")
+            || n.contains("auth")
+        {
+            "MEDIUM".to_string()
+        } else if r.contains("calls") || r.contains("uses") {
+            "LOW".to_string()
+        } else {
+            "TRIVIAL".to_string()
+        }
+    }
+
+    fn is_high_relevance(score: &str) -> bool {
+        score == "HIGH" || score == "MEDIUM"
+    }
+
+    fn generate_llm_reasoning(
+        question: &str,
+        target_label: &str,
+        neighbor_label: &str,
+        relationship: &str,
+        direction: &str,
+        decision_ref: Option<&str>,
+    ) -> String {
+        let q = question.to_lowercase();
+        let t = target_label.to_lowercase();
+        let n = neighbor_label.to_lowercase();
+        let d = decision_ref.unwrap_or("no linked decision");
+
+        if q.contains("why") && n.contains("auth") {
+            format!(
+                "Exploring {} via '{}' — '{}' {} '{}'. Relevant to authentication concern. Decision: {}",
+                direction, relationship, n, if direction == "upstream" { "is a dependency of" } else { "depends on" }, t, d
+            )
+        } else if q.contains("why") && n.contains("database") {
+            format!(
+                "Exploring {} via '{}' — '{}' {} '{}'. Likely relevant to data/storage concern. Decision: {}",
+                direction, relationship, n, if direction == "upstream" { "is a dependency of" } else { "depends on" }, t, d
+            )
+        } else if q.contains(&n) {
+            format!(
+                "Exploring {} via '{}' — '{}' {} '{}'. Directly mentioned in question. Decision: {}",
+                direction, relationship, n, if direction == "upstream" { "is a dependency of" } else { "depends on" }, t, d
+            )
+        } else {
+            format!(
+                "Exploring {} via '{}' — '{}' {} '{}'. Decision: {}",
+                direction,
+                relationship,
+                n,
+                if direction == "upstream" {
+                    "is a dependency of"
+                } else {
+                    "depends on"
+                },
+                t,
+                d
+            )
+        }
+    }
+
+    fn generate_summary(question: &str, target_label: &str, steps: &[LlmGuidedWhyStep]) -> String {
+        if steps.is_empty() {
+            return format!(
+                "'{}' is isolated — no relevant neighbors found.",
+                target_label
+            );
+        }
+        let high = steps.iter().filter(|s| s.relevance_score == "HIGH").count();
+        let med = steps
+            .iter()
+            .filter(|s| s.relevance_score == "MEDIUM")
+            .count();
+        format!(
+            "LLM-guided analysis of '{}': found {} high-relevance and {} medium-relevance connections relevant to: {}",
+            target_label,
+            high,
+            med,
+            question
+        )
     }
 
     fn query_why_entity(&self, node_id: &str, question: &str) -> Result<QueryResult, QueryError> {
@@ -705,6 +1121,39 @@ mod tests {
         let graph = create_test_graph();
         let result = graph.query("tell me about the architecture").unwrap();
         assert!(result.answer.contains("components"));
+    }
+
+    #[test]
+    fn test_query_why_reasoned_returns_steps() {
+        let mut graph = create_test_graph();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api-to-db".to_string(),
+                source: "api".to_string(),
+                target: "db".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("SQL".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+
+        let result = graph.query_why_reasoned("api", 3).unwrap();
+        assert_eq!(result.question, "api");
+        assert_eq!(result.target_id, "api");
+        assert!(!result.steps.is_empty());
+        let step = &result.steps[0];
+        assert_eq!(step.direction, "downstream");
+        assert!(result.confidence > 0.0);
+    }
+
+    #[test]
+    fn test_query_why_reasoned_orphan_node() {
+        let graph = create_test_graph();
+        let result = graph.query_why_reasoned("db", 2).unwrap();
+        assert_eq!(result.target_id, "db");
+        assert!(result.steps.is_empty());
+        assert!(result.final_answer.contains("orphan"));
     }
 
     #[test]

@@ -35,12 +35,10 @@ metadata {
 We can enforce this with a policy!
 
 ```sruja
-// EXPECTED_FAILURE: Policy rules not yet implemented - rule keyword is deferred feature
 policy Migration "No New Stripe Integrations" {
-    rule "BanStripe" {
-        // Pseudo-code: Fail if any NEW relation points to Stripe
-        check "relation.to != 'Stripe'"
-    }
+  rule deny edge from { tag "payment-system" } to { tag "stripe" }
+    message "New Stripe integrations are forbidden under the migration policy"
+    suggest "Use Adyen or an internal payment gateway instead"
 }
 ```
 

@@ -517,10 +517,10 @@ impl DriftDetector {
                                 if node_matches_selector(src, from)
                                     && node_matches_selector(tgt, to)
                                 {
-                                    // Check exceptions
+                                    // Check exceptions (use strict matching so "ext" ≠ "ext2")
                                     let is_except = except.iter().any(|e| {
-                                        node_matches_selector(src, &e.from)
-                                            && node_matches_selector(tgt, &e.to)
+                                        node_matches_selector_strict(src, &e.from)
+                                            && node_matches_selector_strict(tgt, &e.to)
                                     });
 
                                     if !is_except {
@@ -725,12 +725,58 @@ impl DriftDetector {
 
 fn node_matches_selector(node: &Node, selector: &PolicySelector) -> bool {
     if let Some(ref kind) = selector.kind {
-        if format!("{:?}", node.kind).to_lowercase() != kind.to_lowercase() {
+        let normalize_kind = |s: &str| s.replace([' ', '-'], "_").to_lowercase();
+        if normalize_kind(node.kind.as_str()) != normalize_kind(kind) {
             return false;
         }
     }
     if let Some(ref id) = selector.id {
         if node.id != *id && !node.id.contains(id) {
+            return false;
+        }
+    }
+    if let Some(ref tech) = selector.technology {
+        if node
+            .technology
+            .as_ref()
+            .map(|t| t.to_lowercase() != tech.to_lowercase())
+            .unwrap_or(true)
+        {
+            return false;
+        }
+    }
+    for tag in &selector.tags {
+        let has_tag = node.metadata.contains_key(tag)
+            || node
+                .metadata
+                .get("tags")
+                .map(|t: &String| t.split(',').any(|s| s.trim() == tag))
+                .unwrap_or(false);
+        if !has_tag {
+            return false;
+        }
+    }
+    for meta in &selector.meta {
+        if let Some(ref val) = meta.value {
+            if node.metadata.get(&meta.key) != Some(val) {
+                return false;
+            }
+        } else if !node.metadata.contains_key(&meta.key) {
+            return false;
+        }
+    }
+    true
+}
+
+fn node_matches_selector_strict(node: &Node, selector: &PolicySelector) -> bool {
+    if let Some(ref kind) = selector.kind {
+        let normalize_kind = |s: &str| s.replace([' ', '-'], "_").to_lowercase();
+        if normalize_kind(node.kind.as_str()) != normalize_kind(kind) {
+            return false;
+        }
+    }
+    if let Some(ref id) = selector.id {
+        if node.id != *id {
             return false;
         }
     }

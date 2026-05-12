@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 use sruja_diagnostics::SourceLocation;
+use sruja_intent::DriftDetector;
 use sruja_intent::IntentModel;
 use sruja_intent::{Drift, DriftKind, Evidence, Severity};
 use sruja_language::ast::{
     ElementAssignment, ElementDef, ElementKind, Program, QualifiedIdent, Relation, TopLevelItem,
 };
-use sruja_scan::Graph;
+use sruja_language::DomainSchema;
+use sruja_scan::graph::EdgeConfidence;
+use sruja_scan::{Edge, EdgeKind, Graph};
 use std::path::{Path, PathBuf};
 
 /// A structured architectural change proposal.
@@ -167,7 +170,48 @@ impl Proposal {
             }
         }
 
-        // TODO: 2. Check policy violations (calls into sruja-intent/sruja-cli logic)
+        let mut tmp_graph = graph.clone();
+        apply_relationship_changes(&mut tmp_graph, &self.changes);
+
+        let schema = DomainSchema::architecture();
+        let drift = DriftDetector::new().detect(_intent, &tmp_graph, &schema);
+        for d in drift
+            .drifts
+            .iter()
+            .filter(|d| d.kind == DriftKind::PolicyViolation)
+        {
+            if drift_is_relevant_to_affected_ids(d, &affected_ids) {
+                validation
+                    .policy_violations
+                    .push(format!("{}: {}", d.severity, d.description));
+                if let Some(s) = d.suggestion.as_deref() {
+                    if !s.is_empty() {
+                        validation.suggestions.push(s.to_string());
+                    }
+                }
+            }
+        }
+
+        let mut blast: Vec<String> = Vec::new();
+        for id in &affected_ids {
+            if tmp_graph.nodes.iter().any(|n| n.id == *id) {
+                let r = tmp_graph.blast_radius(id, 2);
+                for n in r.downstream {
+                    blast.push(n.id);
+                }
+            }
+        }
+        blast.sort();
+        blast.dedup();
+        validation.blast_radius = blast;
+
+        validation.policy_violations.sort();
+        validation.policy_violations.dedup();
+        validation.suggestions.sort();
+        validation.suggestions.dedup();
+        if !validation.policy_violations.is_empty() {
+            validation.is_valid = false;
+        }
 
         self.validation = Some(validation.clone());
         validation
@@ -344,6 +388,134 @@ impl Proposal {
                 None
             }
         })
+    }
+}
+
+fn apply_relationship_changes(graph: &mut Graph, changes: &[ProposalChange]) {
+    for change in changes {
+        match change {
+            ProposalChange::AddRelationship {
+                source,
+                target,
+                kind,
+                ..
+            } => {
+                let kind = kind
+                    .as_deref()
+                    .unwrap_or("depends_on")
+                    .parse::<EdgeKind>()
+                    .unwrap_or_else(|_| EdgeKind::Custom(kind.clone().unwrap_or_default()));
+                graph.edges.push(Edge {
+                    source: source.clone(),
+                    target: target.clone(),
+                    kind,
+                    evidence: Vec::new(),
+                    confidence: EdgeConfidence::default(),
+                });
+            }
+            ProposalChange::RemoveRelationship { source, target, .. } => {
+                graph
+                    .edges
+                    .retain(|e| !(e.source == *source && e.target == *target));
+            }
+            _ => {}
+        }
+    }
+}
+
+fn drift_is_relevant_to_affected_ids(
+    drift: &Drift,
+    affected_ids: &std::collections::HashSet<String>,
+) -> bool {
+    for id in affected_ids {
+        if drift.description.contains(id) {
+            return true;
+        }
+        for e in &drift.evidence {
+            if e.location.as_deref().is_some_and(|l| l.contains(id)) {
+                return true;
+            }
+            if e.detail.contains(id) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_intent::model::{
+        DeclaredPolicy, IntentSourceInfo, IntentSourceType, PolicyRule, PolicyRuleContent,
+        PolicySelector, SourceReference,
+    };
+    use std::path::PathBuf;
+
+    fn source_ref() -> SourceReference {
+        SourceReference {
+            file: "test".to_string(),
+            line: None,
+            element: None,
+        }
+    }
+
+    #[test]
+    fn proposal_validate_flags_policy_violation_for_added_edge() {
+        let mut intent = IntentModel::new(IntentSourceInfo {
+            source_type: IntentSourceType::Manual,
+            path: PathBuf::from("."),
+            name: "test".to_string(),
+        });
+        intent.policies.push(DeclaredPolicy {
+            name: "no_a_to_b".to_string(),
+            description: "deny A -> B".to_string(),
+            category: "".to_string(),
+            enforcement: "error".to_string(),
+            scope: Vec::new(),
+            rules: vec![PolicyRule {
+                description: "deny".to_string(),
+                constraint: "deny".to_string(),
+                content: Some(PolicyRuleContent::DenyEdge {
+                    from: PolicySelector {
+                        id: Some("A".to_string()),
+                        ..Default::default()
+                    },
+                    to: PolicySelector {
+                        id: Some("B".to_string()),
+                        ..Default::default()
+                    },
+                    except: Vec::new(),
+                    message: Some("A must not depend on B".to_string()),
+                    suggestions: vec!["Remove the dependency".to_string()],
+                }),
+            }],
+            source_ref: source_ref(),
+        });
+
+        let mut graph = Graph::new();
+        graph.nodes.push(sruja_scan::Node {
+            id: "A".to_string(),
+            label: "A".to_string(),
+            ..Default::default()
+        });
+        graph.nodes.push(sruja_scan::Node {
+            id: "B".to_string(),
+            label: "B".to_string(),
+            ..Default::default()
+        });
+
+        let mut proposal = Proposal::new("p1".to_string(), "t".to_string(), "d".to_string());
+        proposal.changes.push(ProposalChange::AddRelationship {
+            source: "A".to_string(),
+            target: "B".to_string(),
+            label: None,
+            kind: Some("depends_on".to_string()),
+        });
+
+        let v = proposal.validate(&graph, &intent);
+        assert!(!v.is_valid);
+        assert!(!v.policy_violations.is_empty());
     }
 }
 

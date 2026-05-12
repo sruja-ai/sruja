@@ -16,12 +16,15 @@ use crate::integrations::{
 };
 use crate::utils::colors;
 use sruja_agent::AgenticMemory;
-use sruja_graph::{compute_context_score, KnowledgeGraph};
+use sruja_graph::{compute_context_score, KnowledgeGraph, ReasonedWhyStep};
+
+const FOCUS_FOR_AI_SCHEMA_VERSION: &str = "focus_for_ai/v1";
 
 #[derive(Debug, Serialize)]
 pub struct FocusBriefing {
     pub target: FocusTarget,
     pub blast_radius: BlastRadius,
+    pub reasoned_traces: Vec<ReasonedTrace>,
     pub decisions: Vec<LinkedDecision>,
     pub boundaries: Vec<BoundaryInfo>,
     pub external_context: Vec<ExternalContextRef>,
@@ -32,6 +35,39 @@ pub struct FocusBriefing {
     pub context_score: u8,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enrichment: Option<FocusEnrichment>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReasonedTrace {
+    pub node_id: String,
+    pub node_label: String,
+    pub direction: String,
+    pub reasoning: String,
+    pub decision_ref: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FocusForAiOutput {
+    pub schema_version: String,
+    pub repo: String,
+    pub target: FocusForAiTarget,
+    pub briefing: FocusBriefing,
+    pub suggested_next_steps: Vec<SuggestedCommand>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FocusForAiTarget {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub element_id: Option<String>,
+    pub resolved_element_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SuggestedCommand {
+    pub purpose: String,
+    pub argv: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -386,6 +422,7 @@ pub fn build_focus_briefing(
     FocusBriefing {
         target,
         blast_radius,
+        reasoned_traces: collect_reasoned_traces(graph, target_id),
         decisions,
         boundaries,
         external_context,
@@ -396,6 +433,95 @@ pub fn build_focus_briefing(
         context_score: score.score,
         enrichment: None,
     }
+}
+
+pub fn build_focus_for_ai_output(
+    repo_path: &Path,
+    file: Option<&str>,
+    element_id: Option<&str>,
+    briefing: FocusBriefing,
+) -> FocusForAiOutput {
+    let resolved = briefing.target.id.clone();
+    FocusForAiOutput {
+        schema_version: FOCUS_FOR_AI_SCHEMA_VERSION.to_string(),
+        repo: repo_path.display().to_string(),
+        target: FocusForAiTarget {
+            file: file.map(|s| s.to_string()),
+            element_id: element_id.map(|s| s.to_string()),
+            resolved_element_id: resolved.clone(),
+        },
+        suggested_next_steps: suggested_next_steps(&resolved),
+        briefing,
+    }
+}
+
+fn suggested_next_steps(resolved_element_id: &str) -> Vec<SuggestedCommand> {
+    vec![
+        SuggestedCommand {
+            purpose: "Explain this element using the reviewed architecture (if available)"
+                .to_string(),
+            argv: vec![
+                "sruja".to_string(),
+                "explain".to_string(),
+                resolved_element_id.to_string(),
+                "--json".to_string(),
+            ],
+        },
+        SuggestedCommand {
+            purpose: "Blast radius analysis from the scan graph".to_string(),
+            argv: vec![
+                "sruja".to_string(),
+                "impact".to_string(),
+                resolved_element_id.to_string(),
+                "-r".to_string(),
+                ".".to_string(),
+                "--depth".to_string(),
+                "3".to_string(),
+                "-f".to_string(),
+                "json".to_string(),
+            ],
+        },
+        SuggestedCommand {
+            purpose: "Get larger task context JSON (for other agents / tools)".to_string(),
+            argv: vec![
+                "sruja".to_string(),
+                "context".to_string(),
+                "-r".to_string(),
+                ".".to_string(),
+                "-f".to_string(),
+                "for-ai".to_string(),
+                "--element-id".to_string(),
+                resolved_element_id.to_string(),
+                "--max-tokens".to_string(),
+                "2000".to_string(),
+            ],
+        },
+        SuggestedCommand {
+            purpose: "Show prior learnings / guardrails recorded for this element".to_string(),
+            argv: vec![
+                "sruja".to_string(),
+                "agent".to_string(),
+                "history".to_string(),
+                "-r".to_string(),
+                ".".to_string(),
+                "-e".to_string(),
+                resolved_element_id.to_string(),
+                "-f".to_string(),
+                "json".to_string(),
+            ],
+        },
+        SuggestedCommand {
+            purpose: "Check for architectural drift and policy violations".to_string(),
+            argv: vec![
+                "sruja".to_string(),
+                "drift".to_string(),
+                "-r".to_string(),
+                ".".to_string(),
+                "-f".to_string(),
+                "json".to_string(),
+            ],
+        },
+    ]
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -624,6 +750,26 @@ fn infer_system(id: &str) -> Option<String> {
     }
 }
 
+/// Collect reasoned traces from the target node using tree-search why.
+fn collect_reasoned_traces(graph: &KnowledgeGraph, target_id: &str) -> Vec<ReasonedTrace> {
+    let result = match graph.query_why_reasoned(target_id, 3) {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    result
+        .steps
+        .into_iter()
+        .take(6)
+        .map(|s: ReasonedWhyStep| ReasonedTrace {
+            node_id: s.node_id,
+            node_label: s.node_label,
+            direction: s.direction,
+            reasoning: s.reasoning,
+            decision_ref: s.decision_ref,
+        })
+        .collect()
+}
+
 /// Infer boundary rules from the graph structure.
 fn infer_boundaries(graph: &KnowledgeGraph, target_id: &str) -> Vec<BoundaryInfo> {
     let mut boundaries = Vec::new();
@@ -811,8 +957,12 @@ pub async fn focus(
     );
 
     match format {
-        "json" | "for-ai" => {
+        "json" => {
             println!("{}", serde_json::to_string_pretty(&briefing)?);
+        }
+        "for-ai" => {
+            let out = build_focus_for_ai_output(repo_path, file, element_id, briefing);
+            println!("{}", serde_json::to_string_pretty(&out)?);
         }
         _ => {
             print_focus_briefing(&briefing);

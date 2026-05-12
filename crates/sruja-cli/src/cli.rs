@@ -145,6 +145,12 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Use reasoning-tree traversal (PageIndex-style) for traceable why explanations
+        #[arg(long)]
+        reasoned: bool,
+        /// Use LLM-guided tree search for context-aware, question-relevant traversal
+        #[arg(long)]
+        llmguided: bool,
     },
     /// Lint a Sruja file
     Lint {
@@ -1057,7 +1063,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             question,
             repo,
             format,
-        } => commands::why(&repo, &question, &format).await,
+            reasoned,
+            llmguided,
+        } => commands::why(&repo, &question, &format, reasoned, llmguided).await,
         Commands::Lint {
             file,
             format,

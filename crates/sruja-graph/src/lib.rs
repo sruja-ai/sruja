@@ -31,7 +31,10 @@ pub use coupling::{
     ModuleCoupling, Zone,
 };
 pub use graph::KnowledgeGraph;
-pub use query::{PolicyViolation, QueryError, QueryResult};
+pub use query::{
+    LlmGuidedWhyResult, LlmGuidedWhyStep, PolicyViolation, QueryError, QueryResult,
+    ReasonedWhyResult, ReasonedWhyStep,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use scan_merge::merge_scan_into_graph;
 pub use scc::{CondensationEdge, Scc, SccAnalyzer, SccResult};

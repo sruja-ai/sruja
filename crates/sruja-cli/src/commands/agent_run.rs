@@ -246,6 +246,7 @@ fn load_agent_budgets(
 fn default_allowed_sruja_subcommands() -> Vec<String> {
     vec![
         "sync".to_string(),
+        "check".to_string(),
         "drift".to_string(),
         "review".to_string(),
         "lint".to_string(),
@@ -262,7 +263,7 @@ fn default_allowed_verify_executables() -> Vec<String> {
     ]
 }
 
-fn load_allowlists(repo_path: &Path) -> (Vec<String>, Vec<String>) {
+fn load_allowlists(repo_path: &Path) -> (Vec<String>, Vec<String>, String) {
     if let Some(cfg) = load_repo_config(repo_path) {
         let sruja = cfg
             .agent
@@ -272,11 +273,12 @@ fn load_allowlists(repo_path: &Path) -> (Vec<String>, Vec<String>) {
             .agent
             .allowed_verify_executables
             .unwrap_or_else(default_allowed_verify_executables);
-        return (sruja, verify);
+        return (sruja, verify, ".sruja/config.toml [agent]".to_string());
     }
     (
         default_allowed_sruja_subcommands(),
         default_allowed_verify_executables(),
+        "defaults".to_string(),
     )
 }
 
@@ -610,7 +612,8 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         ai_mode,
         (options.max_steps, options.max_runtime_ms_per_step),
     );
-    let (allowed_sruja_subcommands, allowed_verify_execs) = load_allowlists(repo_path);
+    let (allowed_sruja_subcommands, allowed_verify_execs, allowlist_source) =
+        load_allowlists(repo_path);
 
     // ── Observe: gather deterministic facts ────────────────────────────────
     // Always run sync in both plan/apply; it’s the deterministic grounding step.
@@ -638,7 +641,13 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         let mut briefing = focus_cmd::build_focus_briefing(&kg, id, repo_path, scan_node_count);
         // No focus-specific enrichment here; agent enrichment is handled at the end.
         briefing.enrichment = None;
-        serde_json::to_value(&briefing).unwrap_or(Value::Null)
+        let out = focus_cmd::build_focus_for_ai_output(
+            repo_path,
+            options.file,
+            options.element_id,
+            briefing,
+        );
+        serde_json::to_value(&out).unwrap_or(Value::Null)
     } else {
         Value::Null
     };
@@ -806,8 +815,6 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         expected: Some("Intent vs reality report available for compliance".to_string()),
     });
 
-    risks.push("Executor allowlist/budget config enforcement is not implemented yet; apply remains conservative.".to_string());
-
     let enrichment = build_enrichment(
         repo_path,
         &facts_payload,
@@ -851,7 +858,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 AgentMode::Plan => "plan".to_string(),
                 AgentMode::Apply => "apply".to_string(),
             },
-            allowlist_source: ".sruja/config.toml [agent] (not yet implemented)".to_string(),
+            allowlist_source,
             denied_steps: Vec::new(),
         },
         enrichment,
