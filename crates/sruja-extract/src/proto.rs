@@ -6,13 +6,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct ProtoExtractor;
-
-impl Default for ProtoExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl ProtoExtractor {
     pub fn new() -> Self {

@@ -3,13 +3,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct DocExtractor;
-
-impl Default for DocExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl DocExtractor {
     pub fn new() -> Self {

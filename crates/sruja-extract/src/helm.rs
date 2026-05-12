@@ -6,13 +6,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct HelmExtractor;
-
-impl Default for HelmExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl HelmExtractor {
     pub fn new() -> Self {

@@ -6,13 +6,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct TerraformExtractor;
-
-impl Default for TerraformExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl TerraformExtractor {
     pub fn new() -> Self {

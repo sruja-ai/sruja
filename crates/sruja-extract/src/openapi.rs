@@ -3,13 +3,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct OpenApiExtractor;
-
-impl Default for OpenApiExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl OpenApiExtractor {
     pub fn new() -> Self {

@@ -6,13 +6,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct AliasExtractor;
-
-impl Default for AliasExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl AliasExtractor {
     pub fn new() -> Self {

@@ -67,13 +67,8 @@ const NOISE_PREFIXES: &[&str] = &[
     "PROMETHEUS",
 ];
 
+#[derive(Default)]
 pub struct DependencyExtractor;
-
-impl Default for DependencyExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl DependencyExtractor {
     pub fn new() -> Self {

@@ -6,13 +6,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct AsyncApiExtractor;
-
-impl Default for AsyncApiExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl AsyncApiExtractor {
     pub fn new() -> Self {
@@ -40,14 +35,10 @@ impl AsyncApiExtractor {
                 in_info = true;
                 continue;
             }
-            if in_info && trimmed.starts_with("title:") {
-                return Some(
-                    trimmed["title:".len()..]
-                        .trim()
-                        .trim_matches('"')
-                        .trim_matches('\'')
-                        .to_string(),
-                );
+            if let Some(rest) = trimmed.strip_prefix("title:") {
+                if in_info {
+                    return Some(rest.trim().trim_matches('"').trim_matches('\'').to_string());
+                }
             }
             if in_info && !trimmed.is_empty() {
                 let indent = line.len() - line.trim_start().len();

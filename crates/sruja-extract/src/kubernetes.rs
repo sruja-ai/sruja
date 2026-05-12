@@ -39,13 +39,8 @@ const WORKLOAD_KINDS: &[&str] = &[
     "ReplicaSet",
 ];
 
+#[derive(Default)]
 pub struct KubernetesExtractor;
-
-impl Default for KubernetesExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl KubernetesExtractor {
     pub fn new() -> Self {
@@ -76,16 +71,13 @@ impl KubernetesExtractor {
                 }
             } else if trimmed == "metadata:" {
                 in_metadata = true;
-            } else if in_metadata && trimmed.starts_with("name:") {
-                let indent = line.len() - line.trim_start().len();
-                if indent <= 4 {
-                    current_name = Some(
-                        trimmed["name:".len()..]
-                            .trim()
-                            .trim_matches('"')
-                            .to_string(),
-                    );
-                    in_metadata = false;
+            } else if let Some(rest) = trimmed.strip_prefix("name:") {
+                if in_metadata {
+                    let indent = line.len() - line.trim_start().len();
+                    if indent <= 4 {
+                        current_name = Some(rest.trim().trim_matches('"').to_string());
+                        in_metadata = false;
+                    }
                 }
             } else if !trimmed.is_empty() && !trimmed.starts_with('#') {
                 let indent = line.len() - line.trim_start().len();

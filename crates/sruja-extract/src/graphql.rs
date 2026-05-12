@@ -6,13 +6,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct GraphqlExtractor;
-
-impl Default for GraphqlExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl GraphqlExtractor {
     pub fn new() -> Self {

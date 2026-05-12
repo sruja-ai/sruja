@@ -6,13 +6,8 @@
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
+#[derive(Default)]
 pub struct DockerfileExtractor;
-
-impl Default for DockerfileExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl DockerfileExtractor {
     pub fn new() -> Self {
@@ -34,9 +29,7 @@ impl DockerfileExtractor {
                 .strip_prefix("FROM ")
                 .or_else(|| trimmed.strip_prefix("FROM\t"))
             {
-                let image = rest.split_whitespace().next().unwrap_or(rest);
-                let image = image.split(" AS ").next().unwrap_or(image);
-                let image = image.split(" as ").next().unwrap_or(image);
+                let image = rest.split_ascii_whitespace().next().unwrap_or(rest);
                 return Some(image.to_string());
             }
         }

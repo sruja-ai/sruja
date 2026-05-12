@@ -25,10 +25,11 @@
 //! use sruja_extract::{ExtractionEngine, ExtractionConfig};
 //! use std::path::Path;
 //!
-//! let config = ExtractionConfig::builder()
-//!     .min_confidence(0.5)
-//!     .max_file_size(5 * 1024 * 1024)
-//!     .build();
+//! let config = ExtractionConfig {
+//!     min_confidence: 0.5,
+//!     max_file_size: 5 * 1024 * 1024,
+//!     ..Default::default()
+//! };
 //! let engine = ExtractionEngine::with_config(config);
 //! let report = engine.discover(Path::new("."));
 //! ```
@@ -87,6 +88,8 @@ pub struct DiscoveredSource {
     pub confidence: f32,
 }
 
+/// Identity comparison for dedup: two sources are "the same" if they point
+/// to the same file + kind + element, regardless of confidence or description.
 impl PartialEq for DiscoveredSource {
     fn eq(&self, other: &Self) -> bool {
         self.binding.path == other.binding.path
@@ -224,50 +227,21 @@ impl Default for ExtractionConfig {
 }
 
 impl ExtractionConfig {
-    pub fn builder() -> ExtractionConfigBuilder {
-        ExtractionConfigBuilder::default()
-    }
-}
-
-/// Fluent builder for [`ExtractionConfig`].
-#[derive(Debug, Default)]
-pub struct ExtractionConfigBuilder {
-    config: ExtractionConfig,
-}
-
-impl ExtractionConfigBuilder {
-    pub fn min_confidence(mut self, v: f32) -> Self {
-        self.config.min_confidence = v;
-        self
-    }
-
-    pub fn max_file_size(mut self, v: u64) -> Self {
-        self.config.max_file_size = v;
-        self
-    }
-
-    pub fn enabled_extractors(mut self, names: Vec<String>) -> Self {
-        self.config.enabled_extractors = Some(names);
-        self
-    }
-
-    pub fn add_ignore_pattern(mut self, pattern: impl Into<String>) -> Self {
-        self.config.extra_ignore_patterns.push(pattern.into());
-        self
-    }
-
-    pub fn respect_gitignore(mut self, v: bool) -> Self {
-        self.config.respect_gitignore = v;
-        self
-    }
-
-    pub fn follow_symlinks(mut self, v: bool) -> Self {
-        self.config.follow_symlinks = v;
-        self
-    }
-
-    pub fn build(self) -> ExtractionConfig {
-        self.config
+    /// Convenience builder that returns a mutable config with defaults.
+    /// Use struct update syntax for more complex cases:
+    /// ```
+    /// # use sruja_extract::ExtractionConfig;
+    /// let config = ExtractionConfig {
+    ///     min_confidence: 0.5,
+    ///     max_file_size: 5 * 1024 * 1024,
+    ///     ..Default::default()
+    /// };
+    /// ```
+    pub fn with_min_confidence(confidence: f32) -> Self {
+        Self {
+            min_confidence: confidence,
+            ..Default::default()
+        }
     }
 }
 
@@ -290,7 +264,7 @@ pub struct ExtractionStats {
     pub total_sources: usize,
     pub by_extractor: HashMap<String, usize>,
     pub by_kind: HashMap<String, usize>,
-    pub duration_ms: u128,
+    pub duration_ms: u64,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -494,7 +468,7 @@ impl ExtractionEngine {
                 total_sources,
                 by_extractor,
                 by_kind,
-                duration_ms: start.elapsed().as_millis(),
+                duration_ms: start.elapsed().as_millis() as u64,
             },
             diagnostics,
         }
@@ -525,12 +499,13 @@ impl ExtractionEngine {
                     || name == ".terraform")
             });
 
-        for pattern in &self.config.extra_ignore_patterns {
+        if !self.config.extra_ignore_patterns.is_empty() {
             let mut ov = ignore::overrides::OverrideBuilder::new(repo_root);
-            if ov.add(&format!("!{pattern}")).is_ok() {
-                if let Ok(overrides) = ov.build() {
-                    builder.overrides(overrides);
-                }
+            for pattern in &self.config.extra_ignore_patterns {
+                let _ = ov.add(&format!("!{pattern}"));
+            }
+            if let Ok(overrides) = ov.build() {
+                builder.overrides(overrides);
             }
         }
 

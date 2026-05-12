@@ -1202,14 +1202,15 @@ fn file_context_parent_dir_name() {
 // =========================================================================
 
 #[test]
-fn extraction_config_builder() {
-    let config = ExtractionConfig::builder()
-        .min_confidence(0.5)
-        .max_file_size(1024)
-        .add_ignore_pattern("*.log")
-        .respect_gitignore(false)
-        .follow_symlinks(true)
-        .build();
+fn extraction_config_struct_update() {
+    let config = ExtractionConfig {
+        min_confidence: 0.5,
+        max_file_size: 1024,
+        extra_ignore_patterns: vec!["*.log".to_string()],
+        respect_gitignore: false,
+        follow_symlinks: true,
+        ..Default::default()
+    };
 
     assert_eq!(config.min_confidence, 0.5);
     assert_eq!(config.max_file_size, 1024);
@@ -1218,10 +1219,18 @@ fn extraction_config_builder() {
 }
 
 #[test]
+fn extraction_config_with_min_confidence() {
+    let config = ExtractionConfig::with_min_confidence(0.7);
+    assert_eq!(config.min_confidence, 0.7);
+    assert_eq!(config.max_file_size, 10 * 1024 * 1024);
+}
+
+#[test]
 fn extraction_config_enabled_extractors() {
-    let config = ExtractionConfig::builder()
-        .enabled_extractors(vec!["docs".to_string(), "kubernetes".to_string()])
-        .build();
+    let config = ExtractionConfig {
+        enabled_extractors: Some(vec!["docs".to_string(), "kubernetes".to_string()]),
+        ..Default::default()
+    };
 
     let engine = ExtractionEngine::with_config(config);
 
@@ -1278,7 +1287,7 @@ fn engine_min_confidence_filter() {
     let openapi = tmp.path().join("openapi.yaml");
     fs::write(&openapi, "openapi: 3.0.0\n").unwrap();
 
-    let config = ExtractionConfig::builder().min_confidence(0.5).build();
+    let config = ExtractionConfig::with_min_confidence(0.5);
     let engine = ExtractionEngine::with_config(config);
     let report = engine.discover(tmp.path());
 
@@ -1306,7 +1315,10 @@ fn engine_max_file_size_filter() {
     let content = "openapi: 3.0.0\n".to_string() + &"x".repeat(200);
     fs::write(&file_path, &content).unwrap();
 
-    let config = ExtractionConfig::builder().max_file_size(50).build();
+    let config = ExtractionConfig {
+        max_file_size: 50,
+        ..Default::default()
+    };
     let engine = ExtractionEngine::with_config(config);
     let report = engine.discover(tmp.path());
 

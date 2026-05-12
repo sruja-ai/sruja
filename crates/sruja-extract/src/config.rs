@@ -26,7 +26,7 @@ const CONFIG_FILES: &[(&str, &str)] = &[
     ("stack.yaml", "Haskell"),
     ("deno.json", "Deno"),
     ("deno.jsonc", "Deno"),
-    ("bun.lockb", "Bun"),
+    ("bunfig.toml", "Bun"),
     ("shard.yml", "Crystal"),
     ("vcpkg.json", "C++/vcpkg"),
     ("conanfile.txt", "C++/Conan"),
@@ -34,13 +34,8 @@ const CONFIG_FILES: &[(&str, &str)] = &[
     ("makefile", "Make"),
 ];
 
+#[derive(Default)]
 pub struct ConfigExtractor;
-
-impl Default for ConfigExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl ConfigExtractor {
     pub fn new() -> Self {
