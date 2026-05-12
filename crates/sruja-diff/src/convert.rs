@@ -438,4 +438,35 @@ S = system "S" {
         assert_eq!(graph.nodes[0].kind, NodeKind::Module);
         assert!(graph.edges.is_empty());
     }
+
+    #[test]
+    fn program_to_graph_multiple_nodes_and_edges() {
+        let program = parse_dsl(
+            r#"
+A = system "A"
+B = system "B"
+C = system "C"
+A -> B "calls"
+A -> C "uses"
+B -> C "depends on"
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.nodes.len(), 3);
+        assert_eq!(graph.edges.len(), 3);
+    }
+
+    #[test]
+    fn program_to_graph_person_becomes_module() {
+        let program = parse_dsl(
+            r#"
+User = person "End User" {
+  description "Application user"
+}
+"#,
+        );
+        let graph = program_to_graph(&program);
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].kind, NodeKind::Module);
+    }
 }
