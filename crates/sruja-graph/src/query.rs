@@ -173,7 +173,7 @@ impl KnowledgeGraph {
         self.query_generic(question)
     }
 
-    fn resolve_entity(&self, question: &str) -> Option<String> {
+    pub(crate) fn resolve_entity(&self, question: &str) -> Option<String> {
         let q = question.to_lowercase();
         let words: Vec<&str> = q
             .split(|c: char| !c.is_alphanumeric() && c != '_' && c != '-' && c != '.')

@@ -9,6 +9,8 @@ pub struct SrujaConfigFile {
     pub integrations: IntegrationsConfig,
     #[serde(default)]
     pub agent: AgentConfig,
+    #[serde(default)]
+    pub context_engineering: ContextEngineeringConfig,
 }
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
@@ -38,6 +40,27 @@ pub struct AgentConfig {
     pub max_steps: Option<usize>,
     /// Default maximum runtime per step (ms).
     pub max_runtime_ms_per_step: Option<u64>,
+    /// Default number of MaTTS trajectories for `agent run --trajectories`.
+    pub default_trajectories: Option<usize>,
+}
+
+/// Configuration for context engineering features (BM25, compression, hybrid retrieval).
+///
+/// Loaded from `[context_engineering]` in `.sruja/config.toml`.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct ContextEngineeringConfig {
+    /// Token budget threshold for observation compression (default: 8000).
+    pub compression_token_threshold: Option<usize>,
+    /// Max length for compressed observation output (default: 120).
+    /// Reserved for future use when `compress_single` accepts configurable limits.
+    #[allow(dead_code)]
+    pub compression_max_output_len: Option<usize>,
+    /// Number of recent observations to keep uncompressed (default: 3).
+    pub compression_keep_recent: Option<usize>,
+    /// Max BM25 results for focus external context (default: 10).
+    pub bm25_max_results_focus: Option<usize>,
+    /// Max BM25 results for MCP search (default: 5).
+    pub bm25_max_results_mcp: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy)]

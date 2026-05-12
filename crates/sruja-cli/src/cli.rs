@@ -859,6 +859,21 @@ pub enum AgentCommand {
         #[arg(long, short = 'y')]
         force: bool,
     },
+    /// Show learning clusters (thematically linked groups) and tags
+    Clusters {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Optional entry ID to show the cluster for
+        #[arg(long, short = 'e')]
+        entry_id: Option<String>,
+        /// Optional tag to filter by
+        #[arg(long, short = 't')]
+        tag: Option<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Run the agent loop: observe → plan → (optional) apply → verify → record learnings
     Run {
         /// Path to repository root
@@ -915,6 +930,9 @@ pub enum AgentCommand {
         /// Continue running verification even if an apply step fails
         #[arg(long)]
         continue_on_error: bool,
+        /// Number of parallel sandbox trajectories for MaTTS self-contrast (minimum: 2)
+        #[arg(long)]
+        trajectories: Option<usize>,
     },
 }
 
@@ -1530,6 +1548,14 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await
             }
             AgentCommand::Clear { repo, force } => commands::agent_clear(&repo, force).await,
+            AgentCommand::Clusters {
+                repo,
+                entry_id,
+                tag,
+                format,
+            } => {
+                commands::agent_clusters(&repo, entry_id.as_deref(), tag.as_deref(), &format).await
+            }
             AgentCommand::Run {
                 repo,
                 goal,
@@ -1549,6 +1575,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 enrich_timeout_ms,
                 enrich_max_bytes,
                 continue_on_error,
+                trajectories,
             } => {
                 commands::agent_run(commands::AgentRunOptions {
                     repo: &repo,
@@ -1569,6 +1596,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     enrich_timeout_ms,
                     enrich_max_bytes,
                     continue_on_error,
+                    trajectories,
                 })
                 .await
             }

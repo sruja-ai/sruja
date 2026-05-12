@@ -9,16 +9,19 @@ use std::collections::HashMap;
 use thiserror::Error;
 use uuid::Uuid;
 
+pub mod bm25;
 pub mod centrality;
 pub mod context_score;
 pub mod coupling;
 pub mod graph;
+pub mod hybrid_retrieval;
 pub mod query;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scan_merge;
 pub mod scc;
 pub mod treewidth;
 
+pub use bm25::{Bm25Hit, SparseIndex};
 pub use centrality::{
     ArchitecturalHotspot, BridgeNode, CentralityAnalyzer, CentralityResult, HotspotRole, HubNode,
 };
@@ -31,6 +34,10 @@ pub use coupling::{
     ModuleCoupling, Zone,
 };
 pub use graph::KnowledgeGraph;
+pub use hybrid_retrieval::{
+    classify_query, execute_graph_only, execute_hybrid, select_strategy, HybridResult,
+    QueryComplexity, RetrievalStrategy, SemanticCandidate,
+};
 pub use query::{
     LlmGuidedWhyResult, LlmGuidedWhyStep, PolicyViolation, QueryError, QueryResult,
     ReasonedWhyResult, ReasonedWhyStep,

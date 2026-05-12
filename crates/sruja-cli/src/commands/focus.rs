@@ -806,90 +806,48 @@ fn infer_boundaries(graph: &KnowledgeGraph, target_id: &str) -> Vec<BoundaryInfo
     boundaries
 }
 
-/// Find external context files relevant to a target element.
+/// Find external context files relevant to a target element using BM25-ranked retrieval.
+///
+/// Builds a sparse inverted index over `.sruja/context/` and queries it with the
+/// target element ID plus its dot-separated parts for broader recall. Falls back to
+/// an empty result if no context directory exists.
 fn find_relevant_external_context(repo_path: &Path, target_id: &str) -> Vec<ExternalContextRef> {
     let context_dir = repo_path.join(".sruja").join("context");
     if !context_dir.exists() {
         return Vec::new();
     }
 
-    let mut results = Vec::new();
-    let target_lower = target_id.to_lowercase();
+    let index = sruja_graph::SparseIndex::build(repo_path);
+    if index.doc_count() == 0 {
+        return Vec::new();
+    }
+
     let target_parts: Vec<&str> = target_id.split('.').collect();
+    let query = if target_parts.len() > 1 {
+        format!("{} {}", target_id, target_parts.join(" "))
+    } else {
+        target_id.to_string()
+    };
 
-    if let Ok(entries) = std::fs::read_dir(&context_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if !path.is_file() {
-                continue;
+    let max_results = crate::integrations::load_repo_config(repo_path)
+        .and_then(|c| c.context_engineering.bm25_max_results_focus)
+        .unwrap_or(10);
+    let hits = index.search(&query, max_results);
+
+    hits.into_iter()
+        .map(|hit| {
+            let name = std::path::Path::new(&hit.path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            ExternalContextRef {
+                file: name,
+                category: hit.category,
+                excerpt: hit.excerpt,
             }
-
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                let content_lower = content.to_lowercase();
-                // Check if this file references the target element
-                let is_relevant = content_lower.contains(&target_lower)
-                    || target_parts.iter().any(|part| {
-                        part.len() >= 3 && content_lower.contains(&part.to_lowercase())
-                    });
-
-                if is_relevant {
-                    let name = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("unknown")
-                        .to_string();
-                    let ext = path
-                        .extension()
-                        .and_then(|e| e.to_str())
-                        .unwrap_or("")
-                        .to_lowercase();
-                    let category = sruja_graph::context_score::detect_context_category(
-                        &name.to_lowercase(),
-                        &ext,
-                    );
-                    let excerpt = extract_relevant_excerpt(&content, target_id, 150);
-
-                    results.push(ExternalContextRef {
-                        file: name,
-                        category,
-                        excerpt,
-                    });
-                }
-            }
-        }
-    }
-
-    results
-}
-
-/// Extract a relevant excerpt from content mentioning the target.
-fn extract_relevant_excerpt(content: &str, target: &str, max_len: usize) -> String {
-    let target_lower = target.to_lowercase();
-
-    // Find the first line mentioning the target
-    for line in content.lines() {
-        if line.to_lowercase().contains(&target_lower) {
-            return truncate(line.trim(), max_len);
-        }
-    }
-
-    // Fallback: first non-empty, non-front-matter line
-    let mut in_front_matter = false;
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed == "---" {
-            in_front_matter = !in_front_matter;
-            continue;
-        }
-        if in_front_matter {
-            continue;
-        }
-        if !trimmed.is_empty() && !trimmed.starts_with('#') {
-            return truncate(trimmed, max_len);
-        }
-    }
-
-    "(external context available)".to_string()
+        })
+        .collect()
 }
 
 fn truncate(s: &str, max_len: usize) -> String {

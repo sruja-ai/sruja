@@ -35,8 +35,15 @@ pub enum ExperimentOutcome {
 }
 
 /// A single entry in the agentic memory representing a learned architectural lesson.
+///
+/// Inspired by the Zettelkasten method: each entry is an atomic note with
+/// auto-generated tags and bidirectional links to related entries, enabling
+/// thematic clustering and associative retrieval.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LearningEntry {
+    /// Stable identifier for cross-referencing between entries.
+    #[serde(default = "generate_entry_id")]
+    pub id: String,
     /// When this learning was recorded.
     pub timestamp: DateTime<Utc>,
     /// The context in which the experiment was performed (e.g., "Refactoring API layer").
@@ -51,6 +58,19 @@ pub struct LearningEntry {
     pub guardrail_advice: String,
     /// IDs of architectural elements affected by this experiment.
     pub affected_elements: Vec<String>,
+    /// Auto-generated thematic tags extracted from context, hypothesis, and guardrail.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    /// IDs of related learning entries (bidirectional Zettelkasten links).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub related_ids: Vec<String>,
+}
+
+fn generate_entry_id() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let seq = COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("learn_{}_{}", chrono::Utc::now().timestamp_millis(), seq)
 }
 
 impl LearningEntry {
@@ -152,8 +172,37 @@ impl AgenticMemory {
         Self::get_path(repo_root).exists()
     }
 
-    /// Adds a new learning entry to the memory.
-    pub fn add_learning(&mut self, learning: LearningEntry) {
+    /// Adds a new learning entry, auto-generating tags and linking to related entries.
+    ///
+    /// Tags are extracted from the entry's context, hypothesis, and guardrail text.
+    /// Bidirectional links are forged to existing entries that share affected elements,
+    /// tags, or contextual keywords -- mirroring Zettelkasten's associative linking.
+    pub fn add_learning(&mut self, mut learning: LearningEntry) {
+        if learning.id.is_empty() {
+            learning.id = generate_entry_id();
+        }
+        if learning.tags.is_empty() {
+            learning.tags = Self::extract_tags(&learning);
+        }
+
+        let new_id = learning.id.clone();
+        let related = self.find_related_indices(&learning);
+
+        for &idx in &related {
+            let existing_id = self.learnings[idx].id.clone();
+            if !learning.related_ids.contains(&existing_id) {
+                learning.related_ids.push(existing_id);
+            }
+            if !self.learnings[idx].related_ids.contains(&new_id) {
+                self.learnings[idx].related_ids.push(new_id.clone());
+            }
+        }
+
+        self.learnings.push(learning);
+    }
+
+    /// Adds a learning entry without auto-linking (for deserialization or migration).
+    pub fn add_learning_raw(&mut self, learning: LearningEntry) {
         self.learnings.push(learning);
     }
 
@@ -173,6 +222,155 @@ impl AgenticMemory {
     pub fn get_path(repo_root: &Path) -> PathBuf {
         repo_root.join(".sruja").join("agent_memory.json")
     }
+
+    /// Returns all entries in the same thematic cluster as the given entry ID.
+    ///
+    /// Performs a transitive walk through `related_ids` links, returning
+    /// the full connected component -- analogous to opening a Zettelkasten "box."
+    pub fn find_cluster(&self, entry_id: &str) -> Vec<&LearningEntry> {
+        let index_map: std::collections::HashMap<&str, usize> = self
+            .learnings
+            .iter()
+            .enumerate()
+            .map(|(i, e)| (e.id.as_str(), i))
+            .collect();
+
+        let Some(&start) = index_map.get(entry_id) else {
+            return Vec::new();
+        };
+
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = std::collections::VecDeque::new();
+        queue.push_back(start);
+        visited.insert(start);
+
+        while let Some(idx) = queue.pop_front() {
+            for related_id in &self.learnings[idx].related_ids {
+                if let Some(&ri) = index_map.get(related_id.as_str()) {
+                    if visited.insert(ri) {
+                        queue.push_back(ri);
+                    }
+                }
+            }
+        }
+
+        visited.iter().map(|&i| &self.learnings[i]).collect()
+    }
+
+    /// Returns all distinct thematic tags across all entries.
+    pub fn all_tags(&self) -> Vec<String> {
+        let mut tags: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for entry in &self.learnings {
+            for tag in &entry.tags {
+                tags.insert(tag.clone());
+            }
+        }
+        let mut sorted: Vec<String> = tags.into_iter().collect();
+        sorted.sort();
+        sorted
+    }
+
+    /// Returns all entries matching a given tag.
+    pub fn find_by_tag(&self, tag: &str) -> Vec<&LearningEntry> {
+        let tag_lower = tag.to_lowercase();
+        self.learnings
+            .iter()
+            .filter(|e| e.tags.iter().any(|t| t.to_lowercase() == tag_lower))
+            .collect()
+    }
+
+    /// Extracts thematic tags from an entry's textual fields.
+    ///
+    /// Tags are normalized, deduplicated keywords drawn from the context,
+    /// hypothesis, and guardrail text. Short common words are filtered out.
+    fn extract_tags(entry: &LearningEntry) -> Vec<String> {
+        let combined = format!(
+            "{} {} {}",
+            entry.context, entry.hypothesis, entry.guardrail_advice
+        );
+        let stop_words: std::collections::HashSet<&str> = [
+            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has",
+            "had", "do", "does", "did", "will", "would", "could", "should", "may", "might",
+            "shall", "can", "need", "must", "to", "of", "in", "for", "on", "with", "at", "by",
+            "from", "as", "into", "through", "during", "before", "after", "above", "below",
+            "between", "out", "off", "over", "under", "again", "further", "then", "once", "and",
+            "but", "or", "nor", "not", "no", "so", "if", "it", "its", "this", "that", "these",
+            "those", "all", "each", "every", "both", "few", "more", "most", "other", "some",
+            "such", "only", "same", "than", "too", "very", "just", "don", "now", "also", "use",
+            "using", "used", "via",
+        ]
+        .into_iter()
+        .collect();
+
+        let mut seen = std::collections::HashSet::new();
+        let mut tags = Vec::new();
+
+        for word in combined.split(|c: char| !c.is_alphanumeric() && c != '-' && c != '_') {
+            let w = word.to_lowercase();
+            if w.len() >= 4 && !stop_words.contains(w.as_str()) && seen.insert(w.clone()) {
+                tags.push(w);
+            }
+        }
+
+        tags.truncate(12);
+        tags
+    }
+
+    /// Finds indices of existing entries related to a new entry.
+    ///
+    /// Relatedness is determined by shared affected elements, overlapping tags,
+    /// or matching context keywords -- implementing Zettelkasten's association logic.
+    fn find_related_indices(&self, new_entry: &LearningEntry) -> Vec<usize> {
+        let new_tags: std::collections::HashSet<&str> =
+            new_entry.tags.iter().map(|s| s.as_str()).collect();
+        let new_elements: std::collections::HashSet<&str> = new_entry
+            .affected_elements
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
+
+        let mut scored: Vec<(usize, u32)> = Vec::new();
+
+        for (idx, existing) in self.learnings.iter().enumerate() {
+            let mut score: u32 = 0;
+
+            let shared_elements = existing
+                .affected_elements
+                .iter()
+                .filter(|e| {
+                    new_elements.contains(e.as_str())
+                        || new_elements.iter().any(|ne| {
+                            ne.starts_with(&format!("{}.", e)) || e.starts_with(&format!("{}.", ne))
+                        })
+                })
+                .count();
+            score += (shared_elements as u32) * 3;
+
+            let shared_tags = existing
+                .tags
+                .iter()
+                .filter(|t| new_tags.contains(t.as_str()))
+                .count();
+            score += (shared_tags as u32) * 2;
+
+            let ctx_lower = existing.context.to_lowercase();
+            let new_ctx_lower = new_entry.context.to_lowercase();
+            let ctx_words: Vec<&str> = new_ctx_lower
+                .split_whitespace()
+                .filter(|w| w.len() >= 4)
+                .collect();
+            let ctx_overlap = ctx_words.iter().filter(|w| ctx_lower.contains(*w)).count();
+            score += ctx_overlap as u32;
+
+            if score >= 2 {
+                scored.push((idx, score));
+            }
+        }
+
+        scored.sort_by(|a, b| b.1.cmp(&a.1));
+        scored.truncate(5);
+        scored.into_iter().map(|(idx, _)| idx).collect()
+    }
 }
 
 #[cfg(test)]
@@ -180,10 +378,26 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
+    fn make_entry(context: &str, hypothesis: &str, elements: Vec<&str>) -> LearningEntry {
+        LearningEntry {
+            id: generate_entry_id(),
+            timestamp: Utc::now(),
+            context: context.to_string(),
+            hypothesis: hypothesis.to_string(),
+            outcome: ExperimentOutcome::Failed,
+            reason: None,
+            guardrail_advice: String::new(),
+            affected_elements: elements.into_iter().map(String::from).collect(),
+            tags: Vec::new(),
+            related_ids: Vec::new(),
+        }
+    }
+
     #[test]
     fn test_add_and_find_relevant() {
         let mut memory = AgenticMemory::default();
         let entry = LearningEntry {
+            id: "test-1".to_string(),
             timestamp: Utc::now(),
             context: "Refactoring API".to_string(),
             hypothesis: "Test hypothesis".to_string(),
@@ -191,18 +405,128 @@ mod tests {
             reason: None,
             guardrail_advice: "Keep doing this".to_string(),
             affected_elements: vec!["Sruja.API".to_string(), "Sruja.CLI".to_string()],
+            tags: Vec::new(),
+            related_ids: Vec::new(),
         };
 
         memory.add_learning(entry.clone());
 
-        // Exact match
         assert_eq!(memory.find_relevant("Sruja.API").len(), 1);
-        // Parent match
         assert_eq!(memory.find_relevant("Sruja.API.V1").len(), 1);
-        // Context match
         assert_eq!(memory.find_relevant("api").len(), 1);
-        // No match
         assert_eq!(memory.find_relevant("Other").len(), 0);
+    }
+
+    #[test]
+    fn test_auto_tag_extraction() {
+        let mut memory = AgenticMemory::default();
+        let entry = LearningEntry {
+            id: "tag-test".to_string(),
+            timestamp: Utc::now(),
+            context: "Boundary violation in service layer".to_string(),
+            hypothesis: "Direct database access from routes".to_string(),
+            outcome: ExperimentOutcome::Failed,
+            reason: None,
+            guardrail_advice: "Always use service layer for database queries".to_string(),
+            affected_elements: vec!["API.Routes".to_string()],
+            tags: Vec::new(),
+            related_ids: Vec::new(),
+        };
+        memory.add_learning(entry);
+
+        let tags = &memory.learnings[0].tags;
+        assert!(!tags.is_empty(), "Tags should be auto-generated");
+        assert!(
+            tags.iter()
+                .any(|t| t.contains("boundary") || t.contains("violation")),
+            "Should extract domain-relevant tags: {:?}",
+            tags
+        );
+    }
+
+    #[test]
+    fn test_bidirectional_linking() {
+        let mut memory = AgenticMemory::default();
+
+        let e1 = make_entry(
+            "Boundary violation refactoring",
+            "Move DB calls to service layer",
+            vec!["API.Routes", "API.Service"],
+        );
+        let e2 = make_entry(
+            "Another boundary violation fix",
+            "Extract repository pattern",
+            vec!["API.Routes", "API.Repository"],
+        );
+
+        memory.add_learning(e1);
+        memory.add_learning(e2);
+
+        let first = &memory.learnings[0];
+        let second = &memory.learnings[1];
+
+        assert!(
+            !first.related_ids.is_empty() || !second.related_ids.is_empty(),
+            "Entries sharing affected elements should be linked"
+        );
+        if !second.related_ids.is_empty() {
+            assert!(second.related_ids.contains(&first.id));
+        }
+        if !first.related_ids.is_empty() {
+            assert!(first.related_ids.contains(&second.id));
+        }
+    }
+
+    #[test]
+    fn test_find_cluster() {
+        let mut memory = AgenticMemory::default();
+
+        let e1 = make_entry("Boundary violation A", "hypothesis A", vec!["API.Routes"]);
+        let e2 = make_entry("Boundary violation B", "hypothesis B", vec!["API.Routes"]);
+        let e3 = make_entry("Unrelated topic", "hypothesis C", vec!["Database.Schema"]);
+
+        memory.add_learning(e1);
+        let id1 = memory.learnings[0].id.clone();
+        memory.add_learning(e2);
+        memory.add_learning(e3);
+
+        let cluster = memory.find_cluster(&id1);
+        assert!(
+            cluster.len() >= 2,
+            "Cluster should include linked entries, got {}",
+            cluster.len()
+        );
+
+        let cluster_ids: Vec<&str> = cluster.iter().map(|e| e.id.as_str()).collect();
+        assert!(cluster_ids.contains(&id1.as_str()));
+    }
+
+    #[test]
+    fn test_find_by_tag() {
+        let mut memory = AgenticMemory::default();
+        let mut entry = make_entry("boundary violation test", "hypothesis", vec!["API"]);
+        entry.tags = vec!["boundary".to_string(), "violation".to_string()];
+        memory.add_learning_raw(entry);
+
+        let results = memory.find_by_tag("boundary");
+        assert_eq!(results.len(), 1);
+
+        let results = memory.find_by_tag("nonexistent");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_all_tags() {
+        let mut memory = AgenticMemory::default();
+        let mut e1 = make_entry("ctx", "hyp", vec![]);
+        e1.tags = vec!["alpha".to_string(), "beta".to_string()];
+        let mut e2 = make_entry("ctx", "hyp", vec![]);
+        e2.tags = vec!["beta".to_string(), "gamma".to_string()];
+        memory.add_learning_raw(e1);
+        memory.add_learning_raw(e2);
+
+        let tags = memory.all_tags();
+        assert_eq!(tags, vec!["alpha", "beta", "gamma"]);
     }
 
     #[test]
@@ -211,6 +535,7 @@ mod tests {
         let repo_root = dir.path();
         let mut memory = AgenticMemory::default();
         let entry = LearningEntry {
+            id: "save-test".to_string(),
             timestamp: Utc::now(),
             context: "Test".to_string(),
             hypothesis: "Hypo".to_string(),
@@ -218,6 +543,8 @@ mod tests {
             reason: Some("Error".to_string()),
             guardrail_advice: "Don't".to_string(),
             affected_elements: vec!["ID1".to_string()],
+            tags: Vec::new(),
+            related_ids: Vec::new(),
         };
 
         memory.add_learning(entry);
@@ -226,6 +553,7 @@ mod tests {
         let loaded = AgenticMemory::load(repo_root).unwrap();
         assert_eq!(loaded.learnings.len(), 1);
         assert_eq!(loaded.learnings[0].context, "Test");
+        assert!(!loaded.learnings[0].id.is_empty(), "ID should persist");
     }
 
     #[test]
@@ -271,6 +599,7 @@ mod tests {
     fn test_find_relevant_edge_cases() {
         let mut memory = AgenticMemory::default();
         let entry = LearningEntry {
+            id: "edge-case".to_string(),
             timestamp: Utc::now(),
             context: "Some Context".to_string(),
             hypothesis: "".to_string(),
@@ -278,23 +607,14 @@ mod tests {
             reason: None,
             guardrail_advice: "".to_string(),
             affected_elements: vec!["Sruja.API.V1".to_string()],
+            tags: Vec::new(),
+            related_ids: Vec::new(),
         };
         memory.add_learning(entry);
 
-        // e.starts_with(&format!("{}.", element_id)) -> element_id is prefix of e
-        // e is "Sruja.API.V1"
-        // element_id is "Sruja.API"
         assert_eq!(memory.find_relevant("Sruja.API").len(), 1);
-
-        // element_id.starts_with(&format!("{}.", e)) -> e is prefix of element_id
-        // e is "Sruja.API.V1"
-        // element_id is "Sruja.API.V1.Endpoint"
         assert_eq!(memory.find_relevant("Sruja.API.V1.Endpoint").len(), 1);
-
-        // Exact match
         assert_eq!(memory.find_relevant("Sruja.API.V1").len(), 1);
-
-        // No match
         assert_eq!(memory.find_relevant("Sruja.API.V2").len(), 0);
     }
 
@@ -304,6 +624,7 @@ mod tests {
         let path = dir.path().join("custom_memory.json");
         let mut memory = AgenticMemory::default();
         memory.add_learning(LearningEntry {
+            id: "custom-path".to_string(),
             timestamp: Utc::now(),
             context: "Custom".to_string(),
             hypothesis: "H".to_string(),
@@ -311,6 +632,8 @@ mod tests {
             reason: None,
             guardrail_advice: "G".to_string(),
             affected_elements: vec![],
+            tags: Vec::new(),
+            related_ids: Vec::new(),
         });
 
         memory.save_to_path(&path).unwrap();
@@ -324,6 +647,7 @@ mod tests {
     #[test]
     fn test_learning_entry_relevance() {
         let entry = LearningEntry {
+            id: "rel-test".to_string(),
             timestamp: Utc::now(),
             context: "API Refactoring".to_string(),
             hypothesis: "".to_string(),
@@ -331,17 +655,14 @@ mod tests {
             reason: None,
             guardrail_advice: "".to_string(),
             affected_elements: vec!["System.Core".to_string()],
+            tags: Vec::new(),
+            related_ids: Vec::new(),
         };
 
-        // Direct match
         assert!(entry.is_relevant_to("System.Core"));
-        // Hierarchy match (child)
         assert!(entry.is_relevant_to("System.Core.UI"));
-        // Hierarchy match (parent)
         assert!(entry.is_relevant_to("System"));
-        // Context match
         assert!(entry.is_relevant_to("api"));
-        // No match
         assert!(!entry.is_relevant_to("Database"));
     }
 
@@ -351,6 +672,7 @@ mod tests {
         let path = dir.path().join("memory.json");
         let mut memory = AgenticMemory::default();
         memory.add_learning(LearningEntry {
+            id: "replace-test".to_string(),
             timestamp: Utc::now(),
             context: "Short".to_string(),
             hypothesis: "H".to_string(),
@@ -358,6 +680,8 @@ mod tests {
             reason: None,
             guardrail_advice: "G".to_string(),
             affected_elements: vec![],
+            tags: Vec::new(),
+            related_ids: Vec::new(),
         });
 
         std::fs::write(&path, "{".repeat(4096)).unwrap();
@@ -367,5 +691,24 @@ mod tests {
         let loaded = AgenticMemory::load_from_path(&path).unwrap();
         assert_eq!(loaded.learnings.len(), 1);
         assert_eq!(loaded.learnings[0].context, "Short");
+    }
+
+    #[test]
+    fn test_backward_compatible_deserialization() {
+        let legacy_json = r#"{
+            "learnings": [{
+                "timestamp": "2026-01-01T00:00:00Z",
+                "context": "Legacy entry",
+                "hypothesis": "Old format",
+                "outcome": "failed",
+                "reason": null,
+                "guardrail_advice": "Upgrade",
+                "affected_elements": ["X"]
+            }]
+        }"#;
+        let memory: AgenticMemory = serde_json::from_str(legacy_json).unwrap();
+        assert_eq!(memory.learnings.len(), 1);
+        assert!(memory.learnings[0].tags.is_empty());
+        assert!(memory.learnings[0].related_ids.is_empty());
     }
 }

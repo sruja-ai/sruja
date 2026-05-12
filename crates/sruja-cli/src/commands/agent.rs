@@ -1,6 +1,7 @@
 use crate::commands::CliError;
 use crate::utils::colors;
 use sruja_agent::{AgenticMemory, ExperimentOutcome, LearningEntry};
+use std::collections::HashSet;
 use std::path::Path;
 
 /// Displays the history of architectural learnings and guardrails recorded in agentic memory.
@@ -103,6 +104,7 @@ pub async fn agent_record(
         .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
 
     memory.add_learning(LearningEntry {
+        id: String::new(),
         timestamp: chrono::Utc::now(),
         context: context.to_string(),
         hypothesis: hypothesis.to_string(),
@@ -110,6 +112,8 @@ pub async fn agent_record(
         reason: reason.map(|s| s.to_string()),
         guardrail_advice: guardrail.to_string(),
         affected_elements,
+        tags: Vec::new(),
+        related_ids: Vec::new(),
     });
 
     memory
@@ -143,4 +147,152 @@ pub async fn agent_clear(repo: &str, force: bool) -> Result<(), CliError> {
         .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
     println!("🗑️  Agentic memory cleared.");
     Ok(())
+}
+
+/// Displays thematic clusters and tags from Zettelkasten-linked agentic memory.
+pub async fn agent_clusters(
+    repo: &str,
+    entry_id: Option<&str>,
+    tag: Option<&str>,
+    format: &str,
+) -> Result<(), CliError> {
+    let memory = AgenticMemory::load(Path::new(repo))
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+
+    if let Some(eid) = entry_id {
+        let cluster = memory.find_cluster(eid);
+        if format == "json" {
+            println!("{}", serde_json::to_string_pretty(&cluster)?);
+        } else {
+            println!(
+                "{}",
+                colors::style(&format!("Cluster for entry: {}", eid)).bold()
+            );
+            if cluster.is_empty() {
+                println!("No cluster found for entry ID '{}'.", eid);
+            } else {
+                for entry in &cluster {
+                    print_learning_summary(entry);
+                }
+            }
+        }
+        return Ok(());
+    }
+
+    if let Some(t) = tag {
+        let entries = memory.find_by_tag(t);
+        if format == "json" {
+            println!("{}", serde_json::to_string_pretty(&entries)?);
+        } else {
+            println!(
+                "{}",
+                colors::style(&format!("Entries tagged '{}'", t)).bold()
+            );
+            if entries.is_empty() {
+                println!("No entries found for tag '{}'.", t);
+            } else {
+                for entry in &entries {
+                    print_learning_summary(entry);
+                }
+            }
+        }
+        return Ok(());
+    }
+
+    // Default: show all tags and cluster overview
+    let all_tags = memory.all_tags();
+
+    if format == "json" {
+        let mut clusters = Vec::new();
+        let mut visited: HashSet<String> = HashSet::new();
+        for entry in &memory.learnings {
+            if visited.contains(&entry.id) {
+                continue;
+            }
+            let cluster = memory.find_cluster(&entry.id);
+            let ids: Vec<String> = cluster.iter().map(|e| e.id.clone()).collect();
+            for id in &ids {
+                visited.insert(id.clone());
+            }
+            clusters.push(serde_json::json!({
+                "root_id": entry.id,
+                "size": cluster.len(),
+                "entry_ids": ids,
+                "tags": cluster.iter().flat_map(|e| e.tags.clone()).collect::<HashSet<_>>(),
+            }));
+        }
+        let output = serde_json::json!({
+            "total_entries": memory.learnings.len(),
+            "total_tags": all_tags.len(),
+            "tags": all_tags,
+            "clusters": clusters,
+        });
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    } else {
+        println!(
+            "{}",
+            colors::style("Agentic Memory: Clusters & Tags").bold()
+        );
+        println!("{}", colors::dim("────────────────────────────────"));
+        println!(
+            "  Entries: {}  Tags: {}",
+            memory.learnings.len(),
+            all_tags.len()
+        );
+
+        if !all_tags.is_empty() {
+            println!("\n{}", colors::style("Tags:").bold());
+            for t in &all_tags {
+                let count = memory.find_by_tag(t).len();
+                println!("  {} ({})", colors::info(t), count);
+            }
+        }
+
+        // Show clusters
+        let mut visited: HashSet<String> = HashSet::new();
+        let mut cluster_idx = 0;
+        for entry in &memory.learnings {
+            if visited.contains(&entry.id) {
+                continue;
+            }
+            let cluster = memory.find_cluster(&entry.id);
+            let ids: Vec<String> = cluster.iter().map(|e| e.id.clone()).collect();
+            for id in &ids {
+                visited.insert(id.clone());
+            }
+            cluster_idx += 1;
+            println!(
+                "\n{} ({} entries)",
+                colors::style(&format!("Cluster #{}", cluster_idx)).bold(),
+                cluster.len()
+            );
+            for entry in &cluster {
+                print_learning_summary(entry);
+            }
+        }
+
+        if cluster_idx == 0 {
+            println!("\nNo learnings recorded yet.");
+        }
+    }
+
+    Ok(())
+}
+
+fn print_learning_summary(entry: &LearningEntry) {
+    let outcome_str = match entry.outcome {
+        ExperimentOutcome::Success => colors::success("SUCCESS"),
+        ExperimentOutcome::Failed => colors::error("FAILED"),
+    };
+    let short_id: String = entry.id.chars().take(12).collect();
+    println!(
+        "  [{}] {} - {} | {}",
+        short_id,
+        entry.timestamp.format("%Y-%m-%d"),
+        outcome_str,
+        colors::dim(&entry.context),
+    );
+    if !entry.tags.is_empty() {
+        println!("    tags: {}", entry.tags.join(", "));
+    }
 }

@@ -738,6 +738,46 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_bm25_search",
+            "title": "Sruja BM25 Search",
+            "description": "Search ingested context documents (.sruja/context/) using BM25 keyword retrieval. Best for exact terms, acronyms, API identifiers, and error codes that embedding search may miss.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "query": { "type": "string", "description": "Search query (keywords, terms, identifiers)" },
+                    "max_results": { "type": "integer", "description": "Maximum results to return (default: 5)" }
+                },
+                "required": ["query"]
+            }
+        }),
+        json!({
+            "name": "sruja_hybrid_query",
+            "title": "Sruja Hybrid Query",
+            "description": "Query the architecture using Adaptive Hybrid Retrieval. Automatically classifies query complexity (structural/relational/conceptual) and routes to the optimal retrieval strategy (graph-only, semantic-only, or semantic+graph). Returns the strategy used alongside results.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "query": { "type": "string", "description": "Natural language query about the architecture" }
+                },
+                "required": ["query"]
+            }
+        }),
+        json!({
+            "name": "sruja_memory_clusters",
+            "title": "Sruja Memory Clusters",
+            "description": "View thematic clusters and tags from Zettelkasten-linked agentic memory. Shows how learnings relate to each other. Can filter by entry ID (for a specific cluster) or tag.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "entry_id": { "type": "string", "description": "Optional entry ID to show its cluster" },
+                    "tag": { "type": "string", "description": "Optional tag to filter entries by" }
+                }
+            }
+        }),
+        json!({
             "name": "sruja_agent_run",
             "title": "Sruja Agent Run",
             "description": "Run Sruja's agent loop (observe→plan→optional apply→verify) and return structured JSON output.",
@@ -948,6 +988,7 @@ async fn run_tool(
                 enrich_timeout_ms,
                 enrich_max_bytes,
                 continue_on_error,
+                trajectories: None,
             })
             .await?;
             Ok(text)
@@ -1518,6 +1559,7 @@ async fn run_tool(
             let mut memory = AgenticMemory::load(Path::new(&repo))
                 .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
             memory.add_learning(LearningEntry {
+                id: String::new(),
                 timestamp: chrono::Utc::now(),
                 context,
                 hypothesis,
@@ -1525,6 +1567,8 @@ async fn run_tool(
                 reason,
                 guardrail_advice,
                 affected_elements,
+                tags: Vec::new(),
+                related_ids: Vec::new(),
             });
             memory
                 .save(Path::new(&repo))
@@ -1967,87 +2011,114 @@ async fn run_tool(
                 .and_then(|v| v.as_u64())
                 .unwrap_or(20000) as usize;
 
-            let graph = get_or_scan_graph(graph_cache, &repo).await?;
-
-            // 1. Semantic Search matching elements
+            // Adaptive Hybrid Retrieval: single graph load for both classification and metadata
+            let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
+            let complexity = sruja_graph::classify_query(query, &kg);
             let vector_path = std::path::Path::new(&repo)
                 .join(".sruja")
                 .join("vectors.json");
-            let results = if vector_path.exists() {
-                let index_json = tokio::fs::read_to_string(&vector_path).await?;
-                let index: sruja_export::vector::VectorIndex = serde_json::from_str(&index_json)?;
-                let mut searcher = sruja_export::vector::SemanticSearcher::new().map_err(|e| {
-                    CliError::Io(std::io::Error::other(format!(
-                        "Failed to init searcher: {}",
-                        e
-                    )))
-                })?;
-                searcher.search(&index, query, 3).unwrap_or_default()
-            } else {
-                Vec::new()
+            let has_semantic_index = vector_path.exists();
+            let strategy = sruja_graph::select_strategy(complexity, has_semantic_index);
+
+            let semantic_results = match strategy {
+                sruja_graph::RetrievalStrategy::GraphOnly => Vec::new(),
+                _ => {
+                    if has_semantic_index {
+                        let index_json = tokio::fs::read_to_string(&vector_path).await?;
+                        let index: sruja_export::vector::VectorIndex =
+                            serde_json::from_str(&index_json)?;
+                        let mut searcher =
+                            sruja_export::vector::SemanticSearcher::new().map_err(|e| {
+                                CliError::Io(std::io::Error::other(format!(
+                                    "Failed to init searcher: {}",
+                                    e
+                                )))
+                            })?;
+                        searcher.search(&index, query, 5).unwrap_or_default()
+                    } else {
+                        Vec::new()
+                    }
+                }
             };
 
-            // 2. Gather matched nodes & neighbors & relations
+            let hybrid = sruja_graph::execute_hybrid(
+                &kg,
+                query,
+                semantic_results
+                    .iter()
+                    .map(|(id, score)| sruja_graph::SemanticCandidate {
+                        element_id: id.clone(),
+                        score: *score,
+                        label: None,
+                    })
+                    .collect(),
+            );
+
             let mut matched_nodes = Vec::new();
             let mut relations = Vec::new();
             let mut seen_nodes = std::collections::HashSet::new();
 
-            for (id, score) in results {
-                if let Some(node) = graph.nodes.iter().find(|n| n.id == id) {
-                    matched_nodes.push(json!({
+            let push_kg_node =
+                |node: &sruja_graph::ArchitectureNode, score: f32, matched: &mut Vec<Value>| {
+                    matched.push(json!({
                         "id": node.id,
                         "label": node.label,
                         "kind": node.kind.as_str(),
                         "score": score,
-                        "description": node.metadata.get("description").cloned()
+                        "description": node.description.as_deref()
                     }));
-                    seen_nodes.insert(node.id.clone());
+                };
 
-                    // Neighbors
-                    let radius = graph.blast_radius(&node.id, 1);
-                    for u in radius.upstream {
-                        if seen_nodes.insert(u.id.clone()) {
-                            if let Some(unode) = graph.nodes.iter().find(|n| n.id == u.id) {
-                                matched_nodes.push(json!({
-                                    "id": unode.id,
-                                    "label": unode.label,
-                                    "kind": unode.kind.as_str(),
-                                    "score": 0.0,
-                                    "description": unode.metadata.get("description").cloned()
-                                }));
-                            }
-                        }
-                    }
-                    for d in radius.downstream {
-                        if seen_nodes.insert(d.id.clone()) {
-                            if let Some(dnode) = graph.nodes.iter().find(|n| n.id == d.id) {
-                                matched_nodes.push(json!({
-                                    "id": dnode.id,
-                                    "label": dnode.label,
-                                    "kind": dnode.kind.as_str(),
-                                    "score": 0.0,
-                                    "description": dnode.metadata.get("description").cloned()
-                                }));
-                            }
+            for candidate in &hybrid.semantic_candidates {
+                if let Some(node) = kg.nodes.get(&candidate.element_id) {
+                    push_kg_node(node, candidate.score, &mut matched_nodes);
+                    seen_nodes.insert(node.id.clone());
+                }
+            }
+
+            if let Some(ref gr) = hybrid.graph_result {
+                for ev in &gr.evidence {
+                    if seen_nodes.insert(ev.reference.clone()) {
+                        if let Some(node) = kg.nodes.get(&ev.reference) {
+                            push_kg_node(node, 1.0, &mut matched_nodes);
                         }
                     }
                 }
             }
 
-            // Find any relationships between all seen nodes
-            for edge in &graph.edges {
+            // 1-depth neighbor expansion via KnowledgeGraph edges
+            let seed_ids: Vec<String> = seen_nodes.iter().cloned().collect();
+            for seed_id in &seed_ids {
+                for edge in kg.get_edges_from(seed_id) {
+                    if seen_nodes.insert(edge.target.clone()) {
+                        if let Some(node) = kg.nodes.get(&edge.target) {
+                            push_kg_node(node, 0.0, &mut matched_nodes);
+                        }
+                    }
+                }
+                for edge in kg.get_edges_to(seed_id) {
+                    if seen_nodes.insert(edge.source.clone()) {
+                        if let Some(node) = kg.nodes.get(&edge.source) {
+                            push_kg_node(node, 0.0, &mut matched_nodes);
+                        }
+                    }
+                }
+            }
+
+            for edge in &kg.edges {
                 if seen_nodes.contains(&edge.source) && seen_nodes.contains(&edge.target) {
                     relations.push(json!({
                         "source": edge.source,
                         "target": edge.target,
-                        "kind": edge.kind.as_str(),
-                        "confidence": edge.confidence
+                        "kind": edge.kind.as_str()
                     }));
                 }
             }
 
             let grounded = json!({
                 "query": query,
+                "complexity": format!("{:?}", complexity),
+                "strategy": format!("{:?}", strategy),
                 "matched_nodes": matched_nodes,
                 "relationships": relations
             });
@@ -2265,6 +2336,128 @@ async fn run_tool(
             });
 
             Ok(sruja_intent::format_critique_json(&report))
+        }
+        "sruja_bm25_search" => {
+            let query = arguments
+                .get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing query"))?;
+            let cfg_default = crate::integrations::load_repo_config(Path::new(&repo))
+                .and_then(|c| c.context_engineering.bm25_max_results_mcp)
+                .unwrap_or(5);
+            let max_results = arguments
+                .get("max_results")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(cfg_default as u64) as usize;
+
+            let index = sruja_graph::SparseIndex::build(Path::new(&repo));
+            let hits = index.search(query, max_results);
+
+            let out = json!({
+                "query": query,
+                "doc_count": index.doc_count(),
+                "results": hits.iter().map(|h| json!({
+                    "path": h.path,
+                    "title": h.title,
+                    "category": h.category,
+                    "score": h.score,
+                    "matched_terms": h.matched_terms,
+                    "excerpt": h.excerpt,
+                    "linked_elements": h.linked_elements,
+                })).collect::<Vec<_>>(),
+            });
+            Ok(serde_json::to_string_pretty(&out)?)
+        }
+        "sruja_hybrid_query" => {
+            let query = arguments
+                .get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing query"))?;
+
+            let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
+            let complexity = sruja_graph::classify_query(query, &kg);
+            let vector_path = std::path::Path::new(&repo)
+                .join(".sruja")
+                .join("vectors.json");
+            let has_semantic = vector_path.exists();
+            let strategy = sruja_graph::select_strategy(complexity, has_semantic);
+
+            let semantic_candidates = match strategy {
+                sruja_graph::RetrievalStrategy::GraphOnly => Vec::new(),
+                _ => {
+                    if has_semantic {
+                        let index_json = tokio::fs::read_to_string(&vector_path).await?;
+                        let index: sruja_export::vector::VectorIndex =
+                            serde_json::from_str(&index_json)?;
+                        let mut searcher =
+                            sruja_export::vector::SemanticSearcher::new().map_err(|e| {
+                                CliError::Io(std::io::Error::other(format!(
+                                    "Failed to init searcher: {}",
+                                    e
+                                )))
+                            })?;
+                        searcher
+                            .search(&index, query, 5)
+                            .unwrap_or_default()
+                            .into_iter()
+                            .map(|(id, score)| sruja_graph::SemanticCandidate {
+                                element_id: id,
+                                score,
+                                label: None,
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    }
+                }
+            };
+
+            let result = sruja_graph::execute_hybrid(&kg, query, semantic_candidates);
+            Ok(serde_json::to_string_pretty(&result)?)
+        }
+        "sruja_memory_clusters" => {
+            let entry_id = arguments.get("entry_id").and_then(|v| v.as_str());
+            let tag = arguments.get("tag").and_then(|v| v.as_str());
+
+            let memory = AgenticMemory::load(Path::new(&repo))
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+
+            if let Some(eid) = entry_id {
+                let cluster = memory.find_cluster(eid);
+                return Ok(serde_json::to_string_pretty(&cluster)?);
+            }
+
+            if let Some(t) = tag {
+                let entries = memory.find_by_tag(t);
+                return Ok(serde_json::to_string_pretty(&entries)?);
+            }
+
+            let all_tags = memory.all_tags();
+            let mut clusters = Vec::new();
+            let mut visited = std::collections::HashSet::new();
+            for entry in &memory.learnings {
+                if visited.contains(&entry.id) {
+                    continue;
+                }
+                let cluster = memory.find_cluster(&entry.id);
+                let ids: Vec<String> = cluster.iter().map(|e| e.id.clone()).collect();
+                for id in &ids {
+                    visited.insert(id.clone());
+                }
+                clusters.push(json!({
+                    "root_id": entry.id,
+                    "size": cluster.len(),
+                    "entry_ids": ids,
+                }));
+            }
+
+            let out = json!({
+                "total_entries": memory.learnings.len(),
+                "total_tags": all_tags.len(),
+                "tags": all_tags,
+                "clusters": clusters,
+            });
+            Ok(serde_json::to_string_pretty(&out)?)
         }
         _ => Err(CliError::validation(format!("Unknown tool: {name}"))),
     }

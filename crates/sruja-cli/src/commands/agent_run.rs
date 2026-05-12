@@ -58,6 +58,7 @@ pub struct AgentRunOptions<'a> {
     pub enrich_timeout_ms: u64,
     pub enrich_max_bytes: usize,
     pub continue_on_error: bool,
+    pub trajectories: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -132,6 +133,97 @@ struct AgentApplyOutput {
     observations: Vec<StepObservation>,
     verification_results: Vec<StepObservation>,
     memory_recorded: Vec<String>,
+}
+
+/// Rolling summary compression for agent observation streams.
+///
+/// When accumulated step output exceeds `TOKEN_BUDGET_THRESHOLD`, older
+/// observations are compressed to decision-only summaries: status, exit code,
+/// and the first line of stderr (if error). This prevents context bloat in
+/// long-running agent loops while preserving the signal needed for reasoning.
+mod observation_compression {
+    use super::StepObservation;
+
+    pub const DEFAULT_TOKEN_BUDGET_THRESHOLD: usize = 8000;
+    const CHARS_PER_TOKEN: usize = 4;
+    pub const DEFAULT_MAX_COMPRESSED_OUTPUT_LEN: usize = 120;
+    const MAX_COMPRESSED_OUTPUT_LEN: usize = DEFAULT_MAX_COMPRESSED_OUTPUT_LEN;
+
+    fn estimate_tokens(observations: &[StepObservation]) -> usize {
+        observations
+            .iter()
+            .map(|o| {
+                (o.step_id.len() + o.status.len() + o.stdout.len() + o.stderr.len())
+                    / CHARS_PER_TOKEN
+            })
+            .sum()
+    }
+
+    fn compress_single(obs: &StepObservation) -> StepObservation {
+        let compressed_stdout = if obs.stdout.len() > MAX_COMPRESSED_OUTPUT_LEN {
+            let first_line = obs.stdout.lines().next().unwrap_or("");
+            if first_line.len() > MAX_COMPRESSED_OUTPUT_LEN {
+                format!("{}...", &first_line[..MAX_COMPRESSED_OUTPUT_LEN])
+            } else {
+                format!("{} [+{} chars compressed]", first_line, obs.stdout.len())
+            }
+        } else {
+            obs.stdout.clone()
+        };
+
+        let compressed_stderr = if obs.stderr.len() > MAX_COMPRESSED_OUTPUT_LEN {
+            let first_line = obs.stderr.lines().next().unwrap_or("");
+            if first_line.len() > MAX_COMPRESSED_OUTPUT_LEN {
+                format!("{}...", &first_line[..MAX_COMPRESSED_OUTPUT_LEN])
+            } else {
+                format!("{} [+{} chars compressed]", first_line, obs.stderr.len())
+            }
+        } else {
+            obs.stderr.clone()
+        };
+
+        StepObservation {
+            step_id: obs.step_id.clone(),
+            status: obs.status.clone(),
+            exit_code: obs.exit_code,
+            stdout: compressed_stdout,
+            stderr: compressed_stderr,
+            elapsed_ms: obs.elapsed_ms,
+        }
+    }
+
+    /// Compresses older observations when total token count exceeds the budget.
+    ///
+    /// The most recent `keep_recent` observations are preserved verbatim.
+    /// Older observations are reduced to decision-only summaries.
+    #[cfg(test)]
+    pub fn compress_if_needed(observations: &mut [StepObservation], keep_recent: usize) {
+        compress_if_needed_with_threshold(
+            observations,
+            keep_recent,
+            DEFAULT_TOKEN_BUDGET_THRESHOLD,
+        );
+    }
+
+    pub fn compress_if_needed_with_threshold(
+        observations: &mut [StepObservation],
+        keep_recent: usize,
+        threshold: usize,
+    ) {
+        if estimate_tokens(observations) <= threshold {
+            return;
+        }
+
+        let total = observations.len();
+        if total <= keep_recent {
+            return;
+        }
+
+        let compress_count = total - keep_recent;
+        for obs in observations.iter_mut().take(compress_count) {
+            *obs = compress_single(obs);
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -880,6 +972,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             }
         },
         AgentMode::Apply => {
+            let apply_start = std::time::Instant::now();
             // v1 apply: run verification steps only (safe default),
             // record learnings if verification fails.
             let mut verification_results = Vec::new();
@@ -922,7 +1015,22 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 verification_results.push(obs);
             }
 
-            // Record learning if any verification result errored.
+            // Compress older observations to prevent context bloat in long loops.
+            {
+                let ce_cfg = load_repo_config(repo_path)
+                    .map(|c| c.context_engineering)
+                    .unwrap_or_default();
+                let threshold = ce_cfg
+                    .compression_token_threshold
+                    .unwrap_or(observation_compression::DEFAULT_TOKEN_BUDGET_THRESHOLD);
+                let keep = ce_cfg.compression_keep_recent.unwrap_or(3);
+                observation_compression::compress_if_needed_with_threshold(
+                    &mut verification_results,
+                    keep,
+                    threshold,
+                );
+            }
+
             if let Some(first_err) = verification_results.iter().find(|o| o.status == "error") {
                 let context = format!("agent run apply: {}", plan.goal);
                 let hypothesis = format!("Verification step failed: {}", first_err.step_id);
@@ -943,6 +1051,66 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 )
                 .await?;
                 memory_recorded.push(hypothesis);
+            }
+
+            // MaTTS self-contrast: distill learnings from trajectory outcomes.
+            // Requires >= 2 trajectories for meaningful contrast. Currently only the
+            // primary trajectory is available; true parallel sandboxes require wiring
+            // to `sruja sandbox create` in a future iteration.
+            let traj_count = options
+                .trajectories
+                .or_else(|| load_repo_config(repo_path).and_then(|c| c.agent.default_trajectories));
+            if let Some(n) = traj_count {
+                if n >= 2 {
+                    let elapsed = apply_start.elapsed().as_millis();
+                    let all_ok = verification_results.iter().all(|o| o.status == "ok");
+                    let last_exit = verification_results.last().and_then(|o| o.exit_code);
+                    let summary = verification_results
+                        .last()
+                        .map(|o| {
+                            format!(
+                                "[{}] {} exit={}",
+                                o.step_id,
+                                o.status,
+                                o.exit_code
+                                    .map(|c| c.to_string())
+                                    .unwrap_or_else(|| "?".to_string())
+                            )
+                        })
+                        .unwrap_or_default();
+                    let trajectory = sruja_agent::TrajectoryOutcome {
+                        trajectory_id: "primary".to_string(),
+                        goal: plan.goal.clone(),
+                        status: if all_ok {
+                            sruja_agent::TrajectoryStatus::Success
+                        } else {
+                            sruja_agent::TrajectoryStatus::Failed
+                        },
+                        exit_code: last_exit,
+                        summary,
+                        elapsed_ms: elapsed,
+                        affected_elements: plan
+                            .target
+                            .resolved_element_id
+                            .iter()
+                            .cloned()
+                            .collect(),
+                    };
+                    // TODO: spawn N-1 additional sandbox trajectories via `sruja sandbox`
+                    // and collect their outcomes here. For now we distill from the single
+                    // primary trajectory, which produces non-contrast learnings (all-success
+                    // or all-failure summary). True MaTTS contrast requires >= 2 divergent
+                    // outcomes.
+                    let runner = sruja_agent::TrajectoryRunner::new(n);
+                    let contrast = runner.distill_from_contrast(&[trajectory]);
+                    let mut memory = sruja_agent::AgenticMemory::load(repo_path)
+                        .unwrap_or_else(|_| sruja_agent::AgenticMemory::default());
+                    sruja_agent::TrajectoryRunner::record_learnings(&contrast, &mut memory);
+                    let _ = memory.save(repo_path);
+                    for entry in &contrast.distilled_learnings {
+                        memory_recorded.push(format!("MaTTS: {}", entry.guardrail_advice));
+                    }
+                }
             }
 
             let out = AgentApplyOutput {
@@ -967,4 +1135,71 @@ pub async fn agent_run(options: AgentRunOptions<'_>) -> Result<(), CliError> {
     let s = agent_run_to_string(options).await?;
     println!("{s}");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::observation_compression;
+    use super::StepObservation;
+
+    fn make_obs(id: &str, stdout_len: usize) -> StepObservation {
+        StepObservation {
+            step_id: id.to_string(),
+            status: "ok".to_string(),
+            exit_code: Some(0),
+            stdout: "x".repeat(stdout_len),
+            stderr: String::new(),
+            elapsed_ms: 100,
+        }
+    }
+
+    #[test]
+    fn compress_noop_under_threshold() {
+        let mut obs = vec![make_obs("step_1", 100), make_obs("step_2", 100)];
+        let original_len: usize = obs.iter().map(|o| o.stdout.len()).sum();
+        observation_compression::compress_if_needed(&mut obs, 1);
+        let after_len: usize = obs.iter().map(|o| o.stdout.len()).sum();
+        assert_eq!(
+            original_len, after_len,
+            "Should not compress under threshold"
+        );
+    }
+
+    #[test]
+    fn compress_reduces_older_observations() {
+        let mut obs: Vec<StepObservation> = (0..10)
+            .map(|i| make_obs(&format!("step_{}", i), 4000))
+            .collect();
+        observation_compression::compress_if_needed(&mut obs, 2);
+
+        for i in 0..8 {
+            assert!(
+                obs[i].stdout.len() < 4000,
+                "Older observation {} should be compressed, got len {}",
+                i,
+                obs[i].stdout.len()
+            );
+        }
+        assert_eq!(obs[8].stdout.len(), 4000, "Recent observations preserved");
+        assert_eq!(obs[9].stdout.len(), 4000, "Recent observations preserved");
+    }
+
+    #[test]
+    fn compress_preserves_status_and_exit_code() {
+        let mut obs = vec![
+            StepObservation {
+                step_id: "failing".to_string(),
+                status: "error".to_string(),
+                exit_code: Some(1),
+                stdout: "x".repeat(5000),
+                stderr: "error: something failed\ndetails...".to_string(),
+                elapsed_ms: 200,
+            },
+            make_obs("recent", 100),
+        ];
+        observation_compression::compress_if_needed(&mut obs, 1);
+        assert_eq!(obs[0].status, "error");
+        assert_eq!(obs[0].exit_code, Some(1));
+        assert_eq!(obs[0].step_id, "failing");
+    }
 }
