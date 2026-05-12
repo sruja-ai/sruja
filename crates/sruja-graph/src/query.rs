@@ -1346,4 +1346,225 @@ mod tests {
         assert!(result.answer.contains("API Service"));
         assert!(result.answer.contains("service"));
     }
+
+    #[test]
+    fn test_query_why_llmguided_basic() {
+        let mut graph = create_test_graph();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api_to_db".to_string(),
+                source: "api".to_string(),
+                target: "db".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("SQL".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+
+        let result = graph.query_why_llmguided("api", 3).unwrap();
+        assert_eq!(result.question, "api");
+        assert_eq!(result.target_id, "api");
+        assert_eq!(result.target_label, "API Service");
+        assert!(!result.steps.is_empty());
+        assert!(result.confidence > 0.0);
+        let step = &result.steps[0];
+        assert!(["upstream", "downstream"].contains(&step.direction.as_str()));
+    }
+
+    #[test]
+    fn test_query_why_llmguided_multi_hop() {
+        let mut graph = KnowledgeGraph::new();
+        graph
+            .add_node(ArchitectureNode {
+                id: "frontend".to_string(),
+                kind: NodeKind::Frontend,
+                label: "Web Frontend".to_string(),
+                technology: Some("React".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "api".to_string(),
+                kind: NodeKind::Service,
+                label: "API Service".to_string(),
+                technology: Some("Node.js".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "db".to_string(),
+                kind: NodeKind::Database,
+                label: "PostgreSQL".to_string(),
+                technology: Some("PostgreSQL".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "fe_to_api".to_string(),
+                source: "frontend".to_string(),
+                target: "api".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("HTTPS".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api_to_db".to_string(),
+                source: "api".to_string(),
+                target: "db".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("SQL".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+
+        let result = graph.query_why_llmguided("frontend", 3).unwrap();
+        assert_eq!(result.target_id, "frontend");
+        assert!(!result.steps.is_empty());
+        let step_labels: Vec<&str> = result.steps.iter().map(|s| s.node_label.as_str()).collect();
+        assert!(step_labels.contains(&"API Service") || step_labels.contains(&"Web Frontend"));
+    }
+
+    #[test]
+    fn test_query_why_llmguided_branching_paths() {
+        let mut graph = KnowledgeGraph::new();
+        graph
+            .add_node(ArchitectureNode {
+                id: "api".to_string(),
+                kind: NodeKind::Service,
+                label: "API Service".to_string(),
+                technology: Some("Node.js".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "db".to_string(),
+                kind: NodeKind::Database,
+                label: "PostgreSQL".to_string(),
+                technology: Some("PostgreSQL".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "cache".to_string(),
+                kind: NodeKind::Database,
+                label: "Redis Cache".to_string(),
+                technology: Some("Redis".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api_to_db".to_string(),
+                source: "api".to_string(),
+                target: "db".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("SQL".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api_to_cache".to_string(),
+                source: "api".to_string(),
+                target: "cache".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("GET/SET".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+
+        let result = graph.query_why_llmguided("api", 2).unwrap();
+        assert_eq!(result.target_id, "api");
+        let downstream_labels: Vec<&str> = result
+            .steps
+            .iter()
+            .filter(|s| s.direction == "downstream")
+            .map(|s| s.node_label.as_str())
+            .collect();
+        assert!(
+            downstream_labels.contains(&"PostgreSQL") || downstream_labels.contains(&"Redis Cache")
+        );
+    }
+
+    #[test]
+    fn test_query_why_llmguided_orphan_node() {
+        let graph = create_test_graph();
+        let result = graph.query_why_llmguided("db", 2).unwrap();
+        assert_eq!(result.target_id, "db");
+        assert!(result.steps.is_empty());
+        assert!(result.summary.contains("isolated") || result.summary.contains("no relevant"));
+        assert_eq!(result.confidence, 0.3);
+    }
+
+    #[test]
+    fn test_query_why_llmguided_upstream_and_downstream() {
+        let mut graph = KnowledgeGraph::new();
+        graph
+            .add_node(ArchitectureNode {
+                id: "upstream_svc".to_string(),
+                kind: NodeKind::Service,
+                label: "Auth Service".to_string(),
+                technology: Some("Go".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "api".to_string(),
+                kind: NodeKind::Service,
+                label: "API Service".to_string(),
+                technology: Some("Node.js".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_node(ArchitectureNode {
+                id: "db".to_string(),
+                kind: NodeKind::Database,
+                label: "PostgreSQL".to_string(),
+                technology: Some("PostgreSQL".to_string()),
+                ..ArchitectureNode::default()
+            })
+            .unwrap();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "auth_to_api".to_string(),
+                source: "upstream_svc".to_string(),
+                target: "api".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("gRPC".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+        graph
+            .add_edge(ArchitectureEdge {
+                id: "api_to_db".to_string(),
+                source: "api".to_string(),
+                target: "db".to_string(),
+                kind: EdgeKind::Calls,
+                label: Some("SQL".to_string()),
+                description: None,
+                source_ref: SourceReference::manual(),
+            })
+            .unwrap();
+
+        let result = graph.query_why_llmguided("api", 2).unwrap();
+        assert_eq!(result.target_id, "api");
+        let directions: std::collections::HashSet<&str> =
+            result.steps.iter().map(|s| s.direction.as_str()).collect();
+        assert!(directions.contains("upstream") || directions.contains("downstream"));
+    }
 }
