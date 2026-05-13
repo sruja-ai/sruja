@@ -46,6 +46,7 @@ pub mod kubernetes;
 pub mod openapi;
 pub mod proto;
 pub mod terraform;
+pub mod utils;
 
 use sruja_language::ast::SourceBinding;
 use std::cell::OnceCell;

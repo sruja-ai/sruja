@@ -1,5 +1,6 @@
 //! Extractor for OpenAPI / Swagger specifications.
 
+use crate::utils::yaml;
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
@@ -11,7 +12,7 @@ impl OpenApiExtractor {
         Self
     }
 
-    fn is_candidate(name: &str, ext: &str) -> bool {
+    pub(crate) fn is_candidate(name: &str, ext: &str) -> bool {
         if !matches!(ext, "yaml" | "yml" | "json") {
             return false;
         }
@@ -22,23 +23,14 @@ impl OpenApiExtractor {
     }
 
     fn has_openapi_content(content: &str) -> bool {
-        content.contains("openapi:")
-            || content.contains("\"openapi\":")
-            || content.contains("swagger:")
-            || content.contains("\"swagger\":")
+        yaml::has_markers(
+            content,
+            &["openapi:", "\"openapi\":", "swagger:", "\"swagger\":"],
+        )
     }
 
-    fn extract_title(content: &str) -> Option<String> {
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if let Some(rest) = trimmed.strip_prefix("title:") {
-                return Some(rest.trim().trim_matches('"').trim_matches('\'').to_string());
-            }
-            if let Some(rest) = trimmed.strip_prefix("\"title\":") {
-                return Some(rest.trim().trim_matches('"').trim_matches(',').to_string());
-            }
-        }
-        None
+    pub(crate) fn extract_title(content: &str) -> Option<String> {
+        yaml::extract_title_from_yaml(content, &["title:", "\"title\":", "'title':"])
     }
 }
 
@@ -82,5 +74,77 @@ impl Extractor for OpenApiExtractor {
             suggested_element,
             confidence: 0.8,
         }])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_candidate_yaml() {
+        assert!(OpenApiExtractor::is_candidate("openapi.yaml", "yaml"));
+        assert!(OpenApiExtractor::is_candidate("swagger.yaml", "yaml"));
+        assert!(OpenApiExtractor::is_candidate("api-spec.yaml", "yaml"));
+        assert!(OpenApiExtractor::is_candidate("api_spec.json", "json"));
+    }
+
+    #[test]
+    fn test_is_candidate_rejects_invalid_ext() {
+        assert!(!OpenApiExtractor::is_candidate("openapi.yaml", "txt"));
+        assert!(!OpenApiExtractor::is_candidate("openapi.yaml", "xml"));
+    }
+
+    #[test]
+    fn test_is_candidate_rejects_unrelated_names() {
+        assert!(!OpenApiExtractor::is_candidate("config.yaml", "yaml"));
+        assert!(!OpenApiExtractor::is_candidate("data.json", "json"));
+    }
+
+    #[test]
+    fn test_extract_title_simple() {
+        assert_eq!(
+            OpenApiExtractor::extract_title("title: My API\ninfo:\n  version: 1.0"),
+            Some("My API".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_title_quoted() {
+        assert_eq!(
+            OpenApiExtractor::extract_title("title: \"Quoted Title\""),
+            Some("Quoted Title".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_title_no_title() {
+        assert_eq!(OpenApiExtractor::extract_title("openapi: 3.0.0"), None);
+    }
+
+    #[test]
+    fn test_extract_title_empty() {
+        assert_eq!(OpenApiExtractor::extract_title(""), None);
+    }
+
+    #[test]
+    fn test_has_openapi_content_openapi() {
+        assert!(OpenApiExtractor::has_openapi_content(
+            "openapi: 3.0.0\ninfo:\n  title: Test"
+        ));
+    }
+
+    #[test]
+    fn test_has_openapi_content_swagger() {
+        assert!(OpenApiExtractor::has_openapi_content(
+            "swagger: 2.0\ninfo:\n  title: Test"
+        ));
+    }
+
+    #[test]
+    fn test_has_openapi_content_negative() {
+        assert!(!OpenApiExtractor::has_openapi_content(
+            "name: value\nversion: 1.0"
+        ));
     }
 }

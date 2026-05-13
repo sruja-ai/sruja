@@ -75,11 +75,11 @@ impl DependencyExtractor {
         Self
     }
 
-    fn is_source_code(ext: &str) -> bool {
+    pub(crate) fn is_source_code(ext: &str) -> bool {
         SOURCE_EXTENSIONS.contains(&ext)
     }
 
-    fn strip_suffix(token: &str) -> Option<String> {
+    pub(crate) fn strip_suffix(token: &str) -> Option<String> {
         for suffix in DEPENDENCY_SUFFIXES {
             if let Some(stripped) = token.strip_suffix(suffix) {
                 return Some(stripped.to_string());
@@ -88,11 +88,21 @@ impl DependencyExtractor {
         None
     }
 
-    fn is_config_token(token: &str) -> bool {
+    pub(crate) fn is_noise_prefix(token: &str) -> bool {
+        NOISE_PREFIXES.contains(&token)
+    }
+
+    pub(crate) fn is_config_token(token: &str) -> bool {
         token.len() > 3
             && token
                 .chars()
                 .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+    }
+
+    pub(crate) fn has_dependency_signal(content: &str) -> bool {
+        DEPENDENCY_SUFFIXES
+            .iter()
+            .any(|suffix| content.contains(suffix))
     }
 }
 
@@ -112,10 +122,7 @@ impl Extractor for DependencyExtractor {
             None => return Ok(Vec::new()),
         };
 
-        let has_signal = DEPENDENCY_SUFFIXES
-            .iter()
-            .any(|suffix| content.contains(suffix));
-        if !has_signal {
+        if !Self::has_dependency_signal(content) {
             return Ok(Vec::new());
         }
 
@@ -134,7 +141,7 @@ impl Extractor for DependencyExtractor {
                 }
 
                 if let Some(service_name_upper) = Self::strip_suffix(token) {
-                    if NOISE_PREFIXES.contains(&service_name_upper.as_str()) {
+                    if Self::is_noise_prefix(&service_name_upper) {
                         continue;
                     }
 
@@ -160,5 +167,75 @@ impl Extractor for DependencyExtractor {
         }
 
         Ok(results)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_source_code() {
+        assert!(DependencyExtractor::is_source_code("rs"));
+        assert!(DependencyExtractor::is_source_code("go"));
+        assert!(DependencyExtractor::is_source_code("ts"));
+        assert!(DependencyExtractor::is_source_code("py"));
+        assert!(DependencyExtractor::is_source_code("yaml"));
+        assert!(DependencyExtractor::is_source_code("env"));
+    }
+
+    #[test]
+    fn test_is_not_source_code() {
+        assert!(!DependencyExtractor::is_source_code("txt"));
+        assert!(!DependencyExtractor::is_source_code("md"));
+        assert!(!DependencyExtractor::is_source_code("png"));
+    }
+
+    #[test]
+    fn test_is_noise_prefix() {
+        assert!(DependencyExtractor::is_noise_prefix("BASE"));
+        assert!(DependencyExtractor::is_noise_prefix("DATABASE"));
+        assert!(DependencyExtractor::is_noise_prefix("REDIS"));
+        assert!(!DependencyExtractor::is_noise_prefix("PAYMENT"));
+        assert!(!DependencyExtractor::is_noise_prefix("USER"));
+    }
+
+    #[test]
+    fn test_is_config_token() {
+        assert!(DependencyExtractor::is_config_token("PAYMENT_SERVICE_URL"));
+        assert!(DependencyExtractor::is_config_token("USER_HOST_8080"));
+        assert!(DependencyExtractor::is_config_token("API_V2"));
+        assert!(!DependencyExtractor::is_config_token("lowercase"));
+        assert!(!DependencyExtractor::is_config_token("API"));
+        assert!(!DependencyExtractor::is_config_token("AB"));
+    }
+
+    #[test]
+    fn test_has_dependency_signal() {
+        assert!(DependencyExtractor::has_dependency_signal(
+            "PAYMENT_SERVICE_URL=https://api"
+        ));
+        assert!(DependencyExtractor::has_dependency_signal(
+            "USER_HOST=localhost"
+        ));
+        assert!(DependencyExtractor::has_dependency_signal(
+            "BASE_URL=https://example.com"
+        ));
+    }
+
+    #[test]
+    fn test_strip_suffix() {
+        assert_eq!(
+            DependencyExtractor::strip_suffix("PAYMENT_SERVICE_URL"),
+            Some("PAYMENT_SERVICE".to_string())
+        );
+        assert_eq!(
+            DependencyExtractor::strip_suffix("USER_HOST"),
+            Some("USER".to_string())
+        );
+        assert_eq!(
+            DependencyExtractor::strip_suffix("BASE_URL"),
+            Some("BASE".to_string())
+        );
     }
 }

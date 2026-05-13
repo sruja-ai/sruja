@@ -3,6 +3,7 @@
 //! Detects AsyncAPI specs in YAML/JSON format, identifying event-driven
 //! architectural components (channels, messages, servers).
 
+use crate::utils::yaml;
 use crate::{DiscoveredSource, ExtractError, Extractor, FileContext};
 use sruja_language::ast::{SourceBinding, SourceKind};
 
@@ -14,7 +15,7 @@ impl AsyncApiExtractor {
         Self
     }
 
-    fn is_candidate(name: &str, ext: &str) -> bool {
+    pub(crate) fn is_candidate(name: &str, ext: &str) -> bool {
         if !matches!(ext, "yaml" | "yml" | "json") {
             return false;
         }
@@ -22,32 +23,11 @@ impl AsyncApiExtractor {
     }
 
     fn has_asyncapi_content(content: &str) -> bool {
-        content.contains("asyncapi:")
-            || content.contains("\"asyncapi\":")
-            || content.contains("'asyncapi':")
+        yaml::has_markers(content, &["asyncapi:", "\"asyncapi\":", "'asyncapi':"])
     }
 
-    fn extract_title(content: &str) -> Option<String> {
-        let mut in_info = false;
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed == "info:" {
-                in_info = true;
-                continue;
-            }
-            if let Some(rest) = trimmed.strip_prefix("title:") {
-                if in_info {
-                    return Some(rest.trim().trim_matches('"').trim_matches('\'').to_string());
-                }
-            }
-            if in_info && !trimmed.is_empty() {
-                let indent = line.len() - line.trim_start().len();
-                if indent == 0 {
-                    in_info = false;
-                }
-            }
-        }
-        None
+    pub(crate) fn extract_title(content: &str) -> Option<String> {
+        yaml::extract_title_from_yaml(content, &["title:", "\"title\":", "'title':"])
     }
 }
 
@@ -91,5 +71,64 @@ impl Extractor for AsyncApiExtractor {
             suggested_element,
             confidence: 0.8,
         }])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_candidate_yaml() {
+        assert!(AsyncApiExtractor::is_candidate("asyncapi.yaml", "yaml"));
+        assert!(AsyncApiExtractor::is_candidate("async-api.yaml", "yaml"));
+        assert!(AsyncApiExtractor::is_candidate("async_api.json", "json"));
+    }
+
+    #[test]
+    fn test_is_candidate_rejects_invalid_ext() {
+        assert!(!AsyncApiExtractor::is_candidate("asyncapi.yaml", "txt"));
+        assert!(!AsyncApiExtractor::is_candidate("asyncapi.yaml", "xml"));
+    }
+
+    #[test]
+    fn test_is_candidate_rejects_unrelated_names() {
+        assert!(!AsyncApiExtractor::is_candidate("events.yaml", "yaml"));
+        assert!(!AsyncApiExtractor::is_candidate("messages.json", "json"));
+    }
+
+    #[test]
+    fn test_extract_title_simple() {
+        assert_eq!(
+            AsyncApiExtractor::extract_title("title: Order Events\ninfo:\n  version: 1.0"),
+            Some("Order Events".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_title_quoted() {
+        assert_eq!(
+            AsyncApiExtractor::extract_title("title: \"Event Service\""),
+            Some("Event Service".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_title_no_title() {
+        assert_eq!(AsyncApiExtractor::extract_title("asyncapi: 3.0.0"), None);
+    }
+
+    #[test]
+    fn test_has_asyncapi_content() {
+        assert!(AsyncApiExtractor::has_asyncapi_content(
+            "asyncapi: 3.0.0\ninfo:\n  title: Test"
+        ));
+    }
+
+    #[test]
+    fn test_has_asyncapi_content_negative() {
+        assert!(!AsyncApiExtractor::has_asyncapi_content(
+            "name: value\nversion: 1.0"
+        ));
     }
 }
