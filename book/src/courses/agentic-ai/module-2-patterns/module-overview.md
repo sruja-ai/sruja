@@ -22,3 +22,7 @@ Single-loop agents are powerful, but complex tasks often require structured patt
 
 1.  [The ReAct Pattern](./lesson-1)
 2.  [Multi-Agent Orchestration](./lesson-2)
+
+## See also
+
+- [Agentic orchestration patterns and Sruja](../../../../../docs/AGENTIC_ORCHESTRATION_AND_SRUJA.md) (repo doc): how industry patterns such as MCP grounding, shared state, and topology modeling relate to Sruja versus an in-product agent runtime.

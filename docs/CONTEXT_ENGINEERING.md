@@ -50,6 +50,8 @@ category: adr
 ### MCP (Model Context Protocol)
 Sruja provides an MCP server that exposes these context engineering capabilities directly to AI editors (Cursor, Trae, Windsurf, etc.).
 
+MCP is the **structured tooling** interface: it answers what grounded architecture data the session can retrieve, while the host application handles multi-step reasoning and any multi-agent routing. For a concise map from common agentic-orchestration literature (sequential pipelines, hierarchical coordinators, A2A, and so on) to Sruja’s role, see [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md).
+
 **Tools available:**
 - `sruja_get_context_score`: Repository-level AI-readiness.
 - `sruja_get_focus_briefing`: Task-scoped briefing.

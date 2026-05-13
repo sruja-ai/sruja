@@ -2,6 +2,8 @@
 
 Connect Sruja to your favorite AI agent (Cursor, Claude Desktop, etc.) to provide architecture-aware context.
 
+**Why MCP + Sruja instead of pasting the repo into the prompt?** Large, unstructured chat context degrades signal-to-noise and cost. Sruja keeps **reviewed architecture and relationships** outside the model window; the agent **pulls** compact, task-relevant facts through tools. That matches a **tool-use / grounding** layer while your editor remains the orchestrator. For how this relates to broader multi-agent topologies (supervisor, A2A, and so on), see [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md).
+
 ## 1. Prerequisites
 
 - [Rust](https://rustup.rs/) (to build Sruja)
