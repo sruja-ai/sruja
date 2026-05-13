@@ -52,7 +52,21 @@ sruja focus --file src/api/main.rs -r .
 
 # Get context for a specific component
 sruja focus --element-id PaymentService -r .
+
+# Optional: compare a git range to the scan graph (temporal context on the briefing)
+sruja focus --element-id MySystem.Api --base-ref main --head-ref HEAD -r .
+
+# Base only: head defaults to HEAD
+sruja focus --file src/api/main.rs --base-ref main -r .
 ```
+
+### Context lineage on disk
+
+Sruja also records **lightweight decision-style traces** for the repo (not a separate graph model—see [CONTEXT_ENGINEERING](../../../../../docs/CONTEXT_ENGINEERING.md#context-graphs-sruja-vs-industry-usage)):
+
+- **`.sruja/context_events.jsonl`** — append-only JSON lines when you run **`sruja intent check`**, **`sruja drift`** (with architecture compare), or **`sruja propose approve …`** (merged proposal). Useful for “what did we last check?” in CI or audits.
+- **`.sruja/agent_memory.json`** — structured learnings from agents (`sruja agent record` / MCP `sruja_record_learning`).
+- **`.sruja/agent/runs/<run_id>/facts_bundle.json`** — produced when an **agent apply** run finishes verification (replay bundle).
 
 Focus output includes:
 - **Blast radius**: What depends on this
@@ -151,7 +165,12 @@ This updates:
    sruja focus --element-id UserAPI -r .
    ```
 
-4. **Run daily sync:**
+4. **Optional — temporal focus for a PR-style range:**
+   ```bash
+   sruja focus --element-id UserAPI --base-ref main --head-ref HEAD -r .
+   ```
+
+5. **Run daily sync:**
    ```bash
    sruja daily -r .
    ```
@@ -160,7 +179,8 @@ This updates:
 
 - ✅ Generate AI-ready context using `sruja ai-context`
 - ✅ Measure architecture AI-readiness with `sruja context-score`
-- ✅ Use `sruja focus` for task-specific context
+- ✅ Use `sruja focus` for task-specific context (including optional **git-range** temporal context)
+- ✅ Know where **context lineage** artifacts live (`context_events.jsonl`, agent memory, agent run facts bundles)
 - ✅ Optimize architecture for better AI assistance
 
 ## Quiz: Test Your Understanding
@@ -185,6 +205,13 @@ A) Task-specific context including blast radius and design decisions
 B) Global system configuration
 C) Database schema
 D) Network topology
+
+### Q4: What does `.sruja/context_events.jsonl` capture?
+
+A) Raw git packfiles
+B) Append-only summaries of intent checks, drift runs, and merged proposals (with optional policy fingerprint)
+C) Your editor undo history
+D) npm lockfile metadata
 
 ## Next Steps
 

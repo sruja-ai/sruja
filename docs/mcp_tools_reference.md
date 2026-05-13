@@ -83,8 +83,12 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 
 | Tool | Summary |
 |------|---------|
-| `sruja_get_context_score` | AI-readiness score and breakdown. |
-| `sruja_get_focus_briefing` | Task-scoped briefing for file or element. |
+| `sruja_get_context_score` | AI-readiness score and breakdown; optional `format` (`text` / `json`). |
+| `sruja_get_focus_briefing` | Task-scoped briefing for `file` or `element_id`; optional `run_id`, `format`. Optional **`base_ref`** / **`head_ref`** add **temporal** context (git-range diff → scan components, architecture fingerprints at base vs working tree)—same semantics as `sruja focus --base-ref` / `--head-ref`. |
+| `sruja_get_context_events` | Read recent **append-only lineage** events from `.sruja/context_events.jsonl` (written on `intent check`, `drift`, and merged proposals). Args: optional `limit` (default 50), optional `kind` filter (`intent_check`, `drift`, or `proposal_merge`), optional `details_substring` filter. |
+| `sruja_get_agent_learnings` | Return **Agentic Memory** entries relevant to an **`element_id`** (guardrails / playbooks recorded via `sruja agent record` or MCP `sruja_record_learning`). |
+
+For how this relates to “context graph” terminology in industry writing versus Sruja’s governed graph, see [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md#context-graphs-sruja-vs-industry-usage).
 
 ### Contracts and behavior
 
@@ -97,7 +101,7 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 
 | Tool | Summary |
 |------|---------|
-| `sruja_memory_clusters` | Thematic clusters/tags from agentic memory (read). |
+| `sruja_memory_clusters` | Thematic clusters/tags from agentic memory (read). Complements **`sruja_get_agent_learnings`**, which filters by **element id**. |
 | `sruja_ai_scratchpad` | Read/append legacy scratchpad markdown (**mutating** on append). |
 | `sruja_sandbox` | Git worktree sandbox lifecycle (**mutating**). |
 | `sruja_record_learning` | Structured agentic memory entry (**mutating**). |
@@ -107,7 +111,7 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 | Tool | Summary |
 |------|---------|
 | `sruja_evaluate_proposal` | Context score plus optional gate command. |
-| `sruja_agent_run` | Observe→plan→optional apply agent loop. |
+| `sruja_agent_run` | Observe→plan→optional apply agent loop. On **apply**, also writes **`facts_bundle.json`** under `.sruja/agent/runs/<run_id>/` (verification bundle + recorded learnings) for replay. |
 
 ### Proposals and model edits (**mutating**)
 

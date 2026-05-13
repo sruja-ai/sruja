@@ -82,6 +82,15 @@ AI with context: [checks against policies, finds issues]
 3. Missing required 'tech' field in container definition"
 ```
 
+### Pattern 6: Ask the host to query lineage (MCP)
+
+When the Sruja MCP server is connected, the model can pull **in-repo traces** without guessing:
+
+- **`sruja_get_context_events`** — recent rows from `.sruja/context_events.jsonl` (after `intent check`, `drift`, or a merged proposal).
+- **`sruja_get_agent_learnings`** — `AgenticMemory` entries tied to an **element id** (same idea as “memory hits” in `sruja focus` JSON).
+
+Use these before risky edits: they surface prior guardrails and verification history the same way a human would scan Slack—except here it is structured and local to the repo. Full parameter list: [mcp_tools_reference.md](../../../../../docs/mcp_tools_reference.md#context-engineering-scores-and-briefings).
+
 ## Effective Prompts for Architecture Context
 
 | Instead of... | Try... |
@@ -161,11 +170,16 @@ AI with context: [checks against policies, finds issues]
    sruja impact ComponentName -r . --depth 3
    ```
 
+5. **Optional — with MCP, ask for lineage before a large change:**
+   - `sruja_get_agent_learnings` for your target **element id**
+   - `sruja_get_context_events` with a small `limit` to see recent intent/drift/proposal events
+
 ## Learning Outcomes
 
 - ✅ Apply architecture-aware AI interaction patterns
 - ✅ Use AI to explore and understand architecture
 - ✅ Validate AI suggestions with Sruja commands
+- ✅ Use **MCP lineage tools** (`sruja_get_context_events`, `sruja_get_agent_learnings`) when available
 - ✅ Avoid common anti-patterns in AI-assisted development
 
 ## Quiz: Test Your Understanding
@@ -191,12 +205,19 @@ B) `sruja context`
 C) `sruja impact`
 D) `sruja drift`
 
+### Q4: Which MCP tools surface in-repo lineage for an AI session?
+
+A) `sruja_get_repomap` and `sruja_bm25_search`
+B) `sruja_get_context_events` and `sruja_get_agent_learnings`
+C) `sruja_add_element` and `sruja_commit_evolution`
+D) `sruja_validate_change` only
+
 ## Module Complete!
 
 You've completed the AI Editor Integration module. You now understand:
 - ✅ Setting up Sruja MCP server
 - ✅ Building architecture context for AI
-- ✅ Using context-driven AI assistance
-- ✅ Effective AI pair programming patterns
+- ✅ Using context-driven AI assistance (including **git-range focus** and **on-disk lineage**)
+- ✅ Effective AI pair programming patterns (including **MCP lineage queries**)
 
 This module completes the Agentic AI course with practical AI editor integration skills.
