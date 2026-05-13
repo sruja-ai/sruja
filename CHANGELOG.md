@@ -5,6 +5,16 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.46.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.45.1...sruja-v0.46.0) (2026-05-13)
+
+
+### Features
+
+* **agent:** add plan/apply workflow, baseline modes, and sandboxed trajectories ([1ca86f2](https://github.com/sruja-ai/sruja/commit/1ca86f2717d16b7aa2f12bb3cea8a71d9feb49ba))
+* **agent:** add run ids, memory provenance, and run snapshots ([64c844e](https://github.com/sruja-ai/sruja/commit/64c844e49efa462ec0ef38048005f70ac8974b54))
+* **cli:** add task context grounding trace ([dd1fbbc](https://github.com/sruja-ai/sruja/commit/dd1fbbc614347c93a5c9f3dec9922ef216dff44f))
+* **cli:** MCP readonly profile, call logging, and tool docs ([c725bd5](https://github.com/sruja-ai/sruja/commit/c725bd5af1cfded3ac23a5c5db095affb9463e0a))
+
 ## [0.45.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.45.0...sruja-v0.45.1) (2026-05-13)
 
 
