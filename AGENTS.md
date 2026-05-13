@@ -36,6 +36,66 @@ Before any significant code change:
 - For Dependabot majors and MSRV-sensitive upgrades, follow [docs/MSRV_AND_DEPENDENCIES.md](docs/MSRV_AND_DEPENDENCIES.md)
 - Review security with `./target/release/sruja lint` (if applicable)
 
+## AI agent workflow (multi-step tasks)
+
+Use this for non-trivial work (new features, multi-file refactors, tricky bugs). Skip for one-line fixes.
+
+### Two layers of planning
+
+1. **Project or scope layer** — What problem are we solving and what is in or out of scope? Sources: GitHub issue / Jira epic, ADR, `docs/architecture/*.sruja`, `repo.sruja`, product notes. Stay high level: user-visible behavior, boundaries, dependencies between initiatives. Do not pick implementation files yet.
+2. **Task layer** — For a single issue or PR: which crates, modules, and tests change, in what order, and how will we validate? This is the implementation plan for *this* change only.
+
+Keeping the layers separate avoids baking file-level guesses into scope docs and avoids treating a ticket as full product discovery.
+
+### Artifact handoffs
+
+Move work between humans and agents with **one primary artifact per stage**, so intent stays reviewable:
+
+| Stage | Typical artifact |
+|-------|------------------|
+| Scope | Issue body, epic, or short doc under `docs/` |
+| Architecture alignment | `docs/architecture/*.sruja` or `repo.sruja` updates when boundaries move |
+| Task plan | Issue update, PR description section, or a `plan.md` in the branch (especially if multiple agents touch the same work) |
+
+Review each artifact before the next stage. Passing tests alone is not a substitute for checking the artifact matches intent.
+
+### Session hygiene
+
+Long exploratory chats accumulate bias and stale assumptions. After you have a **written task plan** you are satisfied with:
+
+- **Start a new agent conversation** for implementation, and paste or point the model only at the plan plus minimal pointers (issue link, file paths). The new session should implement from the plan, not re-derive scope from the entire old thread.
+
+Trivial edits can stay in one session.
+
+### Research without flooding context
+
+Broad repo exploration produces large token dumps. Prefer:
+
+- **`sruja focus --file <path>`** (or the issue scope) for a compact briefing
+- **`sruja mcp -r .`** for structured architecture queries instead of pasting whole trees
+- **Scoped reads**: search, then open only the files you need; summarize for the main thread
+- **Isolated exploration**: use a read-only subagent or a short side thread for wide research, then bring back a short summary and file list—not raw dumps
+
+Filling the context window “because we can” still hurts quality.
+
+### System evolution (outer loop)
+
+When an agent ships wrong code, misleading edits, or misses a project convention, fix the **process layer** when the miss is repeatable—not only the code diff.
+
+Before the next task, ask whether any of these should change:
+
+- **`AGENTS.md`** — missing gate, unclear command, wrong default workflow
+- **`.cursor/rules/*.mdc`** — file-type or domain-specific constraints the agent ignored
+- **Skills** (e.g. under `.agents/skills/` or user skill paths) — recurring multi-step procedures belong in a skill, not a one-off wall of text
+- **Cursor project commands** (`.cursor/commands/*.md`) — stable prompts you use more than a few times
+- **Plan / issue templates** — acceptance criteria or validation steps the agent skipped
+
+Commit those updates like code so the whole team benefits.
+
+### Cursor commands in this repo
+
+Reusable flows live under `.cursor/commands/` (e.g. prime, plan, implement-from-plan, evolve-rules). Prefer invoking them over retyping long procedures.
+
 ## Build, Lint, and Test Commands
 
 ### Rust (Core)
@@ -252,6 +312,8 @@ WASM is used for browser and Node.js targets. LSP provides language server featu
 
 ## Key Commands for AI Agents
 
+For multi-step agent work, follow **AI agent workflow (multi-step tasks)** above and use `.cursor/commands/` when applicable.
+
 When working on Sruja:
 1. **First Time Setup**: Run `make setup` to ensure all dependencies and git hooks are correctly installed.
 2. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
@@ -335,7 +397,7 @@ When using AI agents, leverage Sruja's context tools:
 ## Editor-Specific Configs
 
 Sruja provides specialized configs for different editors:
-- **Cursor**: `.cursorrules` (auto-gen) and `.cursor/rules/*.mdc` (manual rules).
+- **Cursor**: `.cursorrules` (auto-gen), `.cursor/rules/*.mdc` (manual rules), and `.cursor/commands/*.md` (reusable agent prompts; see **AI agent workflow**).
 - **Claude Code**: `CLAUDE.md` and `.gemini/AGENTS.md` (shared with Gemini).
 - **GitHub Copilot**: `.github/copilot-instructions.md`.
 - **Windsurf**: `.windsurf/rules/`.
