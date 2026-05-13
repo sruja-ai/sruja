@@ -9,6 +9,7 @@ pub mod scan_domain;
 pub mod utility_domain;
 
 pub use intent_domain::agent::{agent_clear, agent_clusters, agent_history, agent_record};
+pub use intent_domain::agent_plan::{agent_apply, agent_plan};
 pub use intent_domain::agent_run::{agent_run, agent_run_to_string, AgentRunOptions};
 pub use intent_domain::ai::{ai_brief, AiBriefOptions};
 pub use intent_domain::evolution::{evaluate, evolution_log};

@@ -12,7 +12,7 @@ pub mod proposal;
 pub mod source_ref;
 pub mod types;
 
-pub use compare::compare_graphs;
+pub use compare::{compare_graphs, compare_graphs_with_options, CompareOptions};
 pub use convert::program_to_graph;
 pub use drift::{
     detect_architectural_drift, detect_architectural_drift_with_config, find_circular_dependencies,
@@ -24,9 +24,9 @@ pub use proposal::{
     detect_unproposed_changes, Proposal, ProposalChange, ProposalStatus, ProposalValidation,
 };
 pub use types::{
-    ComponentDiff, DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary, DriftConfig,
-    DriftReport, EdgeDiff, HealthScoreBreakdown, HealthScorePenalties, NodeDiff, NodeMatch,
-    Severity, SourceRef, TruthStatus, Violation, ViolationKind,
+    BaselineMode, ComponentDiff, DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary,
+    DriftConfig, DriftReport, EdgeDiff, HealthScoreBreakdown, HealthScorePenalties, NodeDiff,
+    NodeMatch, Severity, SourceRef, TruthStatus, Violation, ViolationKind,
 };
 
 #[cfg(test)]

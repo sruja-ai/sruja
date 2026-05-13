@@ -4,17 +4,59 @@ use crate::health::calculate_health_score_from_violations;
 use crate::source_ref::{collect_edge_sources, collect_node_path_source};
 use crate::types::HealthScorePenalties;
 use crate::types::{
-    DiffEdge, DiffNode, DiffResult, DiffSummary, EdgeDiff, NodeDiff, NodeMatch, Severity,
-    TruthStatus, Violation, ViolationKind,
+    BaselineMode, DiffEdge, DiffNode, DiffResult, DiffSummary, EdgeDiff, NodeDiff, NodeMatch,
+    Severity, TruthStatus, Violation, ViolationKind,
 };
 use sruja_scan::{Edge, EdgeKind, Graph, Node, NodeKind};
 use std::collections::{HashMap, HashSet};
 
+#[derive(Debug, Clone, Copy)]
+pub struct CompareOptions {
+    pub baseline_mode: BaselineMode,
+}
+
+impl Default for CompareOptions {
+    fn default() -> Self {
+        Self {
+            baseline_mode: BaselineMode::Auto,
+        }
+    }
+}
+
 pub fn compare_graphs(actual: &Graph, proposed: &Graph) -> DiffResult {
+    compare_graphs_with_options(actual, proposed, CompareOptions::default())
+}
+
+pub fn compare_graphs_with_options(
+    actual: &Graph,
+    proposed: &Graph,
+    opts: CompareOptions,
+) -> DiffResult {
     let node_diff = compare_nodes(&actual.nodes, &proposed.nodes);
     let edge_diff = compare_edges(&actual.edges, &proposed.edges);
     let violations = detect_violations(actual, proposed, &node_diff, &edge_diff);
     let suggestions = generate_suggestions(&node_diff, &edge_diff, &violations);
+
+    let mode = match opts.baseline_mode {
+        BaselineMode::Auto => {
+            let proposed_n = proposed.nodes.len();
+            let actual_n = actual.nodes.len();
+            let overview = proposed_n > 0
+                && actual_n >= proposed_n.saturating_mul(10)
+                && actual_n.saturating_sub(proposed_n) >= 500;
+            if overview {
+                BaselineMode::Overview
+            } else {
+                BaselineMode::Exhaustive
+            }
+        }
+        m => m,
+    };
+    let coverage = if actual.nodes.is_empty() {
+        None
+    } else {
+        Some(((proposed.nodes.len() as f64 / actual.nodes.len() as f64) * 100.0).clamp(0.0, 100.0))
+    };
 
     let summary = DiffSummary {
         proposed_components: proposed.nodes.len(),
@@ -24,6 +66,8 @@ pub fn compare_graphs(actual: &Graph, proposed: &Graph) -> DiffResult {
         new_dependencies: edge_diff.added.len(),
         removed_dependencies: edge_diff.removed.len(),
         health_score: calculate_health_score(&node_diff, &edge_diff, &violations),
+        baseline_mode: Some(mode),
+        baseline_coverage_percent: coverage,
     };
 
     let truth_status = if violations.is_empty() {

@@ -941,11 +941,27 @@ pub(crate) fn print_diff_text(result: &sruja_diff::DiffResult, violations_only: 
             "  Proposed: {} | Actual (scan): {}",
             s.proposed_components, s.existing_components
         );
-        println!(
-            "  New: {} | Missing: {} | Edges +{} -{}",
-            s.new_components, s.missing_components, s.new_dependencies, s.removed_dependencies
-        );
-        println!("  Health Score: {}/100", s.health_score);
+
+        let mode = s.baseline_mode.unwrap_or(sruja_diff::BaselineMode::Auto);
+        if mode == sruja_diff::BaselineMode::Overview {
+            let coverage = s.baseline_coverage_percent.unwrap_or(0.0);
+            println!(
+                "  Baseline Coverage: {:.1}% (overview baseline; not exhaustive)",
+                coverage
+            );
+            println!(
+                "  New: {} | Edges +{} -{}",
+                s.new_components, s.new_dependencies, s.removed_dependencies
+            );
+            println!("  Health Score (structural only): {}/100", s.health_score);
+            println!("  Note: to measure inventory drift, use an exhaustive baseline generated from scan output.");
+        } else {
+            println!(
+                "  New: {} | Missing: {} | Edges +{} -{}",
+                s.new_components, s.missing_components, s.new_dependencies, s.removed_dependencies
+            );
+            println!("  Health Score: {}/100", s.health_score);
+        }
         println!();
     }
 

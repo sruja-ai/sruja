@@ -195,6 +195,55 @@ impl TrajectoryRunner {
     }
 }
 
+/// High-level MaTTS helper to distill learnings from available outcomes and
+/// optionally persist them to repo-local agentic memory.
+///
+/// Contract:
+/// - Returns `None` when there is no meaningful contrast signal (fewer than 2 outcomes).
+/// - If `auto_record` is true and distillation yields learnings, persists them to
+///   `.sruja/agent_memory.json` under `repo_root`.
+/// - Never "pretends" to do MaTTS when only one trajectory outcome is available.
+pub fn maybe_distill_and_record(
+    repo_root: &Path,
+    requested_trajectories: usize,
+    outcomes: &[TrajectoryOutcome],
+    auto_record: bool,
+) -> (Option<ContrastResult>, Vec<String>) {
+    // MaTTS contrast requires >= 2 outcomes. Callers may request more trajectories,
+    // but we should not synthesize contrast from a single run.
+    if outcomes.len() < 2 {
+        if requested_trajectories >= 2 {
+            return (
+                None,
+                vec![format!(
+                    "MaTTS requested {} trajectories, but only {} outcome(s) available; skipping contrast distillation.",
+                    requested_trajectories,
+                    outcomes.len()
+                )],
+            );
+        }
+        return (None, Vec::new());
+    }
+
+    let runner = TrajectoryRunner::new(requested_trajectories.max(outcomes.len()));
+    let contrast = runner.distill_from_contrast(outcomes);
+
+    let mut notes = Vec::new();
+    if auto_record && !contrast.distilled_learnings.is_empty() {
+        let mut memory = AgenticMemory::load(repo_root).unwrap_or_default();
+        TrajectoryRunner::record_learnings(&contrast, &mut memory);
+        if memory.save(repo_root).is_ok() {
+            for entry in &contrast.distilled_learnings {
+                notes.push(format!("MaTTS: {}", entry.guardrail_advice));
+            }
+        } else {
+            notes.push("MaTTS: failed to persist agentic memory (continuing).".to_string());
+        }
+    }
+
+    (Some(contrast), notes)
+}
+
 /// Generates sandbox names for a set of parallel trajectories.
 pub fn sandbox_names(goal: &str, count: usize) -> Vec<String> {
     let slug: String = goal

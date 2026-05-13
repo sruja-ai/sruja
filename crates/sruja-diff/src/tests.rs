@@ -409,6 +409,8 @@ DB = database "Primary DB"
                 new_dependencies: 0,
                 removed_dependencies: 0,
                 health_score: 100,
+                baseline_mode: None,
+                baseline_coverage_percent: None,
             },
             truth_status: TruthStatus::Reviewed,
         };
@@ -454,6 +456,8 @@ DB = database "Primary DB"
                 new_dependencies: 0,
                 removed_dependencies: 0,
                 health_score: 100,
+                baseline_mode: None,
+                baseline_coverage_percent: None,
             },
             truth_status: TruthStatus::Reviewed,
         };

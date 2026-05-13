@@ -213,6 +213,8 @@ pub struct TaskContext {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub run_id: Option<String>,
     pub schema_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_budget: Option<TaskContextBudget>,
     pub selection_reason: SelectionReason,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub grounding_trace: Vec<GroundingStep>,
@@ -227,6 +229,15 @@ pub struct TaskContext {
     pub truth_status: TaskTruthStatus,
     pub confidence: TaskConfidence,
     pub semantic_candidates: Vec<TaskSemanticCandidate>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskContextBudget {
+    pub max_tokens: usize,
+    pub estimated_used_tokens: usize,
+    pub estimated_remaining_tokens: usize,
+    pub hydrated_files_included: usize,
+    pub hydrated_files_truncated: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

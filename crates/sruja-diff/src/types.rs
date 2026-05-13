@@ -4,6 +4,14 @@ use serde::{Deserialize, Serialize};
 use sruja_scan::{EdgeKind, NodeKind};
 use thiserror::Error;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BaselineMode {
+    Auto,
+    Overview,
+    Exhaustive,
+}
+
 #[derive(Debug, Error)]
 pub enum DiffError {
     #[error("Graph comparison error: {0}")]
@@ -136,7 +144,7 @@ pub struct DiffResult {
     pub truth_status: TruthStatus,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DiffSummary {
     pub proposed_components: usize,
     pub existing_components: usize,
@@ -145,6 +153,10 @@ pub struct DiffSummary {
     pub new_dependencies: usize,
     pub removed_dependencies: usize,
     pub health_score: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_mode: Option<BaselineMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub baseline_coverage_percent: Option<f64>,
 }
 
 impl DiffResult {

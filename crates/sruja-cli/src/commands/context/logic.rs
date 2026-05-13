@@ -557,9 +557,23 @@ pub fn build_task_context(
         hydrated_files: &hydrated_files,
     });
 
+    let estimated_used_tokens: usize = hydrated_files
+        .iter()
+        .map(|f| super::types::TokenBudget::estimate_tokens(&f.content))
+        .sum();
+    let estimated_remaining_tokens = max_tokens.saturating_sub(estimated_used_tokens);
+    let truncated_files = hydrated_files.iter().filter(|f| f.truncated).count();
+
     Ok(TaskContext {
         run_id: None,
         schema_version: "task_context/v1".to_string(),
+        context_budget: Some(super::types::TaskContextBudget {
+            max_tokens,
+            estimated_used_tokens,
+            estimated_remaining_tokens,
+            hydrated_files_included: hydrated_files.len(),
+            hydrated_files_truncated: truncated_files,
+        }),
         selection_reason,
         grounding_trace,
         focus_elements,

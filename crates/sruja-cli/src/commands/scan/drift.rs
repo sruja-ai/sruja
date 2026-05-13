@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::commands::CliError;
+use crate::integrations::load_repo_config;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;
 
@@ -82,6 +83,7 @@ pub async fn drift(
     _enrich: bool,
     violations_only: bool,
     fail_on: Option<&str>,
+    baseline_mode: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
@@ -111,7 +113,22 @@ pub async fn drift(
             .parse(&content)
             .map_err(|diags| CliError::parse_with_diagnostics(arch_path.to_string(), diags))?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
-        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
+        let mode_str = baseline_mode
+            .map(|s| s.to_string())
+            .or_else(|| load_repo_config(repo_path).and_then(|c| c.baseline.mode))
+            .unwrap_or_else(|| "auto".to_string());
+        let mode = match mode_str.to_lowercase().as_str() {
+            "overview" => sruja_diff::BaselineMode::Overview,
+            "exhaustive" => sruja_diff::BaselineMode::Exhaustive,
+            _ => sruja_diff::BaselineMode::Auto,
+        };
+        let diff_result = sruja_diff::compare_graphs_with_options(
+            &actual_graph,
+            &proposed_graph,
+            sruja_diff::CompareOptions {
+                baseline_mode: mode,
+            },
+        );
 
         match format {
             "json" => {
@@ -184,7 +201,21 @@ pub async fn drift_json_string(
             .parse(&content)
             .map_err(|diags| CliError::parse_with_diagnostics(arch_path.to_string(), diags))?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
-        let diff_result = sruja_diff::compare_graphs(&actual_graph, &proposed_graph);
+        let mode_str = load_repo_config(repo_path)
+            .and_then(|c| c.baseline.mode)
+            .unwrap_or_else(|| "auto".to_string());
+        let mode = match mode_str.to_lowercase().as_str() {
+            "overview" => sruja_diff::BaselineMode::Overview,
+            "exhaustive" => sruja_diff::BaselineMode::Exhaustive,
+            _ => sruja_diff::BaselineMode::Auto,
+        };
+        let diff_result = sruja_diff::compare_graphs_with_options(
+            &actual_graph,
+            &proposed_graph,
+            sruja_diff::CompareOptions {
+                baseline_mode: mode,
+            },
+        );
 
         if !violations_only {
             return Ok(serde_json::to_string_pretty(&diff_result)?);

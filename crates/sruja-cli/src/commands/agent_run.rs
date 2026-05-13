@@ -5,7 +5,7 @@
 //! - Apply is gated by repo config allowlists + budgets
 //! - All optional enrichment is grounded: it may add narrative, never change facts.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use tokio::time::{timeout, Duration};
@@ -19,6 +19,7 @@ use crate::utils::run_snapshots::write_json_snapshot;
 use super::agent;
 use super::focus as focus_cmd;
 use crate::commands::sync_cmd;
+use sruja_agent::TrajectoryExecutor;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AgentMode {
@@ -64,82 +65,96 @@ pub struct AgentRunOptions<'a> {
     pub trajectories: Option<usize>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct AgentBudgets {
-    max_steps: usize,
-    max_runtime_ms_per_step: u64,
+pub(crate) struct AgentBudgets {
+    pub(crate) max_steps: usize,
+    pub(crate) max_runtime_ms_per_step: u64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct AgentTarget {
-    selector: String,
-    resolved_element_id: Option<String>,
+pub(crate) struct AgentTarget {
+    pub(crate) selector: String,
+    pub(crate) resolved_element_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct AgentStep {
-    id: String,
-    kind: String,
-    argv: Vec<String>,
+pub(crate) struct AgentStep {
+    pub(crate) id: String,
+    pub(crate) kind: String,
+    pub(crate) argv: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    expected: Option<String>,
+    pub(crate) expected: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct AgentSafety {
-    mode: String,
-    allowlist_source: String,
+pub(crate) struct AgentSafety {
+    pub(crate) mode: String,
+    pub(crate) allowlist_source: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    denied_steps: Vec<String>,
+    pub(crate) denied_steps: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct AgentPlanOutput {
-    schema_version: String,
+pub(crate) struct AgentPlanOutput {
+    pub(crate) schema_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    run_id: Option<String>,
-    repo: String,
-    goal: String,
-    target: AgentTarget,
-    facts_refs: Vec<String>,
-    facts: Value,
-    steps: Vec<AgentStep>,
-    verification: Vec<AgentStep>,
-    risks: Vec<String>,
-    open_questions: Vec<String>,
-    budgets: AgentBudgets,
-    safety: AgentSafety,
+    pub(crate) run_id: Option<String>,
+    pub(crate) repo: String,
+    pub(crate) goal: String,
+    pub(crate) target: AgentTarget,
+    pub(crate) facts_refs: Vec<String>,
+    pub(crate) facts: Value,
+    pub(crate) steps: Vec<AgentStep>,
+    pub(crate) verification: Vec<AgentStep>,
+    pub(crate) risks: Vec<String>,
+    pub(crate) open_questions: Vec<String>,
+    pub(crate) budgets: AgentBudgets,
+    pub(crate) safety: AgentSafety,
     #[serde(skip_serializing_if = "Option::is_none")]
-    enrichment: Option<AgentEnrichment>,
+    pub(crate) enrichment: Option<AgentEnrichment>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct StepObservation {
-    step_id: String,
-    status: String,
-    exit_code: Option<i32>,
-    stdout: String,
-    stderr: String,
-    elapsed_ms: u128,
+pub(crate) struct StepObservation {
+    pub(crate) step_id: String,
+    pub(crate) status: String,
+    pub(crate) exit_code: Option<i32>,
+    pub(crate) stdout: String,
+    pub(crate) stderr: String,
+    pub(crate) elapsed_ms: u128,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct AgentApplyOutput {
-    schema_version: String,
+pub(crate) struct AgentApplyOutput {
+    pub(crate) schema_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    run_id: Option<String>,
-    plan: AgentPlanOutput,
-    executed_steps: Vec<String>,
-    observations: Vec<StepObservation>,
-    verification_results: Vec<StepObservation>,
-    memory_recorded: Vec<String>,
+    pub(crate) run_id: Option<String>,
+    pub(crate) plan: AgentPlanOutput,
+    pub(crate) executed_steps: Vec<String>,
+    pub(crate) observations: Vec<StepObservation>,
+    pub(crate) verification_results: Vec<StepObservation>,
+    pub(crate) memory_recorded: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) observation_compression: Option<ObservationCompressionReport>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) struct ObservationCompressionReport {
+    pub(crate) enabled: bool,
+    pub(crate) threshold_tokens: usize,
+    pub(crate) keep_recent: usize,
+    pub(crate) estimated_tokens_before: usize,
+    pub(crate) estimated_tokens_after: usize,
+    pub(crate) compressed_observation_count: usize,
+    pub(crate) total_observation_count: usize,
 }
 
 /// Rolling summary compression for agent observation streams.
@@ -156,7 +171,7 @@ mod observation_compression {
     pub const DEFAULT_MAX_COMPRESSED_OUTPUT_LEN: usize = 120;
     const MAX_COMPRESSED_OUTPUT_LEN: usize = DEFAULT_MAX_COMPRESSED_OUTPUT_LEN;
 
-    fn estimate_tokens(observations: &[StepObservation]) -> usize {
+    pub(crate) fn estimate_tokens(observations: &[StepObservation]) -> usize {
         observations
             .iter()
             .map(|o| {
@@ -233,8 +248,8 @@ mod observation_compression {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-struct AgentEnrichment {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct AgentEnrichment {
     status: String,
     provider: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -362,7 +377,7 @@ fn default_allowed_verify_executables() -> Vec<String> {
     ]
 }
 
-fn load_allowlists(repo_path: &Path) -> (Vec<String>, Vec<String>, String) {
+pub(crate) fn load_allowlists(repo_path: &Path) -> (Vec<String>, Vec<String>, String) {
     if let Some(cfg) = load_repo_config(repo_path) {
         let sruja = cfg
             .agent
@@ -381,7 +396,7 @@ fn load_allowlists(repo_path: &Path) -> (Vec<String>, Vec<String>, String) {
     )
 }
 
-async fn run_allowlisted_process(
+pub(crate) async fn run_allowlisted_process(
     repo_path: &Path,
     argv: &[String],
     max_runtime_ms: u64,
@@ -638,7 +653,7 @@ fn build_enrichment(
     }
 }
 
-async fn run_sruja_cmd(
+pub(crate) async fn run_sruja_cmd(
     repo_path: &Path,
     argv: &[String],
     max_runtime_ms: u64,
@@ -934,43 +949,24 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         options.enrich_max_bytes,
     );
 
-    let plan = AgentPlanOutput {
-        schema_version: "agent_plan_output/v1".to_string(),
-        run_id: Some(run_id.clone()),
-        repo: options.repo.to_string(),
-        goal: options.goal.to_string(),
-        target: AgentTarget {
-            selector: options
-                .file
-                .map(|s| format!("file:{s}"))
-                .or_else(|| options.element_id.map(|s| format!("element_id:{s}")))
-                .or_else(|| options.query.map(|s| format!("query:{s}")))
-                .unwrap_or_else(|| "unknown".to_string()),
-            resolved_element_id,
-        },
-        facts_refs: vec![
-            "sync".to_string(),
-            "focus".to_string(),
-            "impact".to_string(),
-            "drift".to_string(),
-            "agent_history".to_string(),
-        ],
-        facts: facts_payload.clone(),
+    let plan = build_agent_plan_output(
+        &run_id,
+        options.repo,
+        options.goal,
+        options.file,
+        options.element_id,
+        options.query,
+        resolved_element_id,
+        facts_payload.clone(),
         steps,
         verification,
         risks,
         open_questions,
-        budgets: budgets.clone(),
-        safety: AgentSafety {
-            mode: match mode {
-                AgentMode::Plan => "plan".to_string(),
-                AgentMode::Apply => "apply".to_string(),
-            },
-            allowlist_source,
-            denied_steps: Vec::new(),
-        },
+        budgets.clone(),
+        allowlist_source,
+        mode,
         enrichment,
-    };
+    );
 
     // Persist snapshot for replay/resume.
     let plan_snapshot = serde_json::to_value(&plan).unwrap_or(Value::Null);
@@ -997,6 +993,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             // record learnings if verification fails.
             let mut verification_results = Vec::new();
             let mut memory_recorded = Vec::new();
+            let compression_report: Option<ObservationCompressionReport>;
 
             for v in &plan.verification {
                 let obs = match v.kind.as_str() {
@@ -1044,11 +1041,28 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                     .compression_token_threshold
                     .unwrap_or(observation_compression::DEFAULT_TOKEN_BUDGET_THRESHOLD);
                 let keep = ce_cfg.compression_keep_recent.unwrap_or(3);
+                let before_tokens = observation_compression::estimate_tokens(&verification_results);
+                let before = verification_results.clone();
                 observation_compression::compress_if_needed_with_threshold(
                     &mut verification_results,
                     keep,
                     threshold,
                 );
+                let after_tokens = observation_compression::estimate_tokens(&verification_results);
+                let compressed_count = before
+                    .iter()
+                    .zip(verification_results.iter())
+                    .filter(|(a, b)| a.stdout != b.stdout || a.stderr != b.stderr)
+                    .count();
+                compression_report = Some(ObservationCompressionReport {
+                    enabled: true,
+                    threshold_tokens: threshold,
+                    keep_recent: keep,
+                    estimated_tokens_before: before_tokens,
+                    estimated_tokens_after: after_tokens,
+                    compressed_observation_count: compressed_count,
+                    total_observation_count: verification_results.len(),
+                });
             }
 
             if let Some(first_err) = verification_results.iter().find(|o| o.status == "error") {
@@ -1078,68 +1092,69 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 }
             }
 
-            // MaTTS self-contrast: distill learnings from trajectory outcomes.
-            // Requires >= 2 trajectories for meaningful contrast. Currently only the
-            // primary trajectory is available; true parallel sandboxes require wiring
-            // to `sruja sandbox create` in a future iteration.
+            // MaTTS self-contrast: execute N sandboxed trajectories and distill
+            // learnings from success vs failure outcomes.
             let traj_count = options
                 .trajectories
                 .or_else(|| load_repo_config(repo_path).and_then(|c| c.agent.default_trajectories));
             if let Some(n) = traj_count {
                 if n >= 2 {
-                    let elapsed = apply_start.elapsed().as_millis();
-                    let all_ok = verification_results.iter().all(|o| o.status == "ok");
-                    let last_exit = verification_results.last().and_then(|o| o.exit_code);
-                    let summary = verification_results
-                        .last()
-                        .map(|o| {
-                            format!(
-                                "[{}] {} exit={}",
-                                o.step_id,
-                                o.status,
-                                o.exit_code
-                                    .map(|c| c.to_string())
-                                    .unwrap_or_else(|| "?".to_string())
-                            )
-                        })
-                        .unwrap_or_default();
-                    let trajectory = sruja_agent::TrajectoryOutcome {
-                        trajectory_id: "primary".to_string(),
-                        goal: plan.goal.clone(),
-                        status: if all_ok {
-                            sruja_agent::TrajectoryStatus::Success
-                        } else {
-                            sruja_agent::TrajectoryStatus::Failed
-                        },
-                        exit_code: last_exit,
-                        summary,
-                        elapsed_ms: elapsed,
-                        affected_elements: plan
-                            .target
-                            .resolved_element_id
-                            .iter()
-                            .cloned()
-                            .collect(),
-                    };
-                    // TODO: spawn N-1 additional sandbox trajectories via `sruja sandbox`
-                    // and collect their outcomes here. For now we distill from the single
-                    // primary trajectory, which produces non-contrast learnings (all-success
-                    // or all-failure summary). True MaTTS contrast requires >= 2 divergent
-                    // outcomes.
-                    let runner = sruja_agent::TrajectoryRunner::new(n);
-                    let contrast = runner.distill_from_contrast(&[trajectory]);
                     let auto_record = load_repo_config(repo_path)
                         .and_then(|c| c.agent.auto_record_learnings)
                         .unwrap_or(false);
-                    if auto_record {
-                        let mut memory = sruja_agent::AgenticMemory::load(repo_path)
-                            .unwrap_or_else(|_| sruja_agent::AgenticMemory::default());
-                        sruja_agent::TrajectoryRunner::record_learnings(&contrast, &mut memory);
-                        let _ = memory.save(repo_path);
-                        for entry in &contrast.distilled_learnings {
-                            memory_recorded.push(format!("MaTTS: {}", entry.guardrail_advice));
-                        }
+                    let sandbox_cfg = load_repo_config(repo_path)
+                        .map(|c| c.sandbox)
+                        .unwrap_or_default();
+                    let policy = sandbox_cfg
+                        .policy
+                        .unwrap_or_else(|| "warn_and_degrade".to_string());
+                    let cleanup_on_success = sandbox_cfg.cleanup_on_success.unwrap_or(true);
+                    let keep_on_failure = sandbox_cfg.keep_on_failure.unwrap_or(false);
+
+                    let mut outcomes = Vec::new();
+                    outcomes.push(build_trajectory_outcome(
+                        "primary",
+                        &plan.goal,
+                        apply_start.elapsed().as_millis(),
+                        &verification_results,
+                        plan.target.resolved_element_id.as_deref(),
+                    ));
+
+                    let sandbox_ok = sruja_agent::matts::is_sandbox_available(repo_path);
+                    if sandbox_ok {
+                        let names = sruja_agent::matts::sandbox_names(&plan.goal, n);
+                        let exec = WorktreeVerificationExecutor {
+                            repo_root: repo_path,
+                            goal: &plan.goal,
+                            verification: &plan.verification,
+                            max_runtime_ms_per_step: plan.budgets.max_runtime_ms_per_step,
+                            allowed_sruja_subcommands: &allowed_sruja_subcommands,
+                            allowed_verify_execs: &allowed_verify_execs,
+                            resolved_element_id: plan.target.resolved_element_id.as_deref(),
+                            cleanup_on_success,
+                            keep_on_failure,
+                            sandbox_names: &names,
+                        };
+                        let extra = exec.run_n(n.saturating_sub(1)).await?;
+                        outcomes.extend(extra);
+                    } else if policy == "fail_fast" {
+                        return Err(CliError::validation(
+                            "MaTTS trajectories requested, but git worktrees are unavailable. Enable worktrees or set [sandbox].policy = \"warn_and_degrade\".".to_string(),
+                        ));
+                    } else {
+                        memory_recorded.push(format!(
+                            "MaTTS requested {} trajectories, but sandboxing is unavailable; proceeding with primary only.",
+                            n
+                        ));
                     }
+
+                    let (_contrast, notes) = sruja_agent::matts::maybe_distill_and_record(
+                        repo_path,
+                        n,
+                        &outcomes,
+                        auto_record,
+                    );
+                    memory_recorded.extend(notes);
                 }
             }
 
@@ -1151,11 +1166,32 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 observations: Vec::new(),
                 verification_results,
                 memory_recorded,
+                observation_compression: compression_report,
             };
 
             let apply_snapshot = serde_json::to_value(&out).unwrap_or(Value::Null);
             if let Some(run_id) = out.run_id.as_deref() {
                 let _ = write_json_snapshot(repo_path, run_id, "agent_apply.json", &apply_snapshot);
+                let bundle = serde_json::json!({
+                    "schema_version": "verification_bundle/v1",
+                    "run_id": run_id,
+                    "repo": options.repo,
+                    "goal": out.plan.goal,
+                    "allowlist_source": out.plan.safety.allowlist_source,
+                    "verification": out.plan.verification.iter().map(|s| serde_json::json!({
+                        "id": s.id,
+                        "kind": s.kind,
+                        "argv": s.argv,
+                        "expected": s.expected,
+                    })).collect::<Vec<_>>(),
+                    "results": out.verification_results.iter().map(|r| serde_json::json!({
+                        "step_id": r.step_id,
+                        "status": r.status,
+                        "exit_code": r.exit_code,
+                        "elapsed_ms": r.elapsed_ms,
+                    })).collect::<Vec<_>>(),
+                });
+                let _ = write_json_snapshot(repo_path, run_id, "verification_bundle.json", &bundle);
             }
 
             serde_json::to_string_pretty(&out)?
@@ -1171,6 +1207,314 @@ pub async fn agent_run(options: AgentRunOptions<'_>) -> Result<(), CliError> {
     let s = agent_run_to_string(options).await?;
     println!("{s}");
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_agent_plan_output(
+    run_id: &str,
+    repo: &str,
+    goal: &str,
+    file: Option<&str>,
+    element_id: Option<&str>,
+    query: Option<&str>,
+    resolved_element_id: Option<String>,
+    facts: Value,
+    steps: Vec<AgentStep>,
+    verification: Vec<AgentStep>,
+    risks: Vec<String>,
+    open_questions: Vec<String>,
+    budgets: AgentBudgets,
+    allowlist_source: String,
+    mode: AgentMode,
+    enrichment: Option<AgentEnrichment>,
+) -> AgentPlanOutput {
+    AgentPlanOutput {
+        schema_version: "agent_plan_output/v1".to_string(),
+        run_id: Some(run_id.to_string()),
+        repo: repo.to_string(),
+        goal: goal.to_string(),
+        target: AgentTarget {
+            selector: file
+                .map(|s| format!("file:{s}"))
+                .or_else(|| element_id.map(|s| format!("element_id:{s}")))
+                .or_else(|| query.map(|s| format!("query:{s}")))
+                .unwrap_or_else(|| "unknown".to_string()),
+            resolved_element_id,
+        },
+        facts_refs: vec![
+            "sync".to_string(),
+            "focus".to_string(),
+            "impact".to_string(),
+            "drift".to_string(),
+            "agent_history".to_string(),
+        ],
+        facts,
+        steps,
+        verification,
+        risks,
+        open_questions,
+        budgets,
+        safety: AgentSafety {
+            mode: match mode {
+                AgentMode::Plan => "plan".to_string(),
+                AgentMode::Apply => "apply".to_string(),
+            },
+            allowlist_source,
+            denied_steps: Vec::new(),
+        },
+        enrichment,
+    }
+}
+
+fn build_trajectory_outcome(
+    trajectory_id: &str,
+    goal: &str,
+    elapsed_ms: u128,
+    verification_results: &[StepObservation],
+    affected_element_id: Option<&str>,
+) -> sruja_agent::TrajectoryOutcome {
+    let all_ok = verification_results.iter().all(|o| o.status == "ok");
+    let last_exit = verification_results.last().and_then(|o| o.exit_code);
+    let summary = verification_results
+        .last()
+        .map(|o| {
+            format!(
+                "[{}] {} exit={}",
+                o.step_id,
+                o.status,
+                o.exit_code
+                    .map(|c| c.to_string())
+                    .unwrap_or_else(|| "?".to_string())
+            )
+        })
+        .unwrap_or_default();
+
+    sruja_agent::TrajectoryOutcome {
+        trajectory_id: trajectory_id.to_string(),
+        goal: goal.to_string(),
+        status: if all_ok {
+            sruja_agent::TrajectoryStatus::Success
+        } else {
+            sruja_agent::TrajectoryStatus::Failed
+        },
+        exit_code: last_exit,
+        summary,
+        elapsed_ms,
+        affected_elements: affected_element_id
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
+    }
+}
+
+fn create_sandbox_worktree(repo_root: &Path, name: &str) -> Result<PathBuf, CliError> {
+    let sandbox_dir = repo_root.join(".sruja").join("sandboxes");
+    std::fs::create_dir_all(&sandbox_dir)?;
+    let target = sandbox_dir.join(name);
+    if target.exists() {
+        // Best-effort validation: if it exists but isn't a worktree, remove and recreate.
+        if is_git_worktree(repo_root, &target) {
+            return Ok(target);
+        }
+        let _ = std::fs::remove_dir_all(&target);
+    }
+    // Prune stale worktree references to reduce spurious failures.
+    let _ = std::process::Command::new("git")
+        .args(["worktree", "prune"])
+        .current_dir(repo_root)
+        .output();
+    let out = std::process::Command::new("git")
+        .args([
+            "worktree",
+            "add",
+            "-b",
+            &format!("sruja-sandbox/{}", name),
+            target
+                .to_str()
+                .ok_or_else(|| CliError::validation("Sandbox path is not valid UTF-8"))?,
+        ])
+        .current_dir(repo_root)
+        .output()?;
+    if !out.status.success() {
+        // If the branch already exists, retry by detaching instead of failing.
+        let err = String::from_utf8_lossy(&out.stderr);
+        if err.contains("already exists") {
+            let out2 = std::process::Command::new("git")
+                .args([
+                    "worktree",
+                    "add",
+                    "--detach",
+                    target
+                        .to_str()
+                        .ok_or_else(|| CliError::validation("Sandbox path is not valid UTF-8"))?,
+                ])
+                .current_dir(repo_root)
+                .output()?;
+            if out2.status.success() {
+                return Ok(target);
+            }
+            return Err(CliError::validation(format!(
+                "git worktree add failed after retry: {}",
+                String::from_utf8_lossy(&out2.stderr)
+            )));
+        }
+        return Err(CliError::validation(format!(
+            "git worktree add failed: {}",
+            err
+        )));
+    }
+    Ok(target)
+}
+
+fn discard_sandbox_worktree(repo_root: &Path, name: &str) -> Result<(), CliError> {
+    let target = repo_root.join(".sruja").join("sandboxes").join(name);
+    let _ = std::process::Command::new("git")
+        .args([
+            "worktree",
+            "remove",
+            "--force",
+            target
+                .to_str()
+                .ok_or_else(|| CliError::validation("Sandbox path is not valid UTF-8"))?,
+        ])
+        .current_dir(repo_root)
+        .output();
+    let _ = std::process::Command::new("git")
+        .args(["branch", "-D", &format!("sruja-sandbox/{}", name)])
+        .current_dir(repo_root)
+        .output();
+    Ok(())
+}
+
+fn is_git_worktree(repo_root: &Path, path: &Path) -> bool {
+    // A git worktree has a `.git` file pointing to the actual git dir.
+    let git_marker = path.join(".git");
+    if !git_marker.exists() {
+        return false;
+    }
+    if let Ok(content) = std::fs::read_to_string(&git_marker) {
+        if content.starts_with("gitdir:") {
+            return true;
+        }
+    }
+    // Fallback: ask git whether the worktree is recognized.
+    std::process::Command::new("git")
+        .args(["worktree", "list"])
+        .current_dir(repo_root)
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .is_some_and(|s| s.contains(path.to_string_lossy().as_ref()))
+}
+
+async fn run_verification_steps_in_repo(
+    repo_path: &Path,
+    verification: &[AgentStep],
+    max_runtime_ms_per_step: u64,
+    allowed_sruja_subcommands: &[String],
+    allowed_verify_execs: &[String],
+) -> Result<Vec<StepObservation>, CliError> {
+    let mut out = Vec::new();
+    for v in verification {
+        let obs = match v.kind.as_str() {
+            "sruja_cmd" => {
+                run_sruja_cmd(
+                    repo_path,
+                    &v.argv,
+                    max_runtime_ms_per_step,
+                    allowed_sruja_subcommands,
+                )
+                .await?
+            }
+            "verify_cmd" => {
+                run_allowlisted_process(
+                    repo_path,
+                    &v.argv,
+                    max_runtime_ms_per_step,
+                    allowed_verify_execs,
+                )
+                .await?
+            }
+            _ => StepObservation {
+                step_id: v.id.clone(),
+                status: "skipped".to_string(),
+                exit_code: None,
+                stdout: "".to_string(),
+                stderr: format!("Unknown verification kind: {}", v.kind),
+                elapsed_ms: 0,
+            },
+        };
+        out.push(obs);
+    }
+    Ok(out)
+}
+
+struct WorktreeVerificationExecutor<'a> {
+    repo_root: &'a Path,
+    goal: &'a str,
+    verification: &'a [AgentStep],
+    max_runtime_ms_per_step: u64,
+    allowed_sruja_subcommands: &'a [String],
+    allowed_verify_execs: &'a [String],
+    resolved_element_id: Option<&'a str>,
+    cleanup_on_success: bool,
+    keep_on_failure: bool,
+    sandbox_names: &'a [String],
+}
+
+impl<'a> sruja_agent::TrajectoryExecutor for WorktreeVerificationExecutor<'a> {
+    type Error = CliError;
+
+    fn run_trajectory<'b>(
+        &'b self,
+        trajectory_id: &'b str,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<sruja_agent::TrajectoryOutcome, Self::Error>>
+                + Send
+                + 'b,
+        >,
+    > {
+        Box::pin(async move {
+            // Map t1..tN to sandbox_names[1..] (t1 => sandbox_names[1]).
+            let idx = trajectory_id
+                .trim_start_matches('t')
+                .parse::<usize>()
+                .unwrap_or(1);
+            let name = self
+                .sandbox_names
+                .get(idx)
+                .cloned()
+                .unwrap_or_else(|| format!("matts-{}", trajectory_id));
+
+            let sandbox_path = create_sandbox_worktree(self.repo_root, &name)?;
+            let start = std::time::Instant::now();
+            let results = run_verification_steps_in_repo(
+                &sandbox_path,
+                self.verification,
+                self.max_runtime_ms_per_step,
+                self.allowed_sruja_subcommands,
+                self.allowed_verify_execs,
+            )
+            .await?;
+            let outcome = build_trajectory_outcome(
+                &name,
+                self.goal,
+                start.elapsed().as_millis(),
+                &results,
+                self.resolved_element_id,
+            );
+            let ok = outcome.status == sruja_agent::TrajectoryStatus::Success;
+            if ok {
+                if self.cleanup_on_success {
+                    let _ = discard_sandbox_worktree(self.repo_root, &name);
+                }
+            } else if !self.keep_on_failure {
+                let _ = discard_sandbox_worktree(self.repo_root, &name);
+            }
+            Ok(outcome)
+        })
+    }
 }
 
 #[cfg(test)]
