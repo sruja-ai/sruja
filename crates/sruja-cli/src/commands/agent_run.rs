@@ -758,7 +758,8 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             Ok(g) => g.nodes.len(),
             Err(_) => kg.nodes.len(),
         };
-        let mut briefing = focus_cmd::build_focus_briefing(&kg, id, repo_path, scan_node_count);
+        let mut briefing =
+            focus_cmd::build_focus_briefing(&kg, id, repo_path, scan_node_count, None);
         // No focus-specific enrichment here; agent enrichment is handled at the end.
         briefing.enrichment = None;
         briefing.run_id = Some(run_id.clone());
@@ -1192,14 +1193,27 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                     })).collect::<Vec<_>>(),
                 });
                 let _ = write_json_snapshot(repo_path, run_id, "verification_bundle.json", &bundle);
+                let facts_bundle = serde_json::json!({
+                    "schema_version": "facts_bundle/v1",
+                    "run_id": run_id,
+                    "repo": options.repo,
+                    "goal": out.plan.goal,
+                    "allowlist_source": out.plan.safety.allowlist_source,
+                    "memory_recorded": out.memory_recorded,
+                    "verification_bundle": bundle,
+                });
+                let agent_run_dir = agent_artifacts_dir(repo_path).join(run_id);
+                let _ = std::fs::create_dir_all(&agent_run_dir);
+                let _ = std::fs::write(
+                    agent_run_dir.join("facts_bundle.json"),
+                    serde_json::to_string_pretty(&facts_bundle).unwrap_or_default(),
+                );
             }
 
             serde_json::to_string_pretty(&out)?
         }
     };
 
-    // Future: persist facts bundle to .sruja/agent/runs/
-    let _ = std::fs::create_dir_all(agent_artifacts_dir(repo_path));
     Ok(out_string)
 }
 

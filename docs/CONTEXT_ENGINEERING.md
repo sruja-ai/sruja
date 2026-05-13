@@ -4,6 +4,21 @@ Sruja is more than an architecture-as-code tool; it is a **Context Engineering**
 
 By quantifying and surfacing architectural evidence, Sruja reduces the "context gap" that leads to AI hallucinations and architectural drift.
 
+## Context graphs: Sruja vs industry usage
+
+Industry articles often use **“context graph”** to mean a **decision lineage** layer: time-stamped decision events, exceptions, approvals, and precedent—so agents can answer “how did we handle this before?” Sruja uses the same phrase for something adjacent but distinct: a **governed structural + intent graph** for a repository (see [domain-schema.md](architecture/domain-schema.md)). That graph encodes what *should* be true, validates relationships, and links evidence—not full enterprise decision desks.
+
+Sruja still approximates parts of the decision-trace idea for **software architecture**:
+
+| Layer (common framing) | In Sruja |
+|------------------------|----------|
+| 1. Execution / observability | `sruja sync`, repository scan, manifests, SCIP—signals from the codebase and tooling |
+| 2. Semantic aggregation | Boundary inference, file→element binding, focus hydration, hybrid query routing |
+| 3. Graph + time | `.sruja` declarations, drift vs baseline, `sruja context` with `--base-ref` / `--head-ref`, optional **temporal block** on `sruja focus` |
+| 4. Agent memory | `.sruja/agent_memory.json`, run snapshots under `.sruja/runs/`, **facts bundles** under `.sruja/agent/runs/<run_id>/`, append-only **context events** in `.sruja/context_events.jsonl` (intent check, drift, merged proposals) |
+
+**Context events** (`context_events.jsonl`) and **MCP** tools `sruja_get_context_events` / `sruja_get_agent_learnings` expose that lineage to agents without conflating it with the declared architecture graph itself.
+
 ## Core Pillars
 
 ### 0. AI Coding Brief
@@ -28,7 +43,7 @@ Before an AI agent starts a task, it needs to know the specific architectural co
 - **Boundary Constraints**: Inferred policy violations.
 - **AI Instructions**: Specific guidance for the LLM.
 
-**Command:** `sruja focus --file <path>` or `sruja focus --element-id <id>`
+**Command:** `sruja focus --file <path>` or `sruja focus --element-id <id>`. Optional git range: `sruja focus --element-id MySystem.Api --base-ref main --head-ref HEAD` adds diff-mapped components and architecture fingerprints for that range.
 
 ### 3. Documentation Ingestion
 Import external context (Design Docs, RFCs, ADRs) into the `.sruja/context/` directory. Sruja automatically indexes these files and links them to architectural components via YAML front-matter.
@@ -56,8 +71,10 @@ MCP is the **structured tooling** interface: it answers what grounded architectu
 
 **Highlights:**
 - `sruja_get_context_score`: Repository-level AI-readiness.
-- `sruja_get_focus_briefing`: Task-scoped briefing.
+- `sruja_get_focus_briefing`: Task-scoped briefing (optional `base_ref` / `head_ref` for temporal context).
 - `sruja_get_architecture_context`: Component-level hydration.
+- `sruja_get_context_events`: Recent intent/drift/proposal-merge events from `.sruja/context_events.jsonl`.
+- `sruja_get_agent_learnings`: Agentic Memory entries for an element ID.
 
 ### PR & CI Integration
 You can use the context score as a gate in CI. If a PR significantly drops the context score (e.g., by adding many unmapped modules), the build can fail, ensuring context stays fresh as the codebase grows.

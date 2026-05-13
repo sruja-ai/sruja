@@ -142,6 +142,13 @@ pub async fn drift(
             }
         }
 
+        crate::commands::context_events::record_drift_compare(
+            repo_path,
+            diff_result.violations.len(),
+            &format!("{:?}", diff_result.truth_status),
+            true,
+        );
+
         if should_fail_on_violations(fail_on, &diff_result.violations) {
             return Err(CliError::FailOnViolations);
         }
@@ -159,6 +166,13 @@ pub async fn drift(
                 print_drift_text(&drift_result, violations_only);
             }
         }
+
+        crate::commands::context_events::record_drift_compare(
+            repo_path,
+            drift_result.violations.len(),
+            &format!("{:?}", drift_result.truth_status),
+            false,
+        );
 
         if should_fail_on_violations(fail_on, &drift_result.violations) {
             return Err(CliError::FailOnViolations);

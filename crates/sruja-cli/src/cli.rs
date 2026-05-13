@@ -815,6 +815,12 @@ pub enum Commands {
         /// Max bytes to read from enrichment stdout (default: 20000)
         #[arg(long, default_value_t = 20000)]
         enrich_max_bytes: usize,
+        /// Git base ref for optional temporal context (use with `--head-ref`; if omitted, head defaults to `HEAD`)
+        #[arg(long)]
+        base_ref: Option<String>,
+        /// Git head ref for optional temporal context (requires `--base-ref`)
+        #[arg(long)]
+        head_ref: Option<String>,
     },
 
     /// Ingest external context (ADRs, design docs, API contracts) into .sruja/context/
@@ -1715,6 +1721,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             enrich_base_url,
             enrich_timeout_ms,
             enrich_max_bytes,
+            base_ref,
+            head_ref,
         } => {
             commands::focus(
                 &repo,
@@ -1729,6 +1737,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 enrich_base_url.as_deref(),
                 enrich_timeout_ms,
                 enrich_max_bytes,
+                base_ref.as_deref(),
+                head_ref.as_deref(),
             )
             .await
         }

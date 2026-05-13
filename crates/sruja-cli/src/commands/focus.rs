@@ -8,6 +8,7 @@ use colored::Colorize;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::Path;
+use std::process::Command;
 
 use crate::commands::context::types::TokenBudget;
 use crate::commands::CliError;
@@ -36,6 +37,20 @@ pub struct MemoryHit {
     pub guardrail_advice: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct TemporalContextBrief {
+    pub base_ref: String,
+    pub head_ref: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub architecture_relative_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub policy_fingerprint_head: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub policy_fingerprint_base: Option<String>,
+    pub diff_mapped_component_ids: Vec<String>,
+    pub touches_focus_target: bool,
+}
+
 #[derive(Debug, Serialize)]
 pub struct FocusBriefing {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,6 +70,8 @@ pub struct FocusBriefing {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub memory_truncated: bool,
     pub context_score: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temporal: Option<TemporalContextBrief>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enrichment: Option<FocusEnrichment>,
 }
@@ -237,12 +254,71 @@ pub fn resolve_target(
     ))
 }
 
+fn git_arch_blob_blake3(repo: &Path, git_ref: &str, path_in_repo: &str) -> Option<String> {
+    let spec = format!("{git_ref}:{path_in_repo}");
+    let out = Command::new("git")
+        .args(["show", spec.as_str()])
+        .current_dir(repo)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    Some(blake3::hash(&out.stdout).to_hex().to_string())
+}
+
+/// Git-range snapshot: diff-mapped components and optional declared-architecture fingerprints at base vs working tree.
+pub fn load_temporal_context(
+    repo_path: &Path,
+    base_ref: &str,
+    head_ref: &str,
+    target_id: &str,
+) -> Result<TemporalContextBrief, CliError> {
+    let arch_path = crate::utils::architecture_path::resolve_architecture_path(repo_path);
+    let rel = arch_path.as_ref().and_then(|p| {
+        p.strip_prefix(repo_path).ok().map(|r| {
+            r.components()
+                .map(|c| c.as_os_str().to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+                .join("/")
+        })
+    });
+    let head_fp = crate::commands::context_events::policy_fingerprint(repo_path);
+    let base_fp = rel
+        .as_deref()
+        .and_then(|r| git_arch_blob_blake3(repo_path, base_ref, r));
+    let scan = sruja_scan::scan_repo(repo_path).map_err(|e| CliError::validation(e.to_string()))?;
+    let diffs = sruja_diff::map_git_diff(repo_path, base_ref, head_ref, &scan).map_err(|e| {
+        CliError::validation(format!(
+            "Git diff mapping failed (are '{base_ref}' and '{head_ref}' valid refs?): {e}"
+        ))
+    })?;
+    let mut ids: Vec<String> = diffs.iter().map(|d| d.component_id.clone()).collect();
+    ids.sort();
+    ids.dedup();
+    let touches = ids.iter().any(|id| {
+        id == target_id
+            || target_id.starts_with(&format!("{id}."))
+            || id.starts_with(&format!("{target_id}."))
+    });
+    Ok(TemporalContextBrief {
+        base_ref: base_ref.to_string(),
+        head_ref: head_ref.to_string(),
+        architecture_relative_path: rel,
+        policy_fingerprint_head: head_fp,
+        policy_fingerprint_base: base_fp,
+        diff_mapped_component_ids: ids,
+        touches_focus_target: touches,
+    })
+}
+
 /// Build the focus briefing.
 pub fn build_focus_briefing(
     graph: &KnowledgeGraph,
     target_id: &str,
     repo_path: &Path,
     scan_node_count: usize,
+    temporal: Option<TemporalContextBrief>,
 ) -> FocusBriefing {
     let node = graph.nodes.get(target_id);
 
@@ -479,6 +555,30 @@ pub fn build_focus_briefing(
     // -- Context Score --
     let score = compute_context_score(graph, scan_node_count, repo_path, 0);
 
+    if let Some(t) = &temporal {
+        ai_instructions.push(format!(
+            "Git range {}..{} maps the diff to {} scan-graph component(s).",
+            t.base_ref,
+            t.head_ref,
+            t.diff_mapped_component_ids.len()
+        ));
+        if t.touches_focus_target {
+            ai_instructions.push(
+                "This focus target is in (or under) the diff-mapped component set for that range."
+                    .to_string(),
+            );
+        }
+        if t.policy_fingerprint_base.is_some()
+            && t.policy_fingerprint_head.is_some()
+            && t.policy_fingerprint_base != t.policy_fingerprint_head
+        {
+            ai_instructions.push(
+                "Declared architecture file content (fingerprint) differs between base ref and working tree."
+                    .to_string(),
+            );
+        }
+    }
+
     FocusBriefing {
         run_id: None,
         target,
@@ -494,6 +594,7 @@ pub fn build_focus_briefing(
         memory_hits,
         memory_truncated,
         context_score: score.score,
+        temporal,
         enrichment: None,
     }
 }
@@ -947,6 +1048,8 @@ pub async fn focus(
     enrich_base_url: Option<&str>,
     enrich_timeout_ms: u64,
     enrich_max_bytes: usize,
+    base_ref: Option<&str>,
+    head_ref: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
@@ -967,7 +1070,20 @@ pub async fn focus(
 
     // Resolve the target
     let target_id = resolve_target(&kg, repo_path, file, element_id)?;
-    let mut briefing = build_focus_briefing(&kg, &target_id, repo_path, scan_node_count);
+
+    let temporal = match (base_ref, head_ref) {
+        (Some(b), Some(h)) => Some(load_temporal_context(repo_path, b, h, &target_id)?),
+        (Some(b), None) => Some(load_temporal_context(repo_path, b, "HEAD", &target_id)?),
+        (None, Some(_)) => {
+            return Err(CliError::validation(
+                "--head-ref requires --base-ref (use both for git-range temporal context)"
+                    .to_string(),
+            ));
+        }
+        (None, None) => None,
+    };
+
+    let mut briefing = build_focus_briefing(&kg, &target_id, repo_path, scan_node_count, temporal);
     let run_id = run_id
         .map(|s| s.to_string())
         .unwrap_or_else(generate_run_id);
@@ -978,7 +1094,7 @@ pub async fn focus(
         "schema_version": "focus_snapshot/v1",
         "run_id": run_id,
         "repo": repo,
-        "selectors": { "file": file, "element_id": element_id },
+        "selectors": { "file": file, "element_id": element_id, "base_ref": base_ref, "head_ref": head_ref },
         "resolved_target_id": target_id,
         "external_context": briefing.external_context.iter().map(|e| serde_json::json!({
             "file": e.file,
@@ -1177,6 +1293,32 @@ fn print_focus_briefing(b: &FocusBriefing) {
                 bi.to,
                 "",
                 width = width.saturating_sub(10 + bi.from.len() + bi.to.len() + 15)
+            );
+        }
+        println!("│{:width$}│", "", width = width);
+    }
+
+    // Git temporal (optional)
+    if let Some(ref t) = b.temporal {
+        println!(
+            "│  ── Git temporal ({}..{}) ──{:width$}│",
+            t.base_ref,
+            t.head_ref,
+            "",
+            width = width.saturating_sub(21 + t.base_ref.len() + t.head_ref.len())
+        );
+        println!(
+            "│  Diff-mapped components: {}{:width$}│",
+            t.diff_mapped_component_ids.len(),
+            "",
+            width =
+                width.saturating_sub(29 + format!("{}", t.diff_mapped_component_ids.len()).len())
+        );
+        if t.touches_focus_target {
+            println!(
+                "│  Target overlaps diff map: yes{:width$}│",
+                "",
+                width = width - 30
             );
         }
         println!("│{:width$}│", "", width = width);

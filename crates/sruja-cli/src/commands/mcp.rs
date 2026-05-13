@@ -645,9 +645,36 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_get_context_events",
+            "title": "Sruja Context Events",
+            "description": "Read recent append-only context lineage events (intent check, drift, proposal merge) from .sruja/context_events.jsonl. Newest first.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "limit": { "type": "integer", "description": "Max events to return (default: 50)" },
+                    "kind": { "type": "string", "description": "Optional filter: intent_check | drift | proposal_merge" },
+                    "details_substring": { "type": "string", "description": "Optional substring filter on JSON details" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_agent_learnings",
+            "title": "Sruja Agent Learnings",
+            "description": "Return Agentic Memory entries relevant to an architecture element ID (same matching rules as focus memory_hits).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "element_id": { "type": "string", "description": "Architecture element ID (e.g. MySystem.Api)" }
+                },
+                "required": ["element_id"]
+            }
+        }),
+        json!({
             "name": "sruja_get_focus_briefing",
             "title": "Sruja Focus Briefing",
-            "description": "Get a task-scoped architectural briefing for a specific file or element. Includes blast radius, linked decisions, and AI instructions.",
+            "description": "Get a task-scoped architectural briefing for a specific file or element. Includes blast radius, linked decisions, AI instructions, optional git-range temporal context, and agent memory hits.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -655,7 +682,9 @@ fn tool_definitions() -> Vec<Value> {
                     "run_id": { "type": "string", "description": "Optional run ID for tracing (defaults to auto-generated)" },
                     "file": { "type": "string", "description": "File path to focus on" },
                     "element_id": { "type": "string", "description": "Element ID to focus on" },
-                    "format": { "type": "string", "description": "Output format: text (default) or json" }
+                    "format": { "type": "string", "description": "Output format: text (default) or json" },
+                    "base_ref": { "type": "string", "description": "Optional git base ref for temporal context (use with head_ref; head defaults to HEAD if omitted)" },
+                    "head_ref": { "type": "string", "description": "Optional git head ref for temporal context (requires base_ref)" }
                 }
             }
         }),
@@ -2387,6 +2416,31 @@ async fn run_tool(
                 ))
             }
         }
+        "sruja_get_context_events" => {
+            let limit = arguments
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(50) as usize;
+            let kind = arguments.get("kind").and_then(|v| v.as_str());
+            let sub = arguments.get("details_substring").and_then(|v| v.as_str());
+            let events = crate::commands::context_events::read_context_events(
+                Path::new(&repo),
+                limit,
+                kind,
+                sub,
+            )?;
+            Ok(serde_json::to_string_pretty(&events)?)
+        }
+        "sruja_get_agent_learnings" => {
+            let element_id = arguments
+                .get("element_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing element_id"))?;
+            let memory = AgenticMemory::load(Path::new(&repo))
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            let relevant: Vec<&LearningEntry> = memory.find_relevant(element_id);
+            Ok(serde_json::to_string_pretty(&relevant)?)
+        }
         "sruja_get_focus_briefing" => {
             let file = arguments.get("file").and_then(|v| v.as_str());
             let element_id = arguments.get("element_id").and_then(|v| v.as_str());
@@ -2395,11 +2449,34 @@ async fn run_tool(
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
 
             let target_id = super::focus::resolve_target(&kg, Path::new(&repo), file, element_id)?;
+            let base_ref = arguments.get("base_ref").and_then(|v| v.as_str());
+            let head_ref = arguments.get("head_ref").and_then(|v| v.as_str());
+            let temporal = match (base_ref, head_ref) {
+                (Some(b), Some(h)) => Some(super::focus::load_temporal_context(
+                    Path::new(&repo),
+                    b,
+                    h,
+                    &target_id,
+                )?),
+                (Some(b), None) => Some(super::focus::load_temporal_context(
+                    Path::new(&repo),
+                    b,
+                    "HEAD",
+                    &target_id,
+                )?),
+                (None, Some(_)) => {
+                    return Err(CliError::validation(
+                        "head_ref requires base_ref for focus temporal context".to_string(),
+                    ));
+                }
+                (None, None) => None,
+            };
             let mut briefing = super::focus::build_focus_briefing(
                 &kg,
                 &target_id,
                 Path::new(&repo),
                 graph.nodes.len(),
+                temporal,
             );
             briefing.run_id = Some(
                 run_id
@@ -3016,6 +3093,8 @@ mod tests {
         assert!(names.contains(&"sruja_get_architecture_context".to_string()));
         assert!(names.contains(&"sruja_explain_discovery".to_string()));
         assert!(names.contains(&"sruja_check_drift".to_string()));
+        assert!(names.contains(&"sruja_get_context_events".to_string()));
+        assert!(names.contains(&"sruja_get_agent_learnings".to_string()));
     }
 
     #[tokio::test]

@@ -9,6 +9,10 @@ A Context Graph is a governed, structured representation of knowledge designed f
 - **Intent**: Distinguishes between the "reviewed truth" (what should be) and "fresh evidence" (what is).
 - **Resolution**: Handles nested scopes and fully qualified names (FQN) for precise retrieval.
 
+### Terminology: “context graph” in the wild
+
+Some literature uses **context graph** for **organizational decision traces** (who approved what, under which policy version, citing which precedent). Sruja’s Context Graph is the **repository intent + structure** layer: it is the map agents should respect while coding. For **decision-style traces** in-repo, use **context events** (`.sruja/context_events.jsonl`), **Agentic Memory**, and run snapshots—see [CONTEXT_ENGINEERING.md](../CONTEXT_ENGINEERING.md#context-graphs-sruja-vs-industry-usage).
+
 ## The Schema DSL
 
 You can now define custom domains using the `schema` block at the top of your `.sruja` files.

@@ -62,6 +62,8 @@ pub async fn intent_check(
         report.recompute_summary_and_score();
     }
 
+    crate::commands::context_events::record_intent_check(repo_path, &report, strict);
+
     if format == "json" {
         let intent_report = IntentReport::from_drift_report(&report);
         println!("{}", serde_json::to_string_pretty(&intent_report)?);

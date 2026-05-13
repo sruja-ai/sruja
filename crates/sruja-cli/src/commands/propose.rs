@@ -193,5 +193,7 @@ pub async fn propose_approve(repo_root: &str, proposal_id: &str) -> Result<(), C
         proposal_id
     );
 
+    crate::commands::context_events::record_proposal_merge(repo_path, proposal_id);
+
     Ok(())
 }

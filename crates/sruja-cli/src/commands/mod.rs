@@ -94,6 +94,7 @@ pub use utility_domain::compliance::compliance;
 pub use utility_domain::federation::{compose, publish};
 
 pub(crate) mod context;
+pub(crate) mod context_events;
 
 pub use context::{context_export, ContextRequest};
 
