@@ -113,20 +113,34 @@ runs:
           fi
           # Ensure .nojekyll exists to prevent Jekyll from processing underscore directories
           touch target/.nojekyll
-          
-          # Copy LICENSE file from main repo to website repo
-          # Check multiple possible locations (workspace root, parent directories)
-          LICENSE_FOUND=false
-          for LICENSE_PATH in "$GITHUB_WORKSPACE/LICENSE" "$(pwd)/LICENSE" "LICENSE" "../LICENSE" "../../LICENSE"; do
-            if [ -f "$LICENSE_PATH" ]; then
-              cp "$LICENSE_PATH" target/LICENSE
-              echo "✅ LICENSE file copied from $LICENSE_PATH"
-              LICENSE_FOUND=true
-              break
-            fi
-          done
-          if [ "$LICENSE_FOUND" = false ]; then
-            echo "⚠️  LICENSE file not found - website repo will not have a LICENSE file"
+
+          # Copy dual-license texts from main repo (MIT OR Apache-2.0). Root has LICENSE-APACHE + LICENSE-MIT,
+          # not a single LICENSE file — GitHub license detection on Pages repos will see these after deploy.
+          WS="${GITHUB_WORKSPACE:-$(pwd)}"
+          LICENSE_COPIED=false
+          if [ -f "$WS/LICENSE-APACHE" ]; then
+            cp "$WS/LICENSE-APACHE" target/LICENSE-APACHE
+            echo "✅ LICENSE-APACHE copied"
+            LICENSE_COPIED=true
+          fi
+          if [ -f "$WS/LICENSE-MIT" ]; then
+            cp "$WS/LICENSE-MIT" target/LICENSE-MIT
+            echo "✅ LICENSE-MIT copied"
+            LICENSE_COPIED=true
+          fi
+          if [ "$LICENSE_COPIED" = true ]; then
+            cat > target/LICENSE << 'EOF'
+SPDX-License-Identifier: MIT OR Apache-2.0
+
+This repository contains built static files deployed from the main Sruja project.
+Full license texts: see LICENSE-APACHE and LICENSE-MIT in this repository.
+EOF
+            echo "✅ LICENSE (SPDX pointer) written"
+          elif [ -f "$WS/LICENSE" ]; then
+            cp "$WS/LICENSE" target/LICENSE
+            echo "✅ LICENSE copied (single file)"
+          else
+            echo "⚠️  No LICENSE-APACHE / LICENSE-MIT (or LICENSE) at workspace root — website repo will lack license files"
           fi
         fi
 
@@ -152,14 +166,16 @@ runs:
 
         This repository is automatically updated by GitHub Actions workflows from the main [sruja](https://github.com/sruja-ai/sruja) repository. It contains the built static files that are served via GitHub Pages.
 
+        **Staging vs production:** [staging-website](https://github.com/sruja-ai/staging-website) tracks `main` on a path-filtered push; [prod-website](https://github.com/sruja-ai/prod-website) is updated only via a manual promote workflow after staging is validated. See [Related repositories](https://github.com/sruja-ai/sruja/blob/main/docs/RELATED_REPOSITORIES.md) in the main repo.
+
         **Do not:**
         - Make manual changes to this repository
-        - Open issues or pull requests here
+        - Open issues or pull requests here (use the main repository; GitHub Issues may be disabled on staging)
         - Use this repository as a reference for development
 
         **Do:**
         - Visit the [main repository](https://github.com/sruja-ai/sruja) for all development activities
-        - Report issues in the [main repository](https://github.com/sruja-ai/sruja/issues)
+        - Report issues in the [main repository](https://github.com/sruja-ai/sruja/issues) or [Discussions](https://github.com/sruja-ai/sruja/discussions)
         - Contribute via pull requests to the [main repository](https://github.com/sruja-ai/sruja)
 
         ---

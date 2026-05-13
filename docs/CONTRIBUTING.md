@@ -14,7 +14,8 @@ This step-by-step guide walks you through making your first contribution, even i
 - 📖 **Development Guide**: [Development Practices](DEVELOPMENT.md)
 - 🐕 **Internal Dogfooding**: [Dogfooding Playbook](internal/dogfooding-playbook.md)
 - 📐 **Stack**: Rust (CLI, language, engine, export, scan/diff/graph/intent, WASM), mdBook (docs), VS Code extension (TypeScript, WASM-powered language features).
-- 💬 **Get Help**:[GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
+- 💬 **Get Help**: [GitHub Discussions](https://github.com/sruja-ai/sruja/discussions)
+- **GitHub Pages deploy targets**: [Related repositories](RELATED_REPOSITORIES.md)
 
 ## Project Overview
 
@@ -36,7 +37,7 @@ This repository (`sruja-ai/sruja`) is the **main development repository** where 
 - `sruja-ai/staging-website` - Staging deployment (auto-updated from `main` on push; or manual)
 - `sruja-ai/prod-website` - Production deployment (manual promote from `main`; see [Deploy to Production](../.github/workflows/README.md#deploy-to-production))
 
-These repositories are **automatically updated** by GitHub Actions workflows and contain only built static files for GitHub Pages hosting. They are **read-only** for contributors.
+These repositories are **automatically updated** by GitHub Actions workflows and contain only built static files for GitHub Pages hosting. They are **read-only** for contributors. See [Related repositories](RELATED_REPOSITORIES.md) for staging vs production triggers and where to file issues.
 
 **All contributions should be made to this repository (`sruja-ai/sruja`):**
 
@@ -46,6 +47,10 @@ These repositories are **automatically updated** by GitHub Actions workflows and
 - ✅ Contribute code, docs, and examples here
 
 The deployment repositories will be automatically updated when your changes are merged to `main` or released.
+
+## Scoped tasks (for contributors and agents)
+
+Use a **single clear anchor** for non-trivial work: a GitHub issue URL, or a concrete path plus expected behavior. Write **short acceptance criteria** (what “done” means) before large diffs. Before opening a PR, run **`make check`** (format, clippy, tests) and, when you touch architecture baselines, **`sruja drift -r .`** / **`sruja lint`** as described in [AGENTS.md](../AGENTS.md). For Dependabot and MSRV decisions, see [MSRV and dependencies](MSRV_AND_DEPENDENCIES.md).
 
 ## Development Setup
 
