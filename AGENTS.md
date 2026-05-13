@@ -33,6 +33,7 @@ Before any significant code change:
 
 - Run `sruja drift -r .` before merging
 - Track code churn with `./scripts/code-churn.sh`
+- For Dependabot majors and MSRV-sensitive upgrades, follow [docs/MSRV_AND_DEPENDENCIES.md](docs/MSRV_AND_DEPENDENCIES.md)
 - Review security with `./target/release/sruja lint` (if applicable)
 
 ## Build, Lint, and Test Commands
@@ -321,6 +322,7 @@ Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, Cl
    - **Command**: `sruja mcp -r .`
    - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.
 4. **Cross-Repo Context**: Use `sruja ai-context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
+5. **Public GitHub org layout** (product + Pages deploy targets): [docs/RELATED_REPOSITORIES.md](docs/RELATED_REPOSITORIES.md)
 
 When using AI agents, leverage Sruja's context tools:
 - **`sruja focus --file <path>`**: Generates a task-scoped briefing (blast radius, decisions, boundaries, AI instructions).

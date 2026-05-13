@@ -113,60 +113,50 @@ runs:
           fi
           # Ensure .nojekyll exists to prevent Jekyll from processing underscore directories
           touch target/.nojekyll
-          
-          # Copy LICENSE file from main repo to website repo
-          # Check multiple possible locations (workspace root, parent directories)
-          LICENSE_FOUND=false
-          for LICENSE_PATH in "$GITHUB_WORKSPACE/LICENSE" "$(pwd)/LICENSE" "LICENSE" "../LICENSE" "../../LICENSE"; do
-            if [ -f "$LICENSE_PATH" ]; then
-              cp "$LICENSE_PATH" target/LICENSE
-              echo "✅ LICENSE file copied from $LICENSE_PATH"
-              LICENSE_FOUND=true
-              break
-            fi
-          done
-          if [ "$LICENSE_FOUND" = false ]; then
-            echo "⚠️  LICENSE file not found - website repo will not have a LICENSE file"
+
+          # Copy dual-license texts from main repo (MIT OR Apache-2.0). Root has LICENSE-APACHE + LICENSE-MIT,
+          # not a single LICENSE file — GitHub license detection on Pages repos will see these after deploy.
+          WS="${GITHUB_WORKSPACE:-$(pwd)}"
+          LICENSE_COPIED=false
+          if [ -f "$WS/LICENSE-APACHE" ]; then
+            cp "$WS/LICENSE-APACHE" target/LICENSE-APACHE
+            echo "✅ LICENSE-APACHE copied"
+            LICENSE_COPIED=true
+          fi
+          if [ -f "$WS/LICENSE-MIT" ]; then
+            cp "$WS/LICENSE-MIT" target/LICENSE-MIT
+            echo "✅ LICENSE-MIT copied"
+            LICENSE_COPIED=true
+          fi
+          if [ "$LICENSE_COPIED" = true ]; then
+            cat > target/LICENSE << 'EOF'
+SPDX-License-Identifier: MIT OR Apache-2.0
+
+This repository contains built static files deployed from the main Sruja project.
+Full license texts: see LICENSE-APACHE and LICENSE-MIT in this repository.
+EOF
+            echo "✅ LICENSE (SPDX pointer) written"
+          elif [ -f "$WS/LICENSE" ]; then
+            cp "$WS/LICENSE" target/LICENSE
+            echo "✅ LICENSE copied (single file)"
+          else
+            echo "⚠️  No LICENSE-APACHE / LICENSE-MIT (or LICENSE) at workspace root — website repo will lack license files"
           fi
         fi
 
     - name: Create deployment README
       shell: bash
       run: |
-        # Only create README for root site deployments, not for designer subdirectory
+        # Only create README for root site deployments, not for designer subdirectory.
+        # Use a checked-in template so Markdown is valid (no YAML-indented heredoc) and bash EOF rules are trivial.
         if [[ "${{ inputs.site-path }}" != *"/designer" ]]; then
-          cat > target/README.md << 'EOF'
-        # Deployment Repository
-
-        ⚠️ **This repository is for deployment purposes only.**
-
-        This repository contains the built and deployed version of the Sruja website/application.
-
-        **For source code, issues, contributions, and documentation, please refer to the main repository:**
-
-        🔗 **[sruja-ai/sruja](https://github.com/sruja-ai/sruja)**
-
-        ---
-
-        ## What is this?
-
-        This repository is automatically updated by GitHub Actions workflows from the main [sruja](https://github.com/sruja-ai/sruja) repository. It contains the built static files that are served via GitHub Pages.
-
-        **Do not:**
-        - Make manual changes to this repository
-        - Open issues or pull requests here
-        - Use this repository as a reference for development
-
-        **Do:**
-        - Visit the [main repository](https://github.com/sruja-ai/sruja) for all development activities
-        - Report issues in the [main repository](https://github.com/sruja-ai/sruja/issues)
-        - Contribute via pull requests to the [main repository](https://github.com/sruja-ai/sruja)
-
-        ---
-
-        *This README is automatically generated and deployed.*
-        EOF
-          echo "✅ Created deployment README"
+          TPL="${GITHUB_WORKSPACE}/.github/templates/github-pages-deployment-readme.md"
+          if [ ! -f "$TPL" ]; then
+            echo "::error::Missing README template: $TPL"
+            exit 1
+          fi
+          cp "$TPL" target/README.md
+          echo "✅ Created deployment README from template"
         else
           echo "⏭️  Skipping README creation (designer subdirectory deployment)"
         fi

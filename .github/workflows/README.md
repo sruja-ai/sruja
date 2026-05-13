@@ -54,7 +54,7 @@ To add a new code-level standard: (1) add or reference the policy in the archite
 
 ## Deploy to Staging
 
-The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys to `sruja-ai/staging-website` on push to `main`.
+The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys to `sruja-ai/staging-website` on push to `main`. See also [Related repositories](../../docs/RELATED_REPOSITORIES.md) for how this fits with production and issue routing.
 
 **Prerequisites**
 
@@ -63,7 +63,7 @@ The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys
 
 **Triggers**
 
-- **Push to main:** When paths under `book/`, `crates/`, `book/valid-examples/` change.
+- **Push to main:** When paths under `book/`, selected `crates/`, `book/valid-examples/`, `scripts/`, `.github/workflows/deploy-staging.yml`, `.github/actions/deploy-to-github-pages/`, or `.github/templates/` change.
 - **Manual:** **Actions → Deploy to Staging → Run workflow.**
 
 ## Deploy to Production

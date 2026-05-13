@@ -171,6 +171,10 @@ sruja export markdown example.sruja
 
 Install the **Sruja** extension for syntax, diagnostics, and optional diagram preview in the editor.
 
+## Repositories and the documentation site
+
+The [sruja-ai/sruja](https://github.com/sruja-ai/sruja) repository is the **source** for code, the book, and CI. The **published** documentation site is deployed to separate GitHub Pages repositories ([staging](https://github.com/sruja-ai/staging-website), [production](https://github.com/sruja-ai/prod-website)); how they are updated from `main` is documented in [Related repositories](https://github.com/sruja-ai/sruja/blob/main/docs/RELATED_REPOSITORIES.md). Report site or product issues in the [main repo](https://github.com/sruja-ai/sruja/issues).
+
 ---
 
 **Next:** [Beginner path](docs/beginner-path.md) builds on this in 7 steps (2–3 hours). For a longer "first architecture" walkthrough with a view and stdlib import, see [Getting started (full)](docs/getting-started.md).

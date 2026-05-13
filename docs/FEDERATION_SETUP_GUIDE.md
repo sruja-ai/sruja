@@ -20,6 +20,8 @@ Federation lets you:
 
 ## Prerequisites
 
+**GitHub org layout:** The public `sruja-ai` product and documentation deploy targets are summarized in [RELATED_REPOSITORIES.md](RELATED_REPOSITORIES.md) (main repo, staging site, production site). Federation can still include additional private or external repositories in your own `system.index.json`.
+
 1. **Sruja CLI installed**
    ```bash
    curl -fsSL https://sruja.ai/install.sh | bash
