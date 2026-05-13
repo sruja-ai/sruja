@@ -101,6 +101,8 @@ pub struct CrossRepoEdge {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MultiRepoArchitectureContext {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     pub repos: Vec<ArchitectureContext>,
     pub combined_summary: ContextSummary,
     pub cross_repo_rules: Vec<String>,
@@ -208,6 +210,8 @@ pub struct GroundingStep {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskContext {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     pub schema_version: String,
     pub selection_reason: SelectionReason,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -322,4 +326,6 @@ pub struct TaskSemanticCandidate {
     pub label: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub features: Option<serde_json::Value>,
 }

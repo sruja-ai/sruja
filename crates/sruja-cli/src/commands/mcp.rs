@@ -329,6 +329,7 @@ fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "run_id": { "type": "string", "description": "Optional run ID for tracing (defaults to auto-generated)" },
                     "file": { "type": "string", "description": "Optional file focus for task-scoped context (relative to repo root)" },
                     "element_id": { "type": "string", "description": "Optional architecture element ID focus (e.g. MySystem.Api)" },
                     "intent": { "type": "string", "description": "Optional intent hint (add-feature, refactor, fix-bug)" }
@@ -651,6 +652,7 @@ fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "run_id": { "type": "string", "description": "Optional run ID for tracing (defaults to auto-generated)" },
                     "file": { "type": "string", "description": "File path to focus on" },
                     "element_id": { "type": "string", "description": "Element ID to focus on" },
                     "format": { "type": "string", "description": "Output format: text (default) or json" }
@@ -874,6 +876,7 @@ fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "run_id": { "type": "string", "description": "Optional run ID for tracing (defaults to auto-generated)" },
                     "goal": { "type": "string", "description": "Natural language goal for the agent" },
                     "file": { "type": "string", "description": "Optional file focus (exactly one of file/element_id/query)" },
                     "element_id": { "type": "string", "description": "Optional element id focus (exactly one of file/element_id/query)" },
@@ -910,6 +913,8 @@ async fn run_tool(
         .unwrap_or(default_repo)
         .to_string();
 
+    let run_id = arguments.get("run_id").and_then(|v| v.as_str());
+
     if mcp_readonly_enabled() && is_mutating_mcp_tool(name) {
         return Err(CliError::validation(format!(
             "MCP tool {name:?} is disabled when {} is set (read-only MCP profile)",
@@ -939,6 +944,7 @@ async fn run_tool(
                 &repo,
                 "markdown",
                 super::context::ContextRequest {
+                    run_id,
                     file: file.as_deref(),
                     element_id: element_id.as_deref(),
                     query: None,
@@ -957,6 +963,7 @@ async fn run_tool(
                 &repo,
                 "markdown",
                 super::context::ContextRequest {
+                    run_id,
                     file: None,
                     element_id: None,
                     query: None,
@@ -1071,6 +1078,7 @@ async fn run_tool(
                 file,
                 element_id,
                 query,
+                run_id,
                 mode,
                 ai_mode,
                 format: "for-ai",
@@ -1656,13 +1664,25 @@ async fn run_tool(
                 .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
             memory.add_learning(LearningEntry {
                 id: String::new(),
+                kind: Some(match outcome {
+                    ExperimentOutcome::Success => sruja_agent::LearningKind::Playbook,
+                    ExperimentOutcome::Failed => sruja_agent::LearningKind::Guardrail,
+                }),
                 timestamp: chrono::Utc::now(),
+                run_id: arguments
+                    .get("run_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string()),
+                repo: Some(repo.clone()),
+                selector: None,
                 context,
                 hypothesis,
                 outcome,
                 reason,
                 guardrail_advice,
                 affected_elements,
+                evidence_refs: Vec::new(),
+                confidence: None,
                 tags: Vec::new(),
                 related_ids: Vec::new(),
             });
@@ -2374,12 +2394,17 @@ async fn run_tool(
             let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
 
-            let target_id = super::focus::resolve_target(&kg, file, element_id)?;
-            let briefing = super::focus::build_focus_briefing(
+            let target_id = super::focus::resolve_target(&kg, Path::new(&repo), file, element_id)?;
+            let mut briefing = super::focus::build_focus_briefing(
                 &kg,
                 &target_id,
                 Path::new(&repo),
                 graph.nodes.len(),
+            );
+            briefing.run_id = Some(
+                run_id
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(crate::utils::run_id::generate_run_id),
             );
 
             Ok(serde_json::to_string_pretty(&briefing)?)

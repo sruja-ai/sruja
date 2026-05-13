@@ -42,6 +42,10 @@ pub struct AgentConfig {
     pub max_runtime_ms_per_step: Option<u64>,
     /// Default number of MaTTS trajectories for `agent run --trajectories`.
     pub default_trajectories: Option<usize>,
+    /// If true, `agent run --mode apply` may persist learnings to agentic memory.
+    ///
+    /// Default is false (no automatic memory writes) to keep the agent loop conservative.
+    pub auto_record_learnings: Option<bool>,
 }
 
 /// Configuration for context engineering features (BM25, compression, hybrid retrieval).
@@ -260,6 +264,7 @@ allowed_sruja_subcommands = ["sync", "drift"]
 allowed_verify_executables = ["cargo"]
 max_steps = 3
 max_runtime_ms_per_step = 1000
+auto_record_learnings = true
 "#;
         let cfg: SrujaConfigFile = toml::from_str(toml).expect("parse toml");
         assert_eq!(cfg.integrations.default_provider.as_deref(), Some("cmd"));
@@ -273,6 +278,7 @@ max_runtime_ms_per_step = 1000
         );
         assert_eq!(cfg.agent.max_steps, Some(3));
         assert_eq!(cfg.agent.max_runtime_ms_per_step, Some(1000));
+        assert_eq!(cfg.agent.auto_record_learnings, Some(true));
     }
 }
 

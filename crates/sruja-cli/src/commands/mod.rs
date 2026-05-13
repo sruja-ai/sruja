@@ -74,6 +74,7 @@ pub use scan_domain::status::status;
 pub use scan_domain::sync_cmd::sync;
 pub use scan_domain::why::why;
 pub use utility_domain::init::init;
+pub use utility_domain::run_show::run_show;
 pub use utility_domain::version::version;
 
 pub use dsl_domain::check;

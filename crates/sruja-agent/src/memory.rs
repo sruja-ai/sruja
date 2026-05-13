@@ -44,8 +44,23 @@ pub struct LearningEntry {
     /// Stable identifier for cross-referencing between entries.
     #[serde(default = "generate_entry_id")]
     pub id: String,
+    /// Optional classification for the type of learning.
+    ///
+    /// This is intentionally optional for backward compatibility with existing
+    /// `.sruja/agent_memory.json` files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<LearningKind>,
     /// When this learning was recorded.
     pub timestamp: DateTime<Utc>,
+    /// Optional run ID that produced this learning (for traceability).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
+    /// Optional repository identifier/path (useful for federated multi-repo memory).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repo: Option<String>,
+    /// Optional selector string that led to this learning (file/element_id/query/diff).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selector: Option<String>,
     /// The context in which the experiment was performed (e.g., "Refactoring API layer").
     pub context: String,
     /// The hypothesis being tested (e.g., "Moving logic to sruja-engine will reduce CLI bloat").
@@ -58,12 +73,29 @@ pub struct LearningEntry {
     pub guardrail_advice: String,
     /// IDs of architectural elements affected by this experiment.
     pub affected_elements: Vec<String>,
+    /// Optional evidence references (files, ADR IDs, commands, etc.) that ground this learning.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence_refs: Vec<String>,
+    /// Optional confidence label (high/medium/low) aligned with Sruja task confidence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<String>,
     /// Auto-generated thematic tags extracted from context, hypothesis, and guardrail.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     /// IDs of related learning entries (bidirectional Zettelkasten links).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub related_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LearningKind {
+    /// A guardrail: “what not to try again”.
+    Guardrail,
+    /// A playbook: “what worked, do this again”.
+    Playbook,
+    /// An invariant: “must always hold”.
+    Invariant,
 }
 
 fn generate_entry_id() -> String {
@@ -381,13 +413,19 @@ mod tests {
     fn make_entry(context: &str, hypothesis: &str, elements: Vec<&str>) -> LearningEntry {
         LearningEntry {
             id: generate_entry_id(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: context.to_string(),
             hypothesis: hypothesis.to_string(),
             outcome: ExperimentOutcome::Failed,
             reason: None,
             guardrail_advice: String::new(),
             affected_elements: elements.into_iter().map(String::from).collect(),
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         }
@@ -398,13 +436,19 @@ mod tests {
         let mut memory = AgenticMemory::default();
         let entry = LearningEntry {
             id: "test-1".to_string(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "Refactoring API".to_string(),
             hypothesis: "Test hypothesis".to_string(),
             outcome: ExperimentOutcome::Success,
             reason: None,
             guardrail_advice: "Keep doing this".to_string(),
             affected_elements: vec!["Sruja.API".to_string(), "Sruja.CLI".to_string()],
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         };
@@ -422,13 +466,19 @@ mod tests {
         let mut memory = AgenticMemory::default();
         let entry = LearningEntry {
             id: "tag-test".to_string(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "Boundary violation in service layer".to_string(),
             hypothesis: "Direct database access from routes".to_string(),
             outcome: ExperimentOutcome::Failed,
             reason: None,
             guardrail_advice: "Always use service layer for database queries".to_string(),
             affected_elements: vec!["API.Routes".to_string()],
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         };
@@ -536,13 +586,19 @@ mod tests {
         let mut memory = AgenticMemory::default();
         let entry = LearningEntry {
             id: "save-test".to_string(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "Test".to_string(),
             hypothesis: "Hypo".to_string(),
             outcome: ExperimentOutcome::Failed,
             reason: Some("Error".to_string()),
             guardrail_advice: "Don't".to_string(),
             affected_elements: vec!["ID1".to_string()],
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         };
@@ -600,13 +656,19 @@ mod tests {
         let mut memory = AgenticMemory::default();
         let entry = LearningEntry {
             id: "edge-case".to_string(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "Some Context".to_string(),
             hypothesis: "".to_string(),
             outcome: ExperimentOutcome::Success,
             reason: None,
             guardrail_advice: "".to_string(),
             affected_elements: vec!["Sruja.API.V1".to_string()],
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         };
@@ -625,13 +687,19 @@ mod tests {
         let mut memory = AgenticMemory::default();
         memory.add_learning(LearningEntry {
             id: "custom-path".to_string(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "Custom".to_string(),
             hypothesis: "H".to_string(),
             outcome: ExperimentOutcome::Success,
             reason: None,
             guardrail_advice: "G".to_string(),
             affected_elements: vec![],
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         });
@@ -648,13 +716,19 @@ mod tests {
     fn test_learning_entry_relevance() {
         let entry = LearningEntry {
             id: "rel-test".to_string(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "API Refactoring".to_string(),
             hypothesis: "".to_string(),
             outcome: ExperimentOutcome::Success,
             reason: None,
             guardrail_advice: "".to_string(),
             affected_elements: vec!["System.Core".to_string()],
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         };
@@ -673,13 +747,19 @@ mod tests {
         let mut memory = AgenticMemory::default();
         memory.add_learning(LearningEntry {
             id: "replace-test".to_string(),
+            kind: None,
             timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "Short".to_string(),
             hypothesis: "H".to_string(),
             outcome: ExperimentOutcome::Success,
             reason: None,
             guardrail_advice: "G".to_string(),
             affected_elements: vec![],
+            evidence_refs: Vec::new(),
+            confidence: None,
             tags: Vec::new(),
             related_ids: Vec::new(),
         });
@@ -710,5 +790,7 @@ mod tests {
         assert_eq!(memory.learnings.len(), 1);
         assert!(memory.learnings[0].tags.is_empty());
         assert!(memory.learnings[0].related_ids.is_empty());
+        assert!(memory.learnings[0].kind.is_none());
+        assert!(memory.learnings[0].run_id.is_none());
     }
 }

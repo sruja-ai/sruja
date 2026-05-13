@@ -9,19 +9,37 @@ use serde::Serialize;
 use std::collections::HashSet;
 use std::path::Path;
 
+use crate::commands::context::types::TokenBudget;
 use crate::commands::CliError;
 use crate::graph_store;
 use crate::integrations::{
     resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
 };
 use crate::utils::colors;
+use crate::utils::run_id::generate_run_id;
+use crate::utils::run_snapshots::write_json_snapshot;
 use sruja_agent::AgenticMemory;
+use sruja_agent::ExperimentOutcome;
 use sruja_graph::{compute_context_score, KnowledgeGraph, ReasonedWhyStep};
 
 const FOCUS_FOR_AI_SCHEMA_VERSION: &str = "focus_for_ai/v1";
 
 #[derive(Debug, Serialize)]
+pub struct MemoryHit {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    pub outcome: String,
+    pub match_reason: String,
+    pub timestamp: String,
+    pub hypothesis: String,
+    pub guardrail_advice: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct FocusBriefing {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     pub target: FocusTarget,
     pub blast_radius: BlastRadius,
     pub reasoned_traces: Vec<ReasonedTrace>,
@@ -32,6 +50,10 @@ pub struct FocusBriefing {
     pub ai_instructions: Vec<String>,
     pub anti_patterns: Vec<String>,
     pub pointer_traces: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub memory_hits: Vec<MemoryHit>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub memory_truncated: bool,
     pub context_score: u8,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enrichment: Option<FocusEnrichment>,
@@ -49,6 +71,8 @@ pub struct ReasonedTrace {
 #[derive(Debug, Serialize)]
 pub struct FocusForAiOutput {
     pub schema_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
     pub repo: String,
     pub target: FocusForAiTarget,
     pub briefing: FocusBriefing,
@@ -143,6 +167,7 @@ pub struct HotspotStatus {
 /// Resolve a target ID from a file path or element ID.
 pub fn resolve_target(
     graph: &KnowledgeGraph,
+    repo_path: &Path,
     file: Option<&str>,
     element_id: Option<&str>,
 ) -> Result<String, CliError> {
@@ -151,80 +176,53 @@ pub fn resolve_target(
         if graph.nodes.contains_key(eid) {
             return Ok(eid.to_string());
         }
-        // Fuzzy match
-        let q = eid.to_lowercase();
+        // Match by suffix (aligns with `context` element_id resolution).
+        let suffix = format!(".{}", eid);
         let mut matches: Vec<&str> = graph
             .nodes
             .keys()
-            .filter(|k| k.to_lowercase().contains(&q))
+            .filter(|k| *k == eid || k.ends_with(&suffix))
             .map(|k| k.as_str())
             .collect();
         matches.sort_unstable();
+        matches.dedup();
         match matches.len() {
-            0 => {
-                return Err(CliError::validation(format!(
-                    "No architecture element matches '{}'. Run 'sruja list repo.sruja' to see available elements.",
-                    eid
-                )))
-            }
-            1 => return Ok(matches[0].to_string()),
+            0 => Err(CliError::validation(format!(
+                "No architecture element matches '{}'. Run 'sruja list repo.sruja' to see available elements.",
+                eid
+            ))),
+            1 => Ok(matches[0].to_string()),
             _ => {
                 let preview: Vec<&str> = matches.iter().take(5).copied().collect();
-                return Err(CliError::validation(format!(
+                Err(CliError::validation(format!(
                     "Ambiguous element '{}'. Matches: {}",
                     eid,
                     preview.join(", ")
-                )));
+                )))
             }
-        }
+        }?;
     }
 
     // File path match — find nodes whose metadata, label, or source ref mention the file
     if let Some(file_path) = file {
-        let normalized = file_path
-            .replace('\\', "/")
-            .trim_start_matches("./")
-            .to_string();
-        let file_lower = normalized.to_lowercase();
-
-        // Try matching against node metadata (path field)
-        for (id, node) in &graph.nodes {
-            if let Some(path) = node.metadata.get("path") {
-                if path.to_lowercase().contains(&file_lower) {
-                    return Ok(id.clone());
-                }
-            }
-            // Match against label containing file name segments
-            let file_parts: Vec<&str> = file_lower.split('/').collect();
-            if let Some(last) = file_parts.last() {
-                let stem = last.split('.').next().unwrap_or(last);
-                if node.label.to_lowercase().contains(stem) || id.to_lowercase().contains(stem) {
-                    return Ok(id.clone());
-                }
-            }
-        }
-
-        // If no match, return the closest node by path similarity
-        let mut best_match: Option<(&str, usize)> = None;
-        for (id, node) in &graph.nodes {
-            let label_lower = node.label.to_lowercase();
-            let id_lower = id.to_lowercase();
-            for part in file_lower.split('/') {
-                if part.is_empty() || part == "src" || part == "lib" || part == "app" {
-                    continue;
-                }
-                let stem = part.split('.').next().unwrap_or(part);
-                if stem.len() >= 3 && (label_lower.contains(stem) || id_lower.contains(stem)) {
-                    let score = stem.len();
-                    if best_match.map(|(_, s)| score > s).unwrap_or(true) {
-                        best_match = Some((id.as_str(), score));
-                    }
-                }
-            }
-        }
-
-        if let Some((id, _)) = best_match {
-            return Ok(id.to_string());
+        // Delegate to the scan-based focus matcher (aligns with `context --file` ordering).
+        let scan = sruja_scan::scan_repo(repo_path).map_err(|e| {
+            CliError::validation(format!(
+                "Failed to scan repo for file focus resolution: {e}"
+            ))
+        })?;
+        let centrality = sruja_scan::graph::compute_all_centrality(&scan);
+        let focus_ctx = crate::commands::context::logic::build_focus_context(
+            &scan,
+            repo_path.to_string_lossy().as_ref(),
+            file_path,
+            None,
+            0,
+            0,
+            &centrality,
+        )?;
+        if let Some(first) = focus_ctx.matched_nodes.first() {
+            return Ok(first.id.clone());
         }
 
         return Err(CliError::validation(format!(
@@ -364,10 +362,72 @@ pub fn build_focus_briefing(
     // -- Architectural Guardrails (From Agentic Memory) --
     let mut anti_patterns = Vec::new();
     let mut pointer_traces = Vec::new();
+    let mut memory_hits: Vec<MemoryHit> = Vec::new();
+    let mut memory_truncated = false;
 
     if let Ok(memory) = AgenticMemory::load(repo_path) {
-        let relevant = memory.find_relevant(target_id);
-        for entry in relevant {
+        let mut relevant = memory.find_relevant(target_id);
+        relevant.sort_by(|a, b| b.timestamp.cmp(&a.timestamp).then_with(|| a.id.cmp(&b.id)));
+
+        let ce_cfg = crate::integrations::load_repo_config(repo_path)
+            .map(|c| c.context_engineering)
+            .unwrap_or_default();
+        let max_items = ce_cfg.bm25_max_results_focus.unwrap_or(10).max(1);
+
+        let mut budget = TokenBudget::new(800);
+        for entry in relevant.into_iter().take(max_items) {
+            let match_reason = if entry.affected_elements.iter().any(|e| {
+                e == target_id
+                    || target_id.starts_with(&format!("{}.", e))
+                    || e.starts_with(&format!("{}.", target_id))
+            }) {
+                "affected_elements"
+            } else if entry
+                .context
+                .to_lowercase()
+                .contains(&target_id.to_lowercase())
+            {
+                "context_keyword"
+            } else {
+                "unknown"
+            };
+
+            let hit_str = format!(
+                "{} {} {} {}",
+                entry.id,
+                entry.hypothesis,
+                entry.guardrail_advice,
+                entry.reason.clone().unwrap_or_default()
+            );
+            if budget
+                .used_tokens
+                .saturating_add(TokenBudget::estimate_tokens(&hit_str))
+                > budget.max_tokens
+            {
+                memory_truncated = true;
+                break;
+            }
+            budget.used_tokens = budget
+                .used_tokens
+                .saturating_add(TokenBudget::estimate_tokens(&hit_str));
+
+            let outcome = match entry.outcome {
+                ExperimentOutcome::Success => "success",
+                ExperimentOutcome::Failed => "failed",
+            }
+            .to_string();
+            let kind = entry.kind.map(|k| format!("{k:?}").to_lowercase());
+
+            memory_hits.push(MemoryHit {
+                id: entry.id.clone(),
+                kind,
+                outcome,
+                match_reason: match_reason.to_string(),
+                timestamp: entry.timestamp.to_rfc3339(),
+                hypothesis: entry.hypothesis.clone(),
+                guardrail_advice: entry.guardrail_advice.clone(),
+            });
+
             anti_patterns.push(entry.guardrail_advice.clone());
             if let Some(reason) = &entry.reason {
                 pointer_traces.push(format!(
@@ -420,6 +480,7 @@ pub fn build_focus_briefing(
     let score = compute_context_score(graph, scan_node_count, repo_path, 0);
 
     FocusBriefing {
+        run_id: None,
         target,
         blast_radius,
         reasoned_traces: collect_reasoned_traces(graph, target_id),
@@ -430,6 +491,8 @@ pub fn build_focus_briefing(
         ai_instructions,
         anti_patterns,
         pointer_traces,
+        memory_hits,
+        memory_truncated,
         context_score: score.score,
         enrichment: None,
     }
@@ -439,11 +502,13 @@ pub fn build_focus_for_ai_output(
     repo_path: &Path,
     file: Option<&str>,
     element_id: Option<&str>,
+    run_id: Option<&str>,
     briefing: FocusBriefing,
 ) -> FocusForAiOutput {
     let resolved = briefing.target.id.clone();
     FocusForAiOutput {
         schema_version: FOCUS_FOR_AI_SCHEMA_VERSION.to_string(),
+        run_id: run_id.map(|s| s.to_string()),
         repo: repo_path.display().to_string(),
         target: FocusForAiTarget {
             file: file.map(|s| s.to_string()),
@@ -874,6 +939,7 @@ pub async fn focus(
     file: Option<&str>,
     element_id: Option<&str>,
     format: &str,
+    run_id: Option<&str>,
     enrich: bool,
     enrich_provider: Option<&str>,
     enrich_cmd: Option<&str>,
@@ -900,8 +966,33 @@ pub async fn focus(
     };
 
     // Resolve the target
-    let target_id = resolve_target(&kg, file, element_id)?;
+    let target_id = resolve_target(&kg, repo_path, file, element_id)?;
     let mut briefing = build_focus_briefing(&kg, &target_id, repo_path, scan_node_count);
+    let run_id = run_id
+        .map(|s| s.to_string())
+        .unwrap_or_else(generate_run_id);
+    briefing.run_id = Some(run_id.clone());
+
+    // Persist a bounded snapshot for replay/resume.
+    let snapshot = serde_json::json!({
+        "schema_version": "focus_snapshot/v1",
+        "run_id": run_id,
+        "repo": repo,
+        "selectors": { "file": file, "element_id": element_id },
+        "resolved_target_id": target_id,
+        "external_context": briefing.external_context.iter().map(|e| serde_json::json!({
+            "file": e.file,
+            "category": e.category,
+        })).collect::<Vec<_>>(),
+        "memory_hits": briefing.memory_hits.iter().map(|h| serde_json::json!({
+            "id": h.id,
+            "kind": h.kind,
+            "outcome": h.outcome,
+            "match_reason": h.match_reason,
+        })).collect::<Vec<_>>(),
+        "memory_truncated": briefing.memory_truncated,
+    });
+    let _ = write_json_snapshot(repo_path, &run_id, "focus.json", &snapshot);
     briefing.enrichment = build_focus_enrichment(
         repo_path,
         &briefing,
@@ -919,7 +1010,8 @@ pub async fn focus(
             println!("{}", serde_json::to_string_pretty(&briefing)?);
         }
         "for-ai" => {
-            let out = build_focus_for_ai_output(repo_path, file, element_id, briefing);
+            let out =
+                build_focus_for_ai_output(repo_path, file, element_id, Some(&run_id), briefing);
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         _ => {

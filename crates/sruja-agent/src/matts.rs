@@ -9,7 +9,7 @@
 //! Google Research's ReasoningBank: instead of running a task once and hoping
 //! for the best, we run N parallel attempts and distill wisdom from the spread.
 
-use crate::memory::{AgenticMemory, ExperimentOutcome, LearningEntry};
+use crate::memory::{AgenticMemory, ExperimentOutcome, LearningEntry, LearningKind};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -101,7 +101,11 @@ impl TrajectoryRunner {
 
             distilled.push(LearningEntry {
                 id: String::new(),
+                kind: Some(LearningKind::Playbook),
                 timestamp: Utc::now(),
+                run_id: None,
+                repo: None,
+                selector: None,
                 context: format!(
                     "MaTTS parallel evaluation: {} trajectories for goal '{}'",
                     outcomes.len(),
@@ -122,6 +126,8 @@ impl TrajectoryRunner {
                 )),
                 guardrail_advice: guardrail,
                 affected_elements: all_affected,
+                evidence_refs: Vec::new(),
+                confidence: None,
                 tags: vec!["matts".to_string(), "contrast".to_string()],
                 related_ids: Vec::new(),
             });
@@ -137,7 +143,11 @@ impl TrajectoryRunner {
 
             distilled.push(LearningEntry {
                 id: String::new(),
+                kind: Some(LearningKind::Guardrail),
                 timestamp: Utc::now(),
+                run_id: None,
+                repo: None,
+                selector: None,
                 context: format!(
                     "MaTTS: all {} trajectories failed for goal '{}'",
                     failures.len(),
@@ -151,6 +161,8 @@ impl TrajectoryRunner {
                     "All MaTTS trajectories failed. Investigate structural blockers before retrying."
                         .to_string(),
                 affected_elements: all_affected,
+                evidence_refs: Vec::new(),
+                confidence: None,
                 tags: vec!["matts".to_string(), "blocked".to_string()],
                 related_ids: Vec::new(),
             });

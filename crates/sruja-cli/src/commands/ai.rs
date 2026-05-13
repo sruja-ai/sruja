@@ -64,6 +64,7 @@ pub async fn ai_brief(options: AiBriefOptions<'_>) -> Result<(), CliError> {
         options.repo,
         "for-ai",
         ContextRequest {
+            run_id: None,
             file: selected_file.as_deref(),
             element_id: options.element_id,
             query: options.query,

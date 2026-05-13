@@ -18,6 +18,8 @@ pub mod federation;
 pub mod init;
 #[path = "preflight.rs"]
 pub mod preflight;
+#[path = "run_show.rs"]
+pub mod run_show;
 #[path = "version.rs"]
 pub mod version;
 #[path = "violation_shared.rs"]

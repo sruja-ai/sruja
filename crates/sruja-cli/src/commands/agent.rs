@@ -1,6 +1,6 @@
 use crate::commands::CliError;
 use crate::utils::colors;
-use sruja_agent::{AgenticMemory, ExperimentOutcome, LearningEntry};
+use sruja_agent::{AgenticMemory, ExperimentOutcome, LearningEntry, LearningKind};
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -105,13 +105,22 @@ pub async fn agent_record(
 
     memory.add_learning(LearningEntry {
         id: String::new(),
+        kind: Some(match outcome {
+            ExperimentOutcome::Success => LearningKind::Playbook,
+            ExperimentOutcome::Failed => LearningKind::Guardrail,
+        }),
         timestamp: chrono::Utc::now(),
+        run_id: None,
+        repo: Some(repo.to_string()),
+        selector: None,
         context: context.to_string(),
         hypothesis: hypothesis.to_string(),
         outcome,
         reason: reason.map(|s| s.to_string()),
         guardrail_advice: guardrail.to_string(),
         affected_elements,
+        evidence_refs: Vec::new(),
+        confidence: None,
         tags: Vec::new(),
         related_ids: Vec::new(),
     });

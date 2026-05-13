@@ -37,6 +37,14 @@ export function helper() { return "ok"; }
     assert!(ok, "context should succeed: stderr={}", stderr);
 
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    let run_id = parsed
+        .get("run_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    assert!(
+        run_id.starts_with("run_"),
+        "expected run_id to be present, got: {run_id:?}"
+    );
     assert_eq!(
         parsed
             .get("schema_version")
@@ -139,6 +147,14 @@ export function helper() { return "ok"; }
     assert!(ok, "context should succeed: stderr={}", stderr);
 
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    let run_id = parsed
+        .get("run_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    assert!(
+        run_id.starts_with("run_"),
+        "expected run_id to be present, got: {run_id:?}"
+    );
     assert_eq!(
         parsed
             .get("schema_version")

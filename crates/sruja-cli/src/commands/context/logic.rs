@@ -76,6 +76,7 @@ fn build_grounding_trace(input: GroundingTraceInputs<'_>) -> Vec<GroundingStep> 
                     "score": c.score,
                     "label": c.label,
                     "description": c.description,
+                    "features": c.features,
                 })
             })
             .collect();
@@ -557,6 +558,7 @@ pub fn build_task_context(
     });
 
     Ok(TaskContext {
+        run_id: None,
         schema_version: "task_context/v1".to_string(),
         selection_reason,
         grounding_trace,
@@ -1146,17 +1148,52 @@ fn semantic_candidates_from_scan(
         return Vec::new();
     }
     let terms: Vec<&str> = q.split_whitespace().collect();
-    let mut scored: Vec<(String, f32)> = Vec::new();
+    let centrality = sruja_scan::graph::compute_all_centrality(graph);
+    let mut scored: Vec<(String, f32, serde_json::Value)> = Vec::new();
     for n in &graph.nodes {
-        let hay = format!("{} {}", n.id.to_lowercase(), n.label.to_lowercase());
-        let mut score = 0f32;
+        let id_l = n.id.to_lowercase();
+        let label_l = n.label.to_lowercase();
+        let hay = format!("{} {}", id_l, label_l);
+        let mut exact_hits = 0u32;
+        let mut substr_hits = 0u32;
         for t in &terms {
-            if hay.contains(t) {
-                score += 1.0;
+            if t.is_empty() {
+                continue;
+            }
+            // Prefer exact token matches, fallback to substring matches.
+            let exact = id_l
+                .split(|c: char| !c.is_alphanumeric() && c != '_' && c != '.')
+                .any(|tok| tok == *t)
+                || label_l
+                    .split(|c: char| !c.is_alphanumeric() && c != '_' && c != '.')
+                    .any(|tok| tok == *t);
+            if exact {
+                exact_hits += 1;
+            } else if hay.contains(t) {
+                substr_hits += 1;
             }
         }
-        if score > 0.0 {
-            scored.push((n.id.clone(), score));
+        let kind_boost = match n.kind {
+            NodeKind::System => 1.2,
+            NodeKind::Container | NodeKind::Service | NodeKind::Database | NodeKind::Queue => 1.0,
+            NodeKind::Component => 0.8,
+            _ => 0.2,
+        };
+        let pr = centrality.get(&n.id).map(|c| c.pagerank).unwrap_or(0.0) as f32;
+        let score = (exact_hits as f32) * 2.0 + (substr_hits as f32) * 1.0 + kind_boost + pr * 0.25;
+
+        if exact_hits > 0 || substr_hits > 0 {
+            scored.push((
+                n.id.clone(),
+                score,
+                serde_json::json!({
+                    "exact_hits": exact_hits,
+                    "substring_hits": substr_hits,
+                    "kind": format!("{:?}", n.kind),
+                    "kind_boost": kind_boost,
+                    "pagerank": pr,
+                }),
+            ));
         }
     }
     scored.sort_by(|a, b| {
@@ -1167,13 +1204,14 @@ fn semantic_candidates_from_scan(
     scored.truncate(top_k);
     scored
         .into_iter()
-        .map(|(id, score)| {
+        .map(|(id, score, features)| {
             let node = graph.nodes.iter().find(|n| n.id == id);
             TaskSemanticCandidate {
                 element_id: id.clone(),
                 score,
                 label: node.map(|n| n.label.clone()),
                 description: node.and_then(|n| n.metadata.get("description").cloned()),
+                features: Some(features),
             }
         })
         .collect()

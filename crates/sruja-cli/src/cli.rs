@@ -598,6 +598,9 @@ pub enum Commands {
     /// Export structured architecture context for AI editor integration (Cursor, Copilot, Claude)
     #[command(name = "ai-context", alias = "context")]
     AiContext {
+        /// Optional run ID for tracing (defaults to auto-generated)
+        #[arg(long)]
+        run_id: Option<String>,
         /// Path to repository root
         #[arg(long, short = 'r', action = clap::ArgAction::Append)]
         repo: Vec<String>,
@@ -773,6 +776,9 @@ pub enum Commands {
 
     /// Focus: get a context briefing for a specific file or architecture element
     Focus {
+        /// Optional run ID for tracing (defaults to auto-generated)
+        #[arg(long)]
+        run_id: Option<String>,
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
         repo: String,
@@ -827,6 +833,11 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: AgentCommand,
     },
+    /// Inspect and replay saved run snapshots under `.sruja/runs/`
+    Run {
+        #[command(subcommand)]
+        cmd: RunCommand,
+    },
     /// [deprecated: use `intent evaluate`] Evaluate fitness functions declared in .sruja files
     #[command(hide = true)]
     Evaluate {
@@ -839,6 +850,22 @@ pub enum Commands {
     Evolution {
         #[command(subcommand)]
         cmd: EvolutionCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum RunCommand {
+    /// Show a saved run snapshot
+    Show {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Run ID to show
+        #[arg(long)]
+        run_id: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }
 
@@ -865,6 +892,7 @@ pub enum DiscoverCommand {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum AgentCommand {
     /// Show architectural learning history and guardrails
     History {
@@ -928,6 +956,9 @@ pub enum AgentCommand {
     },
     /// Run the agent loop: observe → plan → (optional) apply → verify → record learnings
     Run {
+        /// Optional run ID for tracing (defaults to auto-generated)
+        #[arg(long)]
+        run_id: Option<String>,
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
@@ -1442,6 +1473,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             .await
         }
         Commands::AiContext {
+            run_id,
             repo,
             format,
             output,
@@ -1462,6 +1494,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 &format,
                 output.as_deref(),
                 commands::ContextRequest {
+                    run_id: run_id.as_deref(),
                     file: file.as_deref(),
                     element_id: element_id.as_deref(),
                     query: query.as_deref(),
@@ -1602,6 +1635,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             commands::context_graph(&repo, &output, open).await
         }
         Commands::Focus {
+            run_id,
             repo,
             file,
             element_id,
@@ -1619,6 +1653,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 file.as_deref(),
                 element_id.as_deref(),
                 &format,
+                run_id.as_deref(),
                 enrich,
                 enrich_provider.as_deref(),
                 enrich_cmd.as_deref(),
@@ -1671,6 +1706,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 commands::agent_clusters(&repo, entry_id.as_deref(), tag.as_deref(), &format).await
             }
             AgentCommand::Run {
+                run_id,
                 repo,
                 goal,
                 file,
@@ -1700,6 +1736,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     mode: &mode,
                     ai_mode: &ai_mode,
                     format: &format,
+                    run_id: run_id.as_deref(),
                     max_steps,
                     max_runtime_ms_per_step,
                     enrich,
@@ -1714,6 +1751,13 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .await
             }
+        },
+        Commands::Run { cmd } => match cmd {
+            RunCommand::Show {
+                repo,
+                run_id,
+                format,
+            } => commands::run_show(&repo, &run_id, &format).await,
         },
         Commands::Evaluate { architecture } => {
             eprintln!("warning: 'sruja evaluate' is deprecated, use 'sruja intent evaluate'");
@@ -1758,6 +1802,7 @@ mod tests {
                 let cli = Cli::try_parse_from(["sruja", "ai-context"]).expect("parse");
                 match cli.command {
                     Commands::AiContext {
+                        run_id: _,
                         format,
                         repo,
                         output,

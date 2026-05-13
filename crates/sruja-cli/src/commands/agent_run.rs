@@ -13,6 +13,8 @@ use tokio::time::{timeout, Duration};
 use crate::commands::CliError;
 use crate::integrations::{load_repo_config, resolve_enrichment_plan, resolve_openai_auth};
 use crate::integrations::{run_cmd_enrichment, run_openai_markdown};
+use crate::utils::run_id::generate_run_id;
+use crate::utils::run_snapshots::write_json_snapshot;
 
 use super::agent;
 use super::focus as focus_cmd;
@@ -45,6 +47,7 @@ pub struct AgentRunOptions<'a> {
     pub file: Option<&'a str>,
     pub element_id: Option<&'a str>,
     pub query: Option<&'a str>,
+    pub run_id: Option<&'a str>,
     pub mode: &'a str,
     pub ai_mode: &'a str,
     pub format: &'a str,
@@ -98,6 +101,8 @@ struct AgentSafety {
 #[serde(rename_all = "snake_case")]
 struct AgentPlanOutput {
     schema_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    run_id: Option<String>,
     repo: String,
     goal: String,
     target: AgentTarget,
@@ -128,6 +133,8 @@ struct StepObservation {
 #[serde(rename_all = "snake_case")]
 struct AgentApplyOutput {
     schema_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    run_id: Option<String>,
     plan: AgentPlanOutput,
     executed_steps: Vec<String>,
     observations: Vec<StepObservation>,
@@ -697,6 +704,11 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
     let mode = parse_mode(options.mode)?;
     let ai_mode = parse_ai_mode(options.ai_mode)?;
     let format = parse_format(options.format)?;
+
+    let run_id = options
+        .run_id
+        .map(|s| s.to_string())
+        .unwrap_or_else(generate_run_id);
     validate_target(options.file, options.element_id, options.query)?;
 
     let budgets = load_agent_budgets(
@@ -716,6 +728,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         let kg = crate::graph_store::load_or_build_graph(repo_path)?;
         Some(focus_cmd::resolve_target(
             &kg,
+            repo_path,
             options.file,
             options.element_id,
         )?)
@@ -733,10 +746,12 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         let mut briefing = focus_cmd::build_focus_briefing(&kg, id, repo_path, scan_node_count);
         // No focus-specific enrichment here; agent enrichment is handled at the end.
         briefing.enrichment = None;
+        briefing.run_id = Some(run_id.clone());
         let out = focus_cmd::build_focus_for_ai_output(
             repo_path,
             options.file,
             options.element_id,
+            Some(&run_id),
             briefing,
         );
         serde_json::to_value(&out).unwrap_or(Value::Null)
@@ -921,6 +936,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
 
     let plan = AgentPlanOutput {
         schema_version: "agent_plan_output/v1".to_string(),
+        run_id: Some(run_id.clone()),
         repo: options.repo.to_string(),
         goal: options.goal.to_string(),
         target: AgentTarget {
@@ -955,6 +971,10 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         },
         enrichment,
     };
+
+    // Persist snapshot for replay/resume.
+    let plan_snapshot = serde_json::to_value(&plan).unwrap_or(Value::Null);
+    let _ = write_json_snapshot(repo_path, &run_id, "agent_plan.json", &plan_snapshot);
 
     // ── Act + Verify (apply mode) ─────────────────────────────────────────
     let out_string = match mode {
@@ -1032,25 +1052,30 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             }
 
             if let Some(first_err) = verification_results.iter().find(|o| o.status == "error") {
-                let context = format!("agent run apply: {}", plan.goal);
-                let hypothesis = format!("Verification step failed: {}", first_err.step_id);
-                let guardrail = "Do not proceed with further apply steps until verification is green; investigate drift/policy violations first.".to_string();
-                let reason = if first_err.stderr.is_empty() {
-                    None
-                } else {
-                    Some(first_err.stderr.as_str())
-                };
-                agent::agent_record(
-                    options.repo,
-                    &context,
-                    &hypothesis,
-                    "failed",
-                    &guardrail,
-                    reason,
-                    plan.target.resolved_element_id.as_deref(),
-                )
-                .await?;
-                memory_recorded.push(hypothesis);
+                let auto_record = load_repo_config(repo_path)
+                    .and_then(|c| c.agent.auto_record_learnings)
+                    .unwrap_or(false);
+                if auto_record {
+                    let context = format!("agent run apply: {}", plan.goal);
+                    let hypothesis = format!("Verification step failed: {}", first_err.step_id);
+                    let guardrail = "Do not proceed with further apply steps until verification is green; investigate drift/policy violations first.".to_string();
+                    let reason = if first_err.stderr.is_empty() {
+                        None
+                    } else {
+                        Some(first_err.stderr.as_str())
+                    };
+                    agent::agent_record(
+                        options.repo,
+                        &context,
+                        &hypothesis,
+                        "failed",
+                        &guardrail,
+                        reason,
+                        plan.target.resolved_element_id.as_deref(),
+                    )
+                    .await?;
+                    memory_recorded.push(hypothesis);
+                }
             }
 
             // MaTTS self-contrast: distill learnings from trajectory outcomes.
@@ -1103,24 +1128,35 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                     // outcomes.
                     let runner = sruja_agent::TrajectoryRunner::new(n);
                     let contrast = runner.distill_from_contrast(&[trajectory]);
-                    let mut memory = sruja_agent::AgenticMemory::load(repo_path)
-                        .unwrap_or_else(|_| sruja_agent::AgenticMemory::default());
-                    sruja_agent::TrajectoryRunner::record_learnings(&contrast, &mut memory);
-                    let _ = memory.save(repo_path);
-                    for entry in &contrast.distilled_learnings {
-                        memory_recorded.push(format!("MaTTS: {}", entry.guardrail_advice));
+                    let auto_record = load_repo_config(repo_path)
+                        .and_then(|c| c.agent.auto_record_learnings)
+                        .unwrap_or(false);
+                    if auto_record {
+                        let mut memory = sruja_agent::AgenticMemory::load(repo_path)
+                            .unwrap_or_else(|_| sruja_agent::AgenticMemory::default());
+                        sruja_agent::TrajectoryRunner::record_learnings(&contrast, &mut memory);
+                        let _ = memory.save(repo_path);
+                        for entry in &contrast.distilled_learnings {
+                            memory_recorded.push(format!("MaTTS: {}", entry.guardrail_advice));
+                        }
                     }
                 }
             }
 
             let out = AgentApplyOutput {
                 schema_version: "agent_apply_output/v1".to_string(),
+                run_id: Some(run_id),
                 plan,
                 executed_steps: Vec::new(),
                 observations: Vec::new(),
                 verification_results,
                 memory_recorded,
             };
+
+            let apply_snapshot = serde_json::to_value(&out).unwrap_or(Value::Null);
+            if let Some(run_id) = out.run_id.as_deref() {
+                let _ = write_json_snapshot(repo_path, run_id, "agent_apply.json", &apply_snapshot);
+            }
 
             serde_json::to_string_pretty(&out)?
         }
