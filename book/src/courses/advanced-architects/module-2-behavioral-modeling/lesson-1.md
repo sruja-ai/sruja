@@ -80,6 +80,7 @@ OrderLifecycle = state_machine "Order Lifecycle" {
 Guard conditions restrict when transitions can occur:
 
 ```sruja
+<!-- partial -->
 state Pending {
   description "Payment submitted"
 
@@ -93,6 +94,7 @@ state Pending {
 Actions execute on transitions:
 
 ```sruja
+<!-- partial -->
 state New {
   on submit [validate()] -> Pending {
     action send_email("Payment received")
@@ -118,6 +120,7 @@ Validation checks:
 ## Hands-On: Model a User Session
 
 ```sruja
+<!-- partial -->
 UserSession = state_machine "User Session" {
   initial Unauthenticated
 

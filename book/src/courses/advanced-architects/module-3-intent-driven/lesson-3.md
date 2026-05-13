@@ -57,6 +57,7 @@ sruja scan -r . --tests --evidence
 ## Mapping Evidence to Intent
 
 ```sruja
+<!-- partial -->
 intent "Data Privacy" {
   description "Customer PII must be protected"
 

@@ -21,8 +21,8 @@ mod state_machine;
 #[cfg(test)]
 mod tests;
 
-use primitives::line_to_byte_offset;
-use program::parse_program;
+use primitives::{line_to_byte_offset, ws};
+use program::{parse_program, parse_top_level_item};
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
 
 use crate::ast::*;
@@ -212,6 +212,100 @@ fn detect_common_syntax_diagnostic(
     None
 }
 
+fn nom_err_remaining_input<'a>(err: &'a nom::Err<nom::error::Error<&'a str>>) -> Option<&'a str> {
+    match err {
+        nom::Err::Error(e) | nom::Err::Failure(e) => Some(e.input),
+        nom::Err::Incomplete(_) => None,
+    }
+}
+
+/// After a failed top-level parse, skip to the next line so later statements can still be parsed.
+fn advance_past_current_line(input: &str, fail_pos: usize) -> usize {
+    let fail_pos = fail_pos.min(input.len());
+    if let Some(rel) = input[fail_pos..].find('\n') {
+        (fail_pos + rel + 1).min(input.len())
+    } else {
+        input.len()
+    }
+}
+
+fn advance_one_utf8_char(input: &str, pos: usize) -> usize {
+    let pos = pos.min(input.len());
+    input[pos..]
+        .chars()
+        .next()
+        .map(|ch| pos.saturating_add(ch.len_utf8()))
+        .unwrap_or(input.len())
+        .min(input.len())
+}
+
+fn build_diagnostic_from_nom_err(
+    filename: &str,
+    input: &str,
+    err: &nom::Err<nom::error::Error<&str>>,
+) -> Diagnostic {
+    let (pos, error_msg, line, col) = match err {
+        nom::Err::Error(err) => {
+            let pos = input.len().saturating_sub(err.input.len());
+            let (line, col) = line_col_1_indexed(input, pos);
+            let remaining_preview = input
+                .get(pos..)
+                .unwrap_or("")
+                .chars()
+                .take(80)
+                .collect::<String>()
+                .replace('\n', "\\n")
+                .replace('\r', "\\r");
+            (
+                pos,
+                format!("Parse error ({:?}) near: {}", err.code, remaining_preview),
+                line,
+                col,
+            )
+        }
+        nom::Err::Failure(err) => {
+            let pos = input.len().saturating_sub(err.input.len());
+            let (line, col) = line_col_1_indexed(input, pos);
+            let remaining_preview = input
+                .get(pos..)
+                .unwrap_or("")
+                .chars()
+                .take(80)
+                .collect::<String>()
+                .replace('\n', "\\n")
+                .replace('\r', "\\r");
+            (
+                pos,
+                format!("Parse failure ({:?}) near: {}", err.code, remaining_preview),
+                line,
+                col,
+            )
+        }
+        nom::Err::Incomplete(_) => {
+            let pos = input.len();
+            let (line, col) = line_col_1_indexed(input, pos);
+            (pos, "Incomplete input".to_string(), line, col)
+        }
+    };
+
+    let remaining = input.get(pos..).unwrap_or("");
+    let (code, message, suggestions) =
+        detect_common_syntax_diagnostic(input, remaining).unwrap_or((
+            sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+            error_msg,
+            generic_parse_suggestions(),
+        ));
+
+    Diagnostic::new(
+        code,
+        Severity::Error,
+        message,
+        SourceLocation::new(filename.to_string(), line, col),
+    )
+    .with_context(context_snippet(input, line, col, 2, 2))
+    .with_suggestions(suggestions)
+}
+
 /// Parser for Sruja DSL
 pub struct Parser {
     filename: String,
@@ -241,114 +335,98 @@ impl Parser {
         SourceLocation::new(self.filename.clone(), line, col)
     }
 
-    /// Parse source code into a Program AST
+    /// Parse source code into a Program AST.
+    ///
+    /// On syntax errors, collects diagnostics for recoverable failures (skipping to the next
+    /// line after each bad statement) so a single run can surface multiple issues.
     pub fn parse(&self, input: &str) -> Result<Program, Vec<Diagnostic>> {
-        match parse_program(input) {
-            Ok((remaining, mut program)) => {
-                let trimmed = remaining.trim();
-                if !trimmed.is_empty() {
-                    let preview = if trimmed.len() > 100 {
-                        format!("{}...", &trimmed[..100])
-                    } else {
-                        trimmed.to_string()
-                    };
+        let mut items = Vec::new();
+        let mut errors: Vec<Diagnostic> = Vec::new();
+        let mut remaining = input;
+        let max_steps = input.len().saturating_add(64);
+        let mut steps = 0usize;
 
-                    let pos = input.len().saturating_sub(remaining.len());
-                    let (line, col) = line_col_1_indexed(input, pos);
+        while steps < max_steps {
+            steps += 1;
+            let (tail, _) = match ws(remaining) {
+                Ok(v) => v,
+                Err(_) => break,
+            };
+            if tail.is_empty() {
+                remaining = tail;
+                break;
+            }
 
-                    let (code, message, suggestions) =
-                        detect_common_syntax_diagnostic(input, trimmed).unwrap_or((
-                            sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
-                            format!(
-                                "Unexpected input at {}:{}: {}",
-                                line,
-                                col,
-                                preview.replace('\n', "\\n").replace('\r', "\\r")
-                            ),
-                            generic_parse_suggestions(),
-                        ));
-
-                    let mut d = Diagnostic::new(
-                        code,
-                        Severity::Error,
-                        message,
-                        SourceLocation::new(self.filename.clone(), line, col),
-                    )
-                    .with_context(context_snippet(input, line, col, 2, 2))
-                    .with_suggestions(suggestions);
-
-                    return Err(vec![{
-                        d.context.retain(|s| !s.trim().is_empty());
-                        d
-                    }]);
+            match parse_top_level_item(tail) {
+                Ok((next, item)) => {
+                    items.push(item);
+                    remaining = next;
                 }
+                Err(e) => {
+                    let fail_pos = match nom_err_remaining_input(&e) {
+                        Some(inp) => input.len().saturating_sub(inp.len()),
+                        None => input.len().saturating_sub(tail.len()),
+                    };
+                    let mut d = build_diagnostic_from_nom_err(&self.filename, input, &e);
+                    d.context.retain(|s| !s.trim().is_empty());
+                    errors.push(d);
 
-                crate::traversal::populate_locations(&mut program, input, &self.filename);
-
-                Ok(program)
+                    let after_line = advance_past_current_line(input, fail_pos);
+                    let next_pos = if after_line > fail_pos {
+                        after_line
+                    } else {
+                        advance_one_utf8_char(input, fail_pos)
+                    };
+                    remaining = input.get(next_pos..).unwrap_or("");
+                }
             }
-            Err(e) => {
-                let (pos, error_msg, line, col) = match &e {
-                    nom::Err::Error(err) => {
-                        let pos = input.len().saturating_sub(err.input.len());
-                        let (line, col) = line_col_1_indexed(input, pos);
-                        let remaining_preview = input
-                            .get(pos..)
-                            .unwrap_or("")
-                            .chars()
-                            .take(80)
-                            .collect::<String>()
-                            .replace('\n', "\\n")
-                            .replace('\r', "\\r");
-                        (
-                            pos,
-                            format!("Parse error ({:?}) near: {}", err.code, remaining_preview),
-                            line,
-                            col,
-                        )
-                    }
-                    nom::Err::Failure(err) => {
-                        let pos = input.len().saturating_sub(err.input.len());
-                        let (line, col) = line_col_1_indexed(input, pos);
-                        let remaining_preview = input
-                            .get(pos..)
-                            .unwrap_or("")
-                            .chars()
-                            .take(80)
-                            .collect::<String>()
-                            .replace('\n', "\\n")
-                            .replace('\r', "\\r");
-                        (
-                            pos,
-                            format!("Parse failure ({:?}) near: {}", err.code, remaining_preview),
-                            line,
-                            col,
-                        )
-                    }
-                    nom::Err::Incomplete(_) => {
-                        let pos = input.len();
-                        let (line, col) = line_col_1_indexed(input, pos);
-                        (pos, "Incomplete input".to_string(), line, col)
-                    }
-                };
+        }
 
-                let remaining = input.get(pos..).unwrap_or("");
-                let (code, message, suggestions) =
-                    detect_common_syntax_diagnostic(input, remaining).unwrap_or((
-                        sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
-                        error_msg,
-                        generic_parse_suggestions(),
-                    ));
+        let mut program = Program::with_items(Program::new(), items);
 
-                Err(vec![Diagnostic::new(
-                    code,
-                    Severity::Error,
-                    message,
-                    SourceLocation::new(self.filename.clone(), line, col),
-                )
-                .with_context(context_snippet(input, line, col, 2, 2))
-                .with_suggestions(suggestions)])
-            }
+        let (final_tail, _) = match ws(remaining) {
+            Ok(v) => v,
+            Err(_) => (remaining, ()),
+        };
+        if !final_tail.trim().is_empty() {
+            let preview = if final_tail.len() > 100 {
+                format!("{}...", &final_tail[..100])
+            } else {
+                final_tail.to_string()
+            };
+
+            let pos = input.len().saturating_sub(final_tail.len());
+            let (line, col) = line_col_1_indexed(input, pos);
+
+            let (code, message, suggestions) = detect_common_syntax_diagnostic(input, final_tail)
+                .unwrap_or((
+                    sruja_diagnostics::codes::CODE_SYNTAX_ERROR,
+                    format!(
+                        "Unexpected input at {}:{}: {}",
+                        line,
+                        col,
+                        preview.replace('\n', "\\n").replace('\r', "\\r")
+                    ),
+                    generic_parse_suggestions(),
+                ));
+
+            let mut d = Diagnostic::new(
+                code,
+                Severity::Error,
+                message,
+                SourceLocation::new(self.filename.clone(), line, col),
+            )
+            .with_context(context_snippet(input, line, col, 2, 2))
+            .with_suggestions(suggestions);
+            d.context.retain(|s| !s.trim().is_empty());
+            errors.push(d);
+        }
+
+        if errors.is_empty() {
+            crate::traversal::populate_locations(&mut program, input, &self.filename);
+            Ok(program)
+        } else {
+            Err(errors)
         }
     }
 

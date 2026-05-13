@@ -28,7 +28,7 @@ pub const CODE_INVALID_STRING: &str = "E104";
 pub const CODE_DUPLICATE_ID: &str = "E201";
 /// Reference to undefined identifier
 pub const CODE_UNDEFINED_REF: &str = "E202";
-/// Invalid relationship between elements
+/// Invalid relationship between elements (duplicate edges, self-references, or other structural relation issues)
 pub const CODE_INVALID_RELATION: &str = "E203";
 /// Cycle detected in dependency graph
 pub const CODE_CYCLE_DETECTED: &str = "E204";
@@ -78,10 +78,10 @@ pub const CODE_CONTRACT_NO_INPUTS: &str = "W321";
 pub const CODE_CONTRACT_NO_ERRORS: &str = "W322";
 /// Contract has no constraints
 pub const CODE_CONTRACT_NO_CONSTRAINTS: &str = "W323";
-/// Alias for duplicate identifier
-pub const CODE_DUPLICATE_IDENTIFIER: &str = "E201";
-/// Alias for reference not found
-pub const CODE_REFERENCE_NOT_FOUND: &str = "E202";
+/// Alias for duplicate identifier (same code as [`CODE_DUPLICATE_ID`])
+pub const CODE_DUPLICATE_IDENTIFIER: &str = CODE_DUPLICATE_ID;
+/// Back-compat alias for [`CODE_UNDEFINED_REF`] (undefined / unresolved reference)
+pub const CODE_REFERENCE_NOT_FOUND: &str = CODE_UNDEFINED_REF;
 
 // Warnings
 /// Best practice suggestion
@@ -109,6 +109,8 @@ mod tests {
     fn semantic_codes_are_e2xx() {
         assert!(CODE_DUPLICATE_ID.starts_with('E'));
         assert!(CODE_UNDEFINED_REF.starts_with('E'));
+        assert!(CODE_INVALID_RELATION.starts_with('E'));
+        assert!(CODE_NESTING_VIOLATION.starts_with('E'));
         assert!(CODE_CYCLE_DETECTED.starts_with('E'));
         assert!(CODE_ORPHAN_ELEMENT.starts_with('E'));
         assert!(CODE_LAYER_VIOLATION.starts_with('E'));

@@ -11,6 +11,7 @@ summary: "Track ownership and interfaces across repositories."
 Every component should have an owner:
 
 ```sruja
+<!-- partial -->
 UserService = system "User Service" {
   owner "platform-team"
 
@@ -31,6 +32,7 @@ UserService = system "User Service" {
 Expose interfaces for other teams:
 
 ```sruja
+<!-- partial -->
 // In user-service/repo.sruja
 contract UserServiceContract {
   version "2.0.0"
@@ -68,6 +70,7 @@ UserAPI {
 ## Consuming Contracts
 
 ```sruja
+<!-- partial -->
 // In order-service/repo.sruja
 import { UserServiceContract } from "./bundles/user-service.bundle.json"
 
@@ -83,6 +86,7 @@ OrderProcessor = container "Order Processor" {
 ## SLA Tracking
 
 ```sruja
+<!-- partial -->
 UserAPI {
   sla {
     availability "99.9%"

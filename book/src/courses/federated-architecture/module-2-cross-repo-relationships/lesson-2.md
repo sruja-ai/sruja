@@ -11,6 +11,7 @@ summary: "Link to components in other repositories."
 Reference components from other repos:
 
 ```sruja
+<!-- partial -->
 // In order-service/repo.sruja
 import {
   user-service,
@@ -26,6 +27,7 @@ OrderService = system "Order Service" {
 ## Referencing External Components
 
 ```sruja
+<!-- partial -->
 // Create relationships to external services
 OrderProcessor -> user-service::UserAPI "Validates customer"
 OrderProcessor -> payment-service::PaymentGateway "Processes payment"
@@ -37,6 +39,7 @@ OrderProcessor -> notification-service::EmailService "Sends confirmation"
 For external services you don't control:
 
 ```sruja
+<!-- partial -->
 // Model external systems you depend on
 ExternalSystems = system "External Services" {
   Stripe = system "Stripe API" {

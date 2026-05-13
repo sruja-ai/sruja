@@ -114,6 +114,27 @@ fn validate_element_sources(
                 ]),
             );
         }
+
+        let path_ref = Path::new(&normalized_path);
+        if !path_ref.exists() {
+            diags.push(
+                Diagnostic::new(
+                    sruja_diagnostics::codes::CODE_BEST_PRACTICE,
+                    Severity::Warning,
+                    format!(
+                        "Element '{}' references '{}' source path '{}' which does not exist (resolved from the current working directory)",
+                        element_fqn,
+                        s.kind.as_str(),
+                        normalized_path
+                    ),
+                    element_loc.clone(),
+                )
+                .with_suggestions(vec![
+                    "Fix the path or generate the artifact before relying on this binding".to_string(),
+                    "Use a path relative to the repo root if the file lives in the workspace".to_string(),
+                ]),
+            );
+        }
     }
 
     for (path, kinds) in path_to_kinds {
@@ -180,5 +201,17 @@ API = container "API" {
         let diags = validate_program("/tmp/test.sruja", input);
         assert!(diags.iter().any(|d| d.code == "E301"));
         assert!(diags.iter().any(|d| d.message.contains("empty path")));
+    }
+
+    #[test]
+    fn warns_when_source_path_missing() {
+        let input = r#"
+API = container "API" {
+  source openapi "./this_path_should_not_exist_for_sruja_test.yaml"
+}
+"#;
+        let diags = validate_program("/tmp/test.sruja", input);
+        assert!(diags.iter().any(|d| d.code == "W001"));
+        assert!(diags.iter().any(|d| d.message.contains("does not exist")));
     }
 }

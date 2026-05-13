@@ -10,9 +10,9 @@ use crate::rules::{
     ComplexityThresholdRule, ContainerNestingRule, ContractIntegrityRule, CustomConstraintsRule,
     CycleDetectionRule, DatabaseIsolationRule, GovernanceValidationRule, LayerViolationRule,
     OrphanDetectionRule, PolicyEvaluationRule, PropertiesValidationRule,
-    PublicInterfaceDocumentationRule, RequiredFieldsRule, ScenarioValidationRule, SimplicityRule,
-    SloValidationRule, SourcesValidationRule, StateMachineIntegrityRule, UniqueIdRule,
-    ValidRefRule,
+    PublicInterfaceDocumentationRule, RelationIntegrityRule, RequiredFieldsRule,
+    ScenarioValidationRule, SimplicityRule, SloValidationRule, SourcesValidationRule,
+    StateMachineIntegrityRule, UniqueIdRule, ValidRefRule,
 };
 use crate::DomainSchema;
 
@@ -93,6 +93,7 @@ impl Validator {
             RuleProfile::Minimal => {
                 self.register_rule(Arc::new(UniqueIdRule));
                 self.register_rule(Arc::new(ValidRefRule));
+                self.register_rule(Arc::new(RelationIntegrityRule));
                 self.register_rule(Arc::new(OrphanDetectionRule));
                 self.register_rule(Arc::new(CycleDetectionRule));
                 self.register_rule(Arc::new(LayerViolationRule));
@@ -109,6 +110,7 @@ impl Validator {
         self.register_rule(Arc::new(ContainerNestingRule));
         self.register_rule(Arc::new(UniqueIdRule));
         self.register_rule(Arc::new(ValidRefRule));
+        self.register_rule(Arc::new(RelationIntegrityRule));
         self.register_rule(Arc::new(OrphanDetectionRule));
         self.register_rule(Arc::new(CycleDetectionRule));
         self.register_rule(Arc::new(LayerViolationRule));

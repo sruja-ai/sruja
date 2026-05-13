@@ -47,6 +47,7 @@ fitness ThroughputTarget {
 Fitness functions can also be defined inside elements:
 
 ```sruja
+<!-- partial -->
 EcommercePlatform = system "E-Commerce Platform" {
   fitness checkout_success_rate {
     target "success_rate > 99.5%"

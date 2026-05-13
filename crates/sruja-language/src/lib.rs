@@ -61,8 +61,9 @@ A -> B "calls"
         assert!(result.is_ok(), "Should parse relation");
     }
 
+    /// Regression guard: platform architecture doc should parse quickly on developer hardware.
+    /// Uses the checked-in `docs/architecture/sruja-platform.sruja` fixture (median of 20 runs).
     #[test]
-    #[ignore]
     fn perf_parse_docs_platform_under_100ms() {
         use std::path::PathBuf;
         use std::time::{Duration, Instant};

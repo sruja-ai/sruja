@@ -70,6 +70,7 @@ sruja compose -i ./user.bundle.json -i ./order.bundle.json -o system.index.json
 In your Sruja DSL, reference other repos using canonical IDs:
 
 ```sruja
+<!-- partial -->
 // In order-service/repo.sruja
 import { user-service } from "https://bundles.company.com/user-service.bundle.json"
 

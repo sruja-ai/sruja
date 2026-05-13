@@ -21,6 +21,7 @@ But you don't control all repos!
 Define policies once, apply everywhere:
 
 ```sruja
+<!-- partial -->
 // In federation-root/policies/global.sruja
 policy "Global Security" {
   description "Security policies for all services"
@@ -65,6 +66,7 @@ sruja policy inherit ../federation/policies/global.sruja
 Repos can still add local policies:
 
 ```sruja
+<!-- partial -->
 // In user-service/policies/local.sruja
 policy "User Service Specific" {
   description "User service specific policies"
@@ -92,6 +94,7 @@ sruja validate -r . --policies \
 Repos can override (with approval):
 
 ```sruja
+<!-- partial -->
 // In user-service/policies/override.sruja
 policy "Override: Extended Timeout" {
   description "Override: Allow 60s timeout for batch jobs"

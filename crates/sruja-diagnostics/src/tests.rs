@@ -395,6 +395,7 @@ fn test_error_codes_values() {
     assert_eq!(codes::CODE_CYCLE_DETECTED, "E204");
     assert_eq!(codes::CODE_ORPHAN_ELEMENT, "E205");
     assert_eq!(codes::CODE_LAYER_VIOLATION, "E206");
+    assert_eq!(codes::CODE_NESTING_VIOLATION, "E207");
     assert_eq!(codes::CODE_INVALID_PROPERTY, "E301");
     assert_eq!(codes::CODE_MISSING_FIELD, "E302");
     assert_eq!(codes::CODE_VALIDATION_RULE_ERROR, "E303");

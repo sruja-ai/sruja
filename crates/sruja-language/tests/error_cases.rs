@@ -73,6 +73,21 @@ fn test_empty_program() {
 }
 
 #[test]
+fn test_multiple_parse_errors_recovery() {
+    let input = r#"not_a_statement
+also_bad
+My = system "X"
+"#;
+    let parser = Parser::new("test.sruja".to_string());
+    let diags = parser.parse(input).expect_err("expected parse errors");
+    assert!(
+        diags.len() >= 2,
+        "expected multiple diagnostics, got {:?}",
+        diags
+    );
+}
+
+#[test]
 fn test_whitespace_only_program() {
     let input = "   \n\n\t\n   ";
     let parser = Parser::new("test.sruja".to_string());

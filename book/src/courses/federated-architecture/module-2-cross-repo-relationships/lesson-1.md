@@ -34,6 +34,7 @@ Examples:
 ### In repo.sruja (local)
 
 ```sruja
+<!-- partial -->
 UserService = system "User Service" {
   UserAPI = container "User API" {
     description "REST API for user management"
@@ -64,6 +65,7 @@ The compose process adds canonical IDs:
 ### In DSL imports
 
 ```sruja
+<!-- partial -->
 // In order-service/repo.sruja
 import { user-service } from "../bundles/user-service.bundle.json"
 

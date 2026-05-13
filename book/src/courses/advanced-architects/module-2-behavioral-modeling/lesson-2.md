@@ -58,6 +58,7 @@ contract "Payment Contract" {
 Each field in input/output has a name, type, and description:
 
 ```sruja
+<!-- partial -->
 input {
   field_name type "Description of the field"
 }

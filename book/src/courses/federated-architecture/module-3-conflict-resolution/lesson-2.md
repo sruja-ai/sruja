@@ -40,6 +40,7 @@ sruja resolve --alias "order-service::API" \
 Result in DSL:
 
 ```sruja
+<!-- partial -->
 // Both preserved, now distinct
 user-service::API
 order-service::order-api

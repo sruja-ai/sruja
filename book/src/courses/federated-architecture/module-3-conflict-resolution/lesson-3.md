@@ -52,6 +52,7 @@ Governance provides:
 Add policies that prevent issues:
 
 ```sruja
+<!-- partial -->
 // In repo.sruja
 policy "Architecture Quality" {
   description "Ensure architecture follows team standards"

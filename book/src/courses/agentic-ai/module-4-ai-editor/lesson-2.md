@@ -97,6 +97,7 @@ The score evaluates 5 dimensions:
 ### 1. Add Descriptions
 
 ```sruja
+<!-- partial -->
 container PaymentService {
   description "Handles payment processing and fraud detection"
 }
@@ -105,6 +106,7 @@ container PaymentService {
 ### 2. Link Requirements
 
 ```sruja
+<!-- partial -->
 container PaymentService {
   requirement "Must comply with PCI-DSS"
   requirement "Must process 1000 TPS"
@@ -114,6 +116,7 @@ container PaymentService {
 ### 3. Add Intent
 
 ```sruja
+<!-- partial -->
 intent "Payment Goals" {
   outcome "All payments processed within 5 seconds"
 }
@@ -122,6 +125,7 @@ intent "Payment Goals" {
 ### 4. Document Decisions
 
 ```sruja
+<!-- partial -->
 PaymentService = container "Payment Service" {
   description "Handles payments"
 

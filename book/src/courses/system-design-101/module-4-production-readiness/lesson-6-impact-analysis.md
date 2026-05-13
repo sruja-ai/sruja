@@ -81,6 +81,7 @@ sruja impact --diff --file changed-file.rs
 ### Tag Components for Tracking
 
 ```sruja
+<!-- partial -->
 PaymentService = container "Payment Service" {
   impact {
     tier "critical"  # Tiers: critical, high, medium, low
@@ -93,6 +94,7 @@ PaymentService = container "Payment Service" {
 ### Define Impact Policies
 
 ```sruja
+<!-- partial -->
 policy "Impact-Aware Changes" {
   description "Changes to critical components require extra review"
 

@@ -76,6 +76,7 @@ _Testing architectural behavior with scenarios_
 ### Key DSL Elements:
 
 ```sruja
+<!-- partial -->
 // State Machine
 Order = state_machine "Order Lifecycle" {
   initial New

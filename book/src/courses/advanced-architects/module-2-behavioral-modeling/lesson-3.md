@@ -114,6 +114,7 @@ sruja validate --scenarios --coverage
 ## Advanced: Scenario with State Machine
 
 ```sruja
+<!-- partial -->
 scenario "Order lifecycle end-to-end" {
   steps {
     1. submit order (from New state)
