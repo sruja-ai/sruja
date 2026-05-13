@@ -63,7 +63,7 @@ The **deploy-staging** workflow builds the mdBook site (book + WASM) and deploys
 
 **Triggers**
 
-- **Push to main:** When paths under `book/`, `crates/`, `book/valid-examples/` change.
+- **Push to main:** When paths under `book/`, selected `crates/`, `book/valid-examples/`, `scripts/`, `.github/workflows/deploy-staging.yml`, `.github/actions/deploy-to-github-pages/`, or `.github/templates/` change.
 - **Manual:** **Actions → Deploy to Staging → Run workflow.**
 
 ## Deploy to Production
