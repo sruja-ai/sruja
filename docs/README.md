@@ -45,6 +45,7 @@ sruja sync -r .
 | [SECURITY.md](SECURITY.md) | Security policy |
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | Known limitations of architecture analysis |
 | [mcp_setup.md](mcp_setup.md) | MCP server setup for AI editors |
+| [mcp_tools_reference.md](mcp_tools_reference.md) | Full MCP tool catalog, categories, and env flags |
 | [adr/](adr/) | Architecture decision records |
 | [internal/](internal/) | Internal docs |
 

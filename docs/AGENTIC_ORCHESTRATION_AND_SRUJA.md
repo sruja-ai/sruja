@@ -45,7 +45,7 @@ A practical industry heuristic is **~80% deterministic orchestration**, **~20%**
 
 ## Observability as you add automation
 
-If you add more **autonomous** steps (headless runs, hooks, or multi-bot flows), invest in **traceability**: which MCP tools ran, with what arguments, what graph version or git SHA was in scope, and what changed in `.sruja` or policy files. Non-deterministic failures often look like subtle semantic drift or loops, not process crashes—telemetry and CI evaluation suites matter more than raw uptime metrics.
+If you add more **autonomous** steps (headless runs, hooks, or multi-bot flows), invest in **traceability**: which MCP tools ran, with what arguments, what graph version or git SHA was in scope, and what changed in `.sruja` or policy files. Non-deterministic failures often look like subtle semantic drift or loops, not process crashes—telemetry and CI evaluation suites matter more than raw uptime metrics. For the MCP server specifically, set **`SRUJA_MCP_LOG=1`** so each `tools/call` emits one JSON line on stderr (`tool`, `repo`, `ms`, `ok`, optional error), and use **`SRUJA_MCP_READONLY=1`** when the host must only call read/query tools (see [mcp_tools_reference.md](mcp_tools_reference.md)).
 
 ## Practical checklist
 

@@ -264,6 +264,10 @@ pub enum Commands {
         stdio: bool,
     },
     /// Start MCP server (stdio)
+    ///
+    /// Environment:
+    /// - `SRUJA_MCP_READONLY=1` — expose only read/query tools; mutating calls return an error.
+    /// - `SRUJA_MCP_LOG=1` — emit one JSON log line per `tools/call` on stderr (tool, repo, ms, ok).
     Mcp {
         /// Default repository root used when MCP tool calls omit a path
         #[arg(long, short = 'r', default_value = ".")]

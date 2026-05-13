@@ -14,6 +14,67 @@ use crate::integrations::{
 
 const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 
+/// When set to `1`, `true`, `yes`, or `on` (case-insensitive), MCP lists only read/query tools and rejects mutating tool calls.
+const ENV_MCP_READONLY: &str = "SRUJA_MCP_READONLY";
+/// When set to `1`, `true`, `yes`, or `on`, emit one JSON line per `tools/call` on stderr for observability.
+const ENV_MCP_LOG: &str = "SRUJA_MCP_LOG";
+
+fn mcp_env_truthy(name: &str) -> bool {
+    match std::env::var(name) {
+        Ok(v) => {
+            let v = v.trim();
+            v.eq_ignore_ascii_case("1")
+                || v.eq_ignore_ascii_case("true")
+                || v.eq_ignore_ascii_case("yes")
+                || v.eq_ignore_ascii_case("on")
+        }
+        Err(_) => false,
+    }
+}
+
+fn mcp_readonly_enabled() -> bool {
+    mcp_env_truthy(ENV_MCP_READONLY)
+}
+
+fn mcp_log_enabled() -> bool {
+    mcp_env_truthy(ENV_MCP_LOG)
+}
+
+/// Tools that write under `.sruja`, mutate git state, run user-supplied gate commands, or may apply repo changes.
+const MCP_MUTATING_TOOLS: &[&str] = &[
+    "sruja_propose_topology_change",
+    "sruja_commit_evolution",
+    "sruja_add_element",
+    "sruja_add_relationship",
+    "sruja_propose_change",
+    "sruja_ai_scratchpad",
+    "sruja_sandbox",
+    "sruja_evaluate_proposal",
+    "sruja_record_learning",
+    "sruja_agent_run",
+];
+
+fn is_mutating_mcp_tool(name: &str) -> bool {
+    MCP_MUTATING_TOOLS.contains(&name)
+}
+
+fn mcp_tools_for_list() -> Vec<Value> {
+    mcp_tools_for_list_with_readonly(mcp_readonly_enabled())
+}
+
+fn mcp_tools_for_list_with_readonly(readonly: bool) -> Vec<Value> {
+    let defs = tool_definitions();
+    if !readonly {
+        return defs;
+    }
+    defs.into_iter()
+        .filter(|t| {
+            let tool_name = t.get("name").and_then(|n| n.as_str()).unwrap_or("");
+            !is_mutating_mcp_tool(tool_name)
+        })
+        .collect()
+}
+
 pub async fn mcp(root: &str) -> Result<(), CliError> {
     let stdin = io::stdin();
     let mut lines = BufReader::new(stdin).lines();
@@ -168,7 +229,7 @@ impl McpServer {
             "jsonrpc": "2.0",
             "id": id,
             "result": {
-                "tools": tool_definitions()
+                "tools": mcp_tools_for_list()
             }
         })
     }
@@ -198,7 +259,35 @@ impl McpServer {
             .cloned()
             .unwrap_or_else(|| json!({}));
 
-        match run_tool(name, &args, &self.default_repo, &self.graph_cache).await {
+        let repo_for_log = args
+            .get("path")
+            .or_else(|| args.get("repo"))
+            .and_then(|v| v.as_str())
+            .unwrap_or(&self.default_repo)
+            .to_string();
+
+        let t0 = std::time::Instant::now();
+        let result = run_tool(name, &args, &self.default_repo, &self.graph_cache).await;
+        let elapsed_ms = t0.elapsed().as_millis() as u64;
+
+        if mcp_log_enabled() {
+            let ok = result.is_ok();
+            let err_one_line = result
+                .as_ref()
+                .err()
+                .map(|e| e.to_string().lines().collect::<Vec<_>>().join(" "));
+            let line = json!({
+                "mcp_tool_call": true,
+                "tool": name,
+                "repo": repo_for_log,
+                "ms": elapsed_ms,
+                "ok": ok,
+                "error": err_one_line,
+            });
+            eprintln!("{}", line);
+        }
+
+        match result {
             Ok(text) => json!({
                 "jsonrpc": "2.0",
                 "id": id,
@@ -491,7 +580,7 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_semantic_search",
             "title": "Sruja Semantic Search",
-            "description": "Search for architectural components using natural language (semantic similarity).",
+            "description": "Embedding-only similarity search over architecture elements (requires a built vector index). Prefer sruja_hybrid_query when you are unsure whether the answer is purely semantic or needs graph structure.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -505,7 +594,7 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_query_graph",
             "title": "Sruja Query Graph",
-            "description": "Query the architecture graph using natural language. Grounded in deterministic scan facts, with optional LLM narrative.",
+            "description": "Natural-language Q&A over the architecture graph with scan-backed facts and optional enrich narrative. Prefer sruja_hybrid_query as the default entry point unless you specifically need this graph-query path or enrich tuning.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -754,7 +843,7 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_hybrid_query",
             "title": "Sruja Hybrid Query",
-            "description": "Query the architecture using Adaptive Hybrid Retrieval. Automatically classifies query complexity (structural/relational/conceptual) and routes to the optimal retrieval strategy (graph-only, semantic-only, or semantic+graph). Returns the strategy used alongside results.",
+            "description": "Preferred default for most natural-language architecture questions: classifies query complexity and routes to graph-only, semantic-only, or hybrid retrieval. Use sruja_query_graph when you need that explicit pipeline; use sruja_semantic_search for embedding-only ranked nodes.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -820,6 +909,13 @@ async fn run_tool(
         .and_then(|v| v.as_str())
         .unwrap_or(default_repo)
         .to_string();
+
+    if mcp_readonly_enabled() && is_mutating_mcp_tool(name) {
+        return Err(CliError::validation(format!(
+            "MCP tool {name:?} is disabled when {} is set (read-only MCP profile)",
+            ENV_MCP_READONLY
+        )));
+    }
 
     match name {
         "sruja_get_repomap" => {
@@ -2843,6 +2939,34 @@ mod tests {
             Some(MCP_PROTOCOL_VERSION)
         );
         assert!(resp.pointer("/result/capabilities/tools").is_some());
+    }
+
+    #[test]
+    fn mutating_mcp_tool_detection() {
+        assert!(is_mutating_mcp_tool("sruja_record_learning"));
+        assert!(is_mutating_mcp_tool("sruja_sandbox"));
+        assert!(is_mutating_mcp_tool("sruja_agent_run"));
+        assert!(!is_mutating_mcp_tool("sruja_check_drift"));
+        assert!(!is_mutating_mcp_tool("sruja_hybrid_query"));
+    }
+
+    #[test]
+    fn mcp_readonly_list_excludes_all_mutating_tools() {
+        let full = mcp_tools_for_list_with_readonly(false);
+        let ro = mcp_tools_for_list_with_readonly(true);
+        assert!(ro.len() < full.len());
+        for t in &ro {
+            let n = t.get("name").and_then(|x| x.as_str()).expect("name");
+            assert!(
+                !is_mutating_mcp_tool(n),
+                "readonly list leaked mutating tool {n}"
+            );
+        }
+        for m in MCP_MUTATING_TOOLS {
+            assert!(!ro
+                .iter()
+                .any(|t| t.get("name").and_then(|n| n.as_str()) == Some(*m)));
+        }
     }
 
     #[tokio::test]

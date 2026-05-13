@@ -54,17 +54,45 @@ Add the following to your `claude_desktop_config.json` (usually at `~/Library/Ap
 
 If you use the VS Code / Cursor extension, you can also run **Sruja: Register MCP Server (Cursor)** and it will write the same scoped command into `.cursor/mcp.json` for the selected workspace folder.
 
-## 4. Available Tools
+## 4. Available tools
 
-Sruja provides several tools to help AI agents understand your architecture:
+Sruja exposes **many** MCP tools (graph navigation, drift, NL retrieval, focus briefing, federation, proposals, and more). The canonical categorized list is **[mcp_tools_reference.md](mcp_tools_reference.md)** (kept aligned with `crates/sruja-cli/src/commands/mcp.rs`).
 
-- `sruja_get_architecture_summary`: Get a compact high-level overview.
-- `sruja_get_neighbors`: Find what depends on a component or what it depends on.
-- `sruja_find_path`: Trace the flow between two components.
-- `sruja_get_entrypoints`: Identify system entrypoints (APIs, Services).
-- `sruja_get_data_stores`: List databases and queues.
+### Quick picks for new sessions
 
-## 5. Workflow Example
+| Tool | When to use it |
+|------|----------------|
+| `sruja_get_architecture_summary` | First pass overview of the repo architecture. |
+| `sruja_get_focus_briefing` | You have a **file** or **element id** and need blast radius + AI instructions. |
+| `sruja_hybrid_query` | Natural-language question; auto-picks graph vs semantic vs hybrid retrieval. |
+| `sruja_check_drift` | Compare code vs declared `.sruja` architecture. |
+| `sruja_get_neighbors` / `sruja_find_path` | Local graph navigation between known ids. |
+
+### Operator controls (stdio server)
+
+| Variable | Purpose |
+|----------|---------|
+| `SRUJA_MCP_READONLY=1` | Only **read/query** tools are advertised and callable (no proposals, sandbox, scratchpad append, gate commands, or `sruja_agent_run`). |
+| `SRUJA_MCP_LOG=1` | One JSON line per tool invocation on **stderr** (`tool`, `repo`, `ms`, `ok`, `error`) for pipelines and dashboards. |
+
+Example (Cursor `mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "sruja": {
+      "command": "sruja",
+      "args": ["mcp", "--root", "/absolute/path/to/your/repo"],
+      "env": {
+        "SRUJA_MCP_READONLY": "1",
+        "SRUJA_MCP_LOG": "1"
+      }
+    }
+  }
+}
+```
+
+## 5. Workflow example
 
 **User:** "How does the payment flow work in this repo?"
 

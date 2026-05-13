@@ -52,7 +52,9 @@ Sruja provides an MCP server that exposes these context engineering capabilities
 
 MCP is the **structured tooling** interface: it answers what grounded architecture data the session can retrieve, while the host application handles multi-step reasoning and any multi-agent routing. For a concise map from common agentic-orchestration literature (sequential pipelines, hierarchical coordinators, A2A, and so on) to Sruja’s role, see [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md).
 
-**Tools available:**
+**Tools:** dozens of read/query tools plus a smaller set of mutating tools (proposals, scratchpad, sandbox, agent run). See the full table in **[mcp_tools_reference.md](mcp_tools_reference.md)**. For locked-down hosts, set `SRUJA_MCP_READONLY=1` so only read/query tools are listed and callable; set `SRUJA_MCP_LOG=1` for one JSON line per invocation on stderr.
+
+**Highlights:**
 - `sruja_get_context_score`: Repository-level AI-readiness.
 - `sruja_get_focus_briefing`: Task-scoped briefing.
 - `sruja_get_architecture_context`: Component-level hydration.
