@@ -129,12 +129,12 @@ runs:
             LICENSE_COPIED=true
           fi
           if [ "$LICENSE_COPIED" = true ]; then
-            cat > target/LICENSE << 'EOF'
-SPDX-License-Identifier: MIT OR Apache-2.0
-
-This repository contains built static files deployed from the main Sruja project.
-Full license texts: see LICENSE-APACHE and LICENSE-MIT in this repository.
-EOF
+            printf '%s\n' \
+              "SPDX-License-Identifier: MIT OR Apache-2.0" \
+              "" \
+              "This repository contains built static files deployed from the main Sruja project." \
+              "Full license texts: see LICENSE-APACHE and LICENSE-MIT in this repository." \
+              > target/LICENSE
             echo "✅ LICENSE (SPDX pointer) written"
           elif [ -f "$WS/LICENSE" ]; then
             cp "$WS/LICENSE" target/LICENSE
