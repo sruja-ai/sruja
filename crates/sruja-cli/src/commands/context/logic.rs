@@ -10,6 +10,152 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::Path;
 
+#[derive(Debug)]
+struct GroundingTraceInputs<'a> {
+    selectors: TaskSelectors<'a>,
+    max_tokens: usize,
+    selection_reason: &'a SelectionReason,
+    focus_ids: &'a [String],
+    semantic_candidates: &'a [TaskSemanticCandidate],
+    neighbors: &'a [TaskNeighbor],
+    impacted: &'a ImpactBuckets,
+    source_bindings: &'a [TaskSourceBinding],
+    hydrated_files: &'a [TaskHydratedFile],
+}
+
+fn build_grounding_trace(input: GroundingTraceInputs<'_>) -> Vec<GroundingStep> {
+    let selector_kind = if input.selectors.element_id.is_some() {
+        "element_id"
+    } else if input.selectors.file.is_some() {
+        "file"
+    } else if input.selectors.base_ref.is_some() && input.selectors.head_ref.is_some() {
+        "git_diff"
+    } else if input.selectors.query.is_some() {
+        "query"
+    } else {
+        "architecture_overview"
+    };
+
+    let depth = input.selectors.depth.unwrap_or(1);
+    let mut out = Vec::new();
+
+    out.push(GroundingStep {
+        phase: GroundingPhase::Input,
+        summary: format!("Selected focus using selector `{}`.", selector_kind),
+        details: Some(serde_json::json!({
+            "element_id": input.selectors.element_id,
+            "file": input.selectors.file,
+            "query": input.selectors.query,
+            "base_ref": input.selectors.base_ref,
+            "head_ref": input.selectors.head_ref,
+            "depth": depth,
+            "max_tokens": input.max_tokens,
+        })),
+        refs: Vec::new(),
+    });
+
+    out.push(GroundingStep {
+        phase: GroundingPhase::FocusResolution,
+        summary: format!(
+            "Resolved focus via `{}` with path {:?}.",
+            input.selection_reason.primary, input.selection_reason.resolution_path
+        ),
+        details: input.selection_reason.details.clone(),
+        refs: input.focus_ids.to_vec(),
+    });
+
+    if input.selectors.query.is_some() {
+        // Even when we picked a focus id, show the candidates we considered.
+        let candidates: Vec<serde_json::Value> = input
+            .semantic_candidates
+            .iter()
+            .take(10)
+            .map(|c| {
+                serde_json::json!({
+                    "element_id": c.element_id,
+                    "score": c.score,
+                    "label": c.label,
+                    "description": c.description,
+                })
+            })
+            .collect();
+
+        out.push(GroundingStep {
+            phase: if input.focus_ids.is_empty() {
+                GroundingPhase::SemanticFallback
+            } else {
+                GroundingPhase::FocusResolution
+            },
+            summary: format!(
+                "Evaluated {} semantic candidate(s) for query matching.",
+                input.semantic_candidates.len()
+            ),
+            details: Some(serde_json::json!({
+                "candidates": candidates,
+            })),
+            refs: input
+                .semantic_candidates
+                .iter()
+                .take(10)
+                .map(|c| c.element_id.clone())
+                .collect(),
+        });
+    }
+
+    out.push(GroundingStep {
+        phase: GroundingPhase::NeighborExpansion,
+        summary: format!(
+            "Expanded neighbors to depth {} ({} neighbor edge(s)).",
+            depth,
+            input.neighbors.len()
+        ),
+        details: Some(serde_json::json!({
+            "impacted_systems": input.impacted.systems.len(),
+            "impacted_containers": input.impacted.containers.len(),
+            "impacted_components": input.impacted.components.len(),
+        })),
+        refs: input
+            .impacted
+            .systems
+            .iter()
+            .take(10)
+            .cloned()
+            .collect::<Vec<String>>(),
+    });
+
+    out.push(GroundingStep {
+        phase: GroundingPhase::SourceBinding,
+        summary: format!(
+            "Bound {} source reference(s) and hydrated {} file(s).",
+            input.source_bindings.len(),
+            input.hydrated_files.len()
+        ),
+        details: Some(serde_json::json!({
+            "source_bindings": input.source_bindings.iter().take(20).map(|b| serde_json::json!({
+                "element_id": b.element_id,
+                "source_type": b.source_type,
+                "path": b.path,
+                "description": b.description,
+            })).collect::<Vec<_>>(),
+            "source_bindings_truncated": input.source_bindings.len() > 20,
+            "hydrated_files": input.hydrated_files.iter().take(10).map(|f| serde_json::json!({
+                "element_id": f.element_id,
+                "path": f.path,
+                "truncated": f.truncated,
+            })).collect::<Vec<_>>(),
+            "hydrated_files_truncated": input.hydrated_files.len() > 10,
+        })),
+        refs: input
+            .source_bindings
+            .iter()
+            .take(20)
+            .map(|b| b.path.clone())
+            .collect(),
+    });
+
+    out
+}
+
 pub fn build_architecture_context(
     graph: &Graph,
     repo: &str,
@@ -388,7 +534,9 @@ pub fn build_task_context(
         graph, repo_root, &focus_ids, &neighbors, &baseline, max_tokens,
     )?;
 
-    let semantic_candidates = if selectors.query.is_some() && focus_ids.is_empty() {
+    // For query-based selection, always compute candidates for explainability,
+    // even when we successfully resolved a focus id.
+    let semantic_candidates = if selectors.query.is_some() {
         semantic_candidates_from_scan(graph, selectors.query.unwrap_or_default(), 10)
     } else {
         Vec::new()
@@ -396,9 +544,22 @@ pub fn build_task_context(
 
     let risk = estimate_risk(graph, &focus_ids, &neighbors, &baseline);
 
+    let grounding_trace = build_grounding_trace(GroundingTraceInputs {
+        selectors,
+        max_tokens,
+        selection_reason: &selection_reason,
+        focus_ids: &focus_ids,
+        semantic_candidates: &semantic_candidates,
+        neighbors: &neighbors,
+        impacted: &impacted,
+        source_bindings: &source_bindings,
+        hydrated_files: &hydrated_files,
+    });
+
     Ok(TaskContext {
         schema_version: "task_context/v1".to_string(),
         selection_reason,
+        grounding_trace,
         focus_elements,
         impacted_systems: impacted.systems,
         impacted_containers: impacted.containers,

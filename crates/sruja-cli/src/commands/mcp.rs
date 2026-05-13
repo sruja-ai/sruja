@@ -555,7 +555,7 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_get_task_context",
             "title": "Sruja Task Context",
-            "description": "Get high-fidelity architectural context for a specific task. Supports selection by element ID, file path, git diff (base/head refs), or search query. Returns focus elements, neighbors, impact analysis, and hydrated source code.",
+            "description": "Get high-fidelity architectural context for a specific task. Supports selection by element ID, file path, git diff (base/head refs), or search query. Returns focus elements, neighbors, impact analysis, hydrated source code, and a grounding_trace that explains how the focus and evidence were selected.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

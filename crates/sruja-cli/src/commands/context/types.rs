@@ -185,10 +185,33 @@ pub enum TaskRisk {
     High,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum GroundingPhase {
+    Input,
+    FocusResolution,
+    ElementHydration,
+    NeighborExpansion,
+    SourceBinding,
+    SemanticFallback,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroundingStep {
+    pub phase: GroundingPhase,
+    pub summary: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub refs: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskContext {
     pub schema_version: String,
     pub selection_reason: SelectionReason,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub grounding_trace: Vec<GroundingStep>,
     pub focus_elements: Vec<TaskFocusElement>,
     pub impacted_systems: Vec<String>,
     pub impacted_containers: Vec<String>,
