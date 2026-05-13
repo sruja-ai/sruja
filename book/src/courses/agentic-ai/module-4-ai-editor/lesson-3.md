@@ -133,6 +133,64 @@ AI with context: [checks against policies, finds issues]
 | Trust AI blindly | AI can hallucinate | Always validate with Sruja |
 | Ask without context | Generic answers | Build context first with `sruja focus` |
 
+## Hands-On: Practice AI Pair Programming
+
+1. **Set up context for your task:**
+   ```bash
+   # Focus on the area you're working on
+   sruja focus --file src/payment.rs -r .
+   ```
+
+2. **Ask architecture-aware questions:**
+   ```
+   "What does this component depend on?"
+   "What would break if I change this?"
+   "Show me the blast radius of this change"
+   ```
+
+3. **Validate AI suggestions:**
+   ```bash
+   # After AI proposes changes
+   sruja lint repo.sruja
+   sruja drift -r . -a repo.sruja
+   ```
+
+4. **Use impact analysis:**
+   ```bash
+   # Check what would be affected
+   sruja impact ComponentName -r . --depth 3
+   ```
+
+## Learning Outcomes
+
+- ✅ Apply architecture-aware AI interaction patterns
+- ✅ Use AI to explore and understand architecture
+- ✅ Validate AI suggestions with Sruja commands
+- ✅ Avoid common anti-patterns in AI-assisted development
+
+## Quiz: Test Your Understanding
+
+### Q1: What should you do before making a significant change?
+
+A) Just make the change quickly
+B) Ask about dependencies and use impact analysis
+C) Delete the old code first
+D) Ignore architecture concerns
+
+### Q2: Why should you validate AI suggestions with Sruja?
+
+A) Because AI is always wrong
+B) Because AI can hallucinate and make mistakes
+C) To make the code faster
+D) It's not necessary
+
+### Q3: What command shows the blast radius of changing a component?
+
+A) `sruja lint`
+B) `sruja context`
+C) `sruja impact`
+D) `sruja drift`
+
 ## Module Complete!
 
 You've completed the AI Editor Integration module. You now understand:

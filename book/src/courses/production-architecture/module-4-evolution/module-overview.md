@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 4 - Evolutionary Architecture"
+title: "Module 4 - Evolutionary Architecture"
 weight: 4
 summary: "Outcome-driven architecture, fitness functions, and continuous evolution."
 ---
 
-# Draft: Module 4 - Evolutionary Architecture
+# Module 4 - Evolutionary Architecture
 
 **Outcome-driven design, fitness evaluation, and architectural health.**
 

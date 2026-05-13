@@ -143,7 +143,7 @@
   - [Governance](courses/production-architecture/module-3-governance/module-overview.md)
     - [Lesson 1](courses/production-architecture/module-3-governance/lesson-1.md)
     - [Lesson 2](courses/production-architecture/module-3-governance/lesson-2.md)
-  - [Evolutionary Architecture](courses/production-architecture/module-4-evolution/module-overview.md) *(New)*
+  - [Evolutionary Architecture](courses/production-architecture/module-4-evolution/module-overview.md)
     - [Lesson 1](courses/production-architecture/module-4-evolution/lesson-1.md)
     - [Lesson 2](courses/production-architecture/module-4-evolution/lesson-2.md)
     - [Lesson 3](courses/production-architecture/module-4-evolution/lesson-3.md)
@@ -157,7 +157,7 @@
   - [Modeling](courses/agentic-ai/module-3-modeling/module-overview.md)
     - [Lesson 1](courses/agentic-ai/module-3-modeling/lesson-1.md)
     - [Lesson 2](courses/agentic-ai/module-3-modeling/lesson-2.md)
-  - [AI Editor Integration](courses/agentic-ai/module-4-ai-editor/module-overview.md) *(New)*
+  - [AI Editor Integration](courses/agentic-ai/module-4-ai-editor/module-overview.md)
     - [Lesson 1](courses/agentic-ai/module-4-ai-editor/lesson-1.md)
     - [Lesson 2](courses/agentic-ai/module-4-ai-editor/lesson-2.md)
     - [Lesson 3](courses/agentic-ai/module-4-ai-editor/lesson-3.md)
@@ -165,15 +165,15 @@
   - [Policy As Code](courses/advanced-architects/module-1-policy-as-code/module-overview.md)
     - [Lesson 1](courses/advanced-architects/module-1-policy-as-code/lesson-1.md)
     - [Lesson 2](courses/advanced-architects/module-1-policy-as-code/lesson-2.md)
-  - [Behavioral Modeling](courses/advanced-architects/module-2-behavioral-modeling/module-overview.md) *(New)*
+  - [Behavioral Modeling](courses/advanced-architects/module-2-behavioral-modeling/module-overview.md)
     - [Lesson 1](courses/advanced-architects/module-2-behavioral-modeling/lesson-1.md)
     - [Lesson 2](courses/advanced-architects/module-2-behavioral-modeling/lesson-2.md)
     - [Lesson 3](courses/advanced-architects/module-2-behavioral-modeling/lesson-3.md)
-  - [Intent-Driven Development](courses/advanced-architects/module-3-intent-driven/module-overview.md) *(New)*
+  - [Intent-Driven Development](courses/advanced-architects/module-3-intent-driven/module-overview.md)
     - [Lesson 1](courses/advanced-architects/module-3-intent-driven/lesson-1.md)
     - [Lesson 2](courses/advanced-architects/module-3-intent-driven/lesson-2.md)
     - [Lesson 3](courses/advanced-architects/module-3-intent-driven/lesson-3.md)
-- [Federated Architecture](courses/federated-architecture/course-overview.md) *(New)*
+- [Federated Architecture](courses/federated-architecture/course-overview.md)
   - [Federation Fundamentals](courses/federated-architecture/module-1-federation-fundamentals/module-overview.md)
     - [Lesson 1](courses/federated-architecture/module-1-federation-fundamentals/lesson-1.md)
     - [Lesson 2](courses/federated-architecture/module-1-federation-fundamentals/lesson-2.md)

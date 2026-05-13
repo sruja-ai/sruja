@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 3 - Conflict Resolution"
+title: "Module 3 - Conflict Resolution"
 weight: 3
 summary: "Detect and resolve conflicts in federated architecture."
 ---
 
-# Draft: Module 3 - Conflict Resolution
+# Module 3 - Conflict Resolution
 
 **Detecting duplicates, resolution strategies, and prevention.**
 

@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 3 - Intent-Driven Development"
+title: "Module 3 - Intent-Driven Development"
 weight: 3
 summary: "Write intent, use critique engine, and perform adversarial architectural review."
 ---
 
-# Draft: Module 3 - Intent-Driven Development
+# Module 3 - Intent-Driven Development
 
 **Writing architectural intent, adversarial critique, and evidence-based validation.**
 

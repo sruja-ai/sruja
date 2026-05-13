@@ -29,34 +29,21 @@ jobs:
       - name: Install Sruja
         run: curl -fsSL https://sruja.ai/install.sh | bash
 
-      - name: Validate Policies
-        run: |
-          sruja validate -r . \
-            --policies ../federation/policies/global.sruja
-
       - name: Check Compliance
-        run: |
-          sruja compliance -r . \
-            --output compliance.json
+        run: sruja compliance -r . -a repo.sruja
 
-      - name: Fail on Critical Violations
-        if: contains(steps.compliance.outputs.level, 'critical')
-        run: |
-          echo "Critical policy violations found"
-          exit 1
+      - name: Check for Drift
+        run: sruja drift --ci -r . -a repo.sruja
 ```
 
 ## Automated Remediation
 
 ```bash
-# Auto-fix where possible
-sruja drift -r . --fix
+# Check drift with fix suggestions
+sruja drift -r . -a repo.sruja
 
-# For policy violations that can be auto-fixed
-sruja policy -r . --auto-fix
-
-# Review auto-fixes before committing
-sruja policy -r . --auto-fix --dry-run
+# For auto-fix capabilities, update the architecture to match code:
+# sruja init --auto  # to regenerate baseline
 ```
 
 ## Governance Metrics
@@ -64,58 +51,120 @@ sruja policy -r . --auto-fix --dry-run
 Track governance health over time:
 
 ```bash
-# Track governance score
-sruja metrics --governance --output metrics.json
+# Check health
+sruja health -r .
 
-# Dashboard
-sruja metrics --governance --dashboard
+# With JSON output for tracking
+sruja health -r . --format json
+
+# Context score for AI-readiness
+sruja context-score -r .
 ```
 
 ## Gatekeeping
 
-Prevent non-compliant repos from publishing:
+Prevent drift from accumulating:
 
 ```yaml
-# .github/workflows/publish-bundle.yml
+# .github/workflows/quality-gate.yml
 jobs:
-  publish:
-    needs: governance
+  quality-gate:
     runs-on: ubuntu-latest
     steps:
-      - name: Publish Bundle
-        if: needs.governance.outputs.compliant == 'true'
-        run: sruja publish -r . -o bundle.json
+      - uses: actions/checkout@v4
 
-      - name: Block Non-Compliant
-        if: needs.governance.outputs.compliant != 'true'
+      - name: Architecture Check
         run: |
-          echo "Cannot publish: governance failures"
-          exit 1
+          # Lint the DSL
+          sruja lint repo.sruja
+
+          # Check drift
+          sruja drift --ci -r . -a repo.sruja
 ```
 
 ## Policy Distribution
 
-```bash
-# Push policies to repos
-sruja policy push --policy global.sruja \
-  --to ./repos/*/
+Sruja policies are defined in `repo.sruja` or separate `.sruja` files. To share policies across repos:
 
-# Pull policy updates
-sruja policy pull --from ../federation/policies/
-```
+1. **Define policies in a central repo:**
+   ```sruja
+   // In federation-policies repo
+   policy "Global Security" {
+     constraint "All external endpoints must use HTTPS" {
+       applies_to: container
+     }
+   }
+   ```
+
+2. **Reference from individual repos:**
+   ```sruja
+   import { Global Security } from "../federation-policies/policies.sruja"
+   ```
 
 ## Governance Dashboard
 
 ```bash
-# View all repos governance status
-sruja governance --dashboard --bundles ./bundles/
+# View overall health
+sruja health -r .
 
-# Shows:
-# - Repo compliance matrix
-# - Policy violation trends
-# - Team health scores
-# - Action items
+# Generate AI context for review
+sruja ai-context -r .
 ```
+
+## Hands-On: Automate Governance
+
+1. **Add to your CI/CD pipeline:**
+   ```yaml
+   - name: Architecture Governance
+     run: |
+       sruja lint repo.sruja
+       sruja drift --ci -r . -a repo.sruja
+   ```
+
+2. **Run health check:**
+   ```bash
+   sruja health -r .
+   ```
+
+3. **Generate compliance report:**
+   ```bash
+   sruja compliance -r . -a repo.sruja
+   ```
+
+4. **Check context score:**
+   ```bash
+   sruja context-score -r .
+   ```
+
+## Learning Outcomes
+
+- ✅ Integrate governance checks into CI/CD pipelines
+- ✅ Use `sruja drift --ci` for automated drift detection
+- ✅ Track governance health with `sruja health`
+- ✅ Share policies across repos using imports
+
+## Quiz: Test Your Understanding
+
+### Q1: What command runs architecture checks in CI mode?
+
+A) `sruja check`
+B) `sruja drift --ci`
+C) `sruja validate`
+D) `sruja test`
+
+### Q2: How can you share policies across multiple repos?
+
+A) Copy-paste the policy code
+B) Use import statements to reference external `.sruja` files
+C) Store policies in a database
+D) Use environment variables
+
+### Q3: What does `sruja context-score` measure?
+
+A) Network latency
+B) Code coverage
+C) AI-readiness of the codebase (0-100 score)
+D) Server uptime
 
 ## Course Complete!
 
@@ -130,3 +179,4 @@ You've completed the Federated Architecture course. You now understand:
 - Apply federation to your organization's repos
 - Set up automated governance in CI/CD
 - Train teams on federated architecture concepts
+- Use `sruja ai-context` to provide architecture context to AI editors

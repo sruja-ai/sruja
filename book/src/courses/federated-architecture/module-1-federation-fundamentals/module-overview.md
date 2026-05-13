@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 1 - Federation Fundamentals"
+title: "Module 1 - Federation Fundamentals"
 weight: 1
 summary: "Understand federation concepts, bundle publishing, and basic composition."
 ---
 
-# Draft: Module 1 - Federation Fundamentals
+# Module 1 - Federation Fundamentals
 
 **Core concepts, bundle creation, and basic composition.**
 

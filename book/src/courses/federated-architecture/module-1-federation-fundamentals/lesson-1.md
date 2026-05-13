@@ -78,6 +78,8 @@ Example:
 
 ## Why Federation?
 
+Traditional architecture tools work per-repo, leaving you with fragmented views and no cross-repo visibility. Federation creates a **single source of truth** across all repos:
+
 | Without Federation | With Federation |
 |-------------------|-----------------|
 | Fragmented views | Single source of truth |
@@ -103,7 +105,7 @@ It may be overkill for:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     AI Editor / Skill                       │
+│                     AI Editor / MCP Server                   │
 │                                                              │
 │  1. Load system.index.json (or slice)                       │
 │  2. Query cross-repo relationships                          │
@@ -114,7 +116,7 @@ It may be overkill for:
                     ┌─────────────────┐
                     │   CI/CD Pipeline │
                     │                  │
-                    │ sruja publish    │
+                    │ sruja publish     │
                     │ sruja compose    │
                     │ sruja drift      │
                     └─────────────────┘
@@ -127,6 +129,55 @@ It may be overkill for:
 │ bundle  │    │ bundle  │        │ bundle  │
 └─────────┘    └─────────┘        └─────────┘
 ```
+
+## Hands-On: Explore Federation Concepts
+
+1. **List available federation commands:**
+   ```bash
+   sruja --help | grep -E "publish|compose|impact"
+   ```
+
+2. **Initialize a sample repo for federation:**
+   ```bash
+   mkdir federation-demo && cd federation-demo
+   sruja init --auto
+   ```
+
+3. **Publish a bundle from your repo:**
+   ```bash
+   sruja publish -r . -o repo.bundle.json
+   cat repo.bundle.json | jq '.repo_id, .git_commit'
+   ```
+
+## Learning Outcomes
+
+- ✅ Understand what federated architecture is and when to use it
+- ✅ Explain the key concepts: bundles, system index, and canonical IDs
+- ✅ Describe how federation creates a single source of truth across repos
+- ✅ Identify use cases where federation provides the most value
+
+## Quiz: Test Your Understanding
+
+### Q1: What is a bundle in the context of Sruja federation?
+
+A) A compressed archive of all repository files
+B) A portable export of a single repo's architecture containing DSL, context, and metadata
+C) A backup of the entire repository
+D) A Docker container image
+
+### Q2: What does a canonical ID prevent?
+
+A) unauthorized access
+B) naming collisions across repositories
+C) data loss
+D) code conflicts
+
+### Q3: Which command is used to create a system index from multiple bundles?
+
+A) `sruja merge`
+B) `sruja index`
+C) `sruja compose`
+D) `sruja aggregate`
 
 ## Next Steps
 

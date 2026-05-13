@@ -85,23 +85,23 @@ OrderService = system "Order Service" {
 
 ```bash
 # Export to Mermaid
-sruja export -i system.index.json --format mermaid
+sruja export repo.sruja --format mermaid
 
 # Export to JSON for custom tooling
-sruja export -i system.index.json --format json
+sruja export repo.sruja --format json
 ```
 
 ## Validation and Health Checks
 
 ```bash
-# Check overall federated health
-sruja health -i system.index.json
+# Check overall health
+sruja health -r .
 
-# Check for conflicts
-sruja compose -i ./bundles -o system.index.json --check-conflicts
+# Check for architectural drift
+sruja drift -r . -a repo.sruja
 
-# Show drift across repos
-sruja drift -i system.index.json
+# In CI mode (GitHub Actions format)
+sruja drift --ci -r . -a repo.sruja
 ```
 
 ## Using in AI Editors
@@ -109,11 +109,11 @@ sruja drift -i system.index.json
 Load the system index for cross-repo context:
 
 ```bash
-# Build AI-ready context from index
-sruja context -i system.index.json -o ai-context.json
+# Build AI-ready context from multiple repos
+sruja ai-context -r repoA -r repoB -r repoC
 
-# Or use directly with focus
-sruja focus --component order-service::OrderProcessor -i system.index.json
+# Or use context-score to measure AI-readiness
+sruja context-score -r .
 ```
 
 ## Basic Workflow
@@ -128,11 +128,10 @@ sruja focus --component order-service::OrderProcessor -i system.index.json
 3. Compose on schedule or on-demand
    └─→ system.index.json
 
-4. Use system index for:
-   └─→ AI editor context
-   └─→ Cross-repo diagrams
-   └─→ Impact analysis
-   └─→ Compliance reporting
+4. Use for:
+   └─→ AI editor context (sruja ai-context)
+   └─→ Impact analysis (sruja impact)
+   └─→ Compliance reporting (sruja compliance)
 ```
 
 ## Module Complete!
@@ -142,5 +141,64 @@ You've completed Federation Fundamentals. You now understand:
 - ✅ How to publish architecture bundles
 - ✅ How to compose bundles into system index
 - ✅ Basic cross-repo relationship modeling
+
+## Hands-On: Compose Your First System Index
+
+1. **Create bundles from multiple repos:**
+   ```bash
+   # Create demo bundles directory
+   mkdir -p ./bundles
+   
+   # Publish from each service
+   sruja publish -r ./user-service -o ./bundles/user-service.bundle.json
+   sruja publish -r ./order-service -o ./bundles/order-service.bundle.json
+   sruja publish -r ./payment-service -o ./bundles/payment-service.bundle.json
+   ```
+
+2. **Compose bundles into a system index:**
+   ```bash
+   sruja compose -i ./bundles -o system.index.json
+   ```
+
+3. **Explore the composed system index:**
+   ```bash
+   cat system.index.json | jq '{repo_count: (.repos | length), node_count: (.nodes | length), edge_count: (.edges | length)}'
+   ```
+
+4. **View canonical IDs in the system:**
+   ```bash
+   cat system.index.json | jq '.nodes[].canonical_id'
+   ```
+
+## Learning Outcomes
+
+- ✅ Compose multiple bundles into a unified system index
+- ✅ Understand the system index structure (repos, nodes, edges, conflicts)
+- ✅ Use canonical IDs to reference components across repositories
+- ✅ Export system index to different formats (Mermaid, JSON)
+- ✅ Apply federation workflow in CI/CD pipelines
+
+## Quiz: Test Your Understanding
+
+### Q1: What does the `conflicts` array in a system index contain?
+
+A) Git merge conflicts between repos
+B) Duplicate elements across repos that need resolution
+C) Network connectivity errors
+D) Authentication failures
+
+### Q2: What is a canonical ID in federation?
+
+A) A Git commit hash
+B) A Docker container identifier
+C) A unique identifier in the format `repo_id::local_id` that prevents naming collisions
+D) A UUID for each user
+
+### Q3: Which command is used to compose multiple bundles into a system index?
+
+A) `sruja merge`
+B) `sruja compose -i <input> -o <output>`
+C) `sruja index`
+D) `sruja aggregate`
 
 Next, Module 2 covers advanced cross-repo relationships.

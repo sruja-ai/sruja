@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 4 - Federated Governance"
+title: "Module 4 - Federated Governance"
 weight: 4
 summary: "Scale policies and compliance across all repositories."
 ---
 
-# Draft: Module 4 - Federated Governance
+# Module 4 - Federated Governance
 
 **Federated policies, compliance reporting, and governance automation.**
 

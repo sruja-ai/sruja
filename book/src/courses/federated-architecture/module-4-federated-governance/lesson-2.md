@@ -9,91 +9,61 @@ summary: "Generate cross-repo compliance reports."
 ## Building Compliance Reports
 
 ```bash
-# Generate report for all repos
-sruja compliance --bundles ./bundles/ \
-  --output compliance-report.json
+# Generate compliance report
+sruja compliance -r . -a repo.sruja
 
-# Or use system index
-sruja compliance --index system.index.json \
-  --output compliance-report.json
+# With JSON output for automation
+sruja compliance -r . -a repo.sruja --format json
 ```
 
-## Report Structure
+## Report Output
 
-```json
-{
-  "generated_at": "2024-05-12T10:00:00Z",
-  "scope": "all-repos",
-  "summary": {
-    "total_repos": 25,
-    "compliant": 22,
-    "partial": 2,
-    "non_compliant": 1
-  },
-  "by_policy": [
-    {
-      "policy": "Global Security",
-      "compliant": 24,
-      "violations": 1,
-      "repos": ["order-service"]
-    }
-  ],
-  "by_repo": [
-    {
-      "repo_id": "user-service",
-      "status": "compliant",
-      "violations": [],
-      "last_ checked": "2024-05-12"
-    },
-    {
-      "repo_id": "order-service",
-      "status": "non_compliant",
-      "violations": [
-        {
-          "policy": "Global Security",
-          "constraint": "All databases must have encryption",
-          "element": "order-service::OrderDB",
-          "severity": "high"
-        }
-      ]
-    }
-  ]
-}
-```
+When you run `sruja compliance`, it shows:
+- **Policy violations** found in your architecture
+- **Structural drift** between code and architecture
+- **Intent violations** from ADRs and documented intent
+- **Overall compliance status** (pass/fail)
 
-## Per-Team Reports
+## Per-Repo Compliance
 
 ```bash
-# Report for specific team
-sruja compliance --team platform-team \
-  --output team-compliance.json
+# Check compliance for specific repo
+sruja compliance -r ./user-service -a user-service/repo.sruja
 
-# Report by domain
-sruja compliance --domain payments \
-  --output payments-compliance.json
+# Check with output format
+sruja compliance -r . -a repo.sruja --format json
 ```
 
 ## Drift Reporting
 
 ```bash
-# Show drift across repos
-sruja drift --bundles ./bundles/ \
-  --output drift-report.json
+# Show drift between code and architecture
+sruja drift -r . -a repo.sruja
+
+# In CI mode (GitHub Actions format)
+sruja drift --ci -r . -a repo.sruja
+
+# Show only violations
+sruja drift -r . -a repo.sruja --violations-only
 ```
 
-## Dashboard Generation
+## Health Reporting
 
 ```bash
-# Generate HTML dashboard
-sruja compliance --bundles ./bundles/ \
-  --dashboard \
-  --output compliance-dashboard.html
+# Check overall health
+sruja health -r .
+
+# With architecture file
+sruja health -r . -a repo.sruja
+
+# JSON format for dashboards
+sruja health -r . -a repo.sruja --format json
 ```
 
 ## Scheduled Reports
 
 ```yaml
-# .github/workflows/compliance-report.yml
+# .github/workflows/architecture-report.yml
 on:
   schedule:
     - cron: '0 8 * * 1'  # Weekly Monday 8am
@@ -102,25 +72,74 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch bundles
-        run: sruja fetch-bundles -i ./bundles/
+      - uses: actions/checkout@v4
 
-      - name: Generate report
-        run: sruja compliance --index system.index.json \
-          --output compliance-$(date +%Y-%m-%d).json
+      - name: Check Compliance
+        run: sruja compliance -r . -a repo.sruja --format json > compliance.json
 
-      - name: Upload artifact
+      - name: Check Health
+        run: sruja health -r . -a repo.sruja --format json > health.json
+
+      - name: Upload Reports
         uses: actions/upload-artifact@v4
         with:
-          name: weekly-compliance
-          path: compliance-*.json
-
-      - name: Notify
-        if: failure()
-        run: |
-          sruja alert --slack "#architecture" \
-            --message "Compliance report failed"
+          name: weekly-architecture-reports
+          path: |
+            compliance.json
+            health.json
 ```
+
+## Hands-On: Generate Compliance Reports
+
+1. **Run compliance check:**
+   ```bash
+   sruja compliance -r . -a repo.sruja
+   ```
+
+2. **Run health check:**
+   ```bash
+   sruja health -r .
+   ```
+
+3. **Check for drift:**
+   ```bash
+   sruja drift -r . -a repo.sruja
+   ```
+
+4. **View in CI mode:**
+   ```bash
+   sruja drift --ci -r . -a repo.sruja
+   ```
+
+## Learning Outcomes
+
+- ✅ Generate compliance reports using `sruja compliance`
+- ✅ Check health with `sruja health`
+- ✅ Detect drift using `sruja drift`
+- ✅ Integrate reports into CI/CD pipelines
+
+## Quiz: Test Your Understanding
+
+### Q1: What command generates a compliance report?
+
+A) `sruja report`
+B) `sruja compliance`
+C) `sruja audit`
+D) `sruja check`
+
+### Q2: What does `sruja drift --ci` do?
+
+A) Runs in CI mode with GitHub Actions format output
+B) Checks Git CI/CD pipeline status
+C) Creates a new CI/CD workflow
+D) Uploads to continuous integration service
+
+### Q3: What does `sruja health` show?
+
+A) Server health metrics
+B) Overall architectural health and graph quality
+C) Network connectivity status
+D) Database health
 
 ## Module Complete!
 

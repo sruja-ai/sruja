@@ -23,18 +23,21 @@ With architecture context:
 ### Basic Context
 
 ```bash
-# Build context for current repo
-sruja context -r .
+# Build context for current repo (outputs cursor rules format)
+sruja ai-context -r .
 
-# Output context as JSON
-sruja context -r . --format json
+# Output as JSON
+sruja ai-context -r . --format json
+
+# Output as Markdown
+sruja ai-context -r . --format markdown
 ```
 
 ### Cross-Repo Context
 
 ```bash
 # Build context across multiple repos
-sruja context -r repoA -r repoB -r repoC
+sruja ai-context -r repoA -r repoB -r repoC
 
 # Useful for monorepos or microservices
 ```
@@ -44,11 +47,11 @@ sruja context -r repoA -r repoB -r repoC
 For specific tasks, use focus mode to get a task-scoped briefing:
 
 ```bash
-# Get context focused on a specific file/component
-sruja focus --file src/api/main.rs
+# Get context focused on a specific file
+sruja focus --file src/api/main.rs -r .
 
 # Get context for a specific component
-sruja focus --component PaymentService
+sruja focus --element-id PaymentService -r .
 ```
 
 Focus output includes:
@@ -82,7 +85,6 @@ The score evaluates 5 dimensions:
 ```sruja
 container PaymentService {
   description "Handles payment processing and fraud detection"
-  // AI now understands what this does
 }
 ```
 
@@ -120,10 +122,10 @@ For AI editors, run daily sync to keep context fresh:
 
 ```bash
 # Quick sync
-sruja sync -r .
-
-# Full with drift check
 sruja daily -r .
+
+# With health check
+sruja doctor -r .
 ```
 
 This updates:
@@ -131,6 +133,58 @@ This updates:
 - `.cursorrules`
 - `.copilot-instructions.md`
 - `CLAUDE.md`
+
+## Hands-On: Build AI Context
+
+1. **Generate context for your repo:**
+   ```bash
+   sruja ai-context -r . --format markdown
+   ```
+
+2. **Check your context score:**
+   ```bash
+   sruja context-score -r .
+   ```
+
+3. **Focus on a specific component:**
+   ```bash
+   sruja focus --element-id UserAPI -r .
+   ```
+
+4. **Run daily sync:**
+   ```bash
+   sruja daily -r .
+   ```
+
+## Learning Outcomes
+
+- ✅ Generate AI-ready context using `sruja ai-context`
+- ✅ Measure architecture AI-readiness with `sruja context-score`
+- ✅ Use `sruja focus` for task-specific context
+- ✅ Optimize architecture for better AI assistance
+
+## Quiz: Test Your Understanding
+
+### Q1: What command generates AI context for your codebase?
+
+A) `sruja context`
+B) `sruja ai-context`
+C) `sruja generate`
+D) `sruja build`
+
+### Q2: What does `sruja context-score` measure?
+
+A) Network speed
+B) AI-readiness of your architecture (0-100 score across 5 dimensions)
+C) Code test coverage
+D) Server response time
+
+### Q3: What does `sruja focus` provide?
+
+A) Task-specific context including blast radius and design decisions
+B) Global system configuration
+C) Database schema
+D) Network topology
 
 ## Next Steps
 

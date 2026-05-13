@@ -110,6 +110,59 @@ Once connected, the AI editor can use these Sruja tools:
 | `sruja_context` | Get architecture context |
 | `sruja_lint` | Validate DSL |
 
+## Hands-On: Set Up MCP Server
+
+1. **Install Sruja CLI:**
+   ```bash
+   # Verify installation
+   sruja --version
+
+   # Or install if needed
+   curl -fsSL https://sruja.ai/install.sh | bash
+   ```
+
+2. **Test MCP server:**
+   ```bash
+   # Start MCP server
+   sruja mcp -r .
+   ```
+
+3. **Configure your AI editor:**
+   Add the configuration to your editor's MCP settings file as shown above.
+
+4. **Verify the connection:**
+   Ask your AI editor: "What is the architecture of this project?"
+
+## Learning Outcomes
+
+- ✅ Understand what the Model Context Protocol (MCP) is and why it matters
+- ✅ Configure Sruja as an MCP server for AI editors
+- ✅ Connect AI editors (Cursor, VS Code, Cline, Windsurf) to Sruja
+- ✅ Verify MCP connection is working
+
+## Quiz: Test Your Understanding
+
+### Q1: What does MCP stand for in the context of AI editors?
+
+A) Model Computing Protocol
+B) Model Context Protocol
+C) Machine Code Processing
+D) Managed Code Platform
+
+### Q2: Why is MCP useful for architecture-aware AI assistance?
+
+A) It speeds up code compilation
+B) It provides architecture context to AI editors so they understand dependencies
+C) It automatically writes code
+D) It deploys applications
+
+### Q3: What command starts the Sruja MCP server?
+
+A) `sruja server start`
+B) `sruja mcp -r .`
+C) `sruja connect`
+D) `sruja context`
+
 ## Next Steps
 
 Lesson 2 covers building and optimizing context for AI assistance.

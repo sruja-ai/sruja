@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 4 - AI Editor Integration"
+title: "Module 4 - AI Editor Integration"
 weight: 4
 summary: "Set up MCP server, integrate with AI editors, and use context-driven development."
 ---
 
-# Draft: Module 4: AI Editor Integration
+# Module 4 - AI Editor Integration
 
 **MCP server setup, AI editor configuration, and context-driven development.**
 

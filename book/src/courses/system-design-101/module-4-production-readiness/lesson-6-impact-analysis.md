@@ -1,10 +1,10 @@
 ---
-title: "Draft: Lesson 6 - Impact Analysis"
+title: "Lesson 6 - Impact Analysis"
 weight: 6
 summary: "Analyze the blast radius of architectural changes using Sruja impact analysis."
 ---
 
-# Draft: Lesson 6 - Impact Analysis
+# Lesson 6 - Impact Analysis
 
 **Analyze the blast radius of changes before you make them.**
 

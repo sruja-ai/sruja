@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 2 - Behavioral Modeling"
+title: "Module 2 - Behavioral Modeling"
 weight: 2
 summary: "Model state machines, API contracts, and scenarios with Sruja DSL."
 ---
 
-# Draft: Module 2 - Behavioral Modeling
+# Module 2 - Behavioral Modeling
 
 **State machines, API contracts, and scenario-based validation.**
 

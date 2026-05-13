@@ -55,38 +55,88 @@ OrderProcessor -> ExternalSystems.SendGrid "Email delivery"
 ## Validation of External References
 
 ```bash
-# Validate all external refs resolve
-sruja validate -r . --check-external
+# Validate DSL syntax and constraints
+sruja lint repo.sruja
 
-# Check specific bundle
-sruja validate --bundle ./bundles/user-service.bundle.json
+# Validate with architecture file
+sruja lint repo.sruja --format json
+
+# Run drift check to see what changed
+sruja drift -r . -a repo.sruja
 ```
 
 Validation checks:
-- ✅ External bundle exists
-- ✅ Referenced component exists
-- ✅ Relationship is valid
-
-## Versioning External References
-
-```sruja
-// Pin to specific version
-import { user-service v1.2.0 } from "./bundles/user-service.bundle.json"
-
-// Or use latest
-import { user-service @ latest } from "./bundles/user-service.bundle.json"
-```
+- ✅ DSL syntax is correct
+- ✅ All references resolve
+- ✅ Relationships are valid
 
 ## Broken Reference Detection
 
 ```bash
-# Find broken refs
-sruja validate -r . --find-broken-refs
+# Find drift and broken refs
+sruja drift -r . -a repo.sruja
 
-# Output:
-# ERROR: user-service::NonExistent not found in bundle
-# ERROR: payment-service::LegacyAPI has been deprecated
+# Use impact analysis to understand dependencies
+sruja impact OrderService -r . --depth 2
 ```
+
+## Hands-On: Work with External References
+
+1. **Create a bundle to reference:**
+   ```bash
+   sruja publish -r ./user-service -o ./bundles/user-service.bundle.json
+   ```
+
+2. **Set up cross-repo references in your DSL:**
+   ```sruja
+   import { user-service } from "./bundles/user-service.bundle.json"
+
+   OrderService = system "Order Service" {
+     OrderProcessor = container "Order Processor"
+     OrderProcessor -> user-service::UserAPI "Validates customer"
+   }
+   ```
+
+3. **Validate the references:**
+   ```bash
+   sruja lint repo.sruja
+   sruja drift -r . -a repo.sruja
+   ```
+
+4. **Check impact of external dependencies:**
+   ```bash
+   sruja impact OrderProcessor -r . --depth 3
+   ```
+
+## Learning Outcomes
+
+- ✅ Import and reference components from external bundles
+- ✅ Model external systems you depend on but don't control
+- ✅ Validate external references using `sruja lint`
+- ✅ Use impact analysis to understand cross-repo dependencies
+
+## Quiz: Test Your Understanding
+
+### Q1: What command is used to validate Sruja DSL files?
+
+A) `sruja validate`
+B) `sruja lint`
+C) `sruja check`
+D) `sruja verify`
+
+### Q2: When modeling external services you don't control, what should you use?
+
+A) Import statements with no changes
+B) A separate system definition with description
+C) Direct database access
+D) Git submodules
+
+### Q3: What does `sruja drift` help detect?
+
+A) Git conflicts
+B) Changes between architecture and code
+C) Network issues
+D) Memory leaks
 
 ## Next Steps
 

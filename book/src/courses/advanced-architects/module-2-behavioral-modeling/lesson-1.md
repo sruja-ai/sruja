@@ -106,15 +106,14 @@ state New {
 Sruja validates state machines automatically:
 
 ```bash
-sruja validate order-lifecycle.sruja
+sruja lint order-lifecycle.sruja
 ```
 
 Validation checks:
-- ✅ All states are reachable from initial
-- ✅ All final states are actually terminal
-- ✅ No orphan states
+- ✅ DSL syntax is correct
+- ✅ All states are properly defined
+- ✅ Transitions reference valid states
 - ✅ Guard conditions are valid
-- ✅ Actions reference existing functions
 
 ## Hands-On: Model a User Session
 
@@ -146,6 +145,36 @@ UserSession = state_machine "User Session" {
   }
 }
 ```
+
+## Learning Outcomes
+
+- ✅ Understand what state machines are and why they matter in architecture
+- ✅ Define state machines in Sruja DSL with states and transitions
+- ✅ Use guard conditions to restrict transitions
+- ✅ Validate state machines using `sruja lint`
+
+## Quiz: Test Your Understanding
+
+### Q1: What does a state machine model in architecture?
+
+A) Static component relationships
+B) How a system behaves over time through states and transitions
+C) Network topology
+D) Database schema
+
+### Q2: What command validates Sruja DSL files?
+
+A) `sruja validate`
+B) `sruja lint`
+C) `sruja check`
+D) `sruja verify`
+
+### Q3: What are guard conditions used for?
+
+A) Encrypting data at rest
+B) Restricting when transitions can occur
+C) Creating new states
+D) Defining component relationships
 
 ## Next Steps
 

@@ -72,9 +72,6 @@ Sruja provides CLI commands to work with intent:
 # Check intent compliance
 sruja intent check -r .
 
-# Check specific requirement
-sruja intent check -r . --requirement "API latency"
-
 # Generate intent report
 sruja intent check -r . --format json > intent-report.json
 ```
@@ -103,24 +100,24 @@ policy "Availability Policy" {
 ## Intent Drift Detection
 
 ```bash
-# Detect drift from intent
-sruja drift -r . --intent
+# Detect drift between code and architecture
+sruja drift -r . -a repo.sruja
 
-# Show what changed
-sruja drift -r . --intent --verbose
-
-# Auto-fix drift where possible
-sruja drift -r . --intent --fix
+# Check compliance with policies
+sruja compliance -r . -a repo.sruja
 ```
 
 ## Proposing Intent Changes
 
 ```bash
-# Propose new intent based on changes
-sruja intent propose -r . --from-diff
+# Propose new architectural change
+sruja propose create --description "Add caching layer to improve latency"
 
-# Review proposed changes
-sruja intent propose -r . --review
+# View pending proposals
+sruja propose list
+
+# Approve a proposal
+sruja propose approve --id <proposal_id>
 ```
 
 ## Hands-On: Define Intent for a Service
@@ -148,6 +145,36 @@ policy "Security Policy" {
   rule deny edge from { tag "public" } to { kind "database" } except { kind "container" tag "trusted" }
 }
 ```
+
+## Learning Outcomes
+
+- ✅ Understand what architectural intent is and why it matters
+- ✅ Express intent using requirements and policies in Sruja DSL
+- ✅ Use `sruja intent check` and `sruja compliance` to validate intent
+- ✅ Detect drift using `sruja drift`
+
+## Quiz: Test Your Understanding
+
+### Q1: What is architectural intent?
+
+A) A detailed implementation plan
+B) A formal declaration of what you want your architecture to achieve
+C) A list of all components
+D) A network diagram
+
+### Q2: What command checks intent compliance?
+
+A) `sruja lint`
+B) `sruja intent check`
+C) `sruja drift`
+D) `sruja validate`
+
+### Q3: What does `sruja drift` help detect?
+
+A) Git conflicts
+B) Changes between code and architecture
+C) Network failures
+D) Database issues
 
 ## Next Steps
 

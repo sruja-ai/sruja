@@ -82,34 +82,94 @@ Deprecated elements:
 
 ```
 1. Detect conflict
-   └─→ sruja compose --check-conflicts
-
-2. Analyze options
-   └─→ Is this same service? → MERGE
-   └─→ Different services with same name? → ALIAS
-   └─→ One is legacy? → DEPRECATE
-   └─→ Unclear? → MANUAL REVIEW
-
-3. Apply resolution
-   └─→ sruja resolve [strategy]
-
-4. Verify composition
    └─→ sruja compose -i ./bundles -o system.index.json
 
-5. Update affected repos
-   └─→ Update references in DSL
+2. Analyze options
+   └─→ Same service in multiple repos? → MERGE or RENAME
+   └─→ Different services with same name? → USE ALIASES
+   └─→ One is legacy? → DEPRECATE and remove
+
+3. Update DSL in affected repos
+   └─→ Rename conflicting components
+   └─→ Update references
+
+4. Re-compose and verify
+   └─→ sruja compose -i ./bundles -o system.index.json
+
+5. Validate no new conflicts
+   └─→ sruja lint repo.sruja
 ```
 
 ## Handling Blocked Composition
 
-If composition fails:
+If composition detects conflicts:
 
 ```bash
-# Show blocking conflicts
-sruja compose -i ./bundles --show-blockers
+# View the conflicts in the system index
+cat system.index.json | jq '.conflicts'
 
-# Blockers must be resolved before proceeding
+# Resolve by updating DSL to use unique names
+# Then republish and recompose
+sruja publish -r . -o updated-bundle.json
 ```
+
+## Hands-On: Resolve a Conflict
+
+1. **Compose and detect conflicts:**
+   ```bash
+   sruja compose -i ./bundles -o system.index.json
+   cat system.index.json | jq '.conflicts'
+   ```
+
+2. **Identify the conflicting components:**
+   ```bash
+   # Look for duplicate kind+label
+   cat system.index.json | jq '.nodes[] | select(.label == "API")'
+   ```
+
+3. **Rename to resolve (example):**
+   In `order-service/repo.sruja`, rename `API` to `OrderAPI`:
+   ```sruja
+   OrderAPI = container "Order API" {
+     description "API for order management"
+   }
+   ```
+
+4. **Republish and recompose:**
+   ```bash
+   sruja publish -r ./order-service -o ./bundles/order-service.bundle.json
+   sruja compose -i ./bundles -o system.index.json
+   ```
+
+## Learning Outcomes
+
+- ✅ Understand different conflict resolution strategies
+- ✅ Detect conflicts during bundle composition
+- ✅ Apply renaming or aliasing to resolve conflicts
+- ✅ Validate resolution by recomposing bundles
+
+## Quiz: Test Your Understanding
+
+### Q1: What typically causes conflicts in federated architecture?
+
+A) Network timeouts
+B) Two repos modeling the same logical element or using the same name
+C) Git merge conflicts
+D) Database lock contention
+
+### Q2: What is the first step when you detect a conflict in composition?
+
+A) Delete one of the bundles
+B) Analyze whether the elements are actually the same or just have similar names
+C) Contact the cloud provider
+D) Disable CI/CD
+
+### Q3: After resolving a conflict, what should you do?
+
+A) Nothing - conflicts auto-resolve
+B) Republish affected bundles and recompose
+C) Delete the system index
+D) Restart all services
 
 ## Next Steps
 

@@ -111,15 +111,72 @@ teams:
 ## Querying Ownership
 
 ```bash
-# Find all components owned by a team
-sruja query --owner platform-team
+# Check drift and see ownership violations
+sruja drift -r . -a repo.sruja
 
-# Find components without owners
-sruja query --no-owner
-
-# Show ownership report
-sruja report --ownership
+# Use ai-context to see team-specific architecture
+sruja ai-context -r . --format markdown
 ```
+
+## Hands-On: Define Ownership
+
+1. **Add ownership metadata to your architecture:**
+   ```sruja
+   UserService = system "User Service" {
+     owner "platform-team"
+
+     UserAPI = container "User API" {
+       owner "platform-team"
+       description "REST API for user management"
+     }
+   }
+   ```
+
+2. **Validate and check for issues:**
+   ```bash
+   sruja lint repo.sruja
+   sruja drift -r . -a repo.sruja
+   ```
+
+3. **Check impact of changes:**
+   ```bash
+   sruja impact UserAPI -r . --depth 2
+   ```
+
+4. **Generate context for your team:**
+   ```bash
+   sruja ai-context -r . -o team-context.md
+   ```
+
+## Learning Outcomes
+
+- ✅ Track ownership of components across repositories
+- ✅ Define and expose contracts between services
+- ✅ Set SLA requirements for components
+- ✅ Use `sruja drift` to validate architecture changes
+
+## Quiz: Test Your Understanding
+
+### Q1: What metadata field should every component have for tracking ownership?
+
+A) `version`
+B) `owner`
+C) `status`
+D) `priority`
+
+### Q2: What does the `contract` block in Sruja represent?
+
+A) A legal agreement
+B) An exposed API interface definition between services
+C) A database schema
+D) A CI/CD pipeline
+
+### Q3: Which command helps detect architectural drift between code and architecture?
+
+A) `sruja lint`
+B) `sruja drift`
+C) `sruja validate`
+D) `sruja check`
 
 ## Module Complete!
 

@@ -119,6 +119,36 @@ EcommercePlatform.API -> EcommercePlatform.DB "Persistent storage"
 EcommercePlatform.API -> EcommercePlatform.PaymentProcessor "Process payments"
 ```
 
+## Learning Outcomes
+
+- ✅ Understand what fitness functions are and why they matter
+- ✅ Define fitness functions in Sruja DSL
+- ✅ Use `sruja health` to view health metrics
+- ✅ Apply fitness functions to real architectural scenarios
+
+## Quiz: Test Your Understanding
+
+### Q1: What is a fitness function in architecture?
+
+A) A function that optimizes code performance
+B) A quantitative measure of how well a system achieves its architectural outcomes
+C) A database query function
+D) A network monitoring tool
+
+### Q2: What does `sruja health` display?
+
+A) Server uptime statistics
+B) Graph Health Score, community detection, and threshold violations
+C) Network latency metrics
+D) Database query performance
+
+### Q3: Why are fitness functions important?
+
+A) They make code run faster
+B) They measure if the system actually achieves its intended outcomes, not just if the design looks correct
+C) They encrypt data
+D) They manage users
+
 ## Next Steps
 
 In Lesson 2, we'll explore how to interpret health scores and configure thresholds.

@@ -1,10 +1,10 @@
 ---
-title: "Draft: Module 2 - Cross-Repo Relationships"
+title: "Module 2 - Cross-Repo Relationships"
 weight: 2
 summary: "Model dependencies and relationships between repositories."
 ---
 
-# Draft: Module 2 - Cross-Repo Relationships
+# Module 2 - Cross-Repo Relationships
 
 **Canonical IDs, external references, and ownership tracking.**
 
