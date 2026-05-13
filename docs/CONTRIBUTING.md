@@ -34,7 +34,7 @@ This repository (`sruja-ai/sruja`) is the **main development repository** where 
 
 **Do not contribute to these deployment-only repositories:**
 
-- `sruja-ai/staging-website` - Staging deployment (auto-updated from `main` on push; or manual)
+- `sruja-ai/staging-website` - Staging deployment (path-filtered push to `main` and/or manual `workflow_dispatch`; see [Related repositories](RELATED_REPOSITORIES.md))
 - `sruja-ai/prod-website` - Production deployment (manual promote from `main`; see [Deploy to Production](../.github/workflows/README.md#deploy-to-production))
 
 These repositories are **automatically updated** by GitHub Actions workflows and contain only built static files for GitHub Pages hosting. They are **read-only** for contributors. See [Related repositories](RELATED_REPOSITORIES.md) for staging vs production triggers and where to file issues.

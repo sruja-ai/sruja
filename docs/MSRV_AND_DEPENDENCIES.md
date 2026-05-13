@@ -26,6 +26,6 @@ Prefer **merging grouped patch/minor** PRs (for example Tokio patch releases) qu
 
 ## Maintainer checklist (Dependabot triage)
 
-- [ ] Patch/minor grouped cargo PR: run CI, merge if green.
-- [ ] Major cargo PR: read upstream changelog for MSRV and breaking API notes; decide merge vs defer.
-- [ ] Grouped Actions PR (e.g. checkout v6, Node 24–based actions): verify [GitHub-hosted runner](https://github.com/actions/runner/releases) version requirements in upstream release notes before merge.
+- **Patch/minor grouped cargo PR:** run CI, merge if green.
+- **Major cargo PR:** read upstream changelog for MSRV and breaking API notes; decide merge vs defer.
+- **Grouped Actions PR** (for example checkout v6, Node 24–based actions): verify [GitHub-hosted runner](https://github.com/actions/runner/releases) version requirements in upstream release notes before merge.

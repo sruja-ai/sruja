@@ -16,6 +16,7 @@ on:
       - "scripts/**"
       - ".github/workflows/deploy-staging.yml"
       - ".github/actions/deploy-to-github-pages/**"
+      - ".github/templates/**"
   workflow_dispatch:
 
 permissions:

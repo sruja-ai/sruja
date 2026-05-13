@@ -5,7 +5,7 @@ The [sruja-ai](https://github.com/sruja-ai) organization on GitHub hosts the pro
 ## Public repositories
 
 - **[sruja-ai/sruja](https://github.com/sruja-ai/sruja)** — Source of truth: Rust workspace, VS Code extension, mdBook sources (`book/`), CLI, WASM, skills, and CI. Issues and [Discussions](https://github.com/sruja-ai/sruja/discussions) live here.
-- **[sruja-ai/staging-website](https://github.com/sruja-ai/staging-website)** — GitHub Pages deploy target for **staging** documentation built from `main` (path-filtered pushes and manual `workflow_dispatch`). Issues may be disabled; use the main repo for bug reports.
+- **[sruja-ai/staging-website](https://github.com/sruja-ai/staging-website)** — GitHub Pages deploy target for **staging** documentation: deploy runs when selected paths change on `main` (path-filtered push) or via manual `workflow_dispatch`. Issues may be disabled; use the main repo for bug reports.
 - **[sruja-ai/prod-website](https://github.com/sruja-ai/prod-website)** — GitHub Pages deploy target for **production** documentation. Updated only via a **manual** promote workflow after staging is validated.
 
 Editor or tooling context that mentions **four** composed repositories usually includes a bundle or repo that is **not** listed publicly under `sruja-ai` (private repo, customer fork, or unpublished index). Federation behavior is documented in [FEDERATION.md](FEDERATION.md) and [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md).
