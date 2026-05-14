@@ -5,6 +5,19 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.47.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.46.0...sruja-v0.47.0) (2026-05-13)
+
+
+### Features
+
+* **cli:** context lineage events, temporal focus, MCP tools, facts bundle ([631cc52](https://github.com/sruja-ai/sruja/commit/631cc52770091fe6a3e9241d4cfc90629d405176))
+* **dsl:** relation checks, parse recovery, book partial markers ([30093ef](https://github.com/sruja-ai/sruja/commit/30093ef5227de9085cc1cd73fde7487e3f99bacf))
+
+
+### Bug Fixes
+
+* **ci:** repair deploy-to-github-pages action manifest YAML ([b0a0965](https://github.com/sruja-ai/sruja/commit/b0a096585941225ab34ace46bfca9d5cd56ddcd5))
+
 ## [0.46.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.45.1...sruja-v0.46.0) (2026-05-13)
 
 
