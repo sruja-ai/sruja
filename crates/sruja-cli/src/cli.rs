@@ -433,6 +433,27 @@ pub enum Commands {
         #[arg(long)]
         critique: bool,
     },
+    /// Build deterministic evidence (`.sruja/evidence_graph.json`) and learned facts (`.sruja/learned_facts.jsonl`). Does not edit `repo.sruja`.
+    Learn {
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        path: String,
+        /// Only include facts referencing this file (relative to repo root)
+        #[arg(long)]
+        file: Option<String>,
+        /// Only include facts touching paths changed since this git ref (e.g. main)
+        #[arg(long)]
+        since: Option<String>,
+        /// Do not write `.sruja/proposals/learn-*.json` bundles from proposed facts
+        #[arg(long)]
+        skip_proposals: bool,
+        /// When set to `false`, do not write learn proposal files (design-doc alias of `--skip-proposals`)
+        #[arg(long = "apply-proposals", default_value_t = true, action = clap::ArgAction::Set)]
+        apply_proposals: bool,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// [deprecated: use `drift --ci`] CI-focused drift check
     #[command(hide = true)]
     Check {
@@ -1422,6 +1443,17 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             show_all,
             critique,
         } => commands::review(&path, &format, show_all, critique).await,
+        Commands::Learn {
+            path,
+            file,
+            since,
+            skip_proposals,
+            apply_proposals,
+            format,
+        } => {
+            let skip = skip_proposals || !apply_proposals;
+            commands::learn(&path, file.as_deref(), since.as_deref(), skip, &format).await
+        }
         Commands::Check {
             path,
             format,

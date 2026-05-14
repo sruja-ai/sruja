@@ -51,6 +51,7 @@ const MCP_MUTATING_TOOLS: &[&str] = &[
     "sruja_sandbox",
     "sruja_evaluate_proposal",
     "sruja_record_learning",
+    "sruja_record_learn_feedback",
     "sruja_agent_run",
 ];
 
@@ -656,6 +657,58 @@ fn tool_definitions() -> Vec<Value> {
                     "kind": { "type": "string", "description": "Optional filter: intent_check | drift | proposal_merge" },
                     "details_substring": { "type": "string", "description": "Optional substring filter on JSON details" }
                 }
+            }
+        }),
+        json!({
+            "name": "sruja_get_learned_facts",
+            "title": "Sruja Learned Facts",
+            "description": "Read hypotheses from .sruja/learned_facts.jsonl (deterministic scan + drift vs reviewed architecture). Treat as candidates, not repo.sruja truth.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "limit": { "type": "integer", "description": "Max facts to return (default: 200)" },
+                    "status": { "type": "string", "description": "Optional filter: observed | inferred | proposed | reviewed | rejected | stale" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_evidence_graph",
+            "title": "Sruja Evidence Graph",
+            "description": "Load .sruja/evidence_graph.json (scan-derived graph snapshot written by `sruja learn`).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_evidence_for_claim",
+            "title": "Sruja Evidence For Claim",
+            "description": "Resolve a learned fact by id and attach matching scan nodes from the evidence graph when ids align.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "claim_id": { "type": "string", "description": "Learned fact id (e.g. fact_a1b2c3d4e5f67890)" }
+                },
+                "required": ["claim_id"]
+            }
+        }),
+        json!({
+            "name": "sruja_record_learn_feedback",
+            "title": "Sruja Record Learn Feedback",
+            "description": "Append approve/reject for a learned fact id to .sruja/learn_feedback.jsonl so future `sruja learn` runs can skip rejected proposals.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "fact_id": { "type": "string", "description": "Learned fact id" },
+                    "decision": { "type": "string", "description": "approve | reject" },
+                    "reason": { "type": "string", "description": "Optional human reason (especially for reject)" }
+                },
+                "required": ["fact_id", "decision"]
             }
         }),
         json!({
@@ -2657,6 +2710,81 @@ async fn run_tool(
             });
             Ok(serde_json::to_string_pretty(&out)?)
         }
+        "sruja_get_learned_facts" => {
+            let limit = arguments
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(200) as usize;
+            let status = arguments.get("status").and_then(|v| v.as_str());
+            let facts =
+                crate::commands::learn::read_learned_facts(Path::new(&repo), limit, status)?;
+            Ok(serde_json::to_string_pretty(&facts)?)
+        }
+        "sruja_get_evidence_graph" => {
+            let p = Path::new(&repo).join(".sruja").join("evidence_graph.json");
+            if !p.exists() {
+                return Err(CliError::validation(format!(
+                    "No evidence graph at {}. Run `sruja learn -r {}` first.",
+                    p.display(),
+                    repo
+                )));
+            }
+            let text = std::fs::read_to_string(&p).map_err(CliError::Io)?;
+            Ok(text)
+        }
+        "sruja_get_evidence_for_claim" => {
+            let claim_id = arguments
+                .get("claim_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing claim_id".to_string()))?;
+            let fact = crate::commands::learn::get_learned_fact_by_id(Path::new(&repo), claim_id)?
+                .ok_or_else(|| CliError::validation(format!("Unknown claim_id {claim_id}")))?;
+            let eg_path = Path::new(&repo).join(".sruja").join("evidence_graph.json");
+            let related = if eg_path.exists() {
+                let raw: serde_json::Value =
+                    serde_json::from_str(&std::fs::read_to_string(&eg_path).map_err(CliError::Io)?)
+                        .map_err(CliError::Json)?;
+                let empty: Vec<serde_json::Value> = Vec::new();
+                let nodes = raw
+                    .pointer("/graph/nodes")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or(empty);
+                let sid = fact.subject.as_str();
+                let oid = fact.object.as_str();
+                nodes
+                    .into_iter()
+                    .filter(|n| {
+                        n.get("id")
+                            .and_then(|v| v.as_str())
+                            .is_some_and(|id| id == sid || id == oid)
+                    })
+                    .take(8)
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new()
+            };
+            let out = json!({ "fact": fact, "related_scan_nodes": related });
+            Ok(serde_json::to_string_pretty(&out)?)
+        }
+        "sruja_record_learn_feedback" => {
+            let fact_id = arguments
+                .get("fact_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing fact_id".to_string()))?;
+            let decision = arguments
+                .get("decision")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing decision".to_string()))?;
+            let reason = arguments.get("reason").and_then(|v| v.as_str());
+            crate::commands::learn::append_learn_feedback(
+                Path::new(&repo),
+                fact_id,
+                decision,
+                reason,
+            )?;
+            Ok(json!({ "ok": true, "fact_id": fact_id, "decision": decision }).to_string())
+        }
         _ => Err(CliError::validation(format!("Unknown tool: {name}"))),
     }
 }
@@ -3094,6 +3222,8 @@ mod tests {
         assert!(names.contains(&"sruja_explain_discovery".to_string()));
         assert!(names.contains(&"sruja_check_drift".to_string()));
         assert!(names.contains(&"sruja_get_context_events".to_string()));
+        assert!(names.contains(&"sruja_get_learned_facts".to_string()));
+        assert!(names.contains(&"sruja_get_evidence_graph".to_string()));
         assert!(names.contains(&"sruja_get_agent_learnings".to_string()));
     }
 

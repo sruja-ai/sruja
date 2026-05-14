@@ -93,6 +93,9 @@ pub use intent_domain::critique::critique;
 pub use utility_domain::compliance::compliance;
 pub use utility_domain::federation::{compose, publish};
 
+pub mod learn;
+pub use learn::learn;
+
 pub(crate) mod context;
 pub(crate) mod context_events;
 

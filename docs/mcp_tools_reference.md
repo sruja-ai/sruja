@@ -22,6 +22,7 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 - `sruja_sandbox`
 - `sruja_evaluate_proposal`
 - `sruja_record_learning`
+- `sruja_record_learn_feedback`
 - `sruja_agent_run`
 
 ## Tools by category
@@ -85,7 +86,11 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 |------|---------|
 | `sruja_get_context_score` | AI-readiness score and breakdown; optional `format` (`text` / `json`). |
 | `sruja_get_focus_briefing` | Task-scoped briefing for `file` or `element_id`; optional `run_id`, `format`. Optional **`base_ref`** / **`head_ref`** add **temporal** context (git-range diff → scan components, architecture fingerprints at base vs working tree)—same semantics as `sruja focus --base-ref` / `--head-ref`. |
-| `sruja_get_context_events` | Read recent **append-only lineage** events from `.sruja/context_events.jsonl` (written on `intent check`, `drift`, and merged proposals). Args: optional `limit` (default 50), optional `kind` filter (`intent_check`, `drift`, or `proposal_merge`), optional `details_substring` filter. |
+| `sruja_get_context_events` | Read recent **append-only lineage** events from `.sruja/context_events.jsonl` (written on `intent check`, `drift`, merged proposals, and `sruja learn`). Args: optional `limit` (default 50), optional `kind` filter (`intent_check`, `drift`, `proposal_merge`, or `learn_run`), optional `details_substring` filter. |
+| `sruja_get_learned_facts` | Read **`.sruja/learned_facts.jsonl`** (deterministic scan + drift vs reviewed architecture). Hypotheses, not `repo.sruja` truth. Args: optional `limit` (default 200), optional `status` (`observed`, `proposed`, etc.). Requires `sruja learn` to have been run. |
+| `sruja_get_evidence_graph` | Return **`.sruja/evidence_graph.json`** (scan snapshot written by `sruja learn`). |
+| `sruja_get_evidence_for_claim` | Resolve a **`claim_id`** against learned facts and attach matching scan nodes from the evidence graph when ids align. |
+| `sruja_record_learn_feedback` | Append **approve/reject** for a learned **`fact_id`** to **`.sruja/learn_feedback.jsonl`** (**mutating**); rejects suppress that fact in future learn-generated proposals. |
 | `sruja_get_agent_learnings` | Return **Agentic Memory** entries relevant to an **`element_id`** (guardrails / playbooks recorded via `sruja agent record` or MCP `sruja_record_learning`). |
 
 For how this relates to “context graph” terminology in industry writing versus Sruja’s governed graph, see [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md#context-graphs-sruja-vs-industry-usage).
