@@ -343,21 +343,21 @@ mod tests {
             nodes: vec![
                 Node {
                     id: "a".into(),
-                    kind: NodeKind::Module,
+                    kind: NodeKind::new(NodeKind::MODULE),
                     label: "a".into(),
                     path: Some("a.rs".into()),
                     ..Node::default()
                 },
                 Node {
                     id: "b".into(),
-                    kind: NodeKind::Module,
+                    kind: NodeKind::new(NodeKind::MODULE),
                     label: "b".into(),
                     path: Some("b.rs".into()),
                     ..Node::default()
                 },
                 Node {
                     id: "c".into(),
-                    kind: NodeKind::Module,
+                    kind: NodeKind::new(NodeKind::MODULE),
                     label: "c".into(),
                     path: Some("c.rs".into()),
                     ..Node::default()
@@ -367,14 +367,14 @@ mod tests {
                 Edge {
                     source: "a".into(),
                     target: "b".into(),
-                    kind: EdgeKind::DependsOn,
+                    kind: EdgeKind::new(EdgeKind::DEPENDS_ON),
                     evidence: vec![],
                     confidence: Default::default(),
                 },
                 Edge {
                     source: "b".into(),
                     target: "c".into(),
-                    kind: EdgeKind::DependsOn,
+                    kind: EdgeKind::new(EdgeKind::DEPENDS_ON),
                     evidence: vec![],
                     confidence: Default::default(),
                 },

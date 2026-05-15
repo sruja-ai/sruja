@@ -123,47 +123,47 @@ pub(crate) fn sanitize_identifier(raw: &str) -> String {
 pub(crate) fn element_kind_for_node(
     node_kind: NodeKind,
 ) -> (sruja_language::ElementKind, Option<String>) {
-    match node_kind {
-        NodeKind::System => (sruja_language::ElementKind::System, None),
-        NodeKind::Service => (
+    match node_kind.as_str() {
+        NodeKind::SYSTEM => (sruja_language::ElementKind::System, None),
+        NodeKind::SERVICE => (
             sruja_language::ElementKind::Container,
             Some("service".to_string()),
         ),
-        NodeKind::Container => (sruja_language::ElementKind::Container, None),
-        NodeKind::Component => (sruja_language::ElementKind::Component, None),
-        NodeKind::Database => (sruja_language::ElementKind::Database, None),
-        NodeKind::Queue => (sruja_language::ElementKind::Queue, None),
-        NodeKind::ExternalApi => (
+        NodeKind::CONTAINER => (sruja_language::ElementKind::Container, None),
+        NodeKind::COMPONENT => (sruja_language::ElementKind::Component, None),
+        NodeKind::DATABASE => (sruja_language::ElementKind::Database, None),
+        NodeKind::QUEUE => (sruja_language::ElementKind::Queue, None),
+        NodeKind::EXTERNAL_API => (
             sruja_language::ElementKind::ExternalSystem,
             Some("api".to_string()),
         ),
-        NodeKind::Frontend => (
+        NodeKind::FRONTEND => (
             sruja_language::ElementKind::Container,
             Some("frontend".to_string()),
         ),
-        NodeKind::Module => (
+        NodeKind::MODULE => (
             sruja_language::ElementKind::Component,
             Some("module".to_string()),
         ),
-        NodeKind::Custom(_) => (
+        other => (
             sruja_language::ElementKind::Component,
-            Some("custom".to_string()),
+            Some(other.to_string()),
         ),
     }
 }
 
 pub(crate) fn relation_label_for_edge(edge_kind: EdgeKind) -> &'static str {
-    match edge_kind {
-        EdgeKind::ReadsFrom => "reads from",
-        EdgeKind::WritesTo => "writes to",
-        EdgeKind::DependsOn => "depends on",
-        EdgeKind::PublishesTo => "publishes to",
-        EdgeKind::SubscribesTo => "subscribes to",
-        EdgeKind::Owns => "owns",
-        EdgeKind::Contains => "contains",
-        EdgeKind::Uses => "uses",
-        EdgeKind::Calls => "calls",
-        EdgeKind::Custom(_) => "custom",
+    match edge_kind.as_str() {
+        EdgeKind::READS_FROM => "reads from",
+        EdgeKind::WRITES_TO => "writes to",
+        EdgeKind::DEPENDS_ON => "depends on",
+        EdgeKind::PUBLISHES_TO => "publishes to",
+        EdgeKind::SUBSCRIBES_TO => "subscribes to",
+        EdgeKind::OWNS => "owns",
+        EdgeKind::CONTAINS => "contains",
+        EdgeKind::USES => "uses",
+        EdgeKind::CALLS => "calls",
+        _ => "custom",
     }
 }
 
@@ -209,13 +209,13 @@ pub(crate) fn build_draft_program_from_graph(
             // - Symbols starting with lowercase (likely helper functions)
             // - Very specific internal types if they follow a pattern
             // - For now, we'll keep mostly "high-level" kinds
-            match n.kind {
-                NodeKind::Service
-                | NodeKind::Database
-                | NodeKind::ExternalApi
-                | NodeKind::Frontend
-                | NodeKind::Container => true,
-                NodeKind::Module => {
+            match n.kind.as_str() {
+                NodeKind::SERVICE
+                | NodeKind::DATABASE
+                | NodeKind::EXTERNAL_API
+                | NodeKind::FRONTEND
+                | NodeKind::CONTAINER => true,
+                NodeKind::MODULE => {
                     // If it looks like a module-level item but not a deeply nested symbol
                     // Heuristic: skip if it contains common noisy suffixes
                     let noise = [
@@ -319,7 +319,7 @@ pub(crate) fn build_draft_program_from_graph(
             };
 
             // Do not group high-level logical nodes like databases into directory containers
-            if node.kind == NodeKind::Database || node.kind == NodeKind::ExternalApi {
+            if node.kind == NodeKind::DATABASE || node.kind == NodeKind::EXTERNAL_API {
                 ungrouped.push(node);
             } else {
                 domains.entry(domain_name).or_default().push(node);
@@ -687,7 +687,7 @@ pub(crate) fn print_quickstart_summary(
     let external_apis = graph
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::ExternalApi)
+        .filter(|n| n.kind == NodeKind::EXTERNAL_API)
         .count();
     println!("    • {} external APIs", external_apis.to_string().yellow());
     println!(

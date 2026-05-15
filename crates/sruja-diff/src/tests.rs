@@ -88,7 +88,7 @@ mod cases {
         let mut proposed = Graph::new();
         proposed
             .nodes
-            .push(make_node("api", NodeKind::Service, "API"));
+            .push(make_node("api", NodeKind::new(NodeKind::SERVICE), "API"));
 
         let result = compare_graphs(&actual, &proposed);
         assert_eq!(result.node_diff.added.len(), 1);
@@ -98,9 +98,11 @@ mod cases {
     #[test]
     fn test_detect_removed_node() {
         let mut actual = Graph::new();
-        actual
-            .nodes
-            .push(make_node("old", NodeKind::Service, "Old Service"));
+        actual.nodes.push(make_node(
+            "old",
+            NodeKind::new(NodeKind::SERVICE),
+            "Old Service",
+        ));
         let proposed = Graph::new();
 
         let result = compare_graphs(&actual, &proposed);
@@ -112,15 +114,21 @@ mod cases {
         let actual = Graph::new();
         let mut proposed = Graph::new();
 
-        proposed
-            .nodes
-            .push(make_node("frontend", NodeKind::Module, "Frontend"));
-        proposed
-            .nodes
-            .push(make_node("db", NodeKind::Database, "Database"));
-        proposed
-            .edges
-            .push(make_edge("frontend", "db", EdgeKind::ReadsFrom));
+        proposed.nodes.push(make_node(
+            "frontend",
+            NodeKind::new(NodeKind::MODULE),
+            "Frontend",
+        ));
+        proposed.nodes.push(make_node(
+            "db",
+            NodeKind::new(NodeKind::DATABASE),
+            "Database",
+        ));
+        proposed.edges.push(make_edge(
+            "frontend",
+            "db",
+            EdgeKind::new(EdgeKind::READS_FROM),
+        ));
 
         let result = compare_graphs(&actual, &proposed);
         assert!(result
@@ -132,15 +140,29 @@ mod cases {
     #[test]
     fn test_detect_architectural_drift_cycle_and_orphan() {
         let mut graph = Graph::new();
-        graph.nodes.push(make_node("a", NodeKind::Module, "A"));
-        graph.nodes.push(make_node("b", NodeKind::Module, "B"));
-        graph.nodes.push(make_node("c", NodeKind::Module, "C"));
         graph
             .nodes
-            .push(make_node("orphan", NodeKind::Module, "Orphan"));
-        graph.edges.push(make_edge("a", "b", EdgeKind::Calls));
-        graph.edges.push(make_edge("b", "c", EdgeKind::Calls));
-        graph.edges.push(make_edge("c", "a", EdgeKind::Calls));
+            .push(make_node("a", NodeKind::new(NodeKind::MODULE), "A"));
+        graph
+            .nodes
+            .push(make_node("b", NodeKind::new(NodeKind::MODULE), "B"));
+        graph
+            .nodes
+            .push(make_node("c", NodeKind::new(NodeKind::MODULE), "C"));
+        graph.nodes.push(make_node(
+            "orphan",
+            NodeKind::new(NodeKind::MODULE),
+            "Orphan",
+        ));
+        graph
+            .edges
+            .push(make_edge("a", "b", EdgeKind::new(EdgeKind::CALLS)));
+        graph
+            .edges
+            .push(make_edge("b", "c", EdgeKind::new(EdgeKind::CALLS)));
+        graph
+            .edges
+            .push(make_edge("c", "a", EdgeKind::new(EdgeKind::CALLS)));
 
         let report = detect_architectural_drift(&graph);
 
@@ -160,19 +182,23 @@ mod cases {
     #[test]
     fn test_drift_cycle_violation_includes_source_refs_when_edges_have_evidence() {
         let mut graph = Graph::new();
-        graph.nodes.push(make_node("x", NodeKind::Module, "X"));
-        graph.nodes.push(make_node("y", NodeKind::Module, "Y"));
+        graph
+            .nodes
+            .push(make_node("x", NodeKind::new(NodeKind::MODULE), "X"));
+        graph
+            .nodes
+            .push(make_node("y", NodeKind::new(NodeKind::MODULE), "Y"));
         graph.edges.push(make_edge_with_evidence(
             "x",
             "y",
-            EdgeKind::Calls,
+            EdgeKind::new(EdgeKind::CALLS),
             Some("src/x.rs"),
             Some(10),
         ));
         graph.edges.push(make_edge_with_evidence(
             "y",
             "x",
-            EdgeKind::Calls,
+            EdgeKind::new(EdgeKind::CALLS),
             Some("src/y.rs"),
             Some(20),
         ));
@@ -197,9 +223,11 @@ mod cases {
 
         for i in 0..200 {
             let id = format!("orphan_{}", i);
-            proposed
-                .nodes
-                .push(make_node(&id, NodeKind::Module, &format!("Orphan {}", i)));
+            proposed.nodes.push(make_node(
+                &id,
+                NodeKind::new(NodeKind::MODULE),
+                &format!("Orphan {}", i),
+            ));
         }
 
         let result = std::panic::catch_unwind(|| compare_graphs(&actual, &proposed));
@@ -357,7 +385,7 @@ A -> B "calls"
         assert_eq!(graph.edges.len(), 1);
         assert_eq!(graph.edges[0].source, "A");
         assert_eq!(graph.edges[0].target, "B");
-        assert_eq!(graph.edges[0].kind, EdgeKind::Calls);
+        assert_eq!(graph.edges[0].kind.as_str(), EdgeKind::CALLS);
     }
 
     #[test]
@@ -371,7 +399,7 @@ A -> DB "reads from"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::ReadsFrom);
+        assert_eq!(graph.edges[0].kind.as_str(), EdgeKind::READS_FROM);
     }
 
     #[test]
@@ -383,7 +411,7 @@ DB = database "Primary DB"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.nodes.len(), 1);
-        assert_eq!(graph.nodes[0].kind, NodeKind::Database);
+        assert_eq!(graph.nodes[0].kind.as_str(), NodeKind::DATABASE);
     }
 
     #[test]
@@ -420,7 +448,7 @@ DB = database "Primary DB"
             node_diff: NodeDiff {
                 added: vec![crate::types::DiffNode {
                     id: "new".to_string(),
-                    kind: NodeKind::Module,
+                    kind: NodeKind::new(NodeKind::MODULE),
                     label: "New".to_string(),
                     technology: None,
                     description: None,

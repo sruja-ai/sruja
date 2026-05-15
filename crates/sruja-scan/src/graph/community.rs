@@ -251,42 +251,42 @@ mod tests {
         let nodes = vec![
             Node {
                 id: "A".to_string(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: "A".to_string(),
                 path: Some("crates/module_a/A.rs".to_string()),
                 ..Default::default()
             },
             Node {
                 id: "B".to_string(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: "B".to_string(),
                 path: Some("crates/module_a/B.rs".to_string()),
                 ..Default::default()
             },
             Node {
                 id: "C".to_string(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: "C".to_string(),
                 path: Some("crates/module_a/C.rs".to_string()),
                 ..Default::default()
             },
             Node {
                 id: "D".to_string(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: "D".to_string(),
                 path: Some("crates/module_b/D.rs".to_string()),
                 ..Default::default()
             },
             Node {
                 id: "E".to_string(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: "E".to_string(),
                 path: Some("crates/module_b/E.rs".to_string()),
                 ..Default::default()
             },
             Node {
                 id: "F".to_string(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: "F".to_string(),
                 path: Some("crates/module_b/F.rs".to_string()),
                 ..Default::default()
@@ -297,42 +297,42 @@ mod tests {
             Edge {
                 source: "A".to_string(),
                 target: "B".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: Vec::new(),
                 confidence: EdgeConfidence::Extracted,
             },
             Edge {
                 source: "B".to_string(),
                 target: "C".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: Vec::new(),
                 confidence: EdgeConfidence::Extracted,
             },
             Edge {
                 source: "C".to_string(),
                 target: "A".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: Vec::new(),
                 confidence: EdgeConfidence::Extracted,
             },
             Edge {
                 source: "D".to_string(),
                 target: "E".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: Vec::new(),
                 confidence: EdgeConfidence::Extracted,
             },
             Edge {
                 source: "E".to_string(),
                 target: "F".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: Vec::new(),
                 confidence: EdgeConfidence::Extracted,
             },
             Edge {
                 source: "F".to_string(),
                 target: "D".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: Vec::new(),
                 confidence: EdgeConfidence::Extracted,
             },

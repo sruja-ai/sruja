@@ -97,7 +97,7 @@ mod tests {
         Node {
             id: id.to_string(),
             label: id.to_string(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             path: path.map(|p| p.to_string()),
             ..Node::default()
         }
@@ -107,7 +107,7 @@ mod tests {
         Edge {
             source: source.to_string(),
             target: target.to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence,
             confidence: Default::default(),
         }

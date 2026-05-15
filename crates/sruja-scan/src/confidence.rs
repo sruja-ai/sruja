@@ -75,9 +75,7 @@ impl ConfidenceScorer {
 
         // Rule 1: Technology & Kind alignment
         if let Some(tech) = &node.technology {
-            if (tech == "Next.js" || tech == "Express")
-                && node.kind != crate::graph::NodeKind::Module
-            {
+            if (tech == "Next.js" || tech == "Express") && node.kind != NodeKind::MODULE {
                 score += 20;
             }
         }
@@ -86,7 +84,7 @@ impl ConfidenceScorer {
         let incoming_count = edges.iter().filter(|e| e.target == node.id).count();
         let outgoing_count = edges.iter().filter(|e| e.source == node.id).count();
 
-        if (incoming_count > 0 && outgoing_count > 0) || node.kind == NodeKind::Service {
+        if (incoming_count > 0 && outgoing_count > 0) || node.kind == NodeKind::SERVICE {
             score += 15;
         }
 
@@ -102,7 +100,7 @@ impl ConfidenceScorer {
         }
 
         // Penalty for orphans
-        if incoming_count == 0 && outgoing_count == 0 && node.kind == NodeKind::Module {
+        if incoming_count == 0 && outgoing_count == 0 && node.kind == NodeKind::MODULE {
             score -= 30;
         }
 

@@ -878,7 +878,7 @@ mod tests {
     fn scan_node(id: &str, label: &str, path: &str) -> Node {
         Node {
             id: id.to_string(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: label.to_string(),
             path: Some(path.to_string()),
             ..Default::default()
@@ -915,7 +915,7 @@ mod tests {
             edges: vec![Edge {
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: vec![],
                 confidence: Default::default(),
             }],
@@ -1085,14 +1085,14 @@ mod tests {
         reality.edges.push(Edge {
             source: "frontend".to_string(),
             target: "backend".to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: Vec::new(),
             confidence: Default::default(),
         });
         reality.edges.push(Edge {
             source: "backend".to_string(),
             target: "users_db".to_string(),
-            kind: EdgeKind::WritesTo,
+            kind: EdgeKind::new(EdgeKind::WRITES_TO),
             evidence: Vec::new(),
             confidence: Default::default(),
         });
@@ -1270,20 +1270,20 @@ mod tests {
         let mut reality = ScanGraph::new();
         reality.nodes.push(scan_node_with(
             "api",
-            NodeKind::Service,
+            NodeKind::new(NodeKind::SERVICE),
             Some("Rust"),
             HashMap::new(),
         ));
         reality.nodes.push(scan_node_with(
             "db",
-            NodeKind::Database,
+            NodeKind::new(NodeKind::DATABASE),
             Some("PostgreSQL"),
             HashMap::new(),
         ));
         reality.edges.push(Edge {
             source: "api".to_string(),
             target: "db".to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: vec![],
             confidence: Default::default(),
         });
@@ -1298,7 +1298,8 @@ mod tests {
         meta.insert("tags", "public,internal");
         meta.insert("tier", "1");
         meta.insert("availability_slo", "99.9");
-        reality.nodes[0] = scan_node_with("api", NodeKind::Service, Some("Rust"), meta);
+        reality.nodes[0] =
+            scan_node_with("api", NodeKind::new(NodeKind::SERVICE), Some("Rust"), meta);
 
         let report = detector.detect(&intent, &reality, &DomainSchema::architecture());
         assert!(!report
@@ -1342,7 +1343,12 @@ mod tests {
         metadata.insert("tags", "public, pci");
         metadata.insert("tier", "1");
         metadata.insert("pci", "");
-        let node = scan_node_with("payments.api", NodeKind::Service, Some("Rust"), metadata);
+        let node = scan_node_with(
+            "payments.api",
+            NodeKind::new(NodeKind::SERVICE),
+            Some("Rust"),
+            metadata,
+        );
 
         let selector = PolicySelector {
             kind: Some("service".to_string()),

@@ -6,9 +6,9 @@ use std::path::Path;
 use super::generate::generate_prompt;
 use super::scan::quickstart;
 use super::CliError;
-use crate::utils::architecture_path;
 
 /// Initialize Sruja in the given repo: ensure `.sruja/`, run quickstart, optionally generate prompt or auto-onboard.
+#[allow(clippy::too_many_arguments)]
 pub async fn init(
     repo_root: &str,
     generate_prompt_file: bool,
@@ -17,6 +17,7 @@ pub async fn init(
     hook: bool,
     ci: bool,
     dry_run: bool,
+    schema: &str,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     use crate::utils::{colors, progress};
@@ -118,6 +119,10 @@ pub async fn init(
     let mut should_ci = ci;
     let mut should_hook = hook;
 
+    if schema != "architecture" {
+        should_auto = false;
+    }
+
     if is_interactive {
         println!();
         should_auto = Confirm::new()
@@ -190,7 +195,7 @@ pub async fn init(
                         graph
                             .nodes
                             .iter()
-                            .filter(|n| n.kind == sruja_scan::NodeKind::Service)
+                            .filter(|n| n.kind == sruja_scan::NodeKind::SERVICE)
                             .count()
                             .to_string()
                     )
@@ -225,41 +230,56 @@ pub async fn init(
     }
 
     if !should_auto {
-        let baseline_path = architecture_path::resolve_architecture_path(repo_path);
+        let dest_filename = if schema == "architecture" {
+            "repo.sruja".to_string()
+        } else {
+            format!("{}.sruja", schema)
+        };
+        let dest_path = repo_path.join(&dest_filename);
         let mut scaffolded = false;
 
-        if let Some(ref path) = baseline_path {
+        if dest_path.exists() && !force {
             if is_interactive || dry_run {
                 println!(
-                    "  {} Existing architecture file: {}",
+                    "  {} Existing {} file: {}",
                     colors::info("i"),
-                    path.display()
+                    schema,
+                    dest_path.display()
                 );
             }
         } else {
-            if is_interactive || dry_run {
+            if schema == "architecture" && (is_interactive || dry_run) {
                 println!(
                     "  {} No architecture file found. Creating manual skeleton recommended.",
                     colors::warning("!")
                 );
             }
 
-            if is_interactive {
-                let scaffold_template = Confirm::new()
+            let should_scaffold = if schema != "architecture" {
+                true // Auto-scaffold custom schemas immediately
+            } else if is_interactive {
+                Confirm::new()
                     .with_prompt(
                         "Would you like to scaffold the multi-agent team evolutionary template?",
                     )
                     .default(true)
                     .interact()
-                    .unwrap_or(false);
+                    .unwrap_or(false)
+            } else {
+                false
+            };
 
-                if scaffold_template {
-                    let dest = repo_path.join("repo.sruja");
-                    if !dry_run {
-                        let blueprint_content =
-                            include_str!("../../../../templates/blueprints/agent-team.sruja");
-                        fs::write(&dest, blueprint_content)?;
+            if should_scaffold {
+                if !dry_run {
+                    let content = match schema {
+                        "compliance" => include_str!("../../../../templates/blueprints/compliance.sruja"),
+                        "business_process" | "business-process" => include_str!("../../../../templates/blueprints/business-process.sruja"),
+                        "knowledge" => "// Sruja Context Graph: Knowledge Graph Domain\n// Tracks concepts, citations, and facts.\n",
+                        _ => include_str!("../../../../templates/blueprints/agent-team.sruja"),
+                    };
+                    fs::write(&dest_path, content)?;
 
+                    if schema == "architecture" {
                         // Create mock scripts so evaluate works immediately!
                         let scripts_dir = repo_path.join("scripts");
                         fs::create_dir_all(&scripts_dir).ok();
@@ -290,13 +310,14 @@ pub async fn init(
                             }
                         }
                     }
-                    println!(
-                        "  {} Scaffolded multi-agent team template to {}",
-                        colors::success("✓"),
-                        colors::info("repo.sruja")
-                    );
-                    scaffolded = true;
                 }
+                println!(
+                    "  {} Scaffolded {} template to {}",
+                    colors::success("✓"),
+                    schema,
+                    colors::info(&dest_filename)
+                );
+                scaffolded = true;
             }
         }
 

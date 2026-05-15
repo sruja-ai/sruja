@@ -125,7 +125,7 @@ impl QuickstartResult {
         let external_apis = graph
             .nodes
             .iter()
-            .filter(|n| n.kind == NodeKind::ExternalApi)
+            .filter(|n| n.kind == NodeKind::EXTERNAL_API)
             .count();
 
         let mut all_violations: Vec<_> = report.violations.iter().collect();

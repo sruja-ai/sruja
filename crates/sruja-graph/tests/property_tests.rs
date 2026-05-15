@@ -5,14 +5,14 @@ use sruja_graph::*;
 
 fn arb_node_kind() -> impl Strategy<Value = NodeKind> {
     prop_oneof![
-        Just(NodeKind::System),
-        Just(NodeKind::Container),
-        Just(NodeKind::Component),
-        Just(NodeKind::Database),
-        Just(NodeKind::Queue),
-        Just(NodeKind::Service),
-        Just(NodeKind::Frontend),
-        Just(NodeKind::Module),
+        Just(NodeKind::new(NodeKind::SYSTEM)),
+        Just(NodeKind::new(NodeKind::CONTAINER)),
+        Just(NodeKind::new(NodeKind::COMPONENT)),
+        Just(NodeKind::new(NodeKind::DATABASE)),
+        Just(NodeKind::new(NodeKind::QUEUE)),
+        Just(NodeKind::new(NodeKind::SERVICE)),
+        Just(NodeKind::new(NodeKind::FRONTEND)),
+        Just(NodeKind::new(NodeKind::MODULE)),
     ]
 }
 
@@ -45,7 +45,7 @@ proptest! {
     #[test]
     fn prop_add_node_then_get_node(id in arb_node_id()) {
         let mut graph = KnowledgeGraph::new();
-        let node = make_node(&id, NodeKind::Service);
+        let node = make_node(&id, NodeKind::new(NodeKind::SERVICE));
 
         graph.add_node(node).unwrap();
         let retrieved = graph.get_node(&id);
@@ -57,7 +57,7 @@ proptest! {
     #[test]
     fn prop_duplicate_node_fails(id in arb_node_id()) {
         let mut graph = KnowledgeGraph::new();
-        let node = make_node(&id, NodeKind::Service);
+        let node = make_node(&id, NodeKind::new(NodeKind::SERVICE));
 
         graph.add_node(node.clone()).unwrap();
         let result = graph.add_node(node);
@@ -68,7 +68,7 @@ proptest! {
     #[test]
     fn prop_add_remove_node_roundtrip(id in arb_node_id()) {
         let mut graph = KnowledgeGraph::new();
-        let node = make_node(&id, NodeKind::Service);
+        let node = make_node(&id, NodeKind::new(NodeKind::SERVICE));
 
         graph.add_node(node).unwrap();
         let removed = graph.remove_node(&id);
@@ -80,7 +80,7 @@ proptest! {
     #[test]
     fn prop_merge_node_idempotent(id in arb_node_id()) {
         let mut graph = KnowledgeGraph::new();
-        let node = make_node(&id, NodeKind::Service);
+        let node = make_node(&id, NodeKind::new(NodeKind::SERVICE));
 
         graph.merge_node(node.clone());
         graph.merge_node(node);
@@ -94,9 +94,9 @@ proptest! {
 
         let mut graph = KnowledgeGraph::new();
 
-        graph.add_node(make_node(&source_id, NodeKind::Service)).unwrap();
+        graph.add_node(make_node(&source_id, NodeKind::new(NodeKind::SERVICE))).unwrap();
 
-        let edge = make_edge("e1", &source_id, &target_id, EdgeKind::Calls);
+        let edge = make_edge("e1", &source_id, &target_id, EdgeKind::new(EdgeKind::CALLS));
 
         let result = graph.add_edge(edge);
         prop_assert!(result.is_err());
@@ -108,7 +108,7 @@ proptest! {
 
         for i in 0..num_nodes {
             let id = format!("node_{}", i);
-            graph.add_node(make_node(&id, NodeKind::Service)).unwrap();
+            graph.add_node(make_node(&id, NodeKind::new(NodeKind::SERVICE))).unwrap();
         }
 
         let json = graph.to_json().unwrap();
@@ -126,7 +126,7 @@ proptest! {
 
         for i in 0..actual_nodes {
             let id = format!("n{}", i);
-            graph.add_node(make_node(&id, NodeKind::Service)).unwrap();
+            graph.add_node(make_node(&id, NodeKind::new(NodeKind::SERVICE))).unwrap();
         }
 
         let mut edges_added = 0;
@@ -136,7 +136,7 @@ proptest! {
                     &format!("e{}", i),
                     &format!("n{}", i),
                     &format!("n{}", i + 1),
-                    EdgeKind::Calls,
+                    EdgeKind::new(EdgeKind::CALLS),
                 );
                 if graph.add_edge(edge).is_ok() {
                     edges_added += 1;
@@ -161,12 +161,12 @@ proptest! {
 
         let mut graph = KnowledgeGraph::new();
 
-        graph.add_node(make_node(&a_id, NodeKind::Service)).unwrap();
-        graph.add_node(make_node(&b_id, NodeKind::Service)).unwrap();
-        graph.add_node(make_node(&c_id, NodeKind::Service)).unwrap();
+        graph.add_node(make_node(&a_id, NodeKind::new(NodeKind::SERVICE))).unwrap();
+        graph.add_node(make_node(&b_id, NodeKind::new(NodeKind::SERVICE))).unwrap();
+        graph.add_node(make_node(&c_id, NodeKind::new(NodeKind::SERVICE))).unwrap();
 
-        graph.add_edge(make_edge("e1", &a_id, &b_id, EdgeKind::Calls)).unwrap();
-        graph.add_edge(make_edge("e2", &b_id, &c_id, EdgeKind::Calls)).unwrap();
+        graph.add_edge(make_edge("e1", &a_id, &b_id, EdgeKind::new(EdgeKind::CALLS))).unwrap();
+        graph.add_edge(make_edge("e2", &b_id, &c_id, EdgeKind::new(EdgeKind::CALLS))).unwrap();
 
         prop_assert_eq!(graph.edges.len(), 2);
 

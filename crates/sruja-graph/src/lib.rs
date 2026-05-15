@@ -78,40 +78,118 @@ pub type MessageId = String;
 /// Re-export shared node/edge kinds from sruja-language for a single source of truth.
 pub use sruja_language::{EdgeKind, NodeKind};
 
+/// Generic knowledge graph node storing arbitrary domain context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ArchitectureNode {
+pub struct GraphNode {
     pub id: NodeId,
     pub kind: NodeKind,
     pub label: String,
-    pub technology: Option<String>,
     pub description: Option<String>,
     pub metadata: HashMap<String, String>,
     pub source: SourceReference,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub gotchas: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub operational_constraints: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub runbooks: Vec<String>,
 }
 
-impl Default for ArchitectureNode {
+/// Backward compatible alias for code migrations
+pub type ArchitectureNode = GraphNode;
+
+impl GraphNode {
+    /// Helper constructor ensuring domain fields are cleanly initialized into metadata
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        id: NodeId,
+        kind: NodeKind,
+        label: String,
+        description: Option<String>,
+        metadata: HashMap<String, String>,
+        source: SourceReference,
+        created_at: DateTime<Utc>,
+        updated_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            id,
+            kind,
+            label,
+            description,
+            metadata,
+            source,
+            created_at,
+            updated_at,
+        }
+    }
+
+    // Domain specific getters storing data in metadata for generalization
+    pub fn technology(&self) -> Option<&str> {
+        self.metadata.get("technology").map(|s| s.as_str())
+    }
+
+    pub fn set_technology(&mut self, tech: Option<String>) {
+        if let Some(t) = tech {
+            self.metadata.insert("technology".to_string(), t);
+        } else {
+            self.metadata.remove("technology");
+        }
+    }
+
+    pub fn gotchas(&self) -> Vec<String> {
+        self.metadata
+            .get("gotchas")
+            .and_then(|s| serde_json::from_str(s).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn set_gotchas(&mut self, gotchas: Vec<String>) {
+        if !gotchas.is_empty() {
+            if let Ok(s) = serde_json::to_string(&gotchas) {
+                self.metadata.insert("gotchas".to_string(), s);
+            }
+        }
+    }
+
+    pub fn operational_constraints(&self) -> Vec<String> {
+        self.metadata
+            .get("operational_constraints")
+            .and_then(|s| serde_json::from_str(s).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn set_operational_constraints(&mut self, constraints: Vec<String>) {
+        if !constraints.is_empty() {
+            if let Ok(s) = serde_json::to_string(&constraints) {
+                self.metadata
+                    .insert("operational_constraints".to_string(), s);
+            }
+        }
+    }
+
+    pub fn runbooks(&self) -> Vec<String> {
+        self.metadata
+            .get("runbooks")
+            .and_then(|s| serde_json::from_str(s).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn set_runbooks(&mut self, runbooks: Vec<String>) {
+        if !runbooks.is_empty() {
+            if let Ok(s) = serde_json::to_string(&runbooks) {
+                self.metadata.insert("runbooks".to_string(), s);
+            }
+        }
+    }
+}
+
+impl Default for GraphNode {
     fn default() -> Self {
         Self {
             id: String::new(),
-            kind: NodeKind::Module,
+            kind: NodeKind(NodeKind::MODULE.to_string()),
             label: String::new(),
-            technology: None,
             description: None,
             metadata: HashMap::new(),
             source: SourceReference::Manual,
             created_at: Utc::now(),
             updated_at: Utc::now(),
-            gotchas: Vec::new(),
-            operational_constraints: Vec::new(),
-            runbooks: Vec::new(),
         }
     }
 }
@@ -129,8 +207,9 @@ pub struct Incident {
     pub source: SourceReference,
 }
 
+/// Generic knowledge graph edge storing relationships between domain nodes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ArchitectureEdge {
+pub struct GraphEdge {
     pub id: String,
     pub source: NodeId,
     pub target: NodeId,
@@ -140,7 +219,10 @@ pub struct ArchitectureEdge {
     pub source_ref: SourceReference,
 }
 
-impl sruja_graph_core::ContextNode for ArchitectureNode {
+/// Backward compatible alias for code migrations
+pub type ArchitectureEdge = GraphEdge;
+
+impl sruja_graph_core::ContextNode for GraphNode {
     fn id(&self) -> &str {
         &self.id
     }
@@ -151,7 +233,7 @@ impl sruja_graph_core::ContextNode for ArchitectureNode {
         &self.label
     }
     fn technology(&self) -> Option<&str> {
-        self.technology.as_deref()
+        self.technology()
     }
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
@@ -161,7 +243,7 @@ impl sruja_graph_core::ContextNode for ArchitectureNode {
     }
 }
 
-impl sruja_graph_core::ContextEdge for ArchitectureEdge {
+impl sruja_graph_core::ContextEdge for GraphEdge {
     fn id(&self) -> &str {
         &self.id
     }

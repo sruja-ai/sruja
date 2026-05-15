@@ -419,31 +419,31 @@ fn discover_kind_counts(graph: &Graph) -> BTreeMap<String, usize> {
 }
 
 fn kind_priority(kind: NodeKind) -> u8 {
-    match kind {
-        NodeKind::Service => 6,
-        NodeKind::Frontend => 5,
-        NodeKind::Database => 4,
-        NodeKind::ExternalApi => 3,
-        NodeKind::Container => 2,
-        NodeKind::Component => 2,
-        NodeKind::Queue => 2,
-        NodeKind::System => 1,
-        NodeKind::Module => 0,
-        NodeKind::Custom(_) => 0,
+    match kind.as_str() {
+        NodeKind::SERVICE => 6,
+        NodeKind::FRONTEND => 5,
+        NodeKind::DATABASE => 4,
+        NodeKind::EXTERNAL_API => 3,
+        NodeKind::CONTAINER => 2,
+        NodeKind::COMPONENT => 2,
+        NodeKind::QUEUE => 2,
+        NodeKind::SYSTEM => 1,
+        NodeKind::MODULE => 0,
+        _ => 0,
     }
 }
 
 fn explain_node_relevance(node: &sruja_scan::Node, incoming: usize, outgoing: usize) -> String {
-    match node.kind {
-        NodeKind::Database => format!(
+    match node.kind.as_str() {
+        NodeKind::DATABASE => format!(
             "Acts as a data boundary with {} upstream dependency(ies).",
             incoming
         ),
-        NodeKind::ExternalApi => format!(
+        NodeKind::EXTERNAL_API => format!(
             "Represents an external integration touched by {} internal component(s).",
             incoming
         ),
-        NodeKind::Service | NodeKind::Frontend | NodeKind::Container | NodeKind::Component => {
+        NodeKind::SERVICE | NodeKind::FRONTEND | NodeKind::CONTAINER | NodeKind::COMPONENT => {
             if incoming > 0 && outgoing > 0 {
                 format!(
                     "Sits in the middle of the graph with {} incoming and {} outgoing dependency(ies).",
@@ -557,19 +557,19 @@ fn explain_edge_relevance(
         String::new()
     };
 
-    let base = match target_kind {
-        Some(NodeKind::Database) => {
+    let base = match target_kind.as_ref().map(|k| k.as_str()) {
+        Some(NodeKind::DATABASE) => {
             "Highlights a core service-to-data dependency that should usually stay intentional."
         }
-        Some(NodeKind::ExternalApi) => {
+        Some(NodeKind::EXTERNAL_API) => {
             "Highlights an external integration boundary that is important for change planning."
         }
-        Some(NodeKind::Service) | Some(NodeKind::Frontend) => {
+        Some(NodeKind::SERVICE) | Some(NodeKind::FRONTEND) => {
             "Connects high-signal runtime or user-facing components."
         }
         _ if matches!(
-            edge.kind,
-            EdgeKind::Calls | EdgeKind::DependsOn | EdgeKind::Uses
+            edge.kind.as_str(),
+            EdgeKind::CALLS | EdgeKind::DEPENDS_ON | EdgeKind::USES
         ) =>
         {
             "Represents a meaningful internal dependency worth validating as a boundary."
@@ -591,7 +591,7 @@ fn discover_key_relationships(graph: &Graph) -> Vec<DiscoverRelationshipSummary>
     let mut edges: Vec<_> = graph
         .edges
         .iter()
-        .filter(|edge| !matches!(edge.kind, EdgeKind::Contains | EdgeKind::Owns))
+        .filter(|edge| !matches!(edge.kind.as_str(), EdgeKind::CONTAINS | EdgeKind::OWNS))
         .collect();
     let preferred_edges: Vec<_> = edges
         .iter()
@@ -655,7 +655,7 @@ fn discover_reasoning(
     let service_count = graph
         .nodes
         .iter()
-        .filter(|node| node.kind == NodeKind::Service)
+        .filter(|node| node.kind == NodeKind::SERVICE)
         .count();
     let exported_interfaces = graph
         .nodes
@@ -893,7 +893,7 @@ fn build_discover_explanation(
         let db_count = graph
             .nodes
             .iter()
-            .filter(|n| n.kind == sruja_scan::NodeKind::Database)
+            .filter(|n| n.kind == sruja_scan::NodeKind::DATABASE)
             .count();
         if db_count > 0 {
             digest_parts.push(format!(

@@ -58,7 +58,7 @@ pub fn discover_docs_and_assets(repo_root: &Path) -> Result<Graph, ScanError> {
             let id = format!("doc:{}", rel_path.replace("/", "_"));
             let node = Node {
                 id,
-                kind: NodeKind::Custom("Doc".to_string()),
+                kind: NodeKind::new("Doc"),
                 label,
                 path: Some(rel_path),
                 metadata,
@@ -72,7 +72,7 @@ pub fn discover_docs_and_assets(repo_root: &Path) -> Result<Graph, ScanError> {
             let id = format!("asset:{}", rel_path.replace("/", "_"));
             let node = Node {
                 id,
-                kind: NodeKind::Custom("Asset".to_string()),
+                kind: NodeKind::new("Asset"),
                 label: file_name.to_string(),
                 path: Some(rel_path),
                 metadata,
@@ -109,7 +109,7 @@ mod tests {
             .iter()
             .find(|n| n.id.starts_with("doc:"))
             .unwrap();
-        assert_eq!(doc_node.kind, NodeKind::Custom("Doc".to_string()));
+        assert_eq!(doc_node.kind, "Doc");
         assert_eq!(doc_node.label, "Project Title");
         assert_eq!(doc_node.path.as_deref(), Some("README.md"));
 
@@ -118,7 +118,7 @@ mod tests {
             .iter()
             .find(|n| n.id.starts_with("asset:"))
             .unwrap();
-        assert_eq!(asset_node.kind, NodeKind::Custom("Asset".to_string()));
+        assert_eq!(asset_node.kind, "Asset");
         assert_eq!(asset_node.label, "logo.png");
         assert_eq!(asset_node.path.as_deref(), Some("logo.png"));
     }

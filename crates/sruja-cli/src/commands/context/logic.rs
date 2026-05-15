@@ -165,10 +165,10 @@ pub fn build_architecture_context(
     depth: usize,
     max_tokens: usize,
 ) -> Result<ArchitectureContext, CliError> {
-    let modules = count_kind(graph, NodeKind::Module);
-    let services = count_kind(graph, NodeKind::Service);
-    let databases = count_kind(graph, NodeKind::Database);
-    let external_apis = count_kind(graph, NodeKind::ExternalApi);
+    let modules = count_kind(graph, NodeKind::new(NodeKind::MODULE));
+    let services = count_kind(graph, NodeKind::new(NodeKind::SERVICE));
+    let databases = count_kind(graph, NodeKind::new(NodeKind::DATABASE));
+    let external_apis = count_kind(graph, NodeKind::new(NodeKind::EXTERNAL_API));
 
     let layers = infer_layers(graph);
 
@@ -476,7 +476,7 @@ pub fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
     let mut layer_counts: HashMap<String, usize> = HashMap::new();
 
     for node in &graph.nodes {
-        if node.kind == NodeKind::Module {
+        if node.kind == NodeKind::MODULE {
             if let Some(path) = &node.path {
                 let layer = infer_layer_from_path(path);
                 *layer_counts.entry(layer).or_default() += 1;
@@ -653,13 +653,13 @@ fn load_baseline_elements(repo_root: &Path) -> BaselineElements {
 
 fn element_kind_to_node_kind(kind: &ElementKind) -> NodeKind {
     match kind {
-        ElementKind::System => NodeKind::System,
-        ElementKind::Container => NodeKind::Container,
-        ElementKind::Component => NodeKind::Component,
-        ElementKind::Queue => NodeKind::Queue,
-        ElementKind::Database | ElementKind::DataStore => NodeKind::Database,
-        ElementKind::ExternalSystem => NodeKind::ExternalApi,
-        _ => NodeKind::Module,
+        ElementKind::System => NodeKind::new(NodeKind::SYSTEM),
+        ElementKind::Container => NodeKind::new(NodeKind::CONTAINER),
+        ElementKind::Component => NodeKind::new(NodeKind::COMPONENT),
+        ElementKind::Queue => NodeKind::new(NodeKind::QUEUE),
+        ElementKind::Database | ElementKind::DataStore => NodeKind::new(NodeKind::DATABASE),
+        ElementKind::ExternalSystem => NodeKind::new(NodeKind::EXTERNAL_API),
+        _ => NodeKind::new(NodeKind::MODULE),
     }
 }
 
@@ -754,13 +754,11 @@ fn resolve_focus(
 
     let mut overview_ids: Vec<String> = Vec::new();
     for (id, kind) in &baseline.kinds_by_id {
-        match kind {
-            sruja_scan::NodeKind::System | sruja_scan::NodeKind::ExternalApi => {
+        match kind.as_str() {
+            NodeKind::SYSTEM | NodeKind::EXTERNAL_API => {
                 overview_ids.push(id.clone());
             }
-            sruja_scan::NodeKind::Container
-            | sruja_scan::NodeKind::Database
-            | sruja_scan::NodeKind::Queue => {
+            NodeKind::CONTAINER | NodeKind::DATABASE | NodeKind::QUEUE => {
                 let dot_count = id.matches('.').count();
                 if dot_count <= 1 {
                     overview_ids.push(id.clone());
@@ -772,10 +770,8 @@ fn resolve_focus(
     if overview_ids.is_empty() {
         for node in &graph.nodes {
             if matches!(
-                node.kind,
-                sruja_scan::NodeKind::System
-                    | sruja_scan::NodeKind::Service
-                    | sruja_scan::NodeKind::ExternalApi
+                node.kind.as_str(),
+                NodeKind::SYSTEM | NodeKind::SERVICE | NodeKind::EXTERNAL_API
             ) {
                 overview_ids.push(node.id.clone());
             }
@@ -842,7 +838,7 @@ fn build_focus_elements(
         } else if let Some(node) = graph.nodes.iter().find(|n| n.id == *id) {
             (node.kind.clone(), Some(node.label.clone()))
         } else {
-            (NodeKind::Module, Some(id.clone()))
+            (NodeKind::new(NodeKind::MODULE), Some(id.clone()))
         };
 
         let lineage = baseline
@@ -926,7 +922,7 @@ fn compute_lineage(element_id: &str, baseline: &BaselineElements) -> TaskLineage
         if baseline
             .kinds_by_id
             .get(&sys)
-            .is_some_and(|k| *k == NodeKind::System)
+            .is_some_and(|k| *k == NodeKind::SYSTEM)
         {
             system = Some(sys);
         }
@@ -934,10 +930,10 @@ fn compute_lineage(element_id: &str, baseline: &BaselineElements) -> TaskLineage
     for i in (1..parts.len()).rev() {
         let prefix = parts[..=i].join(".");
         if let Some(kind) = baseline.kinds_by_id.get(&prefix) {
-            if *kind == NodeKind::Container && container.is_none() {
+            if *kind == NodeKind::CONTAINER && container.is_none() {
                 container = Some(prefix.clone());
             }
-            if *kind == NodeKind::Component && component.is_none() {
+            if *kind == NodeKind::COMPONENT && component.is_none() {
                 component = Some(prefix.clone());
             }
         }
@@ -976,7 +972,7 @@ fn expand_neighbors_and_impact(
             .iter()
             .find(|n| n.id == id)
             .map(|n| n.kind.clone())
-            .unwrap_or(NodeKind::Module)
+            .unwrap_or(NodeKind::new(NodeKind::MODULE))
     };
 
     for id in focus_ids {
@@ -1040,10 +1036,10 @@ fn record_impact(
     if !seen.insert(format!("{}::{:?}", id, kind)) {
         return;
     }
-    match kind {
-        NodeKind::System => impacted.systems.push(id.to_string()),
-        NodeKind::Container | NodeKind::Service => impacted.containers.push(id.to_string()),
-        NodeKind::Component | NodeKind::Module | NodeKind::Frontend => {
+    match kind.as_str() {
+        NodeKind::SYSTEM => impacted.systems.push(id.to_string()),
+        NodeKind::CONTAINER | NodeKind::SERVICE => impacted.containers.push(id.to_string()),
+        NodeKind::COMPONENT | NodeKind::MODULE | NodeKind::FRONTEND => {
             impacted.components.push(id.to_string())
         }
         _ => impacted.components.push(id.to_string()),
@@ -1187,10 +1183,10 @@ fn semantic_candidates_from_scan(
                 substr_hits += 1;
             }
         }
-        let kind_boost = match n.kind {
-            NodeKind::System => 1.2,
-            NodeKind::Container | NodeKind::Service | NodeKind::Database | NodeKind::Queue => 1.0,
-            NodeKind::Component => 0.8,
+        let kind_boost = match n.kind.as_str() {
+            NodeKind::SYSTEM => 1.2,
+            NodeKind::CONTAINER | NodeKind::SERVICE | NodeKind::DATABASE | NodeKind::QUEUE => 1.0,
+            NodeKind::COMPONENT => 0.8,
             _ => 0.2,
         };
         let pr = centrality.get(&n.id).map(|c| c.pagerank).unwrap_or(0.0) as f32;
@@ -1256,12 +1252,12 @@ fn estimate_risk(
             }) {
                 critical = true;
             }
-            if matches!(node.kind, NodeKind::Database | NodeKind::Queue) {
+            if matches!(node.kind.as_str(), NodeKind::DATABASE | NodeKind::QUEUE) {
                 touches_data = true;
             }
         }
         if let Some(kind) = baseline.kinds_by_id.get(id) {
-            if matches!(kind, NodeKind::Database | NodeKind::Queue) {
+            if matches!(kind.as_str(), NodeKind::DATABASE | NodeKind::QUEUE) {
                 touches_data = true;
             }
         }
@@ -1312,7 +1308,7 @@ pub fn infer_boundaries(graph: &Graph) -> Vec<BoundaryRule> {
     let mut services: Vec<_> = graph
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::Service)
+        .filter(|n| n.kind == NodeKind::SERVICE)
         .collect();
     services.sort_by(|a, b| a.id.cmp(&b.id));
 

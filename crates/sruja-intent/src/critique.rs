@@ -418,7 +418,7 @@ mod tests {
         let mut graph = Graph::default();
         graph.nodes.push(Node {
             id: "TestNode".to_string(),
-            kind: NodeKind::Component,
+            kind: NodeKind::new(NodeKind::COMPONENT),
             label: "Test Node".to_string(),
             path: Some("src/test.rs".to_string()),
             ..Default::default()
@@ -446,7 +446,7 @@ mod tests {
         let mut graph = Graph::default();
         graph.nodes.push(Node {
             id: "CriticalService".to_string(),
-            kind: NodeKind::Service,
+            kind: NodeKind::new(NodeKind::SERVICE),
             label: "Critical Service".to_string(),
             path: Some("src/critical.rs".to_string()),
             criticality: Some(Criticality::Critical),
@@ -477,7 +477,7 @@ mod tests {
         let mut graph = Graph::default();
         graph.nodes.push(Node {
             id: "CoreLib".to_string(),
-            kind: NodeKind::Component,
+            kind: NodeKind::new(NodeKind::COMPONENT),
             label: "Core Library".to_string(),
             path: Some("src/core.rs".to_string()),
             ..Default::default()
@@ -488,14 +488,14 @@ mod tests {
             let consumer_id = format!("Consumer{}", i);
             graph.nodes.push(Node {
                 id: consumer_id.clone(),
-                kind: NodeKind::Component,
+                kind: NodeKind::new(NodeKind::COMPONENT),
                 label: consumer_id.clone(),
                 ..Default::default()
             });
             graph.edges.push(sruja_scan::Edge {
                 source: consumer_id,
                 target: "CoreLib".to_string(),
-                kind: sruja_scan::EdgeKind::Calls,
+                kind: sruja_scan::EdgeKind::new(sruja_scan::EdgeKind::CALLS),
                 evidence: vec![],
                 confidence: Default::default(),
             });

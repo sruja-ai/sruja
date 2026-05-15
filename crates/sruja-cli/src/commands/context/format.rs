@@ -514,8 +514,8 @@ pub fn format_repomap(context: &ArchitectureContext, graph: &Graph) -> String {
         .into_iter()
         .filter(|(n, _)| {
             matches!(
-                n.kind,
-                NodeKind::Service | NodeKind::Database | NodeKind::ExternalApi | NodeKind::Module
+                n.kind.as_str(),
+                NodeKind::SERVICE | NodeKind::DATABASE | NodeKind::EXTERNAL_API | NodeKind::MODULE
             )
         })
         .take(top_limit)
@@ -660,12 +660,11 @@ pub fn format_system_context_markdown(ctx: &SystemContext) -> String {
 }
 
 fn repomap_kind(kind: NodeKind) -> &'static str {
-    match kind {
-        NodeKind::Service => "service",
-        NodeKind::Database => "database",
-        NodeKind::ExternalApi => "external_api",
-        NodeKind::Module => "module",
-        NodeKind::Custom(_) => "custom",
+    match kind.as_str() {
+        NodeKind::SERVICE => "service",
+        NodeKind::DATABASE => "database",
+        NodeKind::EXTERNAL_API => "external_api",
+        NodeKind::MODULE => "module",
         _ => "node",
     }
 }

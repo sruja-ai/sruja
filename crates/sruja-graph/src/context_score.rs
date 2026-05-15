@@ -411,7 +411,7 @@ mod tests {
         for i in 0..n {
             g.add_node(ArchitectureNode {
                 id: format!("node_{}", i),
-                kind: NodeKind::Service,
+                kind: NodeKind::new(NodeKind::SERVICE),
                 label: format!("Service {}", i),
                 ..ArchitectureNode::default()
             })

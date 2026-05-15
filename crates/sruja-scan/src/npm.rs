@@ -128,7 +128,7 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
 
         let mut node = Node {
             id: id.clone(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: name,
             technology,
             path: Some(path_str),
@@ -188,7 +188,7 @@ pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             graph.edges.push(Edge {
                 source: source_id.clone(),
                 target: target_id.clone(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: vec![EdgeEvidence {
                     rule: "package_json_dep".to_string(),
                     file: Some(pkg_path.join("package.json").to_string_lossy().to_string()),
@@ -263,7 +263,7 @@ mod tests {
         let e = &graph.edges[0];
         assert_eq!(e.source, "npm:a");
         assert_eq!(e.target, "npm:b");
-        assert_eq!(e.kind, EdgeKind::Calls);
+        assert_eq!(e.kind, EdgeKind::new(EdgeKind::CALLS));
         assert_eq!(e.evidence.len(), 1);
         assert!(e.evidence[0].file.as_ref().is_some());
     }

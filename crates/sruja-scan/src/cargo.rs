@@ -86,7 +86,7 @@ pub(crate) fn scan_cargo_repo(repo_root: &Path) -> Result<Graph, ScanError> {
 
         let mut node = Node {
             id: node_id,
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: pkg.name.clone(),
             technology: Some("Rust".to_string()),
             path: Some(rel_manifest.to_string_lossy().to_string()),
@@ -146,7 +146,7 @@ pub(crate) fn scan_cargo_repo(repo_root: &Path) -> Result<Graph, ScanError> {
             graph.edges.push(Edge {
                 source: source_node_id.clone(),
                 target: target_node_id.clone(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: vec![EdgeEvidence {
                     rule: "cargo_metadata_dep".to_string(),
                     file: None,
@@ -324,7 +324,7 @@ mod tests {
     fn db_client_hint_detected() {
         let mut node = Node {
             id: "test".to_string(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: "test".to_string(),
             technology: Some("Rust".to_string()),
             path: None,
@@ -361,7 +361,7 @@ mod tests {
     fn http_client_hint_detected() {
         let mut node = Node {
             id: "test".to_string(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: "test".to_string(),
             technology: Some("Rust".to_string()),
             path: None,
@@ -399,7 +399,7 @@ mod tests {
     fn no_hints_without_matching_deps() {
         let mut node = Node {
             id: "test".to_string(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: "test".to_string(),
             technology: Some("Rust".to_string()),
             path: None,
@@ -447,7 +447,7 @@ mod tests {
     fn diesel_detected_as_db_client() {
         let mut node = Node {
             id: "test".to_string(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: "test".to_string(),
             technology: Some("Rust".to_string()),
             path: None,
@@ -484,7 +484,7 @@ mod tests {
     fn hyper_detected_as_http_client() {
         let mut node = Node {
             id: "test".to_string(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: "test".to_string(),
             technology: Some("Rust".to_string()),
             path: None,

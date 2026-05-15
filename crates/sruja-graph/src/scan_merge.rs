@@ -45,20 +45,20 @@ pub fn merge_scan_into_graph(
 
     // Merge nodes
     for node in &scan_graph.nodes {
-        let arch_node = ArchitectureNode {
+        let mut arch_node = ArchitectureNode {
             id: node.id.clone(),
             kind: node.kind.clone(),
             label: node.label.clone(),
-            technology: node.technology.clone(),
             description: node.path.clone(),
             metadata: node.metadata.clone(),
             source: source.clone(),
             created_at: now,
             updated_at: now,
-            gotchas: node.gotchas.clone(),
-            operational_constraints: node.operational_constraints.clone(),
-            runbooks: node.runbooks.clone(),
         };
+        arch_node.set_technology(node.technology.clone());
+        arch_node.set_gotchas(node.gotchas.clone());
+        arch_node.set_operational_constraints(node.operational_constraints.clone());
+        arch_node.set_runbooks(node.runbooks.clone());
 
         graph.merge_node(arch_node);
         count += 1;
@@ -117,28 +117,35 @@ pub fn merge_program_into_graph(
     // Merge elements as nodes
     for (fqn, elem) in elements {
         let node_kind = match elem.assignment.kind {
-            sruja_language::ast::ElementKind::Person => sruja_scan::NodeKind::Module,
-            sruja_language::ast::ElementKind::System => sruja_scan::NodeKind::System,
-            sruja_language::ast::ElementKind::Container => sruja_scan::NodeKind::Container,
-            sruja_language::ast::ElementKind::Component => sruja_scan::NodeKind::Component,
-            sruja_language::ast::ElementKind::Database => sruja_scan::NodeKind::Database,
-            sruja_language::ast::ElementKind::Queue => sruja_scan::NodeKind::Queue,
-            sruja_language::ast::ElementKind::Requirement => sruja_scan::NodeKind::Module,
-            sruja_language::ast::ElementKind::Custom(ref s) => {
-                sruja_scan::NodeKind::Custom(s.clone())
+            sruja_language::ast::ElementKind::Person => {
+                sruja_scan::NodeKind::new(sruja_scan::NodeKind::MODULE)
             }
-            _ => sruja_scan::NodeKind::Module,
+            sruja_language::ast::ElementKind::System => {
+                sruja_scan::NodeKind::new(sruja_scan::NodeKind::SYSTEM)
+            }
+            sruja_language::ast::ElementKind::Container => {
+                sruja_scan::NodeKind::new(sruja_scan::NodeKind::CONTAINER)
+            }
+            sruja_language::ast::ElementKind::Component => {
+                sruja_scan::NodeKind::new(sruja_scan::NodeKind::COMPONENT)
+            }
+            sruja_language::ast::ElementKind::Database => {
+                sruja_scan::NodeKind::new(sruja_scan::NodeKind::DATABASE)
+            }
+            sruja_language::ast::ElementKind::Queue => {
+                sruja_scan::NodeKind::new(sruja_scan::NodeKind::QUEUE)
+            }
+            sruja_language::ast::ElementKind::Requirement => {
+                sruja_scan::NodeKind::new(sruja_scan::NodeKind::MODULE)
+            }
+            sruja_language::ast::ElementKind::Custom(ref s) => sruja_scan::NodeKind::new(s.clone()),
+            _ => sruja_scan::NodeKind::new(sruja_scan::NodeKind::MODULE),
         };
 
-        let arch_node = ArchitectureNode {
+        let mut arch_node = ArchitectureNode {
             id: fqn,
             kind: node_kind,
             label: elem.assignment.title.unwrap_or(elem.assignment.name),
-            technology: elem
-                .assignment
-                .body
-                .as_ref()
-                .and_then(|b| b.technology.clone()),
             description: elem
                 .assignment
                 .body
@@ -148,25 +155,36 @@ pub fn merge_program_into_graph(
             source: source.clone(),
             created_at: now,
             updated_at: now,
-            gotchas: elem
-                .assignment
+        };
+
+        arch_node.set_technology(
+            elem.assignment
+                .body
+                .as_ref()
+                .and_then(|b| b.technology.clone()),
+        );
+        arch_node.set_gotchas(
+            elem.assignment
                 .body
                 .as_ref()
                 .map(|b| b.gotchas.clone())
                 .unwrap_or_default(),
-            operational_constraints: elem
-                .assignment
+        );
+        arch_node.set_operational_constraints(
+            elem.assignment
                 .body
                 .as_ref()
                 .map(|b| b.operational_constraints.clone())
                 .unwrap_or_default(),
-            runbooks: elem
-                .assignment
+        );
+        arch_node.set_runbooks(
+            elem.assignment
                 .body
                 .as_ref()
                 .map(|b| b.runbooks.clone())
                 .unwrap_or_default(),
-        };
+        );
+
         graph.merge_node(arch_node);
         count += 1;
     }
@@ -235,7 +253,7 @@ mod tests {
             nodes: vec![
                 Node {
                     id: "module.main".to_string(),
-                    kind: NodeKind::Module,
+                    kind: NodeKind::new(NodeKind::MODULE),
                     label: "main".to_string(),
                     path: Some("src/main.ts".to_string()),
                     technology: Some("TypeScript".to_string()),
@@ -243,7 +261,7 @@ mod tests {
                 },
                 Node {
                     id: "module.utils".to_string(),
-                    kind: NodeKind::Module,
+                    kind: NodeKind::new(NodeKind::MODULE),
                     label: "utils".to_string(),
                     path: Some("src/utils.ts".to_string()),
                     technology: Some("TypeScript".to_string()),
@@ -253,7 +271,7 @@ mod tests {
             edges: vec![Edge {
                 source: "module.main".to_string(),
                 target: "module.utils".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: vec![EdgeEvidence {
                     rule: "import".to_string(),
                     file: Some("src/main.ts".to_string()),
@@ -291,16 +309,16 @@ mod tests {
 
         // Verify node conversion
         let main_node = kg.nodes.get("module.main").expect("main node should exist");
-        assert_eq!(main_node.kind, NodeKind::Module);
+        assert_eq!(main_node.kind.as_str(), NodeKind::MODULE);
         assert_eq!(main_node.label, "main");
-        assert_eq!(main_node.technology, Some("TypeScript".to_string()));
+        assert_eq!(main_node.technology(), Some("TypeScript"));
         assert_eq!(main_node.description, Some("src/main.ts".to_string()));
 
         // Verify edge conversion
         let edge = kg.edges.first().expect("edge should exist");
         assert_eq!(edge.source, "module.main");
         assert_eq!(edge.target, "module.utils");
-        assert_eq!(edge.kind, EdgeKind::Calls);
+        assert_eq!(edge.kind.as_str(), EdgeKind::CALLS);
     }
 
     #[test]
@@ -338,10 +356,10 @@ mod tests {
 
         // Test all node kind conversions
         let test_cases = vec![
-            NodeKind::Service,
-            NodeKind::Module,
-            NodeKind::Database,
-            NodeKind::ExternalApi,
+            NodeKind::new(NodeKind::SERVICE),
+            NodeKind::new(NodeKind::MODULE),
+            NodeKind::new(NodeKind::DATABASE),
+            NodeKind::new(NodeKind::EXTERNAL_API),
         ];
 
         for (i, kind) in test_cases.into_iter().enumerate() {
@@ -368,21 +386,25 @@ mod tests {
     fn test_edge_kind_conversion() {
         let mut kg = KnowledgeGraph::new();
 
-        let test_cases = vec![EdgeKind::Calls, EdgeKind::ReadsFrom, EdgeKind::WritesTo];
+        let test_cases = vec![
+            EdgeKind::new(EdgeKind::CALLS),
+            EdgeKind::new(EdgeKind::READS_FROM),
+            EdgeKind::new(EdgeKind::WRITES_TO),
+        ];
 
         for (i, kind) in test_cases.into_iter().enumerate() {
             let scan_graph = Graph {
                 nodes: vec![
                     Node {
                         id: format!("source.{}", i),
-                        kind: NodeKind::Module,
+                        kind: NodeKind::new(NodeKind::MODULE),
                         label: format!("source{}", i),
                         path: Some(format!("source{}.ts", i)),
                         ..Node::default()
                     },
                     Node {
                         id: format!("target.{}", i),
-                        kind: NodeKind::Module,
+                        kind: NodeKind::new(NodeKind::MODULE),
                         label: format!("target{}", i),
                         path: Some(format!("target{}.ts", i)),
                         ..Node::default()

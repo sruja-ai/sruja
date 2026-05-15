@@ -283,7 +283,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 module_id.clone(),
                 Node {
                     id: module_id.clone(),
-                    kind: NodeKind::Module,
+                    kind: NodeKind::new(NodeKind::MODULE),
                     label: parent_module.clone(),
                     technology: Some(language.to_string()),
                     path: Some(parent_module.clone()),
@@ -329,7 +329,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             let note_id = format!("note:{}:line{}", file_id, comment.line);
             nodes.push(Node {
                 id: note_id.clone(),
-                kind: NodeKind::Custom("Note".to_string()),
+                kind: NodeKind::new("Note"),
                 label: format!("{}: {}", comment.keyword, comment.text),
                 technology: Some(language.to_string()),
                 path: Some(path.to_string_lossy().to_string()),
@@ -344,7 +344,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             edges.push(Edge {
                 source: note_id,
                 target: file_id.clone(),
-                kind: EdgeKind::Custom("explains".to_string()),
+                kind: EdgeKind::new("explains"),
                 evidence: vec![EdgeEvidence {
                     rule: "extracted_comment".to_string(),
                     file: Some(path.to_string_lossy().to_string()),
@@ -358,7 +358,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         edges.push(Edge {
             source: module_id.clone(),
             target: file_id.clone(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: vec![EdgeEvidence {
                 rule: "contains".to_string(),
                 file: Some(path.to_string_lossy().to_string()),
@@ -396,7 +396,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             let export_node_id = format!("{}#{}", file_id, export);
             nodes.push(Node {
                 id: export_node_id.clone(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: export.clone(),
                 technology: Some(language.to_string()),
                 path: Some(path.to_string_lossy().to_string()),
@@ -413,7 +413,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             edges.push(Edge {
                 source: file_id.clone(),
                 target: export_node_id,
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: vec![EdgeEvidence {
                     rule: "exports".to_string(),
                     file: Some(path.to_string_lossy().to_string()),
@@ -434,7 +434,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             edges.push(Edge {
                 source: source.clone(),
                 target: target.clone(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: vec![EdgeEvidence {
                     rule: "imports".to_string(),
                     file: None,
@@ -454,7 +454,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             edges.push(Edge {
                 source: source_id,
                 target: target_id,
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 evidence: vec![EdgeEvidence {
                     rule: "module_imports".to_string(),
                     file: None,

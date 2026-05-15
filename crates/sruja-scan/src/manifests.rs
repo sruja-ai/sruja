@@ -70,7 +70,7 @@ fn discover_docker(repo_root: &Path) -> Result<Graph, ScanError> {
         if path.exists() {
             let node = Node {
                 id: format!("docker:{}", name),
-                kind: NodeKind::System,
+                kind: NodeKind::new(NodeKind::SYSTEM),
                 label: "Docker Compose".to_string(),
                 technology: Some("Docker Compose".to_string()),
                 path: Some(name.to_string()),
@@ -121,7 +121,7 @@ fn process_dockerfile(path: &Path, file_name: &str) -> Option<Node> {
 
     Some(Node {
         id: format!("docker:{}", file_name),
-        kind: NodeKind::Container,
+        kind: NodeKind::new(NodeKind::CONTAINER),
         label: "Docker Image".to_string(),
         technology: Some(technology),
         path: Some(file_name.to_string()),
@@ -156,7 +156,7 @@ fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
             let id = format!("api:{}", name.replace("/", "_"));
             let node = Node {
                 id,
-                kind: NodeKind::ExternalApi,
+                kind: NodeKind::new(NodeKind::EXTERNAL_API),
                 label: "OpenAPI Spec".to_string(),
                 technology: Some("OpenAPI".to_string()),
                 path: Some(name.to_string()),
@@ -292,7 +292,7 @@ fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
 
                         let node = Node {
                             id: format!("k8s:{}", path_str.replace("/", "_")),
-                            kind: NodeKind::System,
+                            kind: NodeKind::new(NodeKind::SYSTEM),
                             label,
                             technology: Some(technology),
                             path: Some(path_str),
@@ -364,7 +364,7 @@ mod tests {
         assert_eq!(graph.nodes.len(), 1);
         let node = &graph.nodes[0];
 
-        assert_eq!(node.kind, NodeKind::Container);
+        assert_eq!(node.kind, NodeKind::CONTAINER);
         assert_eq!(node.technology.as_deref(), Some("python:3.9-slim"));
 
         let desc = node.metadata.get("description").unwrap();
@@ -402,7 +402,7 @@ spec:
         assert_eq!(graph.nodes.len(), 1);
         let node = &graph.nodes[0];
 
-        assert_eq!(node.kind, NodeKind::System);
+        assert_eq!(node.kind, NodeKind::SYSTEM);
         assert_eq!(node.label, "Deployment: my-app");
         assert_eq!(node.technology.as_deref(), Some("my-registry/my-app:1.0"));
 

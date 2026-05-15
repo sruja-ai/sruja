@@ -458,7 +458,7 @@ pub async fn learn(
     if let (Some(ref ap), Some(diff)) = (&arch_path, &diff_opt) {
         if ap.exists() {
             for node in &diff.node_diff.removed {
-                if node.kind != NodeKind::Module {
+                if node.kind.as_str() != NodeKind::MODULE {
                     continue;
                 }
                 let scan_node = graph.nodes.iter().find(|n| n.id == node.id);

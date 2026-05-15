@@ -445,8 +445,8 @@ fn discover_entrypoints(
         .filter(|n| !n.id.contains('#'))
         .filter(|node| {
             let is_high_level = matches!(
-                node.kind,
-                NodeKind::Service | NodeKind::ExternalApi | NodeKind::System | NodeKind::Frontend
+                node.kind.as_str(),
+                NodeKind::SERVICE | NodeKind::EXTERNAL_API | NodeKind::SYSTEM | NodeKind::FRONTEND
             );
             let no_incoming = has_incoming.get(node.id.as_str()).copied().unwrap_or(0) == 0;
             is_high_level || no_incoming
@@ -477,7 +477,7 @@ fn discover_data_stores(
     let mut stores: Vec<&sruja_scan::Node> = graph
         .nodes
         .iter()
-        .filter(|n| matches!(n.kind, NodeKind::Database | NodeKind::Queue))
+        .filter(|n| matches!(n.kind.as_str(), NodeKind::DATABASE | NodeKind::QUEUE))
         .collect();
     stores.sort_by(|a, b| a.id.cmp(&b.id));
     stores.truncate(max_items);
@@ -525,7 +525,7 @@ fn discover_key_elements_and_files(
         let pr = centrality.get(&node.id).map(|s| s.pagerank).unwrap_or(0.0);
         let inc = incoming.get(node.id.as_str()).copied().unwrap_or(0);
         let out = outgoing.get(node.id.as_str()).copied().unwrap_or(0);
-        let why = if matches!(node.kind, NodeKind::Database) {
+        let why = if matches!(node.kind.as_str(), NodeKind::DATABASE) {
             format!("Data boundary referenced by {} upstream component(s).", inc)
         } else if inc > 0 && out > 0 {
             format!(
@@ -582,7 +582,7 @@ fn discover_key_relationships(graph: &Graph, max_items: usize) -> Vec<OnboardKey
     let mut edges: Vec<&sruja_scan::Edge> = graph
         .edges
         .iter()
-        .filter(|e| !matches!(e.kind, EdgeKind::Contains | EdgeKind::Owns))
+        .filter(|e| !matches!(e.kind.as_str(), EdgeKind::CONTAINS | EdgeKind::OWNS))
         .filter(|e| !e.source.contains('#') && !e.target.contains('#'))
         .collect();
 
@@ -603,19 +603,19 @@ fn discover_key_relationships(graph: &Graph, max_items: usize) -> Vec<OnboardKey
         .into_iter()
         .map(|e| {
             let target_kind = kind_by_id.get(e.target.as_str()).cloned();
-            let why = match target_kind {
-                Some(NodeKind::Database) => {
+            let why = match target_kind.as_ref().map(|k| k.as_str()) {
+                Some(NodeKind::DATABASE) => {
                     "Service/data dependency: verify it stays intentional.".to_string()
                 }
-                Some(NodeKind::ExternalApi) => {
+                Some(NodeKind::EXTERNAL_API) => {
                     "External boundary: changes here often require coordination.".to_string()
                 }
-                Some(NodeKind::Service) | Some(NodeKind::Frontend) => {
+                Some(NodeKind::SERVICE) | Some(NodeKind::FRONTEND) => {
                     "High-signal runtime/user-facing relationship.".to_string()
                 }
                 _ if matches!(
-                    e.kind,
-                    EdgeKind::Calls | EdgeKind::DependsOn | EdgeKind::Uses
+                    e.kind.as_str(),
+                    EdgeKind::CALLS | EdgeKind::DEPENDS_ON | EdgeKind::USES
                 ) =>
                 {
                     "Meaningful internal dependency worth checking as a boundary.".to_string()

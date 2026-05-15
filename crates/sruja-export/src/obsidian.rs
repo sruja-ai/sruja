@@ -164,13 +164,13 @@ mod tests {
         let nodes = vec![
             Node {
                 id: "A:B".to_string(),
-                kind: NodeKind::Module,
+                kind: NodeKind::new(NodeKind::MODULE),
                 label: "A".to_string(),
                 ..Default::default()
             },
             Node {
                 id: "C".to_string(),
-                kind: NodeKind::Database,
+                kind: NodeKind::new(NodeKind::DATABASE),
                 label: "C".to_string(),
                 ..Default::default()
             },
@@ -178,7 +178,7 @@ mod tests {
         let edges = vec![Edge {
             source: "A:B".to_string(),
             target: "C".to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: Vec::new(),
             confidence: sruja_scan::graph::EdgeConfidence::Extracted,
         }];

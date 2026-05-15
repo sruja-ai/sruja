@@ -134,21 +134,10 @@ pub fn program_to_graph(program: &Program) -> Graph {
 
 fn element_kind_to_node_kind(kind: &ElementKind) -> NodeKind {
     match kind {
-        ElementKind::Database | ElementKind::DataStore => NodeKind::Database,
-        ElementKind::ExternalSystem => NodeKind::ExternalApi,
-        ElementKind::Person
-        | ElementKind::Role
-        | ElementKind::System
-        | ElementKind::Container
-        | ElementKind::Component
-        | ElementKind::Queue
-        | ElementKind::Policy
-        | ElementKind::Requirement
-        | ElementKind::Adr
-        | ElementKind::Flow
-        | ElementKind::Scenario
-        | ElementKind::Story
-        | ElementKind::Custom(_) => NodeKind::Module,
+        ElementKind::Database | ElementKind::DataStore => NodeKind::new(NodeKind::DATABASE),
+        ElementKind::ExternalSystem => NodeKind::new(NodeKind::EXTERNAL_API),
+        ElementKind::Custom(ref s) => NodeKind::new(s.clone()),
+        _ => NodeKind::new(NodeKind::MODULE),
     }
 }
 
@@ -220,23 +209,23 @@ fn convert_contract(c: &sruja_language::Contract) -> ResolvedContract {
 fn relation_label_to_edge_kind(label: &str) -> EdgeKind {
     let lower = label.to_lowercase();
     if lower.contains("read") || lower == "reads" {
-        EdgeKind::ReadsFrom
+        EdgeKind::new(EdgeKind::READS_FROM)
     } else if lower.contains("write") || lower == "writes" {
-        EdgeKind::WritesTo
+        EdgeKind::new(EdgeKind::WRITES_TO)
     } else if lower.contains("depend") {
-        EdgeKind::DependsOn
+        EdgeKind::new(EdgeKind::DEPENDS_ON)
     } else if lower.contains("publish") {
-        EdgeKind::PublishesTo
+        EdgeKind::new(EdgeKind::PUBLISHES_TO)
     } else if lower.contains("subscrib") {
-        EdgeKind::SubscribesTo
+        EdgeKind::new(EdgeKind::SUBSCRIBES_TO)
     } else if lower.contains("own") {
-        EdgeKind::Owns
+        EdgeKind::new(EdgeKind::OWNS)
     } else if lower.contains("contain") {
-        EdgeKind::Contains
+        EdgeKind::new(EdgeKind::CONTAINS)
     } else if lower.contains("use") {
-        EdgeKind::Uses
+        EdgeKind::new(EdgeKind::USES)
     } else {
-        EdgeKind::Calls
+        EdgeKind::new(EdgeKind::CALLS)
     }
 }
 
@@ -270,7 +259,7 @@ A -> DB "writes to"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::WritesTo);
+        assert_eq!(graph.edges[0].kind, EdgeKind::WRITES_TO);
     }
 
     #[test]
@@ -284,7 +273,7 @@ A -> B "depends on"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::DependsOn);
+        assert_eq!(graph.edges[0].kind, EdgeKind::DEPENDS_ON);
     }
 
     #[test]
@@ -298,7 +287,7 @@ A -> DB "reads"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::ReadsFrom);
+        assert_eq!(graph.edges[0].kind, EdgeKind::READS_FROM);
     }
 
     #[test]
@@ -312,7 +301,7 @@ A -> B "publishes"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::PublishesTo);
+        assert_eq!(graph.edges[0].kind, EdgeKind::PUBLISHES_TO);
     }
 
     #[test]
@@ -326,7 +315,7 @@ A -> B "subscribes"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::SubscribesTo);
+        assert_eq!(graph.edges[0].kind, EdgeKind::SUBSCRIBES_TO);
     }
 
     #[test]
@@ -340,7 +329,7 @@ A -> DB "owns"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::Owns);
+        assert_eq!(graph.edges[0].kind, EdgeKind::OWNS);
     }
 
     #[test]
@@ -354,7 +343,7 @@ A -> B "contains"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::Contains);
+        assert_eq!(graph.edges[0].kind, EdgeKind::CONTAINS);
     }
 
     #[test]
@@ -368,7 +357,7 @@ A -> B "uses"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::Uses);
+        assert_eq!(graph.edges[0].kind, EdgeKind::USES);
     }
 
     #[test]
@@ -382,7 +371,7 @@ A -> B "HTTPS"
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.edges.len(), 1);
-        assert_eq!(graph.edges[0].kind, EdgeKind::Calls);
+        assert_eq!(graph.edges[0].kind, EdgeKind::CALLS);
     }
 
     #[test]
@@ -426,7 +415,7 @@ S = system "S" {
         );
         let graph = program_to_graph(&program);
         let db = graph.nodes.iter().find(|n| n.id == "S.DB").expect("db");
-        assert_eq!(db.kind, NodeKind::Database);
+        assert_eq!(db.kind, NodeKind::DATABASE);
     }
 
     #[test]
@@ -435,7 +424,7 @@ S = system "S" {
         let graph = program_to_graph(&program);
         assert_eq!(graph.nodes.len(), 1);
         assert_eq!(graph.nodes[0].id, "S");
-        assert_eq!(graph.nodes[0].kind, NodeKind::Module);
+        assert_eq!(graph.nodes[0].kind, NodeKind::MODULE);
         assert!(graph.edges.is_empty());
     }
 
@@ -467,6 +456,6 @@ User = person "End User" {
         );
         let graph = program_to_graph(&program);
         assert_eq!(graph.nodes.len(), 1);
-        assert_eq!(graph.nodes[0].kind, NodeKind::Module);
+        assert_eq!(graph.nodes[0].kind, NodeKind::MODULE);
     }
 }

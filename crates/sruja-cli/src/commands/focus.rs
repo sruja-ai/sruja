@@ -331,13 +331,13 @@ pub fn build_focus_briefing(
         label: node
             .map(|n| n.label.clone())
             .unwrap_or_else(|| target_id.to_string()),
-        technology: node.and_then(|n| n.technology.clone()),
+        technology: node.and_then(|n| n.technology().map(|s| s.to_string())),
         system: infer_system(target_id),
-        gotchas: node.map(|n| n.gotchas.clone()).unwrap_or_default(),
+        gotchas: node.map(|n| n.gotchas()).unwrap_or_default(),
         operational_constraints: node
-            .map(|n| n.operational_constraints.clone())
+            .map(|n| n.operational_constraints())
             .unwrap_or_default(),
-        runbooks: node.map(|n| n.runbooks.clone()).unwrap_or_default(),
+        runbooks: node.map(|n| n.runbooks()).unwrap_or_default(),
     };
 
     // -- Blast Radius --

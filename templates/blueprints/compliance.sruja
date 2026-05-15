@@ -1,0 +1,45 @@
+// Sruja Context Graph: Compliance and Governance Domain
+// This DSL file tracks security controls, regulatory risks, and audit evidence.
+
+schema "compliance" {}
+
+SOC2 = domain "SOC 2 Security Criteria" {
+  description "Trust Services Criteria for Security, Confidentiality, and Privacy."
+
+  CC1_1 = regulation "CC1.1: Integrity and Ethical Values" {
+    description "The organization demonstrates a commitment to integrity and ethical values."
+    
+    CodeOfConduct = control "Code of Conduct Agreement" {
+      description "All personnel sign the ethical code of conduct during onboarding."
+      tags ["audit-ready", "hr-gate"]
+    }
+
+    BackgroundChecks = control "Employee Background Checks" {
+      description "Pre-employment background screening executed for all engineers."
+    }
+  }
+
+  CC6_1 = regulation "CC6.1: Logical Access" {
+    description "The entity restricts logical access to information assets."
+
+    MFA = control "Mandatory Multi-Factor Authentication" {
+      description "MFA enabled on identity providers (Okta, AWS, GitHub)."
+      tags ["audit-ready", "enforced"]
+    }
+
+    AuditEvidence = evidence "IAM Auth Logs Snapshot" {
+      description "Automated nightly export of AWS IAM credentials reports."
+      tags ["automated", "audit-ready"]
+    }
+  }
+}
+
+// Define operational risk mappings
+AccessRisk = risk "Unauthorized Environment Access" {
+  description "High risk of production breach via compromised engineer laptop."
+  criticality high
+}
+
+// Setup Traceability Graph
+SOC2.CC6_1.AuditEvidence -> SOC2.CC6_1.MFA "verifies compliance of"
+SOC2.CC6_1.MFA -> AccessRisk "mitigates risk of"

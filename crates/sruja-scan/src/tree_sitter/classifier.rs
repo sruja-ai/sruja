@@ -136,7 +136,7 @@ impl ClassificationEngine {
         let (winner_kind, max_score) = scores
             .into_iter()
             .max_by_key(|&(_, score)| score)
-            .unwrap_or((NodeKind::Module, 0));
+            .unwrap_or((NodeKind::new(NodeKind::MODULE), 0));
 
         // Normalize confidence to 0-100
         let confidence = (max_score.clamp(0, 100) as u8).max(10);
@@ -146,95 +146,138 @@ impl ClassificationEngine {
 
     fn register_default_rules(&mut self) {
         // Deployment Configs
-        self.add_rule("dockerfile", 100, NodeKind::Service, |ctx| {
+        self.add_rule("dockerfile", 100, NodeKind::new(NodeKind::SERVICE), |ctx| {
             ctx.path_str.ends_with("dockerfile")
         });
-        self.add_rule("k8s_manifest", 90, NodeKind::Service, |ctx| {
-            (ctx.path_str.contains("deployment.") || ctx.path_str.contains("docker-compose."))
-                && (ctx.path_str.ends_with(".yaml") || ctx.path_str.ends_with(".yml"))
-        });
+        self.add_rule(
+            "k8s_manifest",
+            90,
+            NodeKind::new(NodeKind::SERVICE),
+            |ctx| {
+                (ctx.path_str.contains("deployment.") || ctx.path_str.contains("docker-compose."))
+                    && (ctx.path_str.ends_with(".yaml") || ctx.path_str.ends_with(".yml"))
+            },
+        );
 
         // Go Main/Service
-        self.add_rule("go_main_server", 85, NodeKind::Service, |ctx| {
-            let has_main_func = ctx
-                .parsed
-                .definitions
-                .iter()
-                .any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
-            ctx.path_str.ends_with(".go")
-                && has_main_func
-                && ["http.", "grpc.", "serve", "listen"]
+        self.add_rule(
+            "go_main_server",
+            85,
+            NodeKind::new(NodeKind::SERVICE),
+            |ctx| {
+                let has_main_func = ctx
+                    .parsed
+                    .definitions
                     .iter()
-                    .any(|s| ctx.content_lower.contains(s))
-        });
+                    .any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
+                ctx.path_str.ends_with(".go")
+                    && has_main_func
+                    && ["http.", "grpc.", "serve", "listen"]
+                        .iter()
+                        .any(|s| ctx.content_lower.contains(s))
+            },
+        );
 
         // Rust Web Service
-        self.add_rule("rust_web_server", 90, NodeKind::Service, |ctx| {
-            let has_main = ctx
-                .parsed
-                .definitions
-                .iter()
-                .any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
-            ctx.path_str.ends_with(".rs")
-                && has_main
-                && [
-                    "axum::",
-                    "actix_web::",
-                    "rocket::",
-                    "warp::",
-                    "tonic::",
-                    "serve(",
-                ]
-                .iter()
-                .any(|s| ctx.content_lower.contains(s))
-        });
+        self.add_rule(
+            "rust_web_server",
+            90,
+            NodeKind::new(NodeKind::SERVICE),
+            |ctx| {
+                let has_main = ctx
+                    .parsed
+                    .definitions
+                    .iter()
+                    .any(|d| d.name == "main" && d.kind == DefinitionKind::Function);
+                ctx.path_str.ends_with(".rs")
+                    && has_main
+                    && [
+                        "axum::",
+                        "actix_web::",
+                        "rocket::",
+                        "warp::",
+                        "tonic::",
+                        "serve(",
+                    ]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
+            },
+        );
 
         // Java Spring
-        self.add_rule("java_spring_boot", 95, NodeKind::Service, |ctx| {
-            let has_class = ctx
-                .parsed
-                .definitions
-                .iter()
-                .any(|d| d.kind == DefinitionKind::Class);
-            ctx.path_str.ends_with(".java")
-                && has_class
-                && ["@springbootapplication", "@restcontroller"]
+        self.add_rule(
+            "java_spring_boot",
+            95,
+            NodeKind::new(NodeKind::SERVICE),
+            |ctx| {
+                let has_class = ctx
+                    .parsed
+                    .definitions
                     .iter()
-                    .any(|s| ctx.content_lower.contains(s))
-        });
+                    .any(|d| d.kind == DefinitionKind::Class);
+                ctx.path_str.ends_with(".java")
+                    && has_class
+                    && ["@springbootapplication", "@restcontroller"]
+                        .iter()
+                        .any(|s| ctx.content_lower.contains(s))
+            },
+        );
 
         // JS/TS Server
-        self.add_rule("js_express_app", 90, NodeKind::Service, |ctx| {
-            (ctx.path_str.ends_with(".js") || ctx.path_str.ends_with(".ts"))
-                && ["express()", "app.listen(", "nestfactory.create"]
-                    .iter()
-                    .any(|s| ctx.content_lower.contains(s))
-        });
+        self.add_rule(
+            "js_express_app",
+            90,
+            NodeKind::new(NodeKind::SERVICE),
+            |ctx| {
+                (ctx.path_str.ends_with(".js") || ctx.path_str.ends_with(".ts"))
+                    && ["express()", "app.listen(", "nestfactory.create"]
+                        .iter()
+                        .any(|s| ctx.content_lower.contains(s))
+            },
+        );
 
         // Python Web
-        self.add_rule("python_web_framework", 90, NodeKind::Service, |ctx| {
-            ctx.path_str.ends_with(".py")
-                && ["flask(", "fastapi(", "django"]
-                    .iter()
-                    .any(|s| ctx.content_lower.contains(s))
-        });
+        self.add_rule(
+            "python_web_framework",
+            90,
+            NodeKind::new(NodeKind::SERVICE),
+            |ctx| {
+                ctx.path_str.ends_with(".py")
+                    && ["flask(", "fastapi(", "django"]
+                        .iter()
+                        .any(|s| ctx.content_lower.contains(s))
+            },
+        );
 
         // Databases & Storage
-        self.add_rule("prisma_schema", 100, NodeKind::Database, |ctx| {
-            ctx.path_str.ends_with(".prisma")
-        });
-        self.add_rule("redis_client", 80, NodeKind::Database, |ctx| {
-            ["redis.createclient", "ioredis", "redis-go", "redis-py"]
-                .iter()
-                .any(|s| ctx.content_lower.contains(s))
-        });
-        self.add_rule("postgres_driver", 70, NodeKind::Database, |ctx| {
-            ["pg.", "postgres.", "sqlx", "gorm"]
-                .iter()
-                .any(|s| ctx.content_lower.contains(s))
-                && ctx.content_lower.contains("connect")
-        });
-        self.add_rule("orm_entity", 70, NodeKind::Database, |ctx| {
+        self.add_rule(
+            "prisma_schema",
+            100,
+            NodeKind::new(NodeKind::DATABASE),
+            |ctx| ctx.path_str.ends_with(".prisma"),
+        );
+        self.add_rule(
+            "redis_client",
+            80,
+            NodeKind::new(NodeKind::DATABASE),
+            |ctx| {
+                ["redis.createclient", "ioredis", "redis-go", "redis-py"]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
+            },
+        );
+        self.add_rule(
+            "postgres_driver",
+            70,
+            NodeKind::new(NodeKind::DATABASE),
+            |ctx| {
+                ["pg.", "postgres.", "sqlx", "gorm"]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
+                    && ctx.content_lower.contains("connect")
+            },
+        );
+        self.add_rule("orm_entity", 70, NodeKind::new(NodeKind::DATABASE), |ctx| {
             [
                 "mongoose.model",
                 "sequelize.define",
@@ -246,32 +289,49 @@ impl ClassificationEngine {
         });
 
         // Queues & Messaging
-        self.add_rule("kafka_client", 90, NodeKind::Queue, |ctx| {
+        self.add_rule("kafka_client", 90, NodeKind::new(NodeKind::QUEUE), |ctx| {
             ["kafkajs", "confluent", "sarama", "aiokafka"]
                 .iter()
                 .any(|s| ctx.content_lower.contains(s))
         });
-        self.add_rule("rabbitmq_client", 90, NodeKind::Queue, |ctx| {
-            ["amqp", "pika", "stomp"]
-                .iter()
-                .any(|s| ctx.content_lower.contains(s))
-        });
+        self.add_rule(
+            "rabbitmq_client",
+            90,
+            NodeKind::new(NodeKind::QUEUE),
+            |ctx| {
+                ["amqp", "pika", "stomp"]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
+            },
+        );
 
         // External APIs & Integrations
-        self.add_rule("stripe_integration", 90, NodeKind::ExternalApi, |ctx| {
-            ctx.content_lower.contains("stripe")
-                && (ctx.content_lower.contains("checkout") || ctx.content_lower.contains("payment"))
-        });
+        self.add_rule(
+            "stripe_integration",
+            90,
+            NodeKind::new(NodeKind::EXTERNAL_API),
+            |ctx| {
+                ctx.content_lower.contains("stripe")
+                    && (ctx.content_lower.contains("checkout")
+                        || ctx.content_lower.contains("payment"))
+            },
+        );
 
         // CLI Exclusion (Negative signals or early exit)
-        self.add_rule("cli_tool_match", -100, NodeKind::Module, |ctx| {
-            ["cobra.", "commander", "yargs", "argparse", "click."]
-                .iter()
-                .any(|s| ctx.content_lower.contains(s))
-                || (ctx.path_str.contains("/cmd/")
-                    && !ctx.path_str.contains("/cmd/server")
-                    && (ctx.content_lower.contains("flag.") || ctx.content_lower.contains("args")))
-        });
+        self.add_rule(
+            "cli_tool_match",
+            -100,
+            NodeKind::new(NodeKind::MODULE),
+            |ctx| {
+                ["cobra.", "commander", "yargs", "argparse", "click."]
+                    .iter()
+                    .any(|s| ctx.content_lower.contains(s))
+                    || (ctx.path_str.contains("/cmd/")
+                        && !ctx.path_str.contains("/cmd/server")
+                        && (ctx.content_lower.contains("flag.")
+                            || ctx.content_lower.contains("args")))
+            },
+        );
     }
 }
 
@@ -313,7 +373,7 @@ mod tests {
         let engine = ClassificationEngine::new();
         let (kind, confidence, signals) = engine.classify(&ctx);
 
-        assert_eq!(kind, NodeKind::Service);
+        assert_eq!(kind, NodeKind::new(NodeKind::SERVICE));
         assert_eq!(confidence, 90);
         assert!(signals.iter().any(|s| s.name == "rust_web_server"));
     }
@@ -332,7 +392,7 @@ mod tests {
         let engine = ClassificationEngine::new();
         let (kind, confidence, signals) = engine.classify(&ctx);
 
-        assert_eq!(kind, NodeKind::Module);
+        assert_eq!(kind, NodeKind::new(NodeKind::MODULE));
         assert_eq!(confidence, 10);
         assert!(signals.iter().any(|s| s.name == "cli_tool_match"));
     }
@@ -344,7 +404,7 @@ mod tests {
             rules: vec![CustomRuleConfig {
                 name: "test_queue_rule".to_string(),
                 weight: 99,
-                kind: NodeKind::Queue,
+                kind: NodeKind::new(NodeKind::QUEUE),
                 match_patterns: MatchPatterns {
                     path_ends_with: Some(".rs".to_string()),
                     path_contains: Some("/consumer/".to_string()),
@@ -361,7 +421,7 @@ mod tests {
 
         let (kind, confidence, signals) = engine.classify(&ctx);
 
-        assert_eq!(kind, NodeKind::Queue);
+        assert_eq!(kind, NodeKind::new(NodeKind::QUEUE));
         assert_eq!(confidence, 100);
         assert!(signals.iter().any(|s| s.name == "test_queue_rule"));
     }

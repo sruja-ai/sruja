@@ -168,17 +168,17 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         total_modules: graph
             .nodes
             .iter()
-            .filter(|n| n.kind == NodeKind::Module)
+            .filter(|n| n.kind == NodeKind::MODULE)
             .count(),
         total_services: graph
             .nodes
             .iter()
-            .filter(|n| n.kind == NodeKind::Service)
+            .filter(|n| n.kind == NodeKind::SERVICE)
             .count(),
         total_databases: graph
             .nodes
             .iter()
-            .filter(|n| n.kind == NodeKind::Database)
+            .filter(|n| n.kind == NodeKind::DATABASE)
             .count(),
         total_dependencies: graph.edges.len(),
         circular_dependencies: circular.len(),
@@ -531,7 +531,7 @@ pub fn find_orphan_modules(graph: &Graph) -> Vec<String> {
     graph
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::Module)
+        .filter(|n| n.kind == NodeKind::MODULE)
         .filter(|n| !n.id.starts_with("module:") && !n.id.contains('#'))
         .filter(|n| !has_incoming.contains(n.id.as_str()) && !has_outgoing.contains(n.id.as_str()))
         .filter(|n| {
@@ -562,7 +562,7 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
         .nodes
         .iter()
         .filter(|n| {
-            n.kind == NodeKind::Database || {
+            n.kind == NodeKind::DATABASE || {
                 let p = n.path.as_deref().unwrap_or("").to_lowercase();
                 let label = n.label.to_lowercase();
                 p.contains("/database/")
@@ -580,7 +580,7 @@ fn find_layer_violations_advanced(graph: &Graph) -> Vec<LayerViolationInfo> {
         .nodes
         .iter()
         .filter(|n| {
-            n.kind == NodeKind::Frontend || {
+            n.kind == NodeKind::FRONTEND || {
                 let p = n.path.as_deref().unwrap_or("").to_lowercase();
                 let label = n.label.to_lowercase();
                 label.contains("frontend")
@@ -659,7 +659,7 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
     graph
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::Module)
+        .filter(|n| n.kind == NodeKind::MODULE)
         .filter(|n| {
             let path = n.path.as_deref().unwrap_or("");
             !is_likely_doc_or_tool_path(path, &n.id) && !is_likely_entry_point(path, &n.id)
@@ -701,7 +701,7 @@ mod tests {
         Edge {
             source: source.to_string(),
             target: target.to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: vec![],
             confidence: Default::default(),
         }
@@ -710,8 +710,10 @@ mod tests {
     #[test]
     fn find_circular_dependencies_detects_simple_cycle() {
         let mut g = Graph::default();
-        g.nodes.push(node("a", NodeKind::Module, None));
-        g.nodes.push(node("b", NodeKind::Module, None));
+        g.nodes
+            .push(node("a", NodeKind::new(NodeKind::MODULE), None));
+        g.nodes
+            .push(node("b", NodeKind::new(NodeKind::MODULE), None));
         g.edges.push(edge("a", "b"));
         g.edges.push(edge("b", "a"));
 
@@ -723,9 +725,12 @@ mod tests {
     #[test]
     fn find_circular_dependencies_canonicalizes_cycle_rotation() {
         let mut g = Graph::default();
-        g.nodes.push(node("b", NodeKind::Module, None));
-        g.nodes.push(node("c", NodeKind::Module, None));
-        g.nodes.push(node("a", NodeKind::Module, None));
+        g.nodes
+            .push(node("b", NodeKind::new(NodeKind::MODULE), None));
+        g.nodes
+            .push(node("c", NodeKind::new(NodeKind::MODULE), None));
+        g.nodes
+            .push(node("a", NodeKind::new(NodeKind::MODULE), None));
         g.edges.push(edge("b", "c"));
         g.edges.push(edge("c", "a"));
         g.edges.push(edge("a", "b"));
@@ -741,8 +746,10 @@ mod tests {
     #[test]
     fn find_circular_dependencies_no_cycle_returns_empty() {
         let mut g = Graph::default();
-        g.nodes.push(node("a", NodeKind::Module, None));
-        g.nodes.push(node("b", NodeKind::Module, None));
+        g.nodes
+            .push(node("a", NodeKind::new(NodeKind::MODULE), None));
+        g.nodes
+            .push(node("b", NodeKind::new(NodeKind::MODULE), None));
         g.edges.push(edge("a", "b"));
 
         let cycles = find_circular_dependencies(&g);
@@ -752,15 +759,20 @@ mod tests {
     #[test]
     fn find_orphan_modules_detects_isolated_node() {
         let mut g = Graph::default();
-        g.nodes.push(node("a", NodeKind::Module, Some("src/a.rs")));
-        g.nodes.push(node("b", NodeKind::Module, Some("src/b.rs")));
+        g.nodes
+            .push(node("a", NodeKind::new(NodeKind::MODULE), Some("src/a.rs")));
+        g.nodes
+            .push(node("b", NodeKind::new(NodeKind::MODULE), Some("src/b.rs")));
         g.edges.push(edge("a", "b"));
 
         let orphans = find_orphan_modules(&g);
         assert!(orphans.is_empty(), "a and b are connected");
 
-        g.nodes
-            .push(node("orphan", NodeKind::Module, Some("src/orphan.rs")));
+        g.nodes.push(node(
+            "orphan",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/orphan.rs"),
+        ));
         let orphans = find_orphan_modules(&g);
         assert_eq!(orphans.len(), 1);
         assert_eq!(orphans[0], "orphan");
@@ -769,12 +781,21 @@ mod tests {
     #[test]
     fn find_layer_violations_advanced_detects_frontend_to_db_access() {
         let mut g = Graph::default();
-        g.nodes
-            .push(node("web_frontend", NodeKind::Module, Some("src/web.rs")));
-        g.nodes
-            .push(node("db", NodeKind::Database, Some("src/db.rs")));
-        g.nodes
-            .push(node("service", NodeKind::Module, Some("src/service.rs")));
+        g.nodes.push(node(
+            "web_frontend",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/web.rs"),
+        ));
+        g.nodes.push(node(
+            "db",
+            NodeKind::new(NodeKind::DATABASE),
+            Some("src/db.rs"),
+        ));
+        g.nodes.push(node(
+            "service",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/service.rs"),
+        ));
         g.edges.push(edge("web_frontend", "db"));
         g.edges.push(edge("service", "db"));
 
@@ -787,17 +808,23 @@ mod tests {
     #[test]
     fn find_god_modules_respects_threshold_and_excludes_doc_paths() {
         let mut g = Graph::default();
-        g.nodes
-            .push(node("god", NodeKind::Module, Some("src/god.rs")));
+        g.nodes.push(node(
+            "god",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/god.rs"),
+        ));
         g.nodes.push(node(
             "docs_mod",
-            NodeKind::Module,
+            NodeKind::new(NodeKind::MODULE),
             Some("src/doc/readme.rs"),
         ));
         for i in 0..3 {
             let dep = format!("dep_{i}");
-            g.nodes
-                .push(node(&dep, NodeKind::Module, Some(&format!("src/{dep}.rs"))));
+            g.nodes.push(node(
+                &dep,
+                NodeKind::new(NodeKind::MODULE),
+                Some(&format!("src/{dep}.rs")),
+            ));
             g.edges.push(edge("god", &dep));
             g.edges.push(edge("docs_mod", &dep));
         }
@@ -811,17 +838,26 @@ mod tests {
     #[test]
     fn detect_architectural_drift_includes_source_refs_for_layer_and_god_module_violations() {
         let mut g = Graph::default();
-        g.nodes
-            .push(node("web", NodeKind::Module, Some("src/web.rs")));
-        g.nodes
-            .push(node("db", NodeKind::Database, Some("src/db.rs")));
-        g.nodes
-            .push(node("god", NodeKind::Module, Some("src/god.rs")));
+        g.nodes.push(node(
+            "web",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/web.rs"),
+        ));
+        g.nodes.push(node(
+            "db",
+            NodeKind::new(NodeKind::DATABASE),
+            Some("src/db.rs"),
+        ));
+        g.nodes.push(node(
+            "god",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/god.rs"),
+        ));
 
         g.edges.push(Edge {
             source: "web".to_string(),
             target: "db".to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: vec![EdgeEvidence {
                 rule: "scan".to_string(),
                 file: Some("src/web.rs".to_string()),
@@ -833,8 +869,11 @@ mod tests {
 
         for i in 0..2 {
             let dep = format!("dep_{i}");
-            g.nodes
-                .push(node(&dep, NodeKind::Module, Some(&format!("src/{dep}.rs"))));
+            g.nodes.push(node(
+                &dep,
+                NodeKind::new(NodeKind::MODULE),
+                Some(&format!("src/{dep}.rs")),
+            ));
             g.edges.push(edge("god", &dep));
         }
 
@@ -872,15 +911,21 @@ mod tests {
     #[test]
     fn detect_architectural_drift_ignores_non_production_violations_for_health() {
         let mut g = Graph::default();
-        g.nodes
-            .push(node("web", NodeKind::Module, Some("src/test/web.rs")));
-        g.nodes
-            .push(node("db", NodeKind::Database, Some("src/db.rs")));
+        g.nodes.push(node(
+            "web",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/test/web.rs"),
+        ));
+        g.nodes.push(node(
+            "db",
+            NodeKind::new(NodeKind::DATABASE),
+            Some("src/db.rs"),
+        ));
 
         g.edges.push(Edge {
             source: "web".to_string(),
             target: "db".to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: vec![EdgeEvidence {
                 rule: "scan".to_string(),
                 file: Some("src/test/web.rs".to_string()),

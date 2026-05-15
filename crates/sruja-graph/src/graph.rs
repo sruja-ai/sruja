@@ -93,21 +93,29 @@ impl KnowledgeGraph {
     pub fn merge_node(&mut self, mut node: ArchitectureNode) {
         if let Some(existing) = self.nodes.get(&node.id) {
             // Merge tribal knowledge if not already present
-            for g in &existing.gotchas {
-                if !node.gotchas.contains(g) {
-                    node.gotchas.push(g.clone());
+            let mut node_gotchas = node.gotchas();
+            for g in existing.gotchas() {
+                if !node_gotchas.contains(&g) {
+                    node_gotchas.push(g);
                 }
             }
-            for c in &existing.operational_constraints {
-                if !node.operational_constraints.contains(c) {
-                    node.operational_constraints.push(c.clone());
+            node.set_gotchas(node_gotchas);
+
+            let mut node_constraints = node.operational_constraints();
+            for c in existing.operational_constraints() {
+                if !node_constraints.contains(&c) {
+                    node_constraints.push(c);
                 }
             }
-            for r in &existing.runbooks {
-                if !node.runbooks.contains(r) {
-                    node.runbooks.push(r.clone());
+            node.set_operational_constraints(node_constraints);
+
+            let mut node_runbooks = node.runbooks();
+            for r in existing.runbooks() {
+                if !node_runbooks.contains(&r) {
+                    node_runbooks.push(r);
                 }
             }
+            node.set_runbooks(node_runbooks);
         }
         self.nodes.insert(node.id.clone(), node);
         self.touch();
@@ -243,8 +251,7 @@ impl KnowledgeGraph {
         self.nodes
             .values()
             .filter(|n| {
-                n.technology
-                    .as_deref()
+                n.technology()
                     .map(|t| t.to_lowercase() == tech.to_lowercase())
                     .unwrap_or(false)
             })
@@ -298,7 +305,7 @@ mod tests {
     fn test_node(id: &str) -> ArchitectureNode {
         ArchitectureNode {
             id: id.to_string(),
-            kind: NodeKind::Service,
+            kind: NodeKind::new(NodeKind::SERVICE),
             label: id.to_string(),
             ..ArchitectureNode::default()
         }
@@ -330,7 +337,7 @@ mod tests {
             id: "edge1".to_string(),
             source: "api".to_string(),
             target: "db".to_string(),
-            kind: EdgeKind::DependsOn,
+            kind: EdgeKind::new(EdgeKind::DEPENDS_ON),
             label: None,
             description: None,
             source_ref: SourceReference::manual(),
@@ -349,7 +356,7 @@ mod tests {
             id: "edge1".to_string(),
             source: "api".to_string(),
             target: "nonexistent".to_string(),
-            kind: EdgeKind::DependsOn,
+            kind: EdgeKind::new(EdgeKind::DEPENDS_ON),
             label: None,
             description: None,
             source_ref: SourceReference::manual(),
@@ -377,7 +384,12 @@ mod tests {
         graph.add_node(test_node("api")).unwrap();
         graph.add_node(test_node("db")).unwrap();
         graph
-            .add_edge(test_edge("e1", "api", "db", EdgeKind::DependsOn))
+            .add_edge(test_edge(
+                "e1",
+                "api",
+                "db",
+                EdgeKind::new(EdgeKind::DEPENDS_ON),
+            ))
             .unwrap();
 
         let removed = graph.remove_node("api").unwrap();
@@ -412,7 +424,12 @@ mod tests {
     fn test_merge_edge_skips_if_nodes_missing() {
         let mut graph = KnowledgeGraph::new();
         graph.add_node(test_node("api")).unwrap();
-        graph.merge_edge(test_edge("e1", "api", "nonexistent", EdgeKind::Calls));
+        graph.merge_edge(test_edge(
+            "e1",
+            "api",
+            "nonexistent",
+            EdgeKind::new(EdgeKind::CALLS),
+        ));
         assert!(graph.edges.is_empty());
     }
 
@@ -421,7 +438,12 @@ mod tests {
         let mut graph = KnowledgeGraph::new();
         graph.add_node(test_node("api")).unwrap();
         graph.add_node(test_node("db")).unwrap();
-        graph.merge_edge(test_edge("e1", "api", "db", EdgeKind::ReadsFrom));
+        graph.merge_edge(test_edge(
+            "e1",
+            "api",
+            "db",
+            EdgeKind::new(EdgeKind::READS_FROM),
+        ));
         assert_eq!(graph.edges.len(), 1);
     }
 
@@ -431,7 +453,7 @@ mod tests {
         graph.add_node(test_node("a")).unwrap();
         graph.add_node(test_node("b")).unwrap();
         graph
-            .add_edge(test_edge("e1", "a", "b", EdgeKind::Calls))
+            .add_edge(test_edge("e1", "a", "b", EdgeKind::new(EdgeKind::CALLS)))
             .unwrap();
 
         let stats = graph.stats();
@@ -450,11 +472,11 @@ mod tests {
         let mut graph = KnowledgeGraph::new();
         graph.add_node(test_node("api")).unwrap();
         let mut db_node = test_node("db");
-        db_node.kind = NodeKind::Database;
+        db_node.kind = NodeKind::new(NodeKind::DATABASE);
         graph.add_node(db_node).unwrap();
 
-        let services = graph.find_nodes_by_kind(NodeKind::Service);
-        let dbs = graph.find_nodes_by_kind(NodeKind::Database);
+        let services = graph.find_nodes_by_kind(NodeKind::new(NodeKind::SERVICE));
+        let dbs = graph.find_nodes_by_kind(NodeKind::new(NodeKind::DATABASE));
         assert_eq!(services.len(), 1);
         assert_eq!(services[0].id, "api");
         assert_eq!(dbs.len(), 1);
@@ -468,10 +490,10 @@ mod tests {
         graph.add_node(test_node("b")).unwrap();
         graph.add_node(test_node("c")).unwrap();
         graph
-            .add_edge(test_edge("e1", "a", "b", EdgeKind::Calls))
+            .add_edge(test_edge("e1", "a", "b", EdgeKind::new(EdgeKind::CALLS)))
             .unwrap();
         graph
-            .add_edge(test_edge("e2", "a", "c", EdgeKind::Calls))
+            .add_edge(test_edge("e2", "a", "c", EdgeKind::new(EdgeKind::CALLS)))
             .unwrap();
 
         let from_a = graph.get_edges_from("a");
@@ -630,9 +652,9 @@ mod tests {
     fn test_find_nodes_by_technology() {
         let mut graph = KnowledgeGraph::new();
         let mut node1 = test_node("api");
-        node1.technology = Some("Rust".to_string());
+        node1.set_technology(Some("Rust".to_string()));
         let mut node2 = test_node("web");
-        node2.technology = Some("TypeScript".to_string());
+        node2.set_technology(Some("TypeScript".to_string()));
 
         graph.add_node(node1).unwrap();
         graph.add_node(node2).unwrap();
@@ -646,7 +668,7 @@ mod tests {
     fn test_find_nodes_by_technology_case_insensitive() {
         let mut graph = KnowledgeGraph::new();
         let mut node = test_node("api");
-        node.technology = Some("Rust".to_string());
+        node.set_technology(Some("Rust".to_string()));
         graph.add_node(node).unwrap();
 
         let rust_nodes = graph.find_nodes_by_technology("RUST");
@@ -659,7 +681,7 @@ mod tests {
         graph.add_node(test_node("a")).unwrap();
         graph.add_node(test_node("b")).unwrap();
         graph
-            .add_edge(test_edge("e1", "a", "b", EdgeKind::Calls))
+            .add_edge(test_edge("e1", "a", "b", EdgeKind::new(EdgeKind::CALLS)))
             .unwrap();
 
         let removed = graph.remove_edge("e1");
@@ -762,8 +784,8 @@ mod tests {
         let mut graph = KnowledgeGraph::new();
         graph.add_node(test_node("a")).unwrap();
         graph.add_node(test_node("b")).unwrap();
-        graph.merge_edge(test_edge("e1", "a", "b", EdgeKind::Calls));
-        graph.merge_edge(test_edge("e2", "a", "b", EdgeKind::Calls));
+        graph.merge_edge(test_edge("e1", "a", "b", EdgeKind::new(EdgeKind::CALLS)));
+        graph.merge_edge(test_edge("e2", "a", "b", EdgeKind::new(EdgeKind::CALLS)));
         assert_eq!(graph.edges.len(), 1);
     }
 
@@ -772,8 +794,13 @@ mod tests {
         let mut graph = KnowledgeGraph::new();
         graph.add_node(test_node("a")).unwrap();
         graph.add_node(test_node("b")).unwrap();
-        graph.merge_edge(test_edge("e1", "a", "b", EdgeKind::Calls));
-        graph.merge_edge(test_edge("e2", "a", "b", EdgeKind::DependsOn));
+        graph.merge_edge(test_edge("e1", "a", "b", EdgeKind::new(EdgeKind::CALLS)));
+        graph.merge_edge(test_edge(
+            "e2",
+            "a",
+            "b",
+            EdgeKind::new(EdgeKind::DEPENDS_ON),
+        ));
         assert_eq!(graph.edges.len(), 2);
     }
 

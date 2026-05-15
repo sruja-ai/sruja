@@ -30,30 +30,31 @@ impl DomainSchema {
 
     /// Create a domain schema from an AST SchemaBlock.
     pub fn from_ast(schema: &SchemaBlock) -> Self {
-        let mut node_kinds = HashSet::new();
+        let mut base = match schema.name.as_str() {
+            "architecture" => Self::architecture(),
+            "compliance" => Self::compliance(),
+            "business_process" | "business-process" => Self::business_process(),
+            "knowledge" => Self::knowledge(),
+            _ => Self::new(&schema.name),
+        };
+
+        // Merge any explicitly provided definitions from the schema block
         for kind in &schema.node_kinds {
-            node_kinds.insert(kind.clone());
+            base.node_kinds.insert(kind.clone());
         }
 
-        let mut edge_kinds = HashSet::new();
         for kind in &schema.edge_kinds {
-            edge_kinds.insert(kind.clone());
+            base.edge_kinds.insert(kind.clone());
         }
 
-        let mut nesting_rules: HashMap<String, HashSet<String>> = HashMap::new();
         for rule in &schema.nesting {
-            nesting_rules
+            base.nesting_rules
                 .entry(rule.parent.clone())
                 .or_default()
                 .insert(rule.child.clone());
         }
 
-        Self {
-            name: schema.name.clone(),
-            node_kinds,
-            edge_kinds,
-            nesting_rules,
-        }
+        base
     }
 
     /// Returns the default architecture schema (C4-inspired).
@@ -107,6 +108,107 @@ impl DomainSchema {
         );
 
         schema.nesting_rules = nesting;
+        schema
+    }
+
+    /// Returns a built-in schema pack for regulatory compliance.
+    pub fn compliance() -> Self {
+        let mut schema = Self::new("compliance");
+        schema.node_kinds = [
+            "domain",
+            "regulation",
+            "control",
+            "evidence",
+            "risk",
+            "asset",
+            "audit",
+            "owner",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+        schema.edge_kinds = [
+            "mandates",
+            "mitigates",
+            "audits",
+            "owns",
+            "applies_to",
+            "violates",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+        let mut nesting = HashMap::new();
+        nesting.insert(
+            "domain".to_string(),
+            ["regulation".to_string()].iter().cloned().collect(),
+        );
+        nesting.insert(
+            "regulation".to_string(),
+            ["control".to_string(), "evidence".to_string()]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        schema.nesting_rules = nesting;
+        schema
+    }
+
+    /// Returns a built-in schema pack for business process modeling.
+    pub fn business_process() -> Self {
+        let mut schema = Self::new("business_process");
+        schema.node_kinds = [
+            "process", "activity", "decision", "actor", "system", "artifact",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+        schema.edge_kinds = [
+            "triggers",
+            "performs",
+            "decides",
+            "escalates_to",
+            "uses",
+            "produces",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+        let mut nesting = HashMap::new();
+        nesting.insert(
+            "process".to_string(),
+            ["activity".to_string(), "decision".to_string()]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        schema.nesting_rules = nesting;
+        schema
+    }
+
+    /// Returns a built-in schema pack for knowledge intelligence mapping.
+    pub fn knowledge() -> Self {
+        let mut schema = Self::new("knowledge");
+        schema.node_kinds = ["concept", "citation", "claim", "evidence", "source"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        schema.edge_kinds = [
+            "cites",
+            "supports",
+            "contradicts",
+            "derived_from",
+            "relates_to",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
         schema
     }
 

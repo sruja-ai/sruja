@@ -40,20 +40,20 @@ Security = policy "No external API to database" {
         let mut scan_graph = sruja_scan::Graph::new();
         scan_graph.nodes.push(sruja_scan::Node {
             id: "ext".to_string(),
-            kind: sruja_scan::NodeKind::ExternalApi,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::EXTERNAL_API),
             label: "External API".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.nodes.push(sruja_scan::Node {
             id: "db".to_string(),
-            kind: sruja_scan::NodeKind::Database,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::DATABASE),
             label: "DB".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "ext".to_string(),
             target: "db".to_string(),
-            kind: sruja_scan::EdgeKind::Calls,
+            kind: sruja_scan::EdgeKind::new(sruja_scan::EdgeKind::CALLS),
             evidence: vec![],
             confidence: Default::default(),
         });
@@ -80,20 +80,20 @@ Security = policy "No external API to database" {
         let mut scan_graph = sruja_scan::Graph::new();
         scan_graph.nodes.push(sruja_scan::Node {
             id: "ext".to_string(),
-            kind: sruja_scan::NodeKind::ExternalApi,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::EXTERNAL_API),
             label: "External API".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.nodes.push(sruja_scan::Node {
             id: "db".to_string(),
-            kind: sruja_scan::NodeKind::Database,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::DATABASE),
             label: "DB".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "ext".to_string(),
             target: "db".to_string(),
-            kind: sruja_scan::EdgeKind::Calls,
+            kind: sruja_scan::EdgeKind::new(sruja_scan::EdgeKind::CALLS),
             evidence: vec![],
             confidence: Default::default(),
         });
@@ -120,20 +120,20 @@ Security = policy "No external API to database" {
         let mut scan_graph = sruja_scan::Graph::new();
         scan_graph.nodes.push(sruja_scan::Node {
             id: "ext2".to_string(),
-            kind: sruja_scan::NodeKind::ExternalApi,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::EXTERNAL_API),
             label: "External API 2".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.nodes.push(sruja_scan::Node {
             id: "db".to_string(),
-            kind: sruja_scan::NodeKind::Database,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::DATABASE),
             label: "DB".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "ext2".to_string(),
             target: "db".to_string(),
-            kind: sruja_scan::EdgeKind::Calls,
+            kind: sruja_scan::EdgeKind::new(sruja_scan::EdgeKind::CALLS),
             evidence: vec![],
             confidence: Default::default(),
         });
@@ -162,20 +162,20 @@ Security = policy "Restrict Auth.Service" {
         let mut scan_graph = sruja_scan::Graph::new();
         scan_graph.nodes.push(sruja_scan::Node {
             id: "auth-service".to_string(),
-            kind: sruja_scan::NodeKind::Component,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::COMPONENT),
             label: "Auth.Service".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.nodes.push(sruja_scan::Node {
             id: "legacy-auth".to_string(),
-            kind: sruja_scan::NodeKind::Component,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::COMPONENT),
             label: "Legacy Auth".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "auth-service".to_string(),
             target: "legacy-auth".to_string(),
-            kind: sruja_scan::EdgeKind::Calls,
+            kind: sruja_scan::EdgeKind::new(sruja_scan::EdgeKind::CALLS),
             evidence: vec![],
             confidence: Default::default(),
         });
@@ -202,20 +202,20 @@ Security = policy "Multi-rule security" {
         let mut scan_graph = sruja_scan::Graph::new();
         scan_graph.nodes.push(sruja_scan::Node {
             id: "ext".to_string(),
-            kind: sruja_scan::NodeKind::ExternalApi,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::EXTERNAL_API),
             label: "External API".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.nodes.push(sruja_scan::Node {
             id: "q".to_string(),
-            kind: sruja_scan::NodeKind::Queue,
+            kind: sruja_scan::NodeKind::new(sruja_scan::NodeKind::QUEUE),
             label: "Queue".to_string(),
             ..sruja_scan::Node::default()
         });
         scan_graph.edges.push(sruja_scan::Edge {
             source: "ext".to_string(),
             target: "q".to_string(),
-            kind: sruja_scan::EdgeKind::PublishesTo,
+            kind: sruja_scan::EdgeKind::new(sruja_scan::EdgeKind::PUBLISHES_TO),
             evidence: vec![],
             confidence: Default::default(),
         });

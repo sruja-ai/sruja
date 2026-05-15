@@ -10,7 +10,7 @@ fn mk_graph_with_behavioral_contracts(node_path: Option<&str>) -> Graph {
     let mut graph = Graph::default();
     graph.nodes.push(Node {
         id: "Svc".to_string(),
-        kind: NodeKind::Component,
+        kind: NodeKind::new(NodeKind::COMPONENT),
         label: "Service".to_string(),
         path: node_path.map(|p| p.to_string()),
         state_machines: vec![ResolvedStateMachine {

@@ -42,7 +42,7 @@ export function c() { return a(); }
         let imports: Vec<_> = graph
             .edges
             .iter()
-            .filter(|e| e.kind == sruja_scan::EdgeKind::Calls)
+            .filter(|e| e.kind.as_str() == sruja_scan::EdgeKind::CALLS)
             .collect();
 
         assert!(!imports.is_empty(), "Should detect import edges");
@@ -430,10 +430,7 @@ mod empty_repo {
             2,
             "README.md and data.txt should be parsed as Doc nodes"
         );
-        assert!(graph
-            .nodes
-            .iter()
-            .all(|n| matches!(n.kind, sruja_scan::NodeKind::Custom(ref s) if s == "Doc")));
+        assert!(graph.nodes.iter().all(|n| n.kind.as_str() == "Doc"));
     }
 }
 

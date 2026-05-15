@@ -74,7 +74,7 @@ pub fn enrich_with_scip(repo_root: &Path) -> Result<Graph, Box<dyn Error>> {
                     edges.push(Edge {
                         source: file_id.clone(),
                         target: target_id,
-                        kind: EdgeKind::Calls,
+                        kind: EdgeKind::new(EdgeKind::CALLS),
                         evidence: vec![EdgeEvidence {
                             rule: "scip_reference".to_string(),
                             file: Some(doc.relative_path.clone()),

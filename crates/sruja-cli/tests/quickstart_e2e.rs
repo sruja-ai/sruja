@@ -141,7 +141,7 @@ export function c() { return a(); }
         let has_imports = graph
             .edges
             .iter()
-            .any(|e| e.kind == sruja_scan::EdgeKind::Calls);
+            .any(|e| e.kind.as_str() == sruja_scan::EdgeKind::CALLS);
 
         assert!(has_imports, "Should detect circular imports");
     }

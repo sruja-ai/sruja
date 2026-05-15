@@ -499,7 +499,7 @@ pub fn detect_architecture_style(graph: &Graph) -> (bool, bool) {
     let service_count = graph
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::Service)
+        .filter(|n| n.kind == NodeKind::SERVICE)
         .count();
 
     let is_monolith = service_count <= 1;

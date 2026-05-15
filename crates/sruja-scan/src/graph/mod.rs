@@ -65,7 +65,7 @@ impl Default for Node {
     fn default() -> Self {
         Self {
             id: String::new(),
-            kind: NodeKind::Module,
+            kind: NodeKind::new(NodeKind::MODULE),
             label: String::new(),
             technology: None,
             path: None,
@@ -243,17 +243,17 @@ impl Graph {
 
     pub fn canonicalize(&mut self) {
         fn node_kind_rank(kind: &NodeKind) -> u8 {
-            match kind {
-                NodeKind::System => 100,
-                NodeKind::Service => 90,
-                NodeKind::Container => 80,
-                NodeKind::Component => 70,
-                NodeKind::Frontend => 60,
-                NodeKind::ExternalApi => 50,
-                NodeKind::Database => 40,
-                NodeKind::Queue => 30,
-                NodeKind::Module => 10,
-                NodeKind::Custom(_) => 10,
+            match kind.as_str() {
+                NodeKind::SYSTEM => 100,
+                NodeKind::SERVICE => 90,
+                NodeKind::CONTAINER => 80,
+                NodeKind::COMPONENT => 70,
+                NodeKind::FRONTEND => 60,
+                NodeKind::EXTERNAL_API => 50,
+                NodeKind::DATABASE => 40,
+                NodeKind::QUEUE => 30,
+                NodeKind::MODULE => 10,
+                _ => 10,
             }
         }
 
@@ -542,7 +542,7 @@ mod tests {
         Edge {
             source: source.to_string(),
             target: target.to_string(),
-            kind: EdgeKind::Calls,
+            kind: EdgeKind::new(EdgeKind::CALLS),
             evidence: Vec::new(),
             confidence: Default::default(),
         }
@@ -568,7 +568,7 @@ mod tests {
                 Edge {
                     source: "a".into(),
                     target: "b".into(),
-                    kind: EdgeKind::Calls,
+                    kind: EdgeKind::new(EdgeKind::CALLS),
                     evidence: vec![EdgeEvidence {
                         rule: "r2".into(),
                         file: None,
@@ -580,7 +580,7 @@ mod tests {
                 Edge {
                     source: "a".into(),
                     target: "b".into(),
-                    kind: EdgeKind::Calls,
+                    kind: EdgeKind::new(EdgeKind::CALLS),
                     evidence: vec![
                         EdgeEvidence {
                             rule: "r1".into(),

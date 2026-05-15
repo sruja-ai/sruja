@@ -20,7 +20,8 @@ fn format_decision_evidence(d: &Decision) -> String {
 /// Deterministic evidence excerpt for a node (component).
 fn format_node_evidence(node: &ArchitectureNode, tech: Option<&str>) -> String {
     let kind = format!("{}", node.kind);
-    let tech_str = tech.or(node.technology.as_deref()).unwrap_or("(not set)");
+    let binding = node.technology();
+    let tech_str = tech.or(binding).unwrap_or("(not set)");
     format!(
         "Component '{}' (kind={}, technology={})",
         node.label, kind, tech_str
@@ -570,7 +571,7 @@ impl KnowledgeGraph {
             "'{}' (kind={}, technology={})",
             node.label,
             node.kind,
-            node.technology.as_deref().unwrap_or("not set")
+            node.technology().unwrap_or("not set")
         ));
 
         if !upstream.is_empty() {
@@ -693,7 +694,7 @@ impl KnowledgeGraph {
             "'{}' is a {} (technology: {})",
             node.label,
             node.kind,
-            node.technology.as_deref().unwrap_or("not set")
+            node.technology().unwrap_or("not set")
         );
 
         if let Some(desc) = &node.description {
@@ -790,7 +791,7 @@ impl KnowledgeGraph {
         let upstream_count = self.edges.iter().filter(|e| e.target == node_id).count();
 
         let mut answer = format!("'{}' is a {}", node.label, node.kind);
-        if let Some(tech) = &node.technology {
+        if let Some(tech) = node.technology() {
             answer = format!("{} using {}", answer, tech);
         }
         answer = format!(
@@ -817,12 +818,12 @@ impl KnowledgeGraph {
 
     fn query_what(&self, question: &str) -> Result<QueryResult, QueryError> {
         let kind_patterns = [
-            ("service", NodeKind::Service),
-            ("database", NodeKind::Database),
-            ("queue", NodeKind::Queue),
-            ("frontend", NodeKind::Frontend),
-            ("api", NodeKind::ExternalApi),
-            ("system", NodeKind::System),
+            ("service", NodeKind::new(NodeKind::SERVICE)),
+            ("database", NodeKind::new(NodeKind::DATABASE)),
+            ("queue", NodeKind::new(NodeKind::QUEUE)),
+            ("frontend", NodeKind::new(NodeKind::FRONTEND)),
+            ("api", NodeKind::new(NodeKind::EXTERNAL_API)),
+            ("system", NodeKind::new(NodeKind::SYSTEM)),
         ];
 
         let question_lower = question.to_lowercase();
@@ -1054,27 +1055,43 @@ pub struct PolicyViolation {
 mod tests {
     use super::*;
 
+    fn make_test_node(
+        id: &str,
+        kind: NodeKind,
+        label: &str,
+        tech: Option<&str>,
+    ) -> ArchitectureNode {
+        let mut node = ArchitectureNode {
+            id: id.to_string(),
+            kind,
+            label: label.to_string(),
+            ..ArchitectureNode::default()
+        };
+        if let Some(t) = tech {
+            node.set_technology(Some(t.to_string()));
+        }
+        node
+    }
+
     fn create_test_graph() -> KnowledgeGraph {
         let mut graph = KnowledgeGraph::new();
 
         graph
-            .add_node(ArchitectureNode {
-                id: "api".to_string(),
-                kind: NodeKind::Service,
-                label: "API Service".to_string(),
-                technology: Some("Node.js".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "api",
+                NodeKind::new(NodeKind::SERVICE),
+                "API Service",
+                Some("Node.js"),
+            ))
             .unwrap();
 
         graph
-            .add_node(ArchitectureNode {
-                id: "db".to_string(),
-                kind: NodeKind::Database,
-                label: "PostgreSQL".to_string(),
-                technology: Some("PostgreSQL".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "db",
+                NodeKind::new(NodeKind::DATABASE),
+                "PostgreSQL",
+                Some("PostgreSQL"),
+            ))
             .unwrap();
 
         graph
@@ -1131,7 +1148,7 @@ mod tests {
                 id: "api-to-db".to_string(),
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("SQL".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1202,13 +1219,12 @@ mod tests {
 
     #[test]
     fn test_format_node_evidence() {
-        let node = ArchitectureNode {
-            id: "svc".to_string(),
-            kind: NodeKind::Service,
-            label: "My Service".to_string(),
-            technology: Some("Rust".to_string()),
-            ..ArchitectureNode::default()
-        };
+        let node = make_test_node(
+            "svc",
+            NodeKind::new(NodeKind::SERVICE),
+            "My Service",
+            Some("Rust"),
+        );
         let evidence = format_node_evidence(&node, None);
         assert!(evidence.contains("My Service"));
         assert!(evidence.contains("Rust"));
@@ -1216,19 +1232,24 @@ mod tests {
 
     #[test]
     fn test_format_node_evidence_no_tech() {
-        let node = ArchitectureNode {
-            id: "svc".to_string(),
-            kind: NodeKind::Service,
-            label: "No Tech Service".to_string(),
-            ..ArchitectureNode::default()
-        };
+        let node = make_test_node(
+            "svc",
+            NodeKind::new(NodeKind::SERVICE),
+            "No Tech Service",
+            None,
+        );
         let evidence = format_node_evidence(&node, None);
         assert!(evidence.contains("(not set)"));
     }
 
     #[test]
     fn test_format_edge_evidence_with_label() {
-        let evidence = format_edge_evidence("Source", &EdgeKind::Calls, "Target", Some("HTTP"));
+        let evidence = format_edge_evidence(
+            "Source",
+            &EdgeKind::new(EdgeKind::CALLS),
+            "Target",
+            Some("HTTP"),
+        );
         assert!(evidence.contains("Source"));
         assert!(evidence.contains("Target"));
         assert!(evidence.contains("HTTP"));
@@ -1236,7 +1257,7 @@ mod tests {
 
     #[test]
     fn test_format_edge_evidence_without_label() {
-        let evidence = format_edge_evidence("A", &EdgeKind::ReadsFrom, "B", None);
+        let evidence = format_edge_evidence("A", &EdgeKind::new(EdgeKind::READS_FROM), "B", None);
         assert!(evidence.contains("A"));
         assert!(evidence.contains("B"));
     }
@@ -1296,7 +1317,7 @@ mod tests {
                 id: "api_to_db".to_string(),
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("SQL".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1327,7 +1348,7 @@ mod tests {
                 id: "api_to_db".to_string(),
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("SQL".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1355,7 +1376,7 @@ mod tests {
                 id: "api_to_db".to_string(),
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("SQL".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1376,38 +1397,35 @@ mod tests {
     fn test_query_why_llmguided_multi_hop() {
         let mut graph = KnowledgeGraph::new();
         graph
-            .add_node(ArchitectureNode {
-                id: "frontend".to_string(),
-                kind: NodeKind::Frontend,
-                label: "Web Frontend".to_string(),
-                technology: Some("React".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "frontend",
+                NodeKind::new(NodeKind::FRONTEND),
+                "Web Frontend",
+                Some("React"),
+            ))
             .unwrap();
         graph
-            .add_node(ArchitectureNode {
-                id: "api".to_string(),
-                kind: NodeKind::Service,
-                label: "API Service".to_string(),
-                technology: Some("Node.js".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "api",
+                NodeKind::new(NodeKind::SERVICE),
+                "API Service",
+                Some("Node.js"),
+            ))
             .unwrap();
         graph
-            .add_node(ArchitectureNode {
-                id: "db".to_string(),
-                kind: NodeKind::Database,
-                label: "PostgreSQL".to_string(),
-                technology: Some("PostgreSQL".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "db",
+                NodeKind::new(NodeKind::DATABASE),
+                "PostgreSQL",
+                Some("PostgreSQL"),
+            ))
             .unwrap();
         graph
             .add_edge(ArchitectureEdge {
                 id: "fe_to_api".to_string(),
                 source: "frontend".to_string(),
                 target: "api".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("HTTPS".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1418,7 +1436,7 @@ mod tests {
                 id: "api_to_db".to_string(),
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("SQL".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1436,38 +1454,35 @@ mod tests {
     fn test_query_why_llmguided_branching_paths() {
         let mut graph = KnowledgeGraph::new();
         graph
-            .add_node(ArchitectureNode {
-                id: "api".to_string(),
-                kind: NodeKind::Service,
-                label: "API Service".to_string(),
-                technology: Some("Node.js".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "api",
+                NodeKind::new(NodeKind::SERVICE),
+                "API Service",
+                Some("Node.js"),
+            ))
             .unwrap();
         graph
-            .add_node(ArchitectureNode {
-                id: "db".to_string(),
-                kind: NodeKind::Database,
-                label: "PostgreSQL".to_string(),
-                technology: Some("PostgreSQL".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "db",
+                NodeKind::new(NodeKind::DATABASE),
+                "PostgreSQL",
+                Some("PostgreSQL"),
+            ))
             .unwrap();
         graph
-            .add_node(ArchitectureNode {
-                id: "cache".to_string(),
-                kind: NodeKind::Database,
-                label: "Redis Cache".to_string(),
-                technology: Some("Redis".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "cache",
+                NodeKind::new(NodeKind::DATABASE),
+                "Redis Cache",
+                Some("Redis"),
+            ))
             .unwrap();
         graph
             .add_edge(ArchitectureEdge {
                 id: "api_to_db".to_string(),
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("SQL".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1478,7 +1493,7 @@ mod tests {
                 id: "api_to_cache".to_string(),
                 source: "api".to_string(),
                 target: "cache".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("GET/SET".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1512,38 +1527,35 @@ mod tests {
     fn test_query_why_llmguided_upstream_and_downstream() {
         let mut graph = KnowledgeGraph::new();
         graph
-            .add_node(ArchitectureNode {
-                id: "upstream_svc".to_string(),
-                kind: NodeKind::Service,
-                label: "Auth Service".to_string(),
-                technology: Some("Go".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "upstream_svc",
+                NodeKind::new(NodeKind::SERVICE),
+                "Auth Service",
+                Some("Go"),
+            ))
             .unwrap();
         graph
-            .add_node(ArchitectureNode {
-                id: "api".to_string(),
-                kind: NodeKind::Service,
-                label: "API Service".to_string(),
-                technology: Some("Node.js".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "api",
+                NodeKind::new(NodeKind::SERVICE),
+                "API Service",
+                Some("Node.js"),
+            ))
             .unwrap();
         graph
-            .add_node(ArchitectureNode {
-                id: "db".to_string(),
-                kind: NodeKind::Database,
-                label: "PostgreSQL".to_string(),
-                technology: Some("PostgreSQL".to_string()),
-                ..ArchitectureNode::default()
-            })
+            .add_node(make_test_node(
+                "db",
+                NodeKind::new(NodeKind::DATABASE),
+                "PostgreSQL",
+                Some("PostgreSQL"),
+            ))
             .unwrap();
         graph
             .add_edge(ArchitectureEdge {
                 id: "auth_to_api".to_string(),
                 source: "upstream_svc".to_string(),
                 target: "api".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("gRPC".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),
@@ -1554,7 +1566,7 @@ mod tests {
                 id: "api_to_db".to_string(),
                 source: "api".to_string(),
                 target: "db".to_string(),
-                kind: EdgeKind::Calls,
+                kind: EdgeKind::new(EdgeKind::CALLS),
                 label: Some("SQL".to_string()),
                 description: None,
                 source_ref: SourceReference::manual(),

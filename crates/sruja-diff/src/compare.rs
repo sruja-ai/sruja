@@ -277,7 +277,7 @@ fn detect_violations(
         let target = proposed.nodes.iter().find(|n| n.id == edge.target);
 
         if let (Some(src), Some(tgt)) = (source, target) {
-            if src.kind == NodeKind::Module && tgt.kind == NodeKind::Database {
+            if src.kind == NodeKind::MODULE && tgt.kind == NodeKind::DATABASE {
                 let sources = collect_edge_sources(actual, &edge.source, &edge.target);
                 violations.push(Violation {
                     kind: ViolationKind::LayerViolation,
@@ -332,7 +332,7 @@ fn detect_violations(
     }
 
     for node in &node_diff.added {
-        if node.kind == NodeKind::Service && node.technology.is_none() {
+        if node.kind == NodeKind::SERVICE && node.technology.is_none() {
             let sources = collect_node_path_source(actual, &node.id);
             violations.push(Violation {
                 kind: ViolationKind::UndocumentedComponent,
@@ -369,7 +369,7 @@ fn generate_suggestions(
         let db_added: Vec<_> = node_diff
             .added
             .iter()
-            .filter(|n| n.kind == NodeKind::Database)
+            .filter(|n| n.kind == NodeKind::DATABASE)
             .collect();
         if !db_added.is_empty() {
             suggestions.push(format!(
@@ -393,7 +393,7 @@ fn generate_suggestions(
         let external_edges: Vec<_> = edge_diff
             .added
             .iter()
-            .filter(|e| e.kind == EdgeKind::Calls)
+            .filter(|e| e.kind == EdgeKind::CALLS)
             .collect();
         if !external_edges.is_empty() {
             suggestions.push(
@@ -491,14 +491,14 @@ mod tests {
     #[test]
     fn compare_added_node() {
         let actual = Graph {
-            nodes: vec![node("a", "A", NodeKind::Module)],
+            nodes: vec![node("a", "A", NodeKind::new(NodeKind::MODULE))],
             edges: vec![],
             ..Default::default()
         };
         let proposed = Graph {
             nodes: vec![
-                node("a", "A", NodeKind::Module),
-                node("b", "B", NodeKind::Service),
+                node("a", "A", NodeKind::new(NodeKind::MODULE)),
+                node("b", "B", NodeKind::new(NodeKind::SERVICE)),
             ],
             edges: vec![],
             ..Default::default()
@@ -515,14 +515,14 @@ mod tests {
     fn compare_removed_node() {
         let actual = Graph {
             nodes: vec![
-                node("a", "A", NodeKind::Module),
-                node("b", "B", NodeKind::Module),
+                node("a", "A", NodeKind::new(NodeKind::MODULE)),
+                node("b", "B", NodeKind::new(NodeKind::MODULE)),
             ],
             edges: vec![],
             ..Default::default()
         };
         let proposed = Graph {
-            nodes: vec![node("a", "A", NodeKind::Module)],
+            nodes: vec![node("a", "A", NodeKind::new(NodeKind::MODULE))],
             edges: vec![],
             ..Default::default()
         };
@@ -537,20 +537,20 @@ mod tests {
     fn compare_added_and_removed_edges() {
         let actual = Graph {
             nodes: vec![
-                node("a", "A", NodeKind::Module),
-                node("b", "B", NodeKind::Module),
+                node("a", "A", NodeKind::new(NodeKind::MODULE)),
+                node("b", "B", NodeKind::new(NodeKind::MODULE)),
             ],
-            edges: vec![edge("a", "b", EdgeKind::Calls)],
+            edges: vec![edge("a", "b", EdgeKind::new(EdgeKind::CALLS))],
             ..Default::default()
         };
         let proposed = Graph {
             nodes: vec![
-                node("a", "A", NodeKind::Module),
-                node("b", "B", NodeKind::Module),
+                node("a", "A", NodeKind::new(NodeKind::MODULE)),
+                node("b", "B", NodeKind::new(NodeKind::MODULE)),
             ],
             edges: vec![
-                edge("a", "b", EdgeKind::Calls),
-                edge("b", "a", EdgeKind::Calls),
+                edge("a", "b", EdgeKind::new(EdgeKind::CALLS)),
+                edge("b", "a", EdgeKind::new(EdgeKind::CALLS)),
             ],
             ..Default::default()
         };
@@ -566,10 +566,10 @@ mod tests {
     fn compare_identical_graphs_matched_only() {
         let g = Graph {
             nodes: vec![
-                node("x", "X", NodeKind::Module),
-                node("y", "Y", NodeKind::Service),
+                node("x", "X", NodeKind::new(NodeKind::MODULE)),
+                node("y", "Y", NodeKind::new(NodeKind::SERVICE)),
             ],
-            edges: vec![edge("x", "y", EdgeKind::Calls)],
+            edges: vec![edge("x", "y", EdgeKind::new(EdgeKind::CALLS))],
             ..Default::default()
         };
         let result = compare_graphs(&g, &g);
@@ -583,12 +583,12 @@ mod tests {
     #[test]
     fn compare_matched_similarity_same_label() {
         let actual = Graph {
-            nodes: vec![node("id", "UserService", NodeKind::Service)],
+            nodes: vec![node("id", "UserService", NodeKind::new(NodeKind::SERVICE))],
             edges: vec![],
             ..Default::default()
         };
         let proposed = Graph {
-            nodes: vec![node("id", "UserService", NodeKind::Service)],
+            nodes: vec![node("id", "UserService", NodeKind::new(NodeKind::SERVICE))],
             edges: vec![],
             ..Default::default()
         };

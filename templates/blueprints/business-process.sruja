@@ -1,0 +1,44 @@
+// Sruja Context Graph: Business Process Domain
+// Tracks workflow activities, actors, decisions, and cross-system dependency triggers.
+
+schema "business-process" {}
+
+OrderFulfillment = process "Order Fulfillment Lifecycle" {
+  description "End-to-end workflow from buyer checkout to final shipment."
+
+  InventoryCheck = activity "Check Warehouse Inventory" {
+    description "Verify item availability against regional distributions."
+  }
+
+  ApprovalGate = decision "Needs Fraud Review" {
+    description "Heuristic fraud scoring check for high value carts."
+  }
+
+  PrepareShipment = activity "Generate Shipping Label" {
+    description "Assemble package details and buy carrier labels."
+  }
+}
+
+Buyer = actor "Customer / Buyer" {
+  description "End user placing the ecommerce transaction."
+}
+
+WarehouseOp = actor "Warehouse Operator" {
+  description "Personnel picking and packing items physically."
+}
+
+ERP = system "SAP ERP System" {
+  description "System of record for all stock levels."
+}
+
+Invoice = artifact "Customer Invoice PDF" {
+  description "Legally binding transactional invoice statement."
+}
+
+// Connect operational flowchart
+Buyer -> OrderFulfillment.InventoryCheck "triggers"
+WarehouseOp -> OrderFulfillment.PrepareShipment "performs"
+OrderFulfillment.InventoryCheck -> ERP "uses"
+OrderFulfillment.InventoryCheck -> OrderFulfillment.ApprovalGate "triggers"
+OrderFulfillment.ApprovalGate -> OrderFulfillment.PrepareShipment "decides"
+OrderFulfillment.PrepareShipment -> Invoice "produces"

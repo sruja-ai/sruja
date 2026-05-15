@@ -400,11 +400,7 @@ fn apply_relationship_changes(graph: &mut Graph, changes: &[ProposalChange]) {
                 kind,
                 ..
             } => {
-                let kind = kind
-                    .as_deref()
-                    .unwrap_or("depends_on")
-                    .parse::<EdgeKind>()
-                    .unwrap_or_else(|_| EdgeKind::Custom(kind.clone().unwrap_or_default()));
+                let kind = EdgeKind::new(kind.as_deref().unwrap_or("depends_on"));
                 graph.edges.push(Edge {
                     source: source.clone(),
                     target: target.clone(),

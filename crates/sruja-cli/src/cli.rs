@@ -395,6 +395,9 @@ pub enum Commands {
         /// Do not write files, only show what would happen
         #[arg(long)]
         dry_run: bool,
+        /// Schema to use (architecture, compliance, business_process, knowledge)
+        #[arg(long, default_value = "architecture")]
+        schema: String,
     },
     /// Truth freshness and baseline state
     ///
@@ -1474,7 +1477,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             hook,
             ci,
             dry_run,
-        } => commands::init(&path, prompt, auto, force, hook, ci, dry_run).await,
+            schema,
+        } => commands::init(&path, prompt, auto, force, hook, ci, dry_run, &schema).await,
         Commands::Status {
             path,
             format,

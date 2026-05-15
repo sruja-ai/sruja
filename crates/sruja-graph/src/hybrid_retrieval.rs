@@ -186,22 +186,23 @@ mod tests {
 
     fn test_graph() -> KnowledgeGraph {
         let mut g = KnowledgeGraph::new();
-        g.add_node(ArchitectureNode {
+        let mut n1 = ArchitectureNode {
             id: "API.Routes".to_string(),
-            kind: NodeKind::Service,
+            kind: NodeKind::new(NodeKind::SERVICE),
             label: "API Routes".to_string(),
-            technology: Some("Express".to_string()),
             ..ArchitectureNode::default()
-        })
-        .unwrap();
-        g.add_node(ArchitectureNode {
+        };
+        n1.set_technology(Some("Express".to_string()));
+        g.add_node(n1).unwrap();
+
+        let mut n2 = ArchitectureNode {
             id: "Database.Users".to_string(),
-            kind: NodeKind::Database,
+            kind: NodeKind::new(NodeKind::DATABASE),
             label: "Users DB".to_string(),
-            technology: Some("PostgreSQL".to_string()),
             ..ArchitectureNode::default()
-        })
-        .unwrap();
+        };
+        n2.set_technology(Some("PostgreSQL".to_string()));
+        g.add_node(n2).unwrap();
         g
     }
 

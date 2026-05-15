@@ -404,7 +404,7 @@ pub async fn compose(
                     .filter(|(id, _)| {
                         g.nodes
                             .iter()
-                            .any(|n| &n.id == *id && n.kind == sruja_scan::NodeKind::Module)
+                            .any(|n| &n.id == *id && n.kind == sruja_scan::NodeKind::MODULE)
                     })
                     .map(|(id, c)| (id, c.pagerank + c.degree_centrality))
                     .collect();
@@ -421,17 +421,17 @@ pub async fn compose(
                     if !bundle_nodes.contains_key(&n.id) {
                         // Filter: include anything high-level OR module if it has specific metadata
                         let is_high_level = matches!(
-                            n.kind,
-                            sruja_scan::NodeKind::System
-                                | sruja_scan::NodeKind::Container
-                                | sruja_scan::NodeKind::Service
-                                | sruja_scan::NodeKind::Database
-                                | sruja_scan::NodeKind::ExternalApi
-                                | sruja_scan::NodeKind::Queue
-                                | sruja_scan::NodeKind::Frontend
+                            n.kind.as_str(),
+                            sruja_scan::NodeKind::SYSTEM
+                                | sruja_scan::NodeKind::CONTAINER
+                                | sruja_scan::NodeKind::SERVICE
+                                | sruja_scan::NodeKind::DATABASE
+                                | sruja_scan::NodeKind::EXTERNAL_API
+                                | sruja_scan::NodeKind::QUEUE
+                                | sruja_scan::NodeKind::FRONTEND
                         );
 
-                        let is_important_module = n.kind == sruja_scan::NodeKind::Module
+                        let is_important_module = n.kind == sruja_scan::NodeKind::MODULE
                             && (high_centrality_nodes.contains(&n.id)
                                 || sruja_diff::drift::is_likely_entry_point(
                                     n.path.as_deref().unwrap_or(""),

@@ -174,60 +174,53 @@ pub struct ParseNodeKindError(pub String);
 pub struct ParseEdgeKindError(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum NodeKind {
-    /// A top-level system or subsystem that groups related services.
-    System,
-    /// A deployable unit of functionality that can run independently.
-    Service,
-    /// A grouping of components within a service.
-    Container,
-    /// A modular unit of code with a specific responsibility.
-    Component,
-    /// A data storage system.
-    Database,
-    /// A message queue or streaming platform.
-    Queue,
-    /// An external API or service outside the system boundary.
-    ExternalApi,
-    /// A user-facing application or interface.
-    Frontend,
-    /// A generic module or package.
-    Module,
-    /// Custom node kind
-    Custom(String),
-}
+#[serde(transparent)]
+pub struct NodeKind(pub String);
 
 impl NodeKind {
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+
     #[must_use]
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            NodeKind::System => "system",
-            NodeKind::Service => "service",
-            NodeKind::Container => "container",
-            NodeKind::Component => "component",
-            NodeKind::Database => "database",
-            NodeKind::Queue => "queue",
-            NodeKind::ExternalApi => "external_api",
-            NodeKind::Frontend => "frontend",
-            NodeKind::Module => "module",
-            NodeKind::Custom(_) => "custom",
-        }
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 
     pub fn kind_str(&self) -> &str {
-        match self {
-            NodeKind::Custom(s) => s.as_str(),
-            _ => self.as_str(),
-        }
+        &self.0
     }
 
     pub fn to_string_kind(&self) -> String {
-        match self {
-            NodeKind::Custom(s) => s.clone(),
-            _ => self.as_str().to_string(),
-        }
+        self.0.clone()
     }
+
+    // Custom associated helper to replace Custom matching safely
+    pub fn is_custom(&self) -> bool {
+        !matches!(
+            self.as_str(),
+            "system"
+                | "service"
+                | "container"
+                | "component"
+                | "database"
+                | "queue"
+                | "external_api"
+                | "frontend"
+                | "module"
+        )
+    }
+
+    // Associated constants to preserve ergonomics in internal logic
+    pub const SYSTEM: &'static str = "system";
+    pub const SERVICE: &'static str = "service";
+    pub const CONTAINER: &'static str = "container";
+    pub const COMPONENT: &'static str = "component";
+    pub const DATABASE: &'static str = "database";
+    pub const QUEUE: &'static str = "queue";
+    pub const EXTERNAL_API: &'static str = "external_api";
+    pub const FRONTEND: &'static str = "frontend";
+    pub const MODULE: &'static str = "module";
 }
 
 impl std::fmt::Display for NodeKind {
@@ -240,76 +233,86 @@ impl std::str::FromStr for NodeKind {
     type Err = ParseNodeKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "system" => Ok(NodeKind::System),
-            "service" => Ok(NodeKind::Service),
-            "container" => Ok(NodeKind::Container),
-            "component" => Ok(NodeKind::Component),
-            "database" => Ok(NodeKind::Database),
-            "queue" => Ok(NodeKind::Queue),
-            "external_api" | "externalapi" => Ok(NodeKind::ExternalApi),
-            "frontend" => Ok(NodeKind::Frontend),
-            "module" => Ok(NodeKind::Module),
-            _ => Err(ParseNodeKindError(s.to_string())),
-        }
+        Ok(NodeKind(s.to_string()))
+    }
+}
+
+impl PartialEq<&str> for NodeKind {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
+
+impl PartialEq<str> for NodeKind {
+    fn eq(&self, other: &str) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl PartialEq<String> for NodeKind {
+    fn eq(&self, other: &String) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl From<&str> for NodeKind {
+    fn from(s: &str) -> Self {
+        NodeKind(s.to_string())
+    }
+}
+
+impl From<String> for NodeKind {
+    fn from(s: String) -> Self {
+        NodeKind(s)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EdgeKind {
-    /// Indicates that the source node depends on the target node for functionality.
-    DependsOn,
-    /// Indicates that the source node makes calls to the target node.
-    Calls,
-    /// Indicates that the source node reads data from the target node.
-    ReadsFrom,
-    /// Indicates that the source node writes data to the target node.
-    WritesTo,
-    /// Indicates that the source node publishes events to the target node.
-    PublishesTo,
-    /// Indicates that the source node subscribes to events from the target node.
-    SubscribesTo,
-    /// Indicates that the source node owns or manages the target node.
-    Owns,
-    /// Indicates that the source node contains or encompasses the target node.
-    Contains,
-    /// Indicates that the source node uses the target node in some way.
-    Uses,
-    /// Custom edge kind
-    Custom(String),
-}
+#[serde(transparent)]
+pub struct EdgeKind(pub String);
 
 impl EdgeKind {
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+
     #[must_use]
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            EdgeKind::DependsOn => "depends_on",
-            EdgeKind::Calls => "calls",
-            EdgeKind::ReadsFrom => "reads_from",
-            EdgeKind::WritesTo => "writes_to",
-            EdgeKind::PublishesTo => "publishes_to",
-            EdgeKind::SubscribesTo => "subscribes_to",
-            EdgeKind::Owns => "owns",
-            EdgeKind::Contains => "contains",
-            EdgeKind::Uses => "uses",
-            EdgeKind::Custom(_) => "custom",
-        }
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 
     pub fn kind_str(&self) -> &str {
-        match self {
-            EdgeKind::Custom(s) => s.as_str(),
-            _ => self.as_str(),
-        }
+        &self.0
     }
 
     pub fn to_string_kind(&self) -> String {
-        match self {
-            EdgeKind::Custom(s) => s.clone(),
-            _ => self.as_str().to_string(),
-        }
+        self.0.clone()
     }
+
+    pub fn is_custom(&self) -> bool {
+        !matches!(
+            self.as_str(),
+            "depends_on"
+                | "calls"
+                | "reads_from"
+                | "writes_to"
+                | "publishes_to"
+                | "subscribes_to"
+                | "owns"
+                | "contains"
+                | "uses"
+        )
+    }
+
+    pub const DEPENDS_ON: &'static str = "depends_on";
+    pub const CALLS: &'static str = "calls";
+    pub const READS_FROM: &'static str = "reads_from";
+    pub const WRITES_TO: &'static str = "writes_to";
+    pub const PUBLISHES_TO: &'static str = "publishes_to";
+    pub const SUBSCRIBES_TO: &'static str = "subscribes_to";
+    pub const OWNS: &'static str = "owns";
+    pub const CONTAINS: &'static str = "contains";
+    pub const USES: &'static str = "uses";
 }
 
 impl std::fmt::Display for EdgeKind {
@@ -322,18 +325,37 @@ impl std::str::FromStr for EdgeKind {
     type Err = ParseEdgeKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "depends_on" => Ok(EdgeKind::DependsOn),
-            "calls" => Ok(EdgeKind::Calls),
-            "reads_from" => Ok(EdgeKind::ReadsFrom),
-            "writes_to" => Ok(EdgeKind::WritesTo),
-            "publishes_to" => Ok(EdgeKind::PublishesTo),
-            "subscribes_to" => Ok(EdgeKind::SubscribesTo),
-            "owns" => Ok(EdgeKind::Owns),
-            "contains" => Ok(EdgeKind::Contains),
-            "uses" => Ok(EdgeKind::Uses),
-            _ => Err(ParseEdgeKindError(s.to_string())),
-        }
+        Ok(EdgeKind(s.to_string()))
+    }
+}
+
+impl PartialEq<&str> for EdgeKind {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str() == *other
+    }
+}
+
+impl PartialEq<str> for EdgeKind {
+    fn eq(&self, other: &str) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl PartialEq<String> for EdgeKind {
+    fn eq(&self, other: &String) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl From<&str> for EdgeKind {
+    fn from(s: &str) -> Self {
+        EdgeKind(s.to_string())
+    }
+}
+
+impl From<String> for EdgeKind {
+    fn from(s: String) -> Self {
+        EdgeKind(s)
     }
 }
 
@@ -1403,38 +1425,56 @@ mod tests {
     fn test_node_kind_parsing_and_display() {
         use std::str::FromStr;
 
-        assert_eq!(NodeKind::from_str("system").unwrap(), NodeKind::System);
-        assert_eq!(NodeKind::from_str("service").unwrap(), NodeKind::Service);
         assert_eq!(
-            NodeKind::from_str("container").unwrap(),
-            NodeKind::Container
+            NodeKind::from_str("system").unwrap().as_str(),
+            NodeKind::SYSTEM
         );
         assert_eq!(
-            NodeKind::from_str("component").unwrap(),
-            NodeKind::Component
+            NodeKind::from_str("service").unwrap().as_str(),
+            NodeKind::SERVICE
         );
-        assert_eq!(NodeKind::from_str("database").unwrap(), NodeKind::Database);
-        assert_eq!(NodeKind::from_str("queue").unwrap(), NodeKind::Queue);
         assert_eq!(
-            NodeKind::from_str("external_api").unwrap(),
-            NodeKind::ExternalApi
+            NodeKind::from_str("container").unwrap().as_str(),
+            NodeKind::CONTAINER
         );
-        assert_eq!(NodeKind::from_str("frontend").unwrap(), NodeKind::Frontend);
-        assert_eq!(NodeKind::from_str("module").unwrap(), NodeKind::Module);
-        assert!(NodeKind::from_str("invalid_kind").is_err());
+        assert_eq!(
+            NodeKind::from_str("component").unwrap().as_str(),
+            NodeKind::COMPONENT
+        );
+        assert_eq!(
+            NodeKind::from_str("database").unwrap().as_str(),
+            NodeKind::DATABASE
+        );
+        assert_eq!(
+            NodeKind::from_str("queue").unwrap().as_str(),
+            NodeKind::QUEUE
+        );
+        assert_eq!(
+            NodeKind::from_str("external_api").unwrap().as_str(),
+            NodeKind::EXTERNAL_API
+        );
+        assert_eq!(
+            NodeKind::from_str("frontend").unwrap().as_str(),
+            NodeKind::FRONTEND
+        );
+        assert_eq!(
+            NodeKind::from_str("module").unwrap().as_str(),
+            NodeKind::MODULE
+        );
 
-        assert_eq!(NodeKind::System.as_str(), "system");
-        assert_eq!(format!("{}", NodeKind::Database), "database");
-        assert_eq!(
-            NodeKind::Custom("custom_node".to_string()).kind_str(),
-            "custom_node"
-        );
-        assert_eq!(NodeKind::System.kind_str(), "system");
-        assert_eq!(
-            NodeKind::Custom("custom_node".to_string()).to_string_kind(),
-            "custom_node"
-        );
-        assert_eq!(NodeKind::System.to_string_kind(), "system");
+        // Generalization allows arbitrary kinds
+        let arbitrary = NodeKind::from_str("arbitrary_kind").unwrap();
+        assert_eq!(arbitrary.as_str(), "arbitrary_kind");
+        assert!(arbitrary.is_custom());
+
+        assert_eq!(NodeKind::new(NodeKind::SYSTEM).as_str(), "system");
+        assert_eq!(format!("{}", NodeKind::new(NodeKind::DATABASE)), "database");
+
+        let custom = NodeKind::new("custom_node");
+        assert_eq!(custom.kind_str(), "custom_node");
+        assert!(custom.is_custom());
+        assert_eq!(custom.to_string_kind(), "custom_node");
+        assert_eq!(NodeKind::new(NodeKind::SYSTEM).to_string_kind(), "system");
     }
 
     #[test]
@@ -1442,40 +1482,52 @@ mod tests {
         use std::str::FromStr;
 
         assert_eq!(
-            EdgeKind::from_str("depends_on").unwrap(),
-            EdgeKind::DependsOn
-        );
-        assert_eq!(EdgeKind::from_str("calls").unwrap(), EdgeKind::Calls);
-        assert_eq!(
-            EdgeKind::from_str("reads_from").unwrap(),
-            EdgeKind::ReadsFrom
-        );
-        assert_eq!(EdgeKind::from_str("writes_to").unwrap(), EdgeKind::WritesTo);
-        assert_eq!(
-            EdgeKind::from_str("publishes_to").unwrap(),
-            EdgeKind::PublishesTo
+            EdgeKind::from_str("depends_on").unwrap().as_str(),
+            EdgeKind::DEPENDS_ON
         );
         assert_eq!(
-            EdgeKind::from_str("subscribes_to").unwrap(),
-            EdgeKind::SubscribesTo
+            EdgeKind::from_str("calls").unwrap().as_str(),
+            EdgeKind::CALLS
         );
-        assert_eq!(EdgeKind::from_str("owns").unwrap(), EdgeKind::Owns);
-        assert_eq!(EdgeKind::from_str("contains").unwrap(), EdgeKind::Contains);
-        assert_eq!(EdgeKind::from_str("uses").unwrap(), EdgeKind::Uses);
-        assert!(EdgeKind::from_str("invalid_edge").is_err());
+        assert_eq!(
+            EdgeKind::from_str("reads_from").unwrap().as_str(),
+            EdgeKind::READS_FROM
+        );
+        assert_eq!(
+            EdgeKind::from_str("writes_to").unwrap().as_str(),
+            EdgeKind::WRITES_TO
+        );
+        assert_eq!(
+            EdgeKind::from_str("publishes_to").unwrap().as_str(),
+            EdgeKind::PUBLISHES_TO
+        );
+        assert_eq!(
+            EdgeKind::from_str("subscribes_to").unwrap().as_str(),
+            EdgeKind::SUBSCRIBES_TO
+        );
+        assert_eq!(EdgeKind::from_str("owns").unwrap().as_str(), EdgeKind::OWNS);
+        assert_eq!(
+            EdgeKind::from_str("contains").unwrap().as_str(),
+            EdgeKind::CONTAINS
+        );
+        assert_eq!(EdgeKind::from_str("uses").unwrap().as_str(), EdgeKind::USES);
 
-        assert_eq!(EdgeKind::Calls.as_str(), "calls");
-        assert_eq!(format!("{}", EdgeKind::ReadsFrom), "reads_from");
+        // Generalization allows arbitrary edges
+        let arbitrary = EdgeKind::from_str("arbitrary_edge").unwrap();
+        assert_eq!(arbitrary.as_str(), "arbitrary_edge");
+        assert!(arbitrary.is_custom());
+
+        assert_eq!(EdgeKind::new(EdgeKind::CALLS).as_str(), "calls");
         assert_eq!(
-            EdgeKind::Custom("custom_edge".to_string()).kind_str(),
-            "custom_edge"
+            format!("{}", EdgeKind::new(EdgeKind::READS_FROM)),
+            "reads_from"
         );
-        assert_eq!(EdgeKind::Calls.kind_str(), "calls");
-        assert_eq!(
-            EdgeKind::Custom("custom_edge".to_string()).to_string_kind(),
-            "custom_edge"
-        );
-        assert_eq!(EdgeKind::Calls.to_string_kind(), "calls");
+
+        let custom = EdgeKind::new("custom_edge");
+        assert_eq!(custom.kind_str(), "custom_edge");
+        assert!(custom.is_custom());
+        assert_eq!(custom.to_string_kind(), "custom_edge");
+        assert_eq!(EdgeKind::new(EdgeKind::CALLS).to_string_kind(), "calls");
     }
 
     #[test]

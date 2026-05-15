@@ -1190,10 +1190,10 @@ async fn run_tool(
 
             for node in &graph.nodes {
                 let is_high_level = matches!(
-                    node.kind,
-                    sruja_scan::NodeKind::Service
-                        | sruja_scan::NodeKind::ExternalApi
-                        | sruja_scan::NodeKind::System
+                    node.kind.as_str(),
+                    sruja_scan::NodeKind::SERVICE
+                        | sruja_scan::NodeKind::EXTERNAL_API
+                        | sruja_scan::NodeKind::SYSTEM
                 );
                 let no_incoming = has_incoming.get(node.id.as_str()).cloned().unwrap_or(0) == 0;
 
@@ -1218,8 +1218,8 @@ async fn run_tool(
 
             for node in &graph.nodes {
                 if matches!(
-                    node.kind,
-                    sruja_scan::NodeKind::Database | sruja_scan::NodeKind::Queue
+                    node.kind.as_str(),
+                    sruja_scan::NodeKind::DATABASE | sruja_scan::NodeKind::QUEUE
                 ) {
                     let tech = node
                         .technology
