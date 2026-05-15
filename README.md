@@ -1,8 +1,8 @@
-# Sruja – Context engineering for the AI era
+# Sruja — The context graph engine for AI agents.
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Context engineering for the AI era.** Sruja uses AI to generate and maintain architecture as code, backed by deterministic evidence from your codebase. The sruja-architecture skill gathers repo context, writes or updates `repo.sruja`, and runs lint/drift checks so architecture stays accurate, reviewable, and useful to AI coding assistants.
+**Sruja — The context graph engine for AI agents.** Define architecture as code, scan evidence from your repo, and serve it to any AI agent via MCP, JS, or Python. The sruja-architecture skill gathers repo context, writes or updates `repo.sruja`, and runs lint/drift checks so architecture stays accurate, reviewable, and useful to AI coding assistants.
 
 Diagrams are outputs, not the source of truth: export to Mermaid or Markdown when you need to share architecture.
 
@@ -25,19 +25,17 @@ If your editor cannot use skills yet, or you want a deterministic first look:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
-sruja quickstart -r . --generate-baseline
-sruja onboard -r .
+sruja inspect overview -r . --generate-baseline
+sruja inspect onboard -r .
 sruja lint repo.sruja
 ```
 
 **Optional CLI onboarding enrichment:**
 
-`sruja onboard` is deterministic by default. If you want a narrative onboarding summary, opt in with either an API key or an approved internal tool.
-
 Use `--enrich-cmd` to delegate enrichment to your approved tool (Cursor/Claude/OpenCode/internal wrapper). Sruja passes only the grounded onboard JSON via stdin and reads markdown from stdout.
 
 ```bash
-sruja onboard -r . -f markdown --enrich-cmd 'claude -p -'
+sruja inspect onboard -r . -f markdown --enrich-cmd 'claude -p -'
 ```
 
 Config (optional):
@@ -106,8 +104,8 @@ Your AI will:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
-sruja quickstart -r . --generate-baseline
-sruja onboard -r .
+sruja inspect overview -r . --generate-baseline
+sruja inspect onboard -r .
 ```
 
 This scans your repo, prints an inventory + structural health report, and writes a draft `repo.sruja` baseline you can version-control. Use this path for CI, scripting, or evaluation without an AI editor.
@@ -130,16 +128,15 @@ sruja daily -r .
 sruja ai -r . --task "Fix the parser error reporting"
 
 # Keep feedback live while you code
-sruja watch -r .
+sruja inspect watch -r .
 
 # Quick repo health check
 sruja doctor -r .
 ```
 
-Aliases:
+Aliases (top-level):
 - `start` = `init`
 - `daily` = `review`
-- `overview` = `quickstart`
 - `doctor` = `status`
 
 ### Validate and export
@@ -193,7 +190,7 @@ No. Your AI writes the `.sruja` files for you. You just need to know what to ask
 
 **What if I don't have an AI editor?**
 
-You can still use the CLI. For evaluation, start with `sruja quickstart -r . --generate-baseline` and `sruja lint repo.sruja`. Once you have a baseline, use `sruja sync -r .` and `sruja drift -r . -a repo.sruja` to keep declared architecture aligned with your code. The skill makes this workflow smoother in AI editors, but the underlying commands work in CI and automation too.
+You can still use the CLI. For evaluation, start with `sruja inspect overview -r . --generate-baseline` and `sruja lint repo.sruja`. Once you have a baseline, use `sruja sync -r .` and `sruja drift -r . -a repo.sruja` to keep declared architecture aligned with your code. The skill makes this workflow smoother in AI editors, but the underlying commands work in CI and automation too.
 
 **Can I use this with my existing project?**
 
@@ -416,7 +413,7 @@ Copy the error output and paste it to your AI with: "Fix these lint errors."
 - Check your language is supported (see table above)
 - Make sure you're in the correct directory
 - Run `sruja discover --explain -r .` to see what Sruja inferred and where confidence is lower
-- Try: `sruja quickstart -r .` to see what's being detected
+- Try: `sruja inspect overview -r .` to see what's being detected
 - Open an issue if something obvious is missing
 
 ---

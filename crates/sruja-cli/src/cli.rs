@@ -29,25 +29,19 @@ fn was_invoked_as(alias: &str) -> bool {
 #[command(name = "sruja")]
 #[command(
     about = "Architecture-as-code CLI for keeping repo context, drift checks, and AI guidance in sync",
-    long_about = "Retrieval ladder (deterministic first): focus (before a task) → ai (paste-ready brief) → MCP in your editor → why/query (investigation). LLM enrichment (--enrich) is optional interpretation, never reviewed truth.",
+    long_about = "Retrieval ladder (deterministic first): focus (before a task) → ai (paste-ready brief) → MCP in your editor. LLM enrichment (--enrich) is optional interpretation, never reviewed truth.",
     after_help = r#"Product loop (define truth → context → drift → review):
   Use the sruja-architecture skill + repo.sruja for reviewed intent; lint after edits;
   sync/review/drift for freshness; focus or ai before coding; MCP inside AI tools.
 
 Start here:
   sruja start -r . --prompt   Set up .sruja/ and emit a skill-ready prompt
-  sruja quickstart -r .       First structural read (optional --generate-baseline)
+  sruja scan .                Scan repo and emit an inferred graph (sruja.graph.json)
   sruja focus -r . --file <path>   Task-scoped blast radius before you edit
 
 Daily loop:
   sruja review -r .           Evidence refresh + drift + next actions (alias: daily)
-  sruja watch -r .            Live feedback while coding
   sruja status -r .           Truth freshness + baseline (alias: doctor)
-
-Three different scores (do not confuse):
-  sruja status                Truth sync / baseline signals
-  sruja health                Structural violations vs repo.sruja
-  sruja context-score         AI-readiness (0–100)
 
 Docs & CI:
   sruja lint repo.sruja
@@ -72,6 +66,7 @@ pub enum Commands {
     /// Print version information
     Version,
     /// Propose architectural changes for review
+    #[command(hide = true)]
     Propose {
         #[command(subcommand)]
         cmd: ProposeCommand,
@@ -89,6 +84,7 @@ pub enum Commands {
     ///
     /// Use `critique` to get an adversarial review of code changes against architecture.
     /// For context/briefing, use `ai` (task-specific) or `onboard` (full-repo).
+    #[command(hide = true)]
     Critique {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -142,6 +138,7 @@ pub enum Commands {
     /// Impact analysis: blast radius (upstream dependents + downstream dependencies)
     ///
     /// Use after you know *where* you are working; for pre-task briefing and AI instructions use `focus`.
+    #[command(hide = true)]
     Impact {
         /// Node selector (exact id or substring match against id/label/path)
         target: String,
@@ -159,6 +156,7 @@ pub enum Commands {
     ///
     /// Use this when asking "Why is this like this?" — finds rationale from the knowledge graph.
     /// For task briefing, use `focus`. For AI paste-ready brief, use `ai`.
+    #[command(hide = true)]
     Why {
         /// Question to ask (e.g. "why did we choose PostgreSQL?")
         question: String,
@@ -235,16 +233,19 @@ pub enum Commands {
         check: bool,
     },
     /// List elements from a file
+    #[command(hide = true)]
     List {
         /// Path to .sruja file
         file: String,
     },
     /// Print architecture tree
+    #[command(hide = true)]
     Tree {
         /// Path to .sruja file
         file: String,
     },
     /// Show differences between two architecture files
+    #[command(hide = true)]
     Diff {
         /// First file
         file1: String,
@@ -255,6 +256,7 @@ pub enum Commands {
         format: String,
     },
     /// Explain an element
+    #[command(hide = true)]
     Explain {
         /// Element ID to explain
         element_id: String,
@@ -266,6 +268,7 @@ pub enum Commands {
         json: bool,
     },
     /// Import from external format
+    #[command(hide = true)]
     Import {
         /// Format (json)
         format: String,
@@ -273,6 +276,7 @@ pub enum Commands {
         file: String,
     },
     /// Start LSP server (stdio)
+    #[command(hide = true)]
     Lsp {
         /// Use stdio transport
         #[arg(long)]
@@ -289,11 +293,13 @@ pub enum Commands {
         root: String,
     },
     /// Compile a Sruja file
+    #[command(hide = true)]
     Compile {
         /// Path to .sruja file
         file: String,
     },
     /// Validate architecture against rules
+    #[command(hide = true)]
     Validate {
         /// Path to .sruja file or directory
         file: String,
@@ -336,6 +342,7 @@ pub enum Commands {
         baseline_mode: Option<String>,
     },
     /// PR-scoped drift: detect only NEW violations in a PR
+    #[command(hide = true)]
     DriftPr {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
@@ -353,7 +360,7 @@ pub enum Commands {
     /// First look: structural overview and optional baseline generation
     ///
     /// Use when asking "What is in this repo?" For a full-repo brief, use `onboard`. For an AI task brief, use `ai`.
-    #[command(visible_alias = "overview")]
+    #[command(visible_alias = "overview", hide = true)]
     Quickstart {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -416,6 +423,7 @@ pub enum Commands {
         evolution: bool,
     },
     /// Keep architecture feedback live while you code
+    #[command(hide = true)]
     Watch {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -458,6 +466,7 @@ pub enum Commands {
     /// Build scan evidence and learned-fact hypotheses under `.sruja/` (never edits `repo.sruja`)
     ///
     /// Output is evidence-backed inference for review — not the same as reviewed architecture.
+    #[command(hide = true)]
     Learn {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -492,6 +501,7 @@ pub enum Commands {
         violations_baseline: Option<String>,
     },
     /// Baseline: snapshot current violations to ignore them in CI (use with `sruja drift --ci --baseline`)
+    #[command(hide = true)]
     Baseline {
         /// Path to repository root (defaults to current directory)
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -501,6 +511,7 @@ pub enum Commands {
         output: String,
     },
     /// Publish repo truth + evidence to repo.bundle.json (multi-repo federation)
+    #[command(hide = true)]
     Publish {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -512,6 +523,7 @@ pub enum Commands {
         output: String,
     },
     /// Compose one or more repo bundles into system.index.json
+    #[command(hide = true)]
     Compose {
         #[arg(long, short = 'i', action = clap::ArgAction::Append)]
         input: Vec<String>,
@@ -523,6 +535,7 @@ pub enum Commands {
     },
 
     /// Compare declared architectural intent vs actual implementation
+    #[command(hide = true)]
     Intent {
         #[command(subcommand)]
         cmd: IntentCommand,
@@ -530,6 +543,7 @@ pub enum Commands {
     /// Structural drift + intent + policy gate (exit 1 when non-compliant)
     ///
     /// Use as an architecture aggregate gate—not a generic enterprise audit unless policies are concrete.
+    #[command(hide = true)]
     Compliance {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -609,6 +623,7 @@ pub enum Commands {
     ///
     /// Produces a full-repo onboarding brief with trust signals: truth status, drift counts, context score.
     /// For task-specific AI briefs, use `ai`. For quick structural overview, use `quickstart`.
+    #[command(hide = true)]
     Onboard {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -651,7 +666,7 @@ pub enum Commands {
     ///
     /// Use MCP tools inside your AI editor for the best experience.
     /// For CLI-based briefing, use `focus` or `ai`.
-    #[command(name = "ai-context", alias = "context")]
+    #[command(name = "ai-context", alias = "context", hide = true)]
     AiContext {
         /// Optional run ID for tracing (defaults to auto-generated)
         #[arg(long)]
@@ -752,6 +767,7 @@ pub enum Commands {
         update: bool,
     },
     /// Generate a prompt (skill + repo context) for use with any LLM to produce architecture.sruja without Cursor CLI
+    #[command(hide = true)]
     Generate {
         /// Path to repository
         #[arg(long, short = 'r', action = clap::ArgAction::Append)]
@@ -760,13 +776,14 @@ pub enum Commands {
         #[arg(long)]
         skill_path: Option<String>,
         /// Emit prompt only (no LLM call); write to -o or stdout
-        #[arg(long)]
+        #[arg(long, required = true)]
         prompt_only: bool,
         /// Output path for prompt (default: stdout if --prompt-only)
         #[arg(short = 'o', long)]
         output: Option<String>,
     },
     /// Generate indices for architectural nodes
+    #[command(hide = true)]
     Index {
         #[command(subcommand)]
         cmd: IndexCommand,
@@ -775,6 +792,7 @@ pub enum Commands {
     ///
     /// Use this to find elements by name, type, or relationship pattern.
     /// For decision investigation, use `why`. For task briefing, use `focus`.
+    #[command(hide = true)]
     Query {
         /// Query string (e.g., "Checkout", "depends_on Payments")
         query: String,
@@ -799,6 +817,7 @@ pub enum Commands {
     ///
     /// Answers: "Are there structural problems in the architecture graph?"
     /// For truth freshness, use `status`. For AI-readiness, use `context-score`.
+    #[command(hide = true)]
     Health {
         /// Repository root to scan
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -815,7 +834,7 @@ pub enum Commands {
     ///
     /// Answers: "Can AI work effectively here?"
     /// For structural health, use `health`. For truth freshness, use `status`.
-    #[command(name = "context-score")]
+    #[command(name = "context-score", hide = true)]
     ContextScore {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -828,7 +847,7 @@ pub enum Commands {
         fail_under: Option<u8>,
     },
     /// Generate an interactive HTML/D3.js visualization of the architecture context
-    #[command(name = "context-graph")]
+    #[command(name = "context-graph", hide = true)]
     ContextGraph {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -891,6 +910,7 @@ pub enum Commands {
     },
 
     /// Ingest external context (ADRs, design docs, API contracts) into .sruja/context/
+    #[command(hide = true)]
     Ingest {
         /// Files or directories to ingest
         sources: Vec<String>,
@@ -905,21 +925,25 @@ pub enum Commands {
         elements: Option<String>,
     },
     /// Append-only context lineage (intent, drift, proposals, decision traces)
+    #[command(hide = true)]
     Event {
         #[command(subcommand)]
         cmd: EventCommand,
     },
     /// Decision Records (generalized ADRs) under `.sruja/decisions/`
+    #[command(hide = true)]
     Decision {
         #[command(subcommand)]
         cmd: DecisionCommand,
     },
     /// Agentic memory: learnings, guardrails, failed hypotheses (bounded to architecture work)
+    #[command(hide = true)]
     Agent {
         #[command(subcommand)]
         cmd: AgentCommand,
     },
     /// Inspect and replay saved run snapshots under `.sruja/runs/`
+    #[command(hide = true)]
     Run {
         #[command(subcommand)]
         cmd: RunCommand,
@@ -936,6 +960,26 @@ pub enum Commands {
     Evolution {
         #[command(subcommand)]
         cmd: EvolutionCommand,
+    },
+    /// DSL authoring tools: list, tree, explain, diff, import, compile, validate, generate
+    Dsl {
+        #[command(subcommand)]
+        cmd: DslCommand,
+    },
+    /// Analysis & scores: health, impact, why, query, scores, onboard, watch, learn
+    Inspect {
+        #[command(subcommand)]
+        cmd: InspectCommand,
+    },
+    /// Review & compliance gates: critique, compliance, baseline, drift-pr
+    Guard {
+        #[command(subcommand)]
+        cmd: GuardCommand,
+    },
+    /// Multi-repo federation: publish, compose
+    Federation {
+        #[command(subcommand)]
+        cmd: FederationCommand,
     },
 }
 
@@ -1393,6 +1437,393 @@ pub enum IntentCommand {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DslCommand {
+    /// List elements from a file
+    List {
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Print architecture tree
+    Tree {
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Show differences between two architecture files
+    Diff {
+        /// First file
+        file1: String,
+        /// Second file
+        file2: String,
+        /// Output format (text or json)
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
+    /// Explain an element
+    Explain {
+        /// Element ID to explain
+        element_id: String,
+        /// Path to .sruja file
+        #[arg(long)]
+        file: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Import from external format
+    Import {
+        /// Format (json)
+        format: String,
+        /// File to import
+        file: String,
+    },
+    /// Compile a Sruja file
+    Compile {
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Validate architecture against rules
+    Validate {
+        /// Path to .sruja file or directory
+        file: String,
+        /// External constraint files
+        #[arg(long, short = 'c')]
+        constraints: Vec<String>,
+        /// Fail on violations
+        #[arg(long)]
+        fail_on_violations: bool,
+        /// Output as JSON
+        #[arg(long)]
+        format_json: bool,
+    },
+    /// Generate a prompt for LLM-based architecture.sruja generation
+    Generate {
+        /// Path to repository
+        #[arg(long, short = 'r', action = clap::ArgAction::Append)]
+        repo: Vec<String>,
+        /// Path to skill file
+        #[arg(long)]
+        skill_path: Option<String>,
+        /// Emit prompt only
+        #[arg(long, required = true)]
+        prompt_only: bool,
+        /// Output path for prompt
+        #[arg(short = 'o', long)]
+        output: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
+pub enum InspectCommand {
+    /// Architecture health score from structural violations (0-100)
+    Health {
+        /// Repository root to scan
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Path to architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Impact analysis: blast radius
+    Impact {
+        /// Node selector
+        target: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Max traversal depth
+        #[arg(long, default_value_t = 3)]
+        depth: usize,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Investigate architecture decisions with deterministic evidence
+    Why {
+        /// Question to ask
+        question: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Use reasoning-tree traversal
+        #[arg(long)]
+        reasoned: bool,
+        /// Use LLM-guided tree search
+        #[arg(long)]
+        llmguided: bool,
+    },
+    /// Query the architectural registry
+    Query {
+        /// Query string
+        query: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Path to architecture file
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Output format
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
+    /// AI-readiness score (0-100)
+    #[command(name = "context-score")]
+    ContextScore {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Fail with exit code 1 if score is below this threshold
+        #[arg(long)]
+        fail_under: Option<u8>,
+    },
+    /// Generate interactive HTML/D3.js visualization
+    #[command(name = "context-graph")]
+    ContextGraph {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output path for the HTML file
+        #[arg(long, short = 'o', default_value = "context_graph.html")]
+        output: String,
+        /// Open the browser after generation
+        #[arg(long)]
+        open: bool,
+    },
+    /// Complete architecture brief for onboarding
+    Onboard {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "markdown")]
+        format: String,
+        /// Max number of items per section
+        #[arg(long, default_value_t = 8)]
+        max_items: usize,
+        /// Optional LLM enrichment
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout for enrichment in milliseconds
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from enrichment stdout
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
+        /// Output file
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+    },
+    /// Structural overview (first look structural brief)
+    #[command(visible_alias = "overview")]
+    Quickstart {
+        /// Repository root
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        path: String,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Generate a draft repo.sruja baseline from scan
+        #[arg(long)]
+        generate_baseline: bool,
+        /// Fail on specified violations
+        #[arg(long)]
+        fail_on: Option<String>,
+    },
+    /// Keep architecture feedback live while you code
+    Watch {
+        /// Repository root
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        path: String,
+        /// Clear screen between runs
+        #[arg(long)]
+        clear: bool,
+        /// Only watch specific paths
+        #[arg(long)]
+        focus: Option<String>,
+    },
+    /// Build scan evidence and learned-fact hypotheses
+    Learn {
+        /// Repository root
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        path: String,
+        /// Only include facts referencing this file
+        #[arg(long)]
+        file: Option<String>,
+        /// Only include facts since git ref
+        #[arg(long)]
+        since: Option<String>,
+        /// Do not write proposals
+        #[arg(long)]
+        skip_proposals: bool,
+        /// Apply proposals
+        #[arg(long = "apply-proposals", default_value_t = true, action = clap::ArgAction::Set)]
+        apply_proposals: bool,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Ingest external context into .sruja/context/
+    Ingest {
+        /// Files or directories to ingest
+        sources: Vec<String>,
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Category tag
+        #[arg(long, short = 'c')]
+        category: Option<String>,
+        /// Comma-separated architecture element IDs
+        #[arg(long, short = 'e')]
+        elements: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
+pub enum GuardCommand {
+    /// Adversarial architectural critique of proposed changes
+    Critique {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Changed file paths to critique
+        #[arg(long, short = 'f')]
+        files: Vec<String>,
+        /// Description of change
+        #[arg(long, short = 'd')]
+        description: Option<String>,
+        /// Proposal ID
+        #[arg(long, short = 'p')]
+        proposal: Option<String>,
+        /// Git base ref
+        #[arg(long)]
+        base: Option<String>,
+        /// Git head ref
+        #[arg(long)]
+        head: Option<String>,
+        /// Critique staged changes
+        #[arg(long)]
+        staged: bool,
+        /// Output format
+        #[arg(long, default_value = "text")]
+        format: String,
+        /// Optional enrichment
+        #[arg(long)]
+        enrich: bool,
+        /// Enrichment provider
+        #[arg(long, alias = "llm-provider")]
+        enrich_provider: Option<String>,
+        /// External enrichment command
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+        /// Model name
+        #[arg(long, alias = "llm-model")]
+        enrich_model: Option<String>,
+        /// Base URL
+        #[arg(long, alias = "llm-base-url")]
+        enrich_base_url: Option<String>,
+        /// Timeout
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
+        /// Fail the command on findings level
+        #[arg(long)]
+        fail_on: Option<String>,
+    },
+    /// Structural drift + intent + policy gate
+    Compliance {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Path to baseline architecture
+        #[arg(long, short = 'a')]
+        architecture: Option<String>,
+        /// Path to intent directory
+        #[arg(long, short = 'i')]
+        intent: Option<String>,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Strict mode
+        #[arg(long)]
+        strict: bool,
+    },
+    /// Baseline: snapshot current violations to ignore them in CI
+    Baseline {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output path
+        #[arg(long, short = 'o', default_value = ".sruja/violations.baseline.json")]
+        output: String,
+    },
+    /// PR-scoped drift: detect only NEW violations in a PR
+    #[command(name = "drift-pr")]
+    DriftPr {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Base ref
+        #[arg(long, short = 'b')]
+        base: Option<String>,
+        /// Head ref
+        #[arg(long, short = 'H')]
+        head: Option<String>,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum FederationCommand {
+    /// Publish repo truth + evidence to repo.bundle.json
+    Publish {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        repo_id: Option<String>,
+        /// Output path for bundle
+        #[arg(long, short = 'o', default_value = "repo.bundle.json")]
+        output: String,
+    },
+    /// Compose one or more repo bundles into system.index.json
+    Compose {
+        #[arg(long, short = 'i', action = clap::ArgAction::Append)]
+        input: Vec<String>,
+        #[arg(long)]
+        recursive: bool,
+        /// Output path for system index
+        #[arg(long, short = 'o', default_value = "system.index.json")]
+        output: String,
     },
 }
 
@@ -2155,6 +2586,209 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 EvolutionCommand::Log { repo } => commands::evolution_log(&repo).await,
             }
         }
+        Commands::Dsl { cmd } => match cmd {
+            DslCommand::List { file } => commands::list_elements(&file).await,
+            DslCommand::Tree { file } => commands::tree(&file).await,
+            DslCommand::Diff {
+                file1,
+                file2,
+                format,
+            } => commands::diff(&file1, &file2, &format).await,
+            DslCommand::Explain {
+                element_id,
+                file,
+                json,
+            } => commands::explain(&element_id, file.as_deref(), json).await,
+            DslCommand::Import { format, file } => commands::import(&format, &file).await,
+            DslCommand::Compile { file } => commands::compile(&file).await,
+            DslCommand::Validate {
+                file,
+                constraints,
+                fail_on_violations,
+                format_json,
+            } => commands::validate(&file, constraints, fail_on_violations, format_json).await,
+            DslCommand::Generate {
+                repo,
+                skill_path,
+                prompt_only,
+                output,
+            } => {
+                if !prompt_only {
+                    eprintln!("Only --prompt-only is supported. Use: sruja dsl generate -r . --prompt-only -o prompt.txt");
+                    eprintln!("Then use the prompt with any LLM; save output as architecture.sruja and run sruja lint.");
+                    std::process::exit(1);
+                }
+                commands::generate_prompt(&repo, skill_path.as_deref(), output.as_deref())
+            }
+        },
+        Commands::Inspect { cmd } => match cmd {
+            InspectCommand::Health {
+                repo,
+                architecture,
+                format,
+            } => commands::health(&repo, architecture.as_deref(), &format).await,
+            InspectCommand::Impact {
+                target,
+                repo,
+                depth,
+                format,
+            } => commands::impact(&repo, &target, depth, &format).await,
+            InspectCommand::Why {
+                question,
+                repo,
+                format,
+                reasoned,
+                llmguided,
+            } => commands::why(&repo, &question, &format, reasoned, llmguided).await,
+            InspectCommand::Query {
+                query,
+                repo,
+                architecture,
+                format,
+            } => commands::query_registry(&repo, architecture.as_deref(), &query, &format).await,
+            InspectCommand::ContextScore {
+                repo,
+                format,
+                fail_under,
+            } => commands::context_score(&repo, &format, fail_under).await,
+            InspectCommand::ContextGraph { repo, output, open } => {
+                commands::context_graph(&repo, &output, open).await
+            }
+            InspectCommand::Onboard {
+                repo,
+                format,
+                max_items,
+                enrich,
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                output,
+            } => {
+                commands::onboard(
+                    &repo,
+                    &format,
+                    max_items,
+                    enrich,
+                    enrich_provider.as_deref(),
+                    enrich_cmd.as_deref(),
+                    enrich_model.as_deref(),
+                    enrich_base_url.as_deref(),
+                    enrich_timeout_ms,
+                    enrich_max_bytes,
+                    commands::LlmConfig {
+                        provider: enrich_provider.as_deref(),
+                        model: enrich_model.as_deref(),
+                        base_url: enrich_base_url.as_deref(),
+                    },
+                    output.as_deref(),
+                )
+                .await
+            }
+            InspectCommand::Quickstart {
+                path,
+                format,
+                generate_baseline,
+                fail_on,
+            } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
+            InspectCommand::Watch { path, clear, focus } => {
+                commands::watch(&path, clear, focus).await
+            }
+            InspectCommand::Learn {
+                path,
+                file,
+                since,
+                skip_proposals,
+                apply_proposals,
+                format,
+            } => {
+                let skip = skip_proposals || !apply_proposals;
+                commands::learn(&path, file.as_deref(), since.as_deref(), skip, &format).await
+            }
+            InspectCommand::Ingest {
+                sources,
+                repo,
+                category,
+                elements,
+            } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
+        },
+        Commands::Guard { cmd } => match cmd {
+            GuardCommand::Critique {
+                repo,
+                files,
+                description,
+                proposal,
+                base,
+                head,
+                staged,
+                format,
+                enrich,
+                enrich_provider,
+                enrich_cmd,
+                enrich_model,
+                enrich_base_url,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+                fail_on,
+            } => {
+                commands::critique(
+                    &repo,
+                    files,
+                    description,
+                    proposal,
+                    base,
+                    head,
+                    staged,
+                    &format,
+                    enrich,
+                    enrich_provider.as_deref(),
+                    enrich_cmd.as_deref(),
+                    enrich_model.as_deref(),
+                    enrich_base_url.as_deref(),
+                    enrich_timeout_ms,
+                    enrich_max_bytes,
+                    fail_on.as_deref(),
+                )
+                .await
+            }
+            GuardCommand::Compliance {
+                repo,
+                architecture,
+                intent,
+                format,
+                strict,
+            } => {
+                commands::compliance(
+                    &repo,
+                    architecture.as_deref(),
+                    intent.as_deref(),
+                    &format,
+                    strict,
+                )
+                .await
+            }
+            GuardCommand::Baseline { repo, output } => commands::baseline(&repo, &output).await,
+            GuardCommand::DriftPr {
+                repo,
+                base,
+                head,
+                format,
+            } => commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await,
+        },
+        Commands::Federation { cmd } => match cmd {
+            FederationCommand::Publish {
+                repo,
+                repo_id,
+                output,
+            } => commands::publish(&repo, repo_id.as_deref(), &output).await,
+            FederationCommand::Compose {
+                input,
+                recursive,
+                output,
+            } => commands::compose(&input, recursive, &output).await,
+        },
     };
 
     match result {

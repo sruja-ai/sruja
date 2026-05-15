@@ -3,20 +3,23 @@
 # Use `cargo build --workspace` or `cargo test --workspace` for all packages.
 default-members = ["crates/sruja-cli"]
 members = [
-    # Core
+    # Tier 1: Core Context Graph Engine
     "crates/sruja-diagnostics",
     "crates/sruja-language",
     "crates/sruja-engine",
     "crates/sruja-export",
-    "crates/sruja-cli",
     "crates/sruja-scan",
-    "crates/sruja-diff",
-    # Product
     "crates/sruja-graph-core",
     "crates/sruja-graph",
-    "crates/sruja-intent",
-    "crates/sruja-wasm",
     "crates/sruja-extract",
+
+    # Tier 2: Delivery Layer
+    "crates/sruja-wasm",
+    "crates/sruja-cli",
+
+    # Tier 3: Secondary Products
+    "crates/sruja-diff",
+    "crates/sruja-intent",
     "crates/sruja-agent",
 ]
 resolver = "2"
