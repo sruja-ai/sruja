@@ -2,6 +2,10 @@
 
 Sruja has evolved from a C4-specific architecture-as-code tool into a generalized **Context Graph** engine. This allows you to define any domain-specific language (DSL) and validate it using pluggable schemas.
 
+## See also
+
+For how multi-step **orchestration** stays in the host (editor, CI, or your own stack) while this graph remains **description and governance**—not a live agent scheduler—see [Agentic orchestration patterns and Sruja](../AGENTIC_ORCHESTRATION_AND_SRUJA.md).
+
 ## What is a Context Graph?
 
 A Context Graph is a governed, structured representation of knowledge designed for both humans and AI agents. Unlike a generic knowledge graph, a Context Graph prioritizes:

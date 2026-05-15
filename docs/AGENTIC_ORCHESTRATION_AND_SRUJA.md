@@ -11,6 +11,8 @@ Sruja exposes a **Model Context Protocol (MCP)** server so AI editors can call s
 
 Sruja does **not** need to embed a LangGraph-style in-process agent loop to deliver strong value: it supplies **deterministic, schema-driven** architecture evidence on demand. Setup: [mcp_setup.md](mcp_setup.md).
 
+That governance is expressed as a **Context Graph**: elements and relationships validated against a declared schema (the default C4-inspired architecture schema, or a custom `schema` block for other domains). For syntax, nesting rules, and validation behavior, see [Domain schema and context graphs](architecture/domain-schema.md).
+
 ## Shared state instead of stuffing the chat window
 
 Patterns such as **tiered memory** and **context engineering** stress moving stable facts out of the model’s volatile window. In Sruja terms:
@@ -23,7 +25,7 @@ See [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) for the product framing.
 
 ## Modeling orchestration in `.sruja` (not executing it)
 
-You can **document** how *your* system orchestrates agents—supervisor, hierarchy, mesh, pipelines—using the DSL and relationships. The book course **Agentic AI → Agentic Patterns → Multi-Agent Orchestration** walks through examples. That is **architecture description and communication**, not Sruja executing those agents at runtime.
+You can **document** how *your* system orchestrates agents—supervisor, hierarchy, mesh, pipelines—using the DSL and relationships. The book course **Agentic AI → Agentic Patterns → Multi-Agent Orchestration** walks through examples. That is **architecture description and communication**, not Sruja executing those agents at runtime. For custom domains beyond the default architecture schema—`node_kinds`, `edge_kinds`, and `nesting` in a `schema` block—see [Domain schema and context graphs](architecture/domain-schema.md).
 
 ## Adjacent to “evaluator–optimizer” and reflection
 

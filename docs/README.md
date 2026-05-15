@@ -33,6 +33,7 @@ sruja sync -r .
 | [FEDERATION.md](FEDERATION.md) | Retrieval order, artifact shapes, and multi-repo composition rules |
 | [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) | Context engineering principles and pipeline |
 | [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) | How common agentic / multi-agent patterns map to Sruja (MCP, graph, scope) |
+| [architecture/domain-schema.md](architecture/domain-schema.md) | Context Graphs, custom `schema` blocks, default architecture kinds, and `sruja lint` validation |
 | [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) | Shared terminology and definitions |
 | [architecture/README.md](architecture/README.md) | Sruja's own architecture models: platform, context pipeline, and development workflow |
 | [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) | DSL reference |
