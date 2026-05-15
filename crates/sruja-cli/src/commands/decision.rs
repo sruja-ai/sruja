@@ -4,8 +4,10 @@ use crate::commands::context_events::{
     append_context_event, policy_fingerprint, ContextEventRecord, CONTEXT_EVENTS_SCHEMA_V2,
 };
 use chrono::Utc;
+use fs2::FileExt;
 use serde::{Deserialize, Serialize};
-use std::fs;
+use sruja_graph::{Decision, DecisionStatus, SourceReference};
+use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 
 use crate::commands::CliError;
@@ -54,7 +56,7 @@ pub struct DecisionListItem {
     pub elements: Vec<String>,
 }
 
-fn parse_decision_file(path: &Path) -> Result<(DecisionFrontmatter, String), CliError> {
+pub(crate) fn parse_decision_file(path: &Path) -> Result<(DecisionFrontmatter, String), CliError> {
     let raw = fs::read_to_string(path).map_err(CliError::Io)?;
     split_frontmatter(&raw).ok_or_else(|| {
         CliError::validation(format!("expected YAML front matter in {}", path.display()))
@@ -80,27 +82,115 @@ pub fn format_decision_file(fm: &DecisionFrontmatter, body: &str) -> Result<Stri
     Ok(format!("---\n{yaml}---\n{body}"))
 }
 
-fn next_decision_id(repo: &Path) -> Result<String, CliError> {
-    let dir = decisions_dir(repo);
-    let year = Utc::now().format("%Y").to_string();
-    let mut max_n = 0u32;
-    if dir.exists() {
-        for entry in fs::read_dir(&dir).map_err(CliError::Io)? {
-            let entry = entry.map_err(CliError::Io)?;
-            let name = entry.file_name().to_string_lossy().to_string();
-            // DR-2026-001.md
-            let prefix = format!("DR-{year}-");
-            if let Some(rest) = name
-                .strip_prefix(&prefix)
-                .and_then(|s| s.strip_suffix(".md"))
-            {
-                if let Ok(n) = rest.parse::<u32>() {
-                    max_n = max_n.max(n);
+/// Parse markdown body after front matter: title (`#`) and `##` sections used by the template.
+pub(crate) fn parse_decision_sections(body: &str) -> (String, String, String, String, Vec<String>) {
+    let mut title = String::new();
+    let mut current_heading = String::new();
+    let mut context = String::new();
+    let mut decision = String::new();
+    let mut consequences = String::new();
+    let mut alternatives: Vec<String> = Vec::new();
+
+    for line in body.lines() {
+        let trimmed_end = line.trim_end();
+        if trimmed_end.starts_with("# ") && title.is_empty() {
+            title = trimmed_end[2..].trim().to_string();
+            continue;
+        }
+        if let Some(rest) = trimmed_end.strip_prefix("## ") {
+            current_heading = rest.trim().to_ascii_lowercase();
+            continue;
+        }
+        match current_heading.as_str() {
+            "context" => {
+                context.push_str(line);
+                context.push('\n');
+            }
+            "decision" => {
+                decision.push_str(line);
+                decision.push('\n');
+            }
+            "consequences" => {
+                consequences.push_str(line);
+                consequences.push('\n');
+            }
+            "alternatives considered" => {
+                let l = line.trim();
+                if let Some(rest) = l.strip_prefix("- ") {
+                    alternatives.push(rest.trim().to_string());
+                } else if let Some(rest) = l.strip_prefix("* ") {
+                    alternatives.push(rest.trim().to_string());
+                } else if !l.is_empty() {
+                    alternatives.push(l.to_string());
                 }
             }
+            _ => {}
         }
     }
-    Ok(format!("DR-{}-{:03}", year, max_n + 1))
+
+    (
+        title,
+        context.trim().to_string(),
+        decision.trim().to_string(),
+        consequences.trim().to_string(),
+        alternatives,
+    )
+}
+
+fn frontmatter_status_to_decision_status(s: &str) -> DecisionStatus {
+    match s.to_lowercase().trim() {
+        "accepted" => DecisionStatus::Accepted,
+        "rejected" => DecisionStatus::Rejected,
+        "superseded" => DecisionStatus::Superseded,
+        "deprecated" => DecisionStatus::Deprecated,
+        _ => DecisionStatus::Proposed,
+    }
+}
+
+/// Build a [`KnowledgeGraph`](sruja_graph::KnowledgeGraph) decision row from a Decision Record file.
+pub(crate) fn build_graph_decision(
+    repo: &Path,
+    md_path: &Path,
+    fm: &DecisionFrontmatter,
+    body: &str,
+    previous: Option<&Decision>,
+) -> Result<Decision, CliError> {
+    let (parsed_title, context, decision_text, consequences, alternatives) =
+        parse_decision_sections(body);
+    let title = if parsed_title.is_empty() {
+        fm.id.clone()
+    } else {
+        parsed_title
+    };
+    let rel = md_path
+        .strip_prefix(repo)
+        .unwrap_or(md_path)
+        .to_string_lossy()
+        .to_string();
+    let status = frontmatter_status_to_decision_status(&fm.status);
+    let now = Utc::now();
+    let created_at = previous.map(|p| p.created_at).unwrap_or(now);
+    let updated_at = now;
+    let ratified_at = match status {
+        DecisionStatus::Accepted => previous.and_then(|p| p.ratified_at).or(Some(now)),
+        _ => previous.and_then(|p| p.ratified_at),
+    };
+
+    Ok(Decision {
+        id: fm.id.clone(),
+        title,
+        status,
+        context,
+        decision: decision_text,
+        consequences,
+        alternatives,
+        created_at,
+        updated_at,
+        ratified_at,
+        author: None,
+        source: SourceReference::adr_file(rel),
+        affects: fm.elements.clone(),
+    })
 }
 
 pub async fn decision_new(
@@ -173,7 +263,38 @@ pub fn create_decision_record(
 ) -> Result<String, CliError> {
     let dir = decisions_dir(repo_path);
     fs::create_dir_all(&dir).map_err(CliError::Io)?;
-    let id = next_decision_id(repo_path)?;
+    let lock_path = dir.join(".id_alloc.lock");
+    let lock_file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(&lock_path)
+        .map_err(CliError::Io)?;
+    lock_file.lock_exclusive().map_err(|e| {
+        CliError::validation(format!(
+            "could not lock {:?} for sequential decision ids: {}",
+            lock_path, e
+        ))
+    })?;
+
+    let year = Utc::now().format("%Y").to_string();
+    let mut max_n = 0u32;
+    for entry in fs::read_dir(&dir).map_err(CliError::Io)? {
+        let entry = entry.map_err(CliError::Io)?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        let prefix = format!("DR-{year}-");
+        if let Some(rest) = name
+            .strip_prefix(&prefix)
+            .and_then(|s| s.strip_suffix(".md"))
+        {
+            if let Ok(n) = rest.parse::<u32>() {
+                max_n = max_n.max(n);
+            }
+        }
+    }
+    let id = format!("DR-{}-{:03}", year, max_n + 1);
+
     let fm = DecisionFrontmatter {
         id: id.clone(),
         record_type: record_type.to_string(),
@@ -188,8 +309,15 @@ pub fn create_decision_record(
     };
     let body = format!("# {title}\n\n## Context\n\n## Decision\n\n## Alternatives Considered\n\n## Evidence\n\n## Consequences\n\n## Follow-up Checks\n");
     let path = dir.join(format!("{id}.md"));
+    if path.exists() {
+        return Err(CliError::validation(format!(
+            "decision file already exists: {}",
+            path.display()
+        )));
+    }
     let content = format_decision_file(&fm, &body)?;
     fs::write(&path, content).map_err(CliError::Io)?;
+    crate::graph_store::upsert_decision_record_in_stored_graph(repo_path, &path)?;
     append_context_event(
         repo_path,
         ContextEventRecord {
@@ -287,6 +415,7 @@ pub async fn decision_link(repo: &str, id: &str, element: &str) -> Result<(), Cl
         fm.elements.push(el.to_string());
     }
     fs::write(&p, format_decision_file(&fm, &body)?).map_err(CliError::Io)?;
+    crate::graph_store::upsert_decision_record_in_stored_graph(repo_path, &p)?;
     Ok(())
 }
 
@@ -296,6 +425,7 @@ pub async fn decision_accept(repo: &str, id: &str) -> Result<(), CliError> {
     let (mut fm, body) = parse_decision_file(&p)?;
     fm.status = "accepted".to_string();
     fs::write(&p, format_decision_file(&fm, &body)?).map_err(CliError::Io)?;
+    crate::graph_store::upsert_decision_record_in_stored_graph(repo_path, &p)?;
     append_context_event(
         repo_path,
         ContextEventRecord {
@@ -333,6 +463,7 @@ pub async fn decision_supersede(repo: &str, id: &str, by: &str) -> Result<(), Cl
     fm.status = "superseded".into();
     fm.superseded_by = Some(by.to_string());
     fs::write(&p, format_decision_file(&fm, &body)?).map_err(CliError::Io)?;
+    crate::graph_store::upsert_decision_record_in_stored_graph(repo_path, &p)?;
     append_context_event(
         repo_path,
         ContextEventRecord {

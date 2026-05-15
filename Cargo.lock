@@ -3438,6 +3438,7 @@ dependencies = [
  "crossterm",
  "dialoguer",
  "env_logger",
+ "fs2",
  "indicatif",
  "notify",
  "notify-debouncer-mini",

@@ -15,7 +15,10 @@
     "outcome": { "type": "string", "minLength": 1 },
     "policy_fingerprint": { "type": ["string", "null"] },
     "strict": { "type": ["boolean", "null"] },
-    "details": { "type": "object" },
+    "details": {
+      "type": ["object", "null"],
+      "description": "Structured payload; append tooling may coerce JSON null to {}."
+    },
     "trace_id": { "type": ["string", "null"] },
     "decision_id": { "type": ["string", "null"] },
     "run_id": { "type": ["string", "null"] },

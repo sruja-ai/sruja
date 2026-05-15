@@ -99,6 +99,7 @@ pub fn build_and_save_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
 
     let mut kg = KnowledgeGraph::new();
     sruja_graph::merge_scan_into_graph(&mut kg, &scan_graph, &repo.display().to_string());
+    merge_decision_records_from_repo(repo, &mut kg)?;
 
     let commit_sha = get_current_commit_sha(repo);
     kg.metadata.commit_sha = commit_sha;
@@ -106,6 +107,54 @@ pub fn build_and_save_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     save_graph(repo, &kg)?;
 
     Ok(kg)
+}
+
+/// Merge Decision Records from `.sruja/decisions/*.md` into `graph` so `graph.json` stays aligned
+/// with the markdown source of truth after `sruja sync` / rebuild.
+pub fn merge_decision_records_from_repo(
+    repo: &Path,
+    graph: &mut KnowledgeGraph,
+) -> Result<(), CliError> {
+    let items = crate::commands::decision::list_decisions(repo)?;
+    let mut merged = 0usize;
+    for it in items {
+        let md = repo.join(&it.path);
+        if !md.is_file() {
+            continue;
+        }
+        let (fm, body) = match crate::commands::decision::parse_decision_file(&md) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(target: "sruja", "skip decision file {:?}: {}", md, e);
+                continue;
+            }
+        };
+        let prev = graph.get_decision(&fm.id);
+        match crate::commands::decision::build_graph_decision(repo, &md, &fm, &body, prev) {
+            Ok(d) => {
+                graph.decisions.insert(d.id.clone(), d);
+                merged += 1;
+            }
+            Err(e) => {
+                tracing::warn!(target: "sruja", "skip decision {}: {}", fm.id, e);
+            }
+        }
+    }
+    if merged > 0 {
+        graph.touch();
+    }
+    Ok(())
+}
+
+/// Upsert one Decision Record into `.sruja/graph.json` after a file change (`accept`, `link`, …).
+pub fn upsert_decision_record_in_stored_graph(repo: &Path, md_path: &Path) -> Result<(), CliError> {
+    let mut kg = load_or_build_graph(repo)?;
+    let (fm, body) = crate::commands::decision::parse_decision_file(md_path)?;
+    let prev = kg.get_decision(&fm.id);
+    let d = crate::commands::decision::build_graph_decision(repo, md_path, &fm, &body, prev)?;
+    kg.decisions.insert(d.id.clone(), d);
+    kg.touch();
+    save_graph(repo, &kg)
 }
 
 /// Save knowledge graph to disk
@@ -419,5 +468,35 @@ mod tests {
 
         assert_eq!(loaded.metadata.name, "TestArchitecture");
         assert!(loaded.get_node("svc_api").is_some());
+    }
+
+    #[test]
+    fn decision_record_merged_into_saved_graph() {
+        use crate::commands::decision::create_decision_record;
+        use sruja_graph::DecisionStatus;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        std::fs::create_dir_all(repo_path.join("src")).unwrap();
+        std::fs::write(repo_path.join("src/app.js"), "console.log(1)").unwrap();
+
+        build_and_save_graph(repo_path).unwrap();
+        let id = create_decision_record(
+            repo_path,
+            "Use event sourcing",
+            "adr",
+            None,
+            "test_tool",
+            "human",
+            "test",
+        )
+        .unwrap();
+
+        let loaded = load_graph(repo_path).unwrap();
+        let d = loaded
+            .get_decision(&id)
+            .expect("decision merged into graph");
+        assert_eq!(d.title, "Use event sourcing");
+        assert!(matches!(d.status, DecisionStatus::Proposed));
     }
 }

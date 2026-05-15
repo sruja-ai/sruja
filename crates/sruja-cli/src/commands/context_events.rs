@@ -101,7 +101,7 @@ impl ContextEventRecord {
     }
 }
 
-/// Validate a record before appending (CLI / MCP).
+/// Validate a record before appending (CLI / MCP). Matches `schemas/context_event_record.schema.json`.
 pub fn validate_context_event_record(r: &ContextEventRecord) -> Result<(), String> {
     if r.schema_version != CONTEXT_EVENTS_SCHEMA && r.schema_version != CONTEXT_EVENTS_SCHEMA_V2 {
         return Err(format!(
@@ -117,6 +117,12 @@ pub fn validate_context_event_record(r: &ContextEventRecord) -> Result<(), Strin
     }
     if r.outcome.trim().is_empty() {
         return Err("outcome must be non-empty".into());
+    }
+    if !r.details.is_object() {
+        return Err(format!(
+            "details must be a JSON object (got {:?}); use {{}} if empty",
+            r.details
+        ));
     }
     Ok(())
 }
@@ -142,8 +148,11 @@ pub fn append_context_event_from_json_line(
     if trimmed.is_empty() {
         return Err("empty JSON line".into());
     }
-    let record: ContextEventRecord =
+    let mut record: ContextEventRecord =
         serde_json::from_str(trimmed).map_err(|e| format!("invalid JSON: {e}"))?;
+    if record.details.is_null() {
+        record.details = serde_json::json!({});
+    }
     validate_context_event_record(&record)?;
     append_context_event(repo, record.clone());
     Ok(record)
@@ -333,6 +342,25 @@ pub fn read_context_events_query(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn append_from_json_normalizes_null_details() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+        let line = r#"{"schema_version":"context_event/v2","timestamp":"2026-01-01T00:00:00Z","kind":"k","outcome":"o","details":null}"#;
+        append_context_event_from_json_line(repo, line).unwrap();
+        let raw = std::fs::read_to_string(repo.join(".sruja/context_events.jsonl")).unwrap();
+        assert!(raw.contains("\"details\":{}"));
+    }
+
+    #[test]
+    fn append_from_json_rejects_non_object_details() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+        let line = r#"{"schema_version":"context_event/v2","timestamp":"2026-01-01T00:00:00Z","kind":"k","outcome":"o","details":[]}"#;
+        assert!(append_context_event_from_json_line(repo, line).is_err());
+    }
 
     #[test]
     fn v1_line_deserializes_with_default_trace_fields() {
