@@ -37,7 +37,7 @@ notify = "6.1.1"
 notify-debouncer-mini = "0.4.1"
 clap_complete = "4.5"
 console = "0.15"
-dialoguer = "0.11"
+dialoguer = "0.12"
 crossterm = "0.28"
 opener = "0.7"
 tracing = { workspace = true }
