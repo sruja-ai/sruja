@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.48.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.47.0...sruja-v0.48.0) (2026-05-15)
+
+
+### Features
+
+* **cli:** add sruja learn pipeline and MCP tools for learned facts ([5290d50](https://github.com/sruja-ai/sruja/commit/5290d50dffe3049a4b3273068a1ef969e1f27966))
+* universalize sruja to generic context graphs (Phase 1) ([3f9038e](https://github.com/sruja-ai/sruja/commit/3f9038e5b9b496030e20c64f1769177d86e9eba6))
+
 ## [0.47.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.46.0...sruja-v0.47.0) (2026-05-13)
 
 
