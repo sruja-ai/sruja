@@ -355,6 +355,10 @@ fn detect_violations(
         }
     }
 
+    for v in &mut violations {
+        crate::types::annotate_violation_metadata(v);
+    }
+
     violations
 }
 

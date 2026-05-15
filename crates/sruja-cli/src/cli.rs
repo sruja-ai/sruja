@@ -29,7 +29,7 @@ fn was_invoked_as(alias: &str) -> bool {
 #[command(name = "sruja")]
 #[command(
     about = "Architecture-as-code CLI for keeping repo context, drift checks, and AI guidance in sync",
-    long_about = None,
+    long_about = "Retrieval ladder (deterministic first): focus (before a task) → ai (paste-ready brief) → MCP in your editor → why/query (investigation). LLM enrichment (--enrich) is optional interpretation, never reviewed truth.",
     after_help = r#"Product loop (define truth → context → drift → review):
   Use the sruja-architecture skill + repo.sruja for reviewed intent; lint after edits;
   sync/review/drift for freshness; focus or ai before coding; MCP inside AI tools.
@@ -952,6 +952,21 @@ pub enum RunCommand {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+    },
+    /// Export a trace bundle for a run_id (snapshots + agent artifacts + context events slice)
+    Export {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Run ID to export
+        #[arg(long)]
+        run_id: String,
+        /// Output directory (defaults to .sruja/run_exports/<run_id>)
+        #[arg(long)]
+        out: Option<String>,
+        /// Max number of context events to include (newest-first)
+        #[arg(long, default_value_t = 2000)]
+        events_limit: usize,
     },
 }
 
@@ -2123,6 +2138,12 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 run_id,
                 format,
             } => commands::run_show(&repo, &run_id, &format).await,
+            RunCommand::Export {
+                repo,
+                run_id,
+                out,
+                events_limit,
+            } => commands::run_export(&repo, &run_id, out.as_deref(), events_limit).await,
         },
         Commands::Evaluate { architecture } => {
             eprintln!("warning: 'sruja evaluate' is deprecated, use 'sruja intent evaluate'");

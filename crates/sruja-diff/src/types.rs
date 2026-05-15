@@ -105,6 +105,16 @@ pub struct Violation {
     pub rationale: Option<String>,
 }
 
+/// Fill stable `rule_id` and default `confidence` when not already set.
+pub fn annotate_violation_metadata(v: &mut Violation) {
+    if v.rule_id.is_none() {
+        v.rule_id = Some(crate::rule_ids::rule_id_for_kind(v.kind).to_string());
+    }
+    if v.confidence.is_none() {
+        v.confidence = Some(crate::rule_ids::default_confidence_for_kind(v.kind));
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum ViolationKind {
     LayerViolation,

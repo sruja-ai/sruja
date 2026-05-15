@@ -95,6 +95,8 @@ pub struct ReasonedTrace {
 
 #[derive(Debug, Serialize)]
 pub struct FocusForAiOutput {
+    /// `deterministic_brief` — grounded scan/graph facts; optional enrichment is separate.
+    pub artifact_kind: String,
     pub schema_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub run_id: Option<String>,
@@ -533,6 +535,7 @@ pub fn build_focus_briefing(
             details_substring: None,
             decision_id: None,
             trace_id: None,
+            run_id: None,
             element_id: Some(target_id),
             decision_lineage_only: true,
         },
@@ -660,6 +663,7 @@ pub fn build_focus_for_ai_output(
 ) -> FocusForAiOutput {
     let resolved = briefing.target.id.clone();
     FocusForAiOutput {
+        artifact_kind: "deterministic_brief".to_string(),
         schema_version: FOCUS_FOR_AI_SCHEMA_VERSION.to_string(),
         run_id: run_id.map(|s| s.to_string()),
         repo: repo_path.display().to_string(),

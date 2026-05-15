@@ -397,6 +397,7 @@ pub async fn decision_trace(repo: &str, id: &str, limit: usize) -> Result<(), Cl
             details_substring: None,
             decision_id: Some(id),
             trace_id: None,
+            run_id: None,
             element_id: None,
             decision_lineage_only: false,
         },

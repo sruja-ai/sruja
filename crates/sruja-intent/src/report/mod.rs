@@ -33,6 +33,9 @@ pub struct IntentViolation {
     pub component: Option<String>,
     pub evidence: Vec<String>,
     pub suggestion: Option<String>,
+    /// Stable rule code for automation and remediation playbooks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule_id: Option<String>,
 }
 
 impl IntentReport {
@@ -47,6 +50,7 @@ impl IntentReport {
                 component: d.evidence.first().map(|e| e.detail.clone()),
                 evidence: d.evidence.iter().map(|e| e.detail.clone()).collect(),
                 suggestion: d.suggestion.clone(),
+                rule_id: Some(crate::rule_ids::rule_id_for_drift_kind(d.kind).to_string()),
             })
             .collect();
 
@@ -185,6 +189,10 @@ mod tests {
         let intent_report = IntentReport::from_drift_report(&report);
         assert_eq!(intent_report.violations.len(), 1);
         assert!(intent_report.violations[0].kind.contains("Undocumented"));
+        assert_eq!(
+            intent_report.violations[0].rule_id.as_deref(),
+            Some("SRUJA-INTENT-DOC-001")
+        );
         assert_eq!(intent_report.suggestions.len(), 1);
     }
 

@@ -45,6 +45,7 @@ pub async fn event_list(
             details_substring,
             decision_id,
             trace_id,
+            run_id: None,
             element_id,
             decision_lineage_only,
         },

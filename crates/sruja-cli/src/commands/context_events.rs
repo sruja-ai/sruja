@@ -240,6 +240,35 @@ pub fn record_drift_compare(
     );
 }
 
+pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Option<&str>) {
+    append_context_event(
+        repo,
+        ContextEventRecord {
+            schema_version: CONTEXT_EVENTS_SCHEMA.to_string(),
+            timestamp: Utc::now().to_rfc3339(),
+            kind: "agent_plan".to_string(),
+            outcome: "ok".to_string(),
+            policy_fingerprint: policy_fingerprint(repo),
+            strict: None,
+            details: serde_json::json!({
+                "goal": goal,
+                "element_id": element_id,
+            }),
+            trace_id: Some(run_id.to_string()),
+            decision_id: None,
+            run_id: Some(run_id.to_string()),
+            workflow_id: None,
+            actor: Some("sruja agent".to_string()),
+            source: Some("cli".to_string()),
+            tool: Some("agent_run".to_string()),
+            elements: element_id.map(|id| vec![id.to_string()]),
+            subject_ids: None,
+            evidence_refs: None,
+            summary: Some(format!("Agent plan for: {goal}")),
+        },
+    );
+}
+
 pub fn record_proposal_merge(repo: &Path, proposal_id: &str) {
     append_context_event(
         repo,
@@ -273,6 +302,7 @@ pub struct ContextEventQuery<'a> {
     pub details_substring: Option<&'a str>,
     pub decision_id: Option<&'a str>,
     pub trace_id: Option<&'a str>,
+    pub run_id: Option<&'a str>,
     pub element_id: Option<&'a str>,
     /// When set, only kinds in [`DECISION_LINEAGE_KINDS`].
     pub decision_lineage_only: bool,
@@ -317,6 +347,13 @@ pub fn read_context_events_query(
         if let Some(tid) = query.trace_id {
             let in_field = ev.trace_id.as_deref() == Some(tid);
             let in_details = ev.details.to_string().contains(tid);
+            if !in_field && !in_details {
+                continue;
+            }
+        }
+        if let Some(rid) = query.run_id {
+            let in_field = ev.run_id.as_deref() == Some(rid);
+            let in_details = ev.details.to_string().contains(rid);
             if !in_field && !in_details {
                 continue;
             }
@@ -423,5 +460,75 @@ mod tests {
         };
         assert!(ev.touches_element("MySystem.Api"));
         assert!(ev.touches_element("MySystem.Api.Handler"));
+    }
+
+    #[test]
+    fn query_filters_by_run_id() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+
+        append_context_event(
+            repo,
+            ContextEventRecord {
+                schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+                timestamp: "2026-05-15T12:00:00Z".into(),
+                kind: "context_retrieved".into(),
+                outcome: "ok".into(),
+                policy_fingerprint: None,
+                strict: None,
+                details: serde_json::json!({ "k": "v" }),
+                trace_id: None,
+                decision_id: None,
+                run_id: Some("run_a".into()),
+                workflow_id: None,
+                actor: None,
+                source: None,
+                tool: None,
+                elements: None,
+                subject_ids: None,
+                evidence_refs: None,
+                summary: None,
+            },
+        );
+        append_context_event(
+            repo,
+            ContextEventRecord {
+                schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+                timestamp: "2026-05-15T12:01:00Z".into(),
+                kind: "context_retrieved".into(),
+                outcome: "ok".into(),
+                policy_fingerprint: None,
+                strict: None,
+                details: serde_json::json!({ "k": "v" }),
+                trace_id: None,
+                decision_id: None,
+                run_id: Some("run_b".into()),
+                workflow_id: None,
+                actor: None,
+                source: None,
+                tool: None,
+                elements: None,
+                subject_ids: None,
+                evidence_refs: None,
+                summary: None,
+            },
+        );
+
+        let events = read_context_events_query(
+            repo,
+            ContextEventQuery {
+                limit: 50,
+                kind_filter: None,
+                details_substring: None,
+                decision_id: None,
+                trace_id: None,
+                run_id: Some("run_b"),
+                element_id: None,
+                decision_lineage_only: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].run_id.as_deref(), Some("run_b"));
     }
 }

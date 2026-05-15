@@ -26,3 +26,5 @@ pub mod intent;
 pub mod onboard;
 #[path = "propose.rs"]
 pub mod propose;
+#[path = "remediation.rs"]
+pub mod remediation;

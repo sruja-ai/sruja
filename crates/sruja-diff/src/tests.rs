@@ -135,6 +135,13 @@ mod cases {
             .violations
             .iter()
             .any(|v| v.kind == ViolationKind::LayerViolation));
+        let layer = result
+            .violations
+            .iter()
+            .find(|v| v.kind == ViolationKind::LayerViolation)
+            .expect("layer violation");
+        assert_eq!(layer.rule_id.as_deref(), Some("SRUJA-LAYER-001"));
+        assert!(layer.confidence.is_some());
     }
 
     #[test]

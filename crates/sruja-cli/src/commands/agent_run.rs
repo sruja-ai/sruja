@@ -18,6 +18,7 @@ use crate::utils::run_snapshots::write_json_snapshot;
 
 use super::agent;
 use super::focus as focus_cmd;
+use super::remediation::plan_remediation_steps;
 use crate::commands::sync_cmd;
 use sruja_agent::TrajectoryExecutor;
 
@@ -101,6 +102,10 @@ pub(crate) struct AgentSafety {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct AgentPlanOutput {
+    /// Always `deterministic_plan` — steps and verification are reproducible from repo facts.
+    pub(crate) artifact_kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) trace_id: Option<String>,
     pub(crate) schema_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) run_id: Option<String>,
@@ -248,8 +253,27 @@ mod observation_compression {
     }
 }
 
+fn agent_enrichment(
+    status: &str,
+    provider: &str,
+    model: Option<String>,
+    error: Option<String>,
+    narrative_markdown: Option<String>,
+) -> AgentEnrichment {
+    AgentEnrichment {
+        artifact_kind: "llm_interpretation".to_string(),
+        status: status.to_string(),
+        provider: provider.to_string(),
+        model,
+        error,
+        narrative_markdown,
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct AgentEnrichment {
+    /// Always `llm_interpretation` when present — narrative only; never changes facts.
+    artifact_kind: String,
     status: String,
     provider: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -570,43 +594,31 @@ fn build_enrichment(
 
     if provider == "cmd" {
         let Some(cmd) = plan.cmd.as_deref() else {
-            return Some(AgentEnrichment {
-                status: "skipped".to_string(),
-                provider: "cmd".to_string(),
-                model: None,
-                error: Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
-                narrative_markdown: None,
-            });
+            return Some(agent_enrichment(
+                "skipped",
+                "cmd",
+                None,
+                Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
+                None,
+            ));
         };
         return Some(match run_cmd_enrichment(cmd, &stdin_payload, limits) {
-            Ok(md) => AgentEnrichment {
-                status: "ok".to_string(),
-                provider: "external_cmd".to_string(),
-                model: None,
-                error: None,
-                narrative_markdown: Some(md),
-            },
-            Err(e) => AgentEnrichment {
-                status: "error".to_string(),
-                provider: "external_cmd".to_string(),
-                model: None,
-                error: Some(e),
-                narrative_markdown: None,
-            },
+            Ok(md) => agent_enrichment("ok", "external_cmd", None, None, Some(md)),
+            Err(e) => agent_enrichment("error", "external_cmd", None, Some(e), None),
         });
     }
 
     if provider != "openai" {
-        return Some(AgentEnrichment {
-            status: "skipped".to_string(),
-            provider: provider.to_string(),
-            model: None,
-            error: Some(
+        return Some(agent_enrichment(
+            "skipped",
+            provider,
+            None,
+            Some(
                 "Unsupported provider. Use provider=cmd (recommended) or provider=openai."
                     .to_string(),
             ),
-            narrative_markdown: None,
-        });
+            None,
+        ));
     }
 
     let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
@@ -615,13 +627,13 @@ fn build_enrichment(
         .as_deref()
         .unwrap_or("https://api.openai.com/v1");
     let Some(api_key) = resolve_openai_auth() else {
-        return Some(AgentEnrichment {
-            status: "skipped".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
-            narrative_markdown: None,
-        });
+        return Some(agent_enrichment(
+            "skipped",
+            "openai",
+            Some(model.to_string()),
+            Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
+            None,
+        ));
     };
 
     let user_prompt = format!(
@@ -636,20 +648,20 @@ fn build_enrichment(
         base_url,
         &api_key,
     ) {
-        Ok(md) => Some(AgentEnrichment {
-            status: "ok".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: None,
-            narrative_markdown: Some(md),
-        }),
-        Err(e) => Some(AgentEnrichment {
-            status: "error".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: Some(e),
-            narrative_markdown: None,
-        }),
+        Ok(md) => Some(agent_enrichment(
+            "ok",
+            "openai",
+            Some(model.to_string()),
+            None,
+            Some(md),
+        )),
+        Err(e) => Some(agent_enrichment(
+            "error",
+            "openai",
+            Some(model.to_string()),
+            Some(e),
+            None,
+        )),
     }
 }
 
@@ -848,8 +860,23 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         }
     });
 
-    // ── Think: deterministic plan synthesis (v1: conservative) ────────────
-    let steps: Vec<AgentStep> = Vec::new();
+    crate::commands::context_events::record_agent_plan(
+        repo_path,
+        &run_id,
+        options.goal,
+        resolved_element_id.as_deref(),
+    );
+
+    // ── Think: deterministic plan synthesis ───────────────────────────────
+    let steps: Vec<AgentStep> = plan_remediation_steps(&drift_json, &intent_json)
+        .into_iter()
+        .map(|p| AgentStep {
+            id: p.id,
+            kind: p.kind,
+            argv: p.argv,
+            expected: p.expected,
+        })
+        .collect();
     let mut verification: Vec<AgentStep> = Vec::new();
     let mut risks: Vec<String> = Vec::new();
     let mut open_questions: Vec<String> = Vec::new();
@@ -951,6 +978,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
     );
 
     let plan = build_agent_plan_output(
+        &run_id,
         &run_id,
         options.repo,
         options.goal,
@@ -1227,6 +1255,7 @@ pub async fn agent_run(options: AgentRunOptions<'_>) -> Result<(), CliError> {
 #[allow(clippy::too_many_arguments)]
 fn build_agent_plan_output(
     run_id: &str,
+    trace_id: &str,
     repo: &str,
     goal: &str,
     file: Option<&str>,
@@ -1244,6 +1273,8 @@ fn build_agent_plan_output(
     enrichment: Option<AgentEnrichment>,
 ) -> AgentPlanOutput {
     AgentPlanOutput {
+        artifact_kind: "deterministic_plan".to_string(),
+        trace_id: Some(trace_id.to_string()),
         schema_version: "agent_plan_output/v1".to_string(),
         run_id: Some(run_id.to_string()),
         repo: repo.to_string(),

@@ -8,6 +8,8 @@ pub mod intent_domain;
 pub mod scan_domain;
 pub mod utility_domain;
 
+pub use intent_domain::remediation;
+
 pub use intent_domain::agent::{agent_clear, agent_clusters, agent_history, agent_record};
 pub use intent_domain::agent_plan::{agent_apply, agent_plan};
 pub use intent_domain::agent_run::{agent_run, agent_run_to_string, AgentRunOptions};
@@ -75,6 +77,7 @@ pub use scan_domain::status::status;
 pub use scan_domain::sync_cmd::sync;
 pub use scan_domain::why::why;
 pub use utility_domain::init::init;
+pub use utility_domain::run_export::run_export;
 pub use utility_domain::run_show::run_show;
 pub use utility_domain::version::version;
 

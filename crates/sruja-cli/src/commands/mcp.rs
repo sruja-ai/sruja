@@ -18,6 +18,8 @@ const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 const ENV_MCP_READONLY: &str = "SRUJA_MCP_READONLY";
 /// When set to `1`, `true`, `yes`, or `on`, emit one JSON line per `tools/call` on stderr for observability.
 const ENV_MCP_LOG: &str = "SRUJA_MCP_LOG";
+/// When set to `1`, `true`, `yes`, or `on`, append a `context_event/v2` row per `tools/call`.
+const ENV_MCP_TRACE_EVENTS: &str = "SRUJA_MCP_TRACE_EVENTS";
 
 fn mcp_env_truthy(name: &str) -> bool {
     match std::env::var(name) {
@@ -38,6 +40,10 @@ fn mcp_readonly_enabled() -> bool {
 
 fn mcp_log_enabled() -> bool {
     mcp_env_truthy(ENV_MCP_LOG)
+}
+
+fn mcp_trace_events_enabled() -> bool {
+    mcp_env_truthy(ENV_MCP_TRACE_EVENTS)
 }
 
 /// Tools that write under `.sruja`, mutate git state, run user-supplied gate commands, or may apply repo changes.
@@ -271,6 +277,11 @@ impl McpServer {
             .unwrap_or(&self.default_repo)
             .to_string();
 
+        let run_id_for_log = args
+            .get("run_id")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
         let t0 = std::time::Instant::now();
         let result = run_tool(name, &args, &self.default_repo, &self.graph_cache).await;
         let elapsed_ms = t0.elapsed().as_millis() as u64;
@@ -285,11 +296,29 @@ impl McpServer {
                 "mcp_tool_call": true,
                 "tool": name,
                 "repo": repo_for_log,
+                "run_id": run_id_for_log.as_deref(),
                 "ms": elapsed_ms,
                 "ok": ok,
                 "error": err_one_line,
             });
             eprintln!("{}", line);
+        }
+
+        if mcp_trace_events_enabled() && !name.starts_with("sruja_record_") {
+            let ok = result.is_ok();
+            let err_one_line = result
+                .as_ref()
+                .err()
+                .map(|e| e.to_string().lines().collect::<Vec<_>>().join(" "));
+            let _ = append_mcp_tool_call_event(
+                &repo_for_log,
+                name,
+                &args,
+                run_id_for_log.as_deref(),
+                ok,
+                err_one_line.as_deref(),
+                elapsed_ms,
+            );
         }
 
         match result {
@@ -311,6 +340,77 @@ impl McpServer {
             }),
         }
     }
+}
+
+fn append_mcp_tool_call_event(
+    repo: &str,
+    tool: &str,
+    args: &Value,
+    run_id: Option<&str>,
+    ok: bool,
+    error: Option<&str>,
+    elapsed_ms: u64,
+) -> Result<(), String> {
+    let repo_path = std::path::Path::new(repo);
+
+    let elements = args
+        .get("elements")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                .collect::<Vec<_>>()
+        })
+        .or_else(|| {
+            args.get("element_id")
+                .and_then(|v| v.as_str())
+                .map(|s| vec![s.to_string()])
+        });
+
+    let args_keys = args
+        .as_object()
+        .map(|m| {
+            let mut keys = m.keys().cloned().collect::<Vec<_>>();
+            keys.sort();
+            keys
+        })
+        .unwrap_or_default();
+
+    let record = crate::commands::context_events::ContextEventRecord {
+        schema_version: crate::commands::context_events::CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        kind: "context_retrieved".to_string(),
+        outcome: if ok {
+            "ok".to_string()
+        } else {
+            "fail".to_string()
+        },
+        policy_fingerprint: crate::commands::context_events::policy_fingerprint(repo_path),
+        strict: None,
+        details: serde_json::json!({
+            "repo": repo,
+            "tool": tool,
+            "elapsed_ms": elapsed_ms,
+            "ok": ok,
+            "error": error,
+            "args_keys": args_keys,
+        }),
+        trace_id: run_id.map(|s| s.to_string()),
+        decision_id: None,
+        run_id: run_id.map(|s| s.to_string()),
+        workflow_id: None,
+        actor: Some("agent".to_string()),
+        source: Some("mcp".to_string()),
+        tool: Some(tool.to_string()),
+        elements,
+        subject_ids: None,
+        evidence_refs: None,
+        summary: Some(format!("mcp tools/call: {tool}")),
+    };
+
+    crate::commands::context_events::validate_context_event_record(&record)?;
+    crate::commands::context_events::append_context_event(repo_path, record);
+    Ok(())
 }
 
 fn tool_definitions() -> Vec<Value> {
@@ -2608,6 +2708,7 @@ async fn run_tool(
                     details_substring: sub,
                     decision_id,
                     trace_id,
+                    run_id: None,
                     element_id,
                     decision_lineage_only,
                 },
@@ -2635,6 +2736,7 @@ async fn run_tool(
                     details_substring: None,
                     decision_id: Some(decision_id),
                     trace_id: None,
+                    run_id: None,
                     element_id: None,
                     decision_lineage_only: false,
                 },

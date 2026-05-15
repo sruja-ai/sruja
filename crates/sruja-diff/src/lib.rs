@@ -9,6 +9,7 @@ pub mod drift;
 pub mod git_mapper;
 pub mod health;
 pub mod proposal;
+pub mod rule_ids;
 pub mod source_ref;
 pub mod types;
 
@@ -23,10 +24,12 @@ pub use health::calculate_health_score_from_violations;
 pub use proposal::{
     detect_unproposed_changes, Proposal, ProposalChange, ProposalStatus, ProposalValidation,
 };
+pub use rule_ids::{default_confidence_for_kind, rule_id_for_kind};
 pub use types::{
-    BaselineMode, ComponentDiff, DiffEdge, DiffError, DiffNode, DiffResult, DiffSummary,
-    DriftConfig, DriftReport, EdgeDiff, HealthScoreBreakdown, HealthScorePenalties, NodeDiff,
-    NodeMatch, Severity, SourceRef, TruthStatus, Violation, ViolationKind,
+    annotate_violation_metadata, BaselineMode, ComponentDiff, DiffEdge, DiffError, DiffNode,
+    DiffResult, DiffSummary, DriftConfig, DriftReport, EdgeDiff, HealthScoreBreakdown,
+    HealthScorePenalties, NodeDiff, NodeMatch, Severity, SourceRef, TruthStatus, Violation,
+    ViolationKind,
 };
 
 #[cfg(test)]

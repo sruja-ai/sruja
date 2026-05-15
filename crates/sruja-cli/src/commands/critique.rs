@@ -24,6 +24,7 @@ struct CritiqueEnrichment {
 
 #[derive(Debug, serde::Serialize)]
 struct CritiqueForAiOutput {
+    artifact_kind: String,
     schema_version: String,
     repo: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -259,6 +260,7 @@ pub async fn critique(
             );
 
             let out = CritiqueForAiOutput {
+                artifact_kind: "deterministic_review".to_string(),
                 schema_version: "critique_for_ai_output/v1".to_string(),
                 repo: repo_root.to_string(),
                 description: payload

@@ -136,6 +136,7 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
             }
         }
         v.production_relevant = Some(prod_rel);
+        crate::types::annotate_violation_metadata(v);
     }
 
     if !circular.is_empty() {

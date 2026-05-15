@@ -11,6 +11,7 @@ pub mod critique_report;
 pub mod model;
 pub mod parser;
 pub mod report;
+pub mod rule_ids;
 
 pub use compare::{Drift, DriftDetector, DriftHealth, DriftKind, DriftReport, Evidence, Severity};
 pub use critique::{

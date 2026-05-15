@@ -132,7 +132,13 @@ pub async fn drift(
 
         match format {
             "json" => {
-                println!("{}", serde_json::to_string_pretty(&diff_result)?);
+                let mut value = serde_json::to_value(&diff_result)?;
+                value = crate::commands::remediation::wrap_deterministic_json(
+                    value,
+                    "architecture_drift",
+                    "Deterministic comparison of scan evidence vs declared architecture (repo.sruja).",
+                );
+                println!("{}", serde_json::to_string_pretty(&value)?);
             }
             "github" | "github-actions" => {
                 print_violations_github_actions(&diff_result.violations);
@@ -157,7 +163,13 @@ pub async fn drift(
 
         match format {
             "json" => {
-                println!("{}", serde_json::to_string_pretty(&drift_result)?);
+                let mut value = serde_json::to_value(&drift_result)?;
+                value = crate::commands::remediation::wrap_deterministic_json(
+                    value,
+                    "structural_drift",
+                    "Deterministic structural scan (no repo.sruja baseline).",
+                );
+                println!("{}", serde_json::to_string_pretty(&value)?);
             }
             "github" | "github-actions" => {
                 print_violations_github_actions(&drift_result.violations);
