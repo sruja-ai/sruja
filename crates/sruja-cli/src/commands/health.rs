@@ -131,6 +131,12 @@ pub async fn health(
         }
         _ => {
             colors::print_header("🩺 Architecture Health Report");
+            println!(
+                "{}",
+                colors::dim(
+                    "Metric: structural violations vs declared architecture (0–100). For truth sync use `sruja status`; for AI readiness use `sruja context-score`."
+                )
+            );
 
             let trend_icon = match trend {
                 "up" => colors::success("↑").to_string(),

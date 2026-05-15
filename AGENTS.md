@@ -78,6 +78,14 @@ Broad repo exploration produces large token dumps. Prefer:
 
 Filling the context window “because we can” still hurts quality.
 
+### CLI `agent` loop boundaries
+
+`sruja agent run`, `agent plan`, and `agent apply` exist for **architecture-bounded** work: they should consume Sruja evidence, emit reviewable artifacts, run verification, and record learnings under `.sruja/context/`. They are not a general-purpose coding agent, web search, or a substitute for your editor’s agent.
+
+- **Do**: goals tied to `repo.sruja`, scans, drift, and plans you can inspect on disk before `apply`.
+- **Do not**: use the loop for unconstrained refactors or changes that ignore declared architecture without an explicit proposal path.
+- **Kill rule**: if a workflow cannot name [define intent / understand context / detect drift / review change](docs/PRODUCT_FEATURE_ALIGNMENT_REPORT.md#canonical-workflows), keep it out of primary docs and automation until it can.
+
 ### System evolution (outer loop)
 
 When an agent ships wrong code, misleading edits, or misses a project convention, fix the **process layer** when the miss is repeatable—not only the code diff.

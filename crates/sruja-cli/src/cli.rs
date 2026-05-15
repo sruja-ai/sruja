@@ -30,19 +30,29 @@ fn was_invoked_as(alias: &str) -> bool {
 #[command(
     about = "Architecture-as-code CLI for keeping repo context, drift checks, and AI guidance in sync",
     long_about = None,
-    after_help = r#"Start Here:
-  sruja start -r . --prompt   Set up .sruja/ and generate an AI-ready prompt
-  sruja overview -r .         Get a quick structural read of the repo
+    after_help = r#"Product loop (define truth → context → drift → review):
+  Use the sruja-architecture skill + repo.sruja for reviewed intent; lint after edits;
+  sync/review/drift for freshness; focus or ai before coding; MCP inside AI tools.
 
-Daily Loop:
-  sruja daily -r .            Refresh evidence and review what changed
-  sruja watch -r .            Keep architecture feedback live while coding
-  sruja doctor -r .           Quick truth + health check
+Start here:
+  sruja start -r . --prompt   Set up .sruja/ and emit a skill-ready prompt
+  sruja quickstart -r .       First structural read (optional --generate-baseline)
+  sruja focus -r . --file <path>   Task-scoped blast radius before you edit
+
+Daily loop:
+  sruja review -r .           Evidence refresh + drift + next actions (alias: daily)
+  sruja watch -r .            Live feedback while coding
+  sruja status -r .           Truth freshness + baseline (alias: doctor)
+
+Three different scores (do not confuse):
+  sruja status                Truth sync / baseline signals
+  sruja health                Structural violations vs repo.sruja
+  sruja context-score         AI-readiness (0–100)
 
 Docs & CI:
   sruja lint repo.sruja
   sruja export markdown repo.sruja
-  sruja drift --ci -r .       CI-focused drift check (github-actions format)"#
+  sruja drift --ci -r .       CI drift (github-actions format; replaces hidden `check`)"#
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -143,7 +153,10 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Ask an architecture question with deterministic evidence from the knowledge graph
+    /// Investigate architecture decisions with deterministic evidence
+    ///
+    /// Use this when asking "Why is this like this?" — finds rationale from the knowledge graph.
+    /// For task briefing, use `focus`. For AI paste-ready brief, use `ai`.
     Why {
         /// Question to ask (e.g. "why did we choose PostgreSQL?")
         question: String,
@@ -335,7 +348,9 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Quick repo overview with immediate architecture insights
+    /// First look: structural overview and optional baseline generation
+    ///
+    /// Use when asking "What is in this repo?" For a full-repo brief, use `onboard`. For an AI task brief, use `ai`.
     #[command(visible_alias = "overview")]
     Quickstart {
         /// Repository root (defaults to current directory)
@@ -351,14 +366,10 @@ pub enum Commands {
         #[arg(long)]
         fail_on: Option<String>,
     },
-    /// Set up Sruja in a repo and print the next best steps
+    /// Set up Sruja in a repo: create .sruja/, .srujaignore, and optional baseline
     ///
-    /// Three modes (mutually exclusive):
-    ///   --auto          Detect architecture and generate repo.sruja
-    ///   --prompt        Generate an AI-ready prompt for sruja-architecture skill
-    ///   --hook / --ci   Install git hook or GitHub Actions workflow
-    ///
-    /// Without flags: creates .sruja/ directory and prints next steps.
+    /// This is a setup command, not a briefing command.
+    /// For repo overview, use `quickstart`. For full briefing, use `onboard`.
     #[command(visible_alias = "start")]
     Init {
         /// Repository root (defaults to current directory)
@@ -383,7 +394,10 @@ pub enum Commands {
         #[arg(long)]
         dry_run: bool,
     },
-    /// Quick repo health check: baseline, truth status, and last evidence refresh
+    /// Truth freshness and baseline state
+    ///
+    /// Answers: "Is my `repo.sruja` current? When was evidence last refreshed?"
+    /// For structural health, use `health`. For AI-readiness, use `context-score`.
     #[command(visible_alias = "doctor")]
     Status {
         /// Repository root (defaults to current directory)
@@ -417,7 +431,10 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Daily review: refresh evidence, detect drift, and suggest next actions
+    /// Daily action list: refresh evidence, detect drift, suggest next steps (alias: `daily`)
+    ///
+    /// Use when asking "What should I tackle today?" For a one-time repo read use `quickstart`.
+    /// For truth-at-a-glance without the action list, use `status`.
     #[command(visible_alias = "daily")]
     Review {
         /// Repository root (defaults to current directory)
@@ -433,7 +450,9 @@ pub enum Commands {
         #[arg(long)]
         critique: bool,
     },
-    /// Build deterministic evidence (`.sruja/evidence_graph.json`) and learned facts (`.sruja/learned_facts.jsonl`). Does not edit `repo.sruja`.
+    /// Build scan evidence and learned-fact hypotheses under `.sruja/` (never edits `repo.sruja`)
+    ///
+    /// Output is evidence-backed inference for review — not the same as reviewed architecture.
     Learn {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -503,7 +522,9 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: IntentCommand,
     },
-    /// Compliance report: structural drift + intent + policy violations (exit 1 if non-compliant)
+    /// Structural drift + intent + policy gate (exit 1 when non-compliant)
+    ///
+    /// Use as an architecture aggregate gate—not a generic enterprise audit unless policies are concrete.
     Compliance {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -521,9 +542,10 @@ pub enum Commands {
         #[arg(long)]
         strict: bool,
     },
-    /// Generate a task-specific AI coding brief for the current task, PR, or worktree
+    /// Paste-ready briefing for an AI coding assistant
     ///
-    /// For full-repo onboarding, use `onboard`. For editor integration, use `ai-context`.
+    /// Produces a task-specific brief combining worktree, architecture signals, and verification hints.
+    /// For full-repo onboarding, use `onboard`. For structural overview, use `quickstart`.
     Ai {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -578,9 +600,10 @@ pub enum Commands {
         #[arg(long, default_value_t = 20000)]
         enrich_max_bytes: usize,
     },
-    /// Produce a full-repo onboarding brief for new humans or AI agents
+    /// Complete architecture brief for human or AI reader
     ///
-    /// For task-specific briefs, use `ai`. For editor integration, use `ai-context`.
+    /// Produces a full-repo onboarding brief with trust signals: truth status, drift counts, context score.
+    /// For task-specific AI briefs, use `ai`. For quick structural overview, use `quickstart`.
     Onboard {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -619,7 +642,10 @@ pub enum Commands {
         #[arg(long, short = 'o')]
         output: Option<String>,
     },
-    /// Export structured architecture context for AI editor integration (Cursor, Copilot, Claude)
+    /// Structured architecture context for AI editor integration (Cursor, Copilot, Claude)
+    ///
+    /// Use MCP tools inside your AI editor for the best experience.
+    /// For CLI-based briefing, use `focus` or `ai`.
     #[command(name = "ai-context", alias = "context")]
     AiContext {
         /// Optional run ID for tracing (defaults to auto-generated)
@@ -659,7 +685,10 @@ pub enum Commands {
         #[arg(long, default_value_t = 10000)]
         max_tokens: usize,
     },
-    /// Explore repo structure, explain scan results, and generate repo maps
+    /// Scanner introspection for AI/debug: explain scan, repomap, discovery questions
+    ///
+    /// For a first human read use `quickstart`. For a full repo brief use `onboard`.
+    /// For a coding task brief use `ai` or `focus`.
     Discover {
         #[command(subcommand)]
         cmd: Option<DiscoverCommand>,
@@ -737,7 +766,10 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: IndexCommand,
     },
-    /// Query the architectural registry
+    /// Query the architectural registry for elements and relationships
+    ///
+    /// Use this to find elements by name, type, or relationship pattern.
+    /// For decision investigation, use `why`. For task briefing, use `focus`.
     Query {
         /// Query string (e.g., "Checkout", "depends_on Payments")
         query: String,
@@ -758,7 +790,10 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
-    /// Calculate and report architecture health score
+    /// Architecture health score from structural violations (0-100)
+    ///
+    /// Answers: "Are there structural problems in the architecture graph?"
+    /// For truth freshness, use `status`. For AI-readiness, use `context-score`.
     Health {
         /// Repository root to scan
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -771,7 +806,10 @@ pub enum Commands {
         format: String,
     },
 
-    /// Context Score: how well-equipped is an AI agent to work on this codebase? (0-100)
+    /// AI-readiness score (0-100): can an AI agent work effectively on this codebase?
+    ///
+    /// Answers: "Can AI work effectively here?"
+    /// For structural health, use `health`. For truth freshness, use `status`.
     #[command(name = "context-score")]
     ContextScore {
         /// Path to repository root
@@ -798,7 +836,10 @@ pub enum Commands {
         open: bool,
     },
 
-    /// Focus: get a context briefing for a specific file or architecture element
+    /// Context briefing before starting a task: blast radius, decisions, AI instructions
+    ///
+    /// Use this before starting work on a file or element.
+    /// For paste-ready AI brief, use `ai`. For investigation, use `why`.
     Focus {
         /// Optional run ID for tracing (defaults to auto-generated)
         #[arg(long)]
@@ -858,7 +899,7 @@ pub enum Commands {
         #[arg(long, short = 'e')]
         elements: Option<String>,
     },
-    /// Manage Agentic Memory (learnings, guardrails, and failed hypotheses)
+    /// Agentic memory: learnings, guardrails, failed hypotheses (bounded to architecture work)
     Agent {
         #[command(subcommand)]
         cmd: AgentCommand,
@@ -984,7 +1025,9 @@ pub enum AgentCommand {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Run the agent loop: observe → plan → (optional) apply → verify → record learnings
+    /// Architecture-bounded agent loop: observe → plan → (optional) apply → verify → record learnings
+    ///
+    /// Requires Sruja evidence and a reviewable plan; not a general-purpose coding agent.
     Run {
         /// Optional run ID for tracing (defaults to auto-generated)
         #[arg(long)]
@@ -1047,7 +1090,7 @@ pub enum AgentCommand {
         #[arg(long)]
         trajectories: Option<usize>,
     },
-    /// Generate a durable plan artifact (enforces research → plan → implement)
+    /// Emit a reviewable plan JSON grounded in repo evidence (pair with `agent apply`)
     Plan {
         /// Optional run ID for tracing (defaults to auto-generated)
         #[arg(long)]
@@ -1098,7 +1141,7 @@ pub enum AgentCommand {
         #[arg(long, default_value_t = 20000)]
         enrich_max_bytes: usize,
     },
-    /// Apply an existing plan artifact (apply is only allowed from an on-disk plan)
+    /// Apply a plan produced by `agent plan` only after human or CI review
     Apply {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]

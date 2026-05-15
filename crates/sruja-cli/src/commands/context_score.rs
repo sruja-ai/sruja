@@ -111,6 +111,12 @@ fn dimension_bar(dim: &DimensionScore, width: usize) -> String {
 }
 
 fn print_context_score(score: &ContextScore) {
+    println!(
+        "{}",
+        colors::dim(
+            "Metric: AI preparedness (0–100). For structural violations use `sruja health`; for truth/baseline sync use `sruja status`."
+        )
+    );
     println!();
     println!("╭──────────────────────────────────────────────────────╮");
     println!(

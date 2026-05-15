@@ -128,9 +128,16 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
             use crate::utils::table_formatter::TableFormatter;
             let formatter = TableFormatter::auto();
 
+            println!(
+                "{}",
+                colors::dim(
+                    "Metric: truth freshness / baseline / sync (not `sruja health` structural score; not `sruja context-score` AI readiness)."
+                )
+            );
+
             let mut blocks = Vec::new();
 
-            // 1. Core Health Block
+            // 1. Truth snapshot (may include quick health/context bars for orientation)
             let mut health_info = String::new();
             if let Some(score) = out.health_score {
                 let health_bar = colors::health_bar(score, 20);
@@ -166,7 +173,7 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
                 health_info.push_str(&format!("Config: {}\n", colors::warning("not found")));
             }
 
-            blocks.push(("Architecture Health".to_string(), health_info));
+            blocks.push(("Truth & signals".to_string(), health_info));
 
             // 2. Supervision / Velocity Block
             if let Some(ref velocity) = out.velocity {

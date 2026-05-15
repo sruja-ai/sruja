@@ -6,6 +6,18 @@ This document provides a complete specification of the Sruja architecture-as-cod
 
 Sruja is a domain-specific language (DSL) for defining software architecture models. It supports C4 model concepts (systems, containers, components), requirements, ADRs, scenarios, flows, policies, SLOs, and more.
 
+### Modeling paths (progressive disclosure)
+
+Start with the smallest model that answers your workflow; add blocks when validation or review needs them.
+
+| Tier | What to model first | Typical follow-on |
+|------|---------------------|-------------------|
+| **Core** | C4 elements, relationships, nesting, sources, ownership | Lint + drift as trust gates |
+| **Progressive** | Requirements, ADRs, scenarios/flows, SLOs | Intent checks, PR review |
+| **Advanced** | Contracts, state machines, policies, incidents, deployment, views | Specialized compliance or operational review |
+
+Treat advanced blocks as optional depth—not a checklist you must declare up front.
+
 ## Language Grammar
 
 ### File Structure

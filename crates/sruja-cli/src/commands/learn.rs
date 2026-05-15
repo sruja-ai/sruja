@@ -5,6 +5,7 @@
 //! Never mutates `repo.sruja`.
 
 use super::{parse_sruja_file, CliError};
+use crate::utils::colors;
 use serde::{Deserialize, Serialize};
 use sruja_diff::{
     compare_graphs_with_options, program_to_graph, BaselineMode, DiffResult, Proposal,
@@ -532,6 +533,12 @@ pub async fn learn(
             println!("{}", serde_json::to_string_pretty(&summary)?);
         }
         _ => {
+            println!(
+                "{}",
+                colors::warning(
+                    "Learned output is evidence-backed hypothesis — not reviewed architecture in repo.sruja."
+                )
+            );
             println!("Wrote {}", facts_path.display());
             println!("Wrote {}", evidence_graph_path(repo).display());
             println!("Facts: {}", facts.len());

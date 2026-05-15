@@ -2,6 +2,19 @@
 
 This document lists MCP tools exposed by `sruja mcp` (see [mcp_setup.md](mcp_setup.md)). Tool names and behavior are defined in `crates/sruja-cli/src/commands/mcp.rs`; this page is maintained for operators and prompt authors.
 
+## Retrieval ladder
+
+Use MCP tools inside your AI editor (Cursor, Copilot, Claude) for the best experience. The ladder guides you to the right tool:
+
+| Step | When | Tool |
+|------|------|------|
+| 1. Before starting a task | Blast radius, decisions, AI instructions | **`sruja_get_focus_briefing`** |
+| 2. Paste-ready AI brief | Share context with AI assistant | **`sruja_get_task_context`** |
+| 3. Inside AI editor | Editor integration (Cursor, Copilot, Claude) | All MCP tools |
+| 4. Investigation | "Why is this like this?" | **`sruja_query_graph`**, **`sruja_explain_element`**, **`sruja_bm25_search`** |
+
+For CLI-based retrieval: use `sruja focus` before a task, `sruja ai` for a paste-ready brief, and `sruja why`/`sruja query` for investigation.
+
 ## Environment variables
 
 | Variable | Values (truthy) | Effect |
