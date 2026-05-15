@@ -19,6 +19,21 @@ Do not use the old framing (e.g. "developer-friendly language for defining, visu
 
 ---
 
+## Retrieval ladder (CLI + MCP)
+
+Same question can be asked many ways; teach one ladder:
+
+| Step | When | CLI | MCP (in editor) |
+|------|------|-----|-------------------|
+| 1 | Before editing a specific area | `sruja focus -r . --file <path>` | `sruja_get_focus_briefing` |
+| 2 | Paste-ready task brief for an AI assistant | `sruja ai -r . --task "…"` | `sruja_get_task_context` |
+| 3 | Deep graph queries from the IDE | — | Other `sruja mcp` tools (prefer readonly when exploring) |
+| 4 | “Why is this like this?” investigation | `sruja why` / `sruja query` | `sruja_query_graph`, `sruja_explain_element`, search tools |
+
+Do not present `why`, `query`, `focus`, `ai`, and MCP as interchangeable—they differ by **moment** (before task vs investigation) and **surface** (CLI vs editor).
+
+---
+
 **Why Sruja when AI can give architecture?**
 
 AI without Sruja can propose architecture or generate code, but it is often ungrounded (it may invent components, dependencies, or boundaries) and ephemeral (no single source of truth in the repo). Sruja gives the AI deterministic, repo-specific context (scan/graph, drift, violations with sources) and a persistent artifact (architecture as code: lint, drift, version control). So: AI proposes and edits; Sruja provides context, validation, and persistence. As models get smarter, we don't replace them—we give them better evidence and better checks so their output is accurate and maintainable.

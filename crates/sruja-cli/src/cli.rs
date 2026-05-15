@@ -140,6 +140,8 @@ pub enum Commands {
         fail_on: Option<String>,
     },
     /// Impact analysis: blast radius (upstream dependents + downstream dependencies)
+    ///
+    /// Use after you know *where* you are working; for pre-task briefing and AI instructions use `focus`.
     Impact {
         /// Node selector (exact id or substring match against id/label/path)
         target: String,
@@ -952,13 +954,13 @@ pub enum EvolutionCommand {
 
 #[derive(Subcommand, Clone)]
 pub enum DiscoverCommand {
-    /// Print repo context summary (structure, technologies, suggested areas)
+    /// Repo context summary for AI/debug (technologies, shape). For a human first read use `quickstart`.
     Context,
-    /// Explain what the scanner discovered, why it inferred that shape, and what to review next
+    /// Why the scanner inferred this graph and what to verify next. Pair with `lint` / `drift`, not a substitute for `onboard`.
     Explain,
-    /// Generate a repository map with tree-sitter signatures for top files (for LLM context)
+    /// Token-oriented repomap for LLM context. Not a product brief — use `ai` or `onboard` for that.
     Repomap,
-    /// Print the architecture discovery question bank
+    /// Discovery question bank to drive architecture interviews or skill prompts.
     Questions,
 }
 
@@ -977,7 +979,7 @@ pub enum AgentCommand {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Manually record a learning or failed hypothesis
+    /// Append a manual learning, failed hypothesis, or guardrail (reviewed architecture stays in `repo.sruja`)
     Record {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]

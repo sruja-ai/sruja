@@ -83,7 +83,9 @@ Filling the context window “because we can” still hurts quality.
 `sruja agent run`, `agent plan`, and `agent apply` exist for **architecture-bounded** work: they should consume Sruja evidence, emit reviewable artifacts, run verification, and record learnings under `.sruja/context/`. They are not a general-purpose coding agent, web search, or a substitute for your editor’s agent.
 
 - **Do**: goals tied to `repo.sruja`, scans, drift, and plans you can inspect on disk before `apply`.
+- **Do**: impact or drift checks, proposal or intent workflows, and refactors scoped to declared boundaries.
 - **Do not**: use the loop for unconstrained refactors or changes that ignore declared architecture without an explicit proposal path.
+- **Do not**: treat output as reviewed truth—merge proposals into `repo.sruja` only through your normal review flow.
 - **Kill rule**: if a workflow cannot name [define intent / understand context / detect drift / review change](docs/PRODUCT_FEATURE_ALIGNMENT_REPORT.md#canonical-workflows), keep it out of primary docs and automation until it can.
 
 ### System evolution (outer loop)

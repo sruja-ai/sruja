@@ -123,9 +123,23 @@ pub async fn health(
                 architecture: arch_path.to_string_lossy().to_string(),
                 deductions: health.deductions,
             };
+            let mut v =
+                serde_json::to_value(&output).map_err(|e| CliError::validation(e.to_string()))?;
+            if let serde_json::Value::Object(ref mut map) = v {
+                map.insert(
+                    "metric_type".to_string(),
+                    serde_json::Value::String("structural_health".to_string()),
+                );
+                map.insert(
+                    "metric_description".to_string(),
+                    serde_json::Value::String(
+                        "Structural violations vs declared architecture (0–100). For truth sync use `sruja status`; for AI readiness use `sruja context-score`.".to_string(),
+                    ),
+                );
+            }
             println!(
                 "{}",
-                serde_json::to_string_pretty(&output)
+                serde_json::to_string_pretty(&v)
                     .map_err(|e| CliError::validation(e.to_string()))?
             );
         }

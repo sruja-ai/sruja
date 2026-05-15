@@ -436,6 +436,35 @@ fn status_json_includes_truth_and_baseline() {
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
     assert!(parsed.get("truth_status").is_some());
     assert!(parsed.get("baseline").is_some());
+    assert_eq!(
+        parsed.get("metric_type").and_then(|v| v.as_str()),
+        Some("truth_freshness")
+    );
+    assert!(parsed.get("metric_description").is_some());
+}
+
+#[test]
+fn health_json_includes_metric_descriptors() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (init_ok, _, init_stderr) = run_sruja(&["init", "--auto", "-r", repo_str]);
+    assert!(
+        init_ok,
+        "init --auto should succeed: stderr={}",
+        init_stderr
+    );
+
+    let (success, stdout, stderr) = run_sruja(&["health", "-r", repo_str, "-f", "json"]);
+    assert!(success, "health should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert!(parsed.get("score").is_some());
+    assert_eq!(
+        parsed.get("metric_type").and_then(|v| v.as_str()),
+        Some("structural_health")
+    );
+    assert!(parsed.get("metric_description").is_some());
 }
 
 #[test]
@@ -985,6 +1014,11 @@ fn context_score_json_reports_breakdown() {
     assert!(parsed.get("score").is_some());
     assert!(parsed.get("architecture_coverage").is_some());
     assert!(parsed.get("quick_wins").is_some());
+    assert_eq!(
+        parsed.get("metric_type").and_then(|v| v.as_str()),
+        Some("ai_readiness")
+    );
+    assert!(parsed.get("metric_description").is_some());
 }
 
 #[test]

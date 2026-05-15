@@ -110,12 +110,25 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
 
     match format {
         "json" => {
-            println!("{}", serde_json::to_string_pretty(&out)?);
+            let mut v = serde_json::to_value(&out)?;
+            if let serde_json::Value::Object(ref mut map) = v {
+                map.insert(
+                    "metric_type".to_string(),
+                    serde_json::Value::String("truth_freshness".to_string()),
+                );
+                map.insert(
+                    "metric_description".to_string(),
+                    serde_json::Value::String(
+                        "Truth sync and baseline state. For structural violations use `sruja health`; for AI readiness use `sruja context-score`.".to_string(),
+                    ),
+                );
+            }
+            println!("{}", serde_json::to_string_pretty(&v)?);
         }
         "github" | "github-actions" => {
             let file = out.baseline.as_deref().unwrap_or(".sruja/context.json");
             let msg = format!(
-                "Truth status: {}. Violations: {}.",
+                "Truth status: {}. Violations: {}. (Metric: truth freshness — use `sruja health` for structural score, `sruja context-score` for AI readiness.)",
                 out.truth_status, out.violations_count
             );
             println!(

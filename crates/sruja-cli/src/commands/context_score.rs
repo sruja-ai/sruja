@@ -70,7 +70,20 @@ pub async fn context_score(
 
     match format {
         "json" => {
-            println!("{}", serde_json::to_string_pretty(&score)?);
+            let mut v = serde_json::to_value(&score)?;
+            if let serde_json::Value::Object(ref mut map) = v {
+                map.insert(
+                    "metric_type".to_string(),
+                    serde_json::Value::String("ai_readiness".to_string()),
+                );
+                map.insert(
+                    "metric_description".to_string(),
+                    serde_json::Value::String(
+                        "AI preparedness (0–100). For structural violations use `sruja health`; for truth/baseline sync use `sruja status`.".to_string(),
+                    ),
+                );
+            }
+            println!("{}", serde_json::to_string_pretty(&v)?);
         }
         _ => {
             print_context_score(&score);

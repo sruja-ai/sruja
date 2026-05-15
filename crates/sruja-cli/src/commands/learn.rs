@@ -525,6 +525,8 @@ pub async fn learn(
     match format {
         "json" => {
             let summary = serde_json::json!({
+                "artifact_kind": "learned_hypothesis",
+                "metric_description": "Evidence-backed inference for review — not reviewed architecture in repo.sruja.",
                 "evidence_graph": evidence_graph_path(repo).to_string_lossy(),
                 "learned_facts": facts_path.to_string_lossy(),
                 "fact_count": facts.len(),
