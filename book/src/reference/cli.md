@@ -76,6 +76,17 @@
 
 **Repo root:** Prefer `-r` / `--repo` for the repository directory. Some commands also accept `--path` as an alias for backwards compatibility.
 
+## JSON output: metric hints
+
+When `-f json` (or the command’s JSON mode) is used, some commands add stable **`metric_type`** and **`metric_description`** fields so parsers and dashboards do not confuse different scores:
+
+| Command | `metric_type` | Role |
+|---------|---------------|------|
+| `sruja status -f json` | `truth_freshness` | Baseline / sync / truth status (not structural health alone) |
+| `sruja health -f json` | `structural_health` | Violations vs declared `repo.sruja` (0–100) |
+| `sruja context-score -f json` | `ai_readiness` | AI preparedness (0–100) |
+| `sruja learn -f json` | *(see `artifact_kind`)* | `artifact_kind` is `learned_hypothesis` — not reviewed DSL truth |
+
 ## Aliases
 
 - `start` = `init` (setup only)

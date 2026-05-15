@@ -15,6 +15,8 @@ Use MCP tools inside your AI editor (Cursor, Copilot, Claude) for the best exper
 
 For CLI-based retrieval: use `sruja focus` before a task, `sruja ai` for a paste-ready brief, and `sruja why`/`sruja query` for investigation.
 
+**Automation:** For CI and dashboards that call the CLI with `-f json`, several commands emit `metric_type` / `metric_description` (and `learn` emits `artifact_kind`) so scores are not confused—see [CLI reference — JSON metric hints](../book/src/reference/cli.md#json-output-metric-hints).
+
 ## Environment variables
 
 | Variable | Values (truthy) | Effect |

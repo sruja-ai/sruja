@@ -468,6 +468,27 @@ fn health_json_includes_metric_descriptors() {
 }
 
 #[test]
+fn learn_json_labels_hypothesis_artifact() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (init_ok, _, init_stderr) = run_sruja(&["init", "-r", repo_str]);
+    assert!(init_ok, "init should succeed: stderr={}", init_stderr);
+
+    let (success, stdout, stderr) =
+        run_sruja(&["learn", "-r", repo_str, "-f", "json", "--skip-proposals"]);
+    assert!(success, "learn should succeed: stderr={}", stderr);
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert_eq!(
+        parsed.get("artifact_kind").and_then(|v| v.as_str()),
+        Some("learned_hypothesis")
+    );
+    assert!(parsed.get("metric_description").is_some());
+    assert!(parsed.get("fact_count").is_some());
+}
+
+#[test]
 fn init_creates_dot_sruja_dir() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());

@@ -182,3 +182,5 @@ After changes:
 1. Run `sruja --help` and verify help text is distinct
 2. Run `sruja <command> --help` for each tightened command and verify clarity
 3. Update PRODUCT_FEATURE_ALIGNMENT_REPORT.md verdict column if commands are reclassified
+4. JSON: `cargo test -p sruja-cli learn_json` and `json_includes` filters cover `metric_type` / `artifact_kind` fields
+5. Book [CLI reference](../book/src/reference/cli.md) documents JSON metric hints for operators
