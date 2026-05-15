@@ -4,6 +4,9 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub fn discover_docs_and_assets(repo_root: &Path) -> Result<Graph, ScanError> {
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
     let mut graph = Graph::new();
     let walker = ignore::WalkBuilder::new(repo_root)
         .hidden(true)
@@ -16,6 +19,10 @@ pub fn discover_docs_and_assets(repo_root: &Path) -> Result<Graph, ScanError> {
     for entry in walker.flatten() {
         let path = entry.path();
         if !path.is_file() {
+            continue;
+        }
+
+        if !crate::is_safe_path(path, &repo_canon) {
             continue;
         }
 

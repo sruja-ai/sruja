@@ -75,14 +75,19 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         }
     }
 
-    let go_module_path: Option<String> = std::fs::read_to_string(repo_root.join("go.mod"))
-        .ok()
-        .and_then(|content| {
-            content
-                .lines()
-                .find(|l| l.starts_with("module "))
-                .map(|l| l.trim_start_matches("module ").trim().to_string())
-        });
+    let go_mod_path = repo_root.join("go.mod");
+    let go_module_path: Option<String> = if crate::is_safe_path(&go_mod_path, &repo_canon) {
+        std::fs::read_to_string(&go_mod_path)
+            .ok()
+            .and_then(|content| {
+                content
+                    .lines()
+                    .find(|l| l.starts_with("module "))
+                    .map(|l| l.trim_start_matches("module ").trim().to_string())
+            })
+    } else {
+        None
+    };
 
     let mut manifest = if config.incremental {
         crate::manifest::ScanManifest::load(repo_root).unwrap_or_default()
@@ -108,6 +113,9 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
             let entry = entry.map_err(|e| ScanError::Walk(e.to_string()))?;
             let path = entry.path();
             if !path.is_file() {
+                continue;
+            }
+            if !crate::is_safe_path(path, &repo_canon) {
                 continue;
             }
             if let Some(language) = detect_language(path) {

@@ -22,15 +22,23 @@ enum Workspaces {
     Array(Vec<String>),
 }
 
-/// Resolve workspace globs to paths that contain package.json.
 fn resolve_workspace_globs(repo_root: &Path, workspaces: &[String]) -> Vec<PathBuf> {
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
     let mut out = Vec::new();
     for ws in workspaces {
         let path = repo_root.join(ws.trim_end_matches('*').trim_end_matches('/'));
+        if !crate::is_safe_path(&path, &repo_canon) {
+            continue;
+        }
         if path.is_dir() {
             if let Ok(entries) = std::fs::read_dir(&path) {
                 for e in entries.flatten() {
                     let p = e.path();
+                    if !crate::is_safe_path(&p, &repo_canon) {
+                        continue;
+                    }
                     if p.is_dir() && p.join("package.json").exists() {
                         out.push(p);
                     }
@@ -38,6 +46,9 @@ fn resolve_workspace_globs(repo_root: &Path, workspaces: &[String]) -> Vec<PathB
             }
         }
         let single = repo_root.join(ws.trim_end_matches('/'));
+        if !crate::is_safe_path(&single, &repo_canon) {
+            continue;
+        }
         if single.join("package.json").exists() {
             out.push(single);
         }
@@ -48,7 +59,16 @@ fn resolve_workspace_globs(repo_root: &Path, workspaces: &[String]) -> Vec<PathB
 }
 
 pub(crate) fn scan_npm_repo(repo_root: &Path) -> Result<Graph, ScanError> {
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
     let root_manifest = repo_root.join("package.json");
+    if !crate::is_safe_path(&root_manifest, &repo_canon) {
+        return Err(ScanError::Io(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "Unsafe root package.json symlink detected",
+        )));
+    }
     let content = std::fs::read_to_string(&root_manifest)?;
     let root: PackageJson = serde_json::from_str(&content)?;
 

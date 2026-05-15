@@ -211,3 +211,81 @@ pub fn scan_repo_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
         })
     }
 }
+
+/// Validates that the target file path resides strictly within the canonicalized repository root.
+/// Only canonicalizes if the path is a symlink or contains parent directory (`..`) components
+/// to maximize performance.
+pub fn is_safe_path(path: &Path, repo_canon: &Path) -> bool {
+    let has_parent = path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir);
+    let is_symlink = match path.symlink_metadata() {
+        Ok(meta) => meta.file_type().is_symlink(),
+        Err(_) => return false,
+    };
+
+    if is_symlink || has_parent {
+        match path.canonicalize() {
+            Ok(canon) => canon.starts_with(repo_canon),
+            Err(_) => false,
+        }
+    } else {
+        if path.is_absolute() && path.starts_with(repo_canon) {
+            true
+        } else {
+            match path.canonicalize() {
+                Ok(canon) => canon.starts_with(repo_canon),
+                Err(_) => false,
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod safe_path_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_is_safe_path() {
+        let root_temp = tempdir().unwrap();
+        let root_path = root_temp.path();
+        let repo_canon = root_path.canonicalize().unwrap();
+
+        // 1. Normal file inside
+        let file_inside = root_path.join("inside.txt");
+        fs::write(&file_inside, "hello").unwrap();
+        assert!(is_safe_path(&file_inside, &repo_canon));
+
+        // 2. Subdir file inside
+        let subdir = root_path.join("subdir");
+        fs::create_dir(&subdir).unwrap();
+        let nested = subdir.join("nested.txt");
+        fs::write(&nested, "nested").unwrap();
+        assert!(is_safe_path(&nested, &repo_canon));
+
+        // 3. File outside
+        let outside_temp = tempdir().unwrap();
+        let outside_path = outside_temp.path();
+        let outside_file = outside_path.join("outside.txt");
+        fs::write(&outside_file, "secret").unwrap();
+        assert!(!is_safe_path(&outside_file, &repo_canon));
+
+        // 4. Symlink pointing inside
+        #[cfg(unix)]
+        {
+            let symlink_inside = root_path.join("link_inside.txt");
+            std::os::unix::fs::symlink(&file_inside, &symlink_inside).unwrap();
+            assert!(is_safe_path(&symlink_inside, &repo_canon));
+        }
+
+        // 5. Symlink pointing outside
+        #[cfg(unix)]
+        {
+            let symlink_outside = root_path.join("link_outside.txt");
+            std::os::unix::fs::symlink(&outside_file, &symlink_outside).unwrap();
+            assert!(!is_safe_path(&symlink_outside, &repo_canon));
+        }
+    }
+}

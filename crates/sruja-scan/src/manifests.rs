@@ -44,11 +44,17 @@ pub fn scan_other_manifests(repo_root: &Path) -> Result<Graph, ScanError> {
 
 fn discover_docker(repo_root: &Path) -> Result<Graph, ScanError> {
     let mut graph = Graph::new();
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
 
     if let Ok(entries) = std::fs::read_dir(repo_root) {
         for entry in entries.flatten() {
             if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
                 let path = entry.path();
+                if !crate::is_safe_path(&path, &repo_canon) {
+                    continue;
+                }
                 let file_name = path.file_name().unwrap_or_default().to_string_lossy();
                 if file_name.starts_with("Dockerfile") || file_name.ends_with(".Dockerfile") {
                     if let Some(node) = process_dockerfile(&path, &file_name) {
@@ -68,6 +74,9 @@ fn discover_docker(repo_root: &Path) -> Result<Graph, ScanError> {
     ] {
         let path = repo_root.join(name);
         if path.exists() {
+            if !crate::is_safe_path(&path, &repo_canon) {
+                continue;
+            }
             let node = Node {
                 id: format!("docker:{}", name),
                 kind: NodeKind::new(NodeKind::SYSTEM),
@@ -139,6 +148,9 @@ fn process_dockerfile(path: &Path, file_name: &str) -> Option<Node> {
 
 fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
     let mut graph = Graph::new();
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
     let candidates = [
         "openapi.yaml",
         "openapi.yml",
@@ -153,6 +165,9 @@ fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
     for name in &candidates {
         let path = repo_root.join(name);
         if path.exists() {
+            if !crate::is_safe_path(&path, &repo_canon) {
+                continue;
+            }
             let id = format!("api:{}", name.replace("/", "_"));
             let node = Node {
                 id,
@@ -183,6 +198,9 @@ fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
 
 fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
     let mut graph = Graph::new();
+    let repo_canon = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
     // Simple heuristic for K8s discovery in likely directories
     let k8s_dirs = [
         "k8s",
@@ -204,6 +222,9 @@ fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
         if let Ok(entries) = std::fs::read_dir(dir_path) {
             for entry in entries.flatten() {
                 let path = entry.path();
+                if !crate::is_safe_path(&path, &repo_canon) {
+                    continue;
+                }
                 if path
                     .extension()
                     .is_some_and(|ext| ext == "yaml" || ext == "yml")
