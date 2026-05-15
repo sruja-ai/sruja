@@ -55,6 +55,12 @@ pub fn discover_docs_and_assets(repo_root: &Path) -> Result<Graph, ScanError> {
                 metadata.insert("description".to_string(), description);
             }
 
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
             let id = format!("doc:{}", rel_path.replace("/", "_"));
             let node = Node {
                 id,
@@ -63,6 +69,12 @@ pub fn discover_docs_and_assets(repo_root: &Path) -> Result<Graph, ScanError> {
                 path: Some(rel_path),
                 metadata,
                 ..Default::default()
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
             };
             graph.nodes.push(node);
         } else if ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "svg" || ext == "gif" {

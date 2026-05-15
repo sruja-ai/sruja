@@ -153,6 +153,12 @@ fn discover_openapi(repo_root: &Path) -> Result<Graph, ScanError> {
     for name in &candidates {
         let path = repo_root.join(name);
         if path.exists() {
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
             let id = format!("api:{}", name.replace("/", "_"));
             let node = Node {
                 id,
@@ -285,6 +291,12 @@ fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
 
                         let mut metadata = HashMap::new();
                         metadata.insert("source_manifest".to_string(), "kubernetes".to_string());
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
                         if !description.is_empty() {
                             metadata
                                 .insert("description".to_string(), description.trim().to_string());
