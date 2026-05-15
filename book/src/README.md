@@ -2,7 +2,7 @@
 
 <img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
 
-**Context engineering for the AI era.** Use AI to generate and maintain architecture as code; validate and export to Markdown and Mermaid. A backend tool for the SDLC—not a diagramming product.
+**Context engineering for the AI era.** Use AI to generate and maintain architecture as code, backed by deterministic repo evidence. Validate the result, keep it in sync, and export to Markdown or Mermaid when you need docs or diagrams.
 
 ## Why Sruja?
 
@@ -16,15 +16,15 @@ Most architecture tools make you choose:
 
 ### Our Solution
 
-Sruja gives you a code-first architecture tool:
+Sruja gives AI assistants and humans evidence-backed architecture context:
 
 | Feature                 | What you get                                                     |
 | ----------------------- | ---------------------------------------------------------------- |
-| **Markdown & Mermaid**  | Export architecture to clean Markdown docs and Mermaid diagrams  |
+| **AI skill first**      | Generate or update `repo.sruja` from real repo evidence          |
+| **Evidence-backed**     | Discovery, sync, drift, and context commands ground the model    |
 | **Version-controlled**  | `.sruja` files in Git, with proper code review workflows         |
-| **Team-friendly**       | Developers work in code with familiar tools                      |
 | **Built-in validation** | Catch architecture issues before they reach production           |
-| **Multiple exports**    | JSON, Markdown, Mermaid – integrate into your existing toolchain |
+| **Multiple exports**    | JSON, Markdown, Mermaid – outputs from reviewed truth            |
 
 ### Who It's For
 
@@ -35,10 +35,11 @@ Sruja gives you a code-first architecture tool:
 
 ## How We Work
 
-1. **Define** your architecture in `.sruja` files
-2. **Validate** with built-in checks (cycles, orphans, unique IDs)
-3. **Export** to JSON, Markdown, or Mermaid diagrams
-4. **Integrate** into CI/CD, docs, and your IDE workflow
+1. **Install** the sruja-architecture skill in your AI editor
+2. **Gather** deterministic repo evidence through Sruja commands
+3. **Generate** or update `repo.sruja` with AI
+4. **Validate** with lint, drift, and review workflows
+5. **Reuse** the context in CI, docs, and IDE workflows
 
 We're **ultra simple** – minimal surface area, no unnecessary apps or frameworks – and **highly functional** – what we ship works reliably for its scope.
 

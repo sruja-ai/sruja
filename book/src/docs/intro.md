@@ -5,46 +5,47 @@ weight: 0
 
 # Introduction
 
-**Architecture truth + drift detection + AI context.**
+**Context engineering for the AI era.**
 
-Sruja keeps architecture as code in sync with your repo—detects drift and provides AI-ready context for your editor and CI.
+Sruja helps AI-assisted teams generate and maintain architecture as code from deterministic repo evidence. The result is a reviewable `repo.sruja` truth file that feeds better context to editors, CI, and coding agents.
 
-> **New here?** Do [Quick start](../getting-started.md) (about 5 min), then the [Beginner path](beginner-path.md) (2–3 hours). You don't write `.sruja` files manually—your AI does it for you.
+> **New here?** Do [Quick start](../getting-started.md) (about 5 min), then the [Beginner path](beginner-path.md) (2–3 hours). Start with the AI skill; you don't write `.sruja` files manually.
 
 ## The Problem
 
-How do you document architecture today?
+How does your AI know the real architecture today?
 
 | Your approach | Problems |
 |--------------|------------|
+| **Raw model context** | Easy to miss boundaries, invent dependencies, or forget prior decisions |
 | **Drawings in Miro/LucidChart** | Manual updates, easy to forget, drifts from code |
 | **Wiki pages** | Inconsistent, hard to maintain, no validation |
-| **PNG/PDF diagrams** | Can't version control diff, outdated quickly |
 
 Sound familiar? You're not alone. Most teams struggle with this.
 
 ## The Solution
 
-**Architecture as code.**
+**Architecture as code plus evidence.**
 
 With Sruja:
 
-- AI analyzes your codebase automatically
-- You get a `repo.sruja` file (architecture definition)
-- Validate it automatically in CI/CD
-- Export diagrams when needed (not as the source)
+- The sruja-architecture skill gathers deterministic repo evidence
+- Your AI generates or updates `repo.sruja`
+- Lint, drift, and intent checks validate the result
+- Editors and agents reuse that context before coding
+- Diagrams and docs are exported when needed, not treated as the source
 
-**You don't learn a new language.** You ask your AI to generate the file, and it handles the syntax.
+**You don't learn a new language first.** You guide the AI, review the output, and let validation catch mistakes.
 
 ## How This Helps
 
 | Before Sruja | With Sruja |
 |----------------|-------------|
-| Update diagrams manually | AI generates from code |
-| Diagram drifts from reality | Always in sync |
-| Can't catch errors | Validation catches issues |
-| Hard to review changes | Git diff shows everything |
-| Scattered tools | Single source of truth |
+| AI guesses from partial context | AI works from repo evidence |
+| Architecture lives in stale diagrams | Architecture lives in versioned `repo.sruja` |
+| Hard to catch generated mistakes | Validation catches syntax, drift, and structural issues |
+| Hard to brief agents consistently | Task-scoped context is reusable |
+| Diagrams become the truth | Diagrams are exported from reviewed truth |
 
 ---
 
@@ -76,9 +77,9 @@ This hierarchy makes architecture clear and understandable.
 
 ### Software Architects
 
-- **Enforce architectural standards** with policy-as-code
+- **Review architecture changes** against evidence and intent
 - **Prevent architectural drift** through automated validation
-- **Scale governance** across multiple teams without manual reviews
+- **Scale guardrails** across multiple teams without turning every review into archaeology
 - **Document decisions** with [ADRs (Architecture Decision Records)](docs/concepts/adr.md)
 
 ### Product Teams
@@ -93,7 +94,7 @@ This hierarchy makes architecture clear and understandable.
 - **Integrate into CI/CD** - validate architecture on every commit
 - **Automate documentation** generation from architecture files
 - **Model deployments** - Blue/Green, Canary, multi-region strategies
-- **Track infrastructure** - map logical architecture to physical deployment
+- **Refresh evidence** so AI assistants and reviewers see current repo context
 
 ## Example
 

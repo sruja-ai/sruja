@@ -24,8 +24,9 @@ This plan assumes the goal is **enterprise adoption readiness**, not a hosted en
   - roadmap owner
   - “how to report enterprise blockers”
 - Keep positioning narrow in top-level messaging:
-  - “architecture truth + drift detection + AI context”
-  - de-emphasize broad “AI generates architecture” claims in primary adoption pages
+  - “context engineering for the AI era”
+  - lead with the sruja-architecture skill, deterministic repo evidence, validation, and reusable AI context
+  - present CLI-only quickstart as the evaluation and automation path, not the primary product surface
 
 ### 2. Define one blessed adoption path and remove rollout ambiguity in days 15-45
 - Standardize the default company workflow around existing commands only:

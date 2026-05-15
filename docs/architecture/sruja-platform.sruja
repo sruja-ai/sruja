@@ -55,7 +55,7 @@ SrujaWebsite = system "sruja.ai" {
 
 // Main System with nested containers and components
 Sruja = system "Sruja Platform" {
-  description "Tools for defining, visualizing, and analyzing software architecture"
+  description "Context engineering platform that helps AI-assisted teams generate, validate, and maintain architecture as code from repo evidence"
   tags ["platform", "architecture-as-code"]
   doc "skills/sruja-architecture/references/REFERENCE.md"
 

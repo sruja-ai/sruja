@@ -5,7 +5,7 @@ weight: 3
 
 # How Sruja Works
 
-Sruja is built to be a **tool for the AI SDLC process**: architecture in code that fits into your lifecycle—IDE, CI/CD, and documentation. We are not a diagramming product; we provide parse, validate, export, and optional preview.
+Sruja is built for **context engineering in the AI SDLC**: architecture as code backed by repo evidence, validation, drift checks, and editor/CI workflows. We are not a diagramming product; diagrams are exported from reviewed architecture truth.
 
 ## The Sruja Platform
 
@@ -35,7 +35,7 @@ User = person "Architect/Developer" {
 }
 
 Sruja = system "Sruja Platform" {
-	description "Tools for defining, visualizing, and analyzing software architecture"
+	description "Context engineering platform that helps AI-assisted teams generate, validate, and maintain architecture as code from repo evidence"
 
 	CLI = container "Sruja CLI" {
 		technology "Rust"

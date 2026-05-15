@@ -1,10 +1,27 @@
-# Sruja – Architecture truth + drift detection + AI context
+# Sruja – Context engineering for the AI era
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Not a diagram language—architecture truth that stays in sync.** Sruja provides evidence-backed context (graph, drift, violations) so changes stay grounded in your real codebase. You validate, version-control, and enforce it; export to Mermaid when you need a diagram. Integrates with AI editors by providing high-quality architecture context.
+**Context engineering for the AI era.** Sruja uses AI to generate and maintain architecture as code, backed by deterministic evidence from your codebase. The sruja-architecture skill gathers repo context, writes or updates `repo.sruja`, and runs lint/drift checks so architecture stays accurate, reviewable, and useful to AI coding assistants.
 
-**Try it in 60 seconds (no AI required):**
+Diagrams are outputs, not the source of truth: export to Mermaid or Markdown when you need to share architecture.
+
+**Start with the AI skill:**
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+Then ask your AI editor:
+
+```text
+Use sruja-architecture. Gather evidence from this repo, ask targeted questions if needed,
+generate or update repo.sruja, then run sruja lint and fix until it passes.
+```
+
+**CLI evaluation path:**
+
+If your editor cannot use skills yet, or you want a deterministic first look:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
@@ -13,16 +30,9 @@ sruja onboard -r .
 sruja lint repo.sruja
 ```
 
-**Optional (LLM enrichment for onboarding):**
+**Optional CLI onboarding enrichment:**
 
-`sruja onboard` is deterministic by default. If you want a narrative onboarding summary (clearly labeled as LLM output), you can opt in:
-
-```bash
-export OPENAI_API_KEY="..."
-sruja onboard -r . --enrich
-```
-
-**Enterprise recommended (bring your own provider via CLI):**
+`sruja onboard` is deterministic by default. If you want a narrative onboarding summary, opt in with either an API key or an approved internal tool.
 
 Use `--enrich-cmd` to delegate enrichment to your approved tool (Cursor/Claude/OpenCode/internal wrapper). Sruja passes only the grounded onboard JSON via stdin and reads markdown from stdout.
 
@@ -51,14 +61,14 @@ max_bytes = 20000
 
 ## What is this?
 
-**Problem:** Your code changes, but your architecture diagrams don't. They're in Miro, LucidChart, or old PDFs—drifting from reality.
+**Problem:** Your code changes, but AI assistants and humans often work from stale architecture context: old diagrams, partial wiki pages, or guesses from a few open files.
 
 **Solution:** Sruja uses AI to analyze your codebase and generate architecture as code (`.sruja` files). You validate, version-control, and export it—keeping it always up-to-date.
 
 **How it works:**
-1. Install the CLI and the sruja-architecture skill
+1. Install the sruja-architecture skill in your AI editor
 2. In your AI editor, ask the skill to generate architecture from your code (it runs structural analysis under the hood)
-3. Validate with `sruja lint` and export diagrams when you need them
+3. Validate with `sruja lint`, refresh evidence with `sruja sync`, and export diagrams when you need them
 
 **You don't write `.sruja` files manually.** Your AI does it for you.
 
@@ -66,25 +76,13 @@ max_bytes = 20000
 
 ## Quick Start
 
-### Option A: Deterministic quickstart (recommended for evaluation)
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-sruja quickstart -r . --generate-baseline
-sruja onboard -r .
-```
-
-This scans your repo, prints an inventory + structural health report, and writes a draft `repo.sruja` baseline you can version-control.
-
-### Option B: Generate and maintain architecture with AI (recommended for ongoing use)
-
-Install the skill:
+### Option A: Generate and maintain architecture with AI (recommended)
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate Sruja architecture. The skill uses structural analysis (discover, sync, drift) under the hood.
+This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate and maintain Sruja architecture. The skill uses structural analysis (discover, sync, drift) under the hood.
 
 **Supported editors:** Cursor, GitHub Copilot, Claude, Continue.dev, and any editor with [skills.sh](https://skills.sh) support.
 
@@ -103,6 +101,16 @@ Your AI will:
 2. Ask you a few questions if anything is unclear
 3. Generate a `repo.sruja` file
 4. Run `sruja lint` and fix any validation errors so you see **concrete value in the first run** (real errors/warnings and a clean, valid architecture)
+
+### Option B: Deterministic CLI evaluation
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+sruja quickstart -r . --generate-baseline
+sruja onboard -r .
+```
+
+This scans your repo, prints an inventory + structural health report, and writes a draft `repo.sruja` baseline you can version-control. Use this path for CI, scripting, or evaluation without an AI editor.
 
 ### Daily developer loop
 
@@ -173,7 +181,7 @@ You can open `diagram.mmd` in [Mermaid Live Editor](https://mermaid.live) or use
 **Software Architects:**
 - Enforce standards across teams
 - Detect drift automatically
-- Scale architecture governance
+- Scale evidence-backed architecture review
 
 ---
 

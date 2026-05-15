@@ -12,7 +12,15 @@ For a short, practical guide (install CLI, add to your project, CI, AI, multi-re
 
 ## Canonical pilot path (recommended)
 
-Use a single, repeatable workflow to evaluate Sruja:
+Use a single, repeatable workflow to evaluate Sruja. Start with the skill when your editor supports it:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+Then ask your AI editor to gather evidence, generate or update `repo.sruja`, and run `sruja lint`.
+
+For deterministic CLI-only evaluation:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
@@ -23,7 +31,7 @@ sruja status -r .
 sruja drift -r . -a repo.sruja
 ```
 
-This path is designed to minimize ambiguity: one baseline file (`repo.sruja`), one validation gate (`lint`), and one drift signal (`drift`) backed by refreshed evidence (`sync`).
+Both paths are designed to minimize ambiguity: one reviewed truth file (`repo.sruja`), one validation gate (`lint`), and one drift signal (`drift`) backed by refreshed evidence (`sync`).
 
 ## Is Sruja Right for Your Organization?
 
@@ -53,7 +61,7 @@ Answer these questions to determine if Sruja addresses your needs:
 
 #### Technical Architecture Challenges
 
-- [ ] Do you have microservices that need governance?
+- [ ] Do you have microservices that need explicit guardrails?
 - [ ] Are you experiencing architectural drift (implementation vs. design)?
 - [ ] Do you need to enforce service boundaries and dependencies?
 - [ ] Are circular dependencies causing issues?
@@ -84,7 +92,7 @@ Answer these questions to determine if Sruja addresses your needs:
 - ❌ You have < 5 engineers (overhead may outweigh benefits)
 - ❌ You don't use version control or CI/CD
 - ❌ You prefer visual-only tools (no code/DSL)
-- ❌ You have no compliance or governance requirements
+- ❌ You have no need for shared architecture context, CI checks, or policy guardrails
 
 ## Decision Framework
 
@@ -316,7 +324,7 @@ Sruja is **free and open source** (Apache 2.0 licensed), developed by and for th
 While Sruja is open source and free to use, professional consulting services are available for organizations that need:
 
 - **Implementation support**: Help rolling out Sruja across teams and systems
-- **Best practices guidance**: Establish architectural governance patterns and workflows
+- **Context workflow guidance**: Establish evidence, validation, and review patterns for AI-assisted architecture work
 - **Custom integrations**: Integrate Sruja with existing CI/CD, infrastructure, and monitoring tools
 - **Training**: Team training on Sruja DSL, validation patterns, and architectural modeling
 - **Custom development**: Build custom validators, exporters, or platform integrations
@@ -325,14 +333,14 @@ Contact the team through [GitHub Discussions](https://github.com/sruja-ai/sruja/
 
 ## Future Platform Vision
 
-Sruja is designed to evolve into a comprehensive platform for architectural governance:
+Sruja is designed to evolve as a context engineering platform for AI-assisted architecture work:
 
-- **Live System Review**: Compare actual runtime behavior against architectural models to detect drift and violations.
-- **Gap Analysis**: Automatically identify missing components, undocumented dependencies, and architectural gaps.
-- **Continuous Validation**: Monitor production systems against architectural policies and constraints in real-time.
-- **Compliance Monitoring**: Track and report on architectural compliance across services and deployments.
+- **Live System Review**: Compare actual runtime behavior against reviewed architecture truth to detect drift and violations.
+- **Gap Analysis**: Identify missing components, undocumented dependencies, and architectural gaps from evidence.
+- **Continuous Validation**: Keep repo context fresh as code, docs, and deployment artifacts change.
+- **Review Support**: Help humans and AI agents evaluate whether proposed changes still match intent.
 
-These capabilities are planned for future releases. The current open source foundation provides the building blocks for this evolution, and community feedback helps shape the roadmap.
+These capabilities are planned for future releases. The current open source foundation provides the evidence, validation, and context layers for this evolution, and community feedback helps shape the roadmap.
 
 ---
 

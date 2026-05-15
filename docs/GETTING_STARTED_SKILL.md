@@ -8,8 +8,8 @@ Your AI analyzes your code, generates architecture files, and keeps them in sync
 
 ## What You'll Need
 
-1. **Sruja CLI** – Analyzes code and validates files
-2. **AI editor with skill** – Generates architecture (Cursor, Copilot, Claude, etc.)
+1. **AI editor with skill** – Generates architecture (Cursor, Copilot, Claude, etc.)
+2. **Sruja CLI** – Gathers evidence, validates files, and checks drift when the skill needs it
 3. **A codebase** – Any project you want to document
 
 ---
@@ -323,9 +323,9 @@ Many repos (e.g. one repo per microservice or app). Each repo is independent.
 | Practice | How Sruja helps |
 |----------|------------------|
 | **AI-generated architecture** | Skill uses real code evidence; lint and drift keep output valid and in sync. |
-| **Onboarding** | New devs (and AI) read `.sruja` and exported docs; single source of truth. |
+| **Onboarding** | New devs and AI assistants read `.sruja` plus exported docs from the same reviewed truth. |
 | **PR reviews** | CI fails if `.sruja` is invalid; reviewers see architecture changes in the diff. |
-| **Compliance / governance** | Policies in the DSL; lint enforces structure; export for auditors. |
+| **Policy guardrails** | Policies in the DSL; lint enforces structure; export for auditors when needed. |
 | **Multi-repo** | Each repo has its own `repo.sruja` and CI; optional federation for system-wide view. |
 
 ---
