@@ -1087,6 +1087,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                         &guardrail,
                         reason,
                         plan.target.resolved_element_id.as_deref(),
+                        None,
                     )
                     .await?;
                     memory_recorded.push(hypothesis);

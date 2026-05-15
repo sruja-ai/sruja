@@ -3,6 +3,10 @@
 //! These records approximate “decision traces” for software architecture: intent checks,
 //! drift runs, and merged proposals, each stamped with a fingerprint of the declared
 //! architecture file in use at the time (when resolvable).
+//!
+//! **`context_event/v2`** adds optional trace fields (`trace_id`, `decision_id`, `actor`, …)
+//! for agent workflows while remaining backward compatible with **`context_event/v1`**
+//! readers that ignore unknown JSON properties.
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -12,6 +16,22 @@ use std::io::Write;
 use std::path::Path;
 
 pub const CONTEXT_EVENTS_SCHEMA: &str = "context_event/v1";
+pub const CONTEXT_EVENTS_SCHEMA_V2: &str = "context_event/v2";
+
+/// Event `kind` values used for decision / agent workflow lineage (v2 and tooling).
+pub const DECISION_LINEAGE_KINDS: &[&str] = &[
+    "decision_opened",
+    "context_retrieved",
+    "evidence_cited",
+    "alternative_considered",
+    "human_handoff",
+    "override_recorded",
+    "decision_accepted",
+    "decision_superseded",
+    "decision_applied",
+    "validation_passed",
+    "validation_failed",
+];
 
 fn events_path(repo: &Path) -> std::path::PathBuf {
     repo.join(".sruja").join("context_events.jsonl")
@@ -34,7 +54,71 @@ pub struct ContextEventRecord {
     pub policy_fingerprint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub strict: Option<bool>,
+    #[serde(default)]
     pub details: serde_json::Value,
+    // --- context_event/v2 optional lineage ---
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decision_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actor: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub elements: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_ids: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_refs: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+}
+
+impl ContextEventRecord {
+    /// True if this row is a decision/workflow lineage kind (for focus / MCP filters).
+    pub fn is_decision_lineage_kind(&self) -> bool {
+        DECISION_LINEAGE_KINDS.contains(&self.kind.as_str())
+    }
+
+    /// True if `element_id` matches `elements` or appears in serialized `details`.
+    pub fn touches_element(&self, element_id: &str) -> bool {
+        if let Some(els) = &self.elements {
+            if els
+                .iter()
+                .any(|e| e == element_id || element_id.starts_with(&format!("{e}.")))
+            {
+                return true;
+            }
+        }
+        self.details.to_string().contains(element_id)
+    }
+}
+
+/// Validate a record before appending (CLI / MCP).
+pub fn validate_context_event_record(r: &ContextEventRecord) -> Result<(), String> {
+    if r.schema_version != CONTEXT_EVENTS_SCHEMA && r.schema_version != CONTEXT_EVENTS_SCHEMA_V2 {
+        return Err(format!(
+            "invalid schema_version: expected {} or {}",
+            CONTEXT_EVENTS_SCHEMA, CONTEXT_EVENTS_SCHEMA_V2
+        ));
+    }
+    if r.timestamp.trim().is_empty() {
+        return Err("timestamp must be non-empty RFC3339 string".into());
+    }
+    if r.kind.trim().is_empty() {
+        return Err("kind must be non-empty".into());
+    }
+    if r.outcome.trim().is_empty() {
+        return Err("outcome must be non-empty".into());
+    }
+    Ok(())
 }
 
 pub fn append_context_event(repo: &Path, record: ContextEventRecord) {
@@ -47,6 +131,22 @@ pub fn append_context_event(repo: &Path, record: ContextEventRecord) {
             let _ = writeln!(f, "{line}");
         }
     }
+}
+
+/// Parse and validate one JSON line from `sruja event append` or MCP.
+pub fn append_context_event_from_json_line(
+    repo: &Path,
+    line: &str,
+) -> Result<ContextEventRecord, String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return Err("empty JSON line".into());
+    }
+    let record: ContextEventRecord =
+        serde_json::from_str(trimmed).map_err(|e| format!("invalid JSON: {e}"))?;
+    validate_context_event_record(&record)?;
+    append_context_event(repo, record.clone());
+    Ok(record)
 }
 
 pub fn record_intent_check(repo: &Path, report: &DriftReport, strict: bool) {
@@ -80,6 +180,17 @@ pub fn record_intent_check(repo: &Path, report: &DriftReport, strict: bool) {
             policy_fingerprint: policy_fingerprint(repo),
             strict: Some(strict),
             details,
+            trace_id: None,
+            decision_id: None,
+            run_id: None,
+            workflow_id: None,
+            actor: None,
+            source: None,
+            tool: None,
+            elements: None,
+            subject_ids: None,
+            evidence_refs: None,
+            summary: None,
         },
     );
 }
@@ -105,6 +216,17 @@ pub fn record_drift_compare(
                 "truth_status": truth_status,
                 "compared_to_architecture": compared_to_architecture,
             }),
+            trace_id: None,
+            decision_id: None,
+            run_id: None,
+            workflow_id: None,
+            actor: None,
+            source: None,
+            tool: None,
+            elements: None,
+            subject_ids: None,
+            evidence_refs: None,
+            summary: None,
         },
     );
 }
@@ -120,19 +242,40 @@ pub fn record_proposal_merge(repo: &Path, proposal_id: &str) {
             policy_fingerprint: policy_fingerprint(repo),
             strict: None,
             details: serde_json::json!({ "proposal_id": proposal_id }),
+            trace_id: None,
+            decision_id: None,
+            run_id: None,
+            workflow_id: None,
+            actor: None,
+            source: None,
+            tool: None,
+            elements: None,
+            subject_ids: None,
+            evidence_refs: None,
+            summary: None,
         },
     );
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ContextEventQuery<'a> {
+    pub limit: usize,
+    pub kind_filter: Option<&'a str>,
+    pub details_substring: Option<&'a str>,
+    pub decision_id: Option<&'a str>,
+    pub trace_id: Option<&'a str>,
+    pub element_id: Option<&'a str>,
+    /// When set, only kinds in [`DECISION_LINEAGE_KINDS`].
+    pub decision_lineage_only: bool,
+}
+
 /// Returns up to `limit` matching events, **newest first** (tail of the log).
-pub fn read_context_events(
+pub fn read_context_events_query(
     repo: &Path,
-    limit: usize,
-    kind_filter: Option<&str>,
-    details_substring: Option<&str>,
+    query: ContextEventQuery<'_>,
 ) -> std::io::Result<Vec<ContextEventRecord>> {
     let path = events_path(repo);
-    if !path.exists() || limit == 0 {
+    if !path.exists() || query.limit == 0 {
         return Ok(Vec::new());
     }
     let text = std::fs::read_to_string(&path)?;
@@ -145,22 +288,112 @@ pub fn read_context_events(
         let Ok(ev) = serde_json::from_str::<ContextEventRecord>(line) else {
             continue;
         };
-        if let Some(k) = kind_filter {
+        if let Some(k) = query.kind_filter {
             if ev.kind != k {
                 continue;
             }
         }
-        if let Some(sub) = details_substring {
+        if let Some(sub) = query.details_substring {
             if !ev.details.to_string().contains(sub) {
                 continue;
             }
         }
+        if let Some(did) = query.decision_id {
+            let in_field = ev.decision_id.as_deref() == Some(did);
+            let in_details = ev.details.to_string().contains(did);
+            if !in_field && !in_details {
+                continue;
+            }
+        }
+        if let Some(tid) = query.trace_id {
+            let in_field = ev.trace_id.as_deref() == Some(tid);
+            let in_details = ev.details.to_string().contains(tid);
+            if !in_field && !in_details {
+                continue;
+            }
+        }
+        if let Some(eid) = query.element_id {
+            if !ev.touches_element(eid) {
+                continue;
+            }
+        }
+        if query.decision_lineage_only && !ev.is_decision_lineage_kind() {
+            continue;
+        }
         matched.push(ev);
     }
-    if matched.len() > limit {
-        let start = matched.len() - limit;
+    if matched.len() > query.limit {
+        let start = matched.len() - query.limit;
         matched = matched.split_off(start);
     }
     matched.reverse();
     Ok(matched)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn v1_line_deserializes_with_default_trace_fields() {
+        let line = r#"{"schema_version":"context_event/v1","timestamp":"2026-01-01T00:00:00Z","kind":"drift","outcome":"pass","policy_fingerprint":null,"strict":null,"details":{"violation_count":0}}"#;
+        let ev: ContextEventRecord = serde_json::from_str(line).unwrap();
+        assert_eq!(ev.kind, "drift");
+        assert!(ev.trace_id.is_none());
+    }
+
+    #[test]
+    fn v2_round_trip() {
+        let ev = ContextEventRecord {
+            schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+            timestamp: "2026-05-15T12:00:00Z".into(),
+            kind: "context_retrieved".into(),
+            outcome: "ok".into(),
+            policy_fingerprint: None,
+            strict: None,
+            details: serde_json::json!({}),
+            trace_id: Some("trace-abc".into()),
+            decision_id: Some("DR-2026-001".into()),
+            run_id: Some("run-123".into()),
+            workflow_id: None,
+            actor: Some("agent".into()),
+            source: Some("mcp".into()),
+            tool: Some("sruja_get_focus_briefing".into()),
+            elements: Some(vec!["Sruja.Context".into()]),
+            subject_ids: Some(vec![]),
+            evidence_refs: Some(vec!["repo.sruja".into()]),
+            summary: Some("brief".into()),
+        };
+        validate_context_event_record(&ev).unwrap();
+        let json = serde_json::to_string(&ev).unwrap();
+        let back: ContextEventRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.decision_id, ev.decision_id);
+        assert!(back.is_decision_lineage_kind());
+    }
+
+    #[test]
+    fn touches_element_checks_vec() {
+        let ev = ContextEventRecord {
+            schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+            timestamp: "t".into(),
+            kind: "context_retrieved".into(),
+            outcome: "ok".into(),
+            policy_fingerprint: None,
+            strict: None,
+            details: serde_json::json!({}),
+            trace_id: None,
+            decision_id: None,
+            run_id: None,
+            workflow_id: None,
+            actor: None,
+            source: None,
+            tool: None,
+            elements: Some(vec!["MySystem.Api".into()]),
+            subject_ids: None,
+            evidence_refs: None,
+            summary: None,
+        };
+        assert!(ev.touches_element("MySystem.Api"));
+        assert!(ev.touches_element("MySystem.Api.Handler"));
+    }
 }

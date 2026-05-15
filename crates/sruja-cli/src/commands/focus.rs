@@ -30,6 +30,8 @@ pub struct MemoryHit {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hitl_kind: Option<String>,
     pub outcome: String,
     pub match_reason: String,
     pub timestamp: String,
@@ -74,6 +76,12 @@ pub struct FocusBriefing {
     pub temporal: Option<TemporalContextBrief>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enrichment: Option<FocusEnrichment>,
+    /// Recent decision/workflow lineage from `.sruja/context_events.jsonl` (v2 kinds) for this element.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub decision_trace_events: Vec<crate::commands::context_events::ContextEventRecord>,
+    /// On-disk Decision Records (`.sruja/decisions/`) whose `elements` include this focus target.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub decision_records: Vec<crate::commands::decision::DecisionListItem>,
 }
 
 #[derive(Debug, Serialize)]
@@ -497,6 +505,7 @@ pub fn build_focus_briefing(
             memory_hits.push(MemoryHit {
                 id: entry.id.clone(),
                 kind,
+                hitl_kind: entry.hitl_kind.clone(),
                 outcome,
                 match_reason: match_reason.to_string(),
                 timestamp: entry.timestamp.to_rfc3339(),
@@ -514,6 +523,47 @@ pub fn build_focus_briefing(
                 pointer_traces.push(format!("Prior learning: {}", entry.hypothesis));
             }
         }
+    }
+
+    let decision_trace_events = crate::commands::context_events::read_context_events_query(
+        repo_path,
+        crate::commands::context_events::ContextEventQuery {
+            limit: 12,
+            kind_filter: None,
+            details_substring: None,
+            decision_id: None,
+            trace_id: None,
+            element_id: Some(target_id),
+            decision_lineage_only: true,
+        },
+    )
+    .unwrap_or_default();
+
+    let decision_records: Vec<crate::commands::decision::DecisionListItem> =
+        crate::commands::list_decisions(repo_path)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|it| {
+                it.elements.iter().any(|e| {
+                    e == target_id
+                        || target_id.starts_with(&format!("{e}."))
+                        || e.starts_with(&format!("{target_id}."))
+                })
+            })
+            .take(10)
+            .collect();
+
+    if !decision_trace_events.is_empty() {
+        ai_instructions.push(
+            "Recent decision/workflow lineage events exist for this element — see briefing.decision_trace_events."
+                .to_string(),
+        );
+    }
+    if !decision_records.is_empty() {
+        ai_instructions.push(
+            "On-disk Decision Records reference this element — see briefing.decision_records (treat learned_facts as hypotheses until reviewed)."
+                .to_string(),
+        );
     }
 
     // -- Fallback to Legacy Anti Patterns (From AI Scratchpad) --
@@ -596,6 +646,8 @@ pub fn build_focus_briefing(
         context_score: score.score,
         temporal,
         enrichment: None,
+        decision_trace_events,
+        decision_records,
     }
 }
 

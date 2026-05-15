@@ -98,8 +98,15 @@ pub use learn::learn;
 
 pub(crate) mod context;
 pub(crate) mod context_events;
+pub mod decision;
+pub mod event;
 
 pub use context::{context_export, ContextRequest};
+pub use decision::{
+    create_decision_record, decision_accept, decision_link, decision_list, decision_new,
+    decision_show, decision_supersede, decision_trace, list_decisions,
+};
+pub use event::{event_append, event_list};
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
     scan_repo_cached_with_opts(repo_path, false)

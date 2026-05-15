@@ -39,6 +39,10 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 - `sruja_record_learning`
 - `sruja_record_learn_feedback`
 - `sruja_agent_run`
+- `sruja_record_context_event`
+- `sruja_record_decision_event`
+- `sruja_create_decision_record`
+- `sruja_link_decision_to_element`
 
 ## Tools by category
 
@@ -101,11 +105,17 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 |------|---------|
 | `sruja_get_context_score` | AI-readiness score and breakdown; optional `format` (`text` / `json`). |
 | `sruja_get_focus_briefing` | Task-scoped briefing for `file` or `element_id`; optional `run_id`, `format`. Optional **`base_ref`** / **`head_ref`** add **temporal** context (git-range diff → scan components, architecture fingerprints at base vs working tree)—same semantics as `sruja focus --base-ref` / `--head-ref`. |
-| `sruja_get_context_events` | Read recent **append-only lineage** events from `.sruja/context_events.jsonl` (written on `intent check`, `drift`, merged proposals, and `sruja learn`). Args: optional `limit` (default 50), optional `kind` filter (`intent_check`, `drift`, `proposal_merge`, or `learn_run`), optional `details_substring` filter. |
+| `sruja_get_context_events` | Read **append-only lineage** from `.sruja/context_events.jsonl` (`context_event/v1` and **`context_event/v2`** traces). Args: `limit`, optional `kind`, `details_substring`, optional **`decision_id`**, **`trace_id`**, **`element_id`**, **`decision_lineage_only`**. |
+| `sruja_get_decisions` | List **Decision Record** files under `.sruja/decisions/` (YAML front matter + markdown). |
+| `sruja_get_decision_trace` | Return events for a **`decision_id`** from the same log. |
 | `sruja_get_learned_facts` | Read **`.sruja/learned_facts.jsonl`** (deterministic scan + drift vs reviewed architecture). Hypotheses, not `repo.sruja` truth. Args: optional `limit` (default 200), optional `status` (`observed`, `proposed`, etc.). Requires `sruja learn` to have been run. |
 | `sruja_get_evidence_graph` | Return **`.sruja/evidence_graph.json`** (scan snapshot written by `sruja learn`). |
 | `sruja_get_evidence_for_claim` | Resolve a **`claim_id`** against learned facts and attach matching scan nodes from the evidence graph when ids align. |
 | `sruja_record_learn_feedback` | Append **approve/reject** for a learned **`fact_id`** to **`.sruja/learn_feedback.jsonl`** (**mutating**); rejects suppress that fact in future learn-generated proposals. |
+| `sruja_record_context_event` | Append a full **`event`** object to **`context_events.jsonl`** (**mutating**); same contract as CLI `sruja event append`. |
+| `sruja_record_decision_event` | Append **`context_event/v2`** lineage (**mutating**): `kind`, `summary`, optional `decision_id`, `trace_id`, `actor`, `source`, `tool`, `elements`, `evidence_refs`, `outcome`. |
+| `sruja_create_decision_record` | Create **`.sruja/decisions/<id>.md`** and emit **`decision_opened`** (**mutating**). |
+| `sruja_link_decision_to_element` | Add **`element_id`** to a Decision Record’s YAML (**mutating**). |
 | `sruja_get_agent_learnings` | Return **Agentic Memory** entries relevant to an **`element_id`** (guardrails / playbooks recorded via `sruja agent record` or MCP `sruja_record_learning`). |
 
 For how this relates to “context graph” terminology in industry writing versus Sruja’s governed graph, see [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md#context-graphs-sruja-vs-industry-usage).
@@ -124,7 +134,7 @@ For how this relates to “context graph” terminology in industry writing vers
 | `sruja_memory_clusters` | Thematic clusters/tags from agentic memory (read). Complements **`sruja_get_agent_learnings`**, which filters by **element id**. |
 | `sruja_ai_scratchpad` | Read/append legacy scratchpad markdown (**mutating** on append). |
 | `sruja_sandbox` | Git worktree sandbox lifecycle (**mutating**). |
-| `sruja_record_learning` | Structured agentic memory entry (**mutating**). |
+| `sruja_record_learning` | Structured agentic memory entry (**mutating**). Optional **`hitl_kind`**: `precedent` \| `exception` \| `correction` \| `guardrail` (see [context-graph-for-agents.md](context-graph-for-agents.md)). |
 
 ### Evaluation and agent loop (**mutating**)
 

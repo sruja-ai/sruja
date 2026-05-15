@@ -129,6 +129,7 @@ impl TrajectoryRunner {
                 evidence_refs: Vec::new(),
                 confidence: None,
                 tags: vec!["matts".to_string(), "contrast".to_string()],
+                hitl_kind: None,
                 related_ids: Vec::new(),
             });
         } else if successes.is_empty() && !failures.is_empty() {
@@ -164,6 +165,7 @@ impl TrajectoryRunner {
                 evidence_refs: Vec::new(),
                 confidence: None,
                 tags: vec!["matts".to_string(), "blocked".to_string()],
+                hitl_kind: None,
                 related_ids: Vec::new(),
             });
         }

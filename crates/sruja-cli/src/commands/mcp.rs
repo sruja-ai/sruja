@@ -53,6 +53,10 @@ const MCP_MUTATING_TOOLS: &[&str] = &[
     "sruja_record_learning",
     "sruja_record_learn_feedback",
     "sruja_agent_run",
+    "sruja_record_context_event",
+    "sruja_record_decision_event",
+    "sruja_create_decision_record",
+    "sruja_link_decision_to_element",
 ];
 
 fn is_mutating_mcp_tool(name: &str) -> bool {
@@ -648,15 +652,110 @@ fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_get_context_events",
             "title": "Sruja Context Events",
-            "description": "Read recent append-only context lineage events (intent check, drift, proposal merge) from .sruja/context_events.jsonl. Newest first.",
+            "description": "Read recent append-only context lineage events from .sruja/context_events.jsonl (intent_check, drift, proposal_merge, learn_run, and context_event/v2 decision traces). Newest first.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
                     "limit": { "type": "integer", "description": "Max events to return (default: 50)" },
-                    "kind": { "type": "string", "description": "Optional filter: intent_check | drift | proposal_merge" },
-                    "details_substring": { "type": "string", "description": "Optional substring filter on JSON details" }
+                    "kind": { "type": "string", "description": "Optional filter on event kind" },
+                    "details_substring": { "type": "string", "description": "Optional substring filter on JSON details" },
+                    "decision_id": { "type": "string", "description": "Optional filter: decision_id field or details contains this id" },
+                    "trace_id": { "type": "string", "description": "Optional filter: trace_id field or details contains" },
+                    "element_id": { "type": "string", "description": "Optional filter: elements array or details mentions this architecture id" },
+                    "decision_lineage_only": { "type": "boolean", "description": "If true, only decision/workflow lineage kinds (decision_opened, context_retrieved, ...)" }
                 }
+            }
+        }),
+        json!({
+            "name": "sruja_get_decisions",
+            "title": "Sruja Decision Records",
+            "description": "List Decision Record files (.sruja/decisions/*.md) with YAML front matter (generalized ADRs).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_decision_trace",
+            "title": "Sruja Decision Trace",
+            "description": "Return context_events.jsonl rows for a decision_id (append-only lineage).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "decision_id": { "type": "string", "description": "Decision id e.g. DR-2026-001" },
+                    "limit": { "type": "integer", "description": "Max events (default: 50)" }
+                },
+                "required": ["decision_id"]
+            }
+        }),
+        json!({
+            "name": "sruja_record_context_event",
+            "title": "Sruja Record Context Event",
+            "description": "Append one context_event/v1 or v2 JSON object to .sruja/context_events.jsonl (same contract as `sruja event append`).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "event": { "type": "object", "description": "Full ContextEventRecord JSON (schema_version, timestamp, kind, outcome, ...)" }
+                },
+                "required": ["event"]
+            }
+        }),
+        json!({
+            "name": "sruja_record_decision_event",
+            "title": "Sruja Record Decision Event",
+            "description": "Append a context_event/v2 row for decision/workflow lineage (kind, decision_id, summary, optional trace fields).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "kind": { "type": "string", "description": "Event kind e.g. context_retrieved, validation_passed" },
+                    "decision_id": { "type": "string", "description": "Decision id (optional for some kinds)" },
+                    "outcome": { "type": "string", "description": "ok | fail | warn (default: ok)" },
+                    "summary": { "type": "string", "description": "Human-readable one-line summary" },
+                    "trace_id": { "type": "string" },
+                    "run_id": { "type": "string" },
+                    "workflow_id": { "type": "string" },
+                    "actor": { "type": "string", "description": "agent | human | ci | system" },
+                    "source": { "type": "string", "description": "mcp | cli | ci | editor | external" },
+                    "tool": { "type": "string" },
+                    "elements": { "type": "array", "items": { "type": "string" } },
+                    "evidence_refs": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["kind", "summary"]
+            }
+        }),
+        json!({
+            "name": "sruja_create_decision_record",
+            "title": "Sruja Create Decision Record",
+            "description": "Create a proposed Decision Record under .sruja/decisions/ and emit decision_opened event.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "title": { "type": "string" },
+                    "record_type": { "type": "string", "description": "architecture | product | operational | security | agent | exception" },
+                    "scope": { "type": "string", "description": "repo | workflow | system | organization (default: repo)" }
+                },
+                "required": ["title", "record_type"]
+            }
+        }),
+        json!({
+            "name": "sruja_link_decision_to_element",
+            "title": "Sruja Link Decision To Element",
+            "description": "Append an architecture element id to a Decision Record YAML front matter.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "decision_id": { "type": "string" },
+                    "element_id": { "type": "string" }
+                },
+                "required": ["decision_id", "element_id"]
             }
         }),
         json!({
@@ -905,7 +1004,8 @@ fn tool_definitions() -> Vec<Value> {
                     "outcome": { "type": "string", "description": "Outcome: 'success' or 'failed'" },
                     "reason": { "type": "string", "description": "Why it failed (if applicable)" },
                     "guardrail_advice": { "type": "string", "description": "Explicit advice for future agents (e.g. 'Do not merge X into Y')" },
-                    "affected_elements": { "type": "array", "items": { "type": "string" }, "description": "Architectural element IDs affected by this learning" }
+                    "affected_elements": { "type": "array", "items": { "type": "string" }, "description": "Architectural element IDs affected by this learning" },
+                    "hitl_kind": { "type": "string", "description": "Optional: precedent | exception | correction | guardrail (human-in-the-loop classification)" }
                 },
                 "required": ["context", "hypothesis", "outcome", "guardrail_advice"]
             }
@@ -1736,6 +1836,22 @@ async fn run_tool(
                 })
                 .unwrap_or_default();
 
+            let hitl_raw = arguments.get("hitl_kind").and_then(|v| v.as_str());
+            let hitl_kind = if let Some(h) = hitl_raw {
+                let v = h.trim().to_lowercase();
+                match v.as_str() {
+                    "precedent" | "exception" | "correction" | "guardrail" => Some(v),
+                    "" => None,
+                    _ => {
+                        return Err(CliError::validation(format!(
+                            "invalid hitl_kind: expected precedent|exception|correction|guardrail, got {h}"
+                        )));
+                    }
+                }
+            } else {
+                None
+            };
+
             let outcome = if outcome_str == "failed" {
                 ExperimentOutcome::Failed
             } else {
@@ -1766,6 +1882,7 @@ async fn run_tool(
                 evidence_refs: Vec::new(),
                 confidence: None,
                 tags: Vec::new(),
+                hitl_kind,
                 related_ids: Vec::new(),
             });
             memory
@@ -2476,13 +2593,178 @@ async fn run_tool(
                 .unwrap_or(50) as usize;
             let kind = arguments.get("kind").and_then(|v| v.as_str());
             let sub = arguments.get("details_substring").and_then(|v| v.as_str());
-            let events = crate::commands::context_events::read_context_events(
+            let decision_id = arguments.get("decision_id").and_then(|v| v.as_str());
+            let trace_id = arguments.get("trace_id").and_then(|v| v.as_str());
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str());
+            let decision_lineage_only = arguments
+                .get("decision_lineage_only")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let events = crate::commands::context_events::read_context_events_query(
                 Path::new(&repo),
-                limit,
-                kind,
-                sub,
+                crate::commands::context_events::ContextEventQuery {
+                    limit,
+                    kind_filter: kind,
+                    details_substring: sub,
+                    decision_id,
+                    trace_id,
+                    element_id,
+                    decision_lineage_only,
+                },
             )?;
             Ok(serde_json::to_string_pretty(&events)?)
+        }
+        "sruja_get_decisions" => {
+            let items = crate::commands::list_decisions(Path::new(&repo))?;
+            Ok(serde_json::to_string_pretty(&items)?)
+        }
+        "sruja_get_decision_trace" => {
+            let decision_id = arguments
+                .get("decision_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing decision_id".to_string()))?;
+            let limit = arguments
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(50) as usize;
+            let events = crate::commands::context_events::read_context_events_query(
+                Path::new(&repo),
+                crate::commands::context_events::ContextEventQuery {
+                    limit,
+                    kind_filter: None,
+                    details_substring: None,
+                    decision_id: Some(decision_id),
+                    trace_id: None,
+                    element_id: None,
+                    decision_lineage_only: false,
+                },
+            )?;
+            Ok(serde_json::to_string_pretty(&events)?)
+        }
+        "sruja_record_context_event" => {
+            let ev = arguments
+                .get("event")
+                .ok_or_else(|| CliError::validation("missing event object".to_string()))?;
+            let line = serde_json::to_string(ev)?;
+            crate::commands::context_events::append_context_event_from_json_line(
+                Path::new(&repo),
+                &line,
+            )
+            .map_err(CliError::validation)?;
+            Ok(r#"{"ok":true}"#.to_string())
+        }
+        "sruja_record_decision_event" => {
+            let kind = arguments
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing kind".to_string()))?;
+            let summary = arguments
+                .get("summary")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing summary".to_string()))?;
+            let decision_id = arguments
+                .get("decision_id")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let outcome = arguments
+                .get("outcome")
+                .and_then(|v| v.as_str())
+                .unwrap_or("ok")
+                .to_string();
+            let elements: Option<Vec<String>> = arguments
+                .get("elements")
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(String::from))
+                        .collect()
+                });
+            let evidence_refs: Option<Vec<String>> = arguments
+                .get("evidence_refs")
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(String::from))
+                        .collect()
+                });
+            let record = crate::commands::context_events::ContextEventRecord {
+                schema_version: crate::commands::context_events::CONTEXT_EVENTS_SCHEMA_V2
+                    .to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                kind: kind.to_string(),
+                outcome,
+                policy_fingerprint: crate::commands::context_events::policy_fingerprint(Path::new(
+                    &repo,
+                )),
+                strict: None,
+                details: serde_json::json!({}),
+                trace_id: arguments
+                    .get("trace_id")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                decision_id,
+                run_id: arguments
+                    .get("run_id")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                workflow_id: arguments
+                    .get("workflow_id")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                actor: arguments
+                    .get("actor")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                source: arguments
+                    .get("source")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                tool: arguments
+                    .get("tool")
+                    .and_then(|v| v.as_str())
+                    .map(String::from),
+                elements,
+                subject_ids: None,
+                evidence_refs,
+                summary: Some(summary.to_string()),
+            };
+            crate::commands::context_events::validate_context_event_record(&record)
+                .map_err(CliError::validation)?;
+            crate::commands::context_events::append_context_event(Path::new(&repo), record);
+            Ok(r#"{"ok":true}"#.to_string())
+        }
+        "sruja_create_decision_record" => {
+            let title = arguments
+                .get("title")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing title".to_string()))?;
+            let record_type = arguments
+                .get("record_type")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing record_type".to_string()))?;
+            let scope = arguments.get("scope").and_then(|v| v.as_str());
+            let id = crate::commands::create_decision_record(
+                Path::new(&repo),
+                title,
+                record_type,
+                scope,
+                "sruja_create_decision_record",
+                "agent",
+                "mcp",
+            )?;
+            Ok(serde_json::json!({ "id": id }).to_string())
+        }
+        "sruja_link_decision_to_element" => {
+            let decision_id = arguments
+                .get("decision_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing decision_id".to_string()))?;
+            let element_id = arguments
+                .get("element_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing element_id".to_string()))?;
+            crate::commands::decision::decision_link(&repo, decision_id, element_id).await?;
+            Ok(r#"{"ok":true}"#.to_string())
         }
         "sruja_get_agent_learnings" => {
             let element_id = arguments
@@ -3174,6 +3456,10 @@ mod tests {
     #[test]
     fn mutating_mcp_tool_detection() {
         assert!(is_mutating_mcp_tool("sruja_record_learning"));
+        assert!(is_mutating_mcp_tool("sruja_record_context_event"));
+        assert!(is_mutating_mcp_tool("sruja_record_decision_event"));
+        assert!(is_mutating_mcp_tool("sruja_create_decision_record"));
+        assert!(is_mutating_mcp_tool("sruja_link_decision_to_element"));
         assert!(is_mutating_mcp_tool("sruja_sandbox"));
         assert!(is_mutating_mcp_tool("sruja_agent_run"));
         assert!(!is_mutating_mcp_tool("sruja_check_drift"));
@@ -3222,6 +3508,12 @@ mod tests {
         assert!(names.contains(&"sruja_explain_discovery".to_string()));
         assert!(names.contains(&"sruja_check_drift".to_string()));
         assert!(names.contains(&"sruja_get_context_events".to_string()));
+        assert!(names.contains(&"sruja_get_decisions".to_string()));
+        assert!(names.contains(&"sruja_get_decision_trace".to_string()));
+        assert!(names.contains(&"sruja_record_context_event".to_string()));
+        assert!(names.contains(&"sruja_record_decision_event".to_string()));
+        assert!(names.contains(&"sruja_create_decision_record".to_string()));
+        assert!(names.contains(&"sruja_link_decision_to_element".to_string()));
         assert!(names.contains(&"sruja_get_learned_facts".to_string()));
         assert!(names.contains(&"sruja_get_evidence_graph".to_string()));
         assert!(names.contains(&"sruja_get_agent_learnings".to_string()));

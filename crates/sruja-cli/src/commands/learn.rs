@@ -519,6 +519,17 @@ pub async fn learn(
                 "file_filter": file,
                 "since": since,
             }),
+            trace_id: None,
+            decision_id: None,
+            run_id: None,
+            workflow_id: None,
+            actor: None,
+            source: None,
+            tool: None,
+            elements: None,
+            subject_ids: None,
+            evidence_refs: None,
+            summary: None,
         },
     );
 

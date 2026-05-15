@@ -200,6 +200,7 @@ pub async fn agent_apply(plan_path: &Path, repo: &str, _format: &str) -> Result<
                 &guardrail,
                 reason,
                 plan.target.resolved_element_id.as_deref(),
+                None,
             )
             .await?;
             memory_recorded.push(hypothesis);

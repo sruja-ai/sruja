@@ -1,0 +1,49 @@
+// docs/architecture/agent-context-graph.sruja
+// Example: agent + workflow + lineage mapped to default Sruja kinds (person at top level).
+// See docs/context-graph-for-agents.md for Decision Records, traces, and HITL taxonomy.
+
+HumanReviewer = person "Human reviewer" {
+  description "Approves Decision Records; classifies HITL outcomes as precedent, exception, correction, or guardrail"
+}
+
+AgentOrchestration = system "Agent context graph (example)" {
+  description "Portable governed context for AI-assisted delivery"
+
+  CodingAgent = container "AI coding agent" {
+    technology "MCP-capable editor or CI agent"
+    description "Host-orchestrated; retrieves focus, decisions, and traces from Sruja before acting"
+  }
+
+  DebugWorkflow = container "Code-to-production debugging" {
+    technology "Operational workflow"
+    description "Triage, analyze with repo truth, validate, close with trace"
+
+    Triage = component "Triage" {
+      description "Gather PR or incident context and linked Decision Records"
+    }
+
+    Validate = component "Validate" {
+      description "Run drift and intent; append validation_passed or validation_failed events"
+    }
+  }
+
+  EventLog = database "context_events.jsonl" {
+    technology "JSONL"
+    description "Append-only lineage including context_event/v2 decision traces"
+  }
+
+  DecisionFiles = database "Decision Records" {
+    technology "Markdown + YAML"
+    description "Reviewed files under .sruja/decisions/ (ADR-compatible profile)"
+  }
+}
+
+HumanReviewer -> AgentOrchestration "initiates governed context session"
+HumanReviewer -> AgentOrchestration.CodingAgent "requested"
+AgentOrchestration.CodingAgent -> AgentOrchestration.DebugWorkflow "participates in"
+AgentOrchestration.CodingAgent -> AgentOrchestration.DebugWorkflow.Triage "delegates"
+AgentOrchestration.DebugWorkflow.Triage -> AgentOrchestration.DebugWorkflow.Validate "precedes"
+AgentOrchestration.DebugWorkflow.Triage -> AgentOrchestration.EventLog "retrieved"
+AgentOrchestration.DebugWorkflow.Validate -> AgentOrchestration.EventLog "produced"
+AgentOrchestration.DebugWorkflow.Validate -> AgentOrchestration.DecisionFiles "cites"
+HumanReviewer -> AgentOrchestration.DecisionFiles "approved"

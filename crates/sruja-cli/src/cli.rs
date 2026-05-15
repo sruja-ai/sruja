@@ -904,6 +904,16 @@ pub enum Commands {
         #[arg(long, short = 'e')]
         elements: Option<String>,
     },
+    /// Append-only context lineage (intent, drift, proposals, decision traces)
+    Event {
+        #[command(subcommand)]
+        cmd: EventCommand,
+    },
+    /// Decision Records (generalized ADRs) under `.sruja/decisions/`
+    Decision {
+        #[command(subcommand)]
+        cmd: DecisionCommand,
+    },
     /// Agentic memory: learnings, guardrails, failed hypotheses (bounded to architecture work)
     Agent {
         #[command(subcommand)]
@@ -1005,6 +1015,9 @@ pub enum AgentCommand {
         /// Comma-separated architectural element IDs affected
         #[arg(long, short = 'e')]
         elements: Option<String>,
+        /// HITL classification: precedent | exception | correction | guardrail
+        #[arg(long)]
+        hitl_kind: Option<String>,
     },
     /// Clear all agentic memory for this repository
     Clear {
@@ -1157,6 +1170,98 @@ pub enum AgentCommand {
         /// Output format (json)
         #[arg(long, short = 'f', default_value = "json")]
         format: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum EventCommand {
+    /// Append one JSON event line (use --json or pipe one line on stdin)
+    Append {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// JSON object (otherwise first non-empty line from stdin)
+        #[arg(long)]
+        json: Option<String>,
+    },
+    /// List recent events (newest first)
+    List {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+        #[arg(long)]
+        kind: Option<String>,
+        #[arg(long)]
+        details_substring: Option<String>,
+        #[arg(long)]
+        decision_id: Option<String>,
+        #[arg(long)]
+        trace_id: Option<String>,
+        /// Filter to events touching this architecture element id
+        #[arg(long)]
+        element_id: Option<String>,
+        /// Only kinds used for decision/workflow lineage
+        #[arg(long, default_value_t = false)]
+        decision_lineage_only: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DecisionCommand {
+    /// Create a new proposed Decision Record file
+    New {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 't')]
+        title: String,
+        /// architecture | product | operational | security | agent | exception
+        #[arg(long)]
+        typ: String,
+        #[arg(long)]
+        scope: Option<String>,
+    },
+    List {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    Show {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        id: String,
+    },
+    Trace {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        id: String,
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+    Link {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        id: String,
+        #[arg(long)]
+        element: String,
+    },
+    Accept {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        id: String,
+    },
+    Supersede {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        id: String,
+        /// Decision id that supersedes this record
+        #[arg(long = "by")]
+        by: String,
     },
 }
 
@@ -1829,6 +1934,55 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             category,
             elements,
         } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
+        Commands::Event { cmd } => match cmd {
+            EventCommand::Append { repo, json } => {
+                commands::event_append(&repo, json.as_deref()).await
+            }
+            EventCommand::List {
+                repo,
+                format,
+                limit,
+                kind,
+                details_substring,
+                decision_id,
+                trace_id,
+                element_id,
+                decision_lineage_only,
+            } => {
+                commands::event_list(
+                    &repo,
+                    &format,
+                    limit,
+                    kind.as_deref(),
+                    details_substring.as_deref(),
+                    decision_id.as_deref(),
+                    trace_id.as_deref(),
+                    element_id.as_deref(),
+                    decision_lineage_only,
+                )
+                .await
+            }
+        },
+        Commands::Decision { cmd } => match cmd {
+            DecisionCommand::New {
+                repo,
+                title,
+                typ,
+                scope,
+            } => commands::decision_new(&repo, &title, &typ, scope.as_deref()).await,
+            DecisionCommand::List { repo, format } => commands::decision_list(&repo, &format).await,
+            DecisionCommand::Show { repo, id } => commands::decision_show(&repo, &id).await,
+            DecisionCommand::Trace { repo, id, limit } => {
+                commands::decision_trace(&repo, &id, limit).await
+            }
+            DecisionCommand::Link { repo, id, element } => {
+                commands::decision_link(&repo, &id, &element).await
+            }
+            DecisionCommand::Accept { repo, id } => commands::decision_accept(&repo, &id).await,
+            DecisionCommand::Supersede { repo, id, by } => {
+                commands::decision_supersede(&repo, &id, &by).await
+            }
+        },
         Commands::Agent { cmd } => match cmd {
             AgentCommand::History {
                 repo,
@@ -1843,6 +1997,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 guardrail,
                 reason,
                 elements,
+                hitl_kind,
             } => {
                 commands::agent_record(
                     &repo,
@@ -1852,6 +2007,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     &guardrail,
                     reason.as_deref(),
                     elements.as_deref(),
+                    hitl_kind.as_deref(),
                 )
                 .await
             }

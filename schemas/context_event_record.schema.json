@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sruja.dev/schemas/context_event_record.json",
+  "title": "SrujaContextEventRecord",
+  "description": "One line in .sruja/context_events.jsonl. v1 = intent/drift/proposal/learn_run; v2 adds optional trace fields.",
+  "type": "object",
+  "required": ["schema_version", "timestamp", "kind", "outcome"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["context_event/v1", "context_event/v2"]
+    },
+    "timestamp": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "minLength": 1 },
+    "outcome": { "type": "string", "minLength": 1 },
+    "policy_fingerprint": { "type": ["string", "null"] },
+    "strict": { "type": ["boolean", "null"] },
+    "details": { "type": "object" },
+    "trace_id": { "type": ["string", "null"] },
+    "decision_id": { "type": ["string", "null"] },
+    "run_id": { "type": ["string", "null"] },
+    "workflow_id": { "type": ["string", "null"] },
+    "actor": {
+      "type": ["string", "null"],
+      "description": "agent | human | ci | system"
+    },
+    "source": {
+      "type": ["string", "null"],
+      "description": "mcp | cli | ci | editor | external"
+    },
+    "tool": { "type": ["string", "null"] },
+    "elements": { "type": ["array", "null"], "items": { "type": "string" } },
+    "subject_ids": { "type": ["array", "null"], "items": { "type": "string" } },
+    "evidence_refs": { "type": ["array", "null"], "items": { "type": "string" } },
+    "summary": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}

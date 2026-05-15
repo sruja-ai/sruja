@@ -17,7 +17,9 @@ Sruja still approximates parts of the decision-trace idea for **software archite
 | 3. Graph + time | `.sruja` declarations, drift vs baseline, `sruja context` with `--base-ref` / `--head-ref`, optional **temporal block** on `sruja focus` |
 | 4. Agent memory | `.sruja/agent_memory.json`, run snapshots under `.sruja/runs/`, **facts bundles** under `.sruja/agent/runs/<run_id>/`, append-only **context events** in `.sruja/context_events.jsonl` (intent check, drift, merged proposals) |
 
-**Context events** (`context_events.jsonl`) and **MCP** tools `sruja_get_context_events` / `sruja_get_agent_learnings` expose that lineage to agents without conflating it with the declared architecture graph itself.
+**Context events** (`context_events.jsonl`) and **MCP** tools `sruja_get_context_events` / `sruja_get_agent_learnings` expose that lineage to agents without conflating it with the declared architecture graph itself. Decision and workflow traces use **`context_event/v2`** rows (optional `trace_id`, `decision_id`, `actor`, `source`, and related fields); use `sruja event append` / `sruja decision trace` to record and inspect them.
+
+For the portable **governed context + decision lineage** model—Decision Records (generalized ADRs), hypothesis vs reviewed truth, reference *code-to-production* workflow, HITL taxonomy (`precedent`, `exception`, `correction`, `guardrail`), and federation notes—see **[context-graph-for-agents.md](context-graph-for-agents.md)**.
 
 ## Core Pillars
 

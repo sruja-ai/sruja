@@ -82,6 +82,9 @@ pub struct LearningEntry {
     /// Auto-generated thematic tags extracted from context, hypothesis, and guardrail.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+    /// Human-in-the-loop classification: precedent, exception, correction, guardrail (optional).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hitl_kind: Option<String>,
     /// IDs of related learning entries (bidirectional Zettelkasten links).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub related_ids: Vec<String>,
@@ -427,6 +430,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         }
     }
@@ -450,6 +454,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         };
 
@@ -480,6 +485,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         };
         memory.add_learning(entry);
@@ -600,6 +606,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         };
 
@@ -670,6 +677,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         };
         memory.add_learning(entry);
@@ -701,6 +709,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         });
 
@@ -730,6 +739,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         };
 
@@ -761,6 +771,7 @@ mod tests {
             evidence_refs: Vec::new(),
             confidence: None,
             tags: Vec::new(),
+            hitl_kind: None,
             related_ids: Vec::new(),
         });
 

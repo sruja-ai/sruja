@@ -77,6 +77,7 @@ pub async fn agent_history(
 ///
 /// This is typically used by AI agents to record the results of their experiments,
 /// helping future agents avoid repeating mistakes or to replicate successful patterns.
+#[allow(clippy::too_many_arguments)]
 pub async fn agent_record(
     repo: &str,
     context: &str,
@@ -85,6 +86,7 @@ pub async fn agent_record(
     guardrail: &str,
     reason: Option<&str>,
     elements: Option<&str>,
+    hitl_kind: Option<&str>,
 ) -> Result<(), CliError> {
     let outcome = match outcome_str.to_lowercase().as_str() {
         "success" | "succeeded" | "pass" => ExperimentOutcome::Success,
@@ -99,6 +101,21 @@ pub async fn agent_record(
                 .collect()
         })
         .unwrap_or_default();
+
+    let hitl_normalized = if let Some(h) = hitl_kind {
+        let v = h.trim().to_lowercase();
+        match v.as_str() {
+            "precedent" | "exception" | "correction" | "guardrail" => Some(v),
+            "" => None,
+            _ => {
+                return Err(CliError::validation(format!(
+                    "invalid --hitl-kind: expected precedent|exception|correction|guardrail, got {h}"
+                )));
+            }
+        }
+    } else {
+        None
+    };
 
     let mut memory = AgenticMemory::load(Path::new(repo))
         .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
@@ -122,6 +139,7 @@ pub async fn agent_record(
         evidence_refs: Vec::new(),
         confidence: None,
         tags: Vec::new(),
+        hitl_kind: hitl_normalized,
         related_ids: Vec::new(),
     });
 
