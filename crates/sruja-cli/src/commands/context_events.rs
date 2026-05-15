@@ -21,6 +21,7 @@ pub const CONTEXT_EVENTS_SCHEMA_V2: &str = "context_event/v2";
 /// Event `kind` values used for decision / agent workflow lineage (v2 and tooling).
 pub const DECISION_LINEAGE_KINDS: &[&str] = &[
     "decision_opened",
+    "agent_plan",
     "context_retrieved",
     "evidence_cited",
     "alternative_considered",
@@ -244,7 +245,7 @@ pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Opti
     append_context_event(
         repo,
         ContextEventRecord {
-            schema_version: CONTEXT_EVENTS_SCHEMA.to_string(),
+            schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
             timestamp: Utc::now().to_rfc3339(),
             kind: "agent_plan".to_string(),
             outcome: "ok".to_string(),
@@ -434,6 +435,45 @@ mod tests {
         let back: ContextEventRecord = serde_json::from_str(&json).unwrap();
         assert_eq!(back.decision_id, ev.decision_id);
         assert!(back.is_decision_lineage_kind());
+    }
+
+    #[test]
+    fn agent_plan_is_decision_lineage_kind() {
+        let ev = ContextEventRecord {
+            schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+            timestamp: "2026-05-15T12:00:00Z".into(),
+            kind: "agent_plan".into(),
+            outcome: "ok".into(),
+            policy_fingerprint: None,
+            strict: None,
+            details: serde_json::json!({}),
+            trace_id: Some("run-1".into()),
+            decision_id: None,
+            run_id: Some("run-1".into()),
+            workflow_id: None,
+            actor: Some("sruja agent".into()),
+            source: Some("cli".into()),
+            tool: Some("agent_run".into()),
+            elements: Some(vec!["MySystem.Api".into()]),
+            subject_ids: None,
+            evidence_refs: None,
+            summary: Some("plan".into()),
+        };
+        assert!(ev.is_decision_lineage_kind());
+    }
+
+    #[test]
+    fn record_agent_plan_uses_v2_schema() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+
+        record_agent_plan(repo, "run-123", "do a thing", Some("MySystem.Api"));
+        let raw = std::fs::read_to_string(repo.join(".sruja/context_events.jsonl")).unwrap();
+        let line = raw.lines().last().unwrap();
+        let ev: ContextEventRecord = serde_json::from_str(line).unwrap();
+        assert_eq!(ev.schema_version, CONTEXT_EVENTS_SCHEMA_V2);
+        assert_eq!(ev.kind, "agent_plan");
+        assert_eq!(ev.trace_id.as_deref(), Some("run-123"));
     }
 
     #[test]
