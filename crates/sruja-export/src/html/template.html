@@ -167,6 +167,104 @@
             color: var(--text-secondary);
         }
 
+        .event-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .event-card h4 {
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+        }
+
+        .event-card p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .event-meta {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .event-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .event-controls select,
+        .event-controls input,
+        .event-controls button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .event-controls input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .event-controls button {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .event-controls button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-secondary);
+        }
+
+        .event-details {
+            margin-top: 10px;
+        }
+
+        .event-details summary {
+            cursor: pointer;
+            color: var(--accent-color);
+            font-size: 0.85rem;
+            user-select: none;
+        }
+
+        .event-details pre {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            overflow: auto;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            line-height: 1.4;
+            margin: 10px 0 0 0;
+        }
+
+        .event-evidence {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .event-evidence a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        .event-evidence a:hover {
+            text-decoration: underline;
+        }
+
         /* Controls */
         #controls {
             bottom: 20px;
@@ -352,16 +450,35 @@
             <div id="node-adrs"></div>
         </div>
 
+        <div id="events-section" class="detail-section">
+            <h3>Decision Trace Events</h3>
+            <div class="event-controls">
+                <select id="event-kind-filter">
+                    <option value="">All kinds</option>
+                </select>
+                <input id="event-trace-filter" type="text" placeholder="trace_id contains…" />
+                <input id="event-decision-filter" type="text" placeholder="decision_id contains…" />
+                <button id="event-clear-filters" type="button">Clear</button>
+            </div>
+            <div id="node-events"></div>
+        </div>
+
         <div class="detail-section">
             <h3>Metadata</h3>
             <div id="node-metadata" class="detail-content" style="font-family: var(--font-mono); font-size: 0.75rem;"></div>
         </div>
     </div>
 
+    <script type="application/json" id="sruja-nodes-json">{{NODES_JSON}}</script>
+    <script type="application/json" id="sruja-edges-json">{{EDGES_JSON}}</script>
+    <script type="application/json" id="sruja-decisions-json">{{DECISIONS_JSON}}</script>
+    <script type="application/json" id="sruja-events-json">{{EVENTS_JSON}}</script>
+
     <script>
-        const nodes = {{NODES_JSON}};
-        const edges = {{EDGES_JSON}};
-        const decisions = {{DECISIONS_JSON}};
+        const nodes = JSON.parse(document.getElementById("sruja-nodes-json")?.textContent || "[]");
+        const edges = JSON.parse(document.getElementById("sruja-edges-json")?.textContent || "[]");
+        const decisions = JSON.parse(document.getElementById("sruja-decisions-json")?.textContent || "[]");
+        const events = JSON.parse(document.getElementById("sruja-events-json")?.textContent || "[]");
 
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -496,6 +613,48 @@
                 d3.select("#tech-section").style("display", "none");
             }
 
+            function escapeHtml(s) {
+                return String(s ?? "")
+                    .replaceAll("&", "&amp;")
+                    .replaceAll("<", "&lt;")
+                    .replaceAll(">", "&gt;")
+                    .replaceAll("\"", "&quot;")
+                    .replaceAll("'", "&#39;");
+            }
+
+            function fileHref(path) {
+                const p = String(path ?? "");
+                if (p.startsWith("http://") || p.startsWith("https://") || p.startsWith("file://")) return p;
+                if (p.startsWith("/")) return `file://${p}`;
+                return p;
+            }
+
+            function decisionPath(dec) {
+                const src = dec?.source;
+                if (src?.AdrFile?.path) return src.AdrFile.path;
+                if (src?.DslFile?.path) return src.DslFile.path;
+                if (src?.ScannedRepo?.path) return src.ScannedRepo.path;
+                return null;
+            }
+
+            function eventTouchesNode(ev, nodeId) {
+                const els = ev?.elements;
+                if (Array.isArray(els)) {
+                    for (const e of els) {
+                        if (typeof e !== "string") continue;
+                        if (e === nodeId) return true;
+                        if (nodeId.startsWith(e + ".")) return true;
+                        if (e.startsWith(nodeId + ".")) return true;
+                    }
+                    if (els.length > 0) return false;
+                }
+                try {
+                    return JSON.stringify(ev?.details ?? {}).includes(nodeId);
+                } catch (_) {
+                    return false;
+                }
+            }
+
             // Linked decisions
             const linkedDecisions = decisions.filter(dec => dec.affects && dec.affects.includes(d.id));
             const adrContainer = d3.select("#node-adrs");
@@ -504,13 +663,127 @@
             if (linkedDecisions.length > 0) {
                 d3.select("#adr-section").style("display", "block");
                 linkedDecisions.forEach(dec => {
+                    const p = decisionPath(dec);
+                    const title = escapeHtml(`${dec.id}: ${dec.title}`);
+                    const status = escapeHtml(String(dec.status ?? "").toUpperCase());
+                    const link = p ? `<a href="${escapeHtml(fileHref(p))}" target="_blank" rel="noreferrer">${escapeHtml(p)}</a>` : "";
                     adrContainer.append("div")
                         .attr("class", "adr-card")
-                        .html(`<h4>${dec.id}: ${dec.title}</h4><p>${dec.status.toUpperCase()}</p>`);
+                        .html(`<h4>${title}</h4><p>${status}</p>${link ? `<p style="margin-top:8px">${link}</p>` : ""}`);
                 });
             } else {
                 d3.select("#adr-section").style("display", "none");
             }
+
+            let currentNodeId = d.id;
+            let currentNodeEvents = events.filter(ev => eventTouchesNode(ev, currentNodeId));
+
+            const kindSelect = document.getElementById("event-kind-filter");
+            const traceInput = document.getElementById("event-trace-filter");
+            const decisionInput = document.getElementById("event-decision-filter");
+            const clearBtn = document.getElementById("event-clear-filters");
+
+            function setKindOptions(kinds) {
+                const prev = kindSelect.value;
+                kindSelect.innerHTML = "";
+                const all = document.createElement("option");
+                all.value = "";
+                all.textContent = "All kinds";
+                kindSelect.appendChild(all);
+                for (const k of kinds) {
+                    const opt = document.createElement("option");
+                    opt.value = k;
+                    opt.textContent = k;
+                    kindSelect.appendChild(opt);
+                }
+                if ([...kindSelect.options].some(o => o.value === prev)) {
+                    kindSelect.value = prev;
+                } else {
+                    kindSelect.value = "";
+                }
+            }
+
+            function renderEvents() {
+                const selectedKind = kindSelect.value;
+                const traceSub = (traceInput.value || "").trim().toLowerCase();
+                const decisionSub = (decisionInput.value || "").trim().toLowerCase();
+
+                let filtered = currentNodeEvents;
+                if (selectedKind) {
+                    filtered = filtered.filter(ev => ev?.kind === selectedKind);
+                }
+                if (traceSub) {
+                    filtered = filtered.filter(ev => String(ev?.trace_id ?? "").toLowerCase().includes(traceSub));
+                }
+                if (decisionSub) {
+                    filtered = filtered.filter(ev => {
+                        const did = String(ev?.decision_id ?? "").toLowerCase();
+                        return did.includes(decisionSub) || JSON.stringify(ev?.details ?? {}).toLowerCase().includes(decisionSub);
+                    });
+                }
+
+                const limited = filtered.slice(0, 30);
+
+                const eventsContainer = d3.select("#node-events");
+                eventsContainer.html("");
+
+                if (limited.length === 0) {
+                    d3.select("#events-section").style("display", "none");
+                    return;
+                }
+
+                d3.select("#events-section").style("display", "block");
+                limited.forEach(ev => {
+                    const title = escapeHtml(ev.summary || ev.kind || "event");
+                    const metaParts = [];
+                    if (ev.timestamp) metaParts.push(ev.timestamp);
+                    if (ev.decision_id) metaParts.push(`decision=${ev.decision_id}`);
+                    if (ev.trace_id) metaParts.push(`trace=${ev.trace_id}`);
+                    if (ev.actor) metaParts.push(`actor=${ev.actor}`);
+                    if (ev.source) metaParts.push(`source=${ev.source}`);
+                    if (ev.tool) metaParts.push(`tool=${ev.tool}`);
+
+                    const meta = escapeHtml(metaParts.join(" • "));
+                    const outcome = escapeHtml(ev.outcome ? String(ev.outcome).toUpperCase() : "");
+
+                    const detailsJson = escapeHtml(JSON.stringify(ev.details ?? {}, null, 2));
+
+                    let evidenceHtml = "";
+                    if (Array.isArray(ev.evidence_refs) && ev.evidence_refs.length > 0) {
+                        const items = ev.evidence_refs.slice(0, 10).map(r => {
+                            const ref = String(r ?? "");
+                            const href = fileHref(ref);
+                            return `<div><a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(ref)}</a></div>`;
+                        }).join("");
+                        evidenceHtml = `<div class="event-evidence">${items}</div>`;
+                    }
+
+                    eventsContainer.append("div")
+                        .attr("class", "event-card")
+                        .html(
+                            `<h4>${title}</h4>` +
+                            `<p>${outcome}</p>` +
+                            `<div class="event-meta">${meta}</div>` +
+                            `<details class="event-details"><summary>Details</summary><pre>${detailsJson}</pre></details>` +
+                            evidenceHtml
+                        );
+                });
+            }
+
+            const kinds = Array.from(new Set(currentNodeEvents.map(ev => ev?.kind).filter(k => typeof k === "string"))).sort();
+            setKindOptions(kinds);
+
+            kindSelect.onchange = renderEvents;
+            traceInput.oninput = renderEvents;
+            decisionInput.oninput = renderEvents;
+            clearBtn.onclick = () => {
+                kindSelect.value = "";
+                traceInput.value = "";
+                decisionInput.value = "";
+                renderEvents();
+            };
+
+            renderEvents();
 
             // Metadata
             const metaContainer = d3.select("#node-metadata");

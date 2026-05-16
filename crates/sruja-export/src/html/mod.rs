@@ -14,6 +14,14 @@ impl HtmlExporter {
     }
 
     pub fn export(&self, graph: &KnowledgeGraph) -> Result<String, Box<dyn std::error::Error>> {
+        self.export_with_events_json(graph, "[]")
+    }
+
+    pub fn export_with_events_json(
+        &self,
+        graph: &KnowledgeGraph,
+        events_json: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let nodes_json = serde_json::to_string(&graph.nodes.values().collect::<Vec<_>>())?;
         let edges_json = serde_json::to_string(&graph.edges)?;
         let decisions_json = serde_json::to_string(&graph.decisions.values().collect::<Vec<_>>())?;
@@ -23,6 +31,7 @@ impl HtmlExporter {
             .replace("{{NODES_JSON}}", &nodes_json)
             .replace("{{EDGES_JSON}}", &edges_json)
             .replace("{{DECISIONS_JSON}}", &decisions_json)
+            .replace("{{EVENTS_JSON}}", events_json)
             .replace("{{REPO_NAME}}", &graph.metadata.name);
 
         Ok(html)
