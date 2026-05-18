@@ -5,7 +5,6 @@ node_modules/
 dist/
 build/
 *.out
-*.log
 test-outputs/
 test-log.txt
 result_log.txt
@@ -64,7 +63,6 @@ pids/
 
 # Rust (Cargo) — per https://github.com/github/gitignore/blob/main/Rust.gitignore
 target/
-debug
 **/*.rs.bk
 *.pdb
 **/mutants.out*/
@@ -73,12 +71,10 @@ debug
 *.tmp
 *.temp
 *.bak
-*.swp
-*.swo
-*~
-manual_review.md
-DIAGRAM_QUALITY_REPORT.md
-RESEARCH_FINDINGS.md
+/.DS_Store
+/manual_review.md
+/DIAGRAM_QUALITY_REPORT.md
+/RESEARCH_FINDINGS.md
 *.wasm
 *.wasm.br
 *.wasm.gz
@@ -106,7 +102,7 @@ test-results/
 .agent/
 .shared/
 .codacy/
-internal-docs
+/internal-docs/
 
 # Sruja runtime state (memory, cache, local context)
 .sruja/
@@ -131,37 +127,37 @@ demo/traces.json
 /architecture.sruja
 
 # Session / planning docs (local or one-off)
-AGENT_SKILL_TESTING_PLAN.md
-AI_CODING_EDITOR_WORKFLOW.md
-AUTOMATED_TESTING.md
-COMPARISON_TEST_RESULTS.md
-IMPROVEMENTS_COMPLETE.md
-NEXT_SESSION.md
-NEXT_TEST.md
-PROGRESS_CHECKLIST.md
-QUICKSTART_AGENT_TESTING.md
-READY_TO_USE.md
-SESSION_HANDOFF.md
-SRUJA_SKILLS_PROVEN.md
-START_HERE.md
-TEST_RESULTS_SUMMARY.md
-VALIDATION_SUMMARY.md
-test_agent_skills.sh
-validate_framework.sh
+/AGENT_SKILL_TESTING_PLAN.md
+/AI_CODING_EDITOR_WORKFLOW.md
+/AUTOMATED_TESTING.md
+/COMPARISON_TEST_RESULTS.md
+/IMPROVEMENTS_COMPLETE.md
+/NEXT_SESSION.md
+/NEXT_TEST.md
+/PROGRESS_CHECKLIST.md
+/QUICKSTART_AGENT_TESTING.md
+/READY_TO_USE.md
+/SESSION_HANDOFF.md
+/SRUJA_SKILLS_PROVEN.md
+/START_HERE.md
+/TEST_RESULTS_SUMMARY.md
+/VALIDATION_SUMMARY.md
+/test_agent_skills.sh
+/validate_framework.sh
 
 # Ad-hoc test/validation scripts (optional; required scripts are in book/, evaluation/, extension/, scripts/, architecture/, demo/)
-comprehensive_test.sh
-quick_test.sh
-run_real_demo.sh
-validate_improvements.sh
-validate_improvements_simple.sh
-validate_improvements_v2.sh
-test_complex_systems.sh
-test_complex_systems_improved.sh
-test_new_complex_systems.sh
-test_new_complex_systems_v2.sh
-test_new_projects.sh
-test_service_detection.sh
+/comprehensive_test.sh
+/quick_test.sh
+/run_real_demo.sh
+/validate_improvements.sh
+/validate_improvements_simple.sh
+/validate_improvements_v2.sh
+/test_complex_systems.sh
+/test_complex_systems_improved.sh
+/test_new_complex_systems.sh
+/test_new_complex_systems_v2.sh
+/test_new_projects.sh
+/test_service_detection.sh
 
 # Sruja Federation artifacts
 system.index.json
@@ -169,12 +165,12 @@ repo.bundle.json
 .fastembed_cache
 
 # Coverage reports
-coverage_report.txt
-coverage_report_new.txt
+/coverage_report.txt
+/coverage_report_new.txt
 
 # Temporary scan artifacts
-express_scan.json
-fastapi_scan.json
+/express_scan.json
+/fastapi_scan.json
 
 extension/coverage/
 docs/improvements.md
