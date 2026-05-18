@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.49.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.48.0...sruja-v0.49.0) (2026-05-18)
+
+
+### Features
+
+* **cli:** add MCP context ladder and cache-friendly AI exports ([10afe5e](https://github.com/sruja-ai/sruja/commit/10afe5eef135f35682e5ee1d43b3728b07ed4e3a))
+* **cli:** add MCP resources, prompts, and sync-ide-rules ([33edacf](https://github.com/sruja-ai/sruja/commit/33edacfb19cf3256f969f06130321cb60c2adf33))
+
 ## [0.48.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.47.0...sruja-v0.48.0) (2026-05-15)
 
 
