@@ -88,6 +88,8 @@ pub struct ContextEngineeringConfig {
     pub compression_max_output_len: Option<usize>,
     /// Number of recent observations to keep uncompressed (default: 3).
     pub compression_keep_recent: Option<usize>,
+    /// After `context_compressed` events, hint hosts to skip re-compress for N turns (default: 4).
+    pub compression_suppress_recompress_turns: Option<u32>,
     /// Max BM25 results for focus external context (default: 10).
     pub bm25_max_results_focus: Option<usize>,
     /// Max BM25 results for MCP search (default: 5).

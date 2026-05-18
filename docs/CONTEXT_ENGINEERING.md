@@ -82,7 +82,9 @@ MCP is the **structured tooling** interface: it answers what grounded architectu
 - `sruja_get_diagnostic_full`: Fetch full linter/diagnostic text when MCP output was head/tail truncated.
 - **MCP resources:** `sruja://context/invariant.md`, `sruja://architecture/main`, and related URIs (see [mcp_tools_reference.md](mcp_tools_reference.md#mcp-resources-resourceslist-resourcesread)).
 - **MCP prompts:** `sruja_mcp_guide`, `sruja_review_change`, and other templates via `prompts/get`.
-- **Editor sync:** `sruja sync-ide-rules -r .` regenerates `.cursorrules`, Copilot/Claude/Gemini rules, and `llms-architecture.txt`.
+- **Editor sync:** `sruja sync-ide-rules -r .` regenerates `.cursorrules`, Copilot/Claude/Gemini rules, and `llms-architecture.txt`; `--check` for CI drift on generated files.
+- **Session pruning:** `sruja_suggest_context_prune` — graph-aware `keep_ids` / `compress_ids` for long agent sessions.
+- **Drift injector:** `sruja_get_drift_state` — structured `drift_state/v1` block for host middleware.
 
 ### PR & CI Integration
 You can use the context score as a gate in CI. If a PR significantly drops the context score (e.g., by adding many unmapped modules), the build can fail, ensuring context stays fresh as the codebase grows.

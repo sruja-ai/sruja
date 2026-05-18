@@ -615,6 +615,32 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_suggest_context_prune",
+            "title": "Sruja Suggest Context Prune",
+            "description": "Graph-aware prune suggestion: which session element IDs to compress vs keep based on topology distance to active focus. Host applies compression.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "active_element_ids": { "type": "array", "items": { "type": "string" }, "description": "Currently focused architecture element IDs" },
+                    "session_element_ids": { "type": "array", "items": { "type": "string" }, "description": "Element IDs mentioned in the session context" },
+                    "depth": { "type": "integer", "description": "Topology hops from active focus (default 2)", "minimum": 1, "maximum": 4 }
+                },
+                "required": ["active_element_ids", "session_element_ids"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_drift_state",
+            "title": "Sruja Drift State Injector",
+            "description": "Compact structured drift payload (drift_state/v1) for host context injection—prefer over pasting full drift reports.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
             "name": "sruja_get_architecture_context",
             "title": "Sruja Architecture Context",
             "description": "Export high-level architecture context and project rules. Provide a file or element_id to get a localized, task-scoped context map.",
@@ -1507,6 +1533,23 @@ async fn run_tool(
             let content =
                 crate::commands::diagnostic_vfs::read_vfs_diagnostic(Path::new(&repo), uri)?;
             Ok(content)
+        }
+        "sruja_suggest_context_prune" => {
+            let active =
+                crate::commands::context_prune::parse_id_list_arg(arguments, "active_element_ids")?;
+            let session = crate::commands::context_prune::parse_id_list_arg(
+                arguments,
+                "session_element_ids",
+            )?;
+            let depth = arguments.get("depth").and_then(|v| v.as_u64()).unwrap_or(2) as usize;
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            crate::commands::context_prune::suggest_context_prune_json(
+                &graph, &active, &session, depth,
+            )
+        }
+        "sruja_get_drift_state" => {
+            let graph = get_or_scan_graph(graph_cache, &repo).await?;
+            crate::commands::drift_state::build_drift_state_json(&repo, &graph)
         }
         "sruja_get_architecture_context" => {
             let file = arguments
@@ -4726,6 +4769,8 @@ mod tests {
             "sruja_get_topology",
             "sruja_get_elements",
             "sruja_get_diagnostic_full",
+            "sruja_suggest_context_prune",
+            "sruja_get_drift_state",
         ] {
             assert!(
                 !is_mutating_mcp_tool(ladder),
@@ -4779,6 +4824,8 @@ mod tests {
         assert!(names.contains(&"sruja_get_topology".to_string()));
         assert!(names.contains(&"sruja_get_elements".to_string()));
         assert!(names.contains(&"sruja_get_diagnostic_full".to_string()));
+        assert!(names.contains(&"sruja_suggest_context_prune".to_string()));
+        assert!(names.contains(&"sruja_get_drift_state".to_string()));
         assert!(names.contains(&"sruja_get_context_events".to_string()));
         assert!(names.contains(&"sruja_get_decisions".to_string()));
         assert!(names.contains(&"sruja_get_decision_trace".to_string()));

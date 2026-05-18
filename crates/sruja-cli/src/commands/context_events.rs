@@ -282,6 +282,30 @@ pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Opti
     );
 }
 
+/// Host compressed chat history after a validation burst; hints middleware to skip re-compress.
+pub fn record_context_compressed(
+    repo: &Path,
+    suppress_recompress_turns: u32,
+    compressed_element_ids: Option<Vec<String>>,
+    summary: Option<&str>,
+) {
+    let details = serde_json::json!({
+        "suppress_recompress_turns": suppress_recompress_turns,
+        "compressed_element_ids": compressed_element_ids,
+        "pair_with": "cache_friendly exports (Phase 1) and sruja_suggest_context_prune"
+    });
+    let base = ContextEventRecord::new_v2_now(repo, "context_compressed", "ok", details);
+    append_context_event(
+        repo,
+        ContextEventRecord {
+            summary: summary.map(str::to_string),
+            tool: Some("host".to_string()),
+            source: Some("mcp".to_string()),
+            ..base
+        },
+    );
+}
+
 pub fn record_proposal_merge(repo: &Path, proposal_id: &str) {
     append_context_event(
         repo,
@@ -381,6 +405,21 @@ pub fn read_context_events_query(
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    #[test]
+    fn record_context_compressed_writes_line() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+        record_context_compressed(
+            repo,
+            4,
+            Some(vec!["A.B".to_string()]),
+            Some("host compressed"),
+        );
+        let raw = std::fs::read_to_string(repo.join(".sruja/context_events.jsonl")).unwrap();
+        assert!(raw.contains("context_compressed"));
+        assert!(raw.contains("suppress_recompress_turns"));
+    }
 
     #[test]
     fn append_from_json_normalizes_null_details() {

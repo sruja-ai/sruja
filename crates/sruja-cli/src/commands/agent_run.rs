@@ -1092,6 +1092,15 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                     compressed_observation_count: compressed_count,
                     total_observation_count: verification_results.len(),
                 });
+                if compressed_count > 0 {
+                    let suppress = ce_cfg.compression_suppress_recompress_turns.unwrap_or(4);
+                    crate::commands::context_events::record_context_compressed(
+                        repo_path,
+                        suppress,
+                        options.element_id.map(|id| vec![id.to_string()]),
+                        Some("agent_run observation compression"),
+                    );
+                }
             }
 
             if let Some(first_err) = verification_results.iter().find(|o| o.status == "error") {

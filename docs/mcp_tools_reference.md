@@ -203,6 +203,17 @@ Deterministic task templates (return MCP `messages` with text content):
 
 `sruja sync-ide-rules -r .` writes `.cursorrules`, `.github/copilot-instructions.md`, `CLAUDE.md`, `.gemini/AGENTS.md`, and **`llms-architecture.txt`** in one pass. `just context-sync` / `make context-sync` call this command.
 
+`sruja sync-ide-rules -r . --check` exits non-zero if any of those files drift from the current architecture (CI-friendly).
+
+## Active context management (Phase 3)
+
+| Tool | Summary |
+|------|---------|
+| `sruja_suggest_context_prune` | Returns `keep_ids` / `compress_ids` from graph topology vs `active_element_ids` (host applies compression). |
+| `sruja_get_drift_state` | Compact `drift_state/v1` JSON for structured injection (use instead of pasting full drift). |
+
+After host compresses chat history, append a lineage row with `sruja_record_context_event` kind `context_compressed` and `details.suppress_recompress_turns` (3–5). CLI helper: `record_context_compressed` in context events.
+
 ## Choosing NL retrieval tools
 
 1. Start with **`sruja_hybrid_query`** unless you have a reason not to.

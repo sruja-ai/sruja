@@ -201,7 +201,6 @@ fn check_source_files_newer(
 ) -> Result<bool, CliError> {
     let source_dirs = ["src", "lib", "app", "packages", "crates", ".sruja"];
 
-    // Also check root .sruja files
     if let Ok(entries) = std::fs::read_dir(repo) {
         for entry in entries.flatten() {
             if let Some(ext) = entry.path().extension() {
@@ -220,22 +219,59 @@ fn check_source_files_newer(
 
     for dir in source_dirs {
         let dir_path = repo.join(dir);
-        if dir_path.exists() && dir_path.is_dir() {
-            if let Ok(entries) = std::fs::read_dir(&dir_path) {
-                for entry in entries.flatten() {
-                    if let Ok(metadata) = entry.metadata() {
-                        if let Ok(modified) = metadata.modified() {
-                            if modified > graph_modified {
-                                return Ok(true);
-                            }
-                        }
-                    }
-                }
-            }
+        if dir_path.exists()
+            && dir_path.is_dir()
+            && any_path_modified_after(&dir_path, graph_modified)
+        {
+            return Ok(true);
         }
     }
 
     Ok(false)
+}
+
+fn any_path_modified_after(root: &Path, cutoff: std::time::SystemTime) -> bool {
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(path) = stack.pop() {
+        let metadata = match std::fs::symlink_metadata(&path) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+
+        if metadata.is_file() {
+            if let Ok(modified) = metadata.modified() {
+                if modified > cutoff {
+                    return true;
+                }
+            }
+            continue;
+        }
+
+        if !metadata.is_dir() {
+            continue;
+        }
+
+        if should_skip_dir(&path) {
+            continue;
+        }
+
+        let entries = match std::fs::read_dir(&path) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            stack.push(entry.path());
+        }
+    }
+
+    false
+}
+
+fn should_skip_dir(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    matches!(name, ".git" | "target" | "node_modules")
 }
 
 /// Get current commit short SHA

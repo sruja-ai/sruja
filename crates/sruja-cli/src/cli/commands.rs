@@ -663,6 +663,9 @@ pub enum Commands {
         /// Max tokens for generated rule bodies (approximate)
         #[arg(long, default_value_t = 6000)]
         max_tokens: usize,
+        /// Exit non-zero if on-disk IDE files differ from architecture-derived outputs
+        #[arg(long)]
+        check: bool,
     },
     /// Scanner introspection for AI/debug: explain scan, repomap, discovery questions
     ///
