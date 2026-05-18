@@ -177,3 +177,4 @@ express_scan.json
 fastapi_scan.json
 
 extension/coverage/
+docs/improvements.md
