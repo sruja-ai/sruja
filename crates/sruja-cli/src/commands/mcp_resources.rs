@@ -2,14 +2,14 @@
 
 use std::path::Path;
 
+use crate::commands::context::{
+    build_architecture_context, format_invariant_markdown, format_llms_architecture,
+    types::ArchitectureContext,
+};
+use crate::commands::{list_decisions, parse_sruja_file, scan_repo_cached, CliError};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sruja_export::mermaid::exporter::{MermaidConfig, MermaidExporter};
-
-use crate::commands::context::{
-    build_architecture_context, format_invariant_markdown, format_llms_architecture,
-};
-use crate::commands::{list_decisions, parse_sruja_file, scan_repo_cached, CliError};
 
 pub const RESOURCE_SCHEME: &str = "sruja://";
 
@@ -31,6 +31,15 @@ pub struct McpResourceContents {
     pub text: String,
 }
 
+fn load_arch_context(
+    repo: &str,
+    depth: usize,
+    max_tokens: usize,
+) -> Result<ArchitectureContext, CliError> {
+    let graph = scan_repo_cached(Path::new(repo))?;
+    build_architecture_context(&graph, repo, None, None, depth, max_tokens)
+}
+
 /// Static resource catalog for a repository (does not load file bodies).
 pub fn list_resources(repo: &str) -> Result<Vec<McpResourceDescriptor>, CliError> {
     let repo_path = Path::new(repo);
@@ -38,20 +47,19 @@ pub fn list_resources(repo: &str) -> Result<Vec<McpResourceDescriptor>, CliError
         McpResourceDescriptor {
             uri: "sruja://architecture/main".to_string(),
             name: "Architecture DSL".to_string(),
-            description: "Declared architecture file (repo.sruja or resolved path)".to_string(),
+            description: "Declared architecture file (repo.sruja)".to_string(),
             mime_type: "text/plain".to_string(),
         },
         McpResourceDescriptor {
             uri: "sruja://context/invariant.md".to_string(),
             name: "Invariant context".to_string(),
-            description: "Stable policies, layers, and boundaries for prompt-cache prefix"
-                .to_string(),
+            description: "Policies, layers, boundaries (prompt-cache prefix)".to_string(),
             mime_type: "text/markdown".to_string(),
         },
         McpResourceDescriptor {
             uri: "sruja://context/llms-architecture.txt".to_string(),
-            name: "LLMs architecture brief".to_string(),
-            description: "Compact architecture index and MCP ladder instructions".to_string(),
+            name: "LLM architecture brief".to_string(),
+            description: "Compact counts, ladder, top boundaries".to_string(),
             mime_type: "text/plain".to_string(),
         },
     ];
@@ -60,18 +68,16 @@ pub fn list_resources(repo: &str) -> Result<Vec<McpResourceDescriptor>, CliError
         out.push(McpResourceDescriptor {
             uri: "sruja://diagrams/current.mmd".to_string(),
             name: "Mermaid diagram".to_string(),
-            description: "Mermaid export of declared architecture (system view)".to_string(),
+            description: "System-view Mermaid export".to_string(),
             mime_type: "text/plain".to_string(),
         });
     }
 
-    let decisions_dir = repo_path.join(".sruja").join("decisions");
-    if decisions_dir.is_dir() {
+    if repo_path.join(".sruja").join("decisions").is_dir() {
         out.push(McpResourceDescriptor {
             uri: "sruja://decisions/index".to_string(),
             name: "Decision records index".to_string(),
-            description: "YAML-front-matter index of Decision Records under .sruja/decisions/"
-                .to_string(),
+            description: "Index of `.sruja/decisions/`".to_string(),
             mime_type: "application/json".to_string(),
         });
     }
@@ -80,8 +86,7 @@ pub fn list_resources(repo: &str) -> Result<Vec<McpResourceDescriptor>, CliError
 }
 
 pub fn resources_list_result(repo: &str) -> Result<Value, CliError> {
-    let resources = list_resources(repo)?;
-    Ok(json!({ "resources": resources }))
+    Ok(json!({ "resources": list_resources(repo)? }))
 }
 
 pub async fn read_resource(repo: &str, uri: &str) -> Result<McpResourceContents, CliError> {
@@ -95,16 +100,13 @@ pub async fn read_resource(repo: &str, uri: &str) -> Result<McpResourceContents,
         "diagrams/current.mmd" => read_mermaid_diagram(repo_path).await,
         "decisions/index" => read_decisions_index(repo_path),
         other => Err(CliError::validation(format!(
-            "Unknown resource URI: {uri} (unknown path {other:?}). Use resources/list."
+            "Unknown resource URI: {uri} (path {other:?}). Use resources/list."
         ))),
     }
 }
 
 pub async fn resources_read_result(repo: &str, uri: &str) -> Result<Value, CliError> {
-    let contents = read_resource(repo, uri).await?;
-    Ok(json!({
-        "contents": [contents]
-    }))
+    Ok(json!({ "contents": [read_resource(repo, uri).await?] }))
 }
 
 async fn read_architecture_main(repo_path: &Path) -> Result<McpResourceContents, CliError> {
@@ -119,24 +121,20 @@ async fn read_architecture_main(repo_path: &Path) -> Result<McpResourceContents,
 }
 
 async fn read_invariant_markdown(repo: &str) -> Result<McpResourceContents, CliError> {
-    let graph = scan_repo_cached(Path::new(repo))?;
-    let arch = build_architecture_context(&graph, repo, None, None, 1, 12_000)?;
-    let text = format_invariant_markdown(&arch);
+    let arch = load_arch_context(repo, 1, 3_000)?;
     Ok(McpResourceContents {
         uri: format!("{RESOURCE_SCHEME}context/invariant.md"),
         mime_type: "text/markdown".to_string(),
-        text,
+        text: format_invariant_markdown(&arch),
     })
 }
 
 async fn read_llms_architecture(repo: &str) -> Result<McpResourceContents, CliError> {
-    let graph = scan_repo_cached(Path::new(repo))?;
-    let arch = build_architecture_context(&graph, repo, None, None, 1, 4_000)?;
-    let text = format_llms_architecture(&arch);
+    let arch = load_arch_context(repo, 1, 1_200)?;
     Ok(McpResourceContents {
         uri: format!("{RESOURCE_SCHEME}context/llms-architecture.txt"),
         mime_type: "text/plain".to_string(),
-        text,
+        text: format_llms_architecture(&arch),
     })
 }
 
@@ -144,12 +142,12 @@ async fn read_mermaid_diagram(repo_path: &Path) -> Result<McpResourceContents, C
     let path = crate::utils::architecture_path::resolve_architecture_path(repo_path)
         .ok_or_else(|| CliError::validation("No architecture file for diagram export"))?;
     let (_, program) = parse_sruja_file(&path)?;
-    let exporter = MermaidExporter::new(MermaidConfig {
+    let text = MermaidExporter::new(MermaidConfig {
         direction: "LR".to_string(),
         view_level: 1,
         target_id: None,
-    });
-    let text = exporter.export(&program);
+    })
+    .export(&program);
     Ok(McpResourceContents {
         uri: format!("{RESOURCE_SCHEME}diagrams/current.mmd"),
         mime_type: "text/plain".to_string(),
@@ -159,8 +157,7 @@ async fn read_mermaid_diagram(repo_path: &Path) -> Result<McpResourceContents, C
 
 fn read_decisions_index(repo_path: &Path) -> Result<McpResourceContents, CliError> {
     let items = list_decisions(repo_path)?;
-    let text =
-        serde_json::to_string_pretty(&items).map_err(|e| CliError::validation(e.to_string()))?;
+    let text = serde_json::to_string(&items).map_err(|e| CliError::validation(e.to_string()))?;
     Ok(McpResourceContents {
         uri: format!("{RESOURCE_SCHEME}decisions/index"),
         mime_type: "application/json".to_string(),

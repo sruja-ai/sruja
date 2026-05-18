@@ -264,7 +264,7 @@ pub async fn sync_ide_rules(repo_roots: &[String], max_tokens: usize) -> Result<
     }
 
     let graph = scan_repo_cached(repo_path)?;
-    let arch = build_architecture_context(&graph, repo, None, None, 2, max_tokens)?;
+    let arch = build_architecture_context(&graph, repo, None, None, 2, max_tokens.min(6_000))?;
 
     let mut cursor = format_cursor_rules(&arch);
     cursor.push_str(IDE_RULES_FOOTER);
@@ -299,5 +299,5 @@ pub async fn sync_ide_rules(repo_roots: &[String], max_tokens: usize) -> Result<
     Ok(())
 }
 
-pub use format::{format_invariant_markdown, format_llms_architecture};
+pub use format::{format_invariant_brief, format_invariant_markdown, format_llms_architecture};
 pub use logic::build_architecture_context;

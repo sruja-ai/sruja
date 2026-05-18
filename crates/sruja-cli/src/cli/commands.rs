@@ -661,7 +661,7 @@ pub enum Commands {
         #[arg(long, short = 'r', action = clap::ArgAction::Append)]
         repo: Vec<String>,
         /// Max tokens for generated rule bodies (approximate)
-        #[arg(long, default_value_t = 10000)]
+        #[arg(long, default_value_t = 6000)]
         max_tokens: usize,
     },
     /// Scanner introspection for AI/debug: explain scan, repomap, discovery questions

@@ -190,21 +190,10 @@ pub fn format_cursor_rules(context: &ArchitectureContext) -> String {
     }
 
     budget.push_str(&mut out, "## Architecture retrieval (MCP)\n\n");
+    budget.push_str(&mut out, MCP_LADDER_LINE);
     budget.push_str(
         &mut out,
-        "Prefer progressive disclosure before pasting full architecture:\n",
-    );
-    budget.push_str(
-        &mut out,
-        "1. `sruja_list_architecture_index` — compact index with validation signals\n",
-    );
-    budget.push_str(
-        &mut out,
-        "2. `sruja_get_topology` — upstream/downstream for one element\n",
-    );
-    budget.push_str(
-        &mut out,
-        "3. `sruja_get_elements` — detail for selected ids\n\n",
+        "Compact brief: `llms-architecture.txt`. Full DSL only via MCP `sruja://architecture/main`.\n\n",
     );
 
     if !context.active_decisions.is_empty() {
@@ -736,16 +725,77 @@ fn repomap_top_neighbors(
         .collect()
 }
 
-/// Stable markdown for MCP `sruja://context/invariant.md` and prompt templates (no focus/hydration).
-pub fn format_invariant_markdown(context: &ArchitectureContext) -> String {
-    let mut out = String::new();
-    let mut budget = TokenBudget::new(context.max_tokens.min(6_000));
+const MCP_LADDER_LINE: &str =
+    "MCP: `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` → `sruja_get_task_context` (`cache_friendly` optional).\n";
 
-    budget.push_str(&mut out, "# Sruja invariant architecture context\n\n");
+fn push_denied_boundaries(
+    budget: &mut TokenBudget,
+    out: &mut String,
+    boundaries: &[BoundaryRule],
+    limit: usize,
+) {
+    let mut n = 0usize;
+    for boundary in boundaries {
+        if boundary.allowed {
+            continue;
+        }
+        if n >= limit {
+            budget.push_str(
+                out,
+                "- …more boundary rules in `sruja://context/invariant.md`\n",
+            );
+            break;
+        }
+        budget.push_str(
+            out,
+            &format!(
+                "- **{} → {}**: {}\n",
+                boundary.from, boundary.to, boundary.reason
+            ),
+        );
+        n += 1;
+    }
+}
+
+/// Short prefix for MCP prompts (points at full invariant resource).
+pub fn format_invariant_brief(context: &ArchitectureContext) -> String {
+    let mut out = String::new();
+    let mut budget = TokenBudget::new(700);
     budget.push_str(
         &mut out,
         &format!(
-            "Repo: {}. Modules: {}. Services: {}. Databases: {}. External APIs: {}.\n\n",
+            "Repo `{}` — modules {}, services {}, DB {}, external APIs {}.\n",
+            context.repo,
+            context.summary.total_modules,
+            context.summary.total_services,
+            context.summary.total_databases,
+            context.summary.total_external_apis
+        ),
+    );
+    if !context.boundaries.is_empty() {
+        budget.push_str(&mut out, "\nBoundaries:\n");
+        push_denied_boundaries(&mut budget, &mut out, &context.boundaries, 5);
+    }
+    budget.push_str(&mut out, "\n");
+    budget.push_str(&mut out, MCP_LADDER_LINE);
+    budget.push_str(
+        &mut out,
+        "Full policies: `sruja://context/invariant.md` or `llms-architecture.txt`.\n",
+    );
+    budget.finish(&mut out);
+    out
+}
+
+/// Stable markdown for MCP `sruja://context/invariant.md` (no focus/hydration).
+pub fn format_invariant_markdown(context: &ArchitectureContext) -> String {
+    let mut out = String::new();
+    let mut budget = TokenBudget::new(context.max_tokens.min(2_800));
+
+    budget.push_str(&mut out, "# Sruja invariant context\n\n");
+    budget.push_str(
+        &mut out,
+        &format!(
+            "Repo: {} — modules {}, services {}, databases {}, external APIs {}.\n\n",
             context.repo,
             context.summary.total_modules,
             context.summary.total_services,
@@ -756,59 +806,46 @@ pub fn format_invariant_markdown(context: &ArchitectureContext) -> String {
 
     if !context.layers.is_empty() {
         budget.push_str(&mut out, "## Layers\n\n");
-        for layer in &context.layers {
+        for layer in context.layers.iter().take(12) {
+            let deps = if layer.can_depend_on.is_empty() {
+                "no external deps".to_string()
+            } else {
+                layer.can_depend_on.join(", ")
+            };
             budget.push_str(
                 &mut out,
                 &format!(
-                    "### {} ({} modules)\n",
+                    "- **{}** ({} modules): {deps}\n",
                     layer.name.to_uppercase().replace('_', " "),
                     layer.modules
                 ),
             );
-            if layer.can_depend_on.is_empty() {
-                budget.push_str(&mut out, "No external dependencies allowed.\n\n");
-            } else {
-                budget.push_str(
-                    &mut out,
-                    &format!("Can depend on: {}\n\n", layer.can_depend_on.join(", ")),
-                );
-            }
         }
+        if context.layers.len() > 12 {
+            budget.push_str(&mut out, "- …truncated\n");
+        }
+        budget.push_str(&mut out, "\n");
     }
 
     if !context.boundaries.is_empty() {
-        budget.push_str(&mut out, "## Boundary rules\n\n");
-        for boundary in &context.boundaries {
-            if !boundary.allowed {
-                budget.push_str(
-                    &mut out,
-                    &format!(
-                        "- **{} -> {}**: {}\n",
-                        boundary.from, boundary.to, boundary.reason
-                    ),
-                );
-            }
-        }
+        budget.push_str(&mut out, "## Boundaries\n\n");
+        push_denied_boundaries(&mut budget, &mut out, &context.boundaries, 12);
         budget.push_str(&mut out, "\n");
     }
 
     if !context.forbidden_patterns.is_empty() {
-        budget.push_str(&mut out, "## Forbidden patterns\n\n");
-        for pattern in &context.forbidden_patterns {
+        budget.push_str(&mut out, "## Forbidden\n\n");
+        for pattern in context.forbidden_patterns.iter().take(8) {
             budget.push_str(&mut out, &format!("- {pattern}\n"));
+        }
+        if context.forbidden_patterns.len() > 8 {
+            budget.push_str(&mut out, "- …truncated\n");
         }
         budget.push_str(&mut out, "\n");
     }
 
-    budget.push_str(&mut out, "## MCP retrieval ladder\n\n");
-    budget.push_str(&mut out, "1. `sruja_list_architecture_index`\n");
-    budget.push_str(&mut out, "2. `sruja_get_topology`\n");
-    budget.push_str(&mut out, "3. `sruja_get_elements`\n");
-    budget.push_str(
-        &mut out,
-        "4. `sruja_get_task_context` (optional `cache_friendly: true`)\n\n",
-    );
-
+    budget.push_str(&mut out, "## Retrieval\n\n");
+    budget.push_str(&mut out, MCP_LADDER_LINE);
     budget.finish(&mut out);
     out
 }
@@ -816,48 +853,32 @@ pub fn format_invariant_markdown(context: &ArchitectureContext) -> String {
 /// Compact `llms-architecture.txt` for editor sync (index + ladder, not full DSL).
 pub fn format_llms_architecture(context: &ArchitectureContext) -> String {
     let mut out = String::new();
-    let mut budget = TokenBudget::new(2_500);
+    let mut budget = TokenBudget::new(900);
 
-    budget.push_str(&mut out, "# Architecture context for LLMs\n\n");
+    budget.push_str(&mut out, "# LLM architecture brief\n\n");
     budget.push_str(
         &mut out,
-        "Generated by `sruja sync-ide-rules`. Use MCP tools for details; do not paste full repo.sruja.\n\n",
+        "From `sruja sync-ide-rules`. Use MCP for detail; do not paste full `repo.sruja`.\n\n",
     );
     budget.push_str(
         &mut out,
         &format!(
-            "- Modules: {}\n- Services: {}\n- Databases: {}\n- External APIs: {}\n\n",
+            "Counts: modules {}, services {}, databases {}, external APIs {}.\n\n",
             context.summary.total_modules,
             context.summary.total_services,
             context.summary.total_databases,
             context.summary.total_external_apis
         ),
     );
-
-    budget.push_str(&mut out, "## Progressive disclosure (MCP)\n\n");
+    budget.push_str(&mut out, MCP_LADDER_LINE);
     budget.push_str(
         &mut out,
-        "| Step | Tool |\n|------|------|\n| Index | `sruja_list_architecture_index` |\n| Topology | `sruja_get_topology` |\n| Detail | `sruja_get_elements` |\n| Task | `sruja_get_task_context` |\n\n",
-    );
-
-    budget.push_str(
-        &mut out,
-        "Resources: `sruja://context/invariant.md`, `sruja://architecture/main`\n\n",
+        "Resources: `sruja://context/invariant.md`, `sruja://architecture/main`.\n\n",
     );
 
     if !context.boundaries.is_empty() {
-        budget.push_str(&mut out, "## Top boundary rules\n\n");
-        for boundary in context.boundaries.iter().take(8) {
-            if !boundary.allowed {
-                budget.push_str(
-                    &mut out,
-                    &format!(
-                        "- {} -> {}: {}\n",
-                        boundary.from, boundary.to, boundary.reason
-                    ),
-                );
-            }
-        }
+        budget.push_str(&mut out, "## Boundaries (top)\n\n");
+        push_denied_boundaries(&mut budget, &mut out, &context.boundaries, 5);
     }
 
     budget.finish(&mut out);
