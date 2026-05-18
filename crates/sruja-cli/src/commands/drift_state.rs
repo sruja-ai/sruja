@@ -47,3 +47,17 @@ pub fn build_drift_state_json(repo: &str, graph: &Graph) -> Result<String, CliEr
         repo, graph,
     ))?)
 }
+
+/// Print `drift_state/v1` JSON to stdout (`sruja drift-state -r .`).
+pub fn drift_state_print(repo: &str) -> Result<(), CliError> {
+    let repo_path = Path::new(repo);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {repo}"),
+        )));
+    }
+    let graph = crate::commands::scan_repo_cached(repo_path)?;
+    println!("{}", build_drift_state_json(repo, &graph)?);
+    Ok(())
+}

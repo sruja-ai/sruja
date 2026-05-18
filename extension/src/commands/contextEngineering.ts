@@ -164,6 +164,71 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
       );
     }),
 
+    vscode.commands.registerCommand("sruja.refreshArchitectureState", async () => {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Sruja: Refresh architecture state…",
+          cancellable: false,
+        },
+        async () => {
+          const channel = getCliOutputChannel();
+          channel.show(true);
+          channel.appendLine("Running sruja drift -r . -f drift-state ...");
+          try {
+            const { stdout, stderr, code } = await runCliInWorkspace(getSrujaPath, [
+              "drift",
+              "-r",
+              ".",
+              "-f",
+              "drift-state",
+            ]);
+            if (stderr) channel.append(stderr);
+            if (code !== 0) {
+              channel.append(stdout);
+              channel.appendLine("--- drift -f drift-state failed ---");
+              vscode.window.showErrorMessage(
+                "Sruja drift -f drift-state failed. Is the CLI on PATH or set sruja.lsp.path?"
+              );
+              return;
+            }
+            const parsed = parseJsonSafe<{
+              schema_version?: string;
+              truth_status?: string;
+              health_score?: number;
+              violation_count?: number;
+              violations?: Array<{ message?: string; location?: string; severity?: string }>;
+            }>(stdout);
+            if (!parsed.ok) {
+              channel.appendLine(`Parse error: ${parsed.error}`);
+              channel.append(stdout);
+              return;
+            }
+            const s = parsed.value;
+            channel.appendLine(`schema: ${s.schema_version ?? "unknown"}`);
+            channel.appendLine(`truth_status: ${s.truth_status ?? "unknown"}`);
+            channel.appendLine(`health_score: ${s.health_score ?? "?"}`);
+            channel.appendLine(`violations: ${s.violation_count ?? 0}`);
+            for (const v of (s.violations ?? []).slice(0, 8)) {
+              channel.appendLine(
+                `  - [${v.severity ?? "?"}] ${v.location ?? "?"}: ${v.message ?? ""}`
+              );
+            }
+            channel.appendLine("--- JSON (for host injection) ---");
+            channel.append(stdout);
+            await vscode.env.clipboard.writeText(stdout.trim());
+            vscode.window.showInformationMessage(
+              "Sruja: Architecture state refreshed (JSON copied to clipboard)."
+            );
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            channel.appendLine(`Error: ${msg}`);
+            vscode.window.showErrorMessage("Sruja refresh architecture state failed: " + msg);
+          }
+        }
+      );
+    }),
+
     vscode.commands.registerCommand("sruja.review", async () => {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Sruja: Reviewing architecture update…", cancellable: false },

@@ -62,6 +62,7 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
         }
     }
 }
+pub use drift_state::drift_state_print as drift_state;
 pub use dsl_domain::completions::completions;
 pub use dsl_domain::generate::generate_prompt;
 pub use dsl_domain::watch::watch;

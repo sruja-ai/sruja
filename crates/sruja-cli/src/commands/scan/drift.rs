@@ -131,6 +131,12 @@ pub async fn drift(
         );
 
         match format {
+            "drift-state" => {
+                println!(
+                    "{}",
+                    crate::commands::drift_state::build_drift_state_json(repo_root, &actual_graph)?
+                );
+            }
             "json" => {
                 let mut value = serde_json::to_value(&diff_result)?;
                 value = crate::commands::remediation::wrap_deterministic_json(
@@ -162,6 +168,12 @@ pub async fn drift(
         let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
 
         match format {
+            "drift-state" => {
+                println!(
+                    "{}",
+                    crate::commands::drift_state::build_drift_state_json(repo_root, &actual_graph)?
+                );
+            }
             "json" => {
                 let mut value = serde_json::to_value(&drift_result)?;
                 value = crate::commands::remediation::wrap_deterministic_json(

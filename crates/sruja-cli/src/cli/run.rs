@@ -197,6 +197,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             head,
             format,
         } => commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await,
+        Commands::DriftState { repo } => commands::drift_state(&repo),
         Commands::Quickstart {
             path,
             format,

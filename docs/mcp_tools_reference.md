@@ -211,6 +211,7 @@ Deterministic task templates (return MCP `messages` with text content):
 |------|---------|
 | `sruja_suggest_context_prune` | Returns `keep_ids` / `compress_ids` from graph topology vs `active_element_ids` (host applies compression). |
 | `sruja_get_drift_state` | Compact `drift_state/v1` JSON for structured injection (use instead of pasting full drift). |
+| CLI | `sruja drift -r . -f drift-state` or `sruja drift-state -r .` — same payload for scripts and the VS Code command. |
 
 After host compresses chat history, append a lineage row with `sruja_record_context_event` kind `context_compressed` and `details.suppress_recompress_turns` (3–5). CLI helper: `record_context_compressed` in context events.
 

@@ -82,6 +82,8 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Lint
         run: cargo clippy --workspace -- -D warnings
+      - name: Check IDE context files match architecture
+        run: ./target/release/sruja sync-ide-rules -r . --check
 
   wasm:
     name: WASM tests (wasm-pack --node)

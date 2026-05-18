@@ -55,6 +55,49 @@ fn parses_ai_context_defaults() {
 }
 
 #[test]
+fn parses_drift_state_subcommand() {
+    std::thread::Builder::new()
+        .name("clap_parse_drift_state".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from(["sruja", "drift-state", "-r", "."]).expect("parse");
+            match cli.command {
+                Commands::DriftState { repo } => assert_eq!(repo, "."),
+                _ => panic!("expected DriftState command"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}
+
+#[test]
+fn parses_sync_ide_rules_check() {
+    std::thread::Builder::new()
+        .name("clap_parse_sync_ide".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from(["sruja", "sync-ide-rules", "-r", ".", "--check"])
+                .expect("parse");
+            match cli.command {
+                Commands::SyncIdeRules {
+                    repo,
+                    max_tokens,
+                    check,
+                } => {
+                    assert_eq!(repo, vec![".".to_string()]);
+                    assert_eq!(max_tokens, 6000);
+                    assert!(check);
+                }
+                _ => panic!("expected SyncIdeRules command"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}
+
+#[test]
 fn parses_context_alias() {
     std::thread::Builder::new()
         .name("clap_parse_large_stack".to_string())

@@ -160,6 +160,8 @@ pub(crate) struct ObservationCompressionReport {
     pub(crate) estimated_tokens_after: usize,
     pub(crate) compressed_observation_count: usize,
     pub(crate) total_observation_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) context_prune: Option<crate::commands::context_prune::ContextPruneSuggestion>,
 }
 
 /// Rolling summary compression for agent observation streams.
@@ -1083,7 +1085,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                     .zip(verification_results.iter())
                     .filter(|(a, b)| a.stdout != b.stdout || a.stderr != b.stderr)
                     .count();
-                compression_report = Some(ObservationCompressionReport {
+                let mut report = ObservationCompressionReport {
                     enabled: true,
                     threshold_tokens: threshold,
                     keep_recent: keep,
@@ -1091,7 +1093,26 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                     estimated_tokens_after: after_tokens,
                     compressed_observation_count: compressed_count,
                     total_observation_count: verification_results.len(),
-                });
+                    context_prune: None,
+                };
+                if let Some(active) = plan.target.resolved_element_id.as_deref() {
+                    if let Ok(graph) = crate::commands::scan_repo_cached(repo_path) {
+                        let session =
+                            crate::commands::context_prune::infer_session_element_ids_from_facts(
+                                active,
+                                &facts_payload,
+                            );
+                        if session.len() > 1 {
+                            report.context_prune =
+                                Some(crate::commands::context_prune::suggest_context_prune(
+                                    &graph,
+                                    &[active.to_string()],
+                                    &session,
+                                    2,
+                                ));
+                        }
+                    }
+                }
                 if compressed_count > 0 {
                     let suppress = ce_cfg.compression_suppress_recompress_turns.unwrap_or(4);
                     crate::commands::context_events::record_context_compressed(
@@ -1101,6 +1122,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                         Some("agent_run observation compression"),
                     );
                 }
+                compression_report = Some(report);
             }
 
             if let Some(first_err) = verification_results.iter().find(|o| o.status == "error") {

@@ -287,6 +287,13 @@ pub enum Commands {
         #[arg(long)]
         baseline_mode: Option<String>,
     },
+    /// Structured drift payload for AI host injection (`drift_state/v1` JSON)
+    #[command(name = "drift-state")]
+    DriftState {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
     /// PR-scoped drift: detect only NEW violations in a PR
     #[command(hide = true)]
     DriftPr {

@@ -210,6 +210,12 @@
         "shortTitle": "Refresh Context"
       },
       {
+        "command": "sruja.refreshArchitectureState",
+        "title": "Sruja: Refresh architecture state (drift JSON)",
+        "icon": "$(json)",
+        "shortTitle": "Architecture State"
+      },
+      {
         "command": "sruja.status",
         "title": "Sruja: Status",
         "icon": "$(info)",

@@ -200,6 +200,44 @@ pub fn suggest_context_prune_json(
     Ok(serde_json::to_string_pretty(&suggestion)?)
 }
 
+/// Collect element ids from agent facts (`facts.drift` violations) for session pruning.
+pub fn infer_session_element_ids_from_facts(active: &str, facts: &Value) -> Vec<String> {
+    let mut ids = vec![active.to_string()];
+    if let Some(drift) = facts
+        .get("facts")
+        .and_then(|f| f.get("drift"))
+        .or_else(|| facts.get("drift"))
+    {
+        push_violation_locations(drift, &mut ids);
+    }
+    ids.sort();
+    ids.dedup();
+    ids
+}
+
+fn push_violation_locations(drift: &Value, ids: &mut Vec<String>) {
+    if let Some(violations) = drift.get("violations").and_then(|v| v.as_array()) {
+        for v in violations {
+            if let Some(loc) = v.get("location").and_then(|l| l.as_str()) {
+                let t = loc.trim();
+                if !t.is_empty() {
+                    ids.push(t.to_string());
+                }
+            }
+        }
+    }
+    if let Some(drifts) = drift.get("drifts").and_then(|v| v.as_array()) {
+        for d in drifts {
+            if let Some(loc) = d.get("location").and_then(|l| l.as_str()) {
+                let t = loc.trim();
+                if !t.is_empty() {
+                    ids.push(t.to_string());
+                }
+            }
+        }
+    }
+}
+
 pub fn parse_id_list_arg(arguments: &Value, key: &str) -> Result<Vec<String>, CliError> {
     let Some(arr) = arguments.get(key).and_then(|v| v.as_array()) else {
         return Err(CliError::validation(format!(
@@ -263,6 +301,20 @@ mod tests {
         );
         assert!(s.keep_ids.contains(&"C".to_string()));
         assert!(s.compress_ids.contains(&"D".to_string()));
+    }
+
+    #[test]
+    fn infer_session_ids_from_facts_includes_violation_locations() {
+        let facts = serde_json::json!({
+            "facts": {
+                "drift": {
+                    "violations": [{ "location": "B", "message": "x" }]
+                }
+            }
+        });
+        let ids = infer_session_element_ids_from_facts("A", &facts);
+        assert!(ids.contains(&"A".to_string()));
+        assert!(ids.contains(&"B".to_string()));
     }
 
     #[test]

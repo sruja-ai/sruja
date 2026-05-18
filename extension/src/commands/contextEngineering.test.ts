@@ -49,6 +49,39 @@ describe("registerContextEngineeringCommands", () => {
     expect(vscode.window.showWarningMessage).toHaveBeenCalledWith("Select a workspace folder to refresh repo context.");
   });
 
+  it("refreshArchitectureState runs drift-state CLI", async () => {
+    const { runCli } = await import("../cliRunner");
+    (runCli as jest.Mock).mockResolvedValue({
+      stdout: JSON.stringify({
+        schema_version: "drift_state/v1",
+        truth_status: "Unknown",
+        health_score: 90,
+        violation_count: 0,
+        violations: [],
+      }),
+      stderr: "",
+      code: 0,
+    });
+
+    const folder = { uri: vscode.Uri.file("/ws"), name: "ws" };
+    (vscode.workspace as any).workspaceFolders = [folder];
+    (vscode.env as any).clipboard = { writeText: jest.fn().mockResolvedValue(undefined) };
+
+    const { registerContextEngineeringCommands } = await import("./contextEngineering");
+    registerContextEngineeringCommands(new ExtensionContext() as any, () => "/bin/sruja");
+
+    const cb = registered.get("sruja.refreshArchitectureState");
+    if (!cb) throw new Error("Command not registered: sruja.refreshArchitectureState");
+    await cb();
+
+    expect(runCli).toHaveBeenCalledWith(
+      "/bin/sruja",
+      ["drift", "-r", ".", "-f", "drift-state"],
+      "/ws"
+    );
+    expect(vscode.env.clipboard.writeText).toHaveBeenCalled();
+  });
+
   it("runDrift shows error when no workspace folder", async () => {
     const { registerContextEngineeringCommands } = await import("./contextEngineering");
     const ctx = new ExtensionContext();
