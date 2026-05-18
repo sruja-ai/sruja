@@ -29,12 +29,12 @@ jobs:
     steps:
       # Full history + tags required so release-please can find the last release tag
       # (e.g. sruja-v0.17.2) and only include commits since then in the changelog.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release_override
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_as != ''
         with:
@@ -42,7 +42,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           release-as: ${{ github.event.inputs.release_as }}
 
-      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4.4.0
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release_default
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.release_as == ''
         with:
