@@ -104,8 +104,10 @@ pub(crate) mod context_events;
 pub mod decision;
 pub(crate) mod diagnostic_vfs;
 pub mod event;
+pub(crate) mod mcp_prompts;
+pub(crate) mod mcp_resources;
 
-pub use context::{context_export, ContextRequest};
+pub use context::{context_export, sync_ide_rules, ContextRequest};
 pub use decision::{
     create_decision_record, decision_accept, decision_link, decision_list, decision_new,
     decision_show, decision_supersede, decision_trace, list_decisions,

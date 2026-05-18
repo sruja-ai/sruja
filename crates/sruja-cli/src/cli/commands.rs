@@ -654,6 +654,16 @@ pub enum Commands {
         #[arg(long)]
         cache_friendly: bool,
     },
+    /// Write editor rule files from validated architecture (cursor-rules, copilot, llms-architecture.txt)
+    #[command(name = "sync-ide-rules")]
+    SyncIdeRules {
+        /// Path to repository root (single repo only)
+        #[arg(long, short = 'r', action = clap::ArgAction::Append)]
+        repo: Vec<String>,
+        /// Max tokens for generated rule bodies (approximate)
+        #[arg(long, default_value_t = 10000)]
+        max_tokens: usize,
+    },
     /// Scanner introspection for AI/debug: explain scan, repomap, discovery questions
     ///
     /// For a first human read use `quickstart`. For a full repo brief use `onboard`.

@@ -176,6 +176,33 @@ For how this relates to “context graph” terminology in industry writing vers
 | `sruja_add_element` | Add a model element. |
 | `sruja_add_relationship` | Add a relationship. |
 
+## MCP resources (`resources/list`, `resources/read`)
+
+Stable `sruja://` URIs for prompt-cache-friendly prefixes (optional `repo` / `path` in params, defaulting to the MCP server root):
+
+| URI | Content |
+|-----|---------|
+| `sruja://architecture/main` | Declared architecture DSL (`repo.sruja`) |
+| `sruja://context/invariant.md` | Layers, boundaries, forbidden patterns, MCP ladder |
+| `sruja://context/llms-architecture.txt` | Compact brief (same shape as repo-root `llms-architecture.txt`) |
+| `sruja://diagrams/current.mmd` | Mermaid export (when architecture file exists) |
+| `sruja://decisions/index` | JSON index of `.sruja/decisions/` (when present) |
+
+## MCP prompts (`prompts/list`, `prompts/get`)
+
+Deterministic task templates (return MCP `messages` with text content):
+
+| Prompt | Arguments |
+|--------|-----------|
+| `sruja_new_service_scaffold` | `service_name` (required) |
+| `sruja_review_change` | `files` (required), `description` (optional) |
+| `sruja_focus_task` | `element_id` and/or `file` |
+| `sruja_mcp_guide` | none — canonical ladder workflow |
+
+## IDE rule sync (CLI)
+
+`sruja sync-ide-rules -r .` writes `.cursorrules`, `.github/copilot-instructions.md`, `CLAUDE.md`, `.gemini/AGENTS.md`, and **`llms-architecture.txt`** in one pass. `just context-sync` / `make context-sync` call this command.
+
 ## Choosing NL retrieval tools
 
 1. Start with **`sruja_hybrid_query`** unless you have a reason not to.

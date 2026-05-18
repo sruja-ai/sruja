@@ -392,7 +392,7 @@ MySystem.MyContainer -> MySystem.Database "SQL"
 Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, Cline, Windsurf, etc.) to give them deep context about the cross-repo architecture:
 
 1. **Daily Context Sync**: Run `make daily` to check for architectural drift, build cross-repo context, and automatically update `.cursorrules`, `.copilot-instructions.md`, `CLAUDE.md`, and other editor-specific rules.
-2. **Manual Sync**: Run `make context-sync` to force-update all editor context files without running tests/drift checks.
+2. **Manual Sync**: Run `make context-sync` or `sruja sync-ide-rules -r .` to regenerate `.cursorrules`, Copilot/Claude/Gemini rules, and `llms-architecture.txt` without running tests/drift checks.
 3. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
    - **Command**: `sruja mcp -r .`
    - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.

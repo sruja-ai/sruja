@@ -7,6 +7,8 @@ use tokio::io::{self, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
 
 use super::CliError;
+use crate::commands::mcp_prompts::{prompts_get_result, prompts_list_result};
+use crate::commands::mcp_resources::{resources_list_result, resources_read_result};
 use crate::commands::{agent_run_to_string, AgentRunOptions};
 use crate::integrations::{
     resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
@@ -134,6 +136,25 @@ async fn write_message<W: AsyncWrite + Unpin>(
     Ok(())
 }
 
+fn not_initialized_error(id: Value) -> Value {
+    json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "error": { "code": -32602, "message": "Server not initialized. Call initialize first." }
+    })
+}
+
+fn mcp_repo_from_params(params: Option<&Value>, default_repo: &str) -> String {
+    params
+        .and_then(|p| {
+            p.get("path")
+                .or_else(|| p.get("repo"))
+                .and_then(|v| v.as_str())
+        })
+        .unwrap_or(default_repo)
+        .to_string()
+}
+
 struct McpServer {
     initialized: bool,
     client_ready: bool,
@@ -199,6 +220,34 @@ impl McpServer {
                 }
                 Some(self.handle_tools_call(id, message.get("params")).await)
             }
+            "resources/list" => {
+                let id = id?;
+                if !self.initialized {
+                    return Some(not_initialized_error(id));
+                }
+                Some(self.handle_resources_list(id, message.get("params")))
+            }
+            "resources/read" => {
+                let id = id?;
+                if !self.initialized {
+                    return Some(not_initialized_error(id));
+                }
+                Some(self.handle_resources_read(id, message.get("params")).await)
+            }
+            "prompts/list" => {
+                let id = id?;
+                if !self.initialized {
+                    return Some(not_initialized_error(id));
+                }
+                Some(self.handle_prompts_list(id))
+            }
+            "prompts/get" => {
+                let id = id?;
+                if !self.initialized {
+                    return Some(not_initialized_error(id));
+                }
+                Some(self.handle_prompts_get(id, message.get("params")).await)
+            }
             _ => id.map(|id| {
                 json!({
                     "jsonrpc": "2.0",
@@ -224,7 +273,9 @@ impl McpServer {
             "result": {
                 "protocolVersion": protocol,
                 "capabilities": {
-                    "tools": { "listChanged": false }
+                    "tools": { "listChanged": false },
+                    "resources": { "subscribe": false, "listChanged": false },
+                    "prompts": { "listChanged": false }
                 },
                 "serverInfo": {
                     "name": "sruja",
@@ -243,6 +294,88 @@ impl McpServer {
                 "tools": mcp_tools_for_list()
             }
         })
+    }
+
+    fn handle_resources_list(&self, id: Value, params: Option<&Value>) -> Value {
+        let repo = mcp_repo_from_params(params, &self.default_repo);
+        match resources_list_result(&repo) {
+            Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
+            Err(e) => json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "error": { "code": -32603, "message": e.to_string() }
+            }),
+        }
+    }
+
+    async fn handle_resources_read(&self, id: Value, params: Option<&Value>) -> Value {
+        let Some(params) = params else {
+            return json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "error": { "code": -32602, "message": "Missing params" }
+            });
+        };
+        let uri = match params.get("uri").and_then(|v| v.as_str()) {
+            Some(u) => u,
+            None => {
+                return json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": { "code": -32602, "message": "Missing resource uri" }
+                });
+            }
+        };
+        let repo = mcp_repo_from_params(Some(params), &self.default_repo);
+        match resources_read_result(&repo, uri).await {
+            Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
+            Err(e) => json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "error": { "code": -32603, "message": e.to_string() }
+            }),
+        }
+    }
+
+    fn handle_prompts_list(&self, id: Value) -> Value {
+        json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "result": prompts_list_result()
+        })
+    }
+
+    async fn handle_prompts_get(&self, id: Value, params: Option<&Value>) -> Value {
+        let Some(params) = params else {
+            return json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "error": { "code": -32602, "message": "Missing params" }
+            });
+        };
+        let name = match params.get("name").and_then(|v| v.as_str()) {
+            Some(n) => n,
+            None => {
+                return json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": { "code": -32602, "message": "Missing prompt name" }
+                });
+            }
+        };
+        let arguments = params
+            .get("arguments")
+            .cloned()
+            .unwrap_or_else(|| json!({}));
+        let repo = mcp_repo_from_params(Some(params), &self.default_repo);
+        match prompts_get_result(&repo, name, &arguments).await {
+            Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
+            Err(e) => json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "error": { "code": -32603, "message": e.to_string() }
+            }),
+        }
     }
 
     async fn handle_tools_call(&self, id: Value, params: Option<&Value>) -> Value {
@@ -4531,6 +4664,22 @@ mod tests {
             Some(MCP_PROTOCOL_VERSION)
         );
         assert!(resp.pointer("/result/capabilities/tools").is_some());
+        assert!(resp.pointer("/result/capabilities/resources").is_some());
+        assert!(resp.pointer("/result/capabilities/prompts").is_some());
+    }
+
+    #[test]
+    fn mcp_resources_list_includes_invariant_uri() {
+        let resources = crate::commands::mcp_resources::list_resources(".").expect("list");
+        assert!(resources
+            .iter()
+            .any(|r| r.uri == "sruja://context/invariant.md"));
+    }
+
+    #[test]
+    fn mcp_prompts_list_includes_mcp_guide() {
+        let prompts = crate::commands::mcp_prompts::list_prompts();
+        assert!(prompts.iter().any(|p| p.name == "sruja_mcp_guide"));
     }
 
     #[test]

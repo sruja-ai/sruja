@@ -182,20 +182,7 @@ daily: setup check federate context-sync
 # Update AI editor context files
 context-sync:
     @echo "Updating AI editor context..."
-    @set -euo pipefail; \
-      FOOTER=$'\n# Global AI Agent Guidelines\nYou MUST read and strictly adhere to the instructions located in `AGENTS.md` before proceeding with any task.\n'; \
-      ./target/release/sruja context -r . -f cursor-rules -o .cursorrules.tmp; \
-      printf "%s" "$$FOOTER" >> .cursorrules.tmp; \
-      mv .cursorrules.tmp .cursorrules; \
-      ./target/release/sruja context -r . -f copilot-instructions -o .github/copilot-instructions.md.tmp; \
-      printf "%s" "$$FOOTER" >> .github/copilot-instructions.md.tmp; \
-      mv .github/copilot-instructions.md.tmp .github/copilot-instructions.md; \
-      ./target/release/sruja context -r . -f cursor-rules -o CLAUDE.md.tmp; \
-      printf "%s" "$$FOOTER" >> CLAUDE.md.tmp; \
-      mv CLAUDE.md.tmp CLAUDE.md; \
-      ./target/release/sruja context -r . -f cursor-rules -o .gemini/AGENTS.md.tmp; \
-      printf "%s" "$$FOOTER" >> .gemini/AGENTS.md.tmp; \
-      mv .gemini/AGENTS.md.tmp .gemini/AGENTS.md
+    ./target/release/sruja sync-ide-rules -r .
     @echo "✅ AI context synchronized"
 
 # Federated Architecture
