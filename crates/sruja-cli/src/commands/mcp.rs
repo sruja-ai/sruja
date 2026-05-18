@@ -120,6 +120,9 @@ pub async fn mcp(root: &str) -> Result<(), CliError> {
         if let Some(response) = server.handle_message(message).await {
             write_message(&mut out, &response).await?;
         }
+        for notification in server.drain_pending_notifications() {
+            write_message(&mut out, &notification).await?;
+        }
     }
 
     Ok(())
@@ -158,8 +161,10 @@ fn mcp_repo_from_params(params: Option<&Value>, default_repo: &str) -> String {
 struct McpServer {
     initialized: bool,
     client_ready: bool,
+    watch_drift: bool,
     default_repo: String,
     graph_cache: std::sync::Arc<tokio::sync::Mutex<HashMap<String, sruja_scan::Graph>>>,
+    pending_notifications: Vec<Value>,
 }
 
 impl McpServer {
@@ -167,9 +172,47 @@ impl McpServer {
         Self {
             initialized: false,
             client_ready: false,
+            watch_drift: false,
             default_repo,
             graph_cache: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            pending_notifications: Vec::new(),
         }
+    }
+
+    fn drain_pending_notifications(&mut self) -> Vec<Value> {
+        std::mem::take(&mut self.pending_notifications)
+    }
+
+    fn enqueue_notification(&mut self, method: &str, params: Value) {
+        self.pending_notifications.push(json!({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params
+        }));
+    }
+
+    fn watch_drift_from_initialize_params(params: Option<&Value>) -> bool {
+        params
+            .and_then(|p| p.get("initializationOptions"))
+            .and_then(|o| o.get("watch_drift"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+
+    fn maybe_enqueue_drift_state_notification(&mut self) {
+        if !self.watch_drift {
+            return;
+        }
+        let repo_path = Path::new(&self.default_repo);
+        if !repo_path.exists() {
+            return;
+        }
+        let Ok(graph) = crate::commands::scan_repo_cached(repo_path) else {
+            return;
+        };
+        let payload =
+            crate::commands::drift_state::build_drift_state_payload(&self.default_repo, &graph);
+        self.enqueue_notification("notifications/drift_state", payload);
     }
 
     async fn handle_message(&mut self, message: Value) -> Option<Value> {
@@ -189,11 +232,13 @@ impl McpServer {
 
         match method {
             "initialize" => {
+                self.watch_drift = Self::watch_drift_from_initialize_params(message.get("params"));
                 self.initialized = true;
                 Some(self.handle_initialize(id, message.get("params")))
             }
             "notifications/initialized" => {
                 self.client_ready = true;
+                self.maybe_enqueue_drift_state_notification();
                 None
             }
             "ping" => id.map(|id| json!({ "jsonrpc": "2.0", "id": id, "result": {} })),
@@ -275,7 +320,10 @@ impl McpServer {
                 "capabilities": {
                     "tools": { "listChanged": false },
                     "resources": { "subscribe": false, "listChanged": false },
-                    "prompts": { "listChanged": false }
+                    "prompts": { "listChanged": false },
+                    "experimental": {
+                        "watchDrift": true
+                    }
                 },
                 "serverInfo": {
                     "name": "sruja",
@@ -4709,6 +4757,42 @@ mod tests {
         assert!(resp.pointer("/result/capabilities/tools").is_some());
         assert!(resp.pointer("/result/capabilities/resources").is_some());
         assert!(resp.pointer("/result/capabilities/prompts").is_some());
+        assert_eq!(
+            resp.pointer("/result/capabilities/experimental/watchDrift")
+                .and_then(|v| v.as_bool()),
+            Some(true)
+        );
+    }
+
+    #[tokio::test]
+    async fn mcp_watch_drift_emits_notification_after_initialized() {
+        let mut server = McpServer::new(".".to_string());
+        let _ = server
+            .handle_message(json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": MCP_PROTOCOL_VERSION,
+                    "initializationOptions": { "watch_drift": true }
+                }
+            }))
+            .await;
+        let _ = server
+            .handle_message(json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized"
+            }))
+            .await;
+        let pending = server.drain_pending_notifications();
+        assert!(
+            pending.iter().any(|n| {
+                n.get("method").and_then(|m| m.as_str()) == Some("notifications/drift_state")
+                    && n.pointer("/params/schema_version").and_then(|v| v.as_str())
+                        == Some("drift_state/v1")
+            }),
+            "expected drift_state notification, got: {pending:?}"
+        );
     }
 
     #[test]

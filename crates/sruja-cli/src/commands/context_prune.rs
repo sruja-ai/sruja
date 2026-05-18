@@ -238,6 +238,30 @@ fn push_violation_locations(drift: &Value, ids: &mut Vec<String>) {
     }
 }
 
+/// Simulated per-element hydration size in long agent traces (SWE-bench-style fixture).
+pub const TRACE_CHARS_PER_ELEMENT: usize = 400;
+
+/// Token estimate when the host retains full session element blocks.
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn estimate_session_trace_tokens(session_element_ids: &[String]) -> usize {
+    let mut buf = String::new();
+    for id in session_element_ids {
+        buf.push_str(&format!("[element:{id}] "));
+        buf.push_str(&"x".repeat(TRACE_CHARS_PER_ELEMENT));
+        buf.push('\n');
+    }
+    TokenBudget::estimate_tokens(&buf)
+}
+
+/// Fraction of tokens removed (`0.0`..=`1.0`).
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn token_reduction_ratio(before: usize, after: usize) -> f64 {
+    if before == 0 {
+        return 0.0;
+    }
+    (before.saturating_sub(after)) as f64 / before as f64
+}
+
 pub fn parse_id_list_arg(arguments: &Value, key: &str) -> Result<Vec<String>, CliError> {
     let Some(arr) = arguments.get(key).and_then(|v| v.as_array()) else {
         return Err(CliError::validation(format!(
@@ -323,5 +347,61 @@ mod tests {
         let s = suggest_context_prune(&g, &["B".to_string()], &["B".to_string()], 1);
         assert!(s.keep_ids.contains(&"B".to_string()));
         assert!(s.compress_ids.is_empty());
+    }
+
+    fn long_trace_graph() -> Graph {
+        let mut g = Graph::default();
+        for id in ["Focus", "N1", "N2", "N3", "N4", "N5"] {
+            g.nodes.push(Node {
+                id: id.to_string(),
+                label: id.to_string(),
+                ..Default::default()
+            });
+        }
+        for i in 0..30 {
+            let id = format!("Orphan{i}");
+            g.nodes.push(Node {
+                id: id.clone(),
+                label: id,
+                ..Default::default()
+            });
+        }
+        for (src, dst) in [
+            ("Focus", "N1"),
+            ("N1", "N2"),
+            ("N2", "N3"),
+            ("N3", "N4"),
+            ("N4", "N5"),
+        ] {
+            g.edges.push(Edge {
+                source: src.into(),
+                target: dst.into(),
+                kind: EdgeKind::new(EdgeKind::CALLS),
+                evidence: Vec::new(),
+                confidence: Default::default(),
+            });
+        }
+        g
+    }
+
+    /// Phase 3 exit: ≥20% token reduction on long traces when host drops `compress_ids`.
+    #[test]
+    fn long_trace_prune_meets_twenty_percent_token_reduction() {
+        let g = long_trace_graph();
+        let session: Vec<String> = g.nodes.iter().map(|n| n.id.clone()).collect();
+        let suggestion = suggest_context_prune(&g, &["Focus".to_string()], &session, 2);
+        assert!(
+            suggestion.compress_ids.len() >= 20,
+            "expected many compress_ids, got {}",
+            suggestion.compress_ids.len()
+        );
+
+        let before = estimate_session_trace_tokens(&session);
+        let after = estimate_session_trace_tokens(&suggestion.keep_ids);
+        let reduction = token_reduction_ratio(before, after);
+        assert!(
+            reduction >= 0.20,
+            "token reduction {reduction:.2} below 20% (before={before}, after={after})"
+        );
     }
 }

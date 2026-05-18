@@ -213,7 +213,11 @@ Deterministic task templates (return MCP `messages` with text content):
 | `sruja_get_drift_state` | Compact `drift_state/v1` JSON for structured injection (use instead of pasting full drift). |
 | CLI | `sruja drift -r . -f drift-state` or `sruja drift-state -r .` — same payload for scripts and the VS Code command. |
 
+**MCP drift injector:** pass `initializationOptions: { "watch_drift": true }` on `initialize`. After `notifications/initialized`, the server emits `notifications/drift_state` with the same `drift_state/v1` payload (structured block for host middleware). Server advertises support via `capabilities.experimental.watchDrift`.
+
 After host compresses chat history, append a lineage row with `sruja_record_context_event` kind `context_compressed` and `details.suppress_recompress_turns` (3–5). CLI helper: `record_context_compressed` in context events.
+
+**Token reduction fixture:** `crates/sruja-cli/tests/fixtures/context_prune_long_trace.json` and unit test `long_trace_prune_meets_twenty_percent_token_reduction` (≥20% trace tokens when host drops `compress_ids`).
 
 ## Choosing NL retrieval tools
 

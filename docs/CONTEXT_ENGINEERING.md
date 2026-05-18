@@ -84,7 +84,7 @@ MCP is the **structured tooling** interface: it answers what grounded architectu
 - **MCP prompts:** `sruja_mcp_guide`, `sruja_review_change`, and other templates via `prompts/get`.
 - **Editor sync:** `sruja sync-ide-rules -r .` regenerates `.cursorrules`, Copilot/Claude/Gemini rules, and `llms-architecture.txt`; `--check` for CI drift on generated files.
 - **Session pruning:** `sruja_suggest_context_prune` — graph-aware `keep_ids` / `compress_ids` for long agent sessions.
-- **Drift injector:** `sruja_get_drift_state` — structured `drift_state/v1` block for host middleware.
+- **Drift injector:** `sruja_get_drift_state` — structured `drift_state/v1` block for host middleware. MCP hosts can set `initializationOptions.watch_drift: true` to receive `notifications/drift_state` after initialize; VS Code: **Sruja: Refresh architecture state**.
 
 ### PR & CI Integration
 You can use the context score as a gate in CI. If a PR significantly drops the context score (e.g., by adding many unmapped modules), the build can fail, ensuring context stays fresh as the codebase grows.

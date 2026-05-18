@@ -148,6 +148,8 @@ pub(crate) struct AgentApplyOutput {
     pub(crate) memory_recorded: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) observation_compression: Option<ObservationCompressionReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) context_prune: Option<crate::commands::context_prune::ContextPruneSuggestion>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1219,6 +1221,9 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 }
             }
 
+            let context_prune = compression_report
+                .as_ref()
+                .and_then(|r| r.context_prune.clone());
             let out = AgentApplyOutput {
                 schema_version: "agent_apply_output/v1".to_string(),
                 run_id: Some(run_id),
@@ -1228,6 +1233,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 verification_results,
                 memory_recorded,
                 observation_compression: compression_report,
+                context_prune,
             };
 
             let apply_snapshot = serde_json::to_value(&out).unwrap_or(Value::Null);

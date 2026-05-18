@@ -207,6 +207,26 @@ pub async fn agent_apply(plan_path: &Path, repo: &str, _format: &str) -> Result<
         }
     }
 
+    let mut context_prune = None;
+    if let Some(active) = plan.target.resolved_element_id.clone() {
+        if let Ok(graph) = crate::commands::scan_repo_cached(repo_root) {
+            let mut session = vec![active.clone()];
+            for v in &plan.verification {
+                session.push(v.id.clone());
+            }
+            session.sort();
+            session.dedup();
+            if session.len() > 1 {
+                context_prune = Some(crate::commands::context_prune::suggest_context_prune(
+                    &graph,
+                    &[active],
+                    &session,
+                    2,
+                ));
+            }
+        }
+    }
+
     let out = AgentApplyOutput {
         schema_version: "agent_apply_output/v1".to_string(),
         run_id: Some(run_id.clone()),
@@ -216,6 +236,7 @@ pub async fn agent_apply(plan_path: &Path, repo: &str, _format: &str) -> Result<
         verification_results,
         memory_recorded,
         observation_compression: None,
+        context_prune,
     };
 
     let apply_snapshot = serde_json::to_value(&out).unwrap_or(Value::Null);

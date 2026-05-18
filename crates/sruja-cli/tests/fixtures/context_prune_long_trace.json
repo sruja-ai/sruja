@@ -1,0 +1,17 @@
+{
+  "schema_version": "context_prune_fixture/v1",
+  "description": "SWE-bench-style long-trace token reduction scenario for graph-aware session pruning",
+  "active_element_ids": ["Focus"],
+  "session_shape": {
+    "connected_chain": ["Focus", "N1", "N2", "N3", "N4", "N5"],
+    "orphan_count": 30,
+    "orphan_prefix": "Orphan"
+  },
+  "max_depth": 2,
+  "trace_chars_per_element": 400,
+  "exit_criterion": {
+    "min_token_reduction_ratio": 0.2,
+    "min_compress_ids": 20
+  },
+  "test": "crates/sruja-cli/src/commands/context_prune.rs::long_trace_prune_meets_twenty_percent_token_reduction"
+}
