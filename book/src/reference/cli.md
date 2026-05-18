@@ -73,6 +73,7 @@
 | `sruja why "..."` | Investigate architecture decisions |
 | `sruja query "..."` | Query registry for elements and relationships |
 | `sruja ai-context -r .` | Structured context for AI editor integration |
+| `sruja ai-context -r . -f for-ai --cache-friendly` | Prompt-cache-friendly JSON (invariant → tools → volatile; single repo) |
 
 **Repo root:** Prefer `-r` / `--repo` for the repository directory. Some commands also accept `--path` as an alias for backwards compatibility.
 

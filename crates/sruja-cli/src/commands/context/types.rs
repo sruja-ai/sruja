@@ -139,7 +139,7 @@ pub struct FocusNode {
     pub runbooks: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContextSummary {
     pub total_modules: usize,
     pub total_services: usize,
@@ -147,14 +147,14 @@ pub struct ContextSummary {
     pub total_external_apis: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayerInfo {
     pub name: String,
     pub modules: usize,
     pub can_depend_on: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BoundaryRule {
     pub from: String,
     pub to: String,
@@ -206,6 +206,45 @@ pub struct GroundingStep {
     pub details: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub refs: Vec<String>,
+}
+
+/// Stable prefix for prompt-cache-friendly `for-ai` exports (changes rarely).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextInvariantBlock {
+    pub schema_version: String,
+    pub repo: String,
+    pub summary: ContextSummary,
+    pub layers: Vec<LayerInfo>,
+    pub boundaries: Vec<BoundaryRule>,
+    pub forbidden_patterns: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub active_decisions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub retrieval_ladder: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub when_suggesting_code: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextToolsBlock {
+    pub schema_version: String,
+    pub mcp_retrieval_ladder: Vec<ContextToolHint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextToolHint {
+    pub name: String,
+    pub layer: String,
+    pub description: String,
+}
+
+/// `for-ai` export with invariant → tools → volatile ordering for provider prompt caching.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheFriendlyTaskContextExport {
+    pub schema_version: String,
+    pub invariant: ContextInvariantBlock,
+    pub tools: ContextToolsBlock,
+    pub volatile: TaskContext,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

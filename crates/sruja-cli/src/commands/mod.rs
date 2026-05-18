@@ -102,6 +102,7 @@ pub use learn::learn;
 pub(crate) mod context;
 pub(crate) mod context_events;
 pub mod decision;
+pub(crate) mod diagnostic_vfs;
 pub mod event;
 
 pub use context::{context_export, ContextRequest};

@@ -650,6 +650,9 @@ pub enum Commands {
         /// Max tokens to output (approximate)
         #[arg(long, default_value_t = 10000)]
         max_tokens: usize,
+        /// For `-f for-ai`: emit invariant/tools/volatile blocks for prompt-cache-friendly payloads
+        #[arg(long)]
+        cache_friendly: bool,
     },
     /// Scanner introspection for AI/debug: explain scan, repomap, discovery questions
     ///

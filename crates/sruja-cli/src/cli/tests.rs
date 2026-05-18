@@ -31,6 +31,7 @@ fn parses_ai_context_defaults() {
                     intent,
                     depth,
                     max_tokens,
+                    cache_friendly,
                 } => {
                     assert_eq!(format, "cursor-rules");
                     assert!(repo.is_empty());
@@ -43,6 +44,7 @@ fn parses_ai_context_defaults() {
                     assert!(intent.is_none());
                     assert_eq!(depth, 2);
                     assert_eq!(max_tokens, 10000);
+                    assert!(!cache_friendly);
                 }
                 _ => panic!("expected AiContext command"),
             }

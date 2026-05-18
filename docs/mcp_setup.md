@@ -64,11 +64,14 @@ Sruja exposes **many** MCP tools (graph navigation, drift, NL retrieval, focus b
 
 | Tool | When to use it |
 |------|----------------|
-| `sruja_get_architecture_summary` | First pass overview of the repo architecture. |
-| `sruja_get_focus_briefing` | You have a **file** or **element id** and need blast radius + AI instructions. |
+| `sruja_list_architecture_index` | **Start here** — compact index + validation signals (token-aware). |
+| `sruja_get_topology` | Neighbors for one element id (after index). |
+| `sruja_get_elements` | Detail for ids from index/topology. |
+| `sruja_get_focus_briefing` | Task briefing when you already have a **file** or **element id**. |
+| `sruja_get_task_context` | Hydrated task context (`cache_friendly: true` for cache-ordered JSON). |
 | `sruja_hybrid_query` | Natural-language question; auto-picks graph vs semantic vs hybrid retrieval. |
 | `sruja_check_drift` | Compare code vs declared `.sruja` architecture. |
-| `sruja_get_neighbors` / `sruja_find_path` | Local graph navigation between known ids. |
+| `sruja_get_diagnostic_full` | Full diagnostic text when a prior tool returned head/tail truncation. |
 
 ### Operator controls (stdio server)
 

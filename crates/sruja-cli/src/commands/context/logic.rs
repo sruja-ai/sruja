@@ -1337,3 +1337,135 @@ pub fn infer_boundaries(graph: &Graph) -> Vec<BoundaryRule> {
 
     boundaries
 }
+
+const CACHE_FRIENDLY_WHEN_SUGGESTING: &[&str] = &[
+    "Respect layer boundaries — check imports before suggesting",
+    "Use existing patterns in the codebase",
+    "If adding a new dependency, verify it does not violate boundaries",
+    "Run `sruja drift -r .` after changes to verify architecture health",
+    "Prefer MCP progressive disclosure: list_architecture_index → get_topology → get_elements before pasting full architecture",
+];
+
+pub fn build_cache_friendly_task_export(
+    repo_root: &str,
+    arch: &super::types::ArchitectureContext,
+    volatile: super::types::TaskContext,
+) -> super::types::CacheFriendlyTaskContextExport {
+    super::types::CacheFriendlyTaskContextExport {
+        schema_version: "task_context_cache_friendly/v1".to_string(),
+        invariant: super::types::ContextInvariantBlock {
+            schema_version: "context_invariant/v1".to_string(),
+            repo: repo_root.to_string(),
+            summary: arch.summary.clone(),
+            layers: arch.layers.clone(),
+            boundaries: arch.boundaries.clone(),
+            forbidden_patterns: arch.forbidden_patterns.clone(),
+            active_decisions: arch.active_decisions.clone(),
+            retrieval_ladder: vec![
+                "sruja_list_architecture_index".to_string(),
+                "sruja_get_topology".to_string(),
+                "sruja_get_elements".to_string(),
+            ],
+            when_suggesting_code: CACHE_FRIENDLY_WHEN_SUGGESTING
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        },
+        tools: super::types::ContextToolsBlock {
+            schema_version: "context_tools/v1".to_string(),
+            mcp_retrieval_ladder: vec![
+                super::types::ContextToolHint {
+                    name: "sruja_list_architecture_index".to_string(),
+                    layer: "index".to_string(),
+                    description: "Compact element list with validation signals (cycles, policies)."
+                        .to_string(),
+                },
+                super::types::ContextToolHint {
+                    name: "sruja_get_topology".to_string(),
+                    layer: "topology".to_string(),
+                    description: "Upstream/downstream neighbors for one element id.".to_string(),
+                },
+                super::types::ContextToolHint {
+                    name: "sruja_get_elements".to_string(),
+                    layer: "detail".to_string(),
+                    description: "Batch element detail for ids from index/topology.".to_string(),
+                },
+                super::types::ContextToolHint {
+                    name: "sruja_get_task_context".to_string(),
+                    layer: "task".to_string(),
+                    description: "Task-scoped hydration after ladder orientation.".to_string(),
+                },
+            ],
+        },
+        volatile,
+    }
+}
+
+#[cfg(test)]
+mod cache_friendly_tests {
+    use super::*;
+    use crate::commands::context::types::{BoundaryRule, ContextSummary, LayerInfo};
+
+    #[test]
+    fn cache_friendly_export_orders_invariant_before_volatile() {
+        let arch = super::super::types::ArchitectureContext {
+            repo: ".".to_string(),
+            summary: ContextSummary {
+                total_modules: 1,
+                total_services: 0,
+                total_databases: 0,
+                total_external_apis: 0,
+            },
+            layers: vec![LayerInfo {
+                name: "models".to_string(),
+                modules: 1,
+                can_depend_on: vec![],
+            }],
+            boundaries: vec![BoundaryRule {
+                from: "ui".to_string(),
+                to: "data".to_string(),
+                allowed: false,
+                reason: "test".to_string(),
+            }],
+            forbidden_patterns: vec!["no direct db".to_string()],
+            active_decisions: vec![],
+            focus: None,
+            system_context: None,
+            max_tokens: 1000,
+        };
+        let volatile = TaskContext {
+            run_id: Some("run-1".to_string()),
+            schema_version: "task_context/v1".to_string(),
+            context_budget: None,
+            selection_reason: SelectionReason {
+                primary: "test".to_string(),
+                resolution_path: vec![],
+                details: None,
+            },
+            grounding_trace: vec![],
+            focus_elements: vec![],
+            impacted_systems: vec![],
+            impacted_containers: vec![],
+            impacted_components: vec![],
+            neighbors: vec![],
+            source_bindings: vec![],
+            hydrated_files: vec![],
+            risk: TaskRisk::Low,
+            truth_status: TaskTruthStatus::Unknown,
+            confidence: TaskConfidence::Medium,
+            semantic_candidates: vec![],
+        };
+
+        let export = build_cache_friendly_task_export(".", &arch, volatile);
+        assert_eq!(
+            export.schema_version,
+            "task_context_cache_friendly/v1".to_string()
+        );
+        assert_eq!(
+            export.invariant.schema_version,
+            "context_invariant/v1".to_string()
+        );
+        assert!(!export.tools.mcp_retrieval_ladder.is_empty());
+        assert_eq!(export.volatile.run_id.as_deref(), Some("run-1"));
+    }
+}

@@ -67,6 +67,9 @@ struct LintOutput {
     total_error_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     total_warning_count: Option<usize>,
+    /// Present when the full diagnostic list was stored under `.sruja/vfs/diagnostics/`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    diagnostic_full: Option<crate::commands::diagnostic_vfs::TruncatedDiagnosticPayload>,
 }
 
 pub async fn lint(
@@ -84,7 +87,7 @@ pub async fn lint(
         Err(mut diagnostics) => {
             enrich_diagnostics_with_source(&content, &mut diagnostics);
             if format == "json" {
-                let out = lint_diagnostics_to_json(&diagnostics, false);
+                let out = lint_diagnostics_to_json(Path::new(file), &diagnostics, false)?;
                 println!(
                     "{}",
                     serde_json::to_string(&out).map_err(|e| CliError::validation(e.to_string()))?
@@ -135,7 +138,7 @@ pub async fn lint(
     if let Some(out_path) = write_baseline {
         write_lint_baseline(out_path, &diagnostics)?;
         if format == "json" {
-            let mut out = lint_diagnostics_to_json(&diagnostics, true);
+            let mut out = lint_diagnostics_to_json(Path::new(file), &diagnostics, true)?;
             out.baseline = Some(out_path.to_string());
             out.total_error_count = Some(out.error_count);
             out.total_warning_count = Some(out.warning_count);
@@ -157,7 +160,8 @@ pub async fn lint(
             .iter()
             .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
             .count();
-        let mut out = lint_diagnostics_to_json(&filtered_diagnostics, error_count == 0);
+        let mut out =
+            lint_diagnostics_to_json(Path::new(file), &filtered_diagnostics, error_count == 0)?;
         out.baseline = baseline.map(|s| s.to_string());
         out.total_error_count = Some(total_error_count);
         out.total_warning_count = Some(total_warning_count);
@@ -247,7 +251,23 @@ pub async fn lint(
     Ok(())
 }
 
-fn lint_diagnostics_to_json(diagnostics: &[sruja_diagnostics::Diagnostic], ok: bool) -> LintOutput {
+fn lint_storage_name(arch_file: &Path) -> String {
+    let stem = arch_file
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("lint");
+    format!("lint-{stem}.txt")
+}
+
+fn lint_repo_root(arch_file: &Path) -> &Path {
+    arch_file.parent().unwrap_or_else(|| Path::new("."))
+}
+
+fn lint_diagnostics_to_json(
+    arch_file: &Path,
+    diagnostics: &[sruja_diagnostics::Diagnostic],
+    ok: bool,
+) -> Result<LintOutput, CliError> {
     let error_count = diagnostics
         .iter()
         .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
@@ -256,7 +276,17 @@ fn lint_diagnostics_to_json(diagnostics: &[sruja_diagnostics::Diagnostic], ok: b
         .iter()
         .filter(|d| d.severity == sruja_diagnostics::Severity::Warning)
         .count();
-    let diagnostics: Vec<LintDiagnostic> = diagnostics
+
+    let repo = lint_repo_root(arch_file);
+    let (diagnostics_for_output, diagnostic_full) =
+        crate::commands::diagnostic_vfs::apply_lint_json_truncation(
+            repo,
+            &lint_storage_name(arch_file),
+            diagnostics,
+            crate::commands::diagnostic_vfs::LINT_JSON_DIAGNOSTIC_TOKEN_BUDGET,
+        )?;
+
+    let diagnostics: Vec<LintDiagnostic> = diagnostics_for_output
         .iter()
         .map(|d| {
             let severity = match d.severity {
@@ -280,7 +310,7 @@ fn lint_diagnostics_to_json(diagnostics: &[sruja_diagnostics::Diagnostic], ok: b
             }
         })
         .collect();
-    LintOutput {
+    Ok(LintOutput {
         ok,
         error_count,
         warning_count,
@@ -288,7 +318,8 @@ fn lint_diagnostics_to_json(diagnostics: &[sruja_diagnostics::Diagnostic], ok: b
         baseline: None,
         total_error_count: None,
         total_warning_count: None,
-    }
+        diagnostic_full,
+    })
 }
 
 fn sort_diagnostics(diagnostics: &mut [sruja_diagnostics::Diagnostic]) {

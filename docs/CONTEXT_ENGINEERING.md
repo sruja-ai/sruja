@@ -72,11 +72,14 @@ MCP is the **structured tooling** interface: it answers what grounded architectu
 **Tools:** dozens of read/query tools plus a smaller set of mutating tools (proposals, scratchpad, sandbox, agent run). See the full table in **[mcp_tools_reference.md](mcp_tools_reference.md)**. For locked-down hosts, set `SRUJA_MCP_READONLY=1` so only read/query tools are listed and callable; set `SRUJA_MCP_LOG=1` for one JSON line per invocation on stderr.
 
 **Highlights:**
+- **Progressive disclosure ladder:** `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` (each response includes token estimates and `next_suggested_tool`).
 - `sruja_get_context_score`: Repository-level AI-readiness.
 - `sruja_get_focus_briefing`: Task-scoped briefing (optional `base_ref` / `head_ref` for temporal context).
-- `sruja_get_architecture_context`: Component-level hydration.
+- `sruja_get_task_context`: Task hydration; set `cache_friendly: true` (MCP) or `sruja ai-context -f for-ai --cache-friendly` for invariant/tools/volatile JSON suited to prompt caching.
+- `sruja_get_architecture_context`: Component-level hydration (prefer the ladder for large repos).
 - `sruja_get_context_events`: Recent intent/drift/proposal-merge events from `.sruja/context_events.jsonl`.
 - `sruja_get_agent_learnings`: Agentic Memory entries for an element ID.
+- `sruja_get_diagnostic_full`: Fetch full linter/diagnostic text when MCP output was head/tail truncated.
 
 ### PR & CI Integration
 You can use the context score as a gate in CI. If a PR significantly drops the context score (e.g., by adding many unmapped modules), the build can fail, ensuring context stays fresh as the codebase grows.

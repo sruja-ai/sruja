@@ -71,10 +71,13 @@ Trivial edits can stay in one session.
 
 Broad repo exploration produces large token dumps. Prefer:
 
-- **`sruja focus --file <path>`** (or the issue scope) for a compact briefing
-- **`sruja mcp -r .`** for structured architecture queries instead of pasting whole trees
+- **MCP progressive disclosure** (in the IDE): `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` — each step returns `estimated_tokens` and `next_suggested_tool`
+- **`sruja focus --file <path>`** (or the issue scope) for a compact briefing when MCP is unavailable
+- **`sruja ai-context -f for-ai --cache-friendly`** for prompt-cache-ordered invariant/volatile JSON (single repo only)
 - **Scoped reads**: search, then open only the files you need; summarize for the main thread
 - **Isolated exploration**: use a read-only subagent or a short side thread for wide research, then bring back a short summary and file list—not raw dumps
+
+Do **not** paste full `repo.sruja` or entire `sruja ai` briefs into chat when the ladder or focus briefing suffices.
 
 Filling the context window “because we can” still hurts quality.
 

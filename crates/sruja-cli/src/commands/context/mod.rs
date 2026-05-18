@@ -23,6 +23,8 @@ pub struct ContextRequest<'a> {
     pub intent: Option<&'a str>,
     pub depth: usize,
     pub max_tokens: usize,
+    /// Split `for-ai` JSON into invariant/tools/volatile blocks for prompt-cache-friendly payloads.
+    pub cache_friendly: bool,
 }
 
 pub async fn context_string(
@@ -54,7 +56,7 @@ pub async fn context_string(
             depth: Some(req.depth),
         };
         let mut ctx = build_task_context(&graph, repo_root, selectors, req.max_tokens)?;
-        ctx.run_id = Some(run_id);
+        ctx.run_id = Some(run_id.clone());
         // Persist a bounded snapshot for replay/resume.
         let snapshot = serde_json::json!({
             "schema_version": "context_snapshot/v1",
@@ -84,6 +86,18 @@ pub async fn context_string(
         });
         if let Some(run_id) = ctx.run_id.as_deref() {
             let _ = write_json_snapshot(repo_path, run_id, "task_context.json", &snapshot);
+        }
+        if format == "for-ai" && req.cache_friendly {
+            let arch = build_architecture_context(
+                &graph,
+                repo_root,
+                None,
+                None,
+                req.depth,
+                req.max_tokens,
+            )?;
+            let export = build_cache_friendly_task_export(repo_root, &arch, ctx);
+            return Ok(serde_json::to_string_pretty(&export)?);
         }
         return Ok(serde_json::to_string_pretty(&ctx)?);
     }
@@ -123,6 +137,12 @@ pub async fn context_string_multi(
 
     if repos.len() == 1 {
         return context_string(&repos[0], format, req).await;
+    }
+
+    if req.cache_friendly && (format == "for-ai" || format == "json") {
+        return Err(CliError::validation(
+            "--cache-friendly is only supported for a single repository (-r .); use one -r per export",
+        ));
     }
 
     let mut contexts: Vec<ArchitectureContext> = Vec::with_capacity(repos.len());

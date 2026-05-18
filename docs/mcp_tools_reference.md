@@ -4,16 +4,30 @@ This document lists MCP tools exposed by `sruja mcp` (see [mcp_setup.md](mcp_set
 
 ## Retrieval ladder
 
-Use MCP tools inside your AI editor (Cursor, Copilot, Claude) for the best experience. The ladder guides you to the right tool:
+Use MCP tools inside your AI editor (Cursor, Copilot, Claude) for the best experience.
+
+### Progressive disclosure (token-efficient)
+
+For architecture orientation, prefer this **Index → Topology → Detail** chain. Each response includes `estimated_tokens`, `truncated`, `next_suggested_tool`, and `element_ids` for chaining.
+
+| Layer | Tool | When |
+|-------|------|------|
+| **Index** | **`sruja_list_architecture_index`** | Discover element ids, kinds, cycles, and policy samples without loading full DSL |
+| **Topology** | **`sruja_get_topology`** | Upstream/downstream for one `id` (`depth` default 1, max 4) |
+| **Detail** | **`sruja_get_elements`** | Batch detail for ids from index/topology |
+| **Task** | **`sruja_get_task_context`** | Hydrated task context after you know the focus area (`cache_friendly: true` for prompt-cache-ordered JSON) |
+
+Full diagnostic logs truncated in tool output are stored under `.sruja/vfs/diagnostics/`; fetch with **`sruja_get_diagnostic_full`** and the `sruja-vfs://diagnostics/...` URI.
+
+### Task briefing and investigation
 
 | Step | When | Tool |
 |------|------|------|
-| 1. Before starting a task | Blast radius, decisions, AI instructions | **`sruja_get_focus_briefing`** |
-| 2. Paste-ready AI brief | Share context with AI assistant | **`sruja_get_task_context`** |
-| 3. Inside AI editor | Editor integration (Cursor, Copilot, Claude) | All MCP tools |
-| 4. Investigation | "Why is this like this?" | **`sruja_query_graph`**, **`sruja_explain_element`**, **`sruja_bm25_search`** |
+| Before starting a task | Blast radius, decisions, AI instructions | **`sruja_get_focus_briefing`** |
+| Paste-ready AI brief (CLI) | Share context outside MCP | `sruja ai` / `sruja ai-context -f for-ai` |
+| Investigation | "Why is this like this?" | **`sruja_query_graph`**, **`sruja_explain_element`**, **`sruja_bm25_search`** |
 
-For CLI-based retrieval: use `sruja focus` before a task, `sruja ai` for a paste-ready brief, and `sruja why`/`sruja query` for investigation.
+For CLI-based retrieval: use `sruja focus` before a task, `sruja ai` for a paste-ready brief, and `sruja why`/`sruja query` for investigation. Use `sruja ai-context -f for-ai --cache-friendly` when the host supports prompt caching (stable invariant prefix, volatile task tail).
 
 **Automation:** For CI and dashboards that call the CLI with `-f json`, several commands emit `metric_type` / `metric_description` (and `learn` emits `artifact_kind`) so scores are not confused—see [CLI reference — JSON metric hints](../book/src/reference/cli.md#json-output-metric-hints).
 
@@ -62,6 +76,15 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 | `sruja_get_task_context` | Rich task context (element, file, git diff, or query) with optional enrichment. |
 | `sruja_get_hydrated_context` | One element plus source and neighbors; optional enrichment. |
 | `sruja_get_operational_context` | Runbooks, constraints, incidents for repo or element. |
+
+### Progressive disclosure (architecture ladder)
+
+| Tool | Summary |
+|------|---------|
+| `sruja_list_architecture_index` | Index layer: compact element list + validation signals (`max_tokens`, optional `kinds` filter). |
+| `sruja_get_topology` | Topology layer: upstream/downstream for `id` (`depth`, `max_tokens`). |
+| `sruja_get_elements` | Detail layer: element payloads for `ids[]` (`max_tokens`). |
+| `sruja_get_diagnostic_full` | Read full text for a truncated diagnostic (`uri` from VFS). |
 
 ### Graph navigation (deterministic)
 

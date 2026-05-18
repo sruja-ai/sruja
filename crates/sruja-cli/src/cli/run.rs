@@ -374,6 +374,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             intent,
             depth,
             max_tokens,
+            cache_friendly,
         } => {
             if was_invoked_as("context") {
                 eprintln!("warning: 'sruja context' is deprecated, use 'sruja ai-context'");
@@ -392,6 +393,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     intent: intent.as_ref().map(ContextIntent::as_str),
                     depth,
                     max_tokens,
+                    cache_friendly,
                 },
             )
             .await

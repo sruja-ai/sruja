@@ -189,6 +189,24 @@ pub fn format_cursor_rules(context: &ArchitectureContext) -> String {
         budget.push_str(&mut out, "\n");
     }
 
+    budget.push_str(&mut out, "## Architecture retrieval (MCP)\n\n");
+    budget.push_str(
+        &mut out,
+        "Prefer progressive disclosure before pasting full architecture:\n",
+    );
+    budget.push_str(
+        &mut out,
+        "1. `sruja_list_architecture_index` — compact index with validation signals\n",
+    );
+    budget.push_str(
+        &mut out,
+        "2. `sruja_get_topology` — upstream/downstream for one element\n",
+    );
+    budget.push_str(
+        &mut out,
+        "3. `sruja_get_elements` — detail for selected ids\n\n",
+    );
+
     if !context.active_decisions.is_empty() {
         budget.push_str(&mut out, "## Active Architecture Decisions (ADRs)\n\n");
         for decision in &context.active_decisions {

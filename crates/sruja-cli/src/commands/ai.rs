@@ -73,6 +73,7 @@ pub async fn ai_brief(options: AiBriefOptions<'_>) -> Result<(), CliError> {
             intent: None,
             depth: 2,
             max_tokens: options.max_tokens,
+            cache_friendly: false,
         },
     )
     .await

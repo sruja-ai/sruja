@@ -427,6 +427,61 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_list_architecture_index",
+            "title": "Sruja Architecture Index",
+            "description": "Progressive disclosure: list architecture element IDs with minimal metadata (Index layer). Prefers declared architecture (repo.sruja) and falls back to scanned graph nodes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "max_tokens": { "type": "integer", "description": "Maximum estimated tokens for the response (default: 2000)", "minimum": 200 },
+                    "kinds": { "type": "array", "items": { "type": "string" }, "description": "Optional element kind filter (e.g. system, container, component, database, queue, person)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_topology",
+            "title": "Sruja Topology",
+            "description": "Progressive disclosure: get upstream/downstream topology for an element (Topology layer). Prefers declared relationships (repo.sruja) and falls back to scanned graph blast radius.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "id": { "type": "string", "description": "Element ID (prefer fully-qualified IDs)" },
+                    "depth": { "type": "integer", "description": "Traversal depth (default: 1)", "minimum": 1, "maximum": 4 },
+                    "max_tokens": { "type": "integer", "description": "Maximum estimated tokens for the response (default: 5000)", "minimum": 500 }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_elements",
+            "title": "Sruja Get Elements",
+            "description": "Progressive disclosure: fetch element details for a list of IDs (Detail layer). Prefers declared elements (repo.sruja) and falls back to scanned graph nodes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "ids": { "type": "array", "items": { "type": "string" }, "description": "Element IDs to fetch" },
+                    "max_tokens": { "type": "integer", "description": "Maximum estimated tokens for the response (default: 8000)", "minimum": 500 }
+                },
+                "required": ["ids"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_diagnostic_full",
+            "title": "Sruja Diagnostic Full Text",
+            "description": "Fetch the full text of a truncated diagnostic stored under .sruja/vfs/diagnostics/ (URI from head/tail truncation payloads).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "uri": { "type": "string", "description": "sruja-vfs://diagnostics/<filename> or bare filename" }
+                },
+                "required": ["uri"]
+            }
+        }),
+        json!({
             "name": "sruja_get_architecture_context",
             "title": "Sruja Architecture Context",
             "description": "Export high-level architecture context and project rules. Provide a file or element_id to get a localized, task-scoped context map.",
@@ -679,7 +734,8 @@ fn tool_definitions() -> Vec<Value> {
                     "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
                     "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
                     "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
-                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
+                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." },
+                    "cache_friendly": { "type": "boolean", "description": "If true, return invariant/tools/volatile JSON for prompt-cache-friendly payloads (default: false)." }
                 }
             }
         }),
@@ -1209,6 +1265,116 @@ async fn run_tool(
             let repomap = super::discover::discover_repomap(&repo, 100, 5000)?;
             Ok(repomap)
         }
+        "sruja_list_architecture_index" => {
+            let max_tokens = arguments
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(2000)
+                .max(200) as usize;
+            let kinds: Option<Vec<String>> = arguments.get("kinds").and_then(|v| {
+                v.as_array().map(|arr| {
+                    arr.iter()
+                        .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                })
+            });
+
+            let repo_path = Path::new(&repo);
+            let (arch, warning) = load_architecture_program_best_effort(repo_path);
+            let out = if let Some((source_file, program)) = arch {
+                build_architecture_index_from_program(
+                    &source_file,
+                    &program,
+                    kinds.as_deref(),
+                    max_tokens,
+                    warning.as_deref(),
+                )?
+            } else {
+                let graph = get_or_scan_graph(graph_cache, &repo).await?;
+                build_architecture_index_from_scan(
+                    &graph,
+                    kinds.as_deref(),
+                    max_tokens,
+                    warning.as_deref(),
+                )?
+            };
+            Ok(out)
+        }
+        "sruja_get_topology" => {
+            let id = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing id"))?;
+            let depth = arguments
+                .get("depth")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(1)
+                .clamp(1, 4) as usize;
+            let max_tokens = arguments
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(5000)
+                .max(500) as usize;
+
+            let repo_path = Path::new(&repo);
+            let (arch, warning) = load_architecture_program_best_effort(repo_path);
+            let out = if let Some((source_file, program)) = arch {
+                build_topology_from_program(
+                    &source_file,
+                    &program,
+                    id,
+                    depth,
+                    max_tokens,
+                    warning.as_deref(),
+                )?
+            } else {
+                let graph = get_or_scan_graph(graph_cache, &repo).await?;
+                build_topology_from_scan(&graph, id, depth, max_tokens, warning.as_deref())?
+            };
+            Ok(out)
+        }
+        "sruja_get_elements" => {
+            let ids = arguments
+                .get("ids")
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| CliError::validation("Missing ids"))?
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect::<Vec<_>>();
+            if ids.is_empty() {
+                return Err(CliError::validation("ids must be non-empty"));
+            }
+            let max_tokens = arguments
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(8000)
+                .max(500) as usize;
+
+            let repo_path = Path::new(&repo);
+            let (arch, warning) = load_architecture_program_best_effort(repo_path);
+            let out = if let Some((source_file, program)) = arch {
+                build_elements_from_program(
+                    &source_file,
+                    &program,
+                    &ids,
+                    max_tokens,
+                    warning.as_deref(),
+                )?
+            } else {
+                let graph = get_or_scan_graph(graph_cache, &repo).await?;
+                build_elements_from_scan(&graph, &ids, max_tokens, warning.as_deref())?
+            };
+            Ok(out)
+        }
+        "sruja_get_diagnostic_full" => {
+            let uri = arguments
+                .get("uri")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing uri"))?;
+            let content =
+                crate::commands::diagnostic_vfs::read_vfs_diagnostic(Path::new(&repo), uri)?;
+            Ok(content)
+        }
         "sruja_get_architecture_context" => {
             let file = arguments
                 .get("file")
@@ -1235,6 +1401,7 @@ async fn run_tool(
                     intent: intent.as_deref(),
                     depth: 2,
                     max_tokens: 10000,
+                    cache_friendly: false,
                 },
             )
             .await?;
@@ -1254,6 +1421,7 @@ async fn run_tool(
                     intent: None,
                     depth: 1,
                     max_tokens: 3000,
+                    cache_friendly: false,
                 },
             )
             .await?;
@@ -1566,6 +1734,10 @@ async fn run_tool(
                 .get("enrich_max_bytes")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(20000) as usize;
+            let cache_friendly = arguments
+                .get("cache_friendly")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
 
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
             let selectors = super::context::logic::TaskSelectors {
@@ -1580,6 +1752,14 @@ async fn run_tool(
             let ctx =
                 super::context::logic::build_task_context(&graph, &repo, selectors, max_tokens)?;
             if !enrich && enrich_cmd.is_none() {
+                if cache_friendly {
+                    let arch = super::context::logic::build_architecture_context(
+                        &graph, &repo, None, None, depth, max_tokens,
+                    )?;
+                    let export =
+                        super::context::logic::build_cache_friendly_task_export(&repo, &arch, ctx);
+                    return Ok(serde_json::to_string_pretty(&export)?);
+                }
                 return Ok(serde_json::to_string_pretty(&ctx)?);
             }
 
@@ -3532,6 +3712,804 @@ fn find_best_sruja_file(repo: &str) -> Result<String, CliError> {
     Ok(repo_sruja.to_string_lossy().to_string())
 }
 
+fn load_architecture_program_best_effort(
+    repo_path: &Path,
+) -> (
+    Option<(String, sruja_language::ast::Program)>,
+    Option<String>,
+) {
+    let Some(arch_path) = crate::utils::architecture_path::resolve_architecture_path(repo_path)
+    else {
+        return (None, None);
+    };
+
+    let file = arch_path.to_string_lossy().to_string();
+    let Ok(content) = std::fs::read_to_string(&arch_path) else {
+        return (None, Some(format!("Cannot read architecture file: {file}")));
+    };
+
+    let parser = sruja_language::Parser::new(file.clone());
+    match parser.parse(&content) {
+        Ok(program) => (Some((file, program)), None),
+        Err(diags) => (
+            None,
+            Some(format!(
+                "Failed to parse architecture file: {} error(s)",
+                diags.len()
+            )),
+        ),
+    }
+}
+
+fn estimate_tokens(text: &str) -> usize {
+    crate::commands::context::types::TokenBudget::estimate_tokens(text)
+}
+
+fn kind_matches_filter(kind: &str, filter: &[String]) -> bool {
+    let k = kind.trim().to_lowercase();
+    filter.iter().any(|f| f.trim().to_lowercase() == k)
+}
+
+fn trim_text(value: Option<&str>, max_chars: usize) -> Option<String> {
+    let v = value?;
+    let s = v.trim();
+    if s.is_empty() {
+        return None;
+    }
+    if s.chars().count() <= max_chars {
+        Some(s.to_string())
+    } else {
+        Some(s.chars().take(max_chars).collect::<String>())
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ResolvedId {
+    id: String,
+    ambiguous_matches: Vec<String>,
+}
+
+fn resolve_id_best_effort(id: &str, all_ids_sorted: &[String]) -> ResolvedId {
+    let needle = id.trim();
+    if needle.is_empty() {
+        return ResolvedId {
+            id: needle.to_string(),
+            ambiguous_matches: Vec::new(),
+        };
+    }
+    if all_ids_sorted.iter().any(|x| x == needle) {
+        return ResolvedId {
+            id: needle.to_string(),
+            ambiguous_matches: Vec::new(),
+        };
+    }
+    let suffix = format!(".{needle}");
+    let matches: Vec<String> = all_ids_sorted
+        .iter()
+        .filter(|x| x.ends_with(&suffix))
+        .cloned()
+        .collect();
+    match matches.len() {
+        0 => ResolvedId {
+            id: needle.to_string(),
+            ambiguous_matches: Vec::new(),
+        },
+        1 => ResolvedId {
+            id: matches[0].clone(),
+            ambiguous_matches: Vec::new(),
+        },
+        _ => {
+            let chosen = matches
+                .iter()
+                .min()
+                .cloned()
+                .unwrap_or_else(|| needle.to_string());
+            ResolvedId {
+                id: chosen,
+                ambiguous_matches: matches,
+            }
+        }
+    }
+}
+
+fn push_resolution_warnings(warnings: &mut Vec<String>, requested: &str, resolved: &ResolvedId) {
+    if resolved.ambiguous_matches.len() > 1 {
+        warnings.push(format!(
+            "Ambiguous element id {requested:?}: suffix matched {:?}; using {:?}",
+            resolved.ambiguous_matches, resolved.id
+        ));
+    }
+}
+
+fn bfs_radius(
+    adjacency: &HashMap<String, Vec<String>>,
+    target: &str,
+    max_depth: usize,
+) -> Vec<Value> {
+    use std::collections::{HashSet, VecDeque};
+    if max_depth == 0 {
+        return Vec::new();
+    }
+    let mut visited: HashSet<String> = HashSet::new();
+    let mut queue: VecDeque<(String, usize)> = VecDeque::new();
+    let mut out: Vec<(String, usize)> = Vec::new();
+
+    visited.insert(target.to_string());
+    queue.push_back((target.to_string(), 0));
+
+    while let Some((cur, depth)) = queue.pop_front() {
+        if depth >= max_depth {
+            continue;
+        }
+        let Some(nexts) = adjacency.get(&cur) else {
+            continue;
+        };
+        for next in nexts {
+            if visited.insert(next.clone()) {
+                let nd = depth + 1;
+                out.push((next.clone(), nd));
+                queue.push_back((next.clone(), nd));
+            }
+        }
+    }
+
+    out.sort_by(|a, b| (a.1, a.0.as_str()).cmp(&(b.1, b.0.as_str())));
+    out.into_iter()
+        .map(|(id, depth)| json!({ "id": id, "depth": depth }))
+        .collect()
+}
+
+fn enforce_max_tokens_on_json_array_fields(
+    value: &mut Value,
+    max_tokens: usize,
+    shrink_fields: &[&str],
+) -> Result<bool, CliError> {
+    let mut truncated = false;
+    loop {
+        let text = serde_json::to_string_pretty(value)?;
+        if estimate_tokens(&text) <= max_tokens {
+            break;
+        }
+        let mut shrunk_any = false;
+        for key in shrink_fields {
+            if let Some(arr) = value.get_mut(*key).and_then(|v| v.as_array_mut()) {
+                if !arr.is_empty() {
+                    arr.pop();
+                    shrunk_any = true;
+                }
+            }
+        }
+        if !shrunk_any {
+            break;
+        }
+        truncated = true;
+    }
+    Ok(truncated)
+}
+
+fn sync_element_ids_from_array(response: &mut Value, elements_key: &str) {
+    let mut ids = response
+        .get(elements_key)
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|e| e.get("id").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    ids.sort();
+    ids.dedup();
+    response["element_ids"] = json!(ids);
+}
+
+fn push_token_budget_warning(response: &mut Value, max_tokens: usize) {
+    let Ok(text) = serde_json::to_string_pretty(response) else {
+        return;
+    };
+    if estimate_tokens(&text) <= max_tokens {
+        return;
+    }
+    let msg = format!(
+        "Response still exceeds max_tokens ({max_tokens}) after truncation; use a smaller max_tokens budget, fewer ids, or raise max_tokens."
+    );
+    let arr = match response.get_mut("warnings").and_then(|w| w.as_array_mut()) {
+        Some(a) => a,
+        None => {
+            let mut existing = Vec::new();
+            if let Some(v) = response.get("warnings") {
+                if let Some(s) = v.as_str() {
+                    existing.push(json!(s));
+                } else if let Some(a) = v.as_array() {
+                    existing.extend(a.iter().cloned());
+                }
+            }
+            existing.push(json!(msg));
+            response["warnings"] = Value::Array(existing);
+            return;
+        }
+    };
+    arr.push(json!(msg));
+}
+
+fn finalize_ladder_response(
+    response: &mut Value,
+    max_tokens: usize,
+    shrink_fields: &[&str],
+    sync_ids_from: Option<&str>,
+) -> Result<(), CliError> {
+    let truncated = enforce_max_tokens_on_json_array_fields(response, max_tokens, shrink_fields)?;
+    if truncated {
+        response["truncated"] = json!(true);
+    }
+    if let Some(key) = sync_ids_from {
+        sync_element_ids_from_array(response, key);
+    }
+    push_token_budget_warning(response, max_tokens);
+    set_estimated_tokens(response)
+}
+
+fn finalize_topology_response(response: &mut Value, max_tokens: usize) -> Result<(), CliError> {
+    let truncated =
+        enforce_max_tokens_on_json_array_fields(response, max_tokens, &["upstream", "downstream"])?;
+    if truncated {
+        response["truncated"] = json!(true);
+    }
+    response["element_ids"] = json!(collect_topology_element_ids(response));
+    push_token_budget_warning(response, max_tokens);
+    set_estimated_tokens(response)
+}
+
+fn attach_index_validation_log(
+    response: &mut Value,
+    source_file: &str,
+    diagnostics: &[sruja_diagnostics::Diagnostic],
+) -> Result<(), CliError> {
+    if diagnostics.len() <= 8 {
+        return Ok(());
+    }
+    let repo = Path::new(source_file)
+        .parent()
+        .unwrap_or_else(|| Path::new("."));
+    let stem = Path::new(source_file)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("architecture");
+    let storage_name = format!("index-{stem}.txt");
+    let text = crate::commands::diagnostic_vfs::diagnostics_to_text(diagnostics);
+    let truncation = crate::commands::diagnostic_vfs::truncate_and_store_if_needed(
+        repo,
+        &storage_name,
+        &text,
+        crate::commands::diagnostic_vfs::INDEX_VALIDATION_LOG_TOKEN_BUDGET,
+    )?;
+    if let Some(validation) = response.get_mut("validation") {
+        validation["diagnostic_log"] = serde_json::to_value(&truncation)?;
+    }
+    Ok(())
+}
+
+fn set_estimated_tokens(value: &mut Value) -> Result<(), CliError> {
+    let text = serde_json::to_string_pretty(value)?;
+    value["estimated_tokens"] = json!(estimate_tokens(&text));
+    Ok(())
+}
+
+fn build_architecture_index_from_program(
+    source_file: &str,
+    program: &sruja_language::ast::Program,
+    kind_filter: Option<&[String]>,
+    max_tokens: usize,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    use sruja_diagnostics::codes;
+    let (elements, relations) = sruja_language::collect_elements(program);
+
+    let mut node_ids = elements.keys().cloned().collect::<Vec<_>>();
+    node_ids.sort();
+    let edges = relations
+        .iter()
+        .map(|r| (r.from.as_string(), r.to.as_string()))
+        .collect::<Vec<_>>();
+    let scc = sruja_graph::SccAnalyzer::new().analyze(&node_ids, &edges);
+    let cyclic_nodes = scc
+        .components
+        .iter()
+        .filter(|c| c.is_cyclic)
+        .flat_map(|c| c.nodes.iter().cloned())
+        .collect::<std::collections::HashSet<_>>();
+    let cycle_samples = scc
+        .components
+        .iter()
+        .filter(|c| c.is_cyclic)
+        .take(3)
+        .map(|c| json!({ "id": c.id, "size": c.nodes.len(), "nodes": c.nodes }))
+        .collect::<Vec<_>>();
+
+    let validator = sruja_engine::Validator::with_default_rules();
+    let diagnostics = validator.validate_sync(program);
+    let error_count = diagnostics
+        .iter()
+        .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
+        .count();
+    let warning_count = diagnostics
+        .iter()
+        .filter(|d| d.severity == sruja_diagnostics::Severity::Warning)
+        .count();
+    let policy_count = diagnostics
+        .iter()
+        .filter(|d| d.code == codes::CODE_POLICY_VIOLATION)
+        .count();
+    let policy_samples = diagnostics
+        .iter()
+        .filter(|d| d.code == codes::CODE_POLICY_VIOLATION)
+        .take(3)
+        .map(|d| {
+            json!({
+                "code": d.code,
+                "message": trim_text(Some(d.message.as_str()), 180),
+                "location": {
+                    "file": d.location.file.clone(),
+                    "line": d.location.line,
+                    "column": d.location.column
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let mut entries = Vec::new();
+    for (id, elem) in elements {
+        let kind = elem.assignment.kind.to_string();
+        if let Some(filter) = kind_filter {
+            if !kind_matches_filter(&kind, filter) {
+                continue;
+            }
+        }
+        let title = elem
+            .assignment
+            .title
+            .as_deref()
+            .and_then(|t| trim_text(Some(t), 120))
+            .unwrap_or_else(|| id.clone());
+        let (description, technology) = elem
+            .assignment
+            .body
+            .as_ref()
+            .map(|b| (b.description.as_deref(), b.technology.as_deref()))
+            .unwrap_or((None, None));
+        entries.push(json!({
+            "id": id.clone(),
+            "kind": kind,
+            "title": title,
+            "technology": trim_text(technology, 80),
+            "description": trim_text(description, 160),
+            "in_cycle": cyclic_nodes.contains(&id)
+        }));
+    }
+    entries.sort_by(|a, b| {
+        a.get("id")
+            .and_then(|v| v.as_str())
+            .cmp(&b.get("id").and_then(|v| v.as_str()))
+    });
+
+    let element_ids = entries
+        .iter()
+        .filter_map(|e| e.get("id").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .collect::<Vec<_>>();
+
+    let warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+
+    let mut response = json!({
+        "schema_version": "architecture_index/v1",
+        "source": { "kind": "dsl", "file": source_file },
+        "element_ids": element_ids,
+        "elements": entries,
+        "validation": {
+            "errors": error_count,
+            "warnings": warning_count,
+            "policy_violations": { "count": policy_count, "samples": policy_samples },
+            "cycles": { "cyclic_sccs": scc.cyclic_sccs, "largest_scc_size": scc.largest_scc_size, "samples": cycle_samples }
+        },
+        "next_suggested_tool": "sruja_get_topology",
+        "truncated": false,
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+
+    attach_index_validation_log(&mut response, source_file, &diagnostics)?;
+    finalize_ladder_response(
+        &mut response,
+        max_tokens,
+        &["elements", "element_ids"],
+        Some("elements"),
+    )?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+fn build_architecture_index_from_scan(
+    graph: &sruja_scan::Graph,
+    kind_filter: Option<&[String]>,
+    max_tokens: usize,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    let mut node_ids = graph.nodes.iter().map(|n| n.id.clone()).collect::<Vec<_>>();
+    node_ids.sort();
+    let edges = graph
+        .edges
+        .iter()
+        .map(|e| (e.source.clone(), e.target.clone()))
+        .collect::<Vec<_>>();
+    let scc = sruja_graph::SccAnalyzer::new().analyze(&node_ids, &edges);
+    let cyclic_nodes = scc
+        .components
+        .iter()
+        .filter(|c| c.is_cyclic)
+        .flat_map(|c| c.nodes.iter().cloned())
+        .collect::<std::collections::HashSet<_>>();
+
+    let mut entries = Vec::new();
+    let mut nodes = graph.nodes.clone();
+    nodes.sort_by(|a, b| a.id.cmp(&b.id));
+    for n in nodes {
+        let kind = n.kind.as_str().to_string();
+        if let Some(filter) = kind_filter {
+            if !kind_matches_filter(&kind, filter) {
+                continue;
+            }
+        }
+        entries.push(json!({
+            "id": n.id,
+            "kind": kind,
+            "title": trim_text(Some(n.label.as_str()), 120),
+            "technology": trim_text(n.technology.as_deref(), 80),
+            "description": trim_text(n.path.as_deref(), 160),
+            "in_cycle": cyclic_nodes.contains(&n.id)
+        }));
+    }
+
+    let element_ids = entries
+        .iter()
+        .filter_map(|e| e.get("id").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .collect::<Vec<_>>();
+
+    let warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+
+    let mut response = json!({
+        "schema_version": "architecture_index/v1",
+        "source": { "kind": "scan" },
+        "element_ids": element_ids,
+        "elements": entries,
+        "validation": {
+            "errors": 0,
+            "warnings": 0,
+            "policy_violations": { "count": 0, "samples": [] },
+            "cycles": { "cyclic_sccs": scc.cyclic_sccs, "largest_scc_size": scc.largest_scc_size, "samples": [] }
+        },
+        "next_suggested_tool": "sruja_get_topology",
+        "truncated": false,
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+
+    finalize_ladder_response(
+        &mut response,
+        max_tokens,
+        &["elements", "element_ids"],
+        Some("elements"),
+    )?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+fn build_topology_from_program(
+    source_file: &str,
+    program: &sruja_language::ast::Program,
+    id: &str,
+    depth: usize,
+    max_tokens: usize,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    let (elements, relations) = sruja_language::collect_elements(program);
+    let mut all_ids = elements.keys().cloned().collect::<Vec<_>>();
+    all_ids.sort();
+    let resolved = resolve_id_best_effort(id, &all_ids);
+    let target = resolved.id.clone();
+
+    let mut outgoing: HashMap<String, Vec<String>> = HashMap::new();
+    let mut incoming: HashMap<String, Vec<String>> = HashMap::new();
+    for r in relations {
+        let src = r.from.as_string();
+        let tgt = r.to.as_string();
+        outgoing.entry(src.clone()).or_default().push(tgt.clone());
+        incoming.entry(tgt).or_default().push(src);
+    }
+    for v in outgoing.values_mut() {
+        v.sort();
+        v.dedup();
+    }
+    for v in incoming.values_mut() {
+        v.sort();
+        v.dedup();
+    }
+
+    let upstream = bfs_radius(&incoming, &target, depth);
+    let downstream = bfs_radius(&outgoing, &target, depth);
+
+    let mut warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+    push_resolution_warnings(&mut warnings, id, &resolved);
+
+    let mut response = json!({
+        "schema_version": "topology/v1",
+        "source": { "kind": "dsl", "file": source_file },
+        "target": target,
+        "max_depth": depth,
+        "upstream": upstream,
+        "downstream": downstream,
+        "element_ids": [],
+        "next_suggested_tool": "sruja_get_elements",
+        "truncated": false,
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+
+    finalize_topology_response(&mut response, max_tokens)?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+fn build_topology_from_scan(
+    graph: &sruja_scan::Graph,
+    id: &str,
+    depth: usize,
+    max_tokens: usize,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    let mut all_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+    all_ids.sort();
+    let resolved = resolve_id_best_effort(id, &all_ids);
+    let radius = graph.blast_radius(&resolved.id, depth);
+
+    let mut warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+    push_resolution_warnings(&mut warnings, id, &resolved);
+
+    let mut response = json!({
+        "schema_version": "topology/v1",
+        "source": { "kind": "scan" },
+        "target": radius.target,
+        "max_depth": radius.max_depth,
+        "upstream": radius.upstream.iter().map(|n| json!({"id": n.id, "depth": n.depth})).collect::<Vec<_>>(),
+        "downstream": radius.downstream.iter().map(|n| json!({"id": n.id, "depth": n.depth})).collect::<Vec<_>>(),
+        "element_ids": [],
+        "next_suggested_tool": "sruja_get_elements",
+        "truncated": false,
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+
+    finalize_topology_response(&mut response, max_tokens)?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+fn collect_topology_element_ids(topology: &Value) -> Vec<String> {
+    let mut ids = Vec::new();
+    if let Some(t) = topology.get("target").and_then(|v| v.as_str()) {
+        ids.push(t.to_string());
+    }
+    for key in ["upstream", "downstream"] {
+        if let Some(arr) = topology.get(key).and_then(|v| v.as_array()) {
+            for n in arr {
+                if let Some(id) = n.get("id").and_then(|v| v.as_str()) {
+                    ids.push(id.to_string());
+                }
+            }
+        }
+    }
+    ids.sort();
+    ids.dedup();
+    ids
+}
+
+fn build_elements_from_program(
+    source_file: &str,
+    program: &sruja_language::ast::Program,
+    ids: &[String],
+    max_tokens: usize,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    let (elements, _relations) = sruja_language::collect_elements(program);
+    let mut all_ids = elements.keys().cloned().collect::<Vec<_>>();
+    all_ids.sort();
+
+    let mut out = Vec::new();
+    let mut warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+    for req in ids {
+        let resolved = resolve_id_best_effort(req, &all_ids);
+        push_resolution_warnings(&mut warnings, req, &resolved);
+        let Some(elem) = elements.get(&resolved.id) else {
+            out.push(json!({ "id": resolved.id, "requested_id": req, "missing": true }));
+            continue;
+        };
+        let title = elem
+            .assignment
+            .title
+            .clone()
+            .unwrap_or_else(|| resolved.id.clone());
+        let (
+            description,
+            technology,
+            owner,
+            domain,
+            criticality,
+            gotchas,
+            runbooks,
+            sources,
+            constraint_count,
+            convention_count,
+        ) = elem
+            .assignment
+            .body
+            .as_ref()
+            .map(|b| {
+                let sources = b
+                    .sources
+                    .iter()
+                    .take(5)
+                    .map(|s| {
+                        json!({
+                            "kind": s.kind.as_str(),
+                            "path": s.path,
+                            "description": s.description
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                (
+                    b.description.clone(),
+                    b.technology.clone(),
+                    b.owner.clone(),
+                    b.domain.clone(),
+                    b.criticality.as_ref().map(|c| c.as_str().to_string()),
+                    b.gotchas.iter().take(5).cloned().collect::<Vec<_>>(),
+                    b.runbooks.iter().take(5).cloned().collect::<Vec<_>>(),
+                    sources,
+                    b.constraints.len(),
+                    b.conventions.len(),
+                )
+            })
+            .unwrap_or((
+                None,
+                None,
+                None,
+                None,
+                None,
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                0,
+                0,
+            ));
+
+        out.push(json!({
+            "id": resolved.id,
+            "kind": elem.assignment.kind.to_string(),
+            "title": title,
+            "description": description,
+            "technology": technology,
+            "tags": elem.assignment.tag_refs,
+            "owner": owner,
+            "domain": domain,
+            "criticality": criticality,
+            "gotchas": gotchas,
+            "runbooks": runbooks,
+            "constraint_count": constraint_count,
+            "convention_count": convention_count,
+            "sources": sources
+        }));
+    }
+
+    out.sort_by(|a, b| {
+        a.get("id")
+            .and_then(|v| v.as_str())
+            .cmp(&b.get("id").and_then(|v| v.as_str()))
+    });
+
+    let mut response = json!({
+        "schema_version": "elements/v1",
+        "source": { "kind": "dsl", "file": source_file },
+        "requested_ids": ids,
+        "elements": out,
+        "element_ids": [],
+        "next_suggested_tool": "sruja_get_task_context",
+        "truncated": false,
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+
+    finalize_ladder_response(
+        &mut response,
+        max_tokens,
+        &["elements", "element_ids"],
+        Some("elements"),
+    )?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+fn build_elements_from_scan(
+    graph: &sruja_scan::Graph,
+    ids: &[String],
+    max_tokens: usize,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    let mut by_id: HashMap<&str, &sruja_scan::Node> = HashMap::new();
+    for n in &graph.nodes {
+        by_id.insert(n.id.as_str(), n);
+    }
+
+    let mut all_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+    all_ids.sort();
+
+    let mut out = Vec::new();
+    let mut warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+    for id in ids {
+        let resolved = resolve_id_best_effort(id, &all_ids);
+        push_resolution_warnings(&mut warnings, id, &resolved);
+        if let Some(n) = by_id.get(resolved.id.as_str()) {
+            out.push(json!({
+                "id": n.id,
+                "kind": n.kind.as_str(),
+                "title": n.label,
+                "description": n.path,
+                "technology": n.technology,
+                "tags": [],
+                "owner": null,
+                "domain": null,
+                "criticality": null,
+                "gotchas": [],
+                "runbooks": [],
+                "constraint_count": 0,
+                "convention_count": 0,
+                "sources": n.sources
+            }));
+        } else {
+            out.push(json!({ "id": resolved.id, "requested_id": id, "missing": true }));
+        }
+    }
+
+    let mut response = json!({
+        "schema_version": "elements/v1",
+        "source": { "kind": "scan" },
+        "requested_ids": ids,
+        "elements": out,
+        "element_ids": [],
+        "next_suggested_tool": "sruja_get_task_context",
+        "truncated": false,
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+
+    finalize_ladder_response(
+        &mut response,
+        max_tokens,
+        &["elements", "element_ids"],
+        Some("elements"),
+    )?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3566,6 +4544,17 @@ mod tests {
         assert!(is_mutating_mcp_tool("sruja_agent_run"));
         assert!(!is_mutating_mcp_tool("sruja_check_drift"));
         assert!(!is_mutating_mcp_tool("sruja_hybrid_query"));
+        for ladder in [
+            "sruja_list_architecture_index",
+            "sruja_get_topology",
+            "sruja_get_elements",
+            "sruja_get_diagnostic_full",
+        ] {
+            assert!(
+                !is_mutating_mcp_tool(ladder),
+                "ladder tool {ladder} must be read-only"
+            );
+        }
     }
 
     #[test]
@@ -3609,6 +4598,10 @@ mod tests {
         assert!(names.contains(&"sruja_get_architecture_context".to_string()));
         assert!(names.contains(&"sruja_explain_discovery".to_string()));
         assert!(names.contains(&"sruja_check_drift".to_string()));
+        assert!(names.contains(&"sruja_list_architecture_index".to_string()));
+        assert!(names.contains(&"sruja_get_topology".to_string()));
+        assert!(names.contains(&"sruja_get_elements".to_string()));
+        assert!(names.contains(&"sruja_get_diagnostic_full".to_string()));
         assert!(names.contains(&"sruja_get_context_events".to_string()));
         assert!(names.contains(&"sruja_get_decisions".to_string()));
         assert!(names.contains(&"sruja_get_decision_trace".to_string()));
@@ -3726,6 +4719,297 @@ mod tests {
 
         assert!(out.contains("# Path from src_main_rs to src_sub_rs"));
         assert!(out.contains("src_main_rs -> src_sub_rs"));
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_architecture_index_from_dsl_returns_json() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        fs::write(
+            dir.path().join("repo.sruja"),
+            r#"
+MySystem = system "My System" {
+  description "Test system"
+
+  Api = container "API" {
+    technology "Rust"
+    description "HTTP API"
+  }
+
+  Db = database "DB" {
+    technology "PostgreSQL"
+    description "Data store"
+  }
+}
+
+MySystem.Api -> MySystem.Db "SQL"
+"#,
+        )
+        .expect("repo.sruja");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_list_architecture_index",
+            &json!({ "path": dir.path().to_string_lossy(), "max_tokens": 2000 }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("index");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+        assert_eq!(
+            parsed.get("schema_version").and_then(|v| v.as_str()),
+            Some("architecture_index/v1")
+        );
+        assert!(parsed.get("elements").and_then(|v| v.as_array()).is_some());
+        assert!(parsed.get("estimated_tokens").is_some());
+        assert_eq!(
+            parsed.get("next_suggested_tool").and_then(|v| v.as_str()),
+            Some("sruja_get_topology")
+        );
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_topology_from_dsl_returns_json() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        fs::write(
+            dir.path().join("repo.sruja"),
+            r#"
+MySystem = system "My System" {
+  description "Test system"
+
+  Api = container "API" {
+    technology "Rust"
+    description "HTTP API"
+  }
+
+  Db = database "DB" {
+    technology "PostgreSQL"
+    description "Data store"
+  }
+}
+
+MySystem.Api -> MySystem.Db "SQL"
+"#,
+        )
+        .expect("repo.sruja");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_get_topology",
+            &json!({ "path": dir.path().to_string_lossy(), "id": "MySystem.Api", "depth": 1 }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("topology");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+        assert_eq!(
+            parsed.get("schema_version").and_then(|v| v.as_str()),
+            Some("topology/v1")
+        );
+        assert!(parsed.get("upstream").is_some());
+        assert!(parsed.get("downstream").is_some());
+        assert_eq!(
+            parsed.get("next_suggested_tool").and_then(|v| v.as_str()),
+            Some("sruja_get_elements")
+        );
+        assert!(parsed
+            .get("element_ids")
+            .and_then(|v| v.as_array())
+            .is_some());
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_get_elements_from_dsl_returns_json() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        fs::write(
+            dir.path().join("repo.sruja"),
+            r#"
+MySystem = system "My System" {
+  description "Test system"
+
+  Api = container "API" {
+    technology "Rust"
+    description "HTTP API"
+  }
+}
+"#,
+        )
+        .expect("repo.sruja");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_get_elements",
+            &json!({ "path": dir.path().to_string_lossy(), "ids": ["MySystem.Api"] }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("elements");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+        assert_eq!(
+            parsed.get("schema_version").and_then(|v| v.as_str()),
+            Some("elements/v1")
+        );
+        assert!(parsed.get("elements").and_then(|v| v.as_array()).is_some());
+        assert_eq!(
+            parsed.get("next_suggested_tool").and_then(|v| v.as_str()),
+            Some("sruja_get_task_context")
+        );
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_topology_element_ids_include_neighbors() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        fs::write(
+            dir.path().join("repo.sruja"),
+            r#"
+MySystem = system "My System" {
+  description "Test system"
+  Api = container "API" { technology "Rust" description "HTTP API" }
+  Db = database "DB" { technology "PostgreSQL" description "Data store" }
+}
+MySystem.Api -> MySystem.Db "SQL"
+"#,
+        )
+        .expect("repo.sruja");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_get_topology",
+            &json!({ "path": dir.path().to_string_lossy(), "id": "MySystem.Api", "depth": 1 }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("topology");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+        let ids: Vec<String> = parsed
+            .get("element_ids")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        assert!(ids.iter().any(|id| id == "MySystem.Api"));
+        assert!(ids.iter().any(|id| id == "MySystem.Db"));
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_topology_resolves_short_id() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        fs::write(
+            dir.path().join("repo.sruja"),
+            r#"
+MySystem = system "My System" {
+  description "Test"
+  Api = container "API" { technology "Rust" description "API" }
+}
+"#,
+        )
+        .expect("repo.sruja");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_get_topology",
+            &json!({ "path": dir.path().to_string_lossy(), "id": "Api", "depth": 1 }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("topology");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+        assert_eq!(
+            parsed.get("target").and_then(|v| v.as_str()),
+            Some("MySystem.Api")
+        );
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_architecture_index_truncates_when_budget_low() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut dsl = String::new();
+        dsl.push_str("App = system \"App\" {\n  description \"Many elements\"\n");
+        for i in 0..80 {
+            dsl.push_str(&format!(
+                "  S{i} = container \"S{i}\" {{ technology \"Go\" description \"Service {i}\" }}\n"
+            ));
+        }
+        dsl.push_str("}\n");
+        fs::write(dir.path().join("repo.sruja"), dsl).expect("repo.sruja");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_list_architecture_index",
+            &json!({ "path": dir.path().to_string_lossy(), "max_tokens": 400 }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("index");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+        assert_eq!(
+            parsed.get("truncated").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_get_diagnostic_full_reads_vfs() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let uri = crate::commands::diagnostic_vfs::write_vfs_diagnostic(
+            dir.path(),
+            "sample.txt",
+            "full diagnostic body\n",
+        )
+        .expect("write");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_get_diagnostic_full",
+            &json!({
+                "path": dir.path().to_string_lossy(),
+                "uri": uri
+            }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("diagnostic full");
+
+        assert_eq!(out.trim(), "full diagnostic body");
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_call_architecture_index_scan_fallback_without_dsl() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).expect("src");
+        fs::write(src.join("lib.rs"), "pub fn hello() {}\n").expect("write");
+
+        let cache = Arc::new(Mutex::new(HashMap::new()));
+        let out = run_tool(
+            "sruja_list_architecture_index",
+            &json!({ "path": dir.path().to_string_lossy() }),
+            ".",
+            &cache,
+        )
+        .await
+        .expect("index");
+
+        let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+        assert_eq!(
+            parsed.pointer("/source/kind").and_then(|v| v.as_str()),
+            Some("scan")
+        );
     }
 
     #[tokio::test]

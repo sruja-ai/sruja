@@ -100,6 +100,50 @@ impl ContextEventRecord {
         }
         self.details.to_string().contains(element_id)
     }
+
+    fn new_now(
+        repo: &Path,
+        schema_version: &str,
+        kind: &str,
+        outcome: &str,
+        strict: Option<bool>,
+        details: serde_json::Value,
+    ) -> Self {
+        Self {
+            schema_version: schema_version.to_string(),
+            timestamp: Utc::now().to_rfc3339(),
+            kind: kind.to_string(),
+            outcome: outcome.to_string(),
+            policy_fingerprint: policy_fingerprint(repo),
+            strict,
+            details,
+            trace_id: None,
+            decision_id: None,
+            run_id: None,
+            workflow_id: None,
+            actor: None,
+            source: None,
+            tool: None,
+            elements: None,
+            subject_ids: None,
+            evidence_refs: None,
+            summary: None,
+        }
+    }
+
+    fn new_v1_now(
+        repo: &Path,
+        kind: &str,
+        outcome: &str,
+        strict: Option<bool>,
+        details: serde_json::Value,
+    ) -> Self {
+        Self::new_now(repo, CONTEXT_EVENTS_SCHEMA, kind, outcome, strict, details)
+    }
+
+    fn new_v2_now(repo: &Path, kind: &str, outcome: &str, details: serde_json::Value) -> Self {
+        Self::new_now(repo, CONTEXT_EVENTS_SCHEMA_V2, kind, outcome, None, details)
+    }
 }
 
 /// Validate a record before appending (CLI / MCP). Matches `schemas/context_event_record.schema.json`.
@@ -140,6 +184,12 @@ pub fn append_context_event(repo: &Path, record: ContextEventRecord) {
     }
 }
 
+fn normalize_record_details(record: &mut ContextEventRecord) {
+    if record.details.is_null() {
+        record.details = serde_json::json!({});
+    }
+}
+
 /// Parse and validate one JSON line from `sruja event append` or MCP.
 pub fn append_context_event_from_json_line(
     repo: &Path,
@@ -151,9 +201,7 @@ pub fn append_context_event_from_json_line(
     }
     let mut record: ContextEventRecord =
         serde_json::from_str(trimmed).map_err(|e| format!("invalid JSON: {e}"))?;
-    if record.details.is_null() {
-        record.details = serde_json::json!({});
-    }
+    normalize_record_details(&mut record);
     validate_context_event_record(&record)?;
     append_context_event(repo, record.clone());
     Ok(record)
@@ -182,26 +230,7 @@ pub fn record_intent_check(repo: &Path, report: &DriftReport, strict: bool) {
     });
     append_context_event(
         repo,
-        ContextEventRecord {
-            schema_version: CONTEXT_EVENTS_SCHEMA.to_string(),
-            timestamp: Utc::now().to_rfc3339(),
-            kind: "intent_check".to_string(),
-            outcome: outcome.to_string(),
-            policy_fingerprint: policy_fingerprint(repo),
-            strict: Some(strict),
-            details,
-            trace_id: None,
-            decision_id: None,
-            run_id: None,
-            workflow_id: None,
-            actor: None,
-            source: None,
-            tool: None,
-            elements: None,
-            subject_ids: None,
-            evidence_refs: None,
-            summary: None,
-        },
+        ContextEventRecord::new_v1_now(repo, "intent_check", outcome, Some(strict), details),
     );
 }
 
@@ -214,47 +243,29 @@ pub fn record_drift_compare(
     let outcome = if violation_count > 0 { "warn" } else { "pass" };
     append_context_event(
         repo,
-        ContextEventRecord {
-            schema_version: CONTEXT_EVENTS_SCHEMA.to_string(),
-            timestamp: Utc::now().to_rfc3339(),
-            kind: "drift".to_string(),
-            outcome: outcome.to_string(),
-            policy_fingerprint: policy_fingerprint(repo),
-            strict: None,
-            details: serde_json::json!({
+        ContextEventRecord::new_v1_now(
+            repo,
+            "drift",
+            outcome,
+            None,
+            serde_json::json!({
                 "violation_count": violation_count,
                 "truth_status": truth_status,
                 "compared_to_architecture": compared_to_architecture,
             }),
-            trace_id: None,
-            decision_id: None,
-            run_id: None,
-            workflow_id: None,
-            actor: None,
-            source: None,
-            tool: None,
-            elements: None,
-            subject_ids: None,
-            evidence_refs: None,
-            summary: None,
-        },
+        ),
     );
 }
 
 pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Option<&str>) {
+    let details = serde_json::json!({
+        "goal": goal,
+        "element_id": element_id,
+    });
+    let base = ContextEventRecord::new_v2_now(repo, "agent_plan", "ok", details);
     append_context_event(
         repo,
         ContextEventRecord {
-            schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
-            timestamp: Utc::now().to_rfc3339(),
-            kind: "agent_plan".to_string(),
-            outcome: "ok".to_string(),
-            policy_fingerprint: policy_fingerprint(repo),
-            strict: None,
-            details: serde_json::json!({
-                "goal": goal,
-                "element_id": element_id,
-            }),
             trace_id: Some(run_id.to_string()),
             decision_id: None,
             run_id: Some(run_id.to_string()),
@@ -266,6 +277,7 @@ pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Opti
             subject_ids: None,
             evidence_refs: None,
             summary: Some(format!("Agent plan for: {goal}")),
+            ..base
         },
     );
 }
@@ -273,26 +285,13 @@ pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Opti
 pub fn record_proposal_merge(repo: &Path, proposal_id: &str) {
     append_context_event(
         repo,
-        ContextEventRecord {
-            schema_version: CONTEXT_EVENTS_SCHEMA.to_string(),
-            timestamp: Utc::now().to_rfc3339(),
-            kind: "proposal_merge".to_string(),
-            outcome: "ok".to_string(),
-            policy_fingerprint: policy_fingerprint(repo),
-            strict: None,
-            details: serde_json::json!({ "proposal_id": proposal_id }),
-            trace_id: None,
-            decision_id: None,
-            run_id: None,
-            workflow_id: None,
-            actor: None,
-            source: None,
-            tool: None,
-            elements: None,
-            subject_ids: None,
-            evidence_refs: None,
-            summary: None,
-        },
+        ContextEventRecord::new_v1_now(
+            repo,
+            "proposal_merge",
+            "ok",
+            None,
+            serde_json::json!({ "proposal_id": proposal_id }),
+        ),
     );
 }
 
@@ -328,33 +327,34 @@ pub fn read_context_events_query(
         let Ok(ev) = serde_json::from_str::<ContextEventRecord>(line) else {
             continue;
         };
+        let details_text = ev.details.to_string();
         if let Some(k) = query.kind_filter {
             if ev.kind != k {
                 continue;
             }
         }
         if let Some(sub) = query.details_substring {
-            if !ev.details.to_string().contains(sub) {
+            if !details_text.contains(sub) {
                 continue;
             }
         }
         if let Some(did) = query.decision_id {
             let in_field = ev.decision_id.as_deref() == Some(did);
-            let in_details = ev.details.to_string().contains(did);
+            let in_details = details_text.contains(did);
             if !in_field && !in_details {
                 continue;
             }
         }
         if let Some(tid) = query.trace_id {
             let in_field = ev.trace_id.as_deref() == Some(tid);
-            let in_details = ev.details.to_string().contains(tid);
+            let in_details = details_text.contains(tid);
             if !in_field && !in_details {
                 continue;
             }
         }
         if let Some(rid) = query.run_id {
             let in_field = ev.run_id.as_deref() == Some(rid);
-            let in_details = ev.details.to_string().contains(rid);
+            let in_details = details_text.contains(rid);
             if !in_field && !in_details {
                 continue;
             }
