@@ -109,6 +109,7 @@ pub(crate) mod drift_state;
 pub mod event;
 pub(crate) mod mcp_prompts;
 pub(crate) mod mcp_resources;
+pub(crate) mod memory_cmd;
 
 pub use context::{context_export, sync_ide_rules, sync_ide_rules_check, ContextRequest};
 pub use decision::{
@@ -116,6 +117,7 @@ pub use decision::{
     decision_show, decision_supersede, decision_trace, list_decisions,
 };
 pub use event::{event_append, event_list};
+pub use memory_cmd::{memory_reindex, memory_search, memory_timeline};
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
     scan_repo_cached_with_opts(repo_path, false)

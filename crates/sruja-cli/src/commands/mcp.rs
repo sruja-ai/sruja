@@ -65,6 +65,7 @@ const MCP_MUTATING_TOOLS: &[&str] = &[
     "sruja_record_decision_event",
     "sruja_create_decision_record",
     "sruja_link_decision_to_element",
+    "sruja_reindex_memory",
 ];
 
 fn is_mutating_mcp_tool(name: &str) -> bool {
@@ -681,6 +682,51 @@ fn tool_definitions() -> Vec<Value> {
             "name": "sruja_get_drift_state",
             "title": "Sruja Drift State Injector",
             "description": "Compact structured drift payload (drift_state/v1) for host context injection—prefer over pasting full drift reports.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_search_memory",
+            "title": "Sruja Search Memory",
+            "description": "FTS search over indexed learnings, context events, and decision records (.sruja/memory.sqlite). Results labeled hypothesis vs reviewed_truth—never auto-writes repo.sruja.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "query": { "type": "string", "description": "Full-text search query" },
+                    "element_id": { "type": "string", "description": "Optional architecture element filter" },
+                    "decision_id": { "type": "string", "description": "Optional decision id filter" },
+                    "hitl_kind": { "type": "string", "description": "Optional HITL kind filter (precedent, exception, correction, guardrail)" },
+                    "limit": { "type": "integer", "description": "Max hits (default 20)", "minimum": 1, "maximum": 100 }
+                },
+                "required": ["query"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_memory_timeline",
+            "title": "Sruja Memory Timeline",
+            "description": "Chronological memory slice around an anchor event id or ISO timestamp (learnings, events, decisions).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "anchor_id": { "type": "string", "description": "Memory entry id to center on" },
+                    "anchor_timestamp": { "type": "string", "description": "ISO-8601 timestamp anchor (if anchor_id omitted)" },
+                    "before": { "type": "integer", "description": "Entries before anchor (default 10)", "minimum": 0, "maximum": 500 },
+                    "after": { "type": "integer", "description": "Entries after anchor (default 10)", "minimum": 0, "maximum": 500 },
+                    "decision_id": { "type": "string", "description": "Optional decision id filter" },
+                    "element_id": { "type": "string", "description": "Optional element id filter" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_reindex_memory",
+            "title": "Sruja Reindex Memory",
+            "description": "Rebuild .sruja/memory.sqlite from agent_memory.json, context_events.jsonl, and .sruja/decisions/*.md.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -1598,6 +1644,65 @@ async fn run_tool(
         "sruja_get_drift_state" => {
             let graph = get_or_scan_graph(graph_cache, &repo).await?;
             crate::commands::drift_state::build_drift_state_json(&repo, &graph)
+        }
+        "sruja_search_memory" => {
+            let query = arguments
+                .get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("missing query".to_string()))?;
+            let limit = arguments
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(20) as usize;
+            let store = sruja_memory::MemoryStore::open(Path::new(&repo))
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            let hits = store
+                .search(sruja_memory::SearchMemoryOptions {
+                    query,
+                    element_id: arguments.get("element_id").and_then(|v| v.as_str()),
+                    decision_id: arguments.get("decision_id").and_then(|v| v.as_str()),
+                    hitl_kind: arguments.get("hitl_kind").and_then(|v| v.as_str()),
+                    source: None,
+                    trust: None,
+                    limit,
+                })
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            Ok(serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": "memory_search/v1",
+                "query": query,
+                "count": hits.len(),
+                "hits": hits,
+                "note": "hypothesis vs reviewed_truth; never auto-merge into repo.sruja"
+            }))?)
+        }
+        "sruja_get_memory_timeline" => {
+            let store = sruja_memory::MemoryStore::open(Path::new(&repo))
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            let tl = store
+                .timeline(sruja_memory::TimelineOptions {
+                    anchor_id: arguments.get("anchor_id").and_then(|v| v.as_str()),
+                    anchor_timestamp: arguments.get("anchor_timestamp").and_then(|v| v.as_str()),
+                    before: arguments
+                        .get("before")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(10) as usize,
+                    after: arguments
+                        .get("after")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(10) as usize,
+                    decision_id: arguments.get("decision_id").and_then(|v| v.as_str()),
+                    element_id: arguments.get("element_id").and_then(|v| v.as_str()),
+                })
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            Ok(serde_json::to_string_pretty(&tl)?)
+        }
+        "sruja_reindex_memory" => {
+            let mut store = sruja_memory::MemoryStore::open(Path::new(&repo))
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            store
+                .reindex()
+                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            Ok(r#"{"ok":true,"schema_version":"memory_index/v1"}"#.to_string())
         }
         "sruja_get_architecture_context" => {
             let file = arguments
@@ -4920,6 +5025,8 @@ mod tests {
         assert!(names.contains(&"sruja_get_learned_facts".to_string()));
         assert!(names.contains(&"sruja_get_evidence_graph".to_string()));
         assert!(names.contains(&"sruja_get_agent_learnings".to_string()));
+        assert!(names.contains(&"sruja_search_memory".to_string()));
+        assert!(names.contains(&"sruja_get_memory_timeline".to_string()));
     }
 
     #[tokio::test]

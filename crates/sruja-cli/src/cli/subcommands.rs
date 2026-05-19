@@ -288,6 +288,47 @@ pub enum EventCommand {
 }
 
 #[derive(Subcommand)]
+pub enum MemoryCommand {
+    /// Rebuild `.sruja/memory.sqlite` from learnings, events, and decisions
+    Reindex {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+    /// Full-text search indexed memory (hypothesis vs reviewed_truth labels)
+    Search {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Search query
+        query: String,
+        #[arg(long)]
+        element_id: Option<String>,
+        #[arg(long)]
+        decision_id: Option<String>,
+        #[arg(long)]
+        hitl_kind: Option<String>,
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+    /// Chronological slice around an anchor id or timestamp
+    Timeline {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        anchor_id: Option<String>,
+        #[arg(long)]
+        anchor_timestamp: Option<String>,
+        #[arg(long, default_value_t = 10)]
+        before: usize,
+        #[arg(long, default_value_t = 10)]
+        after: usize,
+        #[arg(long)]
+        decision_id: Option<String>,
+        #[arg(long)]
+        element_id: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum DecisionCommand {
     /// Create a new proposed Decision Record file
     New {

@@ -219,6 +219,17 @@ After host compresses chat history, append a lineage row with `sruja_record_cont
 
 **Token reduction fixture:** `crates/sruja-cli/tests/fixtures/context_prune_long_trace.json` and unit test `long_trace_prune_meets_twenty_percent_token_reduction` (≥20% trace tokens when host drops `compress_ids`).
 
+## Persistent memory (Phase 4)
+
+| Tool | Summary |
+|------|---------|
+| `sruja_search_memory` | FTS over `.sruja/memory.sqlite` (learnings, context events, decision records). Hits labeled `hypothesis` or `reviewed_truth`. |
+| `sruja_get_memory_timeline` | Chronological slice around `anchor_id` or `anchor_timestamp`. |
+| `sruja_reindex_memory` | Rebuild index from `agent_memory.json`, `context_events.jsonl`, `.sruja/decisions/*.md`. |
+| CLI | `sruja memory search|timeline|reindex` (hidden subcommands). |
+
+Auto-reindex when source files change; index never writes to `repo.sruja`.
+
 ## Choosing NL retrieval tools
 
 1. Start with **`sruja_hybrid_query`** unless you have a reason not to.

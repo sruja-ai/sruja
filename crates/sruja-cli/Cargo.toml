@@ -22,6 +22,7 @@ sruja-diff = { path = "../sruja-diff" }
 sruja-graph = { path = "../sruja-graph" }
 sruja-intent = { path = "../sruja-intent" }
 sruja-agent = { path = "../sruja-agent" }
+sruja-memory = { path = "../sruja-memory" }
 sruja-extract = { path = "../sruja-extract" }
 clap = { workspace = true }
 tokio = { workspace = true }

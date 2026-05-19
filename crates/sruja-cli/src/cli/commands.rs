@@ -3,8 +3,8 @@ use clap::Subcommand;
 use super::app::ContextIntent;
 use super::subcommands::{
     AgentCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand, EvolutionCommand,
-    FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand, ProposeCommand,
-    RunCommand,
+    FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand, MemoryCommand,
+    ProposeCommand, RunCommand,
 };
 
 #[derive(Subcommand)]
@@ -898,6 +898,12 @@ pub enum Commands {
     Event {
         #[command(subcommand)]
         cmd: EventCommand,
+    },
+    /// Indexed cross-session memory (SQLite + FTS5 under `.sruja/memory.sqlite`)
+    #[command(hide = true)]
+    Memory {
+        #[command(subcommand)]
+        cmd: MemoryCommand,
     },
     /// Decision Records (generalized ADRs) under `.sruja/decisions/`
     #[command(hide = true)]

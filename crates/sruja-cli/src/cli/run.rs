@@ -5,8 +5,8 @@ use super::app::ContextIntent;
 use super::commands::Commands;
 use super::subcommands::{
     AgentCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand, EvolutionCommand,
-    FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand, ProposeCommand,
-    RunCommand,
+    FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand, MemoryCommand,
+    ProposeCommand, RunCommand,
 };
 use super::Cli;
 
@@ -579,6 +579,41 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             category,
             elements,
         } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
+        Commands::Memory { cmd } => match cmd {
+            MemoryCommand::Reindex { repo } => commands::memory_reindex(&repo),
+            MemoryCommand::Search {
+                repo,
+                query,
+                element_id,
+                decision_id,
+                hitl_kind,
+                limit,
+            } => commands::memory_search(
+                &repo,
+                &query,
+                element_id.as_deref(),
+                decision_id.as_deref(),
+                hitl_kind.as_deref(),
+                limit,
+            ),
+            MemoryCommand::Timeline {
+                repo,
+                anchor_id,
+                anchor_timestamp,
+                before,
+                after,
+                decision_id,
+                element_id,
+            } => commands::memory_timeline(
+                &repo,
+                anchor_id.as_deref(),
+                anchor_timestamp.as_deref(),
+                before,
+                after,
+                decision_id.as_deref(),
+                element_id.as_deref(),
+            ),
+        },
         Commands::Event { cmd } => match cmd {
             EventCommand::Append { repo, json } => {
                 commands::event_append(&repo, json.as_deref()).await

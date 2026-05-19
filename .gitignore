@@ -73,7 +73,6 @@ target/
 *.bak
 /.DS_Store
 /manual_review.md
-/DIAGRAM_QUALITY_REPORT.md
 /RESEARCH_FINDINGS.md
 *.wasm
 *.wasm.br

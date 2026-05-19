@@ -21,6 +21,7 @@ members = [
     "crates/sruja-diff",
     "crates/sruja-intent",
     "crates/sruja-agent",
+    "crates/sruja-memory",
 ]
 resolver = "2"
 
@@ -54,6 +55,7 @@ fastembed = "5.0"
 hnsw_rs = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rusqlite = { version = "0.33", features = ["bundled"] }
 
 [profile.release]
 opt-level = "z"

@@ -1,0 +1,19 @@
+[package]
+name = "sruja-memory"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "SQLite + FTS5 indexed memory for Sruja context lineage (native only)"
+
+[dependencies]
+rusqlite = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+sruja-agent = { path = "../sruja-agent" }
+
+[dev-dependencies]
+tempfile = "3.27"
