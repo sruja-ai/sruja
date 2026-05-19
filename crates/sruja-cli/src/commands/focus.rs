@@ -19,13 +19,12 @@ use crate::integrations::{
 use crate::utils::colors;
 use crate::utils::run_id::generate_run_id;
 use crate::utils::run_snapshots::write_json_snapshot;
-use sruja_agent::AgenticMemory;
-use sruja_agent::ExperimentOutcome;
+use sruja_agent::{AgenticMemory, ExperimentOutcome, MemoryError};
 use sruja_graph::{compute_context_score, KnowledgeGraph, ReasonedWhyStep};
 
 const FOCUS_FOR_AI_SCHEMA_VERSION: &str = "focus_for_ai/v1";
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MemoryHit {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,6 +81,19 @@ pub struct FocusBriefing {
     /// On-disk Decision Records (`.sruja/decisions/`) whose `elements` include this focus target.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub decision_records: Vec<crate::commands::decision::DecisionListItem>,
+    /// Learnings actually injected into this briefing (subset of `find_relevant`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub surfaced_learning_ids: Vec<String>,
+}
+
+/// Learnings surfaced for a focus target (token-budget capped), with optional retrieval accounting.
+#[derive(Debug, Clone)]
+pub struct SurfacedLearnings {
+    pub hits: Vec<MemoryHit>,
+    pub ids: Vec<String>,
+    pub truncated: bool,
+    pub anti_patterns: Vec<String>,
+    pub pointer_traces: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -322,6 +334,110 @@ pub fn load_temporal_context(
     })
 }
 
+/// Surface agentic learnings for a target (same cap as focus briefing). When
+/// `record_retrievals` is true, increments counters and persists memory (standalone focus / MCP).
+pub fn surface_agent_learnings(
+    repo_path: &Path,
+    target_id: &str,
+    record_retrievals: bool,
+) -> Result<SurfacedLearnings, MemoryError> {
+    let mut memory = AgenticMemory::load(repo_path)?;
+    let mut relevant = memory.find_relevant(target_id);
+    relevant.sort_by(|a, b| b.timestamp.cmp(&a.timestamp).then_with(|| a.id.cmp(&b.id)));
+
+    let ce_cfg = crate::integrations::load_repo_config(repo_path)
+        .map(|c| c.context_engineering)
+        .unwrap_or_default();
+    let max_items = ce_cfg.bm25_max_results_focus.unwrap_or(10).max(1);
+
+    let mut budget = TokenBudget::new(800);
+    let mut hits = Vec::new();
+    let mut ids = Vec::new();
+    let mut anti_patterns = Vec::new();
+    let mut pointer_traces = Vec::new();
+    let mut truncated = false;
+
+    for entry in relevant.into_iter().take(max_items) {
+        let match_reason = if entry.affected_elements.iter().any(|e| {
+            e == target_id
+                || target_id.starts_with(&format!("{}.", e))
+                || e.starts_with(&format!("{}.", target_id))
+        }) {
+            "affected_elements"
+        } else if entry
+            .context
+            .to_lowercase()
+            .contains(&target_id.to_lowercase())
+        {
+            "context_keyword"
+        } else {
+            "unknown"
+        };
+
+        let hit_str = format!(
+            "{} {} {} {}",
+            entry.id,
+            entry.hypothesis,
+            entry.guardrail_advice,
+            entry.reason.clone().unwrap_or_default()
+        );
+        if budget
+            .used_tokens
+            .saturating_add(TokenBudget::estimate_tokens(&hit_str))
+            > budget.max_tokens
+        {
+            truncated = true;
+            break;
+        }
+        budget.used_tokens = budget
+            .used_tokens
+            .saturating_add(TokenBudget::estimate_tokens(&hit_str));
+
+        let outcome = match entry.outcome {
+            ExperimentOutcome::Success => "success",
+            ExperimentOutcome::Failed => "failed",
+        }
+        .to_string();
+        let kind = entry.kind.map(|k| format!("{k:?}").to_lowercase());
+
+        ids.push(entry.id.clone());
+        hits.push(MemoryHit {
+            id: entry.id.clone(),
+            kind,
+            hitl_kind: entry.hitl_kind.clone(),
+            outcome,
+            match_reason: match_reason.to_string(),
+            timestamp: entry.timestamp.to_rfc3339(),
+            hypothesis: entry.hypothesis.clone(),
+            guardrail_advice: entry.guardrail_advice.clone(),
+        });
+
+        anti_patterns.push(entry.guardrail_advice.clone());
+        if let Some(reason) = &entry.reason {
+            pointer_traces.push(format!(
+                "Failed hypothesis: {} ({})",
+                entry.hypothesis, reason
+            ));
+        } else {
+            pointer_traces.push(format!("Prior learning: {}", entry.hypothesis));
+        }
+    }
+
+    if record_retrievals && !ids.is_empty() {
+        let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
+        memory.record_retrievals(&refs);
+        memory.save(repo_path)?;
+    }
+
+    Ok(SurfacedLearnings {
+        hits,
+        ids,
+        truncated,
+        anti_patterns,
+        pointer_traces,
+    })
+}
+
 /// Build the focus briefing.
 pub fn build_focus_briefing(
     graph: &KnowledgeGraph,
@@ -329,6 +445,7 @@ pub fn build_focus_briefing(
     repo_path: &Path,
     scan_node_count: usize,
     temporal: Option<TemporalContextBrief>,
+    record_retrievals: bool,
 ) -> FocusBriefing {
     let node = graph.nodes.get(target_id);
 
@@ -446,86 +563,22 @@ pub fn build_focus_briefing(
     }
 
     // -- Architectural Guardrails (From Agentic Memory) --
-    let mut anti_patterns = Vec::new();
-    let mut pointer_traces = Vec::new();
-    let mut memory_hits: Vec<MemoryHit> = Vec::new();
-    let mut memory_truncated = false;
-
-    if let Ok(memory) = AgenticMemory::load(repo_path) {
-        let mut relevant = memory.find_relevant(target_id);
-        relevant.sort_by(|a, b| b.timestamp.cmp(&a.timestamp).then_with(|| a.id.cmp(&b.id)));
-
-        let ce_cfg = crate::integrations::load_repo_config(repo_path)
-            .map(|c| c.context_engineering)
-            .unwrap_or_default();
-        let max_items = ce_cfg.bm25_max_results_focus.unwrap_or(10).max(1);
-
-        let mut budget = TokenBudget::new(800);
-        for entry in relevant.into_iter().take(max_items) {
-            let match_reason = if entry.affected_elements.iter().any(|e| {
-                e == target_id
-                    || target_id.starts_with(&format!("{}.", e))
-                    || e.starts_with(&format!("{}.", target_id))
-            }) {
-                "affected_elements"
-            } else if entry
-                .context
-                .to_lowercase()
-                .contains(&target_id.to_lowercase())
-            {
-                "context_keyword"
-            } else {
-                "unknown"
-            };
-
-            let hit_str = format!(
-                "{} {} {} {}",
-                entry.id,
-                entry.hypothesis,
-                entry.guardrail_advice,
-                entry.reason.clone().unwrap_or_default()
-            );
-            if budget
-                .used_tokens
-                .saturating_add(TokenBudget::estimate_tokens(&hit_str))
-                > budget.max_tokens
-            {
-                memory_truncated = true;
-                break;
-            }
-            budget.used_tokens = budget
-                .used_tokens
-                .saturating_add(TokenBudget::estimate_tokens(&hit_str));
-
-            let outcome = match entry.outcome {
-                ExperimentOutcome::Success => "success",
-                ExperimentOutcome::Failed => "failed",
-            }
-            .to_string();
-            let kind = entry.kind.map(|k| format!("{k:?}").to_lowercase());
-
-            memory_hits.push(MemoryHit {
-                id: entry.id.clone(),
-                kind,
-                hitl_kind: entry.hitl_kind.clone(),
-                outcome,
-                match_reason: match_reason.to_string(),
-                timestamp: entry.timestamp.to_rfc3339(),
-                hypothesis: entry.hypothesis.clone(),
-                guardrail_advice: entry.guardrail_advice.clone(),
-            });
-
-            anti_patterns.push(entry.guardrail_advice.clone());
-            if let Some(reason) = &entry.reason {
-                pointer_traces.push(format!(
-                    "Failed hypothesis: {} ({})",
-                    entry.hypothesis, reason
-                ));
-            } else {
-                pointer_traces.push(format!("Prior learning: {}", entry.hypothesis));
-            }
-        }
-    }
+    let (
+        memory_hits,
+        surfaced_learning_ids,
+        memory_truncated,
+        mut anti_patterns,
+        mut pointer_traces,
+    ) = match surface_agent_learnings(repo_path, target_id, record_retrievals) {
+        Ok(s) => (
+            s.hits,
+            s.ids,
+            s.truncated,
+            s.anti_patterns,
+            s.pointer_traces,
+        ),
+        Err(_) => (Vec::new(), Vec::new(), false, Vec::new(), Vec::new()),
+    };
 
     let decision_trace_events = crate::commands::context_events::read_context_events_query(
         repo_path,
@@ -651,6 +704,7 @@ pub fn build_focus_briefing(
         enrichment: None,
         decision_trace_events,
         decision_records,
+        surfaced_learning_ids,
     }
 }
 
@@ -1139,7 +1193,8 @@ pub async fn focus(
         (None, None) => None,
     };
 
-    let mut briefing = build_focus_briefing(&kg, &target_id, repo_path, scan_node_count, temporal);
+    let mut briefing =
+        build_focus_briefing(&kg, &target_id, repo_path, scan_node_count, temporal, true);
     let run_id = run_id
         .map(|s| s.to_string())
         .unwrap_or_else(generate_run_id);

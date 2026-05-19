@@ -6,4 +6,7 @@ pub mod memory;
 
 pub use executor::TrajectoryExecutor;
 pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryStatus};
-pub use memory::{AgenticMemory, ExperimentOutcome, LearningEntry, LearningKind};
+pub use memory::{
+    AgenticMemory, CurationReport, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch,
+    LowUtilityEntry, MemoryError, MergeSuggestion,
+};

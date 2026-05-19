@@ -2509,6 +2509,9 @@ async fn run_tool(
                 tags: Vec::new(),
                 hitl_kind,
                 related_ids: Vec::new(),
+                retrieval_count: 0,
+                task_success_after: 0,
+                task_total_after: 0,
             });
             memory
                 .save(Path::new(&repo))
@@ -3398,10 +3401,10 @@ async fn run_tool(
                 .get("element_id")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| CliError::validation("Missing element_id"))?;
-            let memory = AgenticMemory::load(Path::new(&repo))
-                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
-            let relevant: Vec<&LearningEntry> = memory.find_relevant(element_id);
-            Ok(serde_json::to_string_pretty(&relevant)?)
+            let surfaced =
+                super::focus::surface_agent_learnings(Path::new(&repo), element_id, true)
+                    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            Ok(serde_json::to_string_pretty(&surfaced.hits)?)
         }
         "sruja_get_focus_briefing" => {
             let file = arguments.get("file").and_then(|v| v.as_str());
@@ -3439,6 +3442,7 @@ async fn run_tool(
                 Path::new(&repo),
                 graph.nodes.len(),
                 temporal,
+                true,
             );
             briefing.run_id = Some(
                 run_id

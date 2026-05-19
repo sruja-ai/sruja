@@ -11,7 +11,10 @@ pub mod utility_domain;
 
 pub use intent_domain::remediation;
 
-pub use intent_domain::agent::{agent_clear, agent_clusters, agent_history, agent_record};
+pub use intent_domain::agent::{
+    agent_clear, agent_clusters, agent_curate, agent_delete, agent_history, agent_merge,
+    agent_record, agent_update,
+};
 pub use intent_domain::agent_plan::{agent_apply, agent_plan};
 pub use intent_domain::agent_run::{agent_run, agent_run_to_string, AgentRunOptions};
 pub use intent_domain::ai::{ai_brief, AiBriefOptions};

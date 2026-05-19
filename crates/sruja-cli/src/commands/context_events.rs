@@ -257,10 +257,24 @@ pub fn record_drift_compare(
     );
 }
 
-pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Option<&str>) {
+/// Stable id grouping related tasks on the same architectural focus area.
+pub fn derive_task_stream_id(element_id: Option<&str>) -> String {
+    format!("stream:{}", element_id.unwrap_or("repo"))
+}
+
+pub fn record_agent_plan(
+    repo: &Path,
+    run_id: &str,
+    goal: &str,
+    element_id: Option<&str>,
+    retrieved_learning_ids: Option<&[String]>,
+) {
+    let task_stream_id = derive_task_stream_id(element_id);
     let details = serde_json::json!({
         "goal": goal,
         "element_id": element_id,
+        "task_stream_id": task_stream_id,
+        "retrieved_learning_ids": retrieved_learning_ids,
     });
     let base = ContextEventRecord::new_v2_now(repo, "agent_plan", "ok", details);
     append_context_event(
@@ -277,6 +291,46 @@ pub fn record_agent_plan(repo: &Path, run_id: &str, goal: &str, element_id: Opti
             subject_ids: None,
             evidence_refs: None,
             summary: Some(format!("Agent plan for: {goal}")),
+            ..base
+        },
+    );
+}
+
+/// Records agent task completion with learning utility feedback for the task stream.
+pub fn record_agent_task_complete(
+    repo: &Path,
+    run_id: &str,
+    element_id: Option<&str>,
+    retrieved_learning_ids: &[String],
+    success: bool,
+) {
+    let task_stream_id = derive_task_stream_id(element_id);
+    let kind = if success {
+        "validation_passed"
+    } else {
+        "validation_failed"
+    };
+    let outcome = if success { "ok" } else { "failed" };
+    let details = serde_json::json!({
+        "task_stream_id": task_stream_id,
+        "retrieved_learning_ids": retrieved_learning_ids,
+        "success": success,
+    });
+    let base = ContextEventRecord::new_v2_now(repo, kind, outcome, details);
+    append_context_event(
+        repo,
+        ContextEventRecord {
+            trace_id: Some(run_id.to_string()),
+            run_id: Some(run_id.to_string()),
+            actor: Some("sruja agent".to_string()),
+            source: Some("cli".to_string()),
+            tool: Some("agent_run".to_string()),
+            elements: element_id.map(|id| vec![id.to_string()]),
+            summary: Some(format!(
+                "Agent task {} (stream {})",
+                if success { "succeeded" } else { "failed" },
+                task_stream_id
+            )),
             ..base
         },
     );
@@ -506,7 +560,26 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo = temp_dir.path();
 
-        record_agent_plan(repo, "run-123", "do a thing", Some("MySystem.Api"));
+        record_agent_plan(repo, "run-123", "do a thing", Some("MySystem.Api"), None);
+        let events = read_context_events_query(
+            repo,
+            ContextEventQuery {
+                limit: 5,
+                kind_filter: Some("agent_plan"),
+                details_substring: None,
+                decision_id: None,
+                trace_id: None,
+                run_id: None,
+                element_id: None,
+                decision_lineage_only: false,
+            },
+        )
+        .unwrap();
+        assert!(events[0]
+            .details
+            .get("task_stream_id")
+            .and_then(|v| v.as_str())
+            .is_some());
         let raw = std::fs::read_to_string(repo.join(".sruja/context_events.jsonl")).unwrap();
         let line = raw.lines().last().unwrap();
         let ev: ContextEventRecord = serde_json::from_str(line).unwrap();

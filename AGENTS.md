@@ -91,6 +91,22 @@ Filling the context window “because we can” still hurts quality.
 - **Do not**: treat output as reviewed truth—merge proposals into `repo.sruja` only through your normal review flow.
 - **Kill rule**: if a workflow cannot name [define intent / understand context / detect drift / review change](docs/PRODUCT_FEATURE_ALIGNMENT_REPORT.md#canonical-workflows), keep it out of primary docs and automation until it can.
 
+### Agentic memory utility (`.sruja/agent_memory.json`)
+
+Learnings are curated skills, not append-only logs.
+
+| Signal | Meaning |
+|--------|---------|
+| `retrieval_count` | Learning was **injected into context** (focus briefing, apply, or MCP fetch) |
+| `task_success_after` / `task_total_after` | After injection, **`sruja agent run --mode apply`** finished with all verification steps `ok` or `skipped` |
+
+**Rules:**
+
+- Only learnings in **`surfaced_learning_ids`** (token-budget subset from focus) get counters — not every `find_relevant` match.
+- **Plan-only** `agent run` does not bump retrievals; **apply** records retrievals at apply start and outcomes after verification.
+- Standalone **`sruja focus`** records retrievals (no task outcome — no verification gate).
+- **`sruja agent curate`** is suggest-only; use **`agent update`**, **`agent merge`**, **`agent delete --force`** to act. Merge resets task outcome counters (retrieval history is preserved).
+
 ### System evolution (outer loop)
 
 When an agent ships wrong code, misleading edits, or misses a project convention, fix the **process layer** when the miss is repeatable—not only the code diff.

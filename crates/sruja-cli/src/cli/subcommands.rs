@@ -153,6 +153,55 @@ pub enum AgentCommand {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
+    /// Review learnings for merge/delete suggestions (read-only)
+    Curate {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Update an existing learning by id
+    Update {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 'i')]
+        id: String,
+        #[arg(long, short = 'c')]
+        context: Option<String>,
+        #[arg(long, short = 'H')]
+        hypothesis: Option<String>,
+        #[arg(long, short = 'o')]
+        outcome: Option<String>,
+        #[arg(long, short = 'g')]
+        guardrail: Option<String>,
+        #[arg(long, short = 's')]
+        reason: Option<String>,
+    },
+    /// Delete a learning by id
+    Delete {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 'i')]
+        id: String,
+        #[arg(long, short = 'y')]
+        force: bool,
+    },
+    /// Merge multiple learnings into one
+    Merge {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Comma-separated learning ids to merge
+        #[arg(long)]
+        ids: String,
+        #[arg(long, short = 'c')]
+        context: String,
+        #[arg(long, short = 'H')]
+        hypothesis: String,
+        #[arg(long, short = 'g')]
+        guardrail: String,
+        #[arg(long, short = 'o', default_value = "success")]
+        outcome: String,
+    },
     /// Architecture-bounded agent loop: observe → plan → (optional) apply → verify → record learnings
     ///
     /// Requires Sruja evidence and a reviewable plan; not a general-purpose coding agent.

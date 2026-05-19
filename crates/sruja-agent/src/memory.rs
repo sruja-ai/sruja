@@ -21,6 +21,12 @@ pub enum MemoryError {
     /// A serialization or deserialization error occurred.
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+    /// No learning entry exists for the given id.
+    #[error("learning not found: {0}")]
+    NotFound(String),
+    /// Merge or update requested with invalid or duplicate ids.
+    #[error("invalid learning ids: {0}")]
+    InvalidIds(String),
 }
 
 /// The outcome of an architectural experiment.
@@ -88,6 +94,67 @@ pub struct LearningEntry {
     /// IDs of related learning entries (bidirectional Zettelkasten links).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub related_ids: Vec<String>,
+    /// How often this entry was retrieved for a task (focus, agent run, MCP).
+    #[serde(default)]
+    pub retrieval_count: u32,
+    /// Tasks that succeeded after this entry was retrieved.
+    #[serde(default)]
+    pub task_success_after: u32,
+    /// Total tasks where this entry was retrieved (denominator for utility).
+    #[serde(default)]
+    pub task_total_after: u32,
+}
+
+/// Partial update for an existing [`LearningEntry`].
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct LearningPatch {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<LearningKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hypothesis: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outcome: Option<ExperimentOutcome>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<Option<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guardrail_advice: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub affected_elements: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_refs: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<Option<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hitl_kind: Option<Option<String>>,
+}
+
+/// Suggested merge of clustered learnings (curator output).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MergeSuggestion {
+    pub entry_ids: Vec<String>,
+    pub shared_tags: Vec<String>,
+    pub cluster_size: usize,
+}
+
+/// Curation report: low-utility entries and merge candidates.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurationReport {
+    pub total_entries: usize,
+    pub low_utility: Vec<LowUtilityEntry>,
+    pub merge_suggestions: Vec<MergeSuggestion>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LowUtilityEntry {
+    pub id: String,
+    pub retrieval_count: u32,
+    pub task_total_after: u32,
+    pub utility_ratio: Option<f64>,
+    pub context: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -109,6 +176,15 @@ fn generate_entry_id() -> String {
 }
 
 impl LearningEntry {
+    /// Success rate after retrieval (`None` if never retrieved for a completed task).
+    pub fn utility_ratio(&self) -> Option<f64> {
+        if self.task_total_after == 0 {
+            None
+        } else {
+            Some(self.task_success_after as f64 / self.task_total_after as f64)
+        }
+    }
+
     /// Checks if this learning entry is relevant to a specific architectural element.
     pub fn is_relevant_to(&self, element_id: &str) -> bool {
         let element_id_lower = element_id.to_lowercase();
@@ -252,6 +328,291 @@ impl AgenticMemory {
             .iter()
             .filter(|l| l.is_relevant_to(element_id))
             .collect()
+    }
+
+    /// Finds all relevant learnings and increments `retrieval_count`.
+    ///
+    /// Prefer surfacing via focus (`surface_agent_learnings` / briefing `surfaced_learning_ids`)
+    /// so counters match what was actually injected into context.
+    pub fn touch_relevant_learnings(&mut self, element_id: &str) -> Vec<String> {
+        let ids: Vec<String> = self
+            .find_relevant(element_id)
+            .into_iter()
+            .map(|e| e.id.clone())
+            .collect();
+        let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
+        self.record_retrievals(&refs);
+        ids
+    }
+
+    /// Records task outcome for learnings retrieved earlier in the same task (caller saves).
+    pub fn finish_task_learnings(&mut self, ids: &[String], success: bool) {
+        let refs: Vec<&str> = ids.iter().map(String::as_str).collect();
+        self.record_task_outcomes(&refs, success);
+    }
+
+    /// Increments `retrieval_count` for each id (call when learnings are surfaced for a task).
+    pub fn record_retrievals(&mut self, ids: &[&str]) {
+        for id in ids {
+            if let Some(entry) = self.learnings.iter_mut().find(|e| e.id == *id) {
+                entry.retrieval_count = entry.retrieval_count.saturating_add(1);
+            }
+        }
+    }
+
+    /// Records task outcome for entries that were retrieved during that task.
+    pub fn record_task_outcomes(&mut self, ids: &[&str], success: bool) {
+        for id in ids {
+            if let Some(entry) = self.learnings.iter_mut().find(|e| e.id == *id) {
+                entry.task_total_after = entry.task_total_after.saturating_add(1);
+                if success {
+                    entry.task_success_after = entry.task_success_after.saturating_add(1);
+                }
+            }
+        }
+    }
+
+    /// Updates an existing learning by id. Re-extracts tags when text fields change.
+    pub fn update_learning(&mut self, id: &str, patch: LearningPatch) -> Result<(), MemoryError> {
+        let idx = self
+            .learnings
+            .iter()
+            .position(|e| e.id == id)
+            .ok_or_else(|| MemoryError::NotFound(id.to_string()))?;
+
+        let entry = &mut self.learnings[idx];
+        let mut reextract_tags = false;
+
+        if let Some(kind) = patch.kind {
+            entry.kind = Some(kind);
+        }
+        if let Some(ctx) = patch.context {
+            entry.context = ctx;
+            reextract_tags = true;
+        }
+        if let Some(h) = patch.hypothesis {
+            entry.hypothesis = h;
+            reextract_tags = true;
+        }
+        if let Some(outcome) = patch.outcome {
+            entry.outcome = outcome;
+        }
+        if let Some(reason) = patch.reason {
+            entry.reason = reason;
+        }
+        if let Some(guardrail) = patch.guardrail_advice {
+            entry.guardrail_advice = guardrail;
+            reextract_tags = true;
+        }
+        if let Some(elements) = patch.affected_elements {
+            entry.affected_elements = elements;
+        }
+        if let Some(refs) = patch.evidence_refs {
+            entry.evidence_refs = refs;
+        }
+        if let Some(conf) = patch.confidence {
+            entry.confidence = conf;
+        }
+        if let Some(tags) = patch.tags {
+            entry.tags = tags;
+            reextract_tags = false;
+        }
+        if let Some(hitl) = patch.hitl_kind {
+            entry.hitl_kind = hitl;
+        }
+
+        if reextract_tags {
+            entry.tags = Self::extract_tags(entry);
+        }
+
+        Ok(())
+    }
+
+    /// Removes a learning and scrubs `related_ids` references across the library.
+    pub fn delete_learning(&mut self, id: &str) -> Result<LearningEntry, MemoryError> {
+        let idx = self
+            .learnings
+            .iter()
+            .position(|e| e.id == id)
+            .ok_or_else(|| MemoryError::NotFound(id.to_string()))?;
+        let removed = self.learnings.remove(idx);
+        for entry in &mut self.learnings {
+            entry.related_ids.retain(|rid| rid != id);
+        }
+        Ok(removed)
+    }
+
+    /// Merges multiple entries into one, preserving links and utility counters.
+    pub fn merge_learnings(
+        &mut self,
+        ids: &[String],
+        mut merged: LearningEntry,
+    ) -> Result<String, MemoryError> {
+        if ids.len() < 2 {
+            return Err(MemoryError::InvalidIds(
+                "merge requires at least two entry ids".to_string(),
+            ));
+        }
+
+        let unique: std::collections::HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
+        if unique.len() != ids.len() {
+            return Err(MemoryError::InvalidIds(
+                "duplicate ids in merge request".to_string(),
+            ));
+        }
+
+        let mut to_remove: Vec<usize> = Vec::new();
+        let mut tags = std::collections::HashSet::new();
+        let mut elements = std::collections::HashSet::new();
+        let mut evidence = std::collections::HashSet::new();
+        let mut related = std::collections::HashSet::new();
+        let mut retrieval_count: u32 = 0;
+
+        for (idx, entry) in self.learnings.iter().enumerate() {
+            if ids.contains(&entry.id) {
+                to_remove.push(idx);
+                tags.extend(entry.tags.iter().cloned());
+                elements.extend(entry.affected_elements.iter().cloned());
+                evidence.extend(entry.evidence_refs.iter().cloned());
+                related.extend(entry.related_ids.iter().cloned());
+                retrieval_count = retrieval_count.saturating_add(entry.retrieval_count);
+                // Task outcomes reset on merge — merged text is a new editorial artifact.
+            }
+        }
+
+        if to_remove.len() != ids.len() {
+            let missing: Vec<_> = ids
+                .iter()
+                .filter(|id| !self.learnings.iter().any(|e| e.id == **id))
+                .cloned()
+                .collect();
+            return Err(MemoryError::NotFound(missing.join(", ")));
+        }
+
+        for id in ids {
+            related.remove(id.as_str());
+        }
+
+        if merged.id.is_empty() {
+            merged.id = generate_entry_id();
+        }
+        let new_id = merged.id.clone();
+
+        merged.tags = if merged.tags.is_empty() {
+            tags.into_iter().collect()
+        } else {
+            let mut t: std::collections::HashSet<_> = merged.tags.into_iter().collect();
+            t.extend(tags);
+            t.into_iter().collect()
+        };
+        if merged.affected_elements.is_empty() {
+            merged.affected_elements = elements.into_iter().collect();
+        } else {
+            let mut e: std::collections::HashSet<_> =
+                merged.affected_elements.into_iter().collect();
+            e.extend(elements);
+            merged.affected_elements = e.into_iter().collect();
+        }
+        if merged.evidence_refs.is_empty() {
+            merged.evidence_refs = evidence.into_iter().collect();
+        } else {
+            let mut e: std::collections::HashSet<_> = merged.evidence_refs.into_iter().collect();
+            e.extend(evidence);
+            merged.evidence_refs = e.into_iter().collect();
+        }
+        merged.related_ids = related.into_iter().collect();
+        merged.retrieval_count = retrieval_count;
+        merged.task_success_after = 0;
+        merged.task_total_after = 0;
+
+        for idx in to_remove.into_iter().rev() {
+            self.learnings.remove(idx);
+        }
+
+        for entry in &mut self.learnings {
+            for old_id in ids {
+                if let Some(pos) = entry.related_ids.iter().position(|r| r == old_id) {
+                    entry.related_ids[pos] = new_id.clone();
+                }
+            }
+            entry
+                .related_ids
+                .retain(|rid| rid != &new_id || entry.id == new_id);
+        }
+
+        self.add_learning(merged);
+        Ok(new_id)
+    }
+
+    /// Entries with many retrievals but low post-retrieval success (deletion candidates).
+    pub fn low_utility_entries(
+        &self,
+        min_retrievals: u32,
+        max_utility_ratio: f64,
+    ) -> Vec<&LearningEntry> {
+        self.learnings
+            .iter()
+            .filter(|e| {
+                e.retrieval_count >= min_retrievals
+                    && e.task_total_after > 0
+                    && e.utility_ratio().is_some_and(|r| r < max_utility_ratio)
+            })
+            .collect()
+    }
+
+    /// Builds a curation report for `sruja agent curate`.
+    pub fn curation_report(&self) -> CurationReport {
+        let low_utility = self
+            .low_utility_entries(2, 0.4)
+            .into_iter()
+            .map(|e| LowUtilityEntry {
+                id: e.id.clone(),
+                retrieval_count: e.retrieval_count,
+                task_total_after: e.task_total_after,
+                utility_ratio: e.utility_ratio(),
+                context: e.context.clone(),
+            })
+            .collect();
+
+        let mut merge_suggestions = Vec::new();
+        let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        for entry in &self.learnings {
+            if visited.contains(&entry.id) {
+                continue;
+            }
+            let cluster = self.find_cluster(&entry.id);
+            if cluster.len() < 2 {
+                continue;
+            }
+            for e in &cluster {
+                visited.insert(e.id.clone());
+            }
+            let ids: Vec<String> = cluster.iter().map(|e| e.id.clone()).collect();
+            let mut tag_counts: std::collections::HashMap<&str, usize> =
+                std::collections::HashMap::new();
+            for e in &cluster {
+                for t in &e.tags {
+                    *tag_counts.entry(t.as_str()).or_default() += 1;
+                }
+            }
+            let shared_tags: Vec<String> = tag_counts
+                .into_iter()
+                .filter(|(_, c)| *c >= 2)
+                .map(|(t, _)| t.to_string())
+                .collect();
+            merge_suggestions.push(MergeSuggestion {
+                entry_ids: ids,
+                shared_tags,
+                cluster_size: cluster.len(),
+            });
+        }
+
+        CurationReport {
+            total_entries: self.learnings.len(),
+            low_utility,
+            merge_suggestions,
+        }
     }
 
     pub fn get_path(repo_root: &Path) -> PathBuf {
@@ -432,7 +793,118 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         }
+    }
+
+    #[test]
+    fn test_utility_tracking() {
+        let mut memory = AgenticMemory::default();
+        let entry = make_entry("ctx", "hyp", vec!["API"]);
+        let id = entry.id.clone();
+        memory.add_learning(entry);
+
+        memory.record_retrievals(&[id.as_str()]);
+        memory.record_task_outcomes(&[id.as_str()], true);
+        memory.record_task_outcomes(&[id.as_str()], false);
+
+        let e = &memory.learnings[0];
+        assert_eq!(e.retrieval_count, 1);
+        assert_eq!(e.task_total_after, 2);
+        assert_eq!(e.task_success_after, 1);
+        assert_eq!(e.utility_ratio(), Some(0.5));
+    }
+
+    #[test]
+    fn test_update_learning() {
+        let mut memory = AgenticMemory::default();
+        let entry = make_entry("old context", "hyp", vec![]);
+        let id = entry.id.clone();
+        memory.add_learning(entry);
+
+        memory
+            .update_learning(
+                &id,
+                LearningPatch {
+                    context: Some("new context".to_string()),
+                    guardrail_advice: Some("updated advice".to_string()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        assert_eq!(memory.learnings[0].context, "new context");
+        assert_eq!(memory.learnings[0].guardrail_advice, "updated advice");
+        assert!(!memory.learnings[0].tags.is_empty());
+    }
+
+    #[test]
+    fn test_delete_learning() {
+        let mut memory = AgenticMemory::default();
+        let e1 = make_entry("a", "h1", vec![]);
+        let id1 = e1.id.clone();
+        let mut e2 = make_entry("b", "h2", vec![]);
+        e2.related_ids = vec![id1.clone()];
+        memory.add_learning(e1);
+        memory.add_learning(e2);
+
+        memory.delete_learning(&id1).unwrap();
+        assert_eq!(memory.learnings.len(), 1);
+        assert!(memory.learnings[0].related_ids.is_empty());
+    }
+
+    #[test]
+    fn test_merge_learnings() {
+        let mut memory = AgenticMemory::default();
+        let mut e1 = make_entry("shared topic A", "h1", vec!["API.Routes"]);
+        e1.retrieval_count = 3;
+        e1.task_success_after = 1;
+        e1.task_total_after = 2;
+        let id1 = e1.id.clone();
+        let mut e2 = make_entry("shared topic B", "h2", vec!["API.Service"]);
+        e2.retrieval_count = 2;
+        let id2 = e2.id.clone();
+        memory.add_learning(e1);
+        memory.add_learning(e2);
+
+        let merged_id = memory
+            .merge_learnings(
+                &[id1.clone(), id2.clone()],
+                LearningEntry {
+                    context: "Merged boundary guidance".to_string(),
+                    hypothesis: "Combined".to_string(),
+                    outcome: ExperimentOutcome::Success,
+                    guardrail_advice: "Use service layer".to_string(),
+                    ..make_entry("", "", vec![])
+                },
+            )
+            .unwrap();
+
+        assert_eq!(memory.learnings.len(), 1);
+        assert_eq!(memory.learnings[0].id, merged_id);
+        assert_eq!(memory.learnings[0].retrieval_count, 5);
+        assert_eq!(memory.learnings[0].task_total_after, 0);
+        assert_eq!(memory.learnings[0].task_success_after, 0);
+        assert!(memory.learnings[0]
+            .affected_elements
+            .iter()
+            .any(|e| e == "API.Routes"));
+    }
+
+    #[test]
+    fn test_curation_report() {
+        let mut memory = AgenticMemory::default();
+        let mut e = make_entry("low utility", "h", vec![]);
+        e.retrieval_count = 5;
+        e.task_success_after = 0;
+        e.task_total_after = 4;
+        memory.add_learning(e);
+
+        let report = memory.curation_report();
+        assert_eq!(report.total_entries, 1);
+        assert_eq!(report.low_utility.len(), 1);
     }
 
     #[test]
@@ -456,6 +928,9 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         };
 
         memory.add_learning(entry.clone());
@@ -487,6 +962,9 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         };
         memory.add_learning(entry);
 
@@ -608,6 +1086,9 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         };
 
         memory.add_learning(entry);
@@ -679,6 +1160,9 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         };
         memory.add_learning(entry);
 
@@ -711,6 +1195,9 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         });
 
         memory.save_to_path(&path).unwrap();
@@ -741,6 +1228,9 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         };
 
         assert!(entry.is_relevant_to("System.Core"));
@@ -773,6 +1263,9 @@ mod tests {
             tags: Vec::new(),
             hitl_kind: None,
             related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
         });
 
         std::fs::write(&path, "{".repeat(4096)).unwrap();

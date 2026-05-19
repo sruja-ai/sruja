@@ -717,6 +717,41 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             } => {
                 commands::agent_clusters(&repo, entry_id.as_deref(), tag.as_deref(), &format).await
             }
+            AgentCommand::Curate { repo, format } => commands::agent_curate(&repo, &format).await,
+            AgentCommand::Update {
+                repo,
+                id,
+                context,
+                hypothesis,
+                outcome,
+                guardrail,
+                reason,
+            } => {
+                commands::agent_update(
+                    &repo,
+                    &id,
+                    context.as_deref(),
+                    hypothesis.as_deref(),
+                    outcome.as_deref(),
+                    guardrail.as_deref(),
+                    reason.as_deref(),
+                )
+                .await
+            }
+            AgentCommand::Delete { repo, id, force } => {
+                commands::agent_delete(&repo, &id, force).await
+            }
+            AgentCommand::Merge {
+                repo,
+                ids,
+                context,
+                hypothesis,
+                guardrail,
+                outcome,
+            } => {
+                commands::agent_merge(&repo, &ids, &context, &hypothesis, &guardrail, &outcome)
+                    .await
+            }
             AgentCommand::Run {
                 run_id,
                 repo,

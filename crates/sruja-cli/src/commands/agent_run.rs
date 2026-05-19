@@ -135,6 +135,14 @@ pub(crate) struct StepObservation {
     pub(crate) elapsed_ms: u128,
 }
 
+/// Apply-mode success: every executed verification step is ok or explicitly skipped.
+fn agent_apply_verification_success(results: &[StepObservation]) -> bool {
+    !results.is_empty()
+        && results
+            .iter()
+            .all(|r| matches!(r.status.as_str(), "ok" | "skipped"))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct AgentApplyOutput {
@@ -767,6 +775,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         None
     };
 
+    let mut surfaced_learning_ids: Vec<String> = Vec::new();
     let focus_json = if let Some(ref id) = resolved_element_id {
         // Build the same JSON as focus --format for-ai would emit.
         let kg = crate::graph_store::load_or_build_graph(repo_path)?;
@@ -775,7 +784,8 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             Err(_) => kg.nodes.len(),
         };
         let mut briefing =
-            focus_cmd::build_focus_briefing(&kg, id, repo_path, scan_node_count, None);
+            focus_cmd::build_focus_briefing(&kg, id, repo_path, scan_node_count, None, false);
+        surfaced_learning_ids = briefing.surfaced_learning_ids.clone();
         // No focus-specific enrichment here; agent enrichment is handled at the end.
         briefing.enrichment = None;
         briefing.run_id = Some(run_id.clone());
@@ -834,11 +844,16 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         })
     };
 
-    let agent_history_json = if let Some(ref id) = resolved_element_id {
-        // Directly load AgenticMemory (same as agent_history json mode), and filter.
+    let agent_history_json = if !surfaced_learning_ids.is_empty() {
         let memory = sruja_agent::AgenticMemory::load(repo_path)
             .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
-        let entries = memory.find_relevant(id);
+        let id_set: std::collections::HashSet<&str> =
+            surfaced_learning_ids.iter().map(|s| s.as_str()).collect();
+        let entries: Vec<_> = memory
+            .learnings
+            .iter()
+            .filter(|e| id_set.contains(e.id.as_str()))
+            .collect();
         serde_json::to_value(entries).unwrap_or(Value::Null)
     } else {
         Value::Null
@@ -869,6 +884,11 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         &run_id,
         options.goal,
         resolved_element_id.as_deref(),
+        if surfaced_learning_ids.is_empty() {
+            None
+        } else {
+            Some(surfaced_learning_ids.as_slice())
+        },
     );
 
     // ── Think: deterministic plan synthesis ───────────────────────────────
@@ -1022,6 +1042,15 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         },
         AgentMode::Apply => {
             let apply_start = std::time::Instant::now();
+            if !surfaced_learning_ids.is_empty() {
+                let mut memory = sruja_agent::AgenticMemory::load(repo_path)
+                    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+                let refs: Vec<&str> = surfaced_learning_ids.iter().map(String::as_str).collect();
+                memory.record_retrievals(&refs);
+                memory
+                    .save(repo_path)
+                    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+            }
             // v1 apply: run verification steps only (safe default),
             // record learnings if verification fails.
             let mut verification_results = Vec::new();
@@ -1219,6 +1248,23 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                     );
                     memory_recorded.extend(notes);
                 }
+            }
+
+            let apply_success = agent_apply_verification_success(&verification_results);
+            if !surfaced_learning_ids.is_empty() {
+                let mut memory = sruja_agent::AgenticMemory::load(repo_path)
+                    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+                memory.finish_task_learnings(&surfaced_learning_ids, apply_success);
+                memory
+                    .save(repo_path)
+                    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+                crate::commands::context_events::record_agent_task_complete(
+                    repo_path,
+                    &run_id,
+                    plan.target.resolved_element_id.as_deref(),
+                    &surfaced_learning_ids,
+                    apply_success,
+                );
             }
 
             let context_prune = compression_report
@@ -1614,6 +1660,37 @@ mod tests {
             stderr: String::new(),
             elapsed_ms: 100,
         }
+    }
+
+    #[test]
+    fn apply_success_allows_ok_and_skipped() {
+        use super::agent_apply_verification_success;
+        assert!(agent_apply_verification_success(&[
+            StepObservation {
+                step_id: "a".into(),
+                status: "ok".into(),
+                exit_code: Some(0),
+                stdout: String::new(),
+                stderr: String::new(),
+                elapsed_ms: 1,
+            },
+            StepObservation {
+                step_id: "b".into(),
+                status: "skipped".into(),
+                exit_code: None,
+                stdout: String::new(),
+                stderr: String::new(),
+                elapsed_ms: 0,
+            },
+        ]));
+        assert!(!agent_apply_verification_success(&[StepObservation {
+            step_id: "c".into(),
+            status: "error".into(),
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: String::new(),
+            elapsed_ms: 1,
+        }]));
     }
 
     #[test]

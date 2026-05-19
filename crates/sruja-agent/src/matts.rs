@@ -131,6 +131,9 @@ impl TrajectoryRunner {
                 tags: vec!["matts".to_string(), "contrast".to_string()],
                 hitl_kind: None,
                 related_ids: Vec::new(),
+                retrieval_count: 0,
+                task_success_after: 0,
+                task_total_after: 0,
             });
         } else if successes.is_empty() && !failures.is_empty() {
             let failure_summaries: Vec<&str> =
@@ -167,6 +170,9 @@ impl TrajectoryRunner {
                 tags: vec!["matts".to_string(), "blocked".to_string()],
                 hitl_kind: None,
                 related_ids: Vec::new(),
+                retrieval_count: 0,
+                task_success_after: 0,
+                task_total_after: 0,
             });
         }
 

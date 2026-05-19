@@ -1,6 +1,8 @@
 use crate::commands::CliError;
 use crate::utils::colors;
-use sruja_agent::{AgenticMemory, ExperimentOutcome, LearningEntry, LearningKind};
+use sruja_agent::{
+    AgenticMemory, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, MemoryError,
+};
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -68,8 +70,216 @@ pub async fn agent_history(
         if !entry.affected_elements.is_empty() {
             println!("  Elements:   {}", entry.affected_elements.join(", "));
         }
+        if entry.retrieval_count > 0 || entry.task_total_after > 0 {
+            let util = entry
+                .utility_ratio()
+                .map(|r| format!("{:.0}%", r * 100.0))
+                .unwrap_or_else(|| "n/a".to_string());
+            println!(
+                "  Utility:    retrievals={} tasks_after={} success_rate={}",
+                entry.retrieval_count, entry.task_total_after, util
+            );
+        }
     }
 
+    Ok(())
+}
+
+fn load_memory(repo: &str) -> Result<AgenticMemory, CliError> {
+    AgenticMemory::load(Path::new(repo)).map_err(memory_err)
+}
+
+fn save_memory(repo: &str, memory: &AgenticMemory) -> Result<(), CliError> {
+    memory.save(Path::new(repo)).map_err(memory_err)
+}
+
+fn memory_err(e: MemoryError) -> CliError {
+    match e {
+        MemoryError::NotFound(id) => CliError::validation(format!("learning not found: {id}")),
+        MemoryError::InvalidIds(msg) => CliError::validation(msg),
+        other => CliError::Io(std::io::Error::other(other.to_string())),
+    }
+}
+
+/// Read-only curation report: low-utility entries and merge cluster suggestions.
+pub async fn agent_curate(repo: &str, format: &str) -> Result<(), CliError> {
+    let memory = load_memory(repo)?;
+    let report = memory.curation_report();
+
+    if format == "json" {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+        return Ok(());
+    }
+
+    println!("{}", colors::style("Agentic Memory Curation").bold());
+    println!("{}", colors::dim("────────────────────────────"));
+    println!("  Total entries: {}", report.total_entries);
+
+    println!(
+        "\n{}",
+        colors::style("Low utility (candidates to refine or delete)").bold()
+    );
+    if report.low_utility.is_empty() {
+        println!("  None yet (need retrievals + task outcomes).");
+    } else {
+        for e in &report.low_utility {
+            let util = e
+                .utility_ratio
+                .map(|r| format!("{:.0}%", r * 100.0))
+                .unwrap_or_else(|| "n/a".to_string());
+            println!(
+                "  {} ret={} tasks={} rate={} | {}",
+                colors::warning(&e.id.chars().take(12).collect::<String>()),
+                e.retrieval_count,
+                e.task_total_after,
+                util,
+                colors::dim(&e.context)
+            );
+        }
+    }
+
+    println!("\n{}", colors::style("Merge suggestions (clusters)").bold());
+    if report.merge_suggestions.is_empty() {
+        println!("  None.");
+    } else {
+        for (i, s) in report.merge_suggestions.iter().enumerate() {
+            println!(
+                "  #{} size={} ids={}",
+                i + 1,
+                s.cluster_size,
+                s.entry_ids.join(", ")
+            );
+            if !s.shared_tags.is_empty() {
+                println!("     shared tags: {}", s.shared_tags.join(", "));
+            }
+        }
+    }
+
+    println!(
+        "\n{}",
+        colors::dim(
+            "Suggestions only — use `agent merge`, `agent update`, or `agent delete` to apply."
+        )
+    );
+    Ok(())
+}
+
+/// Updates an existing learning by id.
+pub async fn agent_update(
+    repo: &str,
+    id: &str,
+    context: Option<&str>,
+    hypothesis: Option<&str>,
+    outcome_str: Option<&str>,
+    guardrail: Option<&str>,
+    reason: Option<&str>,
+) -> Result<(), CliError> {
+    let outcome = outcome_str.map(|o| {
+        if matches!(o.to_lowercase().as_str(), "success" | "succeeded" | "pass") {
+            ExperimentOutcome::Success
+        } else {
+            ExperimentOutcome::Failed
+        }
+    });
+
+    let mut memory = load_memory(repo)?;
+    memory
+        .update_learning(
+            id,
+            LearningPatch {
+                context: context.map(str::to_string),
+                hypothesis: hypothesis.map(str::to_string),
+                outcome,
+                guardrail_advice: guardrail.map(str::to_string),
+                reason: reason.map(|r| Some(r.to_string())),
+                ..Default::default()
+            },
+        )
+        .map_err(memory_err)?;
+    save_memory(repo, &memory)?;
+    println!("✅ Learning {} updated.", id);
+    Ok(())
+}
+
+/// Deletes a learning by id.
+pub async fn agent_delete(repo: &str, id: &str, force: bool) -> Result<(), CliError> {
+    if !force {
+        return Err(CliError::validation(
+            "Deletion requires --force to confirm.",
+        ));
+    }
+    let mut memory = load_memory(repo)?;
+    let removed = memory.delete_learning(id).map_err(memory_err)?;
+    save_memory(repo, &memory)?;
+    println!(
+        "🗑️  Deleted learning {} (context: {}).",
+        id, removed.context
+    );
+    Ok(())
+}
+
+/// Merges multiple learnings into one entry.
+pub async fn agent_merge(
+    repo: &str,
+    ids: &str,
+    context: &str,
+    hypothesis: &str,
+    guardrail: &str,
+    outcome_str: &str,
+) -> Result<(), CliError> {
+    let id_list: Vec<String> = ids
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if id_list.len() < 2 {
+        return Err(CliError::validation(
+            "merge requires at least two comma-separated --ids".to_string(),
+        ));
+    }
+
+    let outcome = if matches!(
+        outcome_str.to_lowercase().as_str(),
+        "success" | "succeeded" | "pass"
+    ) {
+        ExperimentOutcome::Success
+    } else {
+        ExperimentOutcome::Failed
+    };
+
+    let mut memory = load_memory(repo)?;
+    let merged_id = memory
+        .merge_learnings(
+            &id_list,
+            LearningEntry {
+                id: String::new(),
+                kind: Some(match outcome {
+                    ExperimentOutcome::Success => LearningKind::Playbook,
+                    ExperimentOutcome::Failed => LearningKind::Guardrail,
+                }),
+                timestamp: chrono::Utc::now(),
+                run_id: None,
+                repo: Some(repo.to_string()),
+                selector: None,
+                context: context.to_string(),
+                hypothesis: hypothesis.to_string(),
+                outcome,
+                reason: None,
+                guardrail_advice: guardrail.to_string(),
+                affected_elements: Vec::new(),
+                evidence_refs: Vec::new(),
+                confidence: None,
+                tags: Vec::new(),
+                hitl_kind: None,
+                related_ids: Vec::new(),
+                retrieval_count: 0,
+                task_success_after: 0,
+                task_total_after: 0,
+            },
+        )
+        .map_err(memory_err)?;
+    save_memory(repo, &memory)?;
+    println!("✅ Merged {} entries into {}.", id_list.len(), merged_id);
     Ok(())
 }
 
@@ -141,6 +351,9 @@ pub async fn agent_record(
         tags: Vec::new(),
         hitl_kind: hitl_normalized,
         related_ids: Vec::new(),
+        retrieval_count: 0,
+        task_success_after: 0,
+        task_total_after: 0,
     });
 
     memory

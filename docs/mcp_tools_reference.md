@@ -141,7 +141,7 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 | `sruja_record_decision_event` | Append **`context_event/v2`** lineage (**mutating**): `kind`, `summary`, optional `decision_id`, `trace_id`, `actor`, `source`, `tool`, `elements`, `evidence_refs`, `outcome`. |
 | `sruja_create_decision_record` | Create **`.sruja/decisions/<id>.md`** and emit **`decision_opened`** (**mutating**). |
 | `sruja_link_decision_to_element` | Add **`element_id`** to a Decision Record’s YAML (**mutating**). |
-| `sruja_get_agent_learnings` | Return **Agentic Memory** entries relevant to an **`element_id`** (guardrails / playbooks recorded via `sruja agent record` or MCP `sruja_record_learning`). |
+| `sruja_get_agent_learnings` | Return **surfaced** Agentic Memory hits for an **`element_id`** (same token cap as focus; increments `retrieval_count`). Not the full `find_relevant` set. |
 
 For how this relates to “context graph” terminology in industry writing versus Sruja’s governed graph, see [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md#context-graphs-sruja-vs-industry-usage).
 
@@ -160,6 +160,8 @@ For how this relates to “context graph” terminology in industry writing vers
 | `sruja_ai_scratchpad` | Read/append legacy scratchpad markdown (**mutating** on append). |
 | `sruja_sandbox` | Git worktree sandbox lifecycle (**mutating**). |
 | `sruja_record_learning` | Structured agentic memory entry (**mutating**). Optional **`hitl_kind`**: `precedent` \| `exception` \| `correction` \| `guardrail` (see [context-graph-for-agents.md](context-graph-for-agents.md)). |
+
+CLI lifecycle (not MCP yet): `sruja agent curate`, `agent update`, `agent merge`, `agent delete` — see **Agentic memory utility** in [AGENTS.md](../AGENTS.md).
 
 ### Evaluation and agent loop (**mutating**)
 
