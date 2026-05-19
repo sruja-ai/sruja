@@ -149,7 +149,7 @@ pub async fn init(
     }
 
     if should_auto {
-        let pb = progress::spinner("✨ Running AI discovery to generate baseline...");
+        let pb = progress::spinner("📦 Building structural draft from workspace manifests...");
         let graph_result = sruja_scan::scan_repo(repo_path).map_err(|e| CliError::Scan {
             message: e.to_string(),
             help: Some("Ensure your repo has source files and proper permissions.".into()),
@@ -166,14 +166,14 @@ pub async fn init(
         let baseline = if !dry_run {
             super::scan::output::write_draft_baseline(repo_path, &graph, force)?
         } else {
-            Some(repo_path.join("repo.sruja"))
+            Some(super::scan::draft_summary::draft_baseline_path(repo_path))
         };
         pb.finish_and_clear();
 
         if let Some(path) = baseline {
             if is_interactive || dry_run {
                 println!(
-                    "  {} Generated baseline: {}",
+                    "  {} Structural draft (evidence): {}",
                     colors::success("✅"),
                     colors::info(path.display().to_string())
                 );
@@ -205,9 +205,8 @@ pub async fn init(
                 println!();
                 println!("{}", colors::style("Next steps:").bold());
                 println!(
-                    "  1. {} Use 'sruja lint {}' to check the architecture.",
+                    "  1. {} Use the sruja-architecture skill to author repo.sruja from this draft; lint when promoted.",
                     colors::info("Review:"),
-                    path.display()
                 );
                 println!(
                     "  2. {} Use 'sruja export mermaid {} --all-views' to visualize.",
@@ -225,7 +224,7 @@ pub async fn init(
                 return Ok(());
             }
         } else if !is_interactive && !dry_run {
-            eprintln!("⚠️ Baseline already exists. Use --force to overwrite.");
+            eprintln!("⚠️ Draft or reviewed baseline already exists. Use --force to refresh the structural draft.");
         }
     }
 

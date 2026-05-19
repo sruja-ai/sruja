@@ -511,8 +511,8 @@ fn init_auto_generates_baseline() {
     assert!(success, "init --auto should succeed: stderr={}", stderr);
     assert!(repo.path().join(".sruja").exists());
     assert!(
-        repo.path().join("repo.sruja").exists(),
-        "init --auto should generate repo.sruja baseline"
+        repo.path().join("repo.sruja.draft").exists(),
+        "init --auto should generate repo.sruja.draft structural evidence"
     );
 }
 

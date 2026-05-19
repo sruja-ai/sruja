@@ -1,3 +1,4 @@
+pub mod draft_summary;
 pub mod drift;
 pub mod output;
 pub mod quickstart;

@@ -322,7 +322,7 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
-        /// Generate a draft repo.sruja baseline from scan
+        /// Write repo.sruja.draft (workspace map evidence; not reviewed architecture)
         #[arg(long)]
         generate_baseline: bool,
         /// Fail with exit code 1 if specified violations found (comma-separated: cycles,layer-violations,god-modules,orphans,all)
@@ -341,7 +341,7 @@ pub enum Commands {
         /// Generate .sruja/init_prompt.txt for use with sruja-architecture skill
         #[arg(long, group = "init_mode")]
         prompt: bool,
-        /// Automatically detect architecture and generate repo.sruja
+        /// Scan workspace and write repo.sruja.draft (structural evidence; author repo.sruja separately)
         #[arg(long, short = 'a', group = "init_mode")]
         auto: bool,
         /// Overwrite repo.sruja if it already exists (only meaningful with --auto)

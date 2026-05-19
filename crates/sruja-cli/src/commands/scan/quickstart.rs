@@ -8,7 +8,10 @@ use sruja_scan::scan_repo;
 use sruja_scan::scan_scope::resolve_scan_scope;
 
 use super::drift::{should_fail_on_violations, truth_status_from_baseline_compare};
-use super::output::{print_quickstart_summary, write_draft_baseline, QuickstartResult};
+use super::output::{
+    draft_baseline_skip_reason, print_quickstart_summary, write_draft_baseline, DraftBaselineSkip,
+    QuickstartResult,
+};
 
 pub async fn quickstart(
     repo_root: &str,
@@ -79,11 +82,28 @@ pub async fn quickstart(
     if generate_baseline {
         match write_draft_baseline(repo_path, &graph, false)? {
             Some(p) => {
-                eprintln!("📝 Wrote draft baseline: {}", p.to_string_lossy().cyan());
+                eprintln!(
+                    "📝 Wrote structural draft (evidence, not reviewed truth): {}",
+                    p.to_string_lossy().cyan()
+                );
+                eprintln!(
+                    "   {}",
+                    "Refine with the sruja-architecture skill → promote to repo.sruja when ready."
+                        .truecolor(140, 140, 140)
+                );
                 eprintln!();
             }
             None => {
-                eprintln!("📝 Baseline already exists (repo.sruja). Skipping write.");
+                let msg = match draft_baseline_skip_reason(repo_path) {
+                    Some(DraftBaselineSkip::ReviewedBaselineExists) => {
+                        "Reviewed baseline (repo.sruja) already exists — skipping draft."
+                    }
+                    Some(DraftBaselineSkip::DraftExists) => {
+                        "Structural draft (repo.sruja.draft) already exists — use --force on init to refresh."
+                    }
+                    None => "Skipped writing structural draft.",
+                };
+                eprintln!("📝 {}", msg);
                 eprintln!();
             }
         }

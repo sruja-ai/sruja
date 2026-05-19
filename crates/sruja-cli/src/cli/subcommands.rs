@@ -705,7 +705,7 @@ pub enum InspectCommand {
         /// Output format
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
-        /// Generate a draft repo.sruja baseline from scan
+        /// Write repo.sruja.draft (workspace map evidence; not reviewed architecture)
         #[arg(long)]
         generate_baseline: bool,
         /// Fail on specified violations

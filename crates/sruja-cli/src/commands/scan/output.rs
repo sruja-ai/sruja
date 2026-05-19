@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::commands::CliError;
-use sruja_scan::{is_path_production_relevant, EdgeKind, Graph, NodeKind};
+use sruja_scan::{is_path_production_relevant, Graph, NodeKind};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct QuickstartResult {
@@ -152,21 +152,6 @@ pub(crate) fn element_kind_for_node(
     }
 }
 
-pub(crate) fn relation_label_for_edge(edge_kind: EdgeKind) -> &'static str {
-    match edge_kind.as_str() {
-        EdgeKind::READS_FROM => "reads from",
-        EdgeKind::WRITES_TO => "writes to",
-        EdgeKind::DEPENDS_ON => "depends on",
-        EdgeKind::PUBLISHES_TO => "publishes to",
-        EdgeKind::SUBSCRIBES_TO => "subscribes to",
-        EdgeKind::OWNS => "owns",
-        EdgeKind::CONTAINS => "contains",
-        EdgeKind::USES => "uses",
-        EdgeKind::CALLS => "calls",
-        _ => "custom",
-    }
-}
-
 pub(crate) fn qualified_ident_from_id(id: &str) -> sruja_language::QualifiedIdent {
     let parts = id
         .split('.')
@@ -194,312 +179,23 @@ pub(crate) fn build_draft_program_from_graph(
     graph: &Graph,
     filename: &str,
 ) -> sruja_language::Program {
-    let mut nodes = graph
-        .nodes
-        .iter()
-        .filter(|n| {
-            // Filter by production relevance
-            if let Some(p) = n.path.as_deref() {
-                if !path_production_relevant(p) {
-                    return false;
-                }
-            }
+    super::draft_summary::build_summary_draft_program(graph, filename)
+}
 
-            // Filter out low-level noise:
-            // - Symbols starting with lowercase (likely helper functions)
-            // - Very specific internal types if they follow a pattern
-            // - For now, we'll keep mostly "high-level" kinds
-            match n.kind.as_str() {
-                NodeKind::SERVICE
-                | NodeKind::DATABASE
-                | NodeKind::EXTERNAL_API
-                | NodeKind::FRONTEND
-                | NodeKind::CONTAINER => true,
-                NodeKind::MODULE => {
-                    // If it looks like a module-level item but not a deeply nested symbol
-                    // Heuristic: skip if it contains common noisy suffixes
-                    let noise = [
-                        "Summary", "Output", "Baseline", "Config", "Options", "Result",
-                    ];
-                    !noise.iter().any(|&s| n.id.ends_with(s))
-                }
-                _ => false, // Skip Raw/Component/etc if too noisy
-            }
-        })
-        .cloned()
-        .collect::<Vec<_>>();
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DraftBaselineSkip {
+    ReviewedBaselineExists,
+    DraftExists,
+}
 
-    let allowed_ids: HashSet<&str> = nodes.iter().map(|n| n.id.as_str()).collect();
-    let mut edges = graph
-        .edges
-        .iter()
-        .filter(|e| {
-            allowed_ids.contains(e.source.as_str()) && allowed_ids.contains(e.target.as_str())
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-
-    let mut id_map: HashMap<String, String> = HashMap::new();
-    let mut used: HashMap<String, usize> = HashMap::new();
-
-    for node in &nodes {
-        let mut base = sanitize_identifier(&node.id);
-        let n = used.entry(base.clone()).or_insert(0);
-        if *n > 0 {
-            base = format!("{}_{}", base, *n + 1);
-        }
-        *n += 1;
-        id_map.insert(node.id.clone(), base);
+pub fn draft_baseline_skip_reason(repo_root: &Path) -> Option<DraftBaselineSkip> {
+    if crate::utils::architecture_path::resolve_architecture_path(repo_root).is_some() {
+        return Some(DraftBaselineSkip::ReviewedBaselineExists);
     }
-
-    nodes.sort_by(|a, b| {
-        let ida = id_map
-            .get(a.id.as_str())
-            .map(String::as_str)
-            .unwrap_or(a.id.as_str());
-        let idb = id_map
-            .get(b.id.as_str())
-            .map(String::as_str)
-            .unwrap_or(b.id.as_str());
-        ida.cmp(idb)
-    });
-
-    let mut items: Vec<sruja_language::TopLevelItem> = Vec::new();
-    let repo_name = if let Some(parent) = Path::new(filename).parent() {
-        if parent.as_os_str().is_empty() || parent == Path::new(".") {
-            std::env::current_dir()
-                .ok()
-                .and_then(|d| {
-                    d.file_name()
-                        .and_then(|n| n.to_str().map(|s| s.to_string()))
-                })
-                .unwrap_or_else(|| "MySystem".to_string())
-        } else {
-            parent
-                .file_name()
-                .and_then(|n| n.to_str().map(|s| s.to_string()))
-                .unwrap_or_else(|| "MySystem".to_string())
-        }
-    } else {
-        "MySystem".to_string()
-    };
-    let system_name = sanitize_identifier(&repo_name);
-
-    let mut system_body = sruja_language::ElementDefBody {
-        description: Some(format!("The {} system architecture", repo_name)),
-        ..Default::default()
-    };
-    let mut system_items = Vec::new();
-
-    // Group nodes by directory/domain for robust clustering
-    let mut domains: HashMap<String, Vec<&sruja_scan::Node>> = HashMap::new();
-    let mut ungrouped: Vec<&sruja_scan::Node> = Vec::new();
-
-    for node in &nodes {
-        if let Some(path_str) = &node.path {
-            let normalized = path_str.replace('\\', "/");
-            let parts: Vec<&str> = normalized
-                .split('/')
-                .filter(|p| !p.is_empty() && *p != "." && *p != "tmp" && *p != "node_modules")
-                .collect();
-            if parts.is_empty() {
-                ungrouped.push(node);
-                continue;
-            }
-            let domain_name = if (parts[0] == "crates"
-                || parts[0] == "packages"
-                || parts[0] == "services"
-                || parts[0] == "apps"
-                || parts[0] == "src")
-                && parts.len() > 1
-            {
-                parts[1].to_string()
-            } else {
-                parts[0].to_string()
-            };
-
-            // Do not group high-level logical nodes like databases into directory containers
-            if node.kind == NodeKind::DATABASE || node.kind == NodeKind::EXTERNAL_API {
-                ungrouped.push(node);
-            } else {
-                domains.entry(domain_name).or_default().push(node);
-            }
-        } else {
-            ungrouped.push(node);
-        }
+    if super::draft_summary::draft_baseline_path(repo_root).exists() {
+        return Some(DraftBaselineSkip::DraftExists);
     }
-
-    let mut domain_keys: Vec<_> = domains.keys().cloned().collect();
-    domain_keys.sort();
-
-    let mut qualified_id_map: HashMap<String, String> = HashMap::new();
-
-    let create_node_def = |node: &sruja_scan::Node| -> sruja_language::ElementDef {
-        let name = id_map
-            .get(node.id.as_str())
-            .cloned()
-            .unwrap_or_else(|| sanitize_identifier(&node.id));
-        let (kind, sub_kind) = element_kind_for_node(node.kind.clone());
-
-        let body = sruja_language::ElementDefBody {
-            description: node
-                .path
-                .as_ref()
-                .map(|p| format!("Scanned from {}", p))
-                .or_else(|| Some("Scanned from repository".to_string())),
-            technology: match kind {
-                sruja_language::ElementKind::Container | sruja_language::ElementKind::Database => {
-                    let mut tech = node
-                        .technology
-                        .clone()
-                        .unwrap_or_else(|| "Unknown".to_string());
-                    if tech == "Unknown" {
-                        if let Some(path) = &node.path {
-                            let normalized = path.replace('\\', "/");
-                            if normalized.contains("package.json") {
-                                tech = "Node.js".to_string();
-                            } else if normalized.ends_with(".rs") {
-                                tech = "Rust".to_string();
-                            } else if normalized.ends_with(".go") {
-                                tech = "Go".to_string();
-                            }
-                        }
-                    }
-                    Some(tech)
-                }
-                _ => node.technology.clone(),
-            },
-            ..Default::default()
-        };
-
-        sruja_language::ElementDef {
-            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-            assignment: sruja_language::ElementAssignment {
-                location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-                name,
-                kind: match kind {
-                    sruja_language::ElementKind::System => sruja_language::ElementKind::Container,
-                    k => k,
-                },
-                sub_kind,
-                title: Some(node.label.clone()),
-                tag_refs: Vec::new(),
-                body: Some(body),
-            },
-        }
-    };
-
-    for key in domain_keys {
-        if let Some(domain_nodes) = domains.get(&key) {
-            if domain_nodes.len() == 1 {
-                let node = domain_nodes[0];
-                system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
-                    create_node_def(node),
-                )));
-                let name = id_map
-                    .get(&node.id)
-                    .cloned()
-                    .unwrap_or_else(|| sanitize_identifier(&node.id));
-                qualified_id_map.insert(node.id.clone(), name);
-                continue;
-            }
-
-            let container_name = sanitize_identifier(&format!("{}Group", key));
-            let mut container_items = Vec::new();
-            for node in domain_nodes {
-                container_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
-                    create_node_def(node),
-                )));
-                let local_name = id_map
-                    .get(&node.id)
-                    .cloned()
-                    .unwrap_or_else(|| sanitize_identifier(&node.id));
-                qualified_id_map.insert(
-                    node.id.clone(),
-                    format!("{}.{}", container_name, local_name),
-                );
-            }
-
-            let container_def = sruja_language::ElementDef {
-                location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-                assignment: sruja_language::ElementAssignment {
-                    location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-                    name: container_name.clone(),
-                    kind: sruja_language::ElementKind::Container,
-                    sub_kind: None,
-                    title: Some(key.clone()),
-                    tag_refs: Vec::new(),
-                    body: Some(sruja_language::ElementDefBody {
-                        description: Some(format!("Autogenerated boundary for {}", key)),
-                        items: container_items,
-                        ..Default::default()
-                    }),
-                },
-            };
-            system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
-                container_def,
-            )));
-        }
-    }
-
-    for node in ungrouped {
-        system_items.push(sruja_language::ElementDefBodyItem::ElementDef(Box::new(
-            create_node_def(node),
-        )));
-        let name = id_map
-            .get(&node.id)
-            .cloned()
-            .unwrap_or_else(|| sanitize_identifier(&node.id));
-        qualified_id_map.insert(node.id.clone(), name);
-    }
-
-    edges.sort_by(|a, b| {
-        (a.source.as_str(), a.target.as_str(), a.kind.as_str()).cmp(&(
-            b.source.as_str(),
-            b.target.as_str(),
-            b.kind.as_str(),
-        ))
-    });
-    for edge in &edges {
-        let from = qualified_id_map
-            .get(edge.source.as_str())
-            .cloned()
-            .unwrap_or_else(|| sanitize_identifier(&edge.source));
-        let to = qualified_id_map
-            .get(edge.target.as_str())
-            .cloned()
-            .unwrap_or_else(|| sanitize_identifier(&edge.target));
-
-        let rel = sruja_language::Relation {
-            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-            from: qualified_ident_from_id(&from),
-            to: qualified_ident_from_id(&to),
-            label: Some(relation_label_for_edge(edge.kind.clone()).to_string()),
-            description: None,
-            technology: None,
-            tags: Vec::new(),
-        };
-        system_items.push(sruja_language::ElementDefBodyItem::Relation(rel));
-    }
-
-    system_body.items = system_items;
-    let system_def = sruja_language::ElementDef {
-        location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-        assignment: sruja_language::ElementAssignment {
-            location: sruja_diagnostics::SourceLocation::new(filename.to_string(), 1, 1),
-            name: system_name,
-            kind: sruja_language::ElementKind::System,
-            sub_kind: None,
-            title: Some(repo_name.to_string()),
-            tag_refs: Vec::new(),
-            body: Some(system_body),
-        },
-    };
-    items.push(sruja_language::TopLevelItem::ElementDef(Box::new(
-        system_def,
-    )));
-
-    sruja_language::Program::new().with_items(items)
+    None
 }
 
 pub fn write_draft_baseline(
@@ -507,23 +203,29 @@ pub fn write_draft_baseline(
     graph: &Graph,
     force: bool,
 ) -> Result<Option<PathBuf>, CliError> {
-    let out_path = repo_root.join("repo.sruja");
-    if out_path.exists() && !force {
+    let out_path = super::draft_summary::draft_baseline_path(repo_root);
+    if !force && draft_baseline_skip_reason(repo_root).is_some() {
         return Ok(None);
     }
     let program = build_draft_program_from_graph(graph, out_path.to_string_lossy().as_ref());
     let printer = sruja_export::DslPrinter::new();
     let dsl = printer.print(&program);
-    let header = r#"// Sruja Architecture Baseline
-// Generated automatically from codebase analysis.
+    let header = format!(
+        r#"// Sruja architecture draft ({})
+// Structural map from workspace manifests (Cargo/npm) when available — not domain architecture.
+// Call/import graphs are intentionally omitted. Max {} containers, {} workspace relationships.
 //
-// Next Steps:
-// 1. Review the elements and relationships below.
-// 2. Refine the names, descriptions, and technologies.
-// 3. Add 'source' bindings to your OpenAPI/Docs/K8s manifests.
-// 4. Run 'sruja lint repo.sruja' to validate.
+// Next steps:
+// 1. Rename containers to match how your team describes the system.
+// 2. Add actors, data stores, and runtime/data-flow relationships.
+// 3. Copy or merge into repo.sruja when satisfied, then `sruja lint repo.sruja`.
+// 4. Use `sruja drift -r . -a repo.sruja` in CI after promotion.
 
-"#;
+"#,
+        super::draft_summary::DRAFT_BASELINE_FILE,
+        super::draft_summary::MAX_SUMMARY_CONTAINERS,
+        super::draft_summary::MAX_SUMMARY_EDGES,
+    );
     fs::write(&out_path, format!("{}{}", header, dsl))?;
     Ok(Some(out_path))
 }
@@ -909,7 +611,7 @@ pub(crate) fn print_quickstart_summary(
     println!();
     println!(
         "  1. {}",
-        "Add a baseline for actionable drift: generate repo.sruja (e.g. use sruja-architecture skill), then run 'sruja drift -r . -a repo.sruja'".white()
+        "Author reviewed architecture: sruja quickstart -r . --generate-baseline writes repo.sruja.draft (structural evidence); use the sruja-architecture skill to shape repo.sruja, then 'sruja drift -r . -a repo.sruja'".white()
     );
     println!(
         "  2. {}",
