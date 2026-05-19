@@ -2,12 +2,7 @@
 
 pub(crate) use super::author;
 pub(crate) use super::check;
-pub(crate) use super::context;
 pub(crate) use super::critique;
-pub(crate) use super::federation;
-pub(crate) use super::focus;
-pub(crate) use super::preflight;
-pub(crate) use super::propose_create;
 pub(crate) use super::violation_shared;
 pub(crate) use super::{parse_sruja_file, scan_repo_cached, scan_repo_cached_with_opts, CliError};
 
@@ -23,7 +18,7 @@ pub mod health;
 pub mod impact;
 #[path = "index.rs"]
 pub mod index;
-#[path = "mcp.rs"]
+#[path = "mcp/mod.rs"]
 pub mod mcp;
 #[path = "review.rs"]
 pub mod review;
