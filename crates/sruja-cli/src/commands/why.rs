@@ -108,9 +108,15 @@ fn print_reasoned_text(result: &ReasonedWhyResult) {
         println!("Reasoning walk ({} step(s)):", result.steps.len());
         println!();
         for step in &result.steps {
+            let dir_initial = step
+                .direction
+                .chars()
+                .next()
+                .map(|c| c.to_uppercase().collect::<String>())
+                .unwrap_or_else(|| "?".to_string());
             println!(
                 "  [{}{}] {} ({})",
-                step.direction.chars().next().unwrap().to_uppercase(),
+                dir_initial,
                 step.direction.len(),
                 step.node_label,
                 step.node_id

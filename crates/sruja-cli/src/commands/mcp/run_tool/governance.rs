@@ -32,7 +32,7 @@ pub(crate) async fn try_run(
             let desc = arguments
                 .get("description")
                 .and_then(|v| v.as_str())
-                .unwrap();
+                .ok_or_else(|| CliError::validation("Missing required argument: description"))?;
             let add_elements: Vec<String> = arguments
                 .get("add_elements")
                 .and_then(|v| v.as_array())
@@ -65,9 +65,18 @@ pub(crate) async fn try_run(
         }
 
         "sruja_commit_evolution" => {
-            let id = arguments.get("id").and_then(|v| v.as_str()).unwrap();
-            let target = arguments.get("target").and_then(|v| v.as_str()).unwrap();
-            let result = arguments.get("result").and_then(|v| v.as_str()).unwrap();
+            let id = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing required argument: id"))?;
+            let target = arguments
+                .get("target")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing required argument: target"))?;
+            let result = arguments
+                .get("result")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing required argument: result"))?;
             let detail = arguments
                 .get("detail")
                 .and_then(|v| v.as_str())

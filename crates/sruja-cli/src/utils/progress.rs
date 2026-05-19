@@ -4,11 +4,12 @@ use std::time::Duration;
 pub fn spinner(message: &str) -> ProgressBar {
     let pb = ProgressBar::new_spinner();
     pb.enable_steady_tick(Duration::from_millis(120));
+    let tick_strings = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
     pb.set_style(
         ProgressStyle::default_spinner()
-            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+            .tick_strings(&tick_strings)
             .template("{spinner:.blue} {msg}")
-            .expect("valid template"),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner().tick_strings(&tick_strings)),
     );
     pb.set_message(message.to_string());
     pb
