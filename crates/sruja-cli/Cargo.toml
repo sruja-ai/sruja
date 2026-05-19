@@ -39,7 +39,7 @@ notify-debouncer-mini = "0.4.1"
 clap_complete = "4.5"
 console = "0.15"
 dialoguer = "0.12"
-crossterm = "0.28"
+crossterm = "0.29"
 opener = "0.8"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
