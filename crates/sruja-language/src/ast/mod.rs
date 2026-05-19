@@ -1,13 +1,25 @@
 //! AST structures for Sruja DSL
 //!
-//! Core element and program types live in [`core`]. SLO, loops, fitness, and
-//! incident types live in [`extended`].
+//! Types are grouped by domain: [`kinds`], [`element`], [`relation`], [`spec`],
+//! [`governance`], [`blocks`], and [`extended`] (SLO, loops, incidents).
 
-mod core;
+mod blocks;
+mod element;
 mod extended;
+mod governance;
+mod kinds;
+mod program;
+mod relation;
+mod spec;
 
 #[cfg(test)]
 mod tests;
 
-pub use core::*;
+pub use blocks::*;
+pub use element::*;
 pub use extended::*;
+pub use governance::*;
+pub use kinds::*;
+pub use program::*;
+pub use relation::*;
+pub use spec::*;

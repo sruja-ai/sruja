@@ -2,7 +2,7 @@
 
 use sruja_diagnostics::SourceLocation;
 
-use super::core::{Program, QualifiedIdent, Relation};
+use super::{Program, QualifiedIdent, Relation};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SloBlock {
