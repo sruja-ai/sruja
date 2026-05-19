@@ -24,7 +24,8 @@ For deterministic CLI-only evaluation:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
-sruja quickstart -r . --generate-baseline
+sruja quickstart -r . --generate-baseline   # repo.sruja.draft (structural evidence)
+# Author repo.sruja with the sruja-architecture skill, then:
 sruja lint repo.sruja
 sruja sync -r .
 sruja status -r .
@@ -160,8 +161,8 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 1. Review Sruja documentation
 2. Install CLI: `curl -fsSL https://sruja.ai/install.sh | bash`
-3. Generate a baseline in your target repo: `sruja quickstart -r . --generate-baseline`
-4. Validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
+3. Generate structural evidence: `sruja quickstart -r . --generate-baseline` (writes `repo.sruja.draft`)
+4. Author reviewed `repo.sruja` (skill), then validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
 5. Capture the first health signal: `sruja status -r .` and `sruja drift -r . -a repo.sruja`
 6. Install VS Code extension for syntax highlighting and diagnostics (optional)
 

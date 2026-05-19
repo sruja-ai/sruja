@@ -39,7 +39,7 @@ Discovery is backed by a **static analysis graph** (Tree-sitter): modules, impor
 | Tier | Source | Use when |
 |------|--------|----------|
 | 0 | MCP: `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` | In Cursor/Copilot with Sruja MCP — prefer over pasting full architecture |
-| 1 | `.sruja/context.json` (summary) | Default: "what areas exist?", "how big?" |
+| 1 | `.sruja/context.json` (summary); optional `repo.sruja.draft` | Default: "what areas exist?", "how big?" Draft is manifest/workspace evidence only—not reviewed architecture. |
 | 2 | `.sruja/graph.json` (slice by area/module) | Reasoning about a specific area (e.g. "dependencies of auth") |
 | 3 | Full `.sruja/graph.json` or `sruja scan -r . -o -` | Deep task: full dependency list, export |
 

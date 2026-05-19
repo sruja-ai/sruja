@@ -104,7 +104,7 @@ Every feature should fit at least one of these workflows:
 
 1. **Onboarding overlap**: `quickstart`, `discover explain`, `onboard`, `ai`, and `init --prompt` all help a user understand or start. Pick one primary "start here" narrative:
    - Product marketing: install/use the skill.
-   - CLI evaluation: `sruja start -r . --prompt` or `sruja quickstart -r . --generate-baseline`.
+   - CLI evaluation: `sruja start -r . --prompt` or `sruja quickstart -r . --generate-baseline` (writes `repo.sruja.draft`; author `repo.sruja` separately).
    - Human/AI briefing: `sruja onboard` for whole repo, `sruja ai` for task.
 
 2. **Health metric overlap**: `status`, `doctor`, `health`, `context-score`, `quickstart`, and `daily` all report some form of health. Define separate jobs:

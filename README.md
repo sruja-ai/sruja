@@ -25,8 +25,9 @@ If your editor cannot use skills yet, or you want a deterministic first look:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
-sruja inspect overview -r . --generate-baseline
+sruja inspect overview -r . --generate-baseline   # repo.sruja.draft (structural evidence)
 sruja inspect onboard -r .
+# Author repo.sruja with the sruja-architecture skill, then:
 sruja lint repo.sruja
 ```
 
@@ -104,11 +105,11 @@ Your AI will:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
-sruja inspect overview -r . --generate-baseline
+sruja inspect overview -r . --generate-baseline   # repo.sruja.draft
 sruja inspect onboard -r .
 ```
 
-This scans your repo, prints an inventory + structural health report, and writes a draft `repo.sruja` baseline you can version-control. Use this path for CI, scripting, or evaluation without an AI editor.
+This scans your repo, prints an inventory + structural health report, and writes `repo.sruja.draft` (workspace map evidence—not reviewed architecture). Use the skill to shape `repo.sruja`, or use this path for CI, scripting, and evaluation without an AI editor.
 
 ### Daily developer loop
 
@@ -190,7 +191,7 @@ No. Your AI writes the `.sruja` files for you. You just need to know what to ask
 
 **What if I don't have an AI editor?**
 
-You can still use the CLI. For evaluation, start with `sruja inspect overview -r . --generate-baseline` and `sruja lint repo.sruja`. Once you have a baseline, use `sruja sync -r .` and `sruja drift -r . -a repo.sruja` to keep declared architecture aligned with your code. The skill makes this workflow smoother in AI editors, but the underlying commands work in CI and automation too.
+You can still use the CLI. For evaluation, start with `sruja inspect overview -r . --generate-baseline` (structural draft), author `repo.sruja` with the skill or by hand, then `sruja lint repo.sruja`. Once reviewed truth exists, use `sruja sync -r .` and `sruja drift -r . -a repo.sruja` to keep declared architecture aligned with code. The skill makes this workflow smoother in AI editors, but the underlying commands work in CI and automation too.
 
 **Can I use this with my existing project?**
 

@@ -43,7 +43,7 @@ jobs:
 sruja drift -r . -a repo.sruja
 
 # For auto-fix capabilities, update the architecture to match code:
-# sruja init --auto  # to regenerate baseline
+# sruja init --auto  # writes repo.sruja.draft; author repo.sruja with skill
 ```
 
 ## Governance Metrics

@@ -87,12 +87,13 @@ Use the canonical pilot path to create a single reviewed baseline and keep evide
 Ask the skill to generate or update `repo.sruja`. If you are evaluating from the CLI only:
 
 ```bash
-sruja quickstart -r . --generate-baseline
+sruja quickstart -r . --generate-baseline   # repo.sruja.draft (structural evidence)
+# Author reviewed intent in repo.sruja (sruja-architecture skill), then:
 sruja lint repo.sruja
 sruja sync -r .
 ```
 
-This generates `repo.sruja`, validates it, and refreshes evidence under `.sruja/` (context + graph) for drift and review workflows.
+`--generate-baseline` writes a capped workspace map draft, not reviewed architecture. Promote to `repo.sruja` via the skill (or manual edit), lint, then refresh evidence under `.sruja/` for drift workflows.
 
 ### Step 2: AI editor integration (so AI-generated code follows evidence)
 

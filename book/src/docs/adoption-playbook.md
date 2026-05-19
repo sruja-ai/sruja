@@ -8,8 +8,8 @@ summary: "Practical steps to roll out Sruja across teams and CI."
 
 ## Week 1: Baseline & CI
 
-- Generate a baseline `repo.sruja`: `sruja quickstart -r . --generate-baseline`
-- Validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
+- Structural draft: `sruja quickstart -r . --generate-baseline` (writes `repo.sruja.draft`)
+- Author reviewed `repo.sruja` (sruja-architecture skill), then validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
 - Add `sruja lint repo.sruja` and `sruja drift -r . -a repo.sruja` to CI; fail on violations
 - Export docs: `sruja export markdown repo.sruja`
 

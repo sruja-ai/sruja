@@ -65,5 +65,5 @@
 ## Next Steps
 
 - Review the highlighted elements and rename or regroup them in `repo.sruja` if they do not match your team language.
-- Run `sruja quickstart -r . --generate-baseline` once this explanation looks right enough to become a baseline.
-- After the baseline exists, run `sruja drift -r . -a repo.sruja` in CI to keep the architecture honest as the code changes.
+- Run `sruja quickstart -r . --generate-baseline` for a structural draft (`repo.sruja.draft`), then author reviewed intent in `repo.sruja` with the sruja-architecture skill.
+- After `repo.sruja` exists, run `sruja drift -r . -a repo.sruja` in CI to keep declared architecture aligned with code.

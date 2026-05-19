@@ -244,7 +244,7 @@ Yes, but it's easier to let AI do it. If you do edit manually:
 | Want to | Command |
 |----------|----------|
 | **Analyze code** | `sruja discover --context -r . --format json` |
-| **Generate baseline** | `sruja quickstart -r . --generate-baseline` |
+| **Structural draft** | `sruja quickstart -r . --generate-baseline` (writes `repo.sruja.draft`) |
 | **Validate** | `sruja lint repo.sruja` |
 | **Refresh evidence** | `sruja sync -r .` |
 | **Repo health** | `sruja status -r .` |

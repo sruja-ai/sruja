@@ -9,9 +9,9 @@ This playbook defines our loop for using Sruja on Sruja. We aim to measure wheth
 To prevent architectural decay, we follow this strictly for **all** PRs:
 
 1.  **Reviewed Truth**: Files in `docs/architecture/*.sruja` are the authoritative source. If you change how a system is structured (adding a container, changing a dependency), **you must update these files**.
-2.  **Generated Reality**: `repo.sruja` is the automated "reality check". It represents what Sruja's structural analysis currently sees in the codebase.
-    *   `repo.sruja` is generated via `sruja quickstart -r . --generate-baseline`.
-3.  **Mandatory PR Check**: Every meaningful code change must be validated locally using at least one:
+2.  **Structural evidence**: `repo.sruja.draft` (optional) is a capped workspace map from `sruja quickstart -r . --generate-baseline` or `sruja init --auto`—input for authoring, not reviewed truth.
+3.  **Reviewed baseline**: `repo.sruja` is the drift/lint baseline. Maintain it via the skill and PR review; do not treat the draft as architecture.
+4.  **Mandatory PR Check**: Every meaningful code change must be validated locally using at least one:
     *   `sruja doctor -r .` (Quick health check)
     *   `sruja daily -r .` (Review what changed and verify evidence)
     *   `sruja drift -r . -a repo.sruja` (Check if code drifts from the baseline)
@@ -19,7 +19,7 @@ To prevent architectural decay, we follow this strictly for **all** PRs:
 > [!IMPORTANT]
 > If `sruja drift` flags an issue, you have two choices:
 > - **Fix the code**: If the new code violates the intended architecture.
-> - **Update the architecture**: If the change was intentional, update `docs/architecture/*.sruja` and regenerate the baseline.
+> - **Update the architecture**: If the change was intentional, update `docs/architecture/*.sruja` and align `repo.sruja` through review (do not treat `repo.sruja.draft` as truth).
 
 ---
 

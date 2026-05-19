@@ -88,8 +88,9 @@ Other useful commands:
 sruja drift -r .                    # Drift (cycles, orphans, layer violations)
 sruja quickstart -r .               # Quick architecture overview (inventory, health score, findings)
 sruja ai -r . --task "Fix auth bug" # Paste-ready AI coding brief from repo + worktree context
-# Canonical pilot path (baseline + drift):
-#   sruja quickstart -r . --generate-baseline
+# Canonical pilot path (draft → reviewed truth → drift):
+#   sruja quickstart -r . --generate-baseline   # repo.sruja.draft
+#   # author repo.sruja (skill or manual), then:
 #   sruja lint repo.sruja
 #   sruja sync -r .
 #   sruja drift -r . -a repo.sruja

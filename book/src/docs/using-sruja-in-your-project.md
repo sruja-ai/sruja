@@ -52,12 +52,13 @@ Install **Sruja Language Support** from the [VS Code Marketplace](https://market
 
 ```bash
 # From your repo root (recommended pilot path)
-sruja quickstart -r . --generate-baseline
+sruja quickstart -r . --generate-baseline   # repo.sruja.draft (structural evidence)
+# Author repo.sruja with the sruja-architecture skill, then:
 sruja lint repo.sruja
 sruja sync -r .
 ```
 
-This creates a baseline `repo.sruja` you can version-control, validates it, and refreshes evidence under `.sruja/` (context + graph) for drift and review workflows.
+`--generate-baseline` writes a workspace map draft—not reviewed architecture. Promote to `repo.sruja` via the skill, lint, then refresh evidence under `.sruja/` for drift workflows.
 
 ### Step 2: AI editor integration (so AI-generated code follows rules)
 

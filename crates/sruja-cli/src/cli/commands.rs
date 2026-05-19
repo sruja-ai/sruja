@@ -311,7 +311,7 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// First look: structural overview and optional baseline generation
+    /// First look: structural overview and optional repo.sruja.draft (evidence, not reviewed truth)
     ///
     /// Use when asking "What is in this repo?" For a full-repo brief, use `onboard`. For an AI task brief, use `ai`.
     #[command(visible_alias = "overview", hide = true)]
@@ -329,7 +329,7 @@ pub enum Commands {
         #[arg(long)]
         fail_on: Option<String>,
     },
-    /// Set up Sruja in a repo: create .sruja/, .srujaignore, and optional baseline
+    /// Set up Sruja in a repo: create .sruja/, .srujaignore, and optional repo.sruja.draft
     ///
     /// This is a setup command, not a briefing command.
     /// For repo overview, use `quickstart`. For full briefing, use `onboard`.
