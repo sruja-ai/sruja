@@ -56,3 +56,8 @@ If you add more **autonomous** steps (headless runs, hooks, or multi-bot flows),
 3. **Gate** risky automation with drift checks, lint, and continuous evaluation as prompts and tools evolve.
 
 For editor wiring, start with [mcp_setup.md](mcp_setup.md) and [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md).
+
+## See also
+
+- [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) — lint/drift harness, `--enrich-cmd`, bounded `agent plan`/`apply`, and host-owned continual learning (no in-repo agent runtime)
+- [context-graph-for-agents.md](context-graph-for-agents.md) — Decision Records, trace events, and artifact contracts

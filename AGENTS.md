@@ -81,6 +81,10 @@ Do **not** paste full `repo.sruja` or entire `sruja ai` briefs into chat when th
 
 Filling the context window “because we can” still hurts quality.
 
+### Grounded harness and continual learning (host-owned)
+
+Sruja is the **deterministic harness** (lint, drift, evidence, MCP, agent memory); the **editor or CI host** owns the LLM loop (Act / optional Reflect). There is no `--autonomous` CLI mode. Full guide: [docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
+
 ### CLI `agent` loop boundaries
 
 `sruja agent run`, `agent plan`, and `agent apply` exist for **architecture-bounded** work: they should consume Sruja evidence, emit reviewable artifacts, run verification, and record learnings under `.sruja/context/`. They are not a general-purpose coding agent, web search, or a substitute for your editor’s agent.

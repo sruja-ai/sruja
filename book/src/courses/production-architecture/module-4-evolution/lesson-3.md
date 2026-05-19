@@ -69,23 +69,33 @@ sruja drift -r . --fix
 sruja impact <component> -r . --depth 3
 ```
 
-## Agentic Memory (v0.37.0)
+## Agentic memory and bounded agent loop
 
-From v0.37.0, Sruja includes **agentic memory**—autonomous optimization that learns from past decisions:
+Sruja records **architecture-bounded learnings** in `.sruja/agent_memory.json` and supports a **review-before-apply** agent loop. Sruja is a harness—not a full autonomous coding agent; your editor or CI hosts the LLM.
 
 ```bash
-# Enable autonomous mode
-sruja agent run -r . --autonomous
+# Emit a reviewable plan grounded in repo evidence
+sruja agent plan -r . --goal "Reduce drift on API layer" --file src/api/main.rs --print
 
-# Review agent suggestions
-sruja agent review -r .
+# After human or CI review, apply the plan
+sruja agent apply -r . --plan docs/plans/<run-id>.json
+
+# Optional: parallel sandbox trajectories (MaTTS) when worktrees are available
+sruja agent run -r . --goal "..." --file src/api/main.rs --mode apply --trajectories 3
+
+# Inspect and curate learnings
+sruja agent history -r .
+sruja agent curate -r .
 ```
 
-The agent:
-- Remembers past architectural decisions
-- Learns from team preferences
-- Proposes optimizations based on patterns
-- Evaluates fitness of changes before applying
+Enable automatic learning capture in `.sruja/config.toml`:
+
+```toml
+[agent]
+auto_record_learnings = true
+```
+
+See [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) for the full host-vs-harness model.
 
 ## Integrating into CI/CD
 

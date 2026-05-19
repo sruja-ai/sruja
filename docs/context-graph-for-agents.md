@@ -21,6 +21,8 @@ This document defines the **reference workflow**, **artifact contracts**, and **
 
 Align autonomous loops with [AGENTS.md](../AGENTS.md): `sruja agent run` consumes Sruja evidence and emits reviewable artifacts—it is not a substitute for the editor’s agent or unconstrained refactors.
 
+For the full harness + host-owned learning model (correction table, Ollama/`--enrich-cmd`, daily loop), see [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
+
 ## Decision Record (DR) — generalized ADR
 
 An **ADR** is a **profile** of a Decision Record: typically `type: architecture`, linked elements, and `category: adr` when ingested through `sruja ingest`.

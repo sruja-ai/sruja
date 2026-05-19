@@ -65,7 +65,7 @@ sruja focus --file src/api/main.rs --base-ref main -r .
 Sruja also records **lightweight decision-style traces** for the repo (not a separate graph model—see [CONTEXT_ENGINEERING](../../../../../docs/CONTEXT_ENGINEERING.md#context-graphs-sruja-vs-industry-usage)):
 
 - **`.sruja/context_events.jsonl`** — append-only JSON lines when you run **`sruja intent check`**, **`sruja drift`** (with architecture compare), or **`sruja propose approve …`** (merged proposal). Useful for “what did we last check?” in CI or audits.
-- **`.sruja/agent_memory.json`** — structured learnings from agents (`sruja agent record` / MCP `sruja_record_learning`).
+- **`.sruja/agent_memory.json`** — curated **`LearningEntry`** records (`context`, `hypothesis`, `outcome`, `guardrail_advice`, optional `hitl_kind`). Written via `sruja agent record` or MCP `sruja_record_learning`. See [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 - **`.sruja/agent/runs/<run_id>/facts_bundle.json`** — produced when an **agent apply** run finishes verification (replay bundle).
 
 Focus output includes:

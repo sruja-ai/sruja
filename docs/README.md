@@ -33,6 +33,7 @@ sruja sync -r .
 | [FEDERATION.md](FEDERATION.md) | Retrieval order, artifact shapes, and multi-repo composition rules |
 | [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) | Context engineering principles and pipeline |
 | [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) | How common agentic / multi-agent patterns map to Sruja (MCP, graph, scope) |
+| [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) | Grounded harness (lint/drift), host-owned Act/Reflect/Learn, local `--enrich-cmd`, agent memory |
 | [architecture/domain-schema.md](architecture/domain-schema.md) | Context Graphs, custom `schema` blocks, default architecture kinds, and `sruja lint` validation |
 | [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) | Shared terminology and definitions |
 | [architecture/README.md](architecture/README.md) | Sruja's own architecture models: platform, context pipeline, and development workflow |

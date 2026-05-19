@@ -161,6 +161,7 @@
     - [Lesson 1](courses/agentic-ai/module-4-ai-editor/lesson-1.md)
     - [Lesson 2](courses/agentic-ai/module-4-ai-editor/lesson-2.md)
     - [Lesson 3](courses/agentic-ai/module-4-ai-editor/lesson-3.md)
+    - [Lesson 4: Grounded harness](courses/agentic-ai/module-4-ai-editor/lesson-4-grounded-harness.md)
 - [Advanced Architects](courses/advanced-architects/course-overview.md)
   - [Policy As Code](courses/advanced-architects/module-1-policy-as-code/module-overview.md)
     - [Lesson 1](courses/advanced-architects/module-1-policy-as-code/lesson-1.md)

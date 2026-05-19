@@ -72,6 +72,10 @@ RAG.Retriever -> RAG.VectorDB "Search"
 RAG.Generator -> AgentSystem.Executor "Produce answer"
 ```
 
+## Grounded harness (operational loop)
+
+DSL models describe **what** you build; Sruja’s CLI enforces **whether** architecture matches code. For lint/drift loops, local `--enrich-cmd` inference, and host-owned continual learning, see [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
+
 ## Next Steps
 
 - Explore `book/valid-examples/pattern-agentic-ai.sruja` and `book/valid-examples/pattern-rag-pipeline.sruja`
