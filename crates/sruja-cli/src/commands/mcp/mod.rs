@@ -1,4 +1,11 @@
 //! MCP JSON-RPC server for architecture context tools.
+//!
+//! Layout:
+//! - `transport` — CLI entry (`sruja mcp`) and stdio framing
+//! - `server` — JSON-RPC dispatch (initialize, tools/list, tools/call, …)
+//! - `definitions` — tool JSON schemas for `tools/list`
+//! - `run_tool` — tool handlers (`read`, `governance`, `graph`, `memory`)
+//! - `ladder` / `helpers` — progressive disclosure builders and shared utilities
 
 mod config;
 mod definitions;
