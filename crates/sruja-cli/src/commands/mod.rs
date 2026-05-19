@@ -3,6 +3,7 @@
 //! Commands are split by domain: dsl, scan, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
+pub mod author;
 pub mod dsl_domain;
 pub mod intent_domain;
 pub mod scan_domain;
@@ -62,6 +63,7 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
         }
     }
 }
+pub use author::{author_evidence, author_propose};
 pub use drift_state::drift_state_print as drift_state;
 pub use dsl_domain::completions::completions;
 pub use dsl_domain::generate::generate_prompt;

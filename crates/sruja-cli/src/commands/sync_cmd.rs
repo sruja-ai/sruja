@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 use std::time::{Duration, SystemTime};
 
-use super::discover::{discover_context_json_from_graph, discover_explanation_json};
+use super::discover::discover_context_json_from_graph;
 use super::violation_shared::*;
 use super::CliError;
 use crate::utils::{architecture_path, colors};
@@ -12,7 +12,7 @@ use sruja_diff::Violation;
 use sruja_scan::scan_repo;
 use std::collections::HashSet;
 
-struct RepoWriteLock {
+pub(crate) struct RepoWriteLock {
     path: std::path::PathBuf,
 }
 
@@ -22,7 +22,7 @@ impl Drop for RepoWriteLock {
     }
 }
 
-async fn acquire_repo_write_lock(repo_path: &Path) -> Result<RepoWriteLock, CliError> {
+pub(crate) async fn acquire_repo_write_lock(repo_path: &Path) -> Result<RepoWriteLock, CliError> {
     let lock_path = repo_path.join(".sruja").join("write.lock");
     if let Some(parent) = lock_path.parent() {
         fs::create_dir_all(parent)?;
@@ -74,7 +74,7 @@ async fn acquire_repo_write_lock(repo_path: &Path) -> Result<RepoWriteLock, CliE
     }
 }
 
-fn atomic_write_file(path: &Path, contents: &[u8]) -> Result<(), CliError> {
+pub(crate) fn atomic_write_file(path: &Path, contents: &[u8]) -> Result<(), CliError> {
     use std::io::Write;
 
     let parent = path.parent().ok_or_else(|| {
@@ -161,16 +161,14 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         })?;
     }
 
-    // Scan once and reuse for context + drift/baseline-compare to avoid redundant work.
+    // Scan once and reuse for context + drift/baseline-compare + explain/evidence to avoid redundant work.
     let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
-    let mut value = match discover_explanation_json(repo_root) {
-        Ok(json) => serde_json::from_str::<serde_json::Value>(&json)
-            .map_err(|e| CliError::validation(e.to_string()))?,
-        Err(_) => {
-            let ctx = discover_context_json_from_graph(repo_root, repo_path, &graph)?;
-            serde_json::to_value(&ctx).map_err(|e| CliError::validation(e.to_string()))?
-        }
-    };
+    let mut value =
+        super::discover::discover_explanation_value_from_graph(repo_root, repo_path, &graph)
+            .or_else(|_| {
+                let ctx = discover_context_json_from_graph(repo_root, repo_path, &graph)?;
+                serde_json::to_value(&ctx).map_err(|e| CliError::validation(e.to_string()))
+            })?;
 
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
     let baseline = baseline_path
@@ -212,8 +210,10 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .as_ref()
         .map(|s| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
-    value["git_commit"] = git_commit_short(repo_path)
-        .map(serde_json::Value::String)
+    let git_commit = git_commit_short(repo_path);
+    value["git_commit"] = git_commit
+        .as_ref()
+        .map(|s| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
 
     // Add normalized violations with shared metadata, split by baseline suppression if baseline file exists.
@@ -264,6 +264,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     let path = dot_sruja.join("context.json");
     let context_path = path.display().to_string();
     let graph_path = dot_sruja.join("graph.json");
+    let author_evidence_path = dot_sruja.join("author_evidence.json");
     let _lock = acquire_repo_write_lock(repo_path).await?;
 
     let context_json =
@@ -286,6 +287,25 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         other => other,
     })?;
 
+    let author_evidence = super::author::build_author_evidence_from_graph(
+        repo_root,
+        repo_path,
+        &graph,
+        &truth_status,
+        git_commit,
+    )?;
+    let author_evidence_json = serde_json::to_string_pretty(&author_evidence)
+        .map_err(|e| CliError::validation(e.to_string()))?;
+    atomic_write_file(&author_evidence_path, author_evidence_json.as_bytes()).map_err(
+        |e| match e {
+            CliError::Io(io) => CliError::Io(std::io::Error::new(
+                io.kind(),
+                format!("Failed to write {}: {}", author_evidence_path.display(), io),
+            )),
+            other => other,
+        },
+    )?;
+
     let output = SyncOutput {
         truth_status: truth_status.clone(),
         baseline: baseline.clone(),
@@ -306,6 +326,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         _ => {
             eprintln!("Wrote {}", colors::info(context_path));
             eprintln!("Wrote {}", colors::info(graph_path.display()));
+            eprintln!("Wrote {}", colors::info(author_evidence_path.display()));
             if let Some(ref base) = baseline {
                 eprintln!("Baseline: {}", base);
             } else {

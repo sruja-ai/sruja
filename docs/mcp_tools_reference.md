@@ -23,6 +23,7 @@ Full diagnostic logs truncated in tool output are stored under `.sruja/vfs/diagn
 
 | Step | When | Tool |
 |------|------|------|
+| Architecture authoring (synthesis input) | Capped communities, entrypoints, manifest edges — not full graph | **`sruja_get_author_evidence`** |
 | Before starting a task | Blast radius, decisions, AI instructions | **`sruja_get_focus_briefing`** |
 | Paste-ready AI brief (CLI) | Share context outside MCP | `sruja ai` / `sruja ai-context -f for-ai` |
 | Investigation | "Why is this like this?" | **`sruja_query_graph`**, **`sruja_explain_element`**, **`sruja_bm25_search`** |
@@ -64,6 +65,7 @@ These may write under `.sruja`, change git worktrees, run a user-supplied gate c
 
 | Tool | Summary |
 |------|---------|
+| `sruja_get_author_evidence` | Load or build `.sruja/author_evidence.json` (`author_evidence/v1`) for grounded authoring; includes `estimated_tokens` and `next_suggested_tool`. |
 | `sruja_get_repomap` | Token-oriented repository map (tree-sitter). |
 | `sruja_explain_discovery` | Why Sruja inferred the repo shape; what to review next. |
 

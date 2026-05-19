@@ -25,10 +25,11 @@ If your editor cannot use skills yet, or you want a deterministic first look:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
-sruja inspect overview -r . --generate-baseline   # repo.sruja.draft (structural evidence)
-sruja inspect onboard -r .
-# Author repo.sruja with the sruja-architecture skill, then:
+sruja sync -r .                                    # author_evidence.json + context (synthesis input)
+sruja inspect overview -r . --generate-baseline   # repo.sruja.draft (structural sketch only)
+# Use sruja-architecture skill to synthesize proposals, promote to repo.sruja, then:
 sruja lint repo.sruja
+sruja drift -r . -a repo.sruja
 ```
 
 **Optional CLI onboarding enrichment:**

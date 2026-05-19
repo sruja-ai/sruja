@@ -22,6 +22,28 @@ pub struct Proposal {
     pub status: ProposalStatus,
     pub changes: Vec<ProposalChange>, // The actual modifications
     pub validation: Option<ProposalValidation>, // Result of pre-validation
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence_refs: Vec<ProposalEvidenceRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub open_questions: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub synthesis_notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProposalEvidenceRef {
+    pub target_id: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub refs: Vec<EvidenceRef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvidenceRef {
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -101,6 +123,9 @@ impl Proposal {
             status: ProposalStatus::Draft,
             changes: Vec::new(),
             validation: None,
+            evidence_refs: Vec::new(),
+            open_questions: Vec::new(),
+            synthesis_notes: None,
         }
     }
 
@@ -512,6 +537,26 @@ mod tests {
         let v = proposal.validate(&graph, &intent);
         assert!(!v.is_valid);
         assert!(!v.policy_violations.is_empty());
+    }
+
+    #[test]
+    fn proposal_deserializes_without_optional_evidence_fields() {
+        let legacy = r#"
+{
+  "id": "p1",
+  "title": "t",
+  "description": "d",
+  "author": null,
+  "created_at": "2026-01-01T00:00:00Z",
+  "status": "draft",
+  "changes": [],
+  "validation": null
+}
+"#;
+        let p: Proposal = serde_json::from_str(legacy).expect("legacy proposal should parse");
+        assert!(p.evidence_refs.is_empty());
+        assert!(p.open_questions.is_empty());
+        assert!(p.synthesis_notes.is_none());
     }
 }
 

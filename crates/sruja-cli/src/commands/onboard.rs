@@ -429,7 +429,7 @@ fn relativize_path(repo_root: &Path, path: &str) -> Option<String> {
     )
 }
 
-fn discover_entrypoints(
+pub(crate) fn discover_entrypoints(
     repo_root: &Path,
     graph: &Graph,
     max_items: usize,
@@ -469,7 +469,7 @@ fn discover_entrypoints(
         .collect()
 }
 
-fn discover_data_stores(
+pub(crate) fn discover_data_stores(
     repo_root: &Path,
     graph: &Graph,
     max_items: usize,

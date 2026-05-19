@@ -2,9 +2,9 @@ use clap::Subcommand;
 
 use super::app::ContextIntent;
 use super::subcommands::{
-    AgentCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand, EvolutionCommand,
-    FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand, MemoryCommand,
-    ProposeCommand, RunCommand,
+    AgentCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand,
+    EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand,
+    MemoryCommand, ProposeCommand, RunCommand,
 };
 
 #[derive(Subcommand)]
@@ -16,6 +16,11 @@ pub enum Commands {
     Propose {
         #[command(subcommand)]
         cmd: ProposeCommand,
+    },
+    /// Grounded architecture authoring helpers (evidence bundle + proposal synthesis)
+    Author {
+        #[command(subcommand)]
+        cmd: AuthorCommand,
     },
     /// Scan a repository and infer an architecture graph
     Scan {

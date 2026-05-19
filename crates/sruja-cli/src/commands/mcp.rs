@@ -1197,6 +1197,17 @@ fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_get_author_evidence",
+            "title": "Sruja Author Evidence",
+            "description": "Load or build `.sruja/author_evidence.json` (a capped, citeable evidence bundle for grounded architecture authoring).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
             "name": "sruja_get_evidence_for_claim",
             "title": "Sruja Evidence For Claim",
             "description": "Resolve a learned fact by id and attach matching scan nodes from the evidence graph when ids align.",
@@ -3630,6 +3641,16 @@ async fn run_tool(
             let text = std::fs::read_to_string(&p).map_err(CliError::Io)?;
             Ok(text)
         }
+        "sruja_get_author_evidence" => {
+            let evidence = super::author::load_or_build_author_evidence(&repo)?;
+            let mut value = serde_json::to_value(&evidence)?;
+            value["path"] = json!(super::author::author_evidence_default_path(&repo)
+                .display()
+                .to_string());
+            value["next_suggested_tool"] = json!("sruja_get_focus_briefing");
+            set_estimated_tokens(&mut value)?;
+            Ok(serde_json::to_string_pretty(&value)?)
+        }
         "sruja_get_evidence_for_claim" => {
             let claim_id = arguments
                 .get("claim_id")
@@ -5058,6 +5079,7 @@ mod tests {
         assert!(names.contains(&"sruja_link_decision_to_element".to_string()));
         assert!(names.contains(&"sruja_get_learned_facts".to_string()));
         assert!(names.contains(&"sruja_get_evidence_graph".to_string()));
+        assert!(names.contains(&"sruja_get_author_evidence".to_string()));
         assert!(names.contains(&"sruja_get_agent_learnings".to_string()));
         assert!(names.contains(&"sruja_search_memory".to_string()));
         assert!(names.contains(&"sruja_get_memory_timeline".to_string()));

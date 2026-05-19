@@ -54,6 +54,40 @@ pub enum DiscoverCommand {
 }
 
 #[derive(Subcommand)]
+pub enum AuthorCommand {
+    /// Emit a capped, citeable evidence bundle for grounded architecture authoring
+    Evidence {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Output format (json)
+        #[arg(long, short = 'f', default_value = "json")]
+        format: String,
+        /// Output path (defaults to .sruja/author_evidence.json)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+        /// Do not print the JSON bundle to stdout (file is still written)
+        #[arg(long, default_value_t = true)]
+        quiet: bool,
+    },
+    /// Run an external enrichment command to synthesize a Proposal JSON from author evidence
+    Propose {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// External enrichment command (reads JSON from stdin; writes Proposal JSON to stdout)
+        #[arg(long)]
+        enrich_cmd: String,
+        /// Timeout for --enrich-cmd in milliseconds (default: 15000)
+        #[arg(long, default_value_t = 15000)]
+        enrich_timeout_ms: u64,
+        /// Max bytes to read from --enrich-cmd stdout (default: 20000)
+        #[arg(long, default_value_t = 20000)]
+        enrich_max_bytes: usize,
+    },
+}
+
+#[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)]
 pub enum AgentCommand {
     /// Show architectural learning history and guardrails

@@ -1,4 +1,4 @@
-use super::subcommands::{AgentCommand, DiscoverCommand, IntentCommand};
+use super::subcommands::{AgentCommand, AuthorCommand, DiscoverCommand, IntentCommand};
 use super::{Cli, Commands, ContextIntent};
 use clap::Parser;
 
@@ -160,6 +160,42 @@ fn parses_discover_subcommands() {
                     assert!(matches!(cmd, Some(DiscoverCommand::Context)));
                 }
                 _ => panic!("expected Discover command"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}
+
+#[test]
+fn parses_author_subcommands() {
+    std::thread::Builder::new()
+        .name("clap_parse_large_stack".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from(["sruja", "author", "evidence"]).expect("parse");
+            match cli.command {
+                Commands::Author { cmd } => {
+                    assert!(matches!(cmd, AuthorCommand::Evidence { .. }));
+                }
+                _ => panic!("expected Author command"),
+            }
+
+            let cli2 = Cli::try_parse_from([
+                "sruja",
+                "author",
+                "propose",
+                "-r",
+                ".",
+                "--enrich-cmd",
+                "cat",
+            ])
+            .expect("parse propose");
+            match cli2.command {
+                Commands::Author { cmd } => {
+                    assert!(matches!(cmd, AuthorCommand::Propose { .. }));
+                }
+                _ => panic!("expected Author command"),
             }
         })
         .expect("spawn")

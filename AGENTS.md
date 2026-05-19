@@ -329,13 +329,14 @@ For multi-step agent work, follow **AI agent workflow (multi-step tasks)** above
 
 When working on Sruja:
 1. **First Time Setup**: Run `make setup` to ensure all dependencies and git hooks are correctly installed.
-2. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
-3. Run `make check` before committing to ensure consistent formatting, linting, and passing tests.
-4. For .sruja files, run `sruja lint file.sruja` after changes.
-5. Use `cargo clippy -- -D warnings` for strict linting.
-6. Build extension with `make build-extension`.
-7. Test CLI commands with `make test-cli-smoke`.
-8. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`.
+2. **Grounded architecture authoring**: For `repo.sruja` work, prefer `.sruja/author_evidence.json` (from `sruja sync` or `sruja author evidence`) or MCP `sruja_get_author_evidence`. Treat `.sruja/graph.json` as debug/export only—not default agent context. Synthesize proposals under `.sruja/proposals/` or `repo.sruja.working`; promote to `repo.sruja` only after human review. See [docs/plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md](docs/plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md).
+3. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
+4. Run `make check` before committing to ensure consistent formatting, linting, and passing tests.
+5. For .sruja files, run `sruja lint file.sruja` after changes.
+6. Use `cargo clippy -- -D warnings` for strict linting.
+7. Build extension with `make build-extension`.
+8. Test CLI commands with `make test-cli-smoke`.
+9. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`.
 
 ## Common Patterns
 

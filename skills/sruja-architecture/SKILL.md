@@ -14,20 +14,22 @@ Deterministic, evidence-first workflow for generating and maintaining `repo.sruj
 
 ## Quick Start
 
-1. **Evidence** — If `.sruja/context.json` exists and is recent (e.g. `updated_at` within last hour), use it. Else run `sruja sync -r .` (do not ask the user to run it).
-2. **Questions** — Ask 2–5 targeted questions only when evidence is ambiguous (boundaries, externals, datastores, deployment, data flows).
-3. **Generate** — Produce minimal `repo.sruja` from evidence (C4 context + containers; components only when justified).
-4. **Validate** — Run `sruja lint repo.sruja` and fix all errors before considering complete.
-5. **Refine** — Optionally run `sruja drift -r .` and update DSL from drift results.
-6. **Impact (Optional)** — Before refactoring code, run `sruja impact <target> -r . --depth 3` to quickly see upstream dependents and downstream dependencies.
+1. **Evidence** — Prefer `.sruja/author_evidence.json` when present and recent; else run `sruja sync -r .` (do not ask the user to run it). Use `.sruja/context.json` only for the small fields needed for synthesis (communities, suggested_questions, architecture_digest) and avoid loading `.sruja/graph.json` unless the user explicitly asks for deep dependency debugging.
+2. **Synthesis (Mandatory)** — Propose a domain architecture map from evidence. Communities are import-graph hints, not containers; merge/split/rename into domain boundaries.
+3. **Questions** — Ask 2–5 targeted questions only when evidence is ambiguous (boundaries, externals, datastores, deployment, runtime/data flows).
+4. **Output (Never write truth by default)** — Write either (a) `.sruja/proposals/<id>.json` (preferred, incremental) or (b) `repo.sruja.working` (greenfield / big bang). Do not write `repo.sruja` until the user explicitly says to promote.
+5. **Promote + Validate** — For proposals: `sruja propose approve <id>` then `sruja lint repo.sruja`. For working DSL: user promotes by renaming/copying to `repo.sruja` then `sruja lint`.
+6. **Refine** — Run `sruja drift -r .` and iterate; keep unknowns as open questions instead of guessing.
+7. **Impact (Optional)** — Before refactoring code, run `sruja impact <target> -r . --depth 3`.
 
-Workflow checklist: `[ ] Evidence gathered → [ ] Questions (if needed) → [ ] repo.sruja generated → [ ] sruja lint passed → [ ] Open questions listed (no guessing)`
+Workflow checklist: `[ ] Evidence gathered → [ ] Synthesis done → [ ] Questions (if needed) → [ ] Proposal/working DSL written → [ ] Promotion path used → [ ] sruja lint passed → [ ] Open questions listed`
 
 ## Core Principles
 
 - **Evidence-first** — Gather evidence before modeling.
 - **No guessing** — Surface open questions instead of fabricating answers.
-- **Minimal DSL** — Generate only what evidence supports.
+- **Synthesis is required** — Import clusters and manifests are facts; architecture boundaries and names are hypotheses backed by evidence.
+- **Minimal DSL** — Generate only what evidence supports; prefer small, reviewable proposals.
 - **Validation** — Always lint and fix errors before considering complete.
 
 ## Evidence and Discovery
@@ -39,11 +41,12 @@ Discovery is backed by a **static analysis graph** (Tree-sitter): modules, impor
 | Tier | Source | Use when |
 |------|--------|----------|
 | 0 | MCP: `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` | In Cursor/Copilot with Sruja MCP — prefer over pasting full architecture |
-| 1 | `.sruja/context.json` (summary); optional `repo.sruja.draft` | Default: "what areas exist?", "how big?" Draft is manifest/workspace evidence only—not reviewed architecture. |
+| 1 | `.sruja/author_evidence.json`; optional `.sruja/context.json` small fields | Default: synthesis inputs (communities as hints, entrypoints, manifest edges) without a graph dump. |
+| 1.5 | `repo.sruja.draft` | Structural workspace map only (manifests). Never treat as reviewed C4 architecture. |
 | 2 | `.sruja/graph.json` (slice by area/module) | Reasoning about a specific area (e.g. "dependencies of auth") |
 | 3 | Full `.sruja/graph.json` or `sruja scan -r . -o -` | Deep task: full dependency list, export |
 
-If context is missing or stale, run `sruja sync -r .` or `sruja discover --context -r . --format json` yourself. After generating, suggest **Sruja: Refresh repo context** or `sruja sync -r .` for next time.
+If evidence is missing or stale, run `sruja sync -r .` yourself. After generating, suggest **Sruja: Refresh repo context** or `sruja sync -r .` for next time.
 
 Evidence provides: repository structure, detected technologies, module boundaries, entry points, external dependencies, scan scope.
 
@@ -51,13 +54,13 @@ Evidence provides: repository structure, detected technologies, module boundarie
 
 ### 1. Collect Evidence
 
-Prefer `.sruja/context.json` when present and recent (`updated_at`, `truth_status`, `baseline_path`, `git_commit`). If missing or stale, run:
+Prefer `.sruja/author_evidence.json` when present and recent. If missing or stale, run:
 
 ```bash
 sruja sync -r .
 ```
 
-Or JSON only: `sruja discover --context -r . --format json`
+Optional: `sruja author evidence -r .` (writes `.sruja/author_evidence.json`)
 
 ### 2. Ask Targeted Questions
 
@@ -69,7 +72,7 @@ Do not ask about information already clear from evidence.
 
 ### 3. Generate Minimal DSL
 
-Minimal `repo.sruja` from evidence. C4 context and container levels first; component level only when evidence justifies it.
+Default output is a proposal or working DSL, not `repo.sruja`. C4 context and container levels first; component level only when evidence justifies it.
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
@@ -126,8 +129,8 @@ Use drift results to refine `repo.sruja`. Use `-a path` to specify a different a
 
 ## Operating Modes
 
-1. **Local authoring** — Create/update `repo.sruja` from evidence + questions; generate minimal DSL; run `sruja lint`.
-2. **System context** — Use discover output or `.sruja/context.json` for the slice relevant to the task; prefer canonical IDs from evidence.
+1. **Local authoring** — Gather `.sruja/author_evidence.json` (or `sruja sync`), synthesize a proposal or `repo.sruja.working`, promote to `repo.sruja` only when the user asks; run `sruja lint` after promotion.
+2. **System context** — Prefer `sruja_get_author_evidence` (MCP) or author evidence file; use `.sruja/context.json` for drift/truth only—not full graph dumps.
 3. **Drift refinement** — After code/intent changes, use `sruja drift -r .` (and optionally `sruja intent propose`) to turn deltas into DSL updates or open questions; do not invent without evidence.
 4. **Multi-repo** — When `system.index.json` exists (from `sruja compose`), load only the **impacted slice**; use canonical IDs `repo_id::local_id`; check `conflicts` and ownership. See **docs/FEDERATION.md**.
 
@@ -158,6 +161,13 @@ Surface missing or unclear information explicitly in comments:
 // - What message queue is used for async operations?
 // - External API integrations not detected?
 ```
+
+## Evidence References
+
+When synthesizing non-trivial boundaries, actors, externals, or runtime edges, include evidence references and unknowns:
+
+- Proposal path: populate `evidence_refs[]` and `open_questions[]` on the Proposal JSON.
+- Working DSL path: include `// OPEN QUESTIONS:` blocks when inventing actors/externals/flows, and list evidence refs in descriptions (do not rely on `.sruja/graph.json` as a first-turn input).
 
 ## Multi-repo (Publish and Compose)
 
@@ -227,11 +237,11 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 
 ## Retrieval Order (Architecture-Aware Codegen/Review)
 
-1. Local repo truth — `repo.sruja` (or `architecture.sruja`)
-2. Fresh evidence — `.sruja/context.json` (Tree-sitter); if missing/stale, run `sruja sync -r .` or suggest **Sruja: Refresh repo context**. For deep semantic context, check/generate `index.scip` (SCIP) first.
-3. Slice from system index — If `system.index.json` exists, load only impacted slice; use canonical IDs `repo_id::local_id`
-4. Intent and contract refs — ADRs, intent files from repo or bundle
-5. Truth/drift — `.sruja/context.json` or `sruja status -r . --format json`
+1. Local repo truth — `repo.sruja` (or `architecture.sruja`) after promotion
+2. Fresh synthesis evidence — `.sruja/author_evidence.json` or MCP `sruja_get_author_evidence`; if missing/stale (`git_commit` / `updated_at`), run `sruja sync -r .`. Do **not** load `.sruja/graph.json` unless debugging dependencies.
+3. Drift/truth — `.sruja/context.json` (violations, `truth_status`) or `sruja status -r . --format json`
+4. Slice from system index — If `system.index.json` exists, load only impacted slice; use canonical IDs `repo_id::local_id`
+5. Intent and contract refs — ADRs, intent files from repo or bundle
 
 Prefer canonical IDs; do not invent when context is missing — ask or mark `unknown`.
 
@@ -239,7 +249,7 @@ Prefer canonical IDs; do not invent when context is missing — ask or mark `unk
 
 **Single repo:**
 ```
-Use sruja-architecture skill. If .sruja/context.json exists and is recent, use it for evidence; otherwise run `sruja sync -r .` or `sruja discover --context -r . --format json`. Gather evidence, ask targeted questions only if scope or externals are unclear, generate a minimal repo.sruja with evidence-based components and relationships, then run `sruja lint` and fix all errors until it passes. Do not guess; list open questions instead.
+Use sruja-architecture skill. Prefer `.sruja/author_evidence.json` (or run `sruja sync -r .`). Synthesize domain boundaries from communities (import hints, not containers). Write `.sruja/proposals/<id>.json` with evidence_refs and open_questions, or `repo.sruja.working` for greenfield—do not write repo.sruja until I say promote. After promotion: `sruja propose approve <id>` or copy working → repo.sruja, then `sruja lint` until clean.
 ```
 
 **Multi-repo:**
@@ -250,4 +260,4 @@ Use sruja-architecture skill. Help me set up federation across multiple repos.
 Reference docs/FEDERATION_SETUP_GUIDE.md for detailed steps.
 ```
 
-**Optional Cursor rule:** "For architecture tasks, use `.sruja/context.json` when present and recent; else run `sruja sync -r .` or `sruja discover --context -r . --format json`. For multi-repo, use impacted slice from `system.index.json` when available; see docs/FEDERATION_SETUP_GUIDE.md."
+**Optional Cursor rule:** "For architecture authoring, use `.sruja/author_evidence.json` or MCP `sruja_get_author_evidence`; run `sruja sync -r .` if stale. Avoid `.sruja/graph.json` unless debugging deps. Synthesize proposals with evidence_refs; promote to repo.sruja only on request."

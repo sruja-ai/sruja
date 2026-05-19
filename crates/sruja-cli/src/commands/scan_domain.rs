@@ -1,5 +1,6 @@
 //! Scan and Graph domain commands
 
+pub(crate) use super::author;
 pub(crate) use super::check;
 pub(crate) use super::context;
 pub(crate) use super::critique;

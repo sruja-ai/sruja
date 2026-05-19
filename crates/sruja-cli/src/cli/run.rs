@@ -4,9 +4,9 @@ use super::app::was_invoked_as;
 use super::app::ContextIntent;
 use super::commands::Commands;
 use super::subcommands::{
-    AgentCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand, EvolutionCommand,
-    FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand, MemoryCommand,
-    ProposeCommand, RunCommand,
+    AgentCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand,
+    EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand,
+    MemoryCommand, ProposeCommand, RunCommand,
 };
 use super::Cli;
 
@@ -38,6 +38,23 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             ProposeCommand::List { repo } => commands::propose_list(&repo).await,
             ProposeCommand::Approve { proposal_id, repo } => {
                 commands::propose_approve(&repo, &proposal_id).await
+            }
+        },
+        Commands::Author { cmd } => match cmd {
+            AuthorCommand::Evidence {
+                repo,
+                format,
+                output,
+                quiet,
+            } => commands::author_evidence(&repo, &format, output.as_deref(), quiet).await,
+            AuthorCommand::Propose {
+                repo,
+                enrich_cmd,
+                enrich_timeout_ms,
+                enrich_max_bytes,
+            } => {
+                commands::author_propose(&repo, &enrich_cmd, enrich_timeout_ms, enrich_max_bytes)
+                    .await
             }
         },
         Commands::Scan { path, output } => commands::scan(&path, &output).await,
