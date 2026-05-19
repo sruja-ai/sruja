@@ -32,10 +32,16 @@ pub async fn health(
     let repo_path = Path::new(repo_root);
 
     // 1. Parse architecture file
-    let arch_path = crate::utils::architecture_path::resolve_architecture_path_or_default(
+    let mut arch_path = crate::utils::architecture_path::resolve_architecture_path_or_default(
         repo_path,
         architecture,
     );
+    if !arch_path.exists() {
+        let draft = repo_path.join("repo.sruja.draft");
+        if draft.exists() {
+            arch_path = draft;
+        }
+    }
     let (_content, program) = super::parse_sruja_file(
         arch_path
             .to_str()
