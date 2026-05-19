@@ -1,0 +1,37 @@
+---
+description: Wire Phase 3/4 context tools (drift injector, session prune, memory search) when using Sruja MCP
+alwaysApply: true
+---
+
+# Sruja context host (Phase 3 + 4)
+
+When the **sruja** MCP server is enabled (see `.cursor/mcp.json`), follow this host contract. Sruja suggests; you apply.
+
+## Session start
+
+1. After MCP connects, if you receive **`notifications/drift_state`** (or `SRUJA_MCP_WATCH_DRIFT=1` is set), treat `params` as authoritative session context:
+   - `schema_version` must be `drift_state/v1`
+   - Surface `truth_status`, `health_score`, and top `violations` before large edits
+2. If no notification arrived, call **`sruja_get_drift_state`** once at the start of architecture-bounded work.
+
+## Before precedent / “why did we…” questions
+
+1. Call **`sruja_search_memory`** with a short query (e.g. component name, decision topic).
+2. Prefer hits with `trust: reviewed_truth` (decision records) over `hypothesis` (learnings, events).
+3. Never treat memory hits as permission to edit `repo.sruja` without the normal proposal/review flow.
+
+## Long sessions (context budget)
+
+When the conversation has accumulated many architecture element references (roughly 8+ tool turns on the same task, or token pressure):
+
+1. Call **`sruja_suggest_context_prune`** with:
+   - `active_element_ids`: current focus (from `sruja focus`, `sruja_get_focus_briefing`, or scan-resolved module IDs — prefer graph IDs over bare C4 names when warnings appear)
+   - `session_element_ids`: element/module IDs mentioned in the thread
+2. **Omit** transcript blocks for ids in `compress_ids`; keep full detail for `keep_ids`.
+3. After compressing, avoid re-expanding dropped ids unless the user asks.
+
+## Ladder (unchanged)
+
+`sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` → `sruja_get_task_context` (`cache_friendly: true` when caching).
+
+Prompt template: MCP `prompts/get` → `sruja_mcp_guide`.

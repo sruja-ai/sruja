@@ -94,6 +94,11 @@ test-cli-smoke:
     @echo "Running CLI smoke tests..."
     ./scripts/test_cli_smoke.sh
 
+# Phase 3/4 context host wiring (drift notification, prune, memory)
+test-context-host:
+    @chmod +x scripts/dogfood-phase3-4.sh
+    ./scripts/dogfood-phase3-4.sh
+
 # Install Rust dependencies (fetch only)
 install:
     @echo "Installing Rust dependencies..."

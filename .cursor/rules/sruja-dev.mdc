@@ -16,8 +16,9 @@ Project context for Sruja core and extension development.
 
 ## Useful Context Tools
 - `sruja focus --file <path>` — Task-scoped briefing before deep edits.
-- `sruja mcp` — Prefer MCP for broad architecture queries instead of loading huge file dumps into chat.
+- **Sruja MCP** — `.cursor/mcp.json` (`SRUJA_MCP_WATCH_DRIFT=1`). See **`sruja-context-host`** rule for drift, prune, memory.
 - `sruja drift` — Check for drift after code edits.
+- `sruja memory search -r . "<query>"` — Indexed learnings and context events.
 - `sruja why` — Explain architectural relationships.
 
 ## Repeatable flows

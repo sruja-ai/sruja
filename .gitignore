@@ -35,6 +35,7 @@ benchmarks/results/
 .cursor/*
 !.cursor/rules/
 !.cursor/commands/
+!.cursor/mcp.json
 .trae/*
 !.trae/documents/
 .gemini/*

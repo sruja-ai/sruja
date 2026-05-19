@@ -187,9 +187,12 @@ fn messages_mcp_guide() -> Vec<Value> {
         "user",
         "Sruja MCP (token-efficient): \
          `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` → \
-         `sruja_get_task_context` (`cache_friendly: true`) → `sruja_get_focus_briefing` → \
-         `sruja_check_drift`. Resources: `sruja://context/invariant.md`. \
-         Truncated diagnostics: `sruja_get_diagnostic_full` + vfs URI."
+         `sruja_get_task_context` (`cache_friendly: true`) → `sruja_get_focus_briefing`. \
+         Session: enable `SRUJA_MCP_WATCH_DRIFT=1` or `initializationOptions.watch_drift` for \
+         `notifications/drift_state`; else `sruja_get_drift_state`. Long chats: \
+         `sruja_suggest_context_prune` (apply compress_ids). Precedent questions: \
+         `sruja_search_memory` then `sruja_get_memory_timeline`. Resources: \
+         `sruja://context/invariant.md`. Truncated diagnostics: `sruja_get_diagnostic_full`."
             .to_string(),
     )]
 }

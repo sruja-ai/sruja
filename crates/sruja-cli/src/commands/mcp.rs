@@ -22,6 +22,8 @@ const ENV_MCP_READONLY: &str = "SRUJA_MCP_READONLY";
 const ENV_MCP_LOG: &str = "SRUJA_MCP_LOG";
 /// When set to `1`, `true`, `yes`, or `on`, append a `context_event/v2` row per `tools/call`.
 const ENV_MCP_TRACE_EVENTS: &str = "SRUJA_MCP_TRACE_EVENTS";
+/// When set, emit `notifications/drift_state` after MCP initialize (same as `initializationOptions.watch_drift`).
+const ENV_MCP_WATCH_DRIFT: &str = "SRUJA_MCP_WATCH_DRIFT";
 
 fn mcp_env_truthy(name: &str) -> bool {
     match std::env::var(name) {
@@ -193,6 +195,9 @@ impl McpServer {
     }
 
     fn watch_drift_from_initialize_params(params: Option<&Value>) -> bool {
+        if mcp_env_truthy(ENV_MCP_WATCH_DRIFT) {
+            return true;
+        }
         params
             .and_then(|p| p.get("initializationOptions"))
             .and_then(|o| o.get("watch_drift"))
@@ -4866,6 +4871,35 @@ mod tests {
             resp.pointer("/result/capabilities/experimental/watchDrift")
                 .and_then(|v| v.as_bool()),
             Some(true)
+        );
+    }
+
+    #[tokio::test]
+    async fn mcp_watch_drift_env_enables_notification() {
+        let mut server = McpServer::new(".".to_string());
+        std::env::set_var(ENV_MCP_WATCH_DRIFT, "1");
+        let _ = server
+            .handle_message(json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": { "protocolVersion": MCP_PROTOCOL_VERSION }
+            }))
+            .await;
+        let _ = server
+            .handle_message(json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized"
+            }))
+            .await;
+        std::env::remove_var(ENV_MCP_WATCH_DRIFT);
+        let pending = server.drain_pending_notifications();
+        assert!(
+            pending
+                .iter()
+                .any(|n| n.get("method").and_then(|m| m.as_str())
+                    == Some("notifications/drift_state")),
+            "expected drift_state from SRUJA_MCP_WATCH_DRIFT, got: {pending:?}"
         );
     }
 
