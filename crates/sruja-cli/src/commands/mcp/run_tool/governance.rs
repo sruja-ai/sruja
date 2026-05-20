@@ -55,12 +55,15 @@ pub(crate) async fn try_run(
             // Run proposal create simulation and return feedback
             crate::commands::propose_create(
                 repo,
-                desc,
-                None,
-                add_elements,
-                add_relationships,
-                Vec::new(),
-                "text",
+                crate::commands::ProposeCreateRequest {
+                    description: desc.to_string(),
+                    workflow_id: None,
+                    add_elements,
+                    add_relationships,
+                    remove_elements: Vec::new(),
+                    remove_relationships: Vec::new(),
+                    format: "text".to_string(),
+                },
             )
             .await?;
             finish(Ok("Architecture topology change proposed successfully. Proposal ID and details generated.".to_string()))

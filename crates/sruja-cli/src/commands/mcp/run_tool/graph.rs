@@ -140,12 +140,15 @@ pub(crate) async fn try_run(
 
             crate::commands::propose_create(
                 repo,
-                description,
-                None,
-                add_elements,
-                add_relationships,
-                remove_elements,
-                "text",
+                crate::commands::ProposeCreateRequest {
+                    description: description.to_string(),
+                    workflow_id: None,
+                    add_elements,
+                    add_relationships,
+                    remove_elements,
+                    remove_relationships: Vec::new(),
+                    format: "text".to_string(),
+                },
             )
             .await?;
             finish(Ok(

@@ -8,19 +8,42 @@ use sruja_scan::scan_repo;
 use std::collections::HashSet;
 use std::path::Path;
 
+pub struct ProposeCreateRequest {
+    pub description: String,
+    pub workflow_id: Option<String>,
+    pub add_elements: Vec<String>,
+    pub add_relationships: Vec<String>,
+    pub remove_elements: Vec<String>,
+    pub remove_relationships: Vec<String>,
+    pub format: String,
+}
+
+struct AddElementSpec {
+    id: String,
+    kind: String,
+    label: String,
+    technology: Option<String>,
+    description: Option<String>,
+}
+
 pub async fn propose_create(
     repo_root: &str,
-    description: &str,
-    workflow_id: Option<String>,
-    add_elements: Vec<String>,      // format: "id:kind:label[:tech]"
-    add_relationships: Vec<String>, // format: "source->target[:label]"
-    remove_elements: Vec<String>,
-    format: &str,
+    request: ProposeCreateRequest,
 ) -> Result<(), CliError> {
+    let ProposeCreateRequest {
+        description,
+        workflow_id,
+        add_elements,
+        add_relationships,
+        remove_elements,
+        remove_relationships,
+        format,
+    } = request;
+
     let repo_path = Path::new(repo_root);
     let sruja_file = repo_path.join("repo.sruja");
 
-    let format = OutputFormat::parse(format)?;
+    let format = OutputFormat::parse(&format)?;
 
     let (_baseline_content, baseline_program) = if sruja_file.exists() {
         parse_sruja_file(&sruja_file)?
@@ -28,11 +51,9 @@ pub async fn propose_create(
         (String::new(), sruja_language::ast::Program::default())
     };
 
-    let mut proposal = Proposal::new(
-        uuid::Uuid::new_v4().to_string()[..8].to_string(),
-        "Architecture Change".to_string(),
-        description.to_string(),
-    );
+    let title = derive_title(&description);
+    let proposal_id = new_short_id_unique(repo_path)?;
+    let mut proposal = Proposal::new(proposal_id, title, description);
     proposal.workflow_id = workflow_id;
 
     let has_baseline = sruja_file.exists();
@@ -45,12 +66,25 @@ pub async fn propose_create(
             "Cannot remove elements: repo.sruja does not exist yet.".to_string(),
         ));
     }
+    if !has_baseline && !remove_relationships.is_empty() {
+        return Err(CliError::validation(
+            "Cannot remove relationships: repo.sruja does not exist yet.".to_string(),
+        ));
+    }
 
-    let mut add_element_specs: Vec<(String, String, String, Option<String>)> = Vec::new();
+    let mut add_element_specs: Vec<AddElementSpec> = Vec::new();
     let mut add_element_ids: HashSet<String> = HashSet::new();
     for spec in add_elements {
         let parsed = parse_add_element_spec(&spec)?;
-        let id = parsed.0.clone();
+        let (id, kind, label, tech) = parsed;
+        let id = id.clone();
+        let kind_lc = kind.trim().to_lowercase();
+        if kind_requires_technology_str(&kind_lc) && tech.is_none() {
+            return Err(CliError::validation(format!(
+                "Element '{}' of kind '{}' is missing required technology. Use id:kind:label:tech",
+                id, kind
+            )));
+        }
         if baseline_top_level_elements.contains(&id) {
             return Err(CliError::validation(format!(
                 "Element '{}' already exists in repo.sruja",
@@ -63,8 +97,20 @@ pub async fn propose_create(
                 id
             )));
         }
-        add_element_specs.push(parsed);
+        let description = if kind_requires_description_str(&kind_lc) {
+            Some(label.clone())
+        } else {
+            None
+        };
+        add_element_specs.push(AddElementSpec {
+            id,
+            kind,
+            label,
+            technology: tech,
+            description,
+        });
     }
+    add_element_specs.sort_by(|a, b| a.id.cmp(&b.id));
 
     let mut remove_element_ids: HashSet<String> = HashSet::new();
     let mut remove_element_list: Vec<String> = Vec::new();
@@ -100,14 +146,14 @@ pub async fn propose_create(
     }
     remove_element_list.sort();
 
-    for (id, kind, label, tech) in &add_element_specs {
+    for spec in &add_element_specs {
         proposal.changes.push(ProposalChange::AddElement {
-            id: id.clone(),
-            kind: kind.clone(),
-            label: label.clone(),
-            technology: tech.clone(),
+            id: spec.id.clone(),
+            kind: spec.kind.clone(),
+            label: spec.label.clone(),
+            technology: spec.technology.clone(),
             parent: None,
-            description: None,
+            description: spec.description.clone(),
         });
     }
 
@@ -118,6 +164,7 @@ pub async fn propose_create(
         });
     }
 
+    let mut add_relationship_pairs: Vec<(String, String, Option<String>)> = Vec::new();
     let mut added_relationships: HashSet<(String, String)> = HashSet::new();
     for spec in add_relationships {
         let (source, target, label) = parse_add_relationship_spec(&spec)?;
@@ -151,6 +198,11 @@ pub async fn propose_create(
             )));
         }
 
+        add_relationship_pairs.push((source, target, label));
+    }
+    add_relationship_pairs
+        .sort_by(|a, b| (a.0.as_str(), a.1.as_str()).cmp(&(b.0.as_str(), b.1.as_str())));
+    for (source, target, label) in add_relationship_pairs {
         proposal.changes.push(ProposalChange::AddRelationship {
             source,
             target,
@@ -159,23 +211,72 @@ pub async fn propose_create(
         });
     }
 
+    let mut remove_relationship_set: HashSet<(String, String)> = HashSet::new();
+    for spec in remove_relationships {
+        let (source, target) = parse_remove_relationship_spec(&spec)?;
+        if !baseline_relationships.contains(&(source.clone(), target.clone())) {
+            return Err(CliError::validation(format!(
+                "Relationship '{} -> {}' not found in repo.sruja",
+                source, target
+            )));
+        }
+        remove_relationship_set.insert((source, target));
+    }
+
+    if has_baseline && !remove_element_ids.is_empty() {
+        for (source, target) in &baseline_relationships {
+            let touches_removed = remove_element_ids
+                .iter()
+                .any(|id| is_under_root(source, id) || is_under_root(target, id));
+            if touches_removed {
+                remove_relationship_set.insert((source.clone(), target.clone()));
+            }
+        }
+    }
+
+    for (source, target) in &remove_relationship_set {
+        if added_relationships.contains(&(source.clone(), target.clone())) {
+            return Err(CliError::validation(format!(
+                "Relationship '{} -> {}' is both added and removed in the same proposal",
+                source, target
+            )));
+        }
+    }
+
+    let mut remove_relationship_list: Vec<(String, String)> =
+        remove_relationship_set.into_iter().collect();
+    remove_relationship_list
+        .sort_by(|a, b| (a.0.as_str(), a.1.as_str()).cmp(&(b.0.as_str(), b.1.as_str())));
+    for (source, target) in remove_relationship_list {
+        proposal.changes.push(ProposalChange::RemoveRelationship {
+            source,
+            target,
+            reason: None,
+        });
+    }
+
     if proposal.changes.is_empty() {
         return Err(CliError::validation(
-            "Proposal has no changes. Pass --add-elements / --add-relationships / --remove-elements."
+            "Proposal has no changes. Pass --add-elements / --add-relationships / --remove-elements / --remove-relationships."
                 .to_string(),
         ));
     }
 
     // 2. Validate against current graph + tribal knowledge
     let graph = scan_repo(repo_path)?;
-    let intent_model = IntentModel::default(); // Simplified for now
+    let intent_model = IntentModel::default();
 
     let validation = proposal.validate(&graph, &intent_model);
+    let lint = lint_proposal_against_program(&proposal, &baseline_program)?;
+    proposal.validation = Some(validation.clone());
     proposal.status = if validation.is_valid {
         ProposalStatus::Pending
     } else {
         ProposalStatus::Draft
     };
+    if lint.error_count > 0 {
+        proposal.status = ProposalStatus::Draft;
+    }
 
     // 3. Save
     let file_path = proposal
@@ -249,13 +350,31 @@ pub async fn propose_create(
                     println!("  {}", s);
                 }
             }
+            if lint.error_count > 0 {
+                println!();
+                println!("Lint errors (showing up to 20):");
+                for diag in lint.errors.iter().take(20) {
+                    println!("  {}", diag);
+                }
+            }
             println!();
             println!("Wrote: {}", file_path.display());
             println!("Next: sruja propose approve {}", proposal.id);
         }
         OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&proposal)?);
-            eprintln!("Wrote {}", file_path.display());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "schema_version": "proposal_create/v1",
+                    "proposal": proposal,
+                    "validation": validation,
+                    "lint": {
+                        "error_count": lint.error_count,
+                        "errors": lint.errors,
+                    },
+                    "wrote": file_path,
+                }))?
+            );
         }
     }
 
@@ -388,7 +507,19 @@ pub async fn propose_approve(
         .ok_or_else(|| CliError::validation(format!("Proposal '{}' not found", proposal_id)))?;
 
     if proposal.status == ProposalStatus::Approved {
-        println!("Proposal '{}' is already approved.", proposal_id);
+        match format {
+            OutputFormat::Text => println!("Proposal '{}' is already approved.", proposal_id),
+            OutputFormat::Json => {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&serde_json::json!({
+                        "schema_version": "proposal_approve/v1",
+                        "proposal_id": proposal_id,
+                        "status": "already_approved",
+                    }))?
+                );
+            }
+        }
         return Ok(());
     }
 
@@ -488,6 +619,10 @@ pub async fn propose_approve(
     proposal
         .save(repo_path)
         .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+    let ops_path = repo_path
+        .join(".sruja")
+        .join("proposals")
+        .join(format!("{}.ops.jsonl", proposal.id));
     write_ops_jsonl(repo_path, proposal)?;
 
     match format {
@@ -496,6 +631,7 @@ pub async fn propose_approve(
                 "Proposal '{}' approved and merged into repo.sruja",
                 proposal_id
             );
+            println!("Wrote: {}", ops_path.display());
         }
         OutputFormat::Json => {
             println!(
@@ -505,6 +641,7 @@ pub async fn propose_approve(
                     "proposal_id": proposal_id,
                     "status": "approved",
                     "repo_sruja": "repo.sruja",
+                    "ops_jsonl": ops_path,
                 }))?
             );
         }
@@ -513,6 +650,47 @@ pub async fn propose_approve(
     crate::commands::context_events::record_proposal_merge(repo_path, proposal_id);
 
     Ok(())
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct ProposalLintSummary {
+    error_count: usize,
+    errors: Vec<String>,
+}
+
+fn lint_proposal_against_program(
+    proposal: &Proposal,
+    baseline_program: &sruja_language::ast::Program,
+) -> Result<ProposalLintSummary, CliError> {
+    let updated_program = proposal
+        .apply(baseline_program)
+        .map_err(|e| CliError::validation(e.to_string()))?;
+    let updated_dsl = DslPrinter::new().print(&updated_program);
+
+    let parser = sruja_language::Parser::new("repo.sruja.proposal".to_string());
+    let program = parser.parse(&updated_dsl).map_err(|diags| {
+        CliError::parse_with_diagnostics("repo.sruja.proposal".to_string(), diags)
+    })?;
+    let validator = Validator::with_default_rules();
+    let mut diagnostics = validator.validate_sync(&program);
+    crate::modules::validation::enrich_diagnostics_with_source(&updated_dsl, &mut diagnostics);
+
+    let mut errors: Vec<String> = diagnostics
+        .iter()
+        .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
+        .map(format_diagnostic)
+        .collect();
+    errors.truncate(20);
+
+    let error_count = diagnostics
+        .iter()
+        .filter(|d| d.severity == sruja_diagnostics::Severity::Error)
+        .count();
+
+    Ok(ProposalLintSummary {
+        error_count,
+        errors,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -668,6 +846,85 @@ fn parse_add_relationship_spec(spec: &str) -> Result<(String, String, Option<Str
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty());
     Ok((source, target, label))
+}
+
+fn parse_remove_relationship_spec(spec: &str) -> Result<(String, String), CliError> {
+    let (left, right) = spec.split_once("->").ok_or_else(|| {
+        CliError::validation(format!(
+            "Invalid relationship spec '{}'. Expected source->target.",
+            spec
+        ))
+    })?;
+    let source = left.trim().to_string();
+    let target = right.trim().to_string();
+    if source.is_empty() || target.is_empty() {
+        return Err(CliError::validation(format!(
+            "Invalid relationship spec '{}'. Expected source->target.",
+            spec
+        )));
+    }
+    if !is_valid_qualified_ident(&source) {
+        return Err(CliError::validation(format!(
+            "Invalid relationship spec '{}'. source '{}' must be a qualified identifier (e.g., A or System.Container).",
+            spec, source
+        )));
+    }
+    if !is_valid_qualified_ident(&target) {
+        return Err(CliError::validation(format!(
+            "Invalid relationship spec '{}'. target '{}' must be a qualified identifier (e.g., B or System.Container).",
+            spec, target
+        )));
+    }
+    Ok((source, target))
+}
+
+fn is_under_root(fqn: &str, root: &str) -> bool {
+    fqn == root || fqn.starts_with(&format!("{}.", root))
+}
+
+fn kind_requires_description_str(kind_lc: &str) -> bool {
+    matches!(
+        kind_lc,
+        "container" | "component" | "database" | "datastore" | "data_store"
+    )
+}
+
+fn kind_requires_technology_str(kind_lc: &str) -> bool {
+    matches!(
+        kind_lc,
+        "container" | "database" | "datastore" | "data_store"
+    )
+}
+
+fn derive_title(description: &str) -> String {
+    let first_line = description.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
+        return "Architecture Change".to_string();
+    }
+    let mut out = first_line.to_string();
+    if out.len() > 64 {
+        out.truncate(64);
+    }
+    out
+}
+
+fn new_short_id() -> String {
+    let id = uuid::Uuid::new_v4().simple().to_string();
+    id.chars().take(12).collect()
+}
+
+fn new_short_id_unique(repo_path: &Path) -> Result<String, CliError> {
+    let proposals_dir = repo_path.join(".sruja").join("proposals");
+    for _ in 0..10 {
+        let id = new_short_id();
+        let candidate = proposals_dir.join(format!("{}.json", id));
+        if !candidate.exists() {
+            return Ok(id);
+        }
+    }
+    Err(CliError::validation(
+        "Failed to generate a unique proposal id after multiple attempts.".to_string(),
+    ))
 }
 
 fn collect_program_top_level_elements(program: &sruja_language::ast::Program) -> HashSet<String> {

@@ -570,6 +570,7 @@ fn parse_element_kind(kind: &str) -> ElementKind {
         "container" => ElementKind::Container,
         "component" => ElementKind::Component,
         "database" => ElementKind::Database,
+        "datastore" | "data_store" => ElementKind::DataStore,
         "queue" => ElementKind::Queue,
         _ => ElementKind::Custom(kind.to_string()),
     }

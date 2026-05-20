@@ -527,6 +527,9 @@ pub enum ProposeCommand {
         /// Remove elements by ID
         #[arg(long)]
         remove_elements: Vec<String>,
+        /// Remove relationships in format "source->target"
+        #[arg(long)]
+        remove_relationships: Vec<String>,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,

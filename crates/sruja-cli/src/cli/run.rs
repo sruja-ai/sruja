@@ -51,16 +51,20 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 add_elements,
                 add_relationships,
                 remove_elements,
+                remove_relationships,
                 format,
             } => {
                 commands::propose_create(
                     &repo,
-                    &description,
-                    workflow_id,
-                    add_elements,
-                    add_relationships,
-                    remove_elements,
-                    &format,
+                    commands::ProposeCreateRequest {
+                        description,
+                        workflow_id,
+                        add_elements,
+                        add_relationships,
+                        remove_elements,
+                        remove_relationships,
+                        format,
+                    },
                 )
                 .await
             }
