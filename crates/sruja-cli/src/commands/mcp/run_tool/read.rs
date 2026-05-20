@@ -260,11 +260,13 @@ pub(crate) async fn try_run(
                 .ok_or_else(|| CliError::validation("Missing workflow_id"))?;
             let gate = crate::commands::workflow_gate_check(repo, workflow_id)?;
             finish(Ok(serde_json::to_string_pretty(&serde_json::json!({
-                "schema_version": "workflow_gate_check/v1",
+                "schema_version": "workflow_gate_check/v2",
                 "workflow_id": workflow_id,
                 "allowed": gate.allowed,
                 "phase": gate.phase,
                 "missing": gate.missing,
+                "aidlc_missing": gate.aidlc_missing,
+                "aidlc_stage": gate.aidlc_stage,
             }))?))
         }
 

@@ -47,6 +47,10 @@ Use this for non-trivial work (new features, multi-file refactors, tricky bugs).
 
 Keeping the layers separate avoids baking file-level guesses into scope docs and avoids treating a ticket as full product discovery.
 
+### AI-DLC + workflow (full SDLC gates)
+
+For AWS AI-DLC–style inception → construction → operations with Sruja gates, use `sruja workflow` (`init --with-aidlc`, `status --check`, `install-rules`, `design-review`). See [docs/AIDLC_INTEGRATION.md](docs/AIDLC_INTEGRATION.md) and `.cursor/commands/sruja-workflow-aidlc.md`.
+
 ### Artifact handoffs
 
 Move work between humans and agents with **one primary artifact per stage**, so intent stays reviewable:

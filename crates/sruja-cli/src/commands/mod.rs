@@ -9,9 +9,11 @@ pub mod intent_domain;
 pub mod scan_domain;
 pub mod utility_domain;
 pub mod workflow;
+pub(crate) mod workflow_aidlc;
 
 pub use intent_domain::remediation;
 
+pub use agent_reflect::agent_reflect;
 pub use intent_domain::agent::{
     agent_clear, agent_clusters, agent_curate, agent_delete, agent_history, agent_merge,
     agent_record, agent_update,
@@ -79,7 +81,7 @@ pub use scan_domain::impact::impact;
 pub(crate) use scan_domain::impact::impact_compute_output;
 pub use scan_domain::index::{query_registry, registry_dashboard, registry_index, semantic_index};
 pub use scan_domain::mcp::mcp;
-pub use scan_domain::review::review;
+pub use scan_domain::review::{review, review_design};
 pub use scan_domain::scan::{drift, drift_pr, quickstart, scan};
 pub use scan_domain::status::status;
 pub use scan_domain::sync_cmd::sync;
@@ -89,8 +91,9 @@ pub use utility_domain::run_export::run_export;
 pub use utility_domain::run_show::run_show;
 pub use utility_domain::version::version;
 pub use workflow::{
-    workflow_advance, workflow_approve, workflow_gate_check, workflow_get, workflow_init,
-    workflow_list, workflow_record_impact, workflow_status,
+    workflow_advance, workflow_approve, workflow_audit, workflow_gate_check, workflow_get,
+    workflow_init, workflow_install_rules, workflow_list, workflow_record_impact, workflow_run,
+    workflow_status, workflow_trace, workflow_validate, WorkflowInitOptions,
 };
 
 pub use dsl_domain::check;
@@ -108,6 +111,8 @@ pub use intent_domain::critique::critique;
 pub use utility_domain::compliance::compliance;
 pub use utility_domain::federation::{compose, publish};
 
+pub mod agent_reflect;
+pub mod extensions_config;
 pub mod learn;
 pub use learn::learn;
 

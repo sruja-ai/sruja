@@ -301,6 +301,86 @@ fn workflow_strict_gate_blocks_advance_without_approval() {
 }
 
 #[test]
+fn workflow_init_with_aidlc_creates_manifest_v2_and_docs_dir() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, stdout, stderr) = run_sruja(&[
+        "workflow",
+        "init",
+        "-r",
+        repo_str,
+        "--title",
+        "AIDLC Demo",
+        "--id",
+        "wf-aidlc",
+        "--with-aidlc",
+        "--aidlc-profile",
+        "minimal",
+    ]);
+    assert!(success, "workflow init --with-aidlc failed: {stderr}");
+    assert!(
+        stdout.contains("workflow/v2") || stdout.contains("\"aidlc\""),
+        "stdout should mention v2 or aidlc: {stdout}"
+    );
+    assert!(repo
+        .path()
+        .join(".sruja/workflows/wf-aidlc/inception/aidlc-docs")
+        .exists());
+}
+
+#[test]
+fn workflow_status_includes_aidlc_block_when_enabled() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+    run_sruja(&[
+        "workflow",
+        "init",
+        "-r",
+        repo_str,
+        "--title",
+        "AIDLC",
+        "--id",
+        "wf-aidlc2",
+        "--with-aidlc",
+    ]);
+    let (success, stdout, stderr) =
+        run_sruja(&["workflow", "status", "-r", repo_str, "--id", "wf-aidlc2"]);
+    assert!(success, "status failed: {stderr}");
+    assert!(
+        stdout.contains("\"aidlc\"") && stdout.contains("workflow_status/v2"),
+        "expected aidlc in status json: {stdout}"
+    );
+}
+
+#[test]
+fn workflow_audit_appends_jsonl() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+    run_sruja(&[
+        "workflow", "init", "-r", repo_str, "--title", "Audit", "--id", "wf-audit",
+    ]);
+    let (success, _, stderr) = run_sruja(&[
+        "workflow",
+        "audit",
+        "-r",
+        repo_str,
+        "--id",
+        "wf-audit",
+        "--event",
+        "test event",
+    ]);
+    assert!(success, "audit failed: {stderr}");
+    let audit_path = repo.path().join(".sruja/workflows/wf-audit/audit.jsonl");
+    assert!(audit_path.exists());
+    let text = std::fs::read_to_string(audit_path).expect("audit.jsonl");
+    assert!(text.contains("test event"));
+}
+
+#[test]
 fn validate_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);

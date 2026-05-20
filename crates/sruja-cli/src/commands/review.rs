@@ -6,7 +6,10 @@ use std::time::Instant;
 
 use super::violation_shared::*;
 use super::{scan_repo_cached, CliError};
-use crate::utils::{architecture_path, colors};
+use crate::utils::architecture_path::{
+    resolve_architecture_path, resolve_architecture_path_or_default,
+};
+use crate::utils::colors;
 use sruja_diff::Violation;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -79,7 +82,7 @@ pub async fn review(
         }
     }
 
-    let baseline_path = architecture_path::resolve_architecture_path(repo_path);
+    let baseline_path = resolve_architecture_path(repo_path);
 
     // Review is the day-to-day workflow, so refresh cached evidence first.
     super::sync_cmd::sync(repo_root, "quiet").await?;
@@ -335,5 +338,86 @@ pub async fn review(
         }
     }
 
+    Ok(())
+}
+
+/// Grounded design review for a workflow inception phase (deterministic checklist; optional enrich-cmd).
+pub async fn review_design(
+    repo_root: &str,
+    workflow_id: &str,
+    output: Option<&Path>,
+    enrich_cmd: Option<&str>,
+) -> Result<(), CliError> {
+    let repo = Path::new(repo_root);
+    let manifest = crate::commands::workflow_get(repo_root, workflow_id)?;
+    let inception = repo
+        .join(".sruja")
+        .join("workflows")
+        .join(workflow_id)
+        .join("inception");
+    let mut checklist: Vec<String> = Vec::new();
+
+    if inception.join("scope.md").is_file() {
+        checklist.push("scope.md present".into());
+    } else {
+        checklist.push("MISSING: inception/scope.md".into());
+    }
+    if inception.join("impact.json").is_file() {
+        checklist.push("impact.json present".into());
+    } else {
+        checklist.push("MISSING: inception/impact.json".into());
+    }
+
+    let sruja_file = resolve_architecture_path_or_default(repo, None);
+    if sruja_file.exists() {
+        checklist.push(format!("architecture baseline: {}", sruja_file.display()));
+    }
+
+    let gate = crate::commands::workflow_gate_check(repo_root, workflow_id)?;
+    checklist.push(format!(
+        "workflow gate: allowed={} phase={}",
+        gate.allowed, gate.phase
+    ));
+    if !gate.missing.is_empty() {
+        checklist.push(format!("gate missing: {}", gate.missing.join(", ")));
+    }
+
+    let mut body = String::from("# Design review (grounded)\n\n");
+    body.push_str(&format!(
+        "Workflow: **{}** — {}\n\n",
+        manifest.id, manifest.title
+    ));
+    body.push_str("## Deterministic checklist\n\n");
+    for item in &checklist {
+        body.push_str(&format!("- {}\n", item));
+    }
+    body.push('\n');
+
+    if let Some(cmd) = enrich_cmd {
+        let input = serde_json::json!({
+            "schema_version": "design_review_input/v1",
+            "workflow_id": workflow_id,
+            "manifest": manifest,
+            "checklist": checklist,
+            "target_elements": manifest.target_elements,
+        });
+        let stdin_payload = serde_json::to_string(&input)?;
+        let limits = crate::integrations::EnrichmentLimits::with_defaults(15_000, 20_000);
+        let narrative =
+            crate::integrations::run_cmd_enrichment(cmd, stdin_payload.as_bytes(), limits)
+                .map_err(CliError::validation)?;
+        body.push_str("## Narrative review (enrichment)\n\n");
+        body.push_str(&narrative);
+        body.push('\n');
+    }
+
+    let out_path = output
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| inception.join("design-review.md"));
+    if let Some(parent) = out_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&out_path, &body)?;
+    println!("{}", out_path.display());
     Ok(())
 }

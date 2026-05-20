@@ -1,0 +1,27 @@
+# Optional CI gate for PRs labeled aidlc-workflow (Sruja workflow + drift).
+name: Sruja AIDLC workflow gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  aidlc-gate:
+    if: contains(github.event.pull_request.labels.*.name, 'aidlc-workflow')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build sruja CLI
+        run: cargo build --release -p sruja-cli
+
+      - name: Workflow status check
+        run: ./target/release/sruja workflow status -r . --check
+        continue-on-error: false
+
+      - name: Drift check
+        run: ./target/release/sruja drift -r . -a repo.sruja --format json
+        continue-on-error: true

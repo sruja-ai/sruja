@@ -318,6 +318,17 @@ pub enum AgentCommand {
         #[arg(long, default_value_t = 20000)]
         enrich_max_bytes: usize,
     },
+    /// Suggest learnings from a facts_bundle.json (optional --write to record)
+    Reflect {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        run_id: Option<String>,
+        #[arg(long)]
+        write: bool,
+        #[arg(long, short = 'f', default_value = "json")]
+        format: String,
+    },
     /// Apply a plan produced by `agent plan` only after human or CI review
     Apply {
         /// Path to repository root
@@ -578,6 +589,15 @@ pub enum WorkflowCommand {
         /// Enforce strict gates (default: true)
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         strict_gates: bool,
+        /// Enable AI-DLC artifact dirs and manifest.aidlc
+        #[arg(long)]
+        with_aidlc: bool,
+        /// AIDLC gate profile when --with-aidlc (minimal|full)
+        #[arg(long, default_value = "minimal")]
+        aidlc_profile: String,
+        /// Run workflow install-rules during init
+        #[arg(long)]
+        install_aidlc_rules: bool,
     },
     /// List workflows under .sruja/workflows/
     List {
@@ -632,6 +652,62 @@ pub enum WorkflowCommand {
         /// Workflow id
         #[arg(long)]
         id: String,
+    },
+    /// Copy vendored AIDLC rules into .aidlc/ for the editor host
+    InstallRules {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+    /// Validate workflow + optional AIDLC artifact checklist (same checks as status --check)
+    Validate {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        id: Option<String>,
+    },
+    /// Append an audit event to workflow audit.jsonl
+    Audit {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        event: String,
+        #[arg(long)]
+        by: Option<String>,
+    },
+    /// Generate traceability matrix from workflow aidlc-docs (requires aidlc-traceability Python package)
+    Trace {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        #[arg(long)]
+        check: bool,
+    },
+    /// Optional headless AIDLC run via aidlc-evaluator (requires Python + AWS when not --dry-run)
+    Run {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        vision: String,
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Grounded design review for workflow inception (writes design-review.md)
+    DesignReview {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+        #[arg(long)]
+        enrich_cmd: Option<String>,
     },
 }
 

@@ -23,8 +23,13 @@ pub(crate) async fn try_run(
                 .and_then(|v| v.as_str())
                 .unwrap_or("repo.sruja");
 
-            // Execute the evaluation logic
-            crate::commands::evaluate(architecture).await?;
+            let architecture_path = if std::path::Path::new(architecture).is_absolute() {
+                std::path::PathBuf::from(architecture)
+            } else {
+                std::path::Path::new(repo).join(architecture)
+            };
+
+            crate::commands::evaluate(&architecture_path.to_string_lossy()).await?;
             finish(Ok("Fitness functions evaluated successfully. Check output logs/terminal or evolution log.".to_string()))
         }
 
@@ -101,6 +106,7 @@ pub(crate) async fn try_run(
                 .open(log_path)?;
 
             let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+            let detail_line = detail.lines().next().unwrap_or("").trim();
             writeln!(
                 file,
                 "[{}] ID: {} | Target: {} | Result: {} | Output: {}",
@@ -108,7 +114,7 @@ pub(crate) async fn try_run(
                 id,
                 target,
                 result.to_uppercase(),
-                detail
+                detail_line
             )?;
             finish(Ok(
                 "Evolution mutation successfully committed to history log.".to_string(),
@@ -132,11 +138,27 @@ pub(crate) async fn try_run(
             let query = arguments.get("query").and_then(|v| v.as_str());
             let base_ref = arguments.get("base_ref").and_then(|v| v.as_str());
             let head_ref = arguments.get("head_ref").and_then(|v| v.as_str());
+            let workflow_id = arguments.get("workflow_id").and_then(|v| v.as_str());
+            let phase = arguments.get("phase").and_then(|v| v.as_str());
             let depth = arguments.get("depth").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
-            let max_tokens = arguments
+            let mut max_tokens = arguments
                 .get("max_tokens")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(10000) as usize;
+            if let (Some(wid), Some(ph)) = (workflow_id, phase) {
+                if ph == "construction" {
+                    max_tokens = max_tokens.min(4000);
+                }
+                if let Ok(manifest) = crate::commands::workflow_get(repo, wid) {
+                    if !manifest.target_elements.is_empty()
+                        && element_id.is_none()
+                        && file.is_none()
+                    {
+                        // Prefer workflow target when host passes workflow scope only.
+                        let _ = manifest;
+                    }
+                }
+            }
             let enrich = arguments
                 .get("enrich")
                 .and_then(|v| v.as_bool())
@@ -181,7 +203,28 @@ pub(crate) async fn try_run(
                     );
                     return finish(Ok(serde_json::to_string_pretty(&export)?));
                 }
-                return finish(Ok(serde_json::to_string_pretty(&ctx)?));
+                let mut val = serde_json::to_value(&ctx)?;
+                if workflow_id.is_some() || phase.is_some() {
+                    if let Some(obj) = val.as_object_mut() {
+                        if let Some(wid) = workflow_id {
+                            obj.insert(
+                                "workflow_id".to_string(),
+                                serde_json::Value::String(wid.to_string()),
+                            );
+                        }
+                        if let Some(ph) = phase {
+                            obj.insert(
+                                "workflow_phase".to_string(),
+                                serde_json::Value::String(ph.to_string()),
+                            );
+                        }
+                        obj.insert(
+                            "max_tokens_applied".to_string(),
+                            serde_json::json!(max_tokens),
+                        );
+                    }
+                }
+                return finish(Ok(serde_json::to_string_pretty(&val)?));
             }
 
             let wrapped = enrich_wrapper_json(

@@ -1,3 +1,4 @@
+use crate::commands::workflow_aidlc::{self, AidlcConfig, AidlcStatus};
 use crate::commands::CliError;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -66,13 +67,41 @@ pub struct WorkflowManifest {
     pub linked_decision_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub require_design_review: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aidlc: Option<AidlcConfig>,
+}
+
+/// Options for `workflow init`.
+#[derive(Debug, Clone)]
+pub struct WorkflowInitOptions {
+    pub with_aidlc: bool,
+    pub aidlc_profile: String,
+    pub install_rules: bool,
+}
+
+impl Default for WorkflowInitOptions {
+    fn default() -> Self {
+        Self {
+            with_aidlc: false,
+            aidlc_profile: "minimal".to_string(),
+            install_rules: false,
+        }
+    }
 }
 
 impl WorkflowManifest {
+    pub fn aidlc_config(&self) -> AidlcConfig {
+        let mut cfg = self.aidlc.clone().unwrap_or_default();
+        if cfg.docs_root.is_empty() {
+            cfg.docs_root = workflow_aidlc::default_docs_root_for_manifest();
+        }
+        cfg
+    }
+
     pub fn new(id: String, title: String) -> Self {
         let now = now_iso();
         Self {
-            schema_version: "workflow/v1".to_string(),
+            schema_version: "workflow/v2".to_string(),
             id,
             title,
             phase: "inception".to_string(),
@@ -86,6 +115,7 @@ impl WorkflowManifest {
             linked_trace_id: None,
             linked_decision_id: None,
             require_design_review: None,
+            aidlc: None,
         }
     }
 }
@@ -95,6 +125,10 @@ pub struct WorkflowGateCheck {
     pub allowed: bool,
     pub phase: String,
     pub missing: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aidlc_missing: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aidlc_stage: Option<String>,
 }
 
 fn load_manifest(repo: &Path, id: &str) -> Result<WorkflowManifest, CliError> {
@@ -226,11 +260,32 @@ fn compute_gate_check(
     repo: &Path,
     manifest: &WorkflowManifest,
 ) -> Result<WorkflowGateCheck, CliError> {
+    let aidlc = manifest.aidlc_config();
+    let aidlc_status = if aidlc.enabled {
+        Some(workflow_aidlc::build_aidlc_status(
+            repo,
+            &manifest.id,
+            &manifest.phase,
+            &aidlc,
+        ))
+    } else {
+        None
+    };
+    let aidlc_missing = aidlc_status
+        .as_ref()
+        .map(|s| s.missing.clone())
+        .unwrap_or_default();
+    let aidlc_stage = aidlc_status
+        .as_ref()
+        .and_then(|s| s.state.current_stage.clone());
+
     if !manifest.strict_gates {
         return Ok(WorkflowGateCheck {
             allowed: true,
             phase: manifest.phase.clone(),
             missing: Vec::new(),
+            aidlc_missing,
+            aidlc_stage,
         });
     }
 
@@ -324,6 +379,7 @@ fn compute_gate_check(
         }
     }
 
+    missing.extend(aidlc_missing.clone());
     missing.sort();
     missing.dedup();
 
@@ -331,6 +387,8 @@ fn compute_gate_check(
         allowed: missing.is_empty(),
         phase: manifest.phase.clone(),
         missing,
+        aidlc_missing,
+        aidlc_stage,
     })
 }
 
@@ -340,6 +398,7 @@ pub fn workflow_init(
     id: Option<&str>,
     target_elements: Vec<String>,
     strict_gates: bool,
+    options: WorkflowInitOptions,
 ) -> Result<(), CliError> {
     let repo = Path::new(repo_root);
     let wf_id = id
@@ -350,10 +409,37 @@ pub fn workflow_init(
     std::fs::create_dir_all(construction_dir(repo, &wf_id))?;
     std::fs::create_dir_all(operations_dir(repo, &wf_id))?;
 
+    if options.with_aidlc {
+        let aidlc = AidlcConfig {
+            enabled: true,
+            profile: options.aidlc_profile.clone(),
+            ..Default::default()
+        };
+        std::fs::create_dir_all(workflow_aidlc::aidlc_docs_dir(
+            &inception_dir(repo, &wf_id),
+            &aidlc,
+        ))?;
+        std::fs::create_dir_all(workflow_aidlc::aidlc_docs_dir(
+            &construction_dir(repo, &wf_id),
+            &aidlc,
+        ))?;
+        if options.install_rules {
+            workflow_install_rules(repo_root)?;
+        }
+    }
+
     let mut manifest = WorkflowManifest::new(wf_id.clone(), title.to_string());
     manifest.target_elements = target_elements;
     manifest.strict_gates = strict_gates;
     manifest.repo_root = repo_root.to_string();
+    if options.with_aidlc {
+        manifest.aidlc = Some(AidlcConfig {
+            enabled: true,
+            profile: options.aidlc_profile,
+            docs_root: workflow_aidlc::default_docs_root_for_manifest(),
+            ..Default::default()
+        });
+    }
     save_manifest(repo, &manifest)?;
 
     println!("{}", serde_json::to_string_pretty(&manifest)?);
@@ -409,13 +495,18 @@ pub fn workflow_status(repo_root: &str, id: Option<&str>, check: bool) -> Result
     };
     let manifest = load_manifest(repo, &wf_id)?;
     let gate = compute_gate_check(repo, &manifest)?;
+    let aidlc: AidlcStatus =
+        workflow_aidlc::build_aidlc_status(repo, &wf_id, &manifest.phase, &manifest.aidlc_config());
+    let extensions_enabled = crate::commands::extensions_config::enabled_extension_ids(repo);
 
     println!(
         "{}",
         serde_json::to_string_pretty(&serde_json::json!({
-            "schema_version": "workflow_status/v1",
+            "schema_version": "workflow_status/v2",
             "workflow": manifest,
             "gate": gate,
+            "aidlc": aidlc,
+            "extensions_enabled": extensions_enabled,
         }))?
     );
 
@@ -436,6 +527,8 @@ pub fn workflow_gate_check(repo_root: &str, id: &str) -> Result<WorkflowGateChec
             allowed: true,
             phase: "none".to_string(),
             missing: Vec::new(),
+            aidlc_missing: Vec::new(),
+            aidlc_stage: None,
         });
     }
     let manifest = load_manifest(repo, id)?;
@@ -587,5 +680,196 @@ pub fn workflow_advance(repo_root: &str, id: &str) -> Result<(), CliError> {
         "Advanced workflow {} to phase {}",
         manifest.id, manifest.phase
     );
+    Ok(())
+}
+
+pub fn workflow_install_rules(repo_root: &str) -> Result<(), CliError> {
+    let repo = Path::new(repo_root);
+    let installed = workflow_aidlc::install_aidlc_rules(repo)?;
+    for p in installed {
+        println!("Installed AIDLC rules: {p}");
+    }
+    Ok(())
+}
+
+pub fn workflow_validate(repo_root: &str, id: Option<&str>) -> Result<(), CliError> {
+    let repo = Path::new(repo_root);
+    let wf_id = if let Some(id) = id {
+        id.to_string()
+    } else {
+        resolve_single_workflow_id(repo)?
+    };
+    let manifest = load_manifest(repo, &wf_id)?;
+    let gate = compute_gate_check(repo, &manifest)?;
+    let out = serde_json::json!({
+        "schema_version": "workflow_validate/v1",
+        "workflow_id": wf_id,
+        "allowed": gate.allowed,
+        "missing": gate.missing,
+        "aidlc_missing": gate.aidlc_missing,
+        "aidlc_stage": gate.aidlc_stage,
+    });
+    println!("{}", serde_json::to_string_pretty(&out)?);
+    if !gate.allowed {
+        return Err(CliError::validation(format!(
+            "Workflow validation failed: {}",
+            gate.missing.join(", ")
+        )));
+    }
+    Ok(())
+}
+
+pub fn workflow_audit(
+    repo_root: &str,
+    id: &str,
+    event: &str,
+    actor: Option<&str>,
+) -> Result<(), CliError> {
+    let repo = Path::new(repo_root);
+    let _ = load_manifest(repo, id)?;
+    let path = workflow_aidlc::append_workflow_audit(repo, id, event, actor.unwrap_or("human"))?;
+    println!("{}", path.display());
+    Ok(())
+}
+
+fn find_traceability_tool_root(repo: &Path) -> Option<PathBuf> {
+    workflow_aidlc::resolve_vendored_aidlc_rules(repo).and_then(|rules| {
+        rules
+            .parent()
+            .map(|aw| aw.join("scripts").join("aidlc-traceability"))
+            .filter(|p| p.is_dir())
+    })
+}
+
+pub fn workflow_trace(
+    repo_root: &str,
+    id: &str,
+    format: &str,
+    check_only: bool,
+) -> Result<(), CliError> {
+    let repo = Path::new(repo_root);
+    let manifest = load_manifest(repo, id)?;
+    let aidlc = manifest.aidlc_config();
+    let docs = workflow_aidlc::aidlc_docs_dir(&inception_dir(repo, id), &aidlc);
+    let input = if docs.is_dir() {
+        docs.clone()
+    } else {
+        repo.join("aidlc-docs")
+    };
+    if !input.is_dir() {
+        return Err(CliError::validation(format!(
+            "No aidlc-docs directory at {} or repo aidlc-docs/",
+            docs.display()
+        )));
+    }
+
+    let Some(tool_root) = find_traceability_tool_root(repo) else {
+        return Err(CliError::validation(
+            "aidlc-traceability not found; vendor aidlc-workflows or set SRUJA_AIDLC_RULES"
+                .to_string(),
+        ));
+    };
+
+    if check_only {
+        println!(
+            "{}",
+            serde_json::json!({
+                "ok": true,
+                "schema_version": "workflow_trace_check/v1",
+                "input": input.display().to_string(),
+                "tool_root": tool_root.display().to_string(),
+            })
+        );
+        return Ok(());
+    }
+
+    let mut cmd = std::process::Command::new("python3");
+    cmd.arg("-m")
+        .arg("traceability")
+        .arg("generate")
+        .arg("--input")
+        .arg(&input)
+        .arg("--format")
+        .arg(format)
+        .arg("--no-ai")
+        .current_dir(&tool_root)
+        .env(
+            "PYTHONPATH",
+            tool_root.join("src").to_string_lossy().to_string(),
+        );
+    let status = cmd.status().map_err(CliError::Io)?;
+    if !status.success() {
+        return Err(CliError::validation(
+            "traceability generate failed (install aidlc-traceability deps in that package)"
+                .to_string(),
+        ));
+    }
+    println!("Traceability report generated from {}", input.display());
+    Ok(())
+}
+
+pub fn workflow_run(
+    repo_root: &str,
+    id: &str,
+    vision: &Path,
+    dry_run: bool,
+) -> Result<(), CliError> {
+    let repo = Path::new(repo_root);
+    let _manifest = load_manifest(repo, id)?;
+    if !vision.is_file() {
+        return Err(CliError::validation(format!(
+            "vision file not found: {}",
+            vision.display()
+        )));
+    }
+    let evaluator = workflow_aidlc::resolve_vendored_aidlc_rules(repo).and_then(|rules| {
+        let mut cur = rules;
+        for _ in 0..6 {
+            let run_py = cur.join("scripts").join("aidlc-evaluator").join("run.py");
+            if run_py.is_file() {
+                return Some(run_py);
+            }
+            if !cur.pop() {
+                break;
+            }
+        }
+        None
+    });
+
+    if dry_run {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": "workflow_run_plan/v1",
+                "workflow_id": id,
+                "vision": vision.display().to_string(),
+                "evaluator": evaluator.as_ref().map(|p| p.display().to_string()),
+                "pre_hooks": ["sruja sync", "workflow record-impact", "workflow install-rules"],
+                "post_hooks": ["workflow status --check", "sruja drift"],
+            }))?
+        );
+        return Ok(());
+    }
+
+    let Some(run_py) = evaluator else {
+        return Err(CliError::validation(
+            "aidlc-evaluator run.py not found; use editor-driven AIDLC or set SRUJA_AIDLC_RULES"
+                .to_string(),
+        ));
+    };
+
+    let status = std::process::Command::new("python3")
+        .arg(&run_py)
+        .arg("full")
+        .arg("--vision")
+        .arg(vision)
+        .current_dir(run_py.parent().unwrap().parent().unwrap())
+        .status()
+        .map_err(CliError::Io)?;
+    if !status.success() {
+        return Err(CliError::validation(
+            "aidlc-evaluator run failed".to_string(),
+        ));
+    }
     Ok(())
 }

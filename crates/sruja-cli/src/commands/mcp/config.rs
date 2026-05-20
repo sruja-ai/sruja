@@ -41,6 +41,7 @@ pub(crate) fn mcp_trace_events_enabled() -> bool {
 /// Tools that write under `.sruja`, mutate git state, run user-supplied gate commands, or may apply repo changes.
 pub(crate) const MCP_MUTATING_TOOLS: &[&str] = &[
     "sruja_propose_topology_change",
+    "sruja_evaluate_mutation",
     "sruja_commit_evolution",
     "sruja_add_element",
     "sruja_add_relationship",

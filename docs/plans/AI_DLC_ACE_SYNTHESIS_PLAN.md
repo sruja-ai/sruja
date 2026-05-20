@@ -1,6 +1,6 @@
 # AI-DLC + ACE synthesis plan
 
-**Status:** Proposed (not started).  
+**Status:** In progress (W1 workflow CLI/MCP shipped; AIDLC bridge via `sruja workflow` — see [AIDLC_INTEGRATION.md](../AIDLC_INTEGRATION.md)).  
 **Owner:** Product + CLI/MCP (`sruja-cli`, `sruja-diff`, `sruja-agent`, `sruja-engine`, `sruja-scan`).  
 **Last updated:** 2026-05-20.
 

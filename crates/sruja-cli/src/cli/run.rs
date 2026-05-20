@@ -25,9 +25,21 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 id,
                 target_elements,
                 strict_gates,
-            } => {
-                commands::workflow_init(&repo, &title, id.as_deref(), target_elements, strict_gates)
-            }
+                with_aidlc,
+                aidlc_profile,
+                install_aidlc_rules,
+            } => commands::workflow_init(
+                &repo,
+                &title,
+                id.as_deref(),
+                target_elements,
+                strict_gates,
+                commands::WorkflowInitOptions {
+                    with_aidlc,
+                    aidlc_profile,
+                    install_rules: install_aidlc_rules,
+                },
+            ),
             WorkflowCommand::List { repo } => commands::workflow_list(&repo),
             WorkflowCommand::Status { repo, id, check } => {
                 commands::workflow_status(&repo, id.as_deref(), check)
@@ -42,6 +54,42 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 by,
             } => commands::workflow_approve(&repo, &id, &phase, by.as_deref()),
             WorkflowCommand::Advance { repo, id } => commands::workflow_advance(&repo, &id),
+            WorkflowCommand::InstallRules { repo } => commands::workflow_install_rules(&repo),
+            WorkflowCommand::Validate { repo, id } => {
+                commands::workflow_validate(&repo, id.as_deref())
+            }
+            WorkflowCommand::Audit {
+                repo,
+                id,
+                event,
+                by,
+            } => commands::workflow_audit(&repo, &id, &event, by.as_deref()),
+            WorkflowCommand::Trace {
+                repo,
+                id,
+                format,
+                check,
+            } => commands::workflow_trace(&repo, &id, &format, check),
+            WorkflowCommand::Run {
+                repo,
+                id,
+                vision,
+                dry_run,
+            } => commands::workflow_run(&repo, &id, std::path::Path::new(&vision), dry_run),
+            WorkflowCommand::DesignReview {
+                repo,
+                id,
+                output,
+                enrich_cmd,
+            } => {
+                commands::review_design(
+                    &repo,
+                    &id,
+                    output.as_deref().map(std::path::Path::new),
+                    enrich_cmd.as_deref(),
+                )
+                .await
+            }
         },
         Commands::Propose { cmd } => match cmd {
             ProposeCommand::Create {
@@ -881,6 +929,12 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .await
             }
+            AgentCommand::Reflect {
+                repo,
+                run_id,
+                write,
+                format,
+            } => commands::agent_reflect(&repo, run_id.as_deref(), write, &format).await,
             AgentCommand::Apply { repo, plan, format } => {
                 commands::agent_apply(std::path::Path::new(&plan), &repo, &format).await
             }

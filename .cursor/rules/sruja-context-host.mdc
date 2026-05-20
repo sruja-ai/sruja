@@ -13,6 +13,7 @@ When the **sruja** MCP server is enabled (see `.cursor/mcp.json`), follow this h
    - `schema_version` must be `drift_state/v1`
    - Surface `truth_status`, `health_score`, and top `violations` before large edits
 2. If no notification arrived, call **`sruja_get_drift_state`** once at the start of architecture-bounded work.
+3. If `aidlc-docs/aidlc-state.md` or a workflow `inception/aidlc-docs/aidlc-state.md` exists, run **`sruja workflow status -r .`** (with `--id` when multiple workflows) to surface phase gates and `aidlc` stage before large SDLC edits.
 
 ## Before precedent / “why did we…” questions
 

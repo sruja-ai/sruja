@@ -1,0 +1,74 @@
+name: Pull Request Validation
+
+on:
+  pull_request_target:
+    branches: [main, develop, simplify]
+    types:
+      - edited
+      - labeled
+      - opened
+      - ready_for_review
+      - reopened
+      - synchronize
+      - unlabeled
+
+permissions: {}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  DO_NOT_MERGE_LABEL: ${{ vars.DO_NOT_MERGE_LABEL || 'do-not-merge' }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-title:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    if: github.event.pull_request.draft == false
+    steps:
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |-
+            fix
+            feat
+            build
+            chore
+            ci
+            docs
+            style
+            refactor
+            perf
+            test
+          requireScope: false
+
+  fail-by-label:
+    name: Fail by label
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |-
+            const labelToBlock = process.env.DO_NOT_MERGE_LABEL;
+            const pr = context.payload.pull_request;
+
+            if (!pr) {
+              core.info("No pull_request payload; skipping.");
+              return;
+            }
+
+            const labels = (pr.labels ?? []).map((l) => l?.name).filter(Boolean);
+            core.info(`PR labels: ${JSON.stringify(labels)}`);
+
+            if (labels.includes(labelToBlock)) {
+              core.setFailed(`The "${labelToBlock}" label is used to prevent merging.`);
+            } else {
+              core.info(`The "${labelToBlock}" label is absent.`);
+            }

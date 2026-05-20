@@ -393,7 +393,9 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                     "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
                     "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
                     "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." },
-                    "cache_friendly": { "type": "boolean", "description": "If true, return invariant/tools/volatile JSON for prompt-cache-friendly payloads (default: false)." }
+                    "cache_friendly": { "type": "boolean", "description": "If true, return invariant/tools/volatile JSON for prompt-cache-friendly payloads (default: false)." },
+                    "workflow_id": { "type": "string", "description": "Workflow under .sruja/workflows/ for phase-scoped context." },
+                    "phase": { "type": "string", "description": "Workflow phase (inception|construction|operations) to tune token budget." }
                 }
             }
         }),

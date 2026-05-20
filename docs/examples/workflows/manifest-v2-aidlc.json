@@ -1,0 +1,25 @@
+{
+  "schema_version": "workflow/v2",
+  "id": "pay-2026-042",
+  "title": "Payment retry boundary",
+  "phase": "inception",
+  "created_at": "2026-05-20T12:00:00Z",
+  "updated_at": "2026-05-20T12:00:00Z",
+  "repo_root": ".",
+  "target_elements": ["Shop.PaymentService"],
+  "enabled_extensions": [],
+  "phase_approvals": {
+    "inception": null,
+    "construction": null,
+    "operations": null
+  },
+  "strict_gates": true,
+  "require_design_review": false,
+  "aidlc": {
+    "enabled": true,
+    "profile": "minimal",
+    "docs_root": "aidlc-docs",
+    "rules_source": "local",
+    "enabled_extensions": []
+  }
+}
