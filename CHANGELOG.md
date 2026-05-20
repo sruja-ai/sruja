@@ -5,6 +5,23 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.50.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.49.0...sruja-v0.50.0) (2026-05-20)
+
+
+### Features
+
+* **cli:** add Phase 3 active context management ([3775fc6](https://github.com/sruja-ai/sruja/commit/3775fc6d82482871418c0cfc7c1c57ed3aa83697))
+* **cli:** complete Phase 3 exit — watch_drift, prune fixture, agent apply ([07dd6c9](https://github.com/sruja-ai/sruja/commit/07dd6c9622743840168a80c37d8e610a3665410e))
+* **cli:** Phase 3 exit — drift-state, IDE refresh, CI sync check ([8e6a09f](https://github.com/sruja-ai/sruja/commit/8e6a09fa634e59c36d41413c85e1ed2823656baf))
+* **cli:** wire Phase 3/4 context host for Cursor MCP ([0282dc6](https://github.com/sruja-ai/sruja/commit/0282dc6ab2ac8d068ede7e3483bb2d3e13445db9))
+* **memory:** add Phase 4 indexed memory store and MCP search ([220a9b7](https://github.com/sruja-ai/sruja/commit/220a9b71782e80affed3f130d0430db8af51e2e7))
+* workflow AIDLC integration ([2607ad2](https://github.com/sruja-ai/sruja/commit/2607ad2d5612b5edae094ccfddfd85ddc52a03d7))
+
+
+### Bug Fixes
+
+* **cli:** flatten MCP test module and document layout ([ac99ab3](https://github.com/sruja-ai/sruja/commit/ac99ab3b9003dff5e32375ede74cbb99706e5a1f))
+
 ## [0.49.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.48.0...sruja-v0.49.0) (2026-05-18)
 
 
