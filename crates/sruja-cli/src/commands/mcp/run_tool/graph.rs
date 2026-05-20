@@ -141,6 +141,7 @@ pub(crate) async fn try_run(
             crate::commands::propose_create(
                 repo,
                 description,
+                None,
                 add_elements,
                 add_relationships,
                 remove_elements,

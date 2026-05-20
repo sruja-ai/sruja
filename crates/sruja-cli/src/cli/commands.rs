@@ -4,13 +4,18 @@ use super::app::ContextIntent;
 use super::subcommands::{
     AgentCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand,
     EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand,
-    MemoryCommand, ProposeCommand, RunCommand,
+    MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
 };
 
 #[derive(Subcommand)]
 pub enum Commands {
     /// Print version information
     Version,
+    /// Workflow manifest + phase gates (Inception → Construction → Operations)
+    Workflow {
+        #[command(subcommand)]
+        cmd: WorkflowCommand,
+    },
     /// Propose architectural changes for review
     #[command(hide = true)]
     Propose {

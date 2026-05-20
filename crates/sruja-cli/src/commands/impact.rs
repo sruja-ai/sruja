@@ -9,7 +9,7 @@ use crate::utils::architecture_path;
 use sruja_scan::graph::{compute_all_centrality, ComponentImportance};
 
 #[derive(Debug, Clone, Serialize)]
-struct NodeSummary {
+pub(crate) struct NodeSummary {
     id: String,
     kind: sruja_scan::NodeKind,
     label: String,
@@ -20,13 +20,13 @@ struct NodeSummary {
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct ImpactHit {
+pub(crate) struct ImpactHit {
     depth: usize,
     node: NodeSummary,
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct ImpactOutput {
+pub(crate) struct ImpactOutput {
     target: NodeSummary,
     max_depth: usize,
     upstream: Vec<ImpactHit>,
@@ -268,31 +268,7 @@ fn print_section(title: &str, hits: &[ImpactHit]) {
 
 pub async fn impact(repo: &str, target: &str, depth: usize, format: &str) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
-    let graph = sruja_scan::scan_repo(repo_path)?;
-    let target_id = resolve_target_id(&graph, repo_path, target)?;
-
-    let centrality = if graph.nodes.len() <= 2000 {
-        compute_all_centrality(&graph)
-    } else {
-        compute_light_centrality(&graph)
-    };
-
-    let target_node = graph
-        .nodes
-        .iter()
-        .find(|n| n.id == target_id)
-        .ok_or_else(|| CliError::validation(format!("Target node '{}' not found", target)))?;
-
-    let blast: BlastRadiusResult = graph.blast_radius(&target_node.id, depth);
-    let upstream = build_hits(&graph, &blast.upstream, &centrality);
-    let downstream = build_hits(&graph, &blast.downstream, &centrality);
-
-    let output = ImpactOutput {
-        target: summarize_node(target_node, &centrality),
-        max_depth: depth,
-        upstream,
-        downstream,
-    };
+    let output = impact_compute_output(repo_path, target, depth)?;
 
     match format {
         "json" => {
@@ -332,4 +308,36 @@ pub async fn impact(repo: &str, target: &str, depth: usize, format: &str) -> Res
     }
 
     Ok(())
+}
+
+pub(crate) fn impact_compute_output(
+    repo_path: &Path,
+    target: &str,
+    depth: usize,
+) -> Result<ImpactOutput, CliError> {
+    let graph = sruja_scan::scan_repo(repo_path)?;
+    let target_id = resolve_target_id(&graph, repo_path, target)?;
+
+    let centrality = if graph.nodes.len() <= 2000 {
+        compute_all_centrality(&graph)
+    } else {
+        compute_light_centrality(&graph)
+    };
+
+    let target_node = graph
+        .nodes
+        .iter()
+        .find(|n| n.id == target_id)
+        .ok_or_else(|| CliError::validation(format!("Target node '{}' not found", target)))?;
+
+    let blast: BlastRadiusResult = graph.blast_radius(&target_node.id, depth);
+    let upstream = build_hits(&graph, &blast.upstream, &centrality);
+    let downstream = build_hits(&graph, &blast.downstream, &centrality);
+
+    Ok(ImpactOutput {
+        target: summarize_node(target_node, &centrality),
+        max_depth: depth,
+        upstream,
+        downstream,
+    })
 }

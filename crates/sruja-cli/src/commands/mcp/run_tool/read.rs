@@ -221,6 +221,53 @@ pub(crate) async fn try_run(
             ))
         }
 
+        "sruja_get_workflow" => {
+            let workflow_id = arguments
+                .get("workflow_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing workflow_id"))?;
+            let wf = crate::commands::workflow_get(repo, workflow_id)?;
+            let base = Path::new(repo)
+                .join(".sruja")
+                .join("workflows")
+                .join(workflow_id);
+            let out = serde_json::json!({
+                "schema_version": "workflow_get/v1",
+                "workflow": wf,
+                "paths": {
+                    "manifest": base.join("manifest.json"),
+                    "inception": {
+                        "scope": base.join("inception").join("scope.md"),
+                        "impact": base.join("inception").join("impact.json"),
+                        "design_review": base.join("inception").join("design-review.md")
+                    },
+                    "construction": {
+                        "task_plan": base.join("construction").join("task-plan.md"),
+                        "linked_proposal_ids": base.join("construction").join("linked_proposal_ids.json")
+                    },
+                    "operations": {
+                        "deploy_scope": base.join("operations").join("deploy-scope.json")
+                    }
+                }
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
+        }
+
+        "sruja_workflow_gate_check" => {
+            let workflow_id = arguments
+                .get("workflow_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing workflow_id"))?;
+            let gate = crate::commands::workflow_gate_check(repo, workflow_id)?;
+            finish(Ok(serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": "workflow_gate_check/v1",
+                "workflow_id": workflow_id,
+                "allowed": gate.allowed,
+                "phase": gate.phase,
+                "missing": gate.missing,
+            }))?))
+        }
+
         "sruja_get_architecture_context" => {
             let file = arguments
                 .get("file")

@@ -56,6 +56,7 @@ pub(crate) async fn try_run(
             crate::commands::propose_create(
                 repo,
                 desc,
+                None,
                 add_elements,
                 add_relationships,
                 Vec::new(),

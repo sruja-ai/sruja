@@ -515,6 +515,9 @@ pub enum ProposeCommand {
         /// Description of the change
         #[arg(long, short = 'd')]
         description: String,
+        /// Optional workflow id to link this proposal to
+        #[arg(long)]
+        workflow_id: Option<String>,
         /// Add elements in format "id:kind:label[:tech]"
         #[arg(long, short = 'e')]
         add_elements: Vec<String>,
@@ -538,6 +541,85 @@ pub enum ProposeCommand {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
+        /// Validate, show the merge plan, and exit without writing files
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum WorkflowCommand {
+    /// Create workflow manifest + phase directories under .sruja/workflows/<id>/
+    Init {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow title
+        #[arg(long)]
+        title: String,
+        /// Optional workflow id (defaults to random short id)
+        #[arg(long)]
+        id: Option<String>,
+        /// Target architecture element ids (optional; used for record-impact and context)
+        #[arg(long = "element", short = 'e')]
+        target_elements: Vec<String>,
+        /// Enforce strict gates (default: true)
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        strict_gates: bool,
+    },
+    /// List workflows under .sruja/workflows/
+    List {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+    /// Show workflow phase and gate readiness
+    Status {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+        /// Exit non-zero if the current phase gate fails
+        #[arg(long)]
+        check: bool,
+    },
+    /// Record impact.json for the workflow's target_elements
+    RecordImpact {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id
+        #[arg(long)]
+        id: String,
+        /// Impact traversal depth (default: 3)
+        #[arg(long, default_value_t = 3)]
+        depth: usize,
+    },
+    /// Approve a phase after verifying required artifacts are present
+    Approve {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id
+        #[arg(long)]
+        id: String,
+        /// Phase to approve (inception|construction|operations)
+        #[arg(long)]
+        phase: String,
+        /// Actor name (defaults to "human")
+        #[arg(long)]
+        by: Option<String>,
+    },
+    /// Advance to the next phase if the current phase is approved (strict) or always (non-strict)
+    Advance {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id
+        #[arg(long)]
+        id: String,
     },
 }
 

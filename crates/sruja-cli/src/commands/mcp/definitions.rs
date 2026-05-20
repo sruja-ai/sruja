@@ -482,6 +482,32 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_get_workflow",
+            "title": "Sruja Workflow",
+            "description": "Read a workflow manifest and its phase artifact paths from .sruja/workflows/<id>/manifest.json.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "workflow_id": { "type": "string", "description": "Workflow id under .sruja/workflows/" }
+                },
+                "required": ["workflow_id"]
+            }
+        }),
+        json!({
+            "name": "sruja_workflow_gate_check",
+            "title": "Sruja Workflow Gate Check",
+            "description": "Check whether a workflow phase gate allows construction-time code generation. Returns allowed, phase, and missing items. Missing workflow falls back to allowed=true.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "workflow_id": { "type": "string", "description": "Workflow id under .sruja/workflows/" }
+                },
+                "required": ["workflow_id"]
+            }
+        }),
+        json!({
             "name": "sruja_get_decisions",
             "title": "Sruja Decision Records",
             "description": "List Decision Record files (.sruja/decisions/*.md) with YAML front matter (generalized ADRs).",

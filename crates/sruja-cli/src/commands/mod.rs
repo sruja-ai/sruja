@@ -8,6 +8,7 @@ pub mod dsl_domain;
 pub mod intent_domain;
 pub mod scan_domain;
 pub mod utility_domain;
+pub mod workflow;
 
 pub use intent_domain::remediation;
 
@@ -75,6 +76,7 @@ pub use intent_domain::intent::{intent_check, intent_propose};
 pub use intent_domain::onboard::onboard;
 pub use scan_domain::health::health;
 pub use scan_domain::impact::impact;
+pub(crate) use scan_domain::impact::impact_compute_output;
 pub use scan_domain::index::{query_registry, registry_dashboard, registry_index, semantic_index};
 pub use scan_domain::mcp::mcp;
 pub use scan_domain::review::review;
@@ -86,6 +88,10 @@ pub use utility_domain::init::init;
 pub use utility_domain::run_export::run_export;
 pub use utility_domain::run_show::run_show;
 pub use utility_domain::version::version;
+pub use workflow::{
+    workflow_advance, workflow_approve, workflow_gate_check, workflow_get, workflow_init,
+    workflow_list, workflow_record_impact, workflow_status,
+};
 
 pub use dsl_domain::check;
 pub use intent_domain::critique;

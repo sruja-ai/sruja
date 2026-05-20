@@ -231,6 +231,76 @@ fn tree_succeeds_on_valid_file() {
 }
 
 #[test]
+fn workflow_init_creates_manifest_and_dirs() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, _stdout, stderr) = run_sruja(&[
+        "workflow",
+        "init",
+        "-r",
+        repo_str,
+        "--title",
+        "Demo Workflow",
+        "--id",
+        "wf-test",
+    ]);
+
+    assert!(success, "workflow init should succeed: stderr={}", stderr);
+    assert!(
+        repo.path()
+            .join(".sruja/workflows/wf-test/manifest.json")
+            .exists(),
+        "manifest.json must be created"
+    );
+    assert!(
+        repo.path()
+            .join(".sruja/workflows/wf-test/inception")
+            .exists(),
+        "inception dir must be created"
+    );
+    assert!(
+        repo.path()
+            .join(".sruja/workflows/wf-test/construction")
+            .exists(),
+        "construction dir must be created"
+    );
+    assert!(
+        repo.path()
+            .join(".sruja/workflows/wf-test/operations")
+            .exists(),
+        "operations dir must be created"
+    );
+}
+
+#[test]
+fn workflow_strict_gate_blocks_advance_without_approval() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    let (success, _stdout, stderr) = run_sruja(&[
+        "workflow",
+        "init",
+        "-r",
+        repo_str,
+        "--title",
+        "Demo Workflow",
+        "--id",
+        "wf-test",
+    ]);
+    assert!(success, "workflow init should succeed: stderr={}", stderr);
+
+    let (success, _stdout, _stderr) =
+        run_sruja(&["workflow", "advance", "-r", repo_str, "--id", "wf-test"]);
+    assert!(
+        !success,
+        "advance should fail in strict mode without approval"
+    );
+}
+
+#[test]
 fn validate_succeeds_on_valid_file() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);

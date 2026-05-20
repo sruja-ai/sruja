@@ -6,7 +6,7 @@ use super::commands::Commands;
 use super::subcommands::{
     AgentCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand,
     EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand,
-    MemoryCommand, ProposeCommand, RunCommand,
+    MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
 };
 use super::Cli;
 
@@ -18,10 +18,36 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let command = cli.command;
     let result = match command {
         Commands::Version => commands::version(),
+        Commands::Workflow { cmd } => match cmd {
+            WorkflowCommand::Init {
+                repo,
+                title,
+                id,
+                target_elements,
+                strict_gates,
+            } => {
+                commands::workflow_init(&repo, &title, id.as_deref(), target_elements, strict_gates)
+            }
+            WorkflowCommand::List { repo } => commands::workflow_list(&repo),
+            WorkflowCommand::Status { repo, id, check } => {
+                commands::workflow_status(&repo, id.as_deref(), check)
+            }
+            WorkflowCommand::RecordImpact { repo, id, depth } => {
+                commands::workflow_record_impact(&repo, &id, depth)
+            }
+            WorkflowCommand::Approve {
+                repo,
+                id,
+                phase,
+                by,
+            } => commands::workflow_approve(&repo, &id, &phase, by.as_deref()),
+            WorkflowCommand::Advance { repo, id } => commands::workflow_advance(&repo, &id),
+        },
         Commands::Propose { cmd } => match cmd {
             ProposeCommand::Create {
                 repo,
                 description,
+                workflow_id,
                 add_elements,
                 add_relationships,
                 remove_elements,
@@ -29,6 +55,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 commands::propose_create(
                     &repo,
                     &description,
+                    workflow_id,
                     add_elements,
                     add_relationships,
                     remove_elements,
@@ -36,9 +63,11 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await
             }
             ProposeCommand::List { repo } => commands::propose_list(&repo).await,
-            ProposeCommand::Approve { proposal_id, repo } => {
-                commands::propose_approve(&repo, &proposal_id).await
-            }
+            ProposeCommand::Approve {
+                proposal_id,
+                repo,
+                dry_run,
+            } => commands::propose_approve(&repo, &proposal_id, dry_run).await,
         },
         Commands::Author { cmd } => match cmd {
             AuthorCommand::Evidence {

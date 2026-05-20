@@ -18,7 +18,9 @@ pub struct Proposal {
     pub title: String,          // Human-readable title
     pub description: String,    // Why this change is needed
     pub author: Option<String>, // Who proposed it (agent ID or human)
-    pub created_at: String,     // ISO 8601 timestamp
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<String>,
+    pub created_at: String, // ISO 8601 timestamp
     pub status: ProposalStatus,
     pub changes: Vec<ProposalChange>, // The actual modifications
     pub validation: Option<ProposalValidation>, // Result of pre-validation
@@ -119,6 +121,7 @@ impl Proposal {
             title,
             description,
             author: None,
+            workflow_id: None,
             created_at: chrono::Utc::now().to_rfc3339(),
             status: ProposalStatus::Draft,
             changes: Vec::new(),
