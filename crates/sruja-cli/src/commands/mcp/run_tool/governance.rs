@@ -60,6 +60,7 @@ pub(crate) async fn try_run(
                 add_elements,
                 add_relationships,
                 Vec::new(),
+                "text",
             )
             .await?;
             finish(Ok("Architecture topology change proposed successfully. Proposal ID and details generated.".to_string()))

@@ -527,12 +527,18 @@ pub enum ProposeCommand {
         /// Remove elements by ID
         #[arg(long)]
         remove_elements: Vec<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
     /// List all architectural proposals
     List {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
     /// Approve and merge a proposal
     Approve {
@@ -544,6 +550,9 @@ pub enum ProposeCommand {
         /// Validate, show the merge plan, and exit without writing files
         #[arg(long)]
         dry_run: bool,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }
 

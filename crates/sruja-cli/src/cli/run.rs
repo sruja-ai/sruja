@@ -51,6 +51,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 add_elements,
                 add_relationships,
                 remove_elements,
+                format,
             } => {
                 commands::propose_create(
                     &repo,
@@ -59,15 +60,17 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     add_elements,
                     add_relationships,
                     remove_elements,
+                    &format,
                 )
                 .await
             }
-            ProposeCommand::List { repo } => commands::propose_list(&repo).await,
+            ProposeCommand::List { repo, format } => commands::propose_list(&repo, &format).await,
             ProposeCommand::Approve {
                 proposal_id,
                 repo,
                 dry_run,
-            } => commands::propose_approve(&repo, &proposal_id, dry_run).await,
+                format,
+            } => commands::propose_approve(&repo, &proposal_id, dry_run, &format).await,
         },
         Commands::Author { cmd } => match cmd {
             AuthorCommand::Evidence {

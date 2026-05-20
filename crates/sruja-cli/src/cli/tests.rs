@@ -1,4 +1,6 @@
-use super::subcommands::{AgentCommand, AuthorCommand, DiscoverCommand, IntentCommand};
+use super::subcommands::{
+    AgentCommand, AuthorCommand, DiscoverCommand, IntentCommand, ProposeCommand,
+};
 use super::{Cli, Commands, ContextIntent};
 use clap::Parser;
 
@@ -196,6 +198,66 @@ fn parses_author_subcommands() {
                     assert!(matches!(cmd, AuthorCommand::Propose { .. }));
                 }
                 _ => panic!("expected Author command"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}
+
+#[test]
+fn parses_propose_subcommands() {
+    std::thread::Builder::new()
+        .name("clap_parse_propose".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from([
+                "sruja",
+                "propose",
+                "create",
+                "-r",
+                ".",
+                "-d",
+                "test",
+                "-e",
+                "A:system:Payments",
+                "-f",
+                "json",
+            ])
+            .expect("parse propose create");
+            match cli.command {
+                Commands::Propose { cmd } => {
+                    assert!(matches!(cmd, ProposeCommand::Create { .. }));
+                }
+                _ => panic!("expected Propose command"),
+            }
+
+            let cli2 = Cli::try_parse_from(["sruja", "propose", "list", "-r", ".", "-f", "text"])
+                .expect("parse propose list");
+            match cli2.command {
+                Commands::Propose { cmd } => {
+                    assert!(matches!(cmd, ProposeCommand::List { .. }));
+                }
+                _ => panic!("expected Propose command"),
+            }
+
+            let cli3 = Cli::try_parse_from([
+                "sruja",
+                "propose",
+                "approve",
+                "p1",
+                "-r",
+                ".",
+                "--dry-run",
+                "-f",
+                "json",
+            ])
+            .expect("parse propose approve");
+            match cli3.command {
+                Commands::Propose { cmd } => {
+                    assert!(matches!(cmd, ProposeCommand::Approve { .. }));
+                }
+                _ => panic!("expected Propose command"),
             }
         })
         .expect("spawn")

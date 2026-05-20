@@ -145,6 +145,7 @@ pub(crate) async fn try_run(
                 add_elements,
                 add_relationships,
                 remove_elements,
+                "text",
             )
             .await?;
             finish(Ok(
