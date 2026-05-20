@@ -2,6 +2,7 @@ use super::{parse_sruja_file, CliError};
 use sruja_diagnostics::format_diagnostic;
 use sruja_diff::{Proposal, ProposalChange, ProposalStatus};
 use sruja_engine::Validator;
+use sruja_export::DslPrinter;
 use sruja_intent::IntentModel;
 use sruja_scan::scan_repo;
 use std::collections::HashSet;
@@ -35,7 +36,8 @@ pub async fn propose_create(
     proposal.workflow_id = workflow_id;
 
     let has_baseline = sruja_file.exists();
-    let baseline_elements = collect_program_elements(&baseline_program);
+    let baseline_top_level_elements = collect_program_top_level_elements(&baseline_program);
+    let baseline_element_fqns = collect_program_element_fqns(&baseline_program);
     let baseline_relationships = collect_program_relationships(&baseline_program);
 
     if !has_baseline && !remove_elements.is_empty() {
@@ -49,7 +51,7 @@ pub async fn propose_create(
     for spec in add_elements {
         let parsed = parse_add_element_spec(&spec)?;
         let id = parsed.0.clone();
-        if baseline_elements.contains(&id) {
+        if baseline_top_level_elements.contains(&id) {
             return Err(CliError::validation(format!(
                 "Element '{}' already exists in repo.sruja",
                 id
@@ -73,7 +75,13 @@ pub async fn propose_create(
                 "remove-elements contains an empty id".to_string(),
             ));
         }
-        if has_baseline && !baseline_elements.contains(&id) {
+        if !is_valid_identifier(&id) {
+            return Err(CliError::validation(format!(
+                "Invalid remove-elements id '{}'. Expected an identifier (letters, digits, _, -).",
+                id
+            )));
+        }
+        if has_baseline && !baseline_top_level_elements.contains(&id) {
             return Err(CliError::validation(format!(
                 "Element '{}' not found in repo.sruja",
                 id
@@ -123,15 +131,19 @@ pub async fn propose_create(
             continue;
         }
 
-        if remove_element_ids.contains(&source) || remove_element_ids.contains(&target) {
+        if remove_element_ids.contains(root_ident(&source))
+            || remove_element_ids.contains(root_ident(&target))
+        {
             return Err(CliError::validation(format!(
                 "Relationship '{} -> {}' references an element removed in this proposal",
                 source, target
             )));
         }
 
-        let source_known = baseline_elements.contains(&source) || add_element_ids.contains(&source);
-        let target_known = baseline_elements.contains(&target) || add_element_ids.contains(&target);
+        let source_known =
+            baseline_element_fqns.contains(&source) || add_element_ids.contains(&source);
+        let target_known =
+            baseline_element_fqns.contains(&target) || add_element_ids.contains(&target);
         if !source_known || !target_known {
             return Err(CliError::validation(format!(
                 "Relationship '{} -> {}' references unknown element(s). Ensure both ends exist in repo.sruja or are added in this proposal.",
@@ -292,10 +304,7 @@ pub async fn propose_list(repo_root: &str, format: &str) -> Result<(), CliError>
     Ok(())
 }
 
-fn validate_updated_architecture(
-    repo_path: &Path,
-    dsl: &str,
-) -> Result<sruja_language::ast::Program, CliError> {
+fn validate_updated_architecture(repo_path: &Path, dsl: &str) -> Result<(), CliError> {
     let parser = sruja_language::Parser::new("repo.sruja.working".to_string());
     let program = parser.parse(dsl).map_err(|diags| {
         CliError::parse_with_diagnostics("repo.sruja.working".to_string(), diags)
@@ -346,329 +355,7 @@ fn validate_updated_architecture(
         )));
     }
 
-    Ok(program)
-}
-
-fn ensure_trailing_newline(mut s: String) -> String {
-    if !s.ends_with('\n') {
-        s.push('\n');
-    }
-    s
-}
-
-fn escape_dsl_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 8);
-    for ch in s.chars() {
-        match ch {
-            '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\\""),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            other => out.push(other),
-        }
-    }
-    out
-}
-
-fn find_line_start(text: &str, idx: usize) -> usize {
-    text[..idx].rfind('\n').map(|p| p + 1).unwrap_or(0)
-}
-
-fn find_line_end_inclusive(text: &str, idx: usize) -> usize {
-    text[idx..]
-        .find('\n')
-        .map(|p| idx + p + 1)
-        .unwrap_or_else(|| text.len())
-}
-
-fn find_element_assignment_offset(text: &str, id: &str) -> Option<usize> {
-    let mut offset = 0usize;
-    for line in text.lines() {
-        let trimmed = line.trim_start();
-        if let Some(rest) = trimmed.strip_prefix(id) {
-            if (rest.starts_with('=') || rest.starts_with(char::is_whitespace))
-                && trimmed.contains('=')
-            {
-                return Some(offset + (line.len() - trimmed.len()));
-            }
-        }
-        offset += line.len() + 1;
-    }
-    None
-}
-
-fn find_matching_brace_end(text: &str, open_brace_idx: usize) -> Option<usize> {
-    let bytes = text.as_bytes();
-    let mut depth: i32 = 0;
-    let mut in_string = false;
-    let mut escape = false;
-    for (i, &b) in bytes.iter().enumerate().skip(open_brace_idx) {
-        let c = b as char;
-        if in_string {
-            if escape {
-                escape = false;
-                continue;
-            }
-            if c == '\\' {
-                escape = true;
-                continue;
-            }
-            if c == '"' {
-                in_string = false;
-            }
-            continue;
-        }
-        if c == '"' {
-            in_string = true;
-            continue;
-        }
-        if c == '{' {
-            depth += 1;
-            continue;
-        }
-        if c == '}' {
-            depth -= 1;
-            if depth == 0 {
-                return Some(i + 1);
-            }
-        }
-    }
-    None
-}
-
-fn remove_element_block(text: &mut String, id: &str) -> Result<(), CliError> {
-    let Some(assign_idx) = find_element_assignment_offset(text, id) else {
-        return Err(CliError::validation(format!(
-            "Element '{}' not found in repo.sruja",
-            id
-        )));
-    };
-    let start = find_line_start(text, assign_idx);
-    let line_end = find_line_end_inclusive(text, assign_idx);
-    let after_eq = text[assign_idx..line_end].find('{').map(|p| assign_idx + p);
-    if let Some(open) = after_eq {
-        let Some(end_block) = find_matching_brace_end(text, open) else {
-            return Err(CliError::validation(format!(
-                "Failed to find end of element '{}' block",
-                id
-            )));
-        };
-        let end = find_line_end_inclusive(text, end_block);
-        text.replace_range(start..end, "");
-        return Ok(());
-    }
-    text.replace_range(start..line_end, "");
     Ok(())
-}
-
-fn modify_element_kind(text: &mut String, id: &str, new_kind: &str) -> Result<(), CliError> {
-    let Some(assign_idx) = find_element_assignment_offset(text, id) else {
-        return Err(CliError::validation(format!(
-            "Element '{}' not found in repo.sruja",
-            id
-        )));
-    };
-    let line_end = find_line_end_inclusive(text, assign_idx);
-    let line = &text[assign_idx..line_end];
-    let eq_pos = line.find('=').ok_or_else(|| {
-        CliError::validation(format!("Failed to parse element assignment for '{}'", id))
-    })?;
-    let mut i = eq_pos + 1;
-    let bytes = line.as_bytes();
-    while i < line.len() && bytes[i].is_ascii_whitespace() {
-        i += 1;
-    }
-    let start_kind = i;
-    while i < line.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'"' && bytes[i] != b'{'
-    {
-        i += 1;
-    }
-    let end_kind = i;
-    let abs_start = assign_idx + start_kind;
-    let abs_end = assign_idx + end_kind;
-    text.replace_range(abs_start..abs_end, new_kind);
-    Ok(())
-}
-
-fn modify_element_property(
-    text: &mut String,
-    id: &str,
-    key: &str,
-    value: &str,
-) -> Result<(), CliError> {
-    let Some(assign_idx) = find_element_assignment_offset(text, id) else {
-        return Err(CliError::validation(format!(
-            "Element '{}' not found in repo.sruja",
-            id
-        )));
-    };
-    let start_line = find_line_start(text, assign_idx);
-    let open = text[assign_idx..]
-        .find('{')
-        .map(|p| assign_idx + p)
-        .ok_or_else(|| CliError::validation(format!("Element '{}' has no body block", id)))?;
-    let Some(end_block) = find_matching_brace_end(text, open) else {
-        return Err(CliError::validation(format!(
-            "Failed to find end of element '{}' block",
-            id
-        )));
-    };
-    let block = &text[start_line..end_block];
-    let mut cursor = start_line;
-    for line in block.lines() {
-        let line_start = cursor;
-        let line_end = find_line_end_inclusive(text, line_start);
-        let trimmed = line.trim_start();
-        if trimmed.starts_with(key) && trimmed[key.len()..].trim_start().starts_with('"') {
-            let indent_len = line.len().saturating_sub(trimmed.len());
-            let indent = &line[..indent_len];
-            let new_line = format!("{}{} \"{}\"\n", indent, key, escape_dsl_string(value));
-            text.replace_range(line_start..line_end, &new_line);
-            return Ok(());
-        }
-        cursor = line_end;
-    }
-    let insert_at = find_line_end_inclusive(text, open);
-    let new_line = format!("  {} \"{}\"\n", key, escape_dsl_string(value));
-    text.insert_str(insert_at, &new_line);
-    Ok(())
-}
-
-fn remove_relationship_line(text: &mut String, source: &str, target: &str) -> Result<(), CliError> {
-    let mut matches: Vec<(usize, usize)> = Vec::new();
-    let mut offset = 0usize;
-    for line in text.lines() {
-        let line_start = offset;
-        let line_end = offset + line.len();
-        let trimmed = line.trim_start();
-        if let Some((src, tgt)) = parse_relationship_line(trimmed) {
-            if src == source && tgt == target {
-                let end = find_line_end_inclusive(text, line_start);
-                matches.push((line_start, end));
-            }
-        }
-        offset = line_end + 1;
-    }
-
-    if matches.is_empty() {
-        return Err(CliError::validation(format!(
-            "Relationship '{} -> {}' not found in repo.sruja",
-            source, target
-        )));
-    }
-
-    matches.sort_by(|a, b| b.0.cmp(&a.0));
-    for (start, end) in matches {
-        text.replace_range(start..end, "");
-    }
-    Ok(())
-}
-
-fn add_relationship(text: &mut String, source: &str, target: &str, label: Option<&str>) {
-    let needle = format!("{} -> {}", source, target);
-    if text.lines().any(|l| l.trim_start().starts_with(&needle)) {
-        return;
-    }
-    let mut s = ensure_trailing_newline(std::mem::take(text));
-    if !s.ends_with("\n\n") {
-        s.push('\n');
-    }
-    if let Some(l) = label {
-        s.push_str(&format!(
-            "{} -> {} \"{}\"\n",
-            source,
-            target,
-            escape_dsl_string(l)
-        ));
-    } else {
-        s.push_str(&format!("{} -> {}\n", source, target));
-    }
-    *text = s;
-}
-
-fn add_element(
-    text: &mut String,
-    id: &str,
-    kind: &str,
-    label: &str,
-    technology: Option<&str>,
-    description: Option<&str>,
-) {
-    if find_element_assignment_offset(text, id).is_some() {
-        return;
-    }
-    let mut s = ensure_trailing_newline(std::mem::take(text));
-    if !s.ends_with("\n\n") {
-        s.push('\n');
-    }
-    let title = escape_dsl_string(label);
-    if technology.is_none() && description.is_none() {
-        s.push_str(&format!("{id} = {kind} \"{title}\"\n"));
-        *text = s;
-        return;
-    }
-    s.push_str(&format!("{id} = {kind} \"{title}\" {{\n"));
-    if let Some(t) = technology {
-        s.push_str(&format!("  technology \"{}\"\n", escape_dsl_string(t)));
-    }
-    if let Some(d) = description {
-        s.push_str(&format!("  description \"{}\"\n", escape_dsl_string(d)));
-    }
-    s.push_str("}\n");
-    *text = s;
-}
-
-fn apply_changes_to_dsl(before: &str, changes: &[ProposalChange]) -> Result<String, CliError> {
-    let mut text = before.to_string();
-    for ch in changes {
-        match ch {
-            ProposalChange::AddElement {
-                id,
-                kind,
-                label,
-                technology,
-                description,
-                ..
-            } => add_element(
-                &mut text,
-                id,
-                kind,
-                label,
-                technology.as_deref(),
-                description.as_deref(),
-            ),
-            ProposalChange::RemoveElement { id, .. } => remove_element_block(&mut text, id)?,
-            ProposalChange::ModifyElement {
-                id,
-                field,
-                new_value,
-                ..
-            } => match field.as_str() {
-                "kind" => modify_element_kind(&mut text, id, new_value)?,
-                "technology" => modify_element_property(&mut text, id, "technology", new_value)?,
-                "description" => modify_element_property(&mut text, id, "description", new_value)?,
-                other => {
-                    return Err(CliError::validation(format!(
-                        "Unsupported ModifyElement field '{}'",
-                        other
-                    )))
-                }
-            },
-            ProposalChange::AddRelationship {
-                source,
-                target,
-                label,
-                ..
-            } => {
-                add_relationship(&mut text, source, target, label.as_deref());
-            }
-            ProposalChange::RemoveRelationship { source, target, .. } => {
-                remove_relationship_line(&mut text, source, target)?;
-            }
-        }
-    }
-    Ok(text)
 }
 
 fn write_ops_jsonl(repo_path: &Path, proposal: &Proposal) -> Result<(), CliError> {
@@ -706,14 +393,18 @@ pub async fn propose_approve(
     }
 
     let sruja_file = repo_path.join("repo.sruja");
-    let before_content = if sruja_file.exists() {
-        std::fs::read_to_string(&sruja_file)?
+    let (before_content, baseline_program) = if sruja_file.exists() {
+        parse_sruja_file(&sruja_file)?
     } else {
-        String::new()
+        (String::new(), sruja_language::ast::Program::default())
     };
-    let updated_dsl = apply_changes_to_dsl(&before_content, &proposal.changes)?;
 
-    let _validated_program = validate_updated_architecture(repo_path, &updated_dsl)?;
+    let updated_program = proposal
+        .apply(&baseline_program)
+        .map_err(|e| CliError::validation(e.to_string()))?;
+    let updated_dsl = DslPrinter::new().print(&updated_program);
+
+    validate_updated_architecture(repo_path, &updated_dsl)?;
 
     if dry_run {
         let before_lines = before_content.lines().count();
@@ -871,6 +562,28 @@ fn split_escaped(input: &str, sep: char) -> Vec<String> {
     parts
 }
 
+fn is_valid_identifier(s: &str) -> bool {
+    let mut chars = s.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !(first.is_alphabetic() || first == '_') {
+        return false;
+    }
+    chars.all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+}
+
+fn is_valid_qualified_ident(s: &str) -> bool {
+    if s.trim().is_empty() {
+        return false;
+    }
+    s.split('.').all(is_valid_identifier)
+}
+
+fn root_ident(s: &str) -> &str {
+    s.split('.').next().unwrap_or(s)
+}
+
 fn parse_add_element_spec(
     spec: &str,
 ) -> Result<(String, String, String, Option<String>), CliError> {
@@ -888,6 +601,18 @@ fn parse_add_element_spec(
         return Err(CliError::validation(format!(
             "Invalid element spec '{}'. id, kind, and label must be non-empty.",
             spec
+        )));
+    }
+    if !is_valid_identifier(&id) {
+        return Err(CliError::validation(format!(
+            "Invalid element spec '{}'. id '{}' must be an identifier (letters, digits, _, -).",
+            spec, id
+        )));
+    }
+    if !is_valid_identifier(&kind) {
+        return Err(CliError::validation(format!(
+            "Invalid element spec '{}'. kind '{}' must be an identifier (letters, digits, _, -).",
+            spec, kind
         )));
     }
     let tech = parts
@@ -912,6 +637,12 @@ fn parse_add_relationship_spec(spec: &str) -> Result<(String, String, Option<Str
             spec
         )));
     }
+    if !is_valid_qualified_ident(&source) {
+        return Err(CliError::validation(format!(
+            "Invalid relationship spec '{}'. source '{}' must be a qualified identifier (e.g., A or System.Container).",
+            spec, source
+        )));
+    }
     let parts = split_escaped(rest, ':');
     if parts.len() > 2 {
         return Err(CliError::validation(format!(
@@ -926,6 +657,12 @@ fn parse_add_relationship_spec(spec: &str) -> Result<(String, String, Option<Str
             spec
         )));
     }
+    if !is_valid_qualified_ident(&target) {
+        return Err(CliError::validation(format!(
+            "Invalid relationship spec '{}'. target '{}' must be a qualified identifier (e.g., B or System.Container).",
+            spec, target
+        )));
+    }
     let label = parts
         .get(1)
         .map(|s| s.trim().to_string())
@@ -933,7 +670,7 @@ fn parse_add_relationship_spec(spec: &str) -> Result<(String, String, Option<Str
     Ok((source, target, label))
 }
 
-fn collect_program_elements(program: &sruja_language::ast::Program) -> HashSet<String> {
+fn collect_program_top_level_elements(program: &sruja_language::ast::Program) -> HashSet<String> {
     use sruja_language::ast::TopLevelItem;
     let mut out: HashSet<String> = HashSet::new();
     for item in &program.items {
@@ -944,52 +681,19 @@ fn collect_program_elements(program: &sruja_language::ast::Program) -> HashSet<S
     out
 }
 
+fn collect_program_element_fqns(program: &sruja_language::ast::Program) -> HashSet<String> {
+    let (elements, _relations) = sruja_language::collect_elements(program);
+    elements.keys().cloned().collect()
+}
+
 fn collect_program_relationships(
     program: &sruja_language::ast::Program,
 ) -> HashSet<(String, String)> {
-    use sruja_language::ast::TopLevelItem;
     let mut out: HashSet<(String, String)> = HashSet::new();
-    for item in &program.items {
-        if let TopLevelItem::Relation(rel) = item {
-            out.insert((rel.from.as_string(), rel.to.as_string()));
-        }
+    for rel in sruja_language::collect_all_relations(program) {
+        out.insert((rel.from.as_string(), rel.to.as_string()));
     }
     out
-}
-
-fn parse_relationship_line(line: &str) -> Option<(String, String)> {
-    let s = line.trim();
-    if s.is_empty() {
-        return None;
-    }
-    let bytes = s.as_bytes();
-    let mut i = 0usize;
-    while i < bytes.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'-' {
-        i += 1;
-    }
-    if i == 0 {
-        return None;
-    }
-    let src = s[..i].to_string();
-    while i < bytes.len() && bytes[i].is_ascii_whitespace() {
-        i += 1;
-    }
-    if i + 1 >= bytes.len() || bytes[i] != b'-' || bytes[i + 1] != b'>' {
-        return None;
-    }
-    i += 2;
-    while i < bytes.len() && bytes[i].is_ascii_whitespace() {
-        i += 1;
-    }
-    let start_t = i;
-    while i < bytes.len() && !bytes[i].is_ascii_whitespace() && bytes[i] != b'"' {
-        i += 1;
-    }
-    if start_t == i {
-        return None;
-    }
-    let tgt = s[start_t..i].to_string();
-    Some((src, tgt))
 }
 
 #[cfg(test)]
@@ -1015,11 +719,23 @@ mod tests {
     }
 
     #[test]
-    fn relationship_line_parser_is_strict() {
-        assert_eq!(
-            parse_relationship_line(r#"A -> B "label""#),
-            Some(("A".to_string(), "B".to_string()))
-        );
-        assert_eq!(parse_relationship_line(r#"X Y -> Z"#), None);
+    fn identifier_validation_matches_dsl_identifier_shape() {
+        assert!(is_valid_identifier("A"));
+        assert!(is_valid_identifier("A_b"));
+        assert!(is_valid_identifier("a-b"));
+        assert!(!is_valid_identifier("1A"));
+        assert!(!is_valid_identifier("A.B"));
+        assert!(!is_valid_identifier(""));
+    }
+
+    #[test]
+    fn qualified_identifier_validation_accepts_dot_paths() {
+        assert!(is_valid_qualified_ident("A"));
+        assert!(is_valid_qualified_ident("System.Container"));
+        assert!(is_valid_qualified_ident("A_b.C-d"));
+        assert!(!is_valid_qualified_ident("A..B"));
+        assert!(!is_valid_qualified_ident(".A"));
+        assert!(!is_valid_qualified_ident("A."));
+        assert!(!is_valid_qualified_ident(""));
     }
 }
