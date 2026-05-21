@@ -4,7 +4,9 @@
       "command": "sruja",
       "args": ["mcp", "-r", "."],
       "env": {
-        "SRUJA_MCP_WATCH_DRIFT": "1"
+        "SRUJA_MCP_WATCH_DRIFT": "1",
+        "SRUJA_MCP_READONLY": "1",
+        "SRUJA_MCP_TOOL_PROFILE": "coding"
       }
     }
   }

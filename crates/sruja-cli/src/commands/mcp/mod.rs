@@ -24,8 +24,8 @@ pub use transport::mcp;
 
 #[cfg(test)]
 pub(crate) use config::{
-    is_mutating_mcp_tool, mcp_tools_for_list_with_readonly, ENV_MCP_WATCH_DRIFT,
-    MCP_MUTATING_TOOLS, MCP_PROTOCOL_VERSION,
+    is_mutating_mcp_tool, mcp_tools_for_list_with_readonly, ToolProfile, ENV_MCP_TOOL_PROFILE,
+    ENV_MCP_WATCH_DRIFT, MCP_MUTATING_TOOLS, MCP_PROTOCOL_VERSION,
 };
 #[cfg(test)]
 pub(crate) use run_tool::run_tool;

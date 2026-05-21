@@ -35,6 +35,16 @@ Same question can be asked many ways; teach one ladder:
 
 Do not present `why`, `query`, `focus`, `ai`, and MCP as interchangeable—they differ by **moment** (before task vs investigation) and **surface** (CLI vs editor).
 
+## MCP tool profiles
+
+Sruja MCP supports four tool profiles to reduce context waste:
+- `minimal` (~10-12 tools): Core ladder + focus briefing + essential drift/search utilities
+- `coding` (~15-18 tools, default): minimal + hybrid query + critique + context pruning
+- `arch`: coding + read-only authoring helpers (explain_element, evaluate_proposal read paths)
+- `full`: All tools (backward compatible, ~63 tools)
+
+Set via `SRUJA_MCP_TOOL_PROFILE` env or MCP `initializationOptions.tool_profile`. The default `coding` profile keeps the tool list focused for everyday coding sessions.
+
 ---
 
 **Why Sruja when AI can give architecture?**

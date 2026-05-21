@@ -155,7 +155,13 @@ sruja sync -r .
 # Cursor/Claude/Copilot with Sruja MCP server
 # Command: sruja mcp -r .
 
-Tools available (50+):
+Tools available vary by profile:
+- minimal (~10-12 tools): Core ladder + focus briefing + essential utilities
+- coding (~15-18 tools, default): Minimal + hybrid query + critique + context pruning
+- arch: Coding + read-only authoring helpers
+- full: All tools (backward compatible)
+
+Examples:
 - sruja_get_focus_briefing — task-scoped briefing
 - sruja_verify_task — run verification profile
 - sruja_check_drift — detect architectural drift
@@ -163,6 +169,11 @@ Tools available (50+):
 - sruja_record_learning — record new learning
 - sruja_get_topology — upstream/downstream dependencies
 - ... (full list via MCP initialize)
+
+Profile control:
+- Set via environment: SRUJA_MCP_TOOL_PROFILE=coding
+- Set via MCP initializationOptions
+- Defaults to coding profile
 ```
 
 ### Read-only mode

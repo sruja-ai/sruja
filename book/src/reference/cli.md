@@ -11,6 +11,8 @@
 | "I'm about to work on X" | `sruja ai -r . --task "..."` | Paste-ready AI coding brief |
 | "Set me up" | `sruja init -r .` | `.sruja/`, `.srujaignore`, optional prompt |
 
+*See [feature tightening](#feature-tightening-phase-t) for canonical workflow paths*
+
 ### Health & status
 
 | User question | Command | Output |
@@ -94,5 +96,18 @@ When `-f json` (or the command’s JSON mode) is used, some commands add stable 
 - `daily` = `review`
 - `overview` = `quickstart`
 - `doctor` = `status`
+
+## Feature Tightening (Phase T)
+
+As part of feature tightening (Phase T), Sruja provides canonical paths for core workflows to reduce toolbox feeling:
+
+| Workflow | Canonical Command | Deprecated Alternatives |
+|----------|-------------------|-------------------------|
+| Onboarding | `sruja onboard` | `discover explain` |
+| Health Check | `sruja status` / `doctor` | `health` |
+| Retrieval | `sruja focus` / MCP focus briefing | `get_architecture_context`, `get_hydrated_context` |
+| Drift Gate | `sruja drift`, `sruja drift-pr` | deprecated `check` |
+
+MCP tool profiles (`minimal`, `coding`, `arch`, `full`) control which tools are available via MCP. The default `coding` profile provides ~15-18 tools focused on coding workflows.
 
 Run `sruja --help` for full options.

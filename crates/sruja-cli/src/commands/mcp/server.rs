@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use super::config::{
-    mcp_env_truthy, mcp_log_enabled, mcp_tools_for_list, mcp_trace_events_enabled,
-    ENV_MCP_WATCH_DRIFT, MCP_PROTOCOL_VERSION,
+    get_mcp_tool_profile, mcp_env_truthy, mcp_log_enabled, mcp_readonly_enabled,
+    mcp_tools_for_list_with_readonly, mcp_trace_events_enabled, ToolProfile, ENV_MCP_WATCH_DRIFT,
+    MCP_PROTOCOL_VERSION,
 };
 use super::run_tool::run_tool;
 use super::trace::append_mcp_tool_call_event;
@@ -16,6 +17,7 @@ pub(crate) struct McpServer {
     initialized: bool,
     client_ready: bool,
     watch_drift: bool,
+    tool_profile: ToolProfile,
     default_repo: String,
     graph_cache: std::sync::Arc<tokio::sync::Mutex<HashMap<String, sruja_scan::Graph>>>,
     pending_notifications: Vec<Value>,
@@ -27,6 +29,7 @@ impl McpServer {
             initialized: false,
             client_ready: false,
             watch_drift: false,
+            tool_profile: get_mcp_tool_profile(),
             default_repo,
             graph_cache: std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             pending_notifications: Vec::new(),
@@ -54,6 +57,25 @@ impl McpServer {
             .and_then(|o| o.get("watch_drift"))
             .and_then(|v| v.as_bool())
             .unwrap_or(false)
+    }
+
+    fn tool_profile_from_initialize_params(params: Option<&Value>) -> ToolProfile {
+        // InitializationOptions take priority
+        if let Some(profile) = params
+            .and_then(|p| p.get("initializationOptions"))
+            .and_then(|o| o.get("tool_profile"))
+            .and_then(|v| v.as_str())
+        {
+            match profile {
+                "minimal" => return ToolProfile::Minimal,
+                "coding" => return ToolProfile::Coding,
+                "arch" => return ToolProfile::Arch,
+                "full" => return ToolProfile::Full,
+                _ => {}
+            }
+        }
+        // Fall back to env var + default
+        get_mcp_tool_profile()
     }
 
     fn maybe_enqueue_drift_state_notification(&mut self) {
@@ -90,6 +112,8 @@ impl McpServer {
         match method {
             "initialize" => {
                 self.watch_drift = Self::watch_drift_from_initialize_params(message.get("params"));
+                self.tool_profile =
+                    Self::tool_profile_from_initialize_params(message.get("params"));
                 self.initialized = true;
                 Some(self.handle_initialize(id, message.get("params")))
             }
@@ -196,7 +220,10 @@ impl McpServer {
             "jsonrpc": "2.0",
             "id": id,
             "result": {
-                "tools": mcp_tools_for_list()
+                "tools": mcp_tools_for_list_with_readonly(
+                    mcp_readonly_enabled(),
+                    self.tool_profile
+                )
             }
         })
     }

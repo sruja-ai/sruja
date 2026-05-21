@@ -165,9 +165,58 @@ fn mutating_mcp_tool_detection() {
 
 #[test]
 fn mcp_readonly_list_excludes_all_mutating_tools() {
-    let full = mcp_tools_for_list_with_readonly(false);
-    let ro = mcp_tools_for_list_with_readonly(true);
-    assert!(ro.len() < full.len());
+    // Debug: Check what tools are in each list
+    let full = mcp_tools_for_list_with_readonly(false, ToolProfile::Full);
+    let ro = mcp_tools_for_list_with_readonly(true, ToolProfile::Full);
+
+    let full_names: Vec<String> = full
+        .iter()
+        .filter_map(|t| {
+            t.get("name")
+                .and_then(|n| n.as_str())
+                .map(|s| s.to_string())
+        })
+        .collect();
+
+    let ro_names: Vec<String> = ro
+        .iter()
+        .filter_map(|t| {
+            t.get("name")
+                .and_then(|n| n.as_str())
+                .map(|s| s.to_string())
+        })
+        .collect();
+
+    println!("Full list length: {}", full.len());
+    println!("Readonly list length: {}", ro.len());
+    println!("Full tools: {:?}", full_names);
+    println!("Readonly tools: {:?}", ro_names);
+
+    // Check which tools are mutating
+    let mutating_in_full: Vec<String> = full_names
+        .iter()
+        .filter(|name| is_mutating_mcp_tool(name))
+        .cloned()
+        .collect();
+
+    let mutating_in_ro: Vec<String> = ro_names
+        .iter()
+        .filter(|name| is_mutating_mcp_tool(name))
+        .cloned()
+        .collect();
+
+    println!("Mutating in full: {:?}", mutating_in_full);
+    println!("Mutating in readonly: {:?}", mutating_in_ro);
+
+    assert!(
+        ro.len() < full.len(),
+        "Readonly list should be shorter than full list"
+    );
+    assert!(
+        mutating_in_ro.is_empty(),
+        "Readonly list should not contain mutating tools"
+    );
+
     for t in &ro {
         let n = t.get("name").and_then(|x| x.as_str()).expect("name");
         assert!(
@@ -184,6 +233,13 @@ fn mcp_readonly_list_excludes_all_mutating_tools() {
 
 #[tokio::test]
 async fn mcp_tools_list_returns_sruja_tools() {
+    let _guard = ENV_LOCK
+        .get_or_init(|| std::sync::Mutex::new(()))
+        .lock()
+        .expect("env lock");
+    // Use Full profile to verify all tools are available
+    std::env::set_var(ENV_MCP_TOOL_PROFILE, "full");
+
     let server = McpServer::new(".".to_string());
     let resp = server.handle_tools_list(json!(1));
     let tools = resp
@@ -223,6 +279,9 @@ async fn mcp_tools_list_returns_sruja_tools() {
     assert!(names.contains(&"sruja_get_agent_learnings".to_string()));
     assert!(names.contains(&"sruja_search_memory".to_string()));
     assert!(names.contains(&"sruja_get_memory_timeline".to_string()));
+
+    // Clean up
+    std::env::remove_var(ENV_MCP_TOOL_PROFILE);
 }
 
 #[tokio::test]

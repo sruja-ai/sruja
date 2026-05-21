@@ -7,6 +7,19 @@ alwaysApply: true
 
 When the **sruja** MCP server is enabled (see `.cursor/mcp.json`), follow this host contract. Sruja suggests; you apply.
 
+## Tool Profiles
+
+Sruja MCP server supports tool profiles to control which tools are available:
+- `minimal` (~10-12 tools): Core ladder + focus briefing + essential utilities
+- `coding` (~15-18 tools, default): Minimal + hybrid query + critique + context pruning
+- `arch`: Coding + read-only authoring helpers
+- `full`: All tools (backward compatible)
+
+The profile is controlled via:
+1. Environment variable: `SRUJA_MCP_TOOL_PROFILE`
+2. MCP initializationOptions (set in `.cursor/mcp.json`)
+3. Defaults to `coding` profile
+
 ## Session start
 
 1. After MCP connects, if you receive **`notifications/drift_state`** (or `SRUJA_MCP_WATCH_DRIFT=1` is set), treat `params` as authoritative session context:
