@@ -35,4 +35,16 @@ When the conversation has accumulated many architecture element references (roug
 
 `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` → `sruja_get_task_context` (`cache_friendly: true` when caching).
 
+## End of session
+
+Before marking a task complete:
+
+1. Run **`sruja verify-task --profile <coding|bugfix|review|arch> -r .`** (or call `sruja_verify_task` via MCP).
+2. If verify failed:
+   - Fix the issue
+   - Re-run verify
+   - Record a correction learning: `sruja agent record -r . -c "<context>" -H "<what was tried>" -o failed -g "<guardrail>"`
+3. If verify passed:
+   - Optionally record an affirmation learning
+
 Prompt template: MCP `prompts/get` → `sruja_mcp_guide`.

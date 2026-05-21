@@ -1253,3 +1253,266 @@ fn ingest_copies_file_to_context_dir() {
         "ingested file should keep original content"
     );
 }
+
+#[test]
+fn workflow_full_lifecycle_init_to_gate_check() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    // 1. Init workflow with AIDLC
+    let (success, stdout, stderr) = run_sruja(&[
+        "workflow",
+        "init",
+        "-r",
+        repo_str,
+        "--title",
+        "Lifecycle Test",
+        "--id",
+        "wf-lifecycle",
+        "--with-aidlc",
+        "--aidlc-profile",
+        "minimal",
+    ]);
+    assert!(success, "workflow init failed: {stderr}");
+    assert!(
+        stdout.contains("workflow/v2") || stdout.contains("\"aidlc\""),
+        "stdout should mention v2 or aidlc: {stdout}"
+    );
+
+    // 2. Check initial status (should be in inception phase)
+    let (success, stdout, stderr) =
+        run_sruja(&["workflow", "status", "-r", repo_str, "--id", "wf-lifecycle"]);
+    assert!(success, "workflow status failed: {stderr}");
+    let status: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON status");
+    let phase = status["workflow"]["phase"].as_str().unwrap_or("");
+    assert_eq!(
+        phase, "inception",
+        "should start in inception phase, got: {phase}"
+    );
+
+    // 3. Create inception artifacts (required for approval)
+    let inception_dir = repo.path().join(".sruja/workflows/wf-lifecycle/inception");
+    std::fs::create_dir_all(&inception_dir).expect("create inception dir");
+    write_file(
+        &inception_dir,
+        "scope.md",
+        "# Scope\nTest workflow for lifecycle integration.",
+    );
+    write_file(
+        &inception_dir,
+        "impact.json",
+        r#"{"schema_version": "impact/v0", "target_id": "test", "depth": 1, "upstream": [], "downstream": []}"#,
+    );
+
+    // 4. Advance to construction (simulate inception approval)
+    let (success, _, stderr) = run_sruja(&[
+        "workflow",
+        "approve",
+        "-r",
+        repo_str,
+        "--id",
+        "wf-lifecycle",
+        "--phase",
+        "inception",
+    ]);
+    assert!(success, "approve inception failed: {stderr}");
+
+    // Advance to next phase
+    let (success, _, stderr) = run_sruja(&[
+        "workflow",
+        "advance",
+        "-r",
+        repo_str,
+        "--id",
+        "wf-lifecycle",
+    ]);
+    assert!(success, "advance to construction failed: {stderr}");
+
+    // 5. Verify construction artifacts exist
+    let (success, stdout, stderr) =
+        run_sruja(&["workflow", "status", "-r", repo_str, "--id", "wf-lifecycle"]);
+    assert!(success, "status after approve failed: {stderr}");
+    let status: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON status");
+    let phase = status["workflow"]["phase"].as_str().unwrap_or("");
+    assert_eq!(
+        phase, "construction",
+        "should be in construction phase after inception approval, got: {phase}"
+    );
+
+    // Create construction artifacts (required for validation)
+    let construction_dir = repo
+        .path()
+        .join(".sruja/workflows/wf-lifecycle/construction");
+    std::fs::create_dir_all(&construction_dir).expect("create construction dir");
+    write_file(
+        &construction_dir,
+        "linked_proposal_ids.json",
+        r#"["proposal-001"]"#,
+    );
+    write_file(
+        &construction_dir,
+        "task-plan.md",
+        "# Task Plan\nImplementation plan for the workflow.",
+    );
+
+    // 6. Status should show construction phase
+    let (success, stdout, stderr) =
+        run_sruja(&["workflow", "status", "-r", repo_str, "--id", "wf-lifecycle"]);
+    assert!(success, "workflow status failed: {stderr}");
+    let status: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON status");
+    let phase = status["workflow"]["phase"].as_str().unwrap_or("");
+    assert_eq!(
+        phase, "construction",
+        "should be in construction phase, got: {phase}"
+    );
+
+    // 7. Audit trail - append an event
+    let (success, _, stderr) = run_sruja(&[
+        "workflow",
+        "audit",
+        "-r",
+        repo_str,
+        "--id",
+        "wf-lifecycle",
+        "--event",
+        "lifecycle test event",
+    ]);
+    assert!(success, "audit failed: {stderr}");
+
+    let audit_path = repo
+        .path()
+        .join(".sruja/workflows/wf-lifecycle/audit.jsonl");
+    assert!(audit_path.exists(), "audit.jsonl should exist");
+    let audit_text = std::fs::read_to_string(&audit_path).expect("read audit");
+    assert!(
+        audit_text.contains("lifecycle test event"),
+        "audit should contain our event: {audit_text}"
+    );
+}
+
+#[test]
+fn verify_task_coding_profile_succeeds() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    // Sync to create graph
+    run_sruja(&["sync", "-r", repo_str]);
+
+    let (success, stdout, stderr) = run_sruja(&[
+        "verify-task",
+        "-r",
+        repo_str,
+        "--profile",
+        "coding",
+        "-f",
+        "json",
+        "--max-runtime-ms",
+        "60000",
+    ]);
+    assert!(success, "verify-task coding failed: {stderr}");
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert_eq!(
+        parsed["schema_version"].as_str().unwrap_or(""),
+        "verify_task/v1"
+    );
+    assert_eq!(parsed["profile"].as_str().unwrap_or(""), "coding");
+    assert!(parsed.get("steps").is_some(), "should have steps array");
+    assert!(parsed.get("all_passed").is_some(), "should have all_passed");
+}
+
+#[test]
+fn verify_task_arch_profile_succeeds() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    run_sruja(&["sync", "-r", repo_str]);
+
+    let (success, stdout, stderr) = run_sruja(&[
+        "verify-task",
+        "-r",
+        repo_str,
+        "--profile",
+        "arch",
+        "-f",
+        "json",
+        "--max-runtime-ms",
+        "60000",
+    ]);
+    assert!(success, "verify-task arch failed: {stderr}");
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert_eq!(parsed["profile"].as_str().unwrap_or(""), "arch");
+    assert!(parsed.get("steps").is_some());
+}
+
+#[test]
+fn verify_task_bugfix_profile_succeeds() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    run_sruja(&["sync", "-r", repo_str]);
+
+    let (success, stdout, stderr) = run_sruja(&[
+        "verify-task",
+        "-r",
+        repo_str,
+        "--profile",
+        "bugfix",
+        "--file",
+        "src/lib.rs",
+        "-f",
+        "json",
+        "--max-runtime-ms",
+        "60000",
+    ]);
+    assert!(success, "verify-task bugfix failed: {stderr}");
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert_eq!(parsed["profile"].as_str().unwrap_or(""), "bugfix");
+    assert!(parsed.get("steps").is_some());
+    // Should have focus, check, and intent steps
+    let steps = parsed["steps"].as_array().unwrap();
+    assert!(
+        steps.len() >= 3,
+        "bugfix should have at least 3 steps, got {}",
+        steps.len()
+    );
+}
+
+#[test]
+fn verify_task_review_profile_succeeds() {
+    let repo = create_test_repo();
+    write_minimal_cargo_repo(repo.path());
+    write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
+    let repo_str = repo.path().to_str().expect("utf-8");
+
+    run_sruja(&["sync", "-r", repo_str]);
+
+    let (success, stdout, stderr) = run_sruja(&[
+        "verify-task",
+        "-r",
+        repo_str,
+        "--profile",
+        "review",
+        "-f",
+        "json",
+        "--max-runtime-ms",
+        "60000",
+    ]);
+    assert!(success, "verify-task review failed: {stderr}");
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
+    assert_eq!(parsed["profile"].as_str().unwrap_or(""), "review");
+    assert!(parsed.get("steps").is_some());
+    // Should have review, intent, and drift steps
+    let steps = parsed["steps"].as_array().unwrap();
+    assert!(
+        steps.len() >= 3,
+        "review should have at least 3 steps, got {}",
+        steps.len()
+    );
+}

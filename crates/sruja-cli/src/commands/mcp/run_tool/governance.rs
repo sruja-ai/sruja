@@ -743,6 +743,26 @@ pub(crate) async fn try_run(
                 finish(Ok(out))
             }
         }
+
+        "sruja_verify_task" => {
+            use crate::commands::{format_verify_task, verify_task, VerifyTaskOptions};
+            let profile = arguments
+                .get("profile")
+                .and_then(|v| v.as_str())
+                .unwrap_or("coding");
+            let file = arguments.get("file").and_then(|v| v.as_str());
+            let max_runtime_ms = arguments.get("max_runtime_ms").and_then(|v| v.as_u64());
+
+            let output = verify_task(VerifyTaskOptions {
+                repo,
+                profile,
+                file,
+                max_runtime_ms,
+            })
+            .await?;
+            finish(Ok(format_verify_task(&output, "json")))
+        }
+
         _ => Ok(None),
     }
 }

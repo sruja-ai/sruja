@@ -928,6 +928,24 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: AgentCommand,
     },
+    /// Run verification steps for a task profile (coding, bugfix, review, arch)
+    VerifyTask {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Verification profile: coding, bugfix, review, arch
+        #[arg(long, short = 'p', default_value = "coding")]
+        profile: String,
+        /// File path focus (used by bugfix profile)
+        #[arg(long)]
+        file: Option<String>,
+        /// Max runtime per step in milliseconds (default: 30000)
+        #[arg(long)]
+        max_runtime_ms: Option<u64>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Inspect and replay saved run snapshots under `.sruja/runs/`
     #[command(hide = true)]
     Run {

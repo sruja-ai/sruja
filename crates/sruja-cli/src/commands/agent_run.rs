@@ -401,6 +401,7 @@ fn default_allowed_sruja_subcommands() -> Vec<String> {
         "review".to_string(),
         "lint".to_string(),
         "intent".to_string(), // for `intent check`
+        "focus".to_string(),  // for `focus --file` in bugfix profile
     ]
 }
 
@@ -504,6 +505,7 @@ fn validate_sruja_cmd_args(argv: &[String]) -> Result<(), CliError> {
             }
             Ok(())
         }
+        "focus" => Ok(()), // Expected: sruja focus --file <path> -r . -f json
         other => Err(CliError::validation(format!(
             "Unsupported sruja_cmd subcommand shape: {}",
             other

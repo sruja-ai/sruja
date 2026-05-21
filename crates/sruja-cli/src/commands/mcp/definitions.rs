@@ -932,5 +932,19 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "required": ["goal"]
             }
         }),
+        json!({
+            "name": "sruja_verify_task",
+            "title": "Sruja Verify Task",
+            "description": "Run verification steps for a task profile (coding, bugfix, review, arch) and return structured results. Use after code changes to ensure lint, tests, drift, and intent checks pass.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "profile": { "type": "string", "description": "Verification profile: coding, bugfix, review, arch (default: coding)" },
+                    "file": { "type": "string", "description": "Optional file focus (used by bugfix profile)" },
+                    "max_runtime_ms": { "type": "integer", "description": "Max runtime per step in milliseconds (default: 30000)" }
+                }
+            }
+        }),
     ]
 }

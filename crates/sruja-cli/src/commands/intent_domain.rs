@@ -28,3 +28,5 @@ pub mod onboard;
 pub mod propose;
 #[path = "remediation.rs"]
 pub mod remediation;
+#[path = "verify_task.rs"]
+pub mod verify_task;

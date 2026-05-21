@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, serde::Deserialize)]
+#[allow(dead_code)]
 pub struct SrujaConfigFile {
     #[serde(default)]
     pub integrations: IntegrationsConfig,
@@ -15,6 +16,8 @@ pub struct SrujaConfigFile {
     pub sandbox: SandboxConfig,
     #[serde(default)]
     pub context_engineering: ContextEngineeringConfig,
+    #[serde(default)]
+    pub verify: VerifyConfig,
 }
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
@@ -94,6 +97,34 @@ pub struct ContextEngineeringConfig {
     pub bm25_max_results_focus: Option<usize>,
     /// Max BM25 results for MCP search (default: 5).
     pub bm25_max_results_mcp: Option<usize>,
+}
+
+/// Configuration for verification profiles.
+///
+/// Loaded from `[verify]` in `.sruja/config.toml`.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[allow(dead_code)]
+pub struct VerifyConfig {
+    /// Default verification profile (coding, bugfix, review, arch).
+    pub default_profile: Option<String>,
+    /// Custom step definitions for the coding profile.
+    pub coding: Option<VerifyProfileConfig>,
+    /// Custom step definitions for the bugfix profile.
+    pub bugfix: Option<VerifyProfileConfig>,
+    /// Custom step definitions for the review profile.
+    pub review: Option<VerifyProfileConfig>,
+    /// Custom step definitions for the arch profile.
+    pub arch: Option<VerifyProfileConfig>,
+}
+
+/// Per-profile verification configuration.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[allow(dead_code)]
+pub struct VerifyProfileConfig {
+    /// Verification steps to run (e.g. ["lint", "check", "drift-if-arch"]).
+    pub steps: Option<Vec<String>>,
+    /// Timeout per step in milliseconds.
+    pub timeout_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]

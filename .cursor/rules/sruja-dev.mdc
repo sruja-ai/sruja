@@ -14,6 +14,12 @@ Project context for Sruja core and extension development.
 4. **WASM Integrity**: If you modify `sruja-wasm` or `sruja-language`, remind the user to rebuild WASM with `make wasm-nodejs` and update the extension assets.
 5. **Validation**: Use `sruja lint` on any `.sruja` files after editing.
 
+## Mandatory Gates
+- **Before non-trivial edits**: Run `sruja focus --file <path>` for task-scoped briefing.
+- **Before marking done**: Run `sruja verify-task --profile <coding|bugfix|review|arch> -r .`.
+- **When `.sruja` or cross-crate imports change**: Run `sruja drift -r .` and `sruja intent check`.
+- **On verify failure**: Fix the issue, re-verify, then record a correction learning via `sruja agent record`.
+
 ## Useful Context Tools
 - `sruja focus --file <path>` — Task-scoped briefing before deep edits.
 - **Sruja MCP** — `.cursor/mcp.json` (`SRUJA_MCP_WATCH_DRIFT=1`). See **`sruja-context-host`** rule for drift, prune, memory.

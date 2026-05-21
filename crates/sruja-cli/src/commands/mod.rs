@@ -76,6 +76,7 @@ pub use dsl_domain::generate::generate_prompt;
 pub use dsl_domain::watch::watch;
 pub use intent_domain::intent::{intent_check, intent_propose};
 pub use intent_domain::onboard::onboard;
+pub use intent_domain::verify_task::{format_verify_task, verify_task, VerifyTaskOptions};
 pub use scan_domain::health::health;
 pub use scan_domain::impact::impact;
 pub(crate) use scan_domain::impact::impact_compute_output;

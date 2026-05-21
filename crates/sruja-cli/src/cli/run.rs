@@ -1,4 +1,5 @@
 use crate::commands;
+use crate::commands::CliError;
 
 use super::app::was_invoked_as;
 use super::app::ContextIntent;
@@ -939,6 +940,27 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 commands::agent_apply(std::path::Path::new(&plan), &repo, &format).await
             }
         },
+        Commands::VerifyTask {
+            repo,
+            profile,
+            file,
+            max_runtime_ms,
+            format,
+        } => {
+            let output = commands::verify_task(commands::VerifyTaskOptions {
+                repo: &repo,
+                profile: &profile,
+                file: file.as_deref(),
+                max_runtime_ms,
+            })
+            .await?;
+            let all_passed = output.all_passed;
+            println!("{}", commands::format_verify_task(&output, &format));
+            if !all_passed {
+                return Err(Box::new(CliError::validation("Verification failed")));
+            }
+            Ok(())
+        }
         Commands::Run { cmd } => match cmd {
             RunCommand::Show {
                 repo,
