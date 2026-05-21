@@ -263,23 +263,26 @@ fn derive_id_from_title(title: &str) -> String {
 }
 
 pub(crate) fn parse_element_kind(input: &str) -> IResult<&str, ElementKind> {
-    alt((
-        value(ElementKind::Person, tag("person")),
-        value(ElementKind::Role, tag("role")),
-        value(ElementKind::System, tag("system")),
-        value(ElementKind::Container, tag("container")),
-        value(ElementKind::Component, tag("component")),
-        value(ElementKind::Database, tag("database")),
-        value(ElementKind::Queue, tag("queue")),
-        value(ElementKind::Policy, tag("policy")),
-        value(ElementKind::Requirement, tag("requirement")),
-        value(ElementKind::Adr, tag("adr")),
-        value(ElementKind::Flow, tag("flow")),
-        value(ElementKind::Scenario, tag("scenario")),
-        value(ElementKind::Story, tag("story")),
-        map(parse_identifier, ElementKind::Custom),
-    ))
-    .parse(input)
+    let (input, raw) = parse_identifier(input)?;
+    let kind = match raw.to_lowercase().as_str() {
+        "person" => ElementKind::Person,
+        "role" => ElementKind::Role,
+        "system" => ElementKind::System,
+        "container" => ElementKind::Container,
+        "component" => ElementKind::Component,
+        "database" => ElementKind::Database,
+        "queue" => ElementKind::Queue,
+        "policy" => ElementKind::Policy,
+        "requirement" => ElementKind::Requirement,
+        "adr" => ElementKind::Adr,
+        "flow" => ElementKind::Flow,
+        "scenario" => ElementKind::Scenario,
+        "story" => ElementKind::Story,
+        "datastore" | "data_store" => ElementKind::DataStore,
+        "externalsystem" | "external_system" => ElementKind::ExternalSystem,
+        _ => ElementKind::Custom(raw),
+    };
+    Ok((input, kind))
 }
 
 pub(crate) fn parse_element_def_body(input: &str) -> IResult<&str, ElementDefBody> {

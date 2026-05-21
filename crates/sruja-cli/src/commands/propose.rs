@@ -5,6 +5,7 @@ use sruja_engine::Validator;
 use sruja_export::DslPrinter;
 use sruja_intent::IntentModel;
 use sruja_scan::scan_repo;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -60,6 +61,7 @@ pub async fn propose_create(
     let baseline_top_level_elements = collect_program_top_level_elements(&baseline_program);
     let baseline_element_fqns = collect_program_element_fqns(&baseline_program);
     let baseline_relationships = collect_program_relationships(&baseline_program);
+    let baseline_defined_kinds = collect_program_defined_kinds(&baseline_program);
 
     if !has_baseline && !remove_elements.is_empty() {
         return Err(CliError::validation(
@@ -78,6 +80,7 @@ pub async fn propose_create(
         let parsed = parse_add_element_spec(&spec)?;
         let (id, kind, label, tech) = parsed;
         let id = id.clone();
+        let kind = normalize_element_kind(&kind, has_baseline, &baseline_defined_kinds)?;
         let kind_lc = kind.trim().to_lowercase();
         if kind_requires_technology_str(&kind_lc) && tech.is_none() {
             return Err(CliError::validation(format!(
@@ -951,6 +954,72 @@ fn collect_program_relationships(
         out.insert((rel.from.as_string(), rel.to.as_string()));
     }
     out
+}
+
+fn collect_program_defined_kinds(
+    program: &sruja_language::ast::Program,
+) -> HashMap<String, String> {
+    use sruja_language::ast::TopLevelItem;
+    let mut out: HashMap<String, String> = HashMap::new();
+    for item in &program.items {
+        if let TopLevelItem::KindDef(def) = item {
+            let canonical = format!("{}", def.kind);
+            out.insert(canonical.to_lowercase(), canonical);
+        }
+    }
+    out
+}
+
+fn normalize_element_kind(
+    kind: &str,
+    has_baseline: bool,
+    baseline_defined_kinds: &HashMap<String, String>,
+) -> Result<String, CliError> {
+    let kind = kind.trim();
+    if kind.is_empty() {
+        return Err(CliError::validation(
+            "Element kind must be non-empty".to_string(),
+        ));
+    }
+
+    let lc = kind.to_lowercase();
+    let canonical = match lc.as_str() {
+        "person" => Some("person"),
+        "role" => Some("role"),
+        "system" => Some("system"),
+        "container" => Some("container"),
+        "component" => Some("component"),
+        "database" => Some("database"),
+        "queue" => Some("queue"),
+        "policy" => Some("policy"),
+        "requirement" => Some("requirement"),
+        "adr" => Some("adr"),
+        "flow" => Some("flow"),
+        "scenario" => Some("scenario"),
+        "story" => Some("story"),
+        "datastore" | "data_store" => Some("datastore"),
+        "externalsystem" | "external_system" => Some("externalSystem"),
+        _ => None,
+    };
+
+    if let Some(canonical) = canonical {
+        return Ok(canonical.to_string());
+    }
+
+    if has_baseline {
+        if let Some(canonical) = baseline_defined_kinds.get(&lc) {
+            return Ok(canonical.clone());
+        }
+        return Err(CliError::validation(format!(
+            "Unknown element kind '{}'. Define it first in repo.sruja with '<KindId> = kind \"...\" {{ ... }}'.",
+            kind
+        )));
+    }
+
+    Err(CliError::validation(format!(
+        "Unknown element kind '{}'. Allowed built-in kinds: person, role, system, container, component, database, queue, policy, requirement, adr, flow, scenario, story, datastore, externalSystem.",
+        kind
+    )))
 }
 
 #[cfg(test)]

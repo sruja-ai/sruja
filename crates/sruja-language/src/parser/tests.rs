@@ -76,6 +76,24 @@ mod cases {
     }
 
     #[test]
+    fn test_parse_element_def_datastore_kind() {
+        let input = r#"DB = datastore "DB" { description "Data" technology "PostgreSQL" }"#;
+        let result = parse_element_def(input);
+        assert!(result.is_ok());
+        let (_, elem) = result.unwrap();
+        assert_eq!(elem.assignment.kind, ElementKind::DataStore);
+    }
+
+    #[test]
+    fn test_parse_element_def_external_system_kind() {
+        let input = r#"GitHub = externalSystem "GitHub""#;
+        let result = parse_element_def(input);
+        assert!(result.is_ok());
+        let (_, elem) = result.unwrap();
+        assert_eq!(elem.assignment.kind, ElementKind::ExternalSystem);
+    }
+
+    #[test]
     fn test_parse_element_def_with_tags() {
         let input = r#"MySystem = system "My System" #core @external"#;
         let result = parse_element_def(input);
