@@ -1,0 +1,66 @@
+{
+  "artifact_kind": "deterministic_fact",
+  "description": "Deterministic structural scan (no repo.sruja baseline).",
+  "clean_scan": false,
+  "health_score": 88,
+  "scan_scope": {
+    "total_files": 414
+  },
+  "could_not_infer": [
+    "Dynamic imports and runtime plugin loading may be missing from the graph.",
+    "Framework DI, reflection, and generated code may hide real dependencies.",
+    "Layer rules are heuristic; confirm violations against your team's conventions.",
+    "2026 module(s)/service(s) have no file path in scan evidence (IDs only)."
+  ],
+  "violation_count": 60,
+  "sample_violations": [
+    {
+      "confidence": 0.8500000238418579,
+      "evidence_count": 1,
+      "kind": "GodModule",
+      "location": "crate:sruja-cli",
+      "message": "Bottleneck Detected: Module 'crate:sruja-cli' acts as a 'God Module' with 11 dependencies (threshold: 10)",
+      "production_relevant": true,
+      "rule_id": "SRUJA-GOD-001",
+      "severity": "Warning",
+      "sources": [
+        {
+          "file": "crates/sruja-cli/Cargo.toml"
+        }
+      ],
+      "suggestion": "Bottleneck detected: this module has 11 outgoing dependencies. Top targets: crate:sruja-agent, crate:sruja-diagnostics, crate:sruja-diff. Consider extracting related functionality into a separate module to reduce regression risk."
+    },
+    {
+      "confidence": 0.8500000238418579,
+      "evidence_count": 1,
+      "kind": "GodModule",
+      "location": "crates_sruja-agent_src_matts_rs",
+      "message": "Bottleneck Detected: Module 'crates_sruja-agent_src_matts_rs' acts as a 'God Module' with 11 dependencies (threshold: 10)",
+      "production_relevant": true,
+      "rule_id": "SRUJA-GOD-001",
+      "severity": "Warning",
+      "sources": [
+        {
+          "file": "/Users/dilipkola/Workspace/sruja/crates/sruja-agent/src/matts.rs"
+        }
+      ],
+      "suggestion": "Bottleneck detected: this module has 11 outgoing dependencies. Top targets: crates_sruja-agent_src_matts_rs#ContrastResult, crates_sruja-agent_src_matts_rs#TrajectoryOutcome, crates_sruja-agent_src_matts_rs#TrajectoryRunner. Consider extracting related functionality into a separate module to reduce regression risk."
+    },
+    {
+      "confidence": 0.8500000238418579,
+      "evidence_count": 1,
+      "kind": "GodModule",
+      "location": "crates_sruja-agent_src_memory_rs",
+      "message": "Bottleneck Detected: Module 'crates_sruja-agent_src_memory_rs' acts as a 'God Module' with 33 dependencies (threshold: 10)",
+      "production_relevant": true,
+      "rule_id": "SRUJA-GOD-001",
+      "severity": "Warning",
+      "sources": [
+        {
+          "file": "/Users/dilipkola/Workspace/sruja/crates/sruja-agent/src/memory.rs"
+        }
+      ],
+      "suggestion": "Bottleneck detected: this module has 33 outgoing dependencies. Top targets: crates_sruja-agent_src_memory_rs#AgenticMemory, crates_sruja-agent_src_memory_rs#CurationReport, crates_sruja-agent_src_memory_rs#ExperimentOutcome. Consider extracting related functionality into a separate module to reduce regression risk."
+    }
+  ]
+}

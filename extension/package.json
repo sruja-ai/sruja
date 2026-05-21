@@ -199,9 +199,21 @@
       },
       {
         "command": "sruja.runDrift",
-        "title": "Sruja: Run drift (architecture health)",
+        "title": "Sruja: Run structural drift",
         "icon": "$(pulse)",
         "shortTitle": "Drift"
+      },
+      {
+        "command": "sruja.briefThisFile",
+        "title": "Sruja: Brief this file (focus)",
+        "icon": "$(lightbulb)",
+        "shortTitle": "Brief file"
+      },
+      {
+        "command": "sruja.openAiSetup",
+        "title": "Sruja: AI setup (MCP, skill, context)",
+        "icon": "$(hubot)",
+        "shortTitle": "AI setup"
       },
       {
         "command": "sruja.refreshContext",
@@ -285,6 +297,16 @@
           "submenu": "sruja.editorSubmenu",
           "group": "sruja",
           "when": "editorLangId == sruja"
+        },
+        {
+          "command": "sruja.briefThisFile",
+          "group": "sruja",
+          "when": "editorLangId != sruja"
+        },
+        {
+          "command": "sruja.runDrift",
+          "group": "sruja",
+          "when": "editorLangId != sruja"
         }
       ],
       "sruja.editorSubmenu": [
@@ -301,12 +323,8 @@
           "group": "2_diagram"
         },
         {
-          "command": "sruja.openFocusedDiagramPreview",
-          "group": "2_diagram"
-        },
-        {
-          "command": "sruja.openSequenceDiagramPreview",
-          "group": "2_diagram"
+          "command": "sruja.openAiSetup",
+          "group": "3_knowledge"
         },
         {
           "command": "sruja.openComponentKnowledge",

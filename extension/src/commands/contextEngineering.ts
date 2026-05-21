@@ -62,9 +62,15 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
           const channel = getCliOutputChannel();
           channel.clear();
           channel.show(true);
-          channel.appendLine("Running sruja drift -r . ...");
+          channel.appendLine("Running sruja drift -r . --structural-only --advisory ...");
           try {
-            const { stdout, stderr, code } = await runCliInWorkspace(getSrujaPath, ["drift", "-r", "."]);
+            const { stdout, stderr, code } = await runCliInWorkspace(getSrujaPath, [
+              "drift",
+              "-r",
+              ".",
+              "--structural-only",
+              "--advisory",
+            ]);
             channel.append(stdout);
             if (stderr) channel.append(stderr);
             channel.appendLine("");
@@ -227,6 +233,59 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
           }
         }
       );
+    }),
+
+    vscode.commands.registerCommand("sruja.briefThisFile", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage("Open a source file to brief.");
+        return;
+      }
+      const folder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+      if (!folder) {
+        vscode.window.showWarningMessage("File is not in a workspace folder.");
+        return;
+      }
+      const rel = path.relative(folder.uri.fsPath, editor.document.uri.fsPath);
+      const relCli = rel.split(path.sep).join("/");
+      const channel = getCliOutputChannel();
+      channel.clear();
+      channel.show(true);
+      channel.appendLine(`Running sruja focus -r . --file ${relCli} ...`);
+      try {
+        const { stdout, stderr, code } = await runCliInFolder(getSrujaPath, folder, [
+          "focus",
+          "-r",
+          ".",
+          "--file",
+          relCli,
+        ]);
+        channel.append(stdout);
+        if (stderr) channel.append(stderr);
+        if (code !== 0) {
+          channel.appendLine(`(exit code ${code})`);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        channel.appendLine(`Error: ${msg}`);
+        vscode.window.showErrorMessage("Sruja focus failed. Is the CLI on PATH or set sruja.lsp.path?");
+      }
+    }),
+
+    vscode.commands.registerCommand("sruja.openAiSetup", async () => {
+      const pick = await vscode.window.showQuickPick(
+        [
+          { label: "Register MCP (Cursor)", command: "sruja.registerMcpServer" },
+          { label: "Copy context pack for AI", command: "sruja.copyContextPackForAI" },
+          { label: "Open skills overview", command: "sruja.openSkillsOverview" },
+          { label: "Open agent guide (AGENTS.md)", command: "sruja.openAgentGuide" },
+          { label: "List rules…", command: "sruja.listRules" },
+        ],
+        { placeHolder: "Sruja AI setup" }
+      );
+      if (pick) {
+        await vscode.commands.executeCommand(pick.command);
+      }
     }),
 
     vscode.commands.registerCommand("sruja.review", async () => {

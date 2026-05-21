@@ -24,7 +24,9 @@ The following commands run via the Sruja CLI and are surfaced in the extension. 
 - **Sruja: Refresh repo context** – Runs `sruja sync -r .`; writes `.sruja/context.json` with evidence, truth status, and baseline path. Use before status/review or so the sruja-architecture skill can use cached context.
 - **Sruja: Status** – Runs `sruja status -r . --format json`; shows baseline, truth status (reviewed | drifted | unknown), and violation count in the Sruja output channel.
 - **Sruja: Review architecture update** – Runs `sruja review -r . --format json`; shows drift summary, new/missing components, and suggestions for updating `repo.sruja`.
-- **Sruja: Run drift (architecture health)** – Runs `sruja drift -r .`; output in the Sruja channel. Detects structural drift (cycles, orphans, layer violations).
+- **Sruja: Run structural drift** – Runs `sruja drift -r . --structural-only --advisory` (no `repo.sruja` required).
+- **Sruja: Brief this file** – Runs `sruja focus --file <path>` on any source file in the workspace.
+- **Sruja: AI setup** – MCP register, context pack, skills, rules (single entry point).
 
 In CI or headless use, run the CLI directly:
 

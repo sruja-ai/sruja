@@ -205,6 +205,7 @@ pub enum AgentCommand {
     /// Architecture-bounded agent loop: observe → plan → (optional) apply → verify → record learnings
     ///
     /// Requires Sruja evidence and a reviewable plan; not a general-purpose coding agent.
+    #[command(hide = true)]
     Run {
         /// Optional run ID for tracing (defaults to auto-generated)
         #[arg(long)]
@@ -964,6 +965,9 @@ pub enum InspectCommand {
         /// Fail on specified violations
         #[arg(long)]
         fail_on: Option<String>,
+        /// First-run friendly: omit orphan info findings
+        #[arg(long)]
+        advisory: bool,
     },
     /// Keep architecture feedback live while you code
     Watch {

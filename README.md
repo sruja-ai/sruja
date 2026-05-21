@@ -1,116 +1,85 @@
-# Sruja — The context graph engine for AI agents.
+# Sruja — Stop AI from breaking your repo structure
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Sruja — The context graph engine for AI agents.** Define architecture as code, scan evidence from your repo, and serve it to any AI agent via MCP, JS, or Python. The sruja-architecture skill gathers repo context, writes or updates `repo.sruja`, and runs lint/drift checks so architecture stays accurate, reviewable, and useful to AI coding assistants.
+**Sruja scans your codebase and reports structural drift** — circular dependencies, layer violations, god modules — with file-level evidence. No `.sruja` file required on day one. Use **MCP** or `focus` so Cursor and other agents stay inside boundaries; use **`verify-task`** as a host gate after edits.
 
-Diagrams are outputs, not the source of truth: export to Mermaid or Markdown when you need to share architecture.
+Optional `.sruja` is a human-readable snapshot for diagrams and strict CI — not the primary product.
 
-**Start with the AI skill:**
+## Quick start (OSS)
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+sruja start -r .
+sruja drift -r . --structural-only --advisory
+```
+
+You get a scan summary, actionable findings (file paths), and a **could not infer** section for scan limits. Pinned examples: [examples/oss-demo/](examples/oss-demo/).
+
+## Step 2 — Editor integration (MCP)
+
+Add to Cursor (template in [.cursor/mcp.json](.cursor/mcp.json)):
+
+```json
+{
+  "mcpServers": {
+    "sruja": {
+      "command": "sruja",
+      "args": ["mcp", "-r", "."],
+      "env": {
+        "SRUJA_MCP_TOOL_PROFILE": "coding",
+        "SRUJA_MCP_READONLY": "1"
+      }
+    }
+  }
+}
+```
+
+Before a task: `sruja focus -r . --file path/to/file.rs`. After edits: `sruja verify-task --profile coding -r .`.
+
+## Step 3 — Optional reviewed intent (skill)
+
+When you want versioned architecture in CI:
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-Then ask your AI editor:
+Ask your editor to promote scan evidence to `repo.sruja`, then `sruja lint repo.sruja` and `sruja drift -r . -a repo.sruja`.
 
-```text
-Use sruja-architecture. Gather evidence from this repo, ask targeted questions if needed,
-generate or update repo.sruja, then run sruja lint and fix until it passes.
-```
-
-**CLI evaluation path:**
-
-If your editor cannot use skills yet, or you want a deterministic first look:
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-sruja sync -r .                                    # author_evidence.json + context (synthesis input)
-sruja inspect overview -r . --generate-baseline   # repo.sruja.draft (structural sketch only)
-# Use sruja-architecture skill to synthesize proposals, promote to repo.sruja, then:
-sruja lint repo.sruja
-sruja drift -r . -a repo.sruja
-```
-
-**Optional CLI onboarding enrichment:**
-
-Use `--enrich-cmd` to delegate enrichment to your approved tool (Cursor/Claude/OpenCode/internal wrapper). Sruja passes only the grounded onboard JSON via stdin and reads markdown from stdout.
-
-```bash
-sruja inspect onboard -r . -f markdown --enrich-cmd 'claude -p -'
-```
-
-Config (optional):
-- `SRUJA_ENRICH_PROVIDER` (default: `cmd`)
-- `SRUJA_ENRICH_CMD` (for provider=`cmd`)
-- `SRUJA_ENRICH_MODEL` (default: `gpt-4o-mini`, for provider=`openai`)
-- `SRUJA_ENRICH_BASE_URL` (default: `https://api.openai.com/v1`, for provider=`openai`)
-- `SRUJA_ENRICH_API_KEY` (optional alternative to `OPENAI_API_KEY`)
-
-Repo config (team standard): create `.sruja/config.toml`:
-
-```toml
-[integrations]
-default_provider = "cmd"
-cmd = "claude -p -"
-timeout_ms = 15000
-max_bytes = 20000
-```
+Diagrams are Tier-2 exports (Mermaid/Markdown), not the hero.
 
 ---
 
 ## What is this?
 
-**Problem:** Your code changes, but AI assistants and humans often work from stale architecture context: old diagrams, partial wiki pages, or guesses from a few open files.
+**Problem:** AI editors introduce silent structural debt — wrong layers, new cycles, hub modules — while velocity stays high.
 
-**Solution:** Sruja uses AI to analyze your codebase and generate architecture as code (`.sruja` files). You validate, version-control, and export it—keeping it always up-to-date.
+**Solution:** Deterministic scan + drift from code; MCP and `focus` feed agents bounded evidence; optional `repo.sruja` when teams want declared intent in CI.
 
-**How it works:**
-1. Install the sruja-architecture skill in your AI editor
-2. In your AI editor, ask the skill to generate architecture from your code (it runs structural analysis under the hood)
-3. Validate with `sruja lint`, refresh evidence with `sruja sync`, and export diagrams when you need them
+**Not competing with:** Cursor, Windsurf, or Claude Code as your coding agent. Sruja is the **harness** (drift, focus, verify-task), not a second IDE.
 
-**You don't write `.sruja` files manually.** Your AI does it for you.
+Docs: [docs/MESSAGING.md](docs/MESSAGING.md) · [docs/FEATURE_TIERS.md](docs/FEATURE_TIERS.md) · [docs/STRUCTURIZR_VS_SRUJA.md](docs/STRUCTURIZR_VS_SRUJA.md)
 
 ---
 
-## Quick Start
+## Quick Start (details)
 
-### Option A: Generate and maintain architecture with AI (recommended)
+### Option A — MCP + drift (recommended for OSS)
+
+Use the commands in **Quick start** above, then register MCP. See [docs/mcp_tools_reference.md](docs/mcp_tools_reference.md).
+
+### Option B — Skill for reviewed `repo.sruja`
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-This teaches your AI editor (Cursor, Copilot, Claude, etc.) how to generate and maintain Sruja architecture. The skill uses structural analysis (discover, sync, drift) under the hood.
+In your AI editor:
 
-**Supported editors:** Cursor, GitHub Copilot, Claude, Continue.dev, and any editor with [skills.sh](https://skills.sh) support.
-
-Generate architecture with AI:
-
-In your AI editor, paste this prompt:
-
+```text
+Use sruja-architecture. Run structural drift first, then promote evidence to repo.sruja and lint.
 ```
-Use sruja-architecture. Run `sruja discover --context -r . --format json`,
-gather evidence from my code, ask targeted questions if needed,
-generate repo.sruja, then run `sruja lint` and fix until it passes.
-```
-
-Your AI will:
-1. Run discovery (structural analysis) to understand your code
-2. Ask you a few questions if anything is unclear
-3. Generate a `repo.sruja` file
-4. Run `sruja lint` and fix any validation errors so you see **concrete value in the first run** (real errors/warnings and a clean, valid architecture)
-
-### Option B: Deterministic CLI evaluation
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-sruja inspect overview -r . --generate-baseline   # repo.sruja.draft
-sruja inspect onboard -r .
-```
-
-This scans your repo, prints an inventory + structural health report, and writes `repo.sruja.draft` (workspace map evidence—not reviewed architecture). Use the skill to shape `repo.sruja`, or use this path for CI, scripting, and evaluation without an AI editor.
 
 ### Daily developer loop
 

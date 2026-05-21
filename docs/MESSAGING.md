@@ -1,67 +1,86 @@
 # Sruja product messaging
 
-**Canonical positioning (use for website, docs, and pitch):**
+**Public one-liner:** Sruja scans your repo and reports structural problems AI coding tends to introduce; optional `.sruja` and MCP help your editor stay inside boundaries.
 
-- **Tagline:** Context engineering for the AI era.
-- **One-liner:** Sruja brings context engineering to the AI era—use AI to generate and maintain architecture as code, backed by deterministic evidence from your codebase.
-- **Short:** Architecture-as-code + evidence: analyze code, generate and validate `.sruja` files, export diagrams and docs, and produce citable context for AI coding.
-
-Do not use the old framing (e.g. "developer-friendly language for defining, visualizing, and validating" or "governance / best practices / standardize" as the primary pitch). Lead with **context engineering for the AI era** and AI-driven discovery/maintenance.
+**Do not lead with:** architecture DSL, diagram designer, context engineering platform, or “architecture intelligence.”
 
 ---
 
-**Product index: AI skill first**
+## Tier 1a — OSS hero (no `.sruja` required)
 
-- **Index on the AI skill.** The primary product surface is the **sruja-architecture skill**. Docs and quick start should lead with: install the skill first, then use it; the skill will guide users to install the CLI when needed (CLI is not a prerequisite before adding the skill). The skill is the needle mover.
-- **Structural analysis backs, verifies, and enhances the skill.** Scan, discover, sync, and drift remain in the product and power the skill (evidence, drift detection, validation). We do not remove or downplay the value of structural analysis—we simply don't offer it as a **standalone user-facing tool** in the main flow.
-- **Do not offer static/structural analysis as a primary tool.** Positioning "run quickstart" or "run drift" as the first thing users do is a distraction for us and for users. Those commands stay available for the skill (which runs them), for CI, and for scripting—but we don't lead with them or list them as the main way to get value.
-- **Draft vs reviewed truth:** `sruja quickstart -r . --generate-baseline` and `sruja init --auto` write **`repo.sruja.draft`** (capped workspace map from manifests—evidence only). **`repo.sruja`** is reviewed architecture (skill + human edit + lint/drift). Never say "generate baseline" means you already have architecture.
-- **Synthesis evidence:** `sruja sync` writes **`.sruja/author_evidence.json`** (capped bundle for LLM synthesis). The skill/MCP synthesizes domain architecture; static scan does not auto-write `repo.sruja`. Prefer author evidence over dumping **`.sruja/graph.json`** into prompts.
-- **Proposals:** Incremental changes go to **`.sruja/proposals/<id>.json`** → `sruja propose approve <id>` → lint/drift. Headless: `sruja author propose --enrich-cmd '…'`.
-- **Skill as primary interface; tools behind the scenes.** The skill is the primary interface. It uses scan/sync/discover behind the scenes. When `.sruja/context.json` exists and is fresh, the skill uses it; when not, the skill runs discover/sync so the user gets an answer without running any command first.
+Deterministic structural scan. Catches what AI changes in repo topology.
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+sruja start -r .
+sruja drift -r . --structural-only --advisory
+```
+
+Always show: **what we found**, **what we could not infer**, **what changed** (on repeat runs). Use `drift -f json` for machines.
+
+**Messaging principles**
+
+- Lead with scan + anti-drift + MCP gates — not skill install or DSL syntax.
+- Avoid hero copy: “instant”, “60 seconds”, “zero-config wow”, “intelligence”.
+- `.sruja` is a **structured snapshot for viz + optional CI intent**, not day-one requirement.
+
+## Tier 1b — Skill (optional promotion)
+
+Install `sruja-architecture` when you want reviewed `repo.sruja` in version control:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+The skill runs Tier-1 commands (sync, drift, lint) — it is an accelerator, not the product definition.
+
+**Draft vs reviewed:** `repo.sruja.draft` = evidence sketch; `repo.sruja` = reviewed truth. `sruja sync` writes `.sruja/author_evidence.json` for synthesis.
 
 ---
 
 ## Retrieval ladder (CLI + MCP)
 
-Same question can be asked many ways; teach one ladder:
-
-| Step | When | CLI | MCP (in editor) |
-|------|------|-----|-------------------|
-| 1 | Before editing a specific area | `sruja focus -r . --file <path>` | `sruja_get_focus_briefing` |
-| 2 | Paste-ready task brief for an AI assistant | `sruja ai -r . --task "…"` | `sruja_get_task_context` |
-| 3 | Deep graph queries from the IDE | — | Other `sruja mcp` tools (prefer readonly when exploring) |
-| 4 | “Why is this like this?” investigation | `sruja why` / `sruja query` | `sruja_query_graph`, `sruja_explain_element`, search tools |
-
-Do not present `why`, `query`, `focus`, `ai`, and MCP as interchangeable—they differ by **moment** (before task vs investigation) and **surface** (CLI vs editor).
+| Step | When | CLI | MCP |
+|------|------|-----|-----|
+| 1 | Before editing | `sruja focus -r . --file <path>` | `sruja_get_focus_briefing` |
+| 2 | Paste-ready brief | `sruja ai -r . --task "…"` | `sruja_get_task_context` |
+| 3 | Deep graph | — | Ladder + `sruja_hybrid_query` |
+| 4 | Investigation | `sruja why` / `query` | `sruja_query_graph`, etc. |
 
 ## MCP tool profiles
 
-Sruja MCP supports four tool profiles to reduce context waste:
-- `minimal` (~10-12 tools): Core ladder + focus briefing + essential drift/search utilities
-- `coding` (~15-18 tools, default): minimal + hybrid query + critique + context pruning
-- `arch`: coding + read-only authoring helpers (explain_element, evaluate_proposal read paths)
-- `full`: All tools (backward compatible, ~63 tools)
+- **`coding`** (default, ≤18 tools): ladder, focus, drift, verify, memory search, hybrid query, critique, prune.
+- **`minimal`**, **`arch`**, **`full`** (compat only — not in public templates).
 
-Set via `SRUJA_MCP_TOOL_PROFILE` env or MCP `initializationOptions.tool_profile`. The default `coding` profile keeps the tool list focused for everyday coding sessions.
+Set `SRUJA_MCP_TOOL_PROFILE=coding`. **Not** in coding profile: `sruja_agent_run` — hosts run the LLM loop; Sruja supplies `verify-task` and evidence.
 
 ---
 
-**Why Sruja when AI can give architecture?**
+## vs Structurizr / LikeC4
 
-AI without Sruja can propose architecture or generate code, but it is often ungrounded (it may invent components, dependencies, or boundaries) and ephemeral (no single source of truth in the repo). Sruja gives the AI deterministic, repo-specific context (scan/graph, drift, violations with sources) and a persistent artifact (architecture as code: lint, drift, version control). So: AI proposes and edits; Sruja provides context, validation, and persistence. As models get smarter, we don't replace them—we give them better evidence and better checks so their output is accurate and maintainable.
+See [STRUCTURIZR_VS_SRUJA.md](./STRUCTURIZR_VS_SRUJA.md).
 
-**Three pillars:**
+---
 
-- **Grounding** — The skill feeds the model real data (discover, context, graph) so it reasons on what's actually in the codebase, not on guesses. Without Sruja, the model can hallucinate modules and edges.
-- **Validation and sync** — The skill uses sruja lint (valid DSL), sruja drift (declared vs actual), and intent check. So you get architecture that is valid and stays in sync with code, not a one-off diagram.
-- **Persistence and reuse** — Architecture lives as repo.sruja in the repo: versionable, exportable, comparable over time. The model without Sruja gives ad-hoc text or Mermaid; with Sruja, the output is a first-class artifact the whole team and CI can use.
+## Host loop (not `agent run`)
 
-**One-liner for pitches:**
-"Sruja doesn't replace the AI—it gives the AI your real codebase structure and validates what it produces, so architecture stays accurate and in the repo."
+```text
+1. MCP: focus / drift state / boundary context
+2. Host LLM edits code
+3. sruja verify-task --profile coding -r .
+4. sruja agent record -c "…" on failure (optional)
+```
 
-**Strategy: Rely on models getting smarter; improve from there**
+`sruja agent run` is internal/deprecated — use `agent plan` + host apply + `verify-task`.
 
-Do not compete with the model. We don't try to outdo the model at "being smart." We assume models will keep improving at reasoning and generation. Complement and improve from there: Sruja's job is to provide better inputs (evidence, graph, scoped discovery) and better checks (lint, drift, intent) so that whatever the model produces is grounded and maintainable. As models get smarter, they get better at using that evidence—so Sruja's value grows with model capability.
+---
 
-**Design principle:** Every feature (skill, discover, sync, drift, progressive discovery) should be answerable with: "This gives the model better evidence or better validation so its output is more accurate and stays in sync." If we can't say that, we should question the feature.
+## Three pillars (technical docs)
+
+- **Grounding** — scan/graph evidence in prompts
+- **Validation** — lint, drift, verify-task
+- **Persistence** — optional reviewed `repo.sruja`
+
+**Pitch line:** Sruja gives the model your real topology and validates what it produces.
+
+See [FEATURE_TIERS.md](./FEATURE_TIERS.md) and [OSS_METRICS.md](./OSS_METRICS.md).

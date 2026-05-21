@@ -1,13 +1,14 @@
 # Feature Consolidation
 
-This document defines the canonical paths for core Sruja workflows to reduce toolbox feeling and agent context waste.
+Canonical paths for OSS traction. Public tiers: [FEATURE_TIERS.md](./FEATURE_TIERS.md).
 
-## Product Spine (4 Workflows)
+## Product spine (OSS — three workflows)
 
-1. **Onboarding** → `sruja onboard` (not `discover explain`)
-2. **Health Check** → `sruja status` / `doctor` (not `health`)
-3. **Retrieval** → `sruja focus` / MCP focus briefing (not `get_architecture_context`, `get_hydrated_context`)
-4. **Drift Gate** → `sruja drift`, `sruja drift-pr` (not deprecated `check`)
+1. **Scan + drift** → `sruja start`, `sruja drift --structural-only --advisory` (no `.sruja` required)
+2. **Brief agent** → `sruja focus`, `sruja ai`; MCP `coding` profile (≤18 tools, no `sruja_agent_run`)
+3. **Verify** → `sruja verify-task`; `lint` / `drift -a repo.sruja` when reviewed intent exists
+
+Team-only: `onboard`, `workflow`, `propose`, `drift-pr`, federation (Tier 2).
 
 ## Redundant Clusters Table
 

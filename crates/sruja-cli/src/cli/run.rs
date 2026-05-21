@@ -272,6 +272,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             ci,
             violations_baseline,
             baseline_mode,
+            structural_only,
+            advisory,
         } => {
             if ci {
                 let ci_format = if format == "text" {
@@ -281,15 +283,16 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 };
                 commands::check(&repo, &ci_format, violations_baseline.as_deref()).await
             } else {
-                commands::drift(
-                    &repo,
-                    architecture.as_deref(),
-                    &format,
-                    false,
+                commands::drift(commands::scan_domain::scan::drift::DriftRequest {
+                    repo_root: &repo,
+                    architecture_path: architecture.as_deref(),
+                    format: &format,
                     violations_only,
-                    fail_on.as_deref(),
-                    baseline_mode.as_deref(),
-                )
+                    fail_on: fail_on.as_deref(),
+                    baseline_mode: baseline_mode.as_deref(),
+                    structural_only,
+                    advisory,
+                })
                 .await
             }
         }
@@ -305,7 +308,17 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             format,
             generate_baseline,
             fail_on,
-        } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
+            advisory,
+        } => {
+            commands::quickstart(
+                &path,
+                &format,
+                generate_baseline,
+                fail_on.as_deref(),
+                advisory,
+            )
+            .await
+        }
         Commands::Init {
             path,
             prompt,
@@ -1090,7 +1103,17 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 format,
                 generate_baseline,
                 fail_on,
-            } => commands::quickstart(&path, &format, generate_baseline, fail_on.as_deref()).await,
+                advisory,
+            } => {
+                commands::quickstart(
+                    &path,
+                    &format,
+                    generate_baseline,
+                    fail_on.as_deref(),
+                    advisory,
+                )
+                .await
+            }
             InspectCommand::Watch { path, clear, focus } => {
                 commands::watch(&path, clear, focus).await
             }

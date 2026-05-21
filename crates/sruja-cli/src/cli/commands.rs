@@ -12,6 +12,7 @@ pub enum Commands {
     /// Print version information
     Version,
     /// Workflow manifest + phase gates (Inception → Construction → Operations)
+    #[command(hide = true)]
     Workflow {
         #[command(subcommand)]
         cmd: WorkflowCommand,
@@ -28,6 +29,7 @@ pub enum Commands {
         cmd: AuthorCommand,
     },
     /// Scan a repository and infer an architecture graph
+    #[command(hide = true)]
     Scan {
         /// Repository root (defaults to current directory)
         #[arg(default_value = ".")]
@@ -37,9 +39,6 @@ pub enum Commands {
         output: String,
     },
     /// Adversarial architectural critique of proposed changes (review-oriented, not context-oriented)
-    ///
-    /// Use `critique` to get an adversarial review of code changes against architecture.
-    /// For context/briefing, use `ai` (task-specific) or `onboard` (full-repo).
     #[command(hide = true)]
     Critique {
         /// Path to repository root
@@ -92,8 +91,6 @@ pub enum Commands {
         fail_on: Option<String>,
     },
     /// Impact analysis: blast radius (upstream dependents + downstream dependencies)
-    ///
-    /// Use after you know *where* you are working; for pre-task briefing and AI instructions use `focus`.
     #[command(hide = true)]
     Impact {
         /// Node selector (exact id or substring match against id/label/path)
@@ -144,6 +141,7 @@ pub enum Commands {
         write_baseline: Option<String>,
     },
     /// Export a Sruja file to various formats
+    #[command(hide = true)]
     Export {
         /// Export format (json, mermaid, markdown, context, dsl, d2)
         format: String,
@@ -181,6 +179,7 @@ pub enum Commands {
         output_dir: Option<String>,
     },
     /// Format a Sruja file
+    #[command(hide = true)]
     Fmt {
         /// Path to .sruja file
         file: String,
@@ -297,6 +296,12 @@ pub enum Commands {
         /// Baseline mode for scan vs DSL comparison (auto|overview|exhaustive)
         #[arg(long)]
         baseline_mode: Option<String>,
+        /// Compare scan only (ignore repo.sruja even if present)
+        #[arg(long)]
+        structural_only: bool,
+        /// First-run friendly: always print scan summary; omit orphan info findings
+        #[arg(long)]
+        advisory: bool,
     },
     /// Structured drift payload for AI host injection (`drift_state/v1` JSON)
     #[command(name = "drift-state")]
@@ -338,11 +343,14 @@ pub enum Commands {
         /// Fail with exit code 1 if specified violations found (comma-separated: cycles,layer-violations,god-modules,orphans,all)
         #[arg(long)]
         fail_on: Option<String>,
+        /// First-run friendly: omit orphan info findings (same as `drift --advisory`)
+        #[arg(long)]
+        advisory: bool,
     },
     /// Set up Sruja in a repo: create .sruja/, .srujaignore, and optional repo.sruja.draft
     ///
-    /// This is a setup command, not a briefing command.
-    /// For repo overview, use `quickstart`. For full briefing, use `onboard`.
+    /// OSS hero: `sruja start -r .` then `sruja drift -r . --structural-only --advisory`.
+    /// For full briefing, use `onboard` (hidden). For task briefs, use `focus` or `ai`.
     #[command(visible_alias = "start")]
     Init {
         /// Repository root (defaults to current directory)
@@ -371,10 +379,7 @@ pub enum Commands {
         schema: String,
     },
     /// Truth freshness and baseline state
-    ///
-    /// Answers: "Is my `repo.sruja` current? When was evidence last refreshed?"
-    /// For structural health, use `health`. For AI-readiness, use `context-score`.
-    #[command(visible_alias = "doctor")]
+    #[command(visible_alias = "doctor", hide = true)]
     Status {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -409,10 +414,7 @@ pub enum Commands {
         format: String,
     },
     /// Daily action list: refresh evidence, detect drift, suggest next steps (alias: `daily`)
-    ///
-    /// Use when asking "What should I tackle today?" For a one-time repo read use `quickstart`.
-    /// For truth-at-a-glance without the action list, use `status`.
-    #[command(visible_alias = "daily")]
+    #[command(visible_alias = "daily", hide = true)]
     Review {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -686,9 +688,7 @@ pub enum Commands {
         check: bool,
     },
     /// Scanner introspection for AI/debug: explain scan, repomap, discovery questions
-    ///
-    /// For a first human read use `quickstart`. For a full repo brief use `onboard`.
-    /// For a coding task brief use `ai` or `focus`.
+    #[command(hide = true)]
     Discover {
         #[command(subcommand)]
         cmd: Option<DiscoverCommand>,
@@ -966,21 +966,25 @@ pub enum Commands {
         cmd: EvolutionCommand,
     },
     /// DSL authoring tools: list, tree, explain, diff, import, compile, validate, generate
+    #[command(hide = true)]
     Dsl {
         #[command(subcommand)]
         cmd: DslCommand,
     },
     /// Analysis & scores: health, impact, why, query, scores, onboard, watch, learn
+    #[command(hide = true)]
     Inspect {
         #[command(subcommand)]
         cmd: InspectCommand,
     },
     /// Review & compliance gates: critique, compliance, baseline, drift-pr
+    #[command(hide = true)]
     Guard {
         #[command(subcommand)]
         cmd: GuardCommand,
     },
     /// Multi-repo federation: publish, compose
+    #[command(hide = true)]
     Federation {
         #[command(subcommand)]
         cmd: FederationCommand,

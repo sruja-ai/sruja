@@ -321,7 +321,7 @@ pub async fn init(
         }
 
         if !dry_run && !scaffolded {
-            quickstart(repo_root, "text", false, None).await?;
+            quickstart(repo_root, "text", false, None, true).await?;
         }
     }
 
@@ -336,9 +336,9 @@ pub async fn init(
     if is_interactive || dry_run {
         println!();
         println!(
-            "{} Sruja is ready! Try running {} to start monitoring your project.",
+            "{} Sruja is ready! Run {} for a structural scan (no repo.sruja required).",
             colors::success("🎉"),
-            colors::info("sruja watch")
+            colors::info("sruja drift -r . --structural-only --advisory")
         );
     }
 

@@ -28,25 +28,25 @@ pub(crate) fn was_invoked_as(alias: &str) -> bool {
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
-    about = "Architecture-as-code CLI for keeping repo context, drift checks, and AI guidance in sync",
-    long_about = "Retrieval ladder (deterministic first): focus (before a task) → ai (paste-ready brief) → MCP in your editor. LLM enrichment (--enrich) is optional interpretation, never reviewed truth.",
-    after_help = r#"Product loop (define truth → context → drift → review):
-  Use the sruja-architecture skill + repo.sruja for reviewed intent; lint after edits;
-  sync/review/drift for freshness; focus or ai before coding; MCP inside AI tools.
+    about = "Structural drift detection and agent context for your codebase",
+    long_about = "Deterministic scan-first workflow: drift without .sruja, then focus/MCP for editors, verify-task for gates. Optional repo.sruja is for viz + strict CI only.",
+    after_help = r#"OSS start (no .sruja required):
+  sruja start -r .              Create .sruja/ and .srujaignore
+  sruja drift -r . --structural-only --advisory   Structural scan + findings
 
-Start here:
-  sruja start -r . --prompt   Set up .sruja/ and emit a skill-ready prompt
-  sruja scan .                Scan repo and emit an inferred graph (sruja.graph.json)
-  sruja focus -r . --file <path>   Task-scoped blast radius before you edit
+Agent context (any source file):
+  sruja focus -r . --file <path>
+  sruja ai -r . --task "…"
+  sruja mcp -r .                MCP server (profile: coding, ≤18 tools)
 
-Daily loop:
-  sruja review -r .           Evidence refresh + drift + next actions (alias: daily)
-  sruja status -r .           Truth freshness + baseline (alias: doctor)
-
-Docs & CI:
+Optional reviewed intent:
+  sruja sync -r .
   sruja lint repo.sruja
-  sruja export markdown repo.sruja
-  sruja drift --ci -r .       CI drift (github-actions format; replaces hidden `check`)"#
+  sruja drift -r . -a repo.sruja
+
+Team / CI (advanced):
+  sruja verify-task --profile coding -r .
+  sruja drift --ci -r .         github-actions format (replaces hidden `check`)"#
 )]
 pub struct Cli {
     #[command(subcommand)]

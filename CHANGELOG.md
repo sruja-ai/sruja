@@ -5,6 +5,27 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### OSS traction packaging
+
+- **Drift:** `--structural-only` and `--advisory` on `sruja drift`; scan scope summary, `could_not_infer`, clean-scan line in text/JSON.
+- **Quickstart / init:** `--advisory` on quickstart; `sruja start` hero messaging; init recommends structural drift after setup.
+- **CLI:** Many Tier-3 commands hidden from `sruja --help`; `agent run` hidden (use `agent plan` + host `verify-task`).
+- **MCP:** Default `coding` profile (15 tools); `sruja_agent_run` not in profile (still in `full` only).
+- **Docs:** [docs/FEATURE_TIERS.md](docs/FEATURE_TIERS.md), [docs/STRUCTURIZR_VS_SRUJA.md](docs/STRUCTURIZR_VS_SRUJA.md), [docs/OSS_METRICS.md](docs/OSS_METRICS.md); [docs/MESSAGING.md](docs/MESSAGING.md) drift-first Tier 1a/1b.
+- **Demo:** [examples/oss-demo/](examples/oss-demo/) pinned structural drift JSON + CI fixture test.
+
+### Deprecation (next minor — remove after callers updated)
+
+| Use instead | Deprecated |
+|-------------|------------|
+| `sruja drift --ci` | `sruja check` |
+| `sruja start` | `sruja quickstart`, `sruja overview`, `sruja onboard` (hidden) |
+| `sruja status` | `sruja doctor` (hidden alias) |
+| `sruja review` | `sruja daily` (hidden alias) |
+| Host `verify-task` | `sruja agent run` (hidden) |
+
 ## [0.50.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.49.0...sruja-v0.50.0) (2026-05-20)
 
 

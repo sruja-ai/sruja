@@ -742,11 +742,158 @@ pub(crate) fn print_violation_sources(v: &sruja_diff::Violation) {
     }
 }
 
-pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only: bool) {
+/// Static scan limitations always surfaced in structural drift output.
+pub(crate) const INFERENCE_LIMITATIONS: &[&str] = &[
+    "Dynamic imports and runtime plugin loading may be missing from the graph.",
+    "Framework DI, reflection, and generated code may hide real dependencies.",
+    "Layer rules are heuristic; confirm violations against your team's conventions.",
+];
+
+pub(crate) fn apply_advisory_violation_filter(report: &mut sruja_diff::DriftReport) {
+    use sruja_diff::ViolationKind;
+    report
+        .violations
+        .retain(|v| !matches!(v.kind, ViolationKind::OrphanComponent));
+    report.orphan_modules = 0;
+    report.health_score = sruja_diff::calculate_health_score_from_violations(
+        &report.violations,
+        sruja_diff::HealthScorePenalties::default(),
+    );
+    report.health_breakdown = None;
+}
+
+pub(crate) fn collect_could_not_infer(graph: &Graph) -> Vec<String> {
+    let mut items: Vec<String> = INFERENCE_LIMITATIONS
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect();
+
+    let mut without_path = 0usize;
+    for node in &graph.nodes {
+        let has_path = node
+            .metadata
+            .get("path")
+            .or_else(|| node.metadata.get("file"))
+            .is_some();
+        if !has_path && (node.kind == NodeKind::MODULE || node.kind == NodeKind::SERVICE) {
+            without_path += 1;
+        }
+    }
+    if without_path > 0 {
+        items.push(format!(
+            "{without_path} module(s)/service(s) have no file path in scan evidence (IDs only)."
+        ));
+    }
+
+    if let Some(quality) = calculate_scan_quality_internal(graph) {
+        if quality.coverage_percent < 60 {
+            items.push(format!(
+                "Low discovery coverage ({}% of nodes with confidence metadata).",
+                quality.coverage_percent
+            ));
+        }
+    }
+
+    items
+}
+
+pub(crate) fn build_structural_drift_json_envelope(
+    report: &sruja_diff::DriftReport,
+    graph: &Graph,
+    could_not_infer: &[String],
+) -> serde_json::Value {
+    let production_errors = report
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(v.severity, sruja_diff::Severity::Error)
+                && v.production_relevant != Some(false)
+        })
+        .count();
+    let production_warnings = report
+        .violations
+        .iter()
+        .filter(|v| {
+            matches!(v.severity, sruja_diff::Severity::Warning)
+                && v.production_relevant != Some(false)
+        })
+        .count();
+    let clean_scan = production_errors == 0 && production_warnings == 0;
+
+    let mut value = serde_json::to_value(report).unwrap_or(serde_json::json!({}));
+    let obj = value.as_object_mut();
+    if let Some(map) = obj {
+        map.insert("clean_scan".to_string(), serde_json::json!(clean_scan));
+        map.insert(
+            "could_not_infer".to_string(),
+            serde_json::json!(could_not_infer),
+        );
+        if let Some(quality) = calculate_scan_quality_internal(graph) {
+            map.insert(
+                "scan_quality".to_string(),
+                serde_json::to_value(quality).unwrap_or_default(),
+            );
+        }
+    }
+    crate::commands::remediation::wrap_deterministic_json(
+        value,
+        "structural_drift",
+        "Deterministic structural scan (no repo.sruja baseline).",
+    )
+}
+
+pub(crate) fn print_scan_scope_summary(scope: &sruja_scan::scan_scope::ScanScope) {
+    println!("📂 Scan scope");
+    println!("{}", "-".repeat(40));
+    println!("  Files scanned: {}", scope.total_files);
+    if !scope.included.is_empty() {
+        let preview: Vec<_> = scope.included.iter().take(8).cloned().collect();
+        let suffix = if scope.included.len() > preview.len() {
+            format!(" (+{} more)", scope.included.len() - preview.len())
+        } else {
+            String::new()
+        };
+        println!("  Included areas: {}{}", preview.join(", "), suffix);
+    }
+    if !scope.excluded.is_empty() {
+        println!(
+            "  Excluded dirs: {} (see scan_scope in JSON for full list)",
+            scope.excluded.len()
+        );
+    }
+    println!();
+}
+
+pub(crate) fn print_could_not_infer_section(items: &[String]) {
+    if items.is_empty() {
+        return;
+    }
+    println!("Could not infer (limitations)");
+    println!("{}", "-".repeat(40));
+    for item in items {
+        println!("  • {}", item);
+    }
+    println!();
+}
+
+pub(crate) fn print_drift_text(
+    result: &sruja_diff::DriftReport,
+    _graph: Option<&Graph>,
+    violations_only: bool,
+    advisory: bool,
+    could_not_infer: &[String],
+) {
     println!("{}", "═".repeat(60));
-    println!("Architecture Drift Detection");
+    println!("Structural scan (topology from code)");
+    if advisory {
+        println!("  Mode: advisory (orphan info suppressed)");
+    }
     println!("{}", "═".repeat(60));
     println!();
+
+    if !violations_only {
+        print_scan_scope_summary(&result.scan_scope);
+    }
 
     if !violations_only {
         println!("📊 Summary");
@@ -760,6 +907,15 @@ pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only
             "  Health Score (structural only): {}/100",
             result.health_score
         );
+        if let Some(ref breakdown) = result.health_breakdown {
+            println!(
+                "  Penalties — cycles: {} | layers: {} | god-modules: {} | orphans: {}",
+                breakdown.cycle_penalty,
+                breakdown.layer_penalty,
+                breakdown.god_module_penalty,
+                breakdown.orphan_penalty
+            );
+        }
         println!();
     }
 
@@ -779,15 +935,24 @@ pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only
         .filter(|v| matches!(v.severity, sruja_diff::Severity::Info))
         .collect();
 
+    let print_violation = |v: &sruja_diff::Violation, icon: &str| {
+        let (file, line) = violation_best_file_line(v);
+        match (file, line) {
+            (Some(f), Some(l)) => println!("  {} {} ({}:{})", icon, v.message, f, l),
+            (Some(f), None) => println!("  {} {} ({})", icon, v.message, f),
+            _ => println!("  {} {}", icon, v.message),
+        }
+        if let Some(ref suggestion) = v.suggestion {
+            println!("    → {}", suggestion);
+        }
+        print_violation_sources(v);
+    };
+
     if !errors.is_empty() {
         println!("🚨 Errors ({})", errors.len());
         println!("{}", "-".repeat(40));
         for v in &errors {
-            println!("  ✗ {}", v.message);
-            if let Some(ref suggestion) = v.suggestion {
-                println!("    → {}", suggestion);
-            }
-            print_violation_sources(v);
+            print_violation(v, "✗");
         }
         println!();
     }
@@ -796,11 +961,7 @@ pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only
         println!("⚠️  Warnings ({})", warnings.len());
         println!("{}", "-".repeat(40));
         for v in &warnings {
-            println!("  ⚠ {}", v.message);
-            if let Some(ref suggestion) = v.suggestion {
-                println!("    → {}", suggestion);
-            }
-            print_violation_sources(v);
+            print_violation(v, "⚠");
         }
         println!();
     }
@@ -809,8 +970,17 @@ pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only
         println!("ℹ️  Info ({})", info.len());
         println!("{}", "-".repeat(40));
         for v in &info {
-            println!("  ℹ {}", v.message);
-            print_violation_sources(v);
+            print_violation(v, "ℹ");
+        }
+        println!();
+    }
+
+    if !violations_only && errors.is_empty() && warnings.is_empty() && info.is_empty() {
+        println!("✅ Clean structural scan");
+        println!("{}", "-".repeat(40));
+        println!("  No cycles, layer violations, or god-modules detected in scan evidence.");
+        if advisory {
+            println!("  (Orphan modules omitted in advisory mode.)");
         }
         println!();
     }
@@ -822,6 +992,10 @@ pub(crate) fn print_drift_text(result: &sruja_diff::DriftReport, violations_only
             println!("  {}. {}", i + 1, s);
         }
         println!();
+    }
+
+    if !violations_only {
+        print_could_not_infer_section(could_not_infer);
     }
 
     println!("{}", "═".repeat(60));

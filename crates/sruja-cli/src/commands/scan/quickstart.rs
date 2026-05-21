@@ -9,8 +9,8 @@ use sruja_scan::scan_scope::resolve_scan_scope;
 
 use super::drift::{should_fail_on_violations, truth_status_from_baseline_compare};
 use super::output::{
-    draft_baseline_skip_reason, print_quickstart_summary, write_draft_baseline, DraftBaselineSkip,
-    QuickstartResult,
+    apply_advisory_violation_filter, draft_baseline_skip_reason, print_quickstart_summary,
+    write_draft_baseline, DraftBaselineSkip, QuickstartResult,
 };
 
 pub async fn quickstart(
@@ -18,6 +18,7 @@ pub async fn quickstart(
     format: &str,
     generate_baseline: bool,
     fail_on: Option<&str>,
+    advisory: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
@@ -59,8 +60,13 @@ pub async fn quickstart(
     eprintln!();
 
     eprintln!("🔍 Analyzing architecture health...");
-    let drift_report = sruja_diff::detect_architectural_drift(&graph);
-    eprintln!("   ✓ Analysis complete");
+    let mut drift_report = sruja_diff::detect_architectural_drift(&graph);
+    if advisory {
+        apply_advisory_violation_filter(&mut drift_report);
+        eprintln!("   ✓ Analysis complete (advisory: orphan info suppressed)");
+    } else {
+        eprintln!("   ✓ Analysis complete");
+    }
     eprintln!();
 
     // If a baseline exists, compute truth_status from scan vs DSL.

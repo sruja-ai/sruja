@@ -282,6 +282,27 @@ fn parses_drift_ci_flag() {
                 Commands::Drift { ci, .. } => assert!(!ci),
                 _ => panic!("expected Drift command"),
             }
+
+            let cli3 = Cli::try_parse_from([
+                "sruja",
+                "drift",
+                "-r",
+                ".",
+                "--structural-only",
+                "--advisory",
+            ])
+            .expect("parse");
+            match cli3.command {
+                Commands::Drift {
+                    structural_only,
+                    advisory,
+                    ..
+                } => {
+                    assert!(structural_only);
+                    assert!(advisory);
+                }
+                _ => panic!("expected Drift command"),
+            }
         })
         .expect("spawn")
         .join()

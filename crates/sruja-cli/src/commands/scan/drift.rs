@@ -5,8 +5,10 @@ use crate::commands::CliError;
 use crate::integrations::load_repo_config;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;
+use sruja_scan::scan_scope::resolve_scan_scope;
 
 use super::output::{
+    apply_advisory_violation_filter, build_structural_drift_json_envelope, collect_could_not_infer,
     print_diff_text, print_drift_text, print_github_actions_output, print_pr_drift_text,
     print_violations_github_actions, PrDriftResult, PrViolation, StatusOutput,
 };
@@ -76,28 +78,37 @@ pub(crate) fn truth_status_from_baseline_compare(
     Ok(sruja_diff::compare_graphs(scanned, &proposed_graph).truth_status)
 }
 
-pub async fn drift(
-    repo_root: &str,
-    architecture_path: Option<&str>,
-    format: &str,
-    _enrich: bool,
-    violations_only: bool,
-    fail_on: Option<&str>,
-    baseline_mode: Option<&str>,
-) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
+pub struct DriftRequest<'a> {
+    pub repo_root: &'a str,
+    pub architecture_path: Option<&'a str>,
+    pub format: &'a str,
+    pub violations_only: bool,
+    pub fail_on: Option<&'a str>,
+    pub baseline_mode: Option<&'a str>,
+    pub structural_only: bool,
+    pub advisory: bool,
+}
+
+pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
+    let repo_path = Path::new(req.repo_root);
 
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
+            format!("Repository not found: {}", req.repo_root),
         )));
     }
 
     let actual_graph = scan_repo(repo_path)?;
 
-    let resolved = architecture_path::resolve_architecture_path(repo_path);
-    let effective_arch = architecture_path.or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
+    let resolved = if req.structural_only {
+        None
+    } else {
+        architecture_path::resolve_architecture_path(repo_path)
+    };
+    let effective_arch = req
+        .architecture_path
+        .or_else(|| resolved.as_ref().and_then(|p| p.to_str()));
 
     if let Some(arch_path) = effective_arch {
         let arch_file = Path::new(arch_path);
@@ -113,7 +124,8 @@ pub async fn drift(
             .parse(&content)
             .map_err(|diags| CliError::parse_with_diagnostics(arch_path.to_string(), diags))?;
         let proposed_graph = sruja_diff::program_to_graph(&program);
-        let mode_str = baseline_mode
+        let mode_str = req
+            .baseline_mode
             .map(|s| s.to_string())
             .or_else(|| load_repo_config(repo_path).and_then(|c| c.baseline.mode))
             .unwrap_or_else(|| "auto".to_string());
@@ -130,11 +142,14 @@ pub async fn drift(
             },
         );
 
-        match format {
+        match req.format {
             "drift-state" => {
                 println!(
                     "{}",
-                    crate::commands::drift_state::build_drift_state_json(repo_root, &actual_graph)?
+                    crate::commands::drift_state::build_drift_state_json(
+                        req.repo_root,
+                        &actual_graph
+                    )?
                 );
             }
             "json" => {
@@ -150,7 +165,7 @@ pub async fn drift(
                 print_violations_github_actions(&diff_result.violations);
             }
             _ => {
-                print_diff_text(&diff_result, violations_only);
+                print_diff_text(&diff_result, req.violations_only);
             }
         }
 
@@ -161,33 +176,47 @@ pub async fn drift(
             true,
         );
 
-        if should_fail_on_violations(fail_on, &diff_result.violations) {
+        if should_fail_on_violations(req.fail_on, &diff_result.violations) {
             return Err(CliError::FailOnViolations);
         }
     } else {
-        let drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
+        let (_, scan_scope) = resolve_scan_scope(repo_path);
+        let mut drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
+        drift_result.scan_scope = scan_scope;
+        if req.advisory {
+            apply_advisory_violation_filter(&mut drift_result);
+        }
+        let could_not_infer = collect_could_not_infer(&actual_graph);
 
-        match format {
+        match req.format {
             "drift-state" => {
                 println!(
                     "{}",
-                    crate::commands::drift_state::build_drift_state_json(repo_root, &actual_graph)?
+                    crate::commands::drift_state::build_drift_state_json(
+                        req.repo_root,
+                        &actual_graph
+                    )?
                 );
             }
             "json" => {
-                let mut value = serde_json::to_value(&drift_result)?;
-                value = crate::commands::remediation::wrap_deterministic_json(
-                    value,
-                    "structural_drift",
-                    "Deterministic structural scan (no repo.sruja baseline).",
+                let envelope = build_structural_drift_json_envelope(
+                    &drift_result,
+                    &actual_graph,
+                    &could_not_infer,
                 );
-                println!("{}", serde_json::to_string_pretty(&value)?);
+                println!("{}", serde_json::to_string_pretty(&envelope)?);
             }
             "github" | "github-actions" => {
                 print_violations_github_actions(&drift_result.violations);
             }
             _ => {
-                print_drift_text(&drift_result, violations_only);
+                print_drift_text(
+                    &drift_result,
+                    Some(&actual_graph),
+                    req.violations_only,
+                    req.advisory,
+                    &could_not_infer,
+                );
             }
         }
 
@@ -198,7 +227,7 @@ pub async fn drift(
             false,
         );
 
-        if should_fail_on_violations(fail_on, &drift_result.violations) {
+        if should_fail_on_violations(req.fail_on, &drift_result.violations) {
             return Err(CliError::FailOnViolations);
         }
     }
