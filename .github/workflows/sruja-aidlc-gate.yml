@@ -5,6 +5,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
 
+permissions:
+  contents: read
+
 jobs:
   aidlc-gate:
     if: contains(github.event.pull_request.labels.*.name, 'aidlc-workflow')
