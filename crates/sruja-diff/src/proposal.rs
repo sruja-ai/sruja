@@ -273,6 +273,7 @@ impl Proposal {
 
     pub fn apply(&self, baseline: &Program) -> Result<Program, ProposalError> {
         let mut program = baseline.clone();
+        let baseline_defined_kinds = collect_program_defined_kinds(&program);
 
         for change in &self.changes {
             match change {
@@ -292,8 +293,10 @@ impl Proposal {
                         )));
                     }
 
-                    let mut assignment =
-                        ElementAssignment::new(id.clone(), parse_element_kind(kind));
+                    let mut assignment = ElementAssignment::new(
+                        id.clone(),
+                        parse_element_kind(kind, &baseline_defined_kinds)?,
+                    );
                     assignment.title = Some(label.clone());
 
                     let body = sruja_language::ast::ElementDefBody {
@@ -340,7 +343,10 @@ impl Proposal {
                     match field.as_str() {
                         "technology" => body.technology = Some(new_value.clone()),
                         "description" => body.description = Some(new_value.clone()),
-                        "kind" => element.assignment.kind = parse_element_kind(new_value),
+                        "kind" => {
+                            element.assignment.kind =
+                                parse_element_kind(new_value, &baseline_defined_kinds)?
+                        }
                         _ => {
                             return Err(ProposalError::Apply(format!("Unknown field '{}'", field)))
                         }
@@ -561,20 +567,141 @@ mod tests {
         assert!(p.open_questions.is_empty());
         assert!(p.synthesis_notes.is_none());
     }
+
+    #[test]
+    fn proposal_apply_rejects_unknown_element_kind() {
+        let baseline = Program::new();
+
+        let mut proposal = Proposal::new("p1".to_string(), "t".to_string(), "d".to_string());
+        proposal.changes.push(ProposalChange::AddElement {
+            id: "A".to_string(),
+            kind: "typo_kind".to_string(),
+            label: "A".to_string(),
+            technology: None,
+            parent: None,
+            description: None,
+        });
+
+        let err = proposal.apply(&baseline).unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Unknown element kind"));
+        assert!(msg.contains("typo_kind"));
+    }
+
+    #[test]
+    fn proposal_apply_accepts_add_element_role_kind() {
+        let baseline = Program::new();
+
+        let mut proposal = Proposal::new("p1".to_string(), "t".to_string(), "d".to_string());
+        proposal.changes.push(ProposalChange::AddElement {
+            id: "R".to_string(),
+            kind: "role".to_string(),
+            label: "Role".to_string(),
+            technology: None,
+            parent: None,
+            description: Some("A role".to_string()),
+        });
+
+        let applied = proposal
+            .apply(&baseline)
+            .expect("expected apply to succeed");
+        let role = applied.items.iter().find_map(|i| match i {
+            TopLevelItem::ElementDef(def) if def.assignment.name == "R" => Some(def),
+            _ => None,
+        });
+        let role = role.expect("expected role element to be added");
+        assert_eq!(role.assignment.kind, ElementKind::Role);
+    }
+
+    #[test]
+    fn proposal_apply_accepts_custom_kind_if_defined_in_baseline() {
+        let mut baseline = Program::new();
+        baseline.push_item(TopLevelItem::KindDef(sruja_language::ast::ElementKindDef {
+            location: SourceLocation::new(String::new(), 0, 0),
+            kind: ElementKind::Custom("microservice".to_string()),
+            title: Some("Microservice".to_string()),
+            description: None,
+            technology: None,
+            style: None,
+        }));
+
+        let mut proposal = Proposal::new("p1".to_string(), "t".to_string(), "d".to_string());
+        proposal.changes.push(ProposalChange::AddElement {
+            id: "A".to_string(),
+            kind: "microservice".to_string(),
+            label: "A".to_string(),
+            technology: None,
+            parent: None,
+            description: None,
+        });
+
+        let applied = proposal
+            .apply(&baseline)
+            .expect("expected apply to succeed");
+        let elem = applied.items.iter().find_map(|i| match i {
+            TopLevelItem::ElementDef(def) if def.assignment.name == "A" => Some(def),
+            _ => None,
+        });
+        let elem = elem.expect("expected element to be added");
+        assert_eq!(
+            elem.assignment.kind,
+            ElementKind::Custom("microservice".to_string())
+        );
+    }
 }
 
-fn parse_element_kind(kind: &str) -> ElementKind {
-    match kind.to_lowercase().as_str() {
+fn collect_program_defined_kinds(program: &Program) -> std::collections::HashMap<String, String> {
+    let mut out: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for item in &program.items {
+        if let TopLevelItem::KindDef(def) = item {
+            let canonical = format!("{}", def.kind);
+            out.insert(canonical.to_lowercase(), canonical);
+        }
+    }
+    out
+}
+
+fn parse_element_kind(
+    kind: &str,
+    baseline_defined_kinds: &std::collections::HashMap<String, String>,
+) -> Result<ElementKind, ProposalError> {
+    let kind = kind.trim();
+    if kind.is_empty() {
+        return Err(ProposalError::Apply(
+            "Element kind must be non-empty".to_string(),
+        ));
+    }
+
+    let lc = kind.to_lowercase();
+    let kind = match lc.as_str() {
         "person" => ElementKind::Person,
+        "role" => ElementKind::Role,
         "system" => ElementKind::System,
         "container" => ElementKind::Container,
         "component" => ElementKind::Component,
         "database" => ElementKind::Database,
-        "datastore" | "data_store" => ElementKind::DataStore,
         "queue" => ElementKind::Queue,
+        "policy" => ElementKind::Policy,
+        "requirement" => ElementKind::Requirement,
+        "adr" => ElementKind::Adr,
+        "flow" => ElementKind::Flow,
+        "scenario" => ElementKind::Scenario,
+        "story" => ElementKind::Story,
+        "datastore" | "data_store" => ElementKind::DataStore,
         "externalsystem" | "external_system" => ElementKind::ExternalSystem,
-        _ => ElementKind::Custom(kind.to_string()),
-    }
+        _ => {
+            if let Some(canonical) = baseline_defined_kinds.get(&lc) {
+                ElementKind::Custom(canonical.clone())
+            } else {
+                return Err(ProposalError::Apply(format!(
+                    "Unknown element kind '{}'. Define it first in the baseline with '<KindId> = kind \"...\" {{ ... }}'. Allowed built-in kinds: person, role, system, container, component, database, queue, policy, requirement, adr, flow, scenario, story, datastore, externalSystem.",
+                    kind
+                )));
+            }
+        }
+    };
+
+    Ok(kind)
 }
 
 fn parse_qualified_ident(s: &str) -> QualifiedIdent {
