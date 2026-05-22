@@ -102,6 +102,36 @@
     },
     "commands": [
       {
+        "command": "sruja.verifyTask",
+        "title": "Sruja: Verify task (host gate after AI edit)",
+        "icon": "$(check)",
+        "shortTitle": "Verify task"
+      },
+      {
+        "command": "sruja.briefThisFile",
+        "title": "Sruja: Brief this file (focus)",
+        "icon": "$(lightbulb)",
+        "shortTitle": "Brief file"
+      },
+      {
+        "command": "sruja.runDrift",
+        "title": "Sruja: Run structural drift",
+        "icon": "$(pulse)",
+        "shortTitle": "Drift"
+      },
+      {
+        "command": "sruja.registerMcpServer",
+        "title": "Sruja: Register MCP Server (Cursor)",
+        "icon": "$(plug)",
+        "shortTitle": "MCP"
+      },
+      {
+        "command": "sruja.copyContextPackForAI",
+        "title": "Sruja: Copy Context Pack for AI",
+        "icon": "$(copy)",
+        "shortTitle": "Copy Context"
+      },
+      {
         "command": "sruja.commandCenter",
         "title": "Sruja: Command Center",
         "icon": "$(terminal)",
@@ -198,22 +228,10 @@
         "shortTitle": "Copy Guide"
       },
       {
-        "command": "sruja.runDrift",
-        "title": "Sruja: Run structural drift",
-        "icon": "$(pulse)",
-        "shortTitle": "Drift"
-      },
-      {
-        "command": "sruja.briefThisFile",
-        "title": "Sruja: Brief this file (focus)",
-        "icon": "$(lightbulb)",
-        "shortTitle": "Brief file"
-      },
-      {
         "command": "sruja.openAiSetup",
-        "title": "Sruja: AI setup (MCP, skill, context)",
+        "title": "Sruja: Harness setup (verify, focus, MCP)",
         "icon": "$(hubot)",
-        "shortTitle": "AI setup"
+        "shortTitle": "Harness"
       },
       {
         "command": "sruja.refreshContext",
@@ -250,18 +268,6 @@
         "title": "Sruja: Open Markdown Preview",
         "icon": "$(open-preview)",
         "shortTitle": "Preview"
-      },
-      {
-        "command": "sruja.copyContextPackForAI",
-        "title": "Sruja: Copy Context Pack for AI",
-        "icon": "$(copy)",
-        "shortTitle": "Copy Context"
-      },
-      {
-        "command": "sruja.registerMcpServer",
-        "title": "Sruja: Register MCP Server (Cursor)",
-        "icon": "$(plug)",
-        "shortTitle": "MCP"
       }
     ],
     "submenus": [
@@ -299,40 +305,49 @@
           "when": "editorLangId == sruja"
         },
         {
+          "command": "sruja.verifyTask",
+          "group": "sruja@1",
+          "when": "editorLangId != sruja"
+        },
+        {
           "command": "sruja.briefThisFile",
-          "group": "sruja",
+          "group": "sruja@2",
           "when": "editorLangId != sruja"
         },
         {
           "command": "sruja.runDrift",
-          "group": "sruja",
+          "group": "sruja@3",
           "when": "editorLangId != sruja"
         }
       ],
       "sruja.editorSubmenu": [
         {
+          "command": "sruja.verifyTask",
+          "group": "1_harness"
+        },
+        {
           "command": "sruja.runValidation",
-          "group": "1_validate"
-        },
-        {
-          "command": "sruja.exportMarkdown",
-          "group": "1_validate"
-        },
-        {
-          "command": "sruja.openDiagramPreview",
-          "group": "2_diagram"
+          "group": "1_harness"
         },
         {
           "command": "sruja.openAiSetup",
-          "group": "3_knowledge"
+          "group": "1_harness"
+        },
+        {
+          "command": "sruja.exportMarkdown",
+          "group": "2_export"
+        },
+        {
+          "command": "sruja.openDiagramPreview",
+          "group": "3_diagram"
         },
         {
           "command": "sruja.openComponentKnowledge",
-          "group": "3_knowledge"
+          "group": "9_advanced"
         },
         {
           "command": "sruja.openDocsThread",
-          "group": "3_knowledge"
+          "group": "9_advanced"
         }
       ]
     },

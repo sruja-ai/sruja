@@ -23,6 +23,8 @@ Single source for integrating Sruja with any AI agent host (Cursor, Claude Code,
 
 See [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) and [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) for details.
 
+**Copy-paste examples:** [examples/host-gates/](examples/host-gates/) (CI workflow, shell hook, dogfood checklist).
+
 ---
 
 ## Run Envelope (Normative)

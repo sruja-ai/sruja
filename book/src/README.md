@@ -1,8 +1,8 @@
-# Sruja – Context engineering for the AI era.
+# Sruja — AI coding harness for repo structure
 
 <img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
 
-**Context engineering for the AI era.** Use AI to generate and maintain architecture as code, backed by deterministic repo evidence. Validate the result, keep it in sync, and export to Markdown or Mermaid when you need docs or diagrams.
+**Stop AI from breaking your repo structure.** Sruja scans code, reports structural drift, and plugs into Cursor and other agents via MCP — `focus` before edits, `verify-task` after. Optional `repo.sruja` is for reviewed CI intent and exports (Mermaid/Markdown), not day one.
 
 ## Why Sruja?
 
@@ -20,11 +20,11 @@ Sruja gives AI assistants and humans evidence-backed architecture context:
 
 | Feature                 | What you get                                                     |
 | ----------------------- | ---------------------------------------------------------------- |
-| **AI skill first**      | Generate or update `repo.sruja` from real repo evidence          |
-| **Evidence-backed**     | Discovery, sync, drift, and context commands ground the model    |
-| **Version-controlled**  | `.sruja` files in Git, with proper code review workflows         |
-| **Built-in validation** | Catch architecture issues before they reach production           |
-| **Multiple exports**    | JSON, Markdown, Mermaid – outputs from reviewed truth            |
+| **Structural scan**     | Cycles, layer violations, god modules — file-level evidence      |
+| **Agent harness**       | MCP + `focus` + `verify-task`; host keeps the LLM loop           |
+| **Optional `repo.sruja`** | Reviewed intent in Git when teams want strict CI               |
+| **Built-in validation** | Lint, drift, intent — gates after AI edits                       |
+| **Tier-2 exports**      | Markdown, Mermaid — derived views, not the product center          |
 
 ### Who It's For
 
@@ -33,13 +33,13 @@ Sruja gives AI assistants and humans evidence-backed architecture context:
 - **Platform engineers** building guardrails for distributed teams
 - **AI agents** that need to reason about system architecture
 
-## How We Work
+## How We Work (Tier 1)
 
-1. **Install** the sruja-architecture skill in your AI editor
-2. **Gather** deterministic repo evidence through Sruja commands
-3. **Generate** or update `repo.sruja` with AI
-4. **Validate** with lint, drift, and review workflows
-5. **Reuse** the context in CI, docs, and IDE workflows
+1. **Install CLI** — `curl -fsSL https://sruja.ai/install.sh | bash`
+2. **Scan** — `sruja start -r .` then `sruja drift -r . --structural-only --advisory`
+3. **Wire MCP** — profile `coding`; `focus` before edits, `verify-task` after
+4. **Install harness skill** — `npx skills add … --skill sruja-harness`
+5. **Optional** — `sruja-architecture` skill + `repo.sruja` for reviewed CI intent
 
 We're **ultra simple** – minimal surface area, no unnecessary apps or frameworks – and **highly functional** – what we ship works reliably for its scope.
 
@@ -49,8 +49,6 @@ We're **ultra simple** – minimal surface area, no unnecessary apps or framewor
 - **VS Code extension** – Edit `.sruja` files with syntax highlighting and diagnostics
 - **Docs** – This book (mdBook, Rust-based; no TypeScript/Node)
 
-> **New here?** Install the [sruja-architecture skill](getting-started.md) first (1 minute), then let your AI generate architecture for you. For a single entry point to **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md). The **left sidebar** lists everything; press **`/`** or **`S`** to search.
-
-See [Quick start](getting-started.md) to install the AI skill and create your first `.sruja` file. For a single entry point to **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md). The **left sidebar** lists everything; press **`/`** or **`S`** to search.
+> **New here?** [Quick start](getting-started.md): install CLI, run structural drift, wire MCP, install `sruja-harness`, run `verify-task` after agent edits. Add `sruja-architecture` only when you want `repo.sruja` in Git. For **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md); press **`/`** or **`S`** to search.
 
 > **Sruja "Show diagram" in code blocks:** Run `make wasm` from the repo root once, then run `make book-serve` (or `./serve.sh` from the book directory) so the WASM files are copied into the book output.

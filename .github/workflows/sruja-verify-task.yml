@@ -1,0 +1,34 @@
+# Dogfood harness gate on this repo (uses built CLI from PR branch).
+name: Sruja Verify Task
+
+on:
+  pull_request:
+    branches: [main, develop, simplify]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-task-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-task:
+    name: Harness gate (verify-task)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+      - name: Build Sruja CLI
+        run: cargo build --release -p sruja-cli
+
+      - name: Verify coding profile
+        run: ./target/release/sruja verify-task --profile coding -r . -f json

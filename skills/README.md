@@ -8,10 +8,17 @@ Editor integration is **skills + CLI**. Sruja also ships an optional MCP stdio s
 
 ## Install in your editor
 
-**One command (Cursor, Codex, skills.sh):**
+**Recommended stack (Cursor, Codex, skills.sh):**
 
 ```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+Harness only (no `repo.sruja` required):
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
 ```
 
 **Full guide** – [docs/GETTING_STARTED_SKILL.md](../docs/GETTING_STARTED_SKILL.md) – editor-specific steps and recommended prompts.
@@ -20,9 +27,27 @@ npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 
 ## Available Skills
 
+### sruja-harness
+
+**Install first** for any AI coding workflow. Verification adapter — does not generate code; runs `verify-task` before tasks are marked done.
+
+**Install:**
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
+```
+
+**Contents:**
+
+- Profiles: `coding`, `bugfix`, `review`, `arch`
+- Integration with any community coding skill
+- Correction learnings via `sruja agent record` on verify failure
+
+See [skills/sruja-harness/SKILL.md](sruja-harness/SKILL.md) and [docs/HOST_AGENT_INTEGRATION.md](../docs/HOST_AGENT_INTEGRATION.md).
+
 ### sruja-architecture
 
-Primary skill for 90% of users. Covers architecture design, repo discovery, and `.sruja` generation with one install.
+Optional Tier 1b: reviewed `repo.sruja` in version control. Covers architecture design, repo discovery, and `.sruja` generation.
 
 **Install (appears on [skills.sh](https://skills.sh) leaderboard via install telemetry):**
 
@@ -130,6 +155,7 @@ To contribute new skills or improve existing ones:
 
 Planned skills for Sruja:
 
+- `sruja-governed-delivery` - Maps community SDLC skills to verify profiles (see [AGENT_DELIVERY_PLAN](../docs/plans/AGENT_DELIVERY_PLAN.md))
 - `sruja-validation` - Architecture validation rules and checks
 - `sruja-migration` - Patterns for architecture migrations
 - `sruja-security` - Security architecture patterns

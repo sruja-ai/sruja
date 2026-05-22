@@ -37,9 +37,17 @@ Add to Cursor (template in [.cursor/mcp.json](.cursor/mcp.json)):
 
 Before a task: `sruja focus -r . --file path/to/file.rs`. After edits: `sruja verify-task --profile coding -r .`.
 
-## Step 3 — Optional reviewed intent (skill)
+## Step 3 — Skills (harness + optional architecture)
 
-When you want versioned architecture in CI:
+**Harness** (recommended for every agent workflow):
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
+```
+
+Teaches the editor to run `verify-task` before marking work done. Works without `repo.sruja`.
+
+**Architecture** (optional — versioned intent in CI):
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
@@ -59,7 +67,7 @@ Diagrams are Tier-2 exports (Mermaid/Markdown), not the hero.
 
 **Not competing with:** Cursor, Windsurf, or Claude Code as your coding agent. Sruja is the **harness** (drift, focus, verify-task), not a second IDE.
 
-Docs: [docs/MESSAGING.md](docs/MESSAGING.md) · [docs/FEATURE_TIERS.md](docs/FEATURE_TIERS.md) · [docs/STRUCTURIZR_VS_SRUJA.md](docs/STRUCTURIZR_VS_SRUJA.md)
+Docs: [docs/MESSAGING.md](docs/MESSAGING.md) · [docs/FEATURE_TIERS.md](docs/FEATURE_TIERS.md) · [docs/HOST_AGENT_INTEGRATION.md](docs/HOST_AGENT_INTEGRATION.md) · [docs/examples/host-gates/](docs/examples/host-gates/) · [docs/STRUCTURIZR_VS_SRUJA.md](docs/STRUCTURIZR_VS_SRUJA.md)
 
 ---
 

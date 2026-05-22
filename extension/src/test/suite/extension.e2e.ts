@@ -42,6 +42,8 @@ export function runTests({ describe, it, beforeAll, assert }: {
         "sruja.copyAgentGuideForAI",
         "sruja.copyContextPackForAI",
         "sruja.registerMcpServer",
+        "sruja.verifyTask",
+        "sruja.briefThisFile",
         "sruja.runDrift",
         "sruja.refreshContext",
         "sruja.status",
@@ -113,6 +115,8 @@ export function runTests({ describe, it, beforeAll, assert }: {
 
     it("CLI-style commands run without throwing (may show message if no CLI)", async () => {
       const commands = [
+        "sruja.verifyTask",
+        "sruja.briefThisFile",
         "sruja.runDrift",
         "sruja.refreshContext",
         "sruja.status",

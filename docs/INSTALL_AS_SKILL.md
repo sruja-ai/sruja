@@ -1,12 +1,40 @@
 # Install Sruja as a Skill
 
+**Harness + optional architecture authoring for AI editors.**
+
+Sruja is a **deterministic harness** for coding agents (drift, focus, `verify-task`) — not a second IDE agent. Skills teach your editor when to run Sruja gates; the CLI and MCP do the work.
+
+## Recommended stack
+
+| Order | Skill | Purpose |
+|-------|-------|---------|
+| 1 | `sruja-harness` | Run `verify-task` before marking any task done |
+| 2 | `sruja-architecture` | Optional: promote scan evidence to reviewed `repo.sruja` |
+| 3 | Community skills | Your coding/debug/review skill (Addy, skills.sh, etc.) |
+
+```bash
+# Harness first (works without repo.sruja)
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
+
+# Optional: reviewed architecture in Git
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+Install the **CLI** when skills need it: `curl -fsSL https://sruja.ai/install.sh | bash`. Register MCP in Cursor via [.cursor/mcp.json](../.cursor/mcp.json) or **Sruja: Register MCP Server**.
+
+See [COMMUNITY_SKILLS_STACK.md](COMMUNITY_SKILLS_STACK.md) and [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md).
+
+---
+
+## sruja-architecture (optional Tier 1b)
+
 **Teach your AI editor to generate architecture—no DSL learning required.**
 
 The `sruja-architecture` skill analyzes your code and generates `repo.sruja` files. Your AI handles the syntax, you just guide the process.
 
 ---
 
-## What This Does
+## What architecture skill does
 
 | Without Skill | With Skill |
 |---------------|-------------|
@@ -17,13 +45,13 @@ The `sruja-architecture` skill analyzes your code and generates `repo.sruja` fil
 
 ---
 
-## Installation (One Command)
+## Installation (architecture skill only)
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-That's it! Your AI editor now knows how to generate Sruja architecture.
+For agent gates without `repo.sruja`, install `sruja-harness` first (see **Recommended stack** above).
 
 **Supported editors:** Cursor, GitHub Copilot, Claude, Continue.dev, and any editor with [skills.sh](https://skills.sh) support.
 
@@ -169,8 +197,21 @@ Run `sruja lint` and fix any errors.
 
 ---
 
+## Harness loop (any skill)
+
+```text
+1. sruja focus -r . --file <path>     # before edit
+2. Host agent edits code
+3. sruja verify-task --profile coding -r .
+4. sruja agent record …               # optional, on failure
+```
+
+Do **not** use `sruja agent run` as the primary loop — the host owns Act; Sruja owns Verify.
+
 ## Next Steps
 
+- **Harness skill:** [skills/sruja-harness/SKILL.md](../skills/sruja-harness/SKILL.md)
+- **Community stack:** [COMMUNITY_SKILLS_STACK.md](COMMUNITY_SKILLS_STACK.md)
 - **Complete guide:** [Getting Started](GETTING_STARTED_SKILL.md) – Full walkthrough
-- **Skill reference:** [Skill Documentation](../skills/sruja-architecture/SKILL.md) – What the skill knows
+- **Skill reference:** [Skill Documentation](../skills/sruja-architecture/SKILL.md) – What the architecture skill knows
 - **Prompt examples:** [Prompt Library](../skills/sruja-architecture/PROMPTS.md) – Reusable prompts

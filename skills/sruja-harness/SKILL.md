@@ -15,8 +15,8 @@ Universal verification adapter — works with any coding, bugfix, or review skil
 
 1. **Install alongside other skills:**
    ```bash
-   npx skills add sruja-harness
-   # Or install from skills.sh
+   npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
+   npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
    ```
 
 2. **Use with any skill:** This skill does not generate code. It verifies output from other skills.

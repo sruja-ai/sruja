@@ -2,7 +2,7 @@
 
 **Policy:** This directory contains only **implemented** features and implementation-aligned documentation.
 
-Sruja is documented here as **architecture-as-code plus context engineering for AI-assisted SDLC workflows**. The docs explain both the DSL and the retrieval pipeline that helps editors, skills, and AI tools work from reviewed architecture truth instead of guesses.
+Sruja is documented here as an **AI coding harness** (structural scan, drift, MCP, `verify-task`) with optional **architecture-as-code** (`repo.sruja`) for teams that want reviewed CI intent. Tier 1 needs no `.sruja` file; see [FEATURE_TIERS.md](FEATURE_TIERS.md) and [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md).
 
 ---
 

@@ -1,0 +1,25 @@
+name: Sruja Verify Task
+
+on:
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Host gate (verify-task)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Sruja CLI
+        run: |
+          curl -fsSL https://sruja.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify coding profile
+        run: sruja verify-task --profile coding -r . -f json

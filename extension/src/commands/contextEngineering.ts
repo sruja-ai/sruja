@@ -55,6 +55,77 @@ async function runCliInWorkspace(
 
 export function registerContextEngineeringCommands(context: vscode.ExtensionContext, getSrujaPath: () => string) {
   context.subscriptions.push(
+    vscode.commands.registerCommand("sruja.verifyTask", async () => {
+      const profilePick = await vscode.window.showQuickPick(
+        [
+          { label: "coding", description: "Default — lint, check, drift when applicable", profile: "coding" },
+          { label: "bugfix", description: "Focused fix — check + intent", profile: "bugfix" },
+          { label: "review", description: "Pre-merge — review + intent + drift", profile: "review" },
+          { label: "arch", description: "Architecture/DSL changes", profile: "arch" },
+        ],
+        { placeHolder: "Sruja verify-task profile" }
+      );
+      if (!profilePick) return;
+
+      const editor = vscode.window.activeTextEditor;
+      const args = ["verify-task", "--profile", profilePick.profile, "-r", ".", "-f", "json"];
+      if (profilePick.profile === "bugfix" && editor) {
+        const folder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+        if (folder) {
+          const rel = path.relative(folder.uri.fsPath, editor.document.uri.fsPath);
+          args.push("--file", rel.split(path.sep).join("/"));
+        }
+      }
+
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Sruja: verify-task (${profilePick.profile})…`,
+          cancellable: false,
+        },
+        async () => {
+          const channel = getCliOutputChannel();
+          channel.clear();
+          channel.show(true);
+          channel.appendLine(`Running sruja ${args.join(" ")} ...`);
+          try {
+            const { stdout, stderr, code } = await runCliInWorkspace(getSrujaPath, args);
+            channel.append(stdout);
+            if (stderr) channel.append(stderr);
+            if (code !== 0) {
+              channel.appendLine(`(exit code ${code})`);
+              vscode.window.showErrorMessage(
+                "Sruja verify-task failed. See Sruja output; fix issues or run with a narrower profile."
+              );
+              return;
+            }
+            const parsed = parseJsonSafe<{ all_passed?: boolean }>(stdout);
+            if (parsed.ok && parsed.value.all_passed === false) {
+              vscode.window.showErrorMessage(
+                "Sruja verify-task: one or more steps failed (see output)."
+              );
+              return;
+            }
+            if (!parsed.ok) {
+              vscode.window.showWarningMessage(
+                "Sruja verify-task exited 0 but JSON could not be parsed; review output."
+              );
+              return;
+            }
+            vscode.window.showInformationMessage(
+              `Sruja verify-task (${profilePick.profile}): all steps passed.`
+            );
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            channel.appendLine(`Error: ${msg}`);
+            vscode.window.showErrorMessage(
+              "Sruja verify-task failed. Ensure the CLI is on PATH or set sruja.lsp.path."
+            );
+          }
+        }
+      );
+    }),
+
     vscode.commands.registerCommand("sruja.runDrift", async () => {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Sruja: Running drift…", cancellable: false },
@@ -275,13 +346,17 @@ export function registerContextEngineeringCommands(context: vscode.ExtensionCont
     vscode.commands.registerCommand("sruja.openAiSetup", async () => {
       const pick = await vscode.window.showQuickPick(
         [
+          { label: "Verify task (host gate)", command: "sruja.verifyTask" },
+          { label: "Brief this file (focus)", command: "sruja.briefThisFile" },
+          { label: "Run structural drift", command: "sruja.runDrift" },
           { label: "Register MCP (Cursor)", command: "sruja.registerMcpServer" },
           { label: "Copy context pack for AI", command: "sruja.copyContextPackForAI" },
+          { label: "Run validation (.sruja)", command: "sruja.runValidation" },
           { label: "Open skills overview", command: "sruja.openSkillsOverview" },
           { label: "Open agent guide (AGENTS.md)", command: "sruja.openAgentGuide" },
           { label: "List rules…", command: "sruja.listRules" },
         ],
-        { placeHolder: "Sruja AI setup" }
+        { placeHolder: "Sruja harness setup" }
       );
       if (pick) {
         await vscode.commands.executeCommand(pick.command);

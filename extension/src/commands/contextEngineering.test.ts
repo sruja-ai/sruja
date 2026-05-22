@@ -82,6 +82,13 @@ describe("registerContextEngineeringCommands", () => {
     expect(vscode.env.clipboard.writeText).toHaveBeenCalled();
   });
 
+  it("registers verifyTask command", async () => {
+    const { registerContextEngineeringCommands } = await import("./contextEngineering");
+    const ctx = new ExtensionContext();
+    registerContextEngineeringCommands(ctx as any, () => "/bin/sruja");
+    expect(registered.has("sruja.verifyTask")).toBe(true);
+  });
+
   it("runDrift shows error when no workspace folder", async () => {
     const { registerContextEngineeringCommands } = await import("./contextEngineering");
     const ctx = new ExtensionContext();

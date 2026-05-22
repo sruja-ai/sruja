@@ -1,60 +1,78 @@
 # Getting Started with Sruja Skills
 
-**Context engineering for the AI era—no DSL learning required.**
+**AI coding harness + optional architecture authoring.**
 
-Your AI analyzes your code, generates architecture files, and keeps them in sync. You just need to know what to ask for.
+Sruja is not a second coding agent. Install the **harness** skill so any agent runs `verify-task` before done; add **sruja-architecture** when you want reviewed `repo.sruja` in Git.
+
+See [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) and [COMMUNITY_SKILLS_STACK.md](COMMUNITY_SKILLS_STACK.md).
 
 ---
 
 ## What You'll Need
 
-1. **AI editor with skill** – Generates architecture (Cursor, Copilot, Claude, etc.)
-2. **Sruja CLI** – Gathers evidence, validates files, and checks drift when the skill needs it
-3. **A codebase** – Any project you want to document
+1. **Sruja CLI** – Scan, drift, focus, verify-task
+2. **AI editor** – Cursor, Copilot, Claude, etc. (owns the LLM loop)
+3. **Skills** – `sruja-harness` (required for gates); `sruja-architecture` (optional)
 
 ---
 
-## The Workflow (Plain English)
+## Tier 1 workflow (harness)
 
-Here's what happens, step by step:
+```
+focus / drift  →  host agent edits code  →  verify-task  →  (optional) agent record on failure
+```
+
+No `repo.sruja` required for structural scan and verify gates.
+
+---
+
+## Tier 1b workflow (architecture skill)
 
 ```
 You → Tell AI to analyze your code
   ↓
-AI → Runs sruja commands to understand your project
+AI → Runs discover / sync evidence
   ↓
-AI → Asks you 2-3 questions if anything is unclear
+AI → Generates repo.sruja
   ↓
-AI → Generates a repo.sruja file
-  ↓
-AI → Validates it automatically
-  ↓
-You → Review the result (make changes if needed)
-  ↓
-CLI → Keeps it in sync as your code changes
+AI → lint + drift against repo.sruja
 ```
-
-**You don't write syntax. You guide the process.**
 
 ---
 
 ## Quick Start (Copy These Steps)
 
-### Step 1: Install the skill
+### Step 1: Install CLI + harness skill
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
+```
+
+### Step 2: Scan and wire MCP
+
+```bash
+sruja start -r .
+sruja drift -r . --structural-only --advisory
+```
+
+Register MCP in Cursor (see [.cursor/mcp.json](../.cursor/mcp.json)) or extension **Register MCP Server**.
+
+### Step 3: Agent loop
+
+```bash
+sruja focus -r . --file path/to/file.rs
+# … host agent edits …
+sruja verify-task --profile coding -r .
+```
+
+### Step 4 (optional): Architecture skill
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-### Step 2: Install the CLI when the skill needs it
-
-When you use the skill, it runs `sruja discover`, `sruja lint`, and `sruja drift` (and can also run `sruja impact` for change risk). If the CLI isn’t installed, the skill will guide you. You can also install now:
-
-```bash
-curl -fsSL https://sruja.ai/install.sh | bash
-```
-
-### Step 3: Generate architecture
+### Step 5 (optional): Generate architecture
 
 In your AI editor, run:
 
@@ -66,13 +84,13 @@ generate repo.sruja (architecture.sruja is also supported),
 then run `sruja lint` and fix.
 ```
 
-### Step 4: Validate
+### Step 6: Validate reviewed truth
 
 ```bash
 sruja lint repo.sruja
 ```
 
-### Step 5: Export (optional)
+### Step 7: Export (optional)
 
 ```bash
 # For documentation

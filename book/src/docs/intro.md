@@ -5,11 +5,11 @@ weight: 0
 
 # Introduction
 
-**Context engineering for the AI era.**
+**AI coding harness for repo structure.**
 
-Sruja helps AI-assisted teams generate and maintain architecture as code from deterministic repo evidence. The result is a reviewable `repo.sruja` truth file that feeds better context to editors, CI, and coding agents.
+Sruja scans your codebase, reports structural problems AI edits tend to introduce, and gives agents bounded context via MCP (`focus`, drift state, `verify-task`). Optional `repo.sruja` is reviewed CI intent — not required on day one.
 
-> **New here?** Do [Quick start](../getting-started.md) (about 5 min), then the [Beginner path](beginner-path.md) (2–3 hours). Start with the AI skill; you don't write `.sruja` files manually.
+> **New here?** Install the CLI, register MCP, install `sruja-harness` — [Quick start](../getting-started.md) (~5 min). Add `sruja-architecture` only when you want versioned architecture in Git.
 
 ## The Problem
 
@@ -25,17 +25,17 @@ Sound familiar? You're not alone. Most teams struggle with this.
 
 ## The Solution
 
-**Architecture as code plus evidence.**
+**Deterministic harness plus optional architecture-as-code.**
 
-With Sruja:
+With Sruja (Tier 1):
 
-- The sruja-architecture skill gathers deterministic repo evidence
-- Your AI generates or updates `repo.sruja`
-- Lint, drift, and intent checks validate the result
-- Editors and agents reuse that context before coding
-- Diagrams and docs are exported when needed, not treated as the source
+- Structural scan and drift — no `.sruja` required
+- `focus` / MCP briefings before the host agent edits
+- `verify-task` after edits (lint, tests, drift when applicable)
+- Optional: `sruja-architecture` skill → reviewed `repo.sruja` in Git
+- Diagrams and docs are Tier-2 exports, not the source of truth
 
-**You don't learn a new language first.** You guide the AI, review the output, and let validation catch mistakes.
+Sruja is **not** a replacement for Cursor or Copilot — it is the guardrail layer beside them.
 
 ## How This Helps
 

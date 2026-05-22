@@ -8,8 +8,8 @@ How to combine Sruja with community skills from agentskills.io, skills.sh, and c
 
 | Skill | Purpose | Install |
 |-------|---------|---------|
-| `sruja-architecture` | Architecture discovery + DSL authoring | `npx skills add sruja-architecture` |
-| `sruja-harness` | Verification adapter (runs after any skill) | `npx skills add sruja-harness` |
+| `sruja-harness` | Verification adapter (run before done) | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness` |
+| `sruja-architecture` | Architecture discovery + DSL authoring (optional) | `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` |
 | Addy/skills.sh skills | Coding, bugfix, review, debug | `npx skills add <name>` |
 
 **No false framing:** Community skills do NOT replace Sruja. They generate code; Sruja validates it against architecture truth.
@@ -35,9 +35,9 @@ Both `sruja-architecture` and `sruja-harness` follow this format for compatibili
 ## Install for Cursor
 
 ```bash
-# Install skills to your project
-npx skills add sruja-architecture
-npx skills add sruja-harness
+# Install skills to your project (harness first)
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 npx skills add <community-skill>
 ```
 

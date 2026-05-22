@@ -5,44 +5,59 @@ export function registerCommandCenter(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("sruja.commandCenter", async () => {
       const items: (vscode.QuickPickItem & { command: string })[] = [
         {
-          label: "$(check-all) Validate",
-          description: "Run validation (check after AI/edit)",
+          label: "$(check) Verify task",
+          description: "Host gate after AI edits (verify-task)",
+          command: "sruja.verifyTask",
+        },
+        {
+          label: "$(lightbulb) Brief file",
+          description: "Task-scoped focus briefing",
+          command: "sruja.briefThisFile",
+        },
+        {
+          label: "$(pulse) Structural drift",
+          description: "Scan structural drift (no repo.sruja required)",
+          command: "sruja.runDrift",
+        },
+        {
+          label: "$(plug) Register MCP",
+          description: "Register Sruja MCP in Cursor",
+          command: "sruja.registerMcpServer",
+        },
+        {
+          label: "$(copy) Context pack",
+          description: "Copy context pack for AI",
+          command: "sruja.copyContextPackForAI",
+        },
+        {
+          label: "$(check-all) Validate .sruja",
+          description: "Lint/validate architecture file",
           command: "sruja.runValidation",
+        },
+        {
+          label: "$(sync) Refresh Context",
+          description: "Refresh repo context (sync)",
+          command: "sruja.refreshContext",
+        },
+        {
+          label: "$(info) Status",
+          description: "Truth freshness and baseline",
+          command: "sruja.status",
+        },
+        {
+          label: "$(eye) Review",
+          description: "Daily/review architecture update",
+          command: "sruja.review",
+        },
+        {
+          label: "$(graph) Diagram",
+          description: "Open diagram preview (Tier 2)",
+          command: "sruja.openDiagramPreview",
         },
         {
           label: "$(markdown) Export",
           description: "Export architecture to Markdown",
           command: "sruja.exportMarkdown",
-        },
-        {
-          label: "$(graph) Diagram",
-          description: "Open Diagram Preview",
-          command: "sruja.openDiagramPreview",
-        },
-        {
-          label: "$(filter) Focused Diagram",
-          description: "Open Focused Diagram Preview",
-          command: "sruja.openFocusedDiagramPreview",
-        },
-        {
-          label: "$(sync) Refresh Context",
-          description: "Refresh repo context",
-          command: "sruja.refreshContext",
-        },
-        {
-          label: "$(pulse) Run Drift",
-          description: "Run drift (architecture health)",
-          command: "sruja.runDrift",
-        },
-        {
-          label: "$(info) Status",
-          description: "Sruja Status",
-          command: "sruja.status",
-        },
-        {
-          label: "$(eye) Review",
-          description: "Review architecture update",
-          command: "sruja.review",
         },
       ];
 
