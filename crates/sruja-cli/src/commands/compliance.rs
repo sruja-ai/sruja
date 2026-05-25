@@ -82,7 +82,11 @@ pub async fn compliance(
     if strict {
         let graph_json = {
             let new_path = repo_path.join(crate::commands::SCAN_CACHE_PATH);
-            if new_path.exists() { new_path } else { repo_path.join(".sruja/graph.json") }
+            if new_path.exists() {
+                new_path
+            } else {
+                repo_path.join(".sruja/graph.json")
+            }
         };
         if graph_json.exists() {
             let previous_graph: sruja_scan::Graph =

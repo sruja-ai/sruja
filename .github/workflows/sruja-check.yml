@@ -1,6 +1,8 @@
 name: Sruja Check
 on:
   pull_request:
+  push:
+    branches: [main, master]
 
 permissions:
   contents: read
@@ -11,14 +13,19 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - run: cargo install --path crates/sruja-cli
       - name: PR-scoped drift gate (new violations only)
+        if: github.event_name == 'pull_request'
         run: |
           git fetch origin ${{ github.base_ref }}
           sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
+      - name: Drift check (declared vs actual)
+        if: github.event_name != 'pull_request'
+        run: sruja drift -r . --violations-only
       - name: Sruja check (annotations)
         run: sruja check -r . --format github-actions

@@ -11,126 +11,52 @@ env:
 jobs:
   drift:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
+      actions: read
       contents: read
-      pull-requests: write
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-      - name: Build Sruja CLI
-        run: cargo build --release -p sruja-cli
-
-      - name: Cache base graph
-        uses: actions/cache@v5
-        with:
-          path: .sruja/cache
-          key: sruja-graph-${{ github.base_ref || github.ref_name }}
-          restore-keys: |
-            sruja-graph-
-
-      - name: Scan base branch (for comparison)
-        if: github.event_name == 'pull_request'
-        run: |
-          git fetch origin ${{ github.base_ref }}
-          git checkout -f origin/${{ github.base_ref }}
-          mkdir -p .sruja/cache
-          ./target/release/sruja scan -r . -o .sruja/cache/base_graph.json || true
-          git checkout -f ${{ github.sha }}
-
-      - name: Run PR-scoped drift check
-        id: drift
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            ./target/release/sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
-          else
-            ./target/release/sruja drift -r . --format text
-          fi
-        continue-on-error: true
-
-      - name: Run full drift check
-        if: github.event_name != 'pull_request'
-        run: ./target/release/sruja drift -r . --violations-only
-
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
+      - name: Wait for Sruja Check workflow
         uses: actions/github-script@v9
         with:
           script: |
-            const { execSync } = require('child_process');
-            let output = '';
-            try {
-              output = execSync('./target/release/sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f json', { encoding: 'utf8' });
-            } catch (e) {
-              output = e.stdout || e.message;
-            }
-            
-            try {
-              const result = JSON.parse(output);
-              const newViolations = result.new_violations || [];
-              
-              let body = '## 🏗️ Sruja Architecture Check\n\n';
-              body += `**Health Score:** ${result.base_health} → ${result.head_health}`;
-              if (result.head_health < result.base_health) {
-                body += ` ⚠️ (-${result.base_health - result.head_health})`;
-              } else if (result.head_health > result.base_health) {
-                body += ` ✅ (+${result.head_health - result.base_health})`;
-              }
-              body += '\n\n';
-              
-              if (newViolations.length === 0) {
-                body += '✅ **No new architectural violations introduced!**\n\n';
-                body += `Existing violations: ${result.base_violations_count} → ${result.head_violations_count}`;
-              } else {
-                body += `🚨 **${newViolations.length} new violation(s) introduced:**\n\n`;
-                for (const v of newViolations.slice(0, 5)) {
-                  const icon = v.severity === 'Error' ? '❌' : v.severity === 'Warning' ? '⚠️' : 'ℹ️';
-                  body += `${icon} **${v.kind}**: ${v.message}\n`;
-                  if (v.location) body += `   - 📍 ${v.location}\n`;
-                }
-                if (newViolations.length > 5) {
-                  body += `\n_...and ${newViolations.length - 5} more_\n`;
-                }
-              }
-              
-              body += '\n\n---\n';
-              body += '_Powered by [Sruja](https://sruja.ai) - Architecture-as-Code_';
-              
-              // Find existing comment
-              const { data: comments } = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-              });
-              
-              const botComment = comments.find(c => 
-                c.user.type === 'Bot' && c.body.includes('Sruja Architecture Check')
-              );
-              
-              if (botComment) {
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: botComment.id,
-                  body: body
-                });
-              } else {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: body
-                });
-              }
-            } catch (e) {
-              console.log('Could not parse drift output:', e.message);
-            }
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = context.sha;
+            const workflowId = "sruja-check.yml";
 
-      - name: Fail if new violations
-        if: steps.drift.outcome == 'failure'
-        run: exit 1
+            const maxAttempts = 100;
+            const sleepMs = 15000;
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: workflowId,
+                head_sha: sha,
+                per_page: 5,
+              });
+
+              const run = (data.workflow_runs || [])[0];
+              if (!run) {
+                if (attempt === maxAttempts) {
+                  throw new Error(`No workflow runs found for ${workflowId} at ${sha}`);
+                }
+                await new Promise(r => setTimeout(r, sleepMs));
+                continue;
+              }
+
+              if (run.status !== "completed") {
+                if (attempt === maxAttempts) {
+                  throw new Error(`Workflow ${workflowId} did not complete in time (run_id=${run.id}, status=${run.status})`);
+                }
+                await new Promise(r => setTimeout(r, sleepMs));
+                continue;
+              }
+
+              if (run.conclusion !== "success") {
+                throw new Error(`Workflow ${workflowId} concluded with ${run.conclusion} (run_id=${run.id})`);
+              }
+
+              return;
+            }
