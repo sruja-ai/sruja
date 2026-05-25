@@ -416,6 +416,10 @@ export class SrujaDiagramCodeLensProvider implements vscode.CodeLensProvider {
       new vscode.CodeLens(topRange, {
         title: "Open diagram preview (L1)",
         command: "sruja.openDiagramPreview",
+      }),
+      new vscode.CodeLens(topRange, {
+        title: "Open Architecture Explorer",
+        command: "sruja.openArchitectureExplorer",
       })
     );
 

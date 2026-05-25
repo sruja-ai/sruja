@@ -297,6 +297,7 @@ export const window = {
         html: "",
         options: {},
         cspSource: "vscode-resource:",
+        asWebviewUri: (uri: any) => uri,
         onDidReceiveMessage: (handler: (message: any) => any) => {
           panel.__onDidReceiveMessage = handler;
         },
@@ -304,6 +305,7 @@ export const window = {
       onDidDispose: (cb: () => void) => {
         onDispose = cb;
       },
+      reveal: () => {},
       dispose: () => {
         onDispose?.();
       },

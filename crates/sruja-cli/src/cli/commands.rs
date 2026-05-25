@@ -826,6 +826,14 @@ pub enum Commands {
         #[arg(long)]
         fail_under: Option<u8>,
     },
+    /// Generate the Architecture Explorer model (JSON) for the VS Code webview
+    #[command(name = "explore")]
+    Explore {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+    },
+
     /// Generate an interactive HTML/D3.js visualization of the architecture context
     #[command(name = "context-graph", hide = true)]
     ContextGraph {

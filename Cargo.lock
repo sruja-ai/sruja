@@ -3618,6 +3618,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "serde_yaml",
  "sruja-agent",
  "tempfile",
  "thiserror 2.0.18",

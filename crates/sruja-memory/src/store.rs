@@ -108,6 +108,7 @@ impl MemoryStore {
              DELETE FROM memory_fts;",
         )?;
         self.index_learnings()?;
+        self.index_learned_facts()?;
         self.index_events()?;
         self.index_decisions()?;
         let fp = source_fingerprint(&self.repo)?;
@@ -414,6 +415,88 @@ impl MemoryStore {
         Ok(())
     }
 
+    fn index_learned_facts(&self) -> Result<(), MemoryStoreError> {
+        #[derive(Debug, Deserialize)]
+        struct LearnedFactRow {
+            id: String,
+            subject: String,
+            predicate: String,
+            object: String,
+            claim: String,
+            #[serde(default)]
+            confidence: f64,
+            #[serde(default)]
+            status: String,
+            #[serde(default)]
+            source: String,
+            #[serde(default)]
+            evidence_refs: Vec<String>,
+        }
+
+        let path = self.repo.join(".sruja").join("learned_facts.jsonl");
+        if !path.exists() {
+            return Ok(());
+        }
+        let base_ts_ms = fs::metadata(&path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or_else(|| Utc::now().timestamp_millis());
+        let content = fs::read_to_string(&path)?;
+        for (i, line) in content.lines().enumerate() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            let Ok(row) = serde_json::from_str::<LearnedFactRow>(line) else {
+                continue;
+            };
+            let ts_ms = base_ts_ms.saturating_add(i as i64);
+            let timestamp = DateTime::<Utc>::from_timestamp_millis(ts_ms)
+                .map(|d| d.to_rfc3339())
+                .unwrap_or_else(|| Utc::now().to_rfc3339());
+            let title = Some(format!("{} {} {}", row.subject, row.predicate, row.object));
+            let mut body = format!("claim: {}\nconfidence: {}", row.claim, row.confidence);
+            if !row.source.trim().is_empty() {
+                body.push_str("\nsource: ");
+                body.push_str(row.source.trim());
+            }
+            if !row.status.trim().is_empty() {
+                body.push_str("\nstatus: ");
+                body.push_str(row.status.trim());
+            }
+            if !row.evidence_refs.is_empty() {
+                body.push_str("\nevidence_refs:\n");
+                for r in &row.evidence_refs {
+                    body.push_str("- ");
+                    body.push_str(r);
+                    body.push('\n');
+                }
+            }
+            let trust = match row.status.to_lowercase().as_str() {
+                "reviewed" => "reviewed_truth",
+                "rejected" => "hypothesis",
+                "stale" => "hypothesis",
+                _ => "hypothesis",
+            };
+            self.insert_entry(
+                &format!("learned_fact:{}", row.id),
+                "learned_fact",
+                trust,
+                ts_ms,
+                &timestamp,
+                title.as_deref(),
+                &body,
+                Some(row.subject.as_str()),
+                None,
+                None,
+                None,
+            )?;
+        }
+        Ok(())
+    }
+
     fn index_decisions(&self) -> Result<(), MemoryStoreError> {
         let dir = self.repo.join(".sruja").join("decisions");
         if !dir.is_dir() {
@@ -431,6 +514,7 @@ impl MemoryStore {
                 .unwrap_or("decision")
                 .to_string();
             let body = fs::read_to_string(&path)?;
+            let elements = parse_elements_from_yaml_frontmatter(&body);
             let title = body
                 .lines()
                 .find(|l| l.starts_with("# "))
@@ -444,19 +528,37 @@ impl MemoryStore {
             let timestamp = DateTime::<Utc>::from_timestamp_millis(ts_ms)
                 .map(|d| d.to_rfc3339())
                 .unwrap_or_else(|| Utc::now().to_rfc3339());
-            self.insert_entry(
-                &format!("decision:{id}"),
-                "decision",
-                "reviewed_truth",
-                ts_ms,
-                &timestamp,
-                title.as_deref(),
-                &body,
-                None,
-                Some(id.as_str()),
-                None,
-                None,
-            )?;
+            if elements.is_empty() {
+                self.insert_entry(
+                    &format!("decision:{id}"),
+                    "decision",
+                    "reviewed_truth",
+                    ts_ms,
+                    &timestamp,
+                    title.as_deref(),
+                    &body,
+                    None,
+                    Some(id.as_str()),
+                    None,
+                    None,
+                )?;
+            } else {
+                for el in &elements {
+                    self.insert_entry(
+                        &format!("decision:{id}:{el}"),
+                        "decision",
+                        "reviewed_truth",
+                        ts_ms,
+                        &timestamp,
+                        title.as_deref(),
+                        &body,
+                        Some(el.as_str()),
+                        Some(id.as_str()),
+                        None,
+                        None,
+                    )?;
+                }
+            }
         }
         Ok(())
     }
@@ -587,6 +689,7 @@ fn source_fingerprint(repo: &Path) -> Result<String, MemoryStoreError> {
     for rel in [
         ".sruja/agent_memory.json",
         ".sruja/context_events.jsonl",
+        ".sruja/learned_facts.jsonl",
         ".sruja/decisions",
     ] {
         let p = repo.join(rel);
@@ -611,6 +714,58 @@ fn source_fingerprint(repo: &Path) -> Result<String, MemoryStoreError> {
         }
     }
     Ok(parts.join("|"))
+}
+
+fn parse_elements_from_yaml_frontmatter(raw: &str) -> Vec<String> {
+    let mut lines = raw.lines().map(str::trim_end);
+    let Some(first) = lines.next() else {
+        return Vec::new();
+    };
+    if first.trim() != "---" {
+        return Vec::new();
+    }
+
+    let mut yaml = String::new();
+    for line in lines.by_ref() {
+        if line.trim() == "---" {
+            break;
+        }
+        yaml.push_str(line);
+        yaml.push('\n');
+    }
+
+    #[derive(Deserialize)]
+    struct Frontmatter {
+        #[serde(default)]
+        elements: serde_yaml::Value,
+    }
+
+    let Ok(fm) = serde_yaml::from_str::<Frontmatter>(&yaml) else {
+        return Vec::new();
+    };
+
+    let mut out: Vec<String> = Vec::new();
+    match fm.elements {
+        serde_yaml::Value::Sequence(seq) => {
+            for v in seq {
+                if let serde_yaml::Value::String(s) = v {
+                    if !s.trim().is_empty() {
+                        out.push(s.trim().to_string());
+                    }
+                }
+            }
+        }
+        serde_yaml::Value::String(s) => {
+            if !s.trim().is_empty() {
+                out.push(s.trim().to_string());
+            }
+        }
+        _ => {}
+    }
+
+    out.sort();
+    out.dedup();
+    out
 }
 
 fn parse_timestamp_ms(s: &str) -> Result<i64, MemoryStoreError> {
@@ -685,6 +840,13 @@ mod tests {
         });
         memory.save(dir).unwrap();
         std::fs::write(
+            dir.join(".sruja/learned_facts.jsonl"),
+            r#"{"schema_version":"learned_fact/v1","id":"fact_1234","subject":"Checkout","predicate":"depends_on","object":"Payments","claim":"Checkout depends on Payments","evidence_refs":["Cargo.toml"],"confidence":0.8,"status":"observed","source":"learn"}"#
+                .to_string()
+                + "\n",
+        )
+        .unwrap();
+        std::fs::write(
             dir.join(".sruja/context_events.jsonl"),
             r#"{"schema_version":"context_event/v2","timestamp":"2024-01-02T00:00:00Z","kind":"decision_accepted","outcome":"ok","decision_id":"adr-001","details":{}}"#
                 .to_string()
@@ -694,7 +856,7 @@ mod tests {
         std::fs::create_dir_all(dir.join(".sruja/decisions")).unwrap();
         std::fs::write(
             dir.join(".sruja/decisions/adr-001.md"),
-            "# Why we split the monolith\n\nAccepted bounded context split.\n",
+            "---\nid: adr-001\ntype: adr\nstatus: accepted\nscope: repo\nelements:\n  - Checkout\n  - Payments\n---\n# Why we split the monolith\n\nAccepted bounded context split.\n",
         )
         .unwrap();
     }
@@ -715,6 +877,33 @@ mod tests {
         assert!(hits
             .iter()
             .any(|h| h.trust == "hypothesis" || h.trust == "reviewed_truth"));
+    }
+
+    #[test]
+    fn search_can_filter_by_element_id_for_decisions_and_learned_facts() {
+        let tmp = TempDir::new().unwrap();
+        write_learning_repo(tmp.path());
+        let store = MemoryStore::open(tmp.path()).unwrap();
+
+        let decision_hits = store
+            .search(SearchMemoryOptions {
+                query: "split",
+                element_id: Some("Checkout"),
+                limit: 10,
+                ..Default::default()
+            })
+            .unwrap();
+        assert!(decision_hits.iter().any(|h| h.source == "decision"));
+
+        let fact_hits = store
+            .search(SearchMemoryOptions {
+                query: "depends",
+                element_id: Some("Checkout"),
+                limit: 10,
+                ..Default::default()
+            })
+            .unwrap();
+        assert!(fact_hits.iter().any(|h| h.source == "learned_fact"));
     }
 
     #[test]

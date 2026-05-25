@@ -9,7 +9,8 @@ use std::time::SystemTime;
 
 use crate::commands::CliError;
 
-const GRAPH_FILE: &str = ".sruja/graph.json";
+const GRAPH_FILE: &str = ".sruja/cache/kg.json";
+const LEGACY_GRAPH_FILE: &str = ".sruja/graph.json";
 
 fn atomic_write_file(path: &std::path::Path, contents: &[u8]) -> Result<(), CliError> {
     use std::io::Write;
@@ -53,10 +54,17 @@ fn atomic_write_file(path: &std::path::Path, contents: &[u8]) -> Result<(), CliE
 pub fn load_or_build_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     let graph_path = repo.join(GRAPH_FILE);
 
-    if graph_path.exists() {
-        match load_graph(repo) {
+    // Try new cache path first, then legacy for backward compat
+    let effective_path = if graph_path.exists() {
+        graph_path
+    } else {
+        let legacy = repo.join(LEGACY_GRAPH_FILE);
+        if legacy.exists() { legacy } else { graph_path }
+    };
+
+    if effective_path.exists() {
+        match load_graph_from(&effective_path) {
             Ok(graph) => {
-                // Check if stale (code changed since last build)
                 if is_graph_stale(repo, &graph)? {
                     eprintln!("💡 Code changed since last analysis, rebuilding graph...");
                     return build_and_save_graph(repo);
@@ -73,21 +81,29 @@ pub fn load_or_build_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     build_and_save_graph(repo)
 }
 
-/// Load graph from disk
-pub fn load_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
+/// Load graph from disk (used by tests and as public API for callers that want read-only access)
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn load_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     let graph_path = repo.join(GRAPH_FILE);
+    if graph_path.exists() {
+        return load_graph_from(&graph_path);
+    }
+    let legacy = repo.join(LEGACY_GRAPH_FILE);
+    load_graph_from(&legacy)
+}
 
-    let json = std::fs::read_to_string(&graph_path).map_err(|_| CliError::ConfigCorrupted {
+fn load_graph_from(path: &Path) -> Result<KnowledgeGraph, CliError> {
+    let json = std::fs::read_to_string(path).map_err(|_| CliError::ConfigCorrupted {
         message: format!(
             "Cannot read {}. Run `sruja sync` to rebuild.",
-            graph_path.display()
+            path.display()
         ),
     })?;
 
     serde_json::from_str(&json).map_err(|_| CliError::ConfigCorrupted {
         message: format!(
             "{} is not valid JSON. Run `sruja sync` to rebuild.",
-            graph_path.display()
+            path.display()
         ),
     })
 }
@@ -146,7 +162,7 @@ pub fn merge_decision_records_from_repo(
     Ok(())
 }
 
-/// Upsert one Decision Record into `.sruja/graph.json` after a file change (`accept`, `link`, …).
+/// Upsert one Decision Record into the KG cache after a file change (`accept`, `link`, …).
 pub fn upsert_decision_record_in_stored_graph(repo: &Path, md_path: &Path) -> Result<(), CliError> {
     let mut kg = load_or_build_graph(repo)?;
     let (fm, body) = crate::commands::decision::parse_decision_file(md_path)?;
@@ -159,11 +175,11 @@ pub fn upsert_decision_record_in_stored_graph(repo: &Path, md_path: &Path) -> Re
 
 /// Save knowledge graph to disk
 pub fn save_graph(repo: &Path, graph: &KnowledgeGraph) -> Result<(), CliError> {
-    let sruja_dir = repo.join(".sruja");
-    std::fs::create_dir_all(&sruja_dir)?;
+    let cache_dir = repo.join(".sruja/cache");
+    std::fs::create_dir_all(&cache_dir)?;
 
-    let json = serde_json::to_string_pretty(graph)?;
-    atomic_write_file(&sruja_dir.join("graph.json"), json.as_bytes())?;
+    let json = serde_json::to_string(graph)?;
+    atomic_write_file(&cache_dir.join("kg.json"), json.as_bytes())?;
 
     Ok(())
 }
@@ -199,7 +215,7 @@ fn check_source_files_newer(
     repo: &Path,
     graph_modified: std::time::SystemTime,
 ) -> Result<bool, CliError> {
-    let source_dirs = ["src", "lib", "app", "packages", "crates", ".sruja"];
+    let source_dirs = ["src", "lib", "app", "packages", "crates"];
 
     if let Ok(entries) = std::fs::read_dir(repo) {
         for entry in entries.flatten() {
@@ -225,6 +241,11 @@ fn check_source_files_newer(
         {
             return Ok(true);
         }
+    }
+
+    let decisions_dir = repo.join(".sruja/decisions");
+    if decisions_dir.is_dir() && any_path_modified_after(&decisions_dir, graph_modified) {
+        return Ok(true);
     }
 
     Ok(false)
@@ -318,7 +339,7 @@ mod tests {
         let graph = result.unwrap();
         assert!(!graph.nodes.is_empty());
 
-        assert!(repo_path.join(".sruja/graph.json").exists());
+        assert!(repo_path.join(GRAPH_FILE).exists());
     }
 
     #[test]
@@ -346,8 +367,9 @@ mod tests {
     fn test_load_graph_invalid_json() {
         let temp_dir = TempDir::new().unwrap();
         let repo_path = temp_dir.path();
-        std::fs::create_dir_all(repo_path.join(".sruja")).unwrap();
-        std::fs::write(repo_path.join(".sruja/graph.json"), "not valid json").unwrap();
+        let cache_dir = repo_path.join(".sruja/cache");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        std::fs::write(cache_dir.join("kg.json"), "not valid json").unwrap();
 
         let result = load_graph(repo_path);
         assert!(result.is_err());
@@ -361,7 +383,7 @@ mod tests {
 
         let result = save_graph(repo_path, &graph);
         assert!(result.is_ok());
-        assert!(repo_path.join(".sruja/graph.json").exists());
+        assert!(repo_path.join(GRAPH_FILE).exists());
     }
 
     #[test]
@@ -382,7 +404,7 @@ mod tests {
 
         save_graph(repo_path, &graph).unwrap();
 
-        let json = std::fs::read_to_string(repo_path.join(".sruja/graph.json")).unwrap();
+        let json = std::fs::read_to_string(repo_path.join(GRAPH_FILE)).unwrap();
         assert!(json.contains("\"TestGraph\""));
         assert!(json.contains("test_node"));
     }
@@ -397,7 +419,7 @@ mod tests {
 
         let result = load_or_build_graph(repo_path);
         assert!(result.is_ok());
-        assert!(repo_path.join(".sruja/graph.json").exists());
+        assert!(repo_path.join(GRAPH_FILE).exists());
     }
 
     #[test]

@@ -12,7 +12,7 @@ pub async fn semantic_index(
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_path);
 
-    // 1. Get the graph (either from .sruja/graph.json or fresh scan)
+    // 1. Get the graph (either from cache or fresh scan)
     let graph = if let Some(arch) = architecture_file {
         let _ = crate::commands::parse_sruja_file(arch)?;
         sruja_scan::scan_repo(repo_path)?

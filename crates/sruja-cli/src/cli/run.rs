@@ -651,6 +651,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             format,
             fail_under,
         } => commands::context_score(&repo, &format, fail_under).await,
+        Commands::Explore { repo } => commands::explore(&repo).await,
         Commands::ContextGraph { repo, output, open } => {
             commands::context_graph(&repo, &output, open).await
         }

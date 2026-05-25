@@ -13,6 +13,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
+serde_yaml = "0.9"
 sruja-agent = { path = "../sruja-agent" }
 
 [dev-dependencies]

@@ -263,7 +263,11 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
 
     let path = dot_sruja.join("context.json");
     let context_path = path.display().to_string();
-    let graph_path = dot_sruja.join("graph.json");
+    let cache_dir = dot_sruja.join("cache");
+    if !cache_dir.exists() {
+        std::fs::create_dir_all(&cache_dir)?;
+    }
+    let graph_path = cache_dir.join("scan.json");
     let author_evidence_path = dot_sruja.join("author_evidence.json");
     let _lock = acquire_repo_write_lock(repo_path).await?;
 
@@ -278,7 +282,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     })?;
 
     let graph_json =
-        serde_json::to_string_pretty(&graph).map_err(|e| CliError::validation(e.to_string()))?;
+        serde_json::to_string(&graph).map_err(|e| CliError::validation(e.to_string()))?;
     atomic_write_file(&graph_path, graph_json.as_bytes()).map_err(|e| match e {
         CliError::Io(io) => CliError::Io(std::io::Error::new(
             io.kind(),

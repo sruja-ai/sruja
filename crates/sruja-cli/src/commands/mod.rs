@@ -32,6 +32,7 @@ pub use dsl_domain::dsl::{
 pub use intent_domain::focus::focus;
 pub use intent_domain::ingest::ingest;
 pub use scan_domain::context_graph::context_graph;
+pub use scan_domain::explore::explore;
 pub use scan_domain::context_score::context_score;
 pub use scan_domain::discover::{
     discover_context, discover_explain, discover_questions, discover_repomap_cmd,
@@ -140,16 +141,30 @@ pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan
     scan_repo_cached_with_opts(repo_path, false)
 }
 
+pub(crate) const SCAN_CACHE_PATH: &str = ".sruja/cache/scan.json";
+
 pub(crate) fn scan_repo_cached_with_opts(
     repo_path: &std::path::Path,
     incremental: bool,
 ) -> Result<sruja_scan::Graph, CliError> {
-    let graph_path = repo_path.join(".sruja").join("graph.json");
+    let cache_path = repo_path.join(SCAN_CACHE_PATH);
 
-    if !incremental && graph_path.exists() {
-        let content = std::fs::read_to_string(&graph_path)?;
+    if !incremental && cache_path.exists() {
+        let content = std::fs::read_to_string(&cache_path)?;
         if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
             return Ok(graph);
+        }
+    }
+
+    // Try legacy path for backward compat
+    if !incremental {
+        let legacy = repo_path.join(".sruja/graph.json");
+        if legacy.exists() {
+            if let Ok(content) = std::fs::read_to_string(&legacy) {
+                if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
+                    return Ok(graph);
+                }
+            }
         }
     }
 
@@ -159,12 +174,11 @@ pub(crate) fn scan_repo_cached_with_opts(
         sruja_scan::scan_repo(repo_path)?
     };
 
-    let dir = repo_path.join(".sruja");
-    if !dir.exists() {
-        std::fs::create_dir_all(&dir)?;
+    if let Some(parent) = cache_path.parent() {
+        std::fs::create_dir_all(parent)?;
     }
-    let content = serde_json::to_string_pretty(&graph)?;
-    let _ = std::fs::write(graph_path, content);
+    let content = serde_json::to_string(&graph)?;
+    let _ = std::fs::write(cache_path, content);
 
     Ok(graph)
 }

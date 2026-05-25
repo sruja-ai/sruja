@@ -150,6 +150,12 @@
         "shortTitle": "Export"
       },
       {
+        "command": "sruja.openArchitectureExplorer",
+        "title": "Sruja: Open Architecture Explorer",
+        "icon": "$(symbol-structure)",
+        "shortTitle": "Explorer"
+      },
+      {
         "command": "sruja.openDiagramPreview",
         "title": "Sruja: Open Diagram Preview",
         "icon": "$(graph)",
@@ -295,6 +301,12 @@
         "key": "ctrl+shift+d",
         "mac": "cmd+shift+d",
         "when": "editorLangId == sruja"
+      },
+      {
+        "command": "sruja.openArchitectureExplorer",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorLangId == sruja"
       }
     ],
     "menus": {
@@ -339,6 +351,10 @@
         },
         {
           "command": "sruja.openDiagramPreview",
+          "group": "3_diagram"
+        },
+        {
+          "command": "sruja.openArchitectureExplorer",
           "group": "3_diagram"
         },
         {

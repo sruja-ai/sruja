@@ -253,8 +253,8 @@ export function app() { return helper(); }
         "daily should refresh .sruja/context.json"
     );
     assert!(
-        repo.path().join(".sruja/graph.json").exists(),
-        "daily should refresh .sruja/graph.json"
+        repo.path().join(".sruja/cache/scan.json").exists(),
+        "daily should refresh .sruja/cache/scan.json"
     );
 }
 
@@ -952,7 +952,7 @@ fn sync_writes_context_and_graph() {
         .unwrap_or_default();
     assert!(context_path.ends_with(".sruja/context.json"));
     assert!(repo.path().join(".sruja/context.json").exists());
-    assert!(repo.path().join(".sruja/graph.json").exists());
+    assert!(repo.path().join(".sruja/cache/scan.json").exists());
 }
 
 #[test]
@@ -3276,4 +3276,37 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
     drop(stdin);
     let _ = child.wait();
     let _ = reader_handle.join();
+}
+
+#[test]
+fn explore_outputs_valid_explorer_model_json() {
+    let repo = create_test_repo();
+    write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
+    write_file(repo.path(), "src/index.js", "const x = require('./helper');");
+    write_file(repo.path(), "src/helper.js", "module.exports = {};");
+
+    let repo_str = repo.path().to_str().expect("utf-8");
+    let (success, stdout, stderr) = run_sruja(&["explore", "-r", repo_str]);
+
+    assert!(
+        success,
+        "explore should succeed: stderr={}",
+        stderr
+    );
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(stdout.trim()).expect("explore output should be valid JSON");
+
+    assert_eq!(
+        parsed["schema_version"].as_str(),
+        Some("explorer/v1"),
+        "schema_version mismatch"
+    );
+    assert!(parsed["nodes"].is_array(), "nodes should be an array");
+    assert!(parsed["edges"].is_array(), "edges should be an array");
+    assert!(parsed["summary"].is_object(), "summary should be an object");
+    assert!(
+        parsed["summary"]["total_nodes"].as_u64().unwrap_or(0) > 0,
+        "should have at least one node"
+    );
 }

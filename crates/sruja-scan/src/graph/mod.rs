@@ -52,6 +52,7 @@ pub struct Node {
     /// Paths to runbooks
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub runbooks: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub confidence: Option<u8>,
     /// State machine definitions
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

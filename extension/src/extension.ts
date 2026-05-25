@@ -15,6 +15,7 @@ import {
 import { getSrujaLspPath } from "./config";
 import { SrujaMarkdownPreviewEditorProvider } from "./markdownPreviewEditor";
 import { registerDiagramCommands } from "./commands/diagrams";
+import { registerExplorerCommands } from "./architectureExplorer";
 import { registerContextEngineeringCommands } from "./commands/contextEngineering";
 import { registerSkillCommands } from "./commands/skills";
 import { registerKnowledgeCommands, pushDocsThreadEntryFromActiveEditor } from "./commands/knowledge";
@@ -41,6 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Register Modular Commands
   registerDiagramCommands(context, isTest);
+  registerExplorerCommands(context);
   registerContextEngineeringCommands(context, getSrujaPath);
   registerSkillCommands(context, isTest);
   registerKnowledgeCommands(context);

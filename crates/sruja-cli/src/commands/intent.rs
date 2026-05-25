@@ -42,7 +42,10 @@ pub async fn intent_check(
     let mut report = detector.detect(&merged_model, &graph, context.schema());
 
     if strict {
-        let graph_json = repo_path.join(".sruja").join("graph.json");
+        let graph_json = {
+            let new_path = repo_path.join(crate::commands::SCAN_CACHE_PATH);
+            if new_path.exists() { new_path } else { repo_path.join(".sruja/graph.json") }
+        };
         if graph_json.exists() {
             let previous_graph: sruja_scan::Graph =
                 serde_json::from_str(&std::fs::read_to_string(graph_json)?)?;
