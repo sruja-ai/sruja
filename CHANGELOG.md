@@ -5,6 +5,16 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.51.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.50.0...sruja-v0.51.0) (2026-05-25)
+
+
+### Features
+
+* **cli:** add verify-task CLI command and MCP tool ([e0307da](https://github.com/sruja-ai/sruja/commit/e0307daef2128bb46e78c449462f9cefde373684))
+* drift-first OSS packaging ([f21dc60](https://github.com/sruja-ai/sruja/commit/f21dc60a6fd200bb668335b5835fa9cb191a40de))
+* **explorer:** add architecture explorer ([2a6a9f3](https://github.com/sruja-ai/sruja/commit/2a6a9f36320277ec0439e4f0599ce40401ef591c))
+* implement MCP tool profiles (Phase T feature tightening) ([32634b7](https://github.com/sruja-ai/sruja/commit/32634b72f0ff72da62264ec5bb0de34687bd9d39))
+
 ## [Unreleased]
 
 ### OSS traction packaging
