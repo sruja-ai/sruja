@@ -32,11 +32,11 @@ pub use dsl_domain::dsl::{
 pub use intent_domain::focus::focus;
 pub use intent_domain::ingest::ingest;
 pub use scan_domain::context_graph::context_graph;
-pub use scan_domain::explore::explore;
 pub use scan_domain::context_score::context_score;
 pub use scan_domain::discover::{
     discover_context, discover_explain, discover_questions, discover_repomap_cmd,
 };
+pub use scan_domain::explore::explore;
 pub use utility_domain::error::CliError;
 
 #[derive(Debug, Clone, Copy)]

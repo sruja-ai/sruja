@@ -32,16 +32,13 @@ pub fn explore_json(repo_root: &str) -> Result<String, CliError> {
     // 1. Knowledge graph (scan + decisions) — read-only, no cache side-effects
     let mut kg = graph_store::load_or_build_graph(repo_path)?;
     // Fresh scan for community detection and drift (avoids persisting cache)
-    let scan_graph = sruja_scan::scan_repo(repo_path)
-        .map_err(|e| CliError::scan(e.to_string()))?;
+    let scan_graph = sruja_scan::scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
 
     // Overlay declared architecture if a baseline exists
-    let baseline_path =
-        crate::utils::architecture_path::resolve_architecture_path(repo_path);
+    let baseline_path = crate::utils::architecture_path::resolve_architecture_path(repo_path);
     if let Some(ref path) = baseline_path {
         let content = std::fs::read_to_string(path)?;
-        let parser =
-            sruja_language::Parser::new(path.to_string_lossy().to_string());
+        let parser = sruja_language::Parser::new(path.to_string_lossy().to_string());
         if let Ok(program) = parser.parse(&content) {
             let scan_graph = sruja_diff::program_to_graph(&program);
             sruja_graph::scan_merge::merge_scan_into_graph(
@@ -95,14 +92,11 @@ fn build_drift_overlay(
     scan_graph: &sruja_scan::Graph,
     arch_path: &Path,
 ) -> Result<DriftOverlay, CliError> {
-    let intent_model =
-        sruja_intent::model::IntentModel::from_sruja_file(arch_path).map_err(|e| {
-            CliError::validation(format!("Failed to build intent model: {e}"))
-        })?;
+    let intent_model = sruja_intent::model::IntentModel::from_sruja_file(arch_path)
+        .map_err(|e| CliError::validation(format!("Failed to build intent model: {e}")))?;
     let schema = sruja_language::DomainSchema::architecture();
     let drift_report =
-        sruja_intent::compare::DriftDetector::default()
-            .detect(&intent_model, scan_graph, &schema);
+        sruja_intent::compare::DriftDetector::default().detect(&intent_model, scan_graph, &schema);
 
     let mut node_counts: HashMap<String, (usize, Option<String>)> = HashMap::new();
     for d in &drift_report.drifts {
@@ -111,8 +105,7 @@ fn build_drift_overlay(
             entry.0 += 1;
             let sev = format!("{:?}", d.severity).to_lowercase();
             if entry.1.is_none()
-                || severity_rank(&sev)
-                    > severity_rank(entry.1.as_deref().unwrap_or("info"))
+                || severity_rank(&sev) > severity_rank(entry.1.as_deref().unwrap_or("info"))
             {
                 entry.1 = Some(sev);
             }

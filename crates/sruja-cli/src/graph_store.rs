@@ -59,7 +59,11 @@ pub fn load_or_build_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
         graph_path
     } else {
         let legacy = repo.join(LEGACY_GRAPH_FILE);
-        if legacy.exists() { legacy } else { graph_path }
+        if legacy.exists() {
+            legacy
+        } else {
+            graph_path
+        }
     };
 
     if effective_path.exists() {

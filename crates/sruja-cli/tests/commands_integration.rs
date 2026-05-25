@@ -125,14 +125,21 @@ import { query } from "./db";
 export function start() { return query(); }
 "#,
     );
-    write_file(repo.path(), "src/db.ts", r#"export function query() { return []; }"#);
+    write_file(
+        repo.path(),
+        "src/db.ts",
+        r#"export function query() { return []; }"#,
+    );
 
     let repo_str = repo.path().to_str().expect("utf-8");
 
     let (ctx_ok, ctx_out, ctx_err) =
         run_sruja(&["discover", "-r", repo_str, "--format", "json", "context"]);
     assert!(ctx_ok, "discover context should succeed: stderr={ctx_err}");
-    assert!(!ctx_out.trim().is_empty(), "discover context should produce output");
+    assert!(
+        !ctx_out.trim().is_empty(),
+        "discover context should produce output"
+    );
     let ctx_trim = ctx_out.trim_start();
     if ctx_trim.starts_with('{') || ctx_trim.starts_with('[') {
         let _parsed: serde_json::Value =
@@ -157,7 +164,9 @@ export function start() { return query(); }
     ]);
     assert!(rm_ok, "discover repomap should succeed: stderr={rm_err}");
     assert!(
-        rm_out.contains("# Sruja Repomap") || rm_out.contains("# Repository Map") || rm_out.contains("Repomap"),
+        rm_out.contains("# Sruja Repomap")
+            || rm_out.contains("# Repository Map")
+            || rm_out.contains("Repomap"),
         "expected repomap header: stdout={rm_out}"
     );
 
@@ -262,7 +271,11 @@ export function app() { return helper(); }
 fn quickstart_generates_baseline_and_emits_json() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());
-    write_file(repo.path(), "src/main.rs", "fn main() { println!(\"hi\"); }\n");
+    write_file(
+        repo.path(),
+        "src/main.rs",
+        "fn main() { println!(\"hi\"); }\n",
+    );
     let repo_str = repo.path().to_str().expect("utf-8");
 
     let (ok, stdout, stderr) = run_sruja(&[
@@ -333,8 +346,12 @@ App = system "App" {
         "expected error_count to be reset to 0 when baseline is written: stdout={stdout}"
     );
     assert!(
-        out.get("total_error_count").and_then(|v| v.as_u64()).unwrap_or(0) > 0
-            || out.get("total_warning_count")
+        out.get("total_error_count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0)
+            > 0
+            || out
+                .get("total_warning_count")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0)
                 > 0,
@@ -1016,12 +1033,22 @@ export function helper() { return "ok"; }
     let (sync_ok, _, sync_err) = run_sruja(&["sync", "-r", repo_str, "-f", "json"]);
     assert!(sync_ok, "sync should succeed: stderr={sync_err}");
 
-    let (ok, stdout, stderr) =
-        run_sruja(&["focus", "-r", repo_str, "--file", "src/app.ts", "-f", "json"]);
+    let (ok, stdout, stderr) = run_sruja(&[
+        "focus",
+        "-r",
+        repo_str,
+        "--file",
+        "src/app.ts",
+        "-f",
+        "json",
+    ]);
     assert!(ok, "focus should succeed: stderr={stderr}");
 
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
-    let run_id = parsed.get("run_id").and_then(|v| v.as_str()).unwrap_or_default();
+    let run_id = parsed
+        .get("run_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
     assert!(!run_id.is_empty(), "expected run_id to be set");
     let resolved = parsed
         .get("target")
@@ -1045,8 +1072,15 @@ export function app() { return 1; }
 "#,
     );
     let repo_str = repo.path().to_str().expect("utf-8");
-    let (ok, stdout, stderr) =
-        run_sruja(&["focus", "-r", repo_str, "--file", "src/app.ts", "-f", "for-ai"]);
+    let (ok, stdout, stderr) = run_sruja(&[
+        "focus",
+        "-r",
+        repo_str,
+        "--file",
+        "src/app.ts",
+        "-f",
+        "for-ai",
+    ]);
     assert!(ok, "focus -f for-ai should succeed: stderr={stderr}");
 
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
@@ -1071,8 +1105,15 @@ export function app() { return 1; }
     );
     let repo_str = repo.path().to_str().expect("utf-8");
 
-    let (ok, stdout, stderr) =
-        run_sruja(&["ai", "-r", repo_str, "--file", "src/app.ts", "--max-tokens", "500"]);
+    let (ok, stdout, stderr) = run_sruja(&[
+        "ai",
+        "-r",
+        repo_str,
+        "--file",
+        "src/app.ts",
+        "--max-tokens",
+        "500",
+    ]);
     assert!(ok, "ai should succeed: stderr={stderr}");
     assert!(
         stdout.contains("## Task Context"),
@@ -1201,7 +1242,10 @@ export function helper() { return 1; }
         "--max-tokens",
         "2500",
     ]);
-    assert!(md_ok, "ai-context -f markdown should succeed: stderr={md_err}");
+    assert!(
+        md_ok,
+        "ai-context -f markdown should succeed: stderr={md_err}"
+    );
     assert!(
         md_out.contains("# Architecture Context"),
         "expected markdown header: stdout={md_out}"
@@ -1216,7 +1260,10 @@ export function helper() { return 1; }
         "--max-tokens",
         "1500",
     ]);
-    assert!(rm_ok, "ai-context -f repomap should succeed: stderr={rm_err}");
+    assert!(
+        rm_ok,
+        "ai-context -f repomap should succeed: stderr={rm_err}"
+    );
     assert!(
         rm_out.contains("# Sruja Repomap"),
         "expected repomap header: stdout={rm_out}"
@@ -1229,7 +1276,8 @@ fn sync_ide_rules_writes_expected_files() {
     write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
     let repo_str = repo.path().to_str().expect("utf-8");
 
-    let (ok, _stdout, stderr) = run_sruja(&["sync-ide-rules", "-r", repo_str, "--max-tokens", "1500"]);
+    let (ok, _stdout, stderr) =
+        run_sruja(&["sync-ide-rules", "-r", repo_str, "--max-tokens", "1500"]);
     assert!(ok, "sync-ide-rules should succeed: stderr={stderr}");
 
     assert!(repo.path().join(".cursorrules").exists());
@@ -1258,7 +1306,10 @@ fn dsl_import_from_exported_json_succeeds() {
     let json_str = json_path.to_str().expect("utf-8");
 
     let (import_ok, import_out, import_err) = run_sruja(&["dsl", "import", "json", json_str]);
-    assert!(import_ok, "dsl import json should succeed: stderr={import_err}");
+    assert!(
+        import_ok,
+        "dsl import json should succeed: stderr={import_err}"
+    );
     assert!(
         import_out.contains("App = system") && import_out.contains("User -> App"),
         "expected imported DSL to include elements and relations: stdout={import_out}"
@@ -1389,7 +1440,10 @@ keep_on_failure = false
         .get("observation_compression")
         .expect("expected observation_compression to exist");
     assert!(
-        compression.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false),
+        compression
+            .get("enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
         "expected compression to be enabled: {compression}"
     );
 
@@ -1438,7 +1492,10 @@ App = system "App" {
         "-f",
         "json",
     ]);
-    assert!(create_ok, "propose create should succeed: stderr={create_err}");
+    assert!(
+        create_ok,
+        "propose create should succeed: stderr={create_err}"
+    );
     let created: serde_json::Value =
         serde_json::from_str(create_stdout.trim()).expect("valid JSON");
     let proposal_id = created
@@ -1449,8 +1506,15 @@ App = system "App" {
         .to_string();
     assert!(!proposal_id.is_empty());
 
-    let (approve_ok, approve_out, approve_err) =
-        run_sruja(&["propose", "approve", &proposal_id, "-r", repo_str, "-f", "json"]);
+    let (approve_ok, approve_out, approve_err) = run_sruja(&[
+        "propose",
+        "approve",
+        &proposal_id,
+        "-r",
+        repo_str,
+        "-f",
+        "json",
+    ]);
     assert!(
         approve_ok,
         "propose approve should succeed: stderr={approve_err} stdout={approve_out}"
@@ -1551,7 +1615,10 @@ export function app() { return 2; }
         "-f",
         "json",
     ]);
-    assert!(ok, "focus with temporal context should succeed: stderr={stderr}");
+    assert!(
+        ok,
+        "focus with temporal context should succeed: stderr={stderr}"
+    );
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
     assert!(
         parsed.get("temporal").is_some(),
@@ -1612,8 +1679,15 @@ fn drift_emits_text_json_and_github_actions_reports() {
         run_sruja(&["drift", "-r", repo_str, "-a", &arch_str, "-f", "json"]);
     let _parsed: serde_json::Value = serde_json::from_str(json_out.trim()).expect("valid JSON");
 
-    let (_ok_ga, ga_out, _ga_err) =
-        run_sruja(&["drift", "-r", repo_str, "-a", &arch_str, "-f", "github-actions"]);
+    let (_ok_ga, ga_out, _ga_err) = run_sruja(&[
+        "drift",
+        "-r",
+        repo_str,
+        "-a",
+        &arch_str,
+        "-f",
+        "github-actions",
+    ]);
     assert!(
         ga_out.contains("::error") || ga_out.contains("::warning") || ga_out.contains("::notice"),
         "expected github-actions report annotations: stdout={ga_out}"
@@ -1642,7 +1716,10 @@ fn agent_record_and_history_roundtrip_json() {
         "-s",
         "test reason",
     ]);
-    assert!(record_ok, "agent record should succeed: stderr={record_err}");
+    assert!(
+        record_ok,
+        "agent record should succeed: stderr={record_err}"
+    );
 
     let (history_ok, stdout, history_err) =
         run_sruja(&["agent", "history", "-r", repo_str, "-f", "json"]);
@@ -1692,21 +1769,44 @@ fn agent_crud_commands_succeed() {
 
     let (history_ok, history_out, history_err) =
         run_sruja(&["agent", "history", "-r", repo_str, "-f", "json"]);
-    assert!(history_ok, "agent history should succeed: stderr={history_err}");
+    assert!(
+        history_ok,
+        "agent history should succeed: stderr={history_err}"
+    );
     let parsed: serde_json::Value = serde_json::from_str(history_out.trim()).expect("valid JSON");
     let entries = parsed.as_array().cloned().unwrap_or_default();
     assert!(entries.len() >= 2, "expected >=2 entries: {history_out}");
-    let id1 = entries[0].get("id").and_then(|v| v.as_str()).unwrap_or_default();
-    let id2 = entries[1].get("id").and_then(|v| v.as_str()).unwrap_or_default();
+    let id1 = entries[0]
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    let id2 = entries[1]
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
     assert!(!id1.is_empty() && !id2.is_empty());
 
-    let (update_ok, _, update_err) =
-        run_sruja(&["agent", "update", "-r", repo_str, "-i", id1, "-c", "updated ctx"]);
-    assert!(update_ok, "agent update should succeed: stderr={update_err}");
+    let (update_ok, _, update_err) = run_sruja(&[
+        "agent",
+        "update",
+        "-r",
+        repo_str,
+        "-i",
+        id1,
+        "-c",
+        "updated ctx",
+    ]);
+    assert!(
+        update_ok,
+        "agent update should succeed: stderr={update_err}"
+    );
 
     let (curate_ok, curate_out, curate_err) =
         run_sruja(&["agent", "curate", "-r", repo_str, "-f", "json"]);
-    assert!(curate_ok, "agent curate should succeed: stderr={curate_err}");
+    assert!(
+        curate_ok,
+        "agent curate should succeed: stderr={curate_err}"
+    );
     let _parsed: serde_json::Value = serde_json::from_str(curate_out.trim()).expect("valid JSON");
 
     let (clusters_ok, clusters_out, clusters_err) =
@@ -1715,12 +1815,14 @@ fn agent_crud_commands_succeed() {
         clusters_ok,
         "agent clusters should succeed: stderr={clusters_err}"
     );
-    let _parsed: serde_json::Value =
-        serde_json::from_str(clusters_out.trim()).expect("valid JSON");
+    let _parsed: serde_json::Value = serde_json::from_str(clusters_out.trim()).expect("valid JSON");
 
     let (delete_ok, _, delete_err) =
         run_sruja(&["agent", "delete", "-r", repo_str, "-i", id2, "-y"]);
-    assert!(delete_ok, "agent delete should succeed: stderr={delete_err}");
+    assert!(
+        delete_ok,
+        "agent delete should succeed: stderr={delete_err}"
+    );
 
     let (clear_ok, _, clear_err) = run_sruja(&["agent", "clear", "-r", repo_str, "-y"]);
     assert!(clear_ok, "agent clear should succeed: stderr={clear_err}");
@@ -1867,8 +1969,18 @@ App = system "My App" {
 User -> App "uses"
 "#,
     );
-    let a = repo.path().join("a.sruja").to_str().expect("utf-8").to_string();
-    let b = repo.path().join("b.sruja").to_str().expect("utf-8").to_string();
+    let a = repo
+        .path()
+        .join("a.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
+    let b = repo
+        .path()
+        .join("b.sruja")
+        .to_str()
+        .expect("utf-8")
+        .to_string();
 
     let (list_ok, list_out, list_err) = run_sruja(&["dsl", "list", &a]);
     assert!(list_ok, "dsl list should succeed: stderr={list_err}");
@@ -1878,13 +1990,15 @@ User -> App "uses"
     assert!(tree_ok, "dsl tree should succeed: stderr={tree_err}");
     assert!(!tree_out.is_empty());
 
-    let (diff_ok, diff_out, diff_err) =
-        run_sruja(&["dsl", "diff", &a, &b, "--format", "json"]);
+    let (diff_ok, diff_out, diff_err) = run_sruja(&["dsl", "diff", &a, &b, "--format", "json"]);
     assert!(diff_ok, "dsl diff should succeed: stderr={diff_err}");
     let _parsed: serde_json::Value = serde_json::from_str(diff_out.trim()).expect("valid JSON");
 
     let (compile_ok, _, compile_err) = run_sruja(&["dsl", "compile", &a]);
-    assert!(compile_ok, "dsl compile should succeed: stderr={compile_err}");
+    assert!(
+        compile_ok,
+        "dsl compile should succeed: stderr={compile_err}"
+    );
 
     let (validate_ok, validate_out, validate_err) =
         run_sruja(&["dsl", "validate", &a, "--format-json"]);
@@ -1892,14 +2006,15 @@ User -> App "uses"
         validate_ok,
         "dsl validate should succeed: stderr={validate_err}"
     );
-    let _parsed: serde_json::Value =
-        serde_json::from_str(validate_out.trim()).expect("valid JSON");
+    let _parsed: serde_json::Value = serde_json::from_str(validate_out.trim()).expect("valid JSON");
 
     let (explain_ok, explain_out, explain_err) =
         run_sruja(&["dsl", "explain", "App", "--file", &a, "--json"]);
-    assert!(explain_ok, "dsl explain should succeed: stderr={explain_err}");
-    let parsed: serde_json::Value =
-        serde_json::from_str(explain_out.trim()).expect("valid JSON");
+    assert!(
+        explain_ok,
+        "dsl explain should succeed: stderr={explain_err}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(explain_out.trim()).expect("valid JSON");
     assert!(
         parsed.get("element").is_some() || parsed.get("id").is_some(),
         "expected explain json to include element info: stdout={explain_out}"
@@ -2713,8 +2828,15 @@ export function app() { return 1; }
     );
     let repo_str = repo.path().to_str().expect("utf-8");
 
-    let (focus_ok, focus_out, focus_err) =
-        run_sruja(&["focus", "-r", repo_str, "--file", "src/app.ts", "-f", "json"]);
+    let (focus_ok, focus_out, focus_err) = run_sruja(&[
+        "focus",
+        "-r",
+        repo_str,
+        "--file",
+        "src/app.ts",
+        "-f",
+        "json",
+    ]);
     assert!(focus_ok, "focus should succeed: stderr={focus_err}");
     let focus_json: serde_json::Value = serde_json::from_str(focus_out.trim()).expect("valid JSON");
     let run_id = focus_json
@@ -2725,14 +2847,7 @@ export function app() { return 1; }
     assert!(!run_id.is_empty(), "expected run_id: stdout={focus_out}");
 
     let (show_ok, show_out, show_err) = run_sruja(&[
-        "run",
-        "show",
-        "-r",
-        repo_str,
-        "--run-id",
-        &run_id,
-        "-f",
-        "json",
+        "run", "show", "-r", repo_str, "--run-id", &run_id, "-f", "json",
     ]);
     assert!(show_ok, "run show should succeed: stderr={show_err}");
     let show_json: serde_json::Value = serde_json::from_str(show_out.trim()).expect("valid JSON");
@@ -2760,8 +2875,15 @@ export function app() { return 1; }
     );
     let repo_str = repo.path().to_str().expect("utf-8");
 
-    let (focus_ok, focus_out, focus_err) =
-        run_sruja(&["focus", "-r", repo_str, "--file", "src/app.ts", "-f", "json"]);
+    let (focus_ok, focus_out, focus_err) = run_sruja(&[
+        "focus",
+        "-r",
+        repo_str,
+        "--file",
+        "src/app.ts",
+        "-f",
+        "json",
+    ]);
     assert!(focus_ok, "focus should succeed: stderr={focus_err}");
     let focus_json: serde_json::Value = serde_json::from_str(focus_out.trim()).expect("valid JSON");
     let run_id = focus_json
@@ -2825,12 +2947,13 @@ fn completions_generates_script() {
     );
 }
 
-fn mcp_send(
-    stdin: &mut std::process::ChildStdin,
-    value: serde_json::Value,
-) -> std::io::Result<()> {
+fn mcp_send(stdin: &mut std::process::ChildStdin, value: serde_json::Value) -> std::io::Result<()> {
     use std::io::Write;
-    writeln!(stdin, "{}", serde_json::to_string(&value).unwrap_or_default())?;
+    writeln!(
+        stdin,
+        "{}",
+        serde_json::to_string(&value).unwrap_or_default()
+    )?;
     stdin.flush()
 }
 
@@ -2898,14 +3021,7 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
     assert!(init_ok, "init --auto should succeed: stderr={init_err}");
 
     let (wf_ok, _wf_out, wf_err) = run_sruja(&[
-        "workflow",
-        "init",
-        "-r",
-        repo_str,
-        "--title",
-        "MCP Test",
-        "--id",
-        "wf-mcp",
+        "workflow", "init", "-r", repo_str, "--title", "MCP Test", "--id", "wf-mcp",
     ]);
     assert!(wf_ok, "workflow init should succeed: stderr={wf_err}");
 
@@ -2927,13 +3043,8 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
 
     let system_index_path = repo.path().join("system.index.json");
     let system_index_str = system_index_path.to_str().expect("utf-8");
-    let (compose_ok, _compose_out, compose_err) = run_sruja(&[
-        "compose",
-        "-i",
-        bundle_str,
-        "-o",
-        system_index_str,
-    ]);
+    let (compose_ok, _compose_out, compose_err) =
+        run_sruja(&["compose", "-i", bundle_str, "-o", system_index_str]);
     assert!(compose_ok, "compose should succeed: stderr={compose_err}");
     assert!(system_index_path.exists(), "system.index.json must exist");
 
@@ -2977,7 +3088,9 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
     mcp_send(&mut stdin, init).expect("send initialize");
     let init_resp = mcp_recv_matching_id(&rx, serde_json::json!(1));
     assert_eq!(
-        init_resp["result"]["protocolVersion"].as_str().unwrap_or(""),
+        init_resp["result"]["protocolVersion"]
+            .as_str()
+            .unwrap_or(""),
         "2025-06-18"
     );
 
@@ -2999,7 +3112,10 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
     )
     .expect("send tools/list");
     let tools_list = mcp_recv_matching_id(&rx, serde_json::json!(2));
-    let tools = tools_list["result"]["tools"].as_array().cloned().unwrap_or_default();
+    let tools = tools_list["result"]["tools"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     assert!(!tools.is_empty(), "expected non-empty tools list");
 
     mcp_send(
@@ -3017,7 +3133,10 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
         .as_array()
         .cloned()
         .unwrap_or_default();
-    assert!(!resources.is_empty(), "expected resources list to be non-empty");
+    assert!(
+        !resources.is_empty(),
+        "expected resources list to be non-empty"
+    );
     let first_uri = resources[0]["uri"].as_str().unwrap_or_default().to_string();
     assert!(!first_uri.is_empty());
 
@@ -3068,7 +3187,11 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
     );
 
     for (id, name, arguments) in [
-        (10, "sruja_get_repomap", serde_json::json!({ "path": repo_str })),
+        (
+            10,
+            "sruja_get_repomap",
+            serde_json::json!({ "path": repo_str }),
+        ),
         (
             11,
             "sruja_list_architecture_index",
@@ -3084,8 +3207,16 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
             "sruja_get_elements",
             serde_json::json!({ "path": repo_str, "ids": ["App"], "max_tokens": 1500 }),
         ),
-        (14, "sruja_get_drift_state", serde_json::json!({ "path": repo_str })),
-        (15, "sruja_reindex_memory", serde_json::json!({ "path": repo_str })),
+        (
+            14,
+            "sruja_get_drift_state",
+            serde_json::json!({ "path": repo_str }),
+        ),
+        (
+            15,
+            "sruja_reindex_memory",
+            serde_json::json!({ "path": repo_str }),
+        ),
         (
             16,
             "sruja_search_memory",
@@ -3235,7 +3366,10 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
     let created_json: serde_json::Value =
         serde_json::from_str(created_text.trim()).expect("create_decision_record must return JSON");
     let decision_id = created_json["id"].as_str().unwrap_or_default().to_string();
-    assert!(!decision_id.is_empty(), "expected decision id: {created_text}");
+    assert!(
+        !decision_id.is_empty(),
+        "expected decision id: {created_text}"
+    );
 
     mcp_send(
         &mut stdin,
@@ -3282,17 +3416,17 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
 fn explore_outputs_valid_explorer_model_json() {
     let repo = create_test_repo();
     write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
-    write_file(repo.path(), "src/index.js", "const x = require('./helper');");
+    write_file(
+        repo.path(),
+        "src/index.js",
+        "const x = require('./helper');",
+    );
     write_file(repo.path(), "src/helper.js", "module.exports = {};");
 
     let repo_str = repo.path().to_str().expect("utf-8");
     let (success, stdout, stderr) = run_sruja(&["explore", "-r", repo_str]);
 
-    assert!(
-        success,
-        "explore should succeed: stderr={}",
-        stderr
-    );
+    assert!(success, "explore should succeed: stderr={}", stderr);
 
     let parsed: serde_json::Value =
         serde_json::from_str(stdout.trim()).expect("explore output should be valid JSON");

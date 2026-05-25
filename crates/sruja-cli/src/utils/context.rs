@@ -6,7 +6,11 @@ pub fn context_age_hours(repo_path: &Path) -> u64 {
     if !ctx_path.exists() {
         let scan_path = repo_path.join(crate::commands::SCAN_CACHE_PATH);
         let legacy_path = repo_path.join(".sruja/graph.json");
-        let graph_path = if scan_path.exists() { scan_path } else { legacy_path };
+        let graph_path = if scan_path.exists() {
+            scan_path
+        } else {
+            legacy_path
+        };
         if !graph_path.exists() {
             return 999;
         }

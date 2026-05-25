@@ -9,9 +9,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
-use sruja_graph::{
-    CentralityResult, CouplingResult, KnowledgeGraph, SccResult, Zone,
-};
+use sruja_graph::{CentralityResult, CouplingResult, KnowledgeGraph, SccResult, Zone};
 use sruja_scan::graph::community::CommunityInfo;
 
 // ---------------------------------------------------------------------------
@@ -274,8 +272,7 @@ impl ExplorerBuilder {
                 }
 
                 if let Some(ref coup) = self.coupling {
-                    metrics.instability =
-                        coup.instability.get(&n.id).copied().unwrap_or(0.0);
+                    metrics.instability = coup.instability.get(&n.id).copied().unwrap_or(0.0);
                     let abs = coup.abstractness.get(&n.id).copied().unwrap_or(0.0);
                     let dist = coup.distance.get(&n.id).copied().unwrap_or(0.0);
                     metrics.coupling_zone = classify_zone(metrics.instability, abs, dist);

@@ -883,9 +883,18 @@ App = system "App" {
         ];
 
         assert!(super::should_fail_on_violations(Some("all"), &violations));
-        assert!(super::should_fail_on_violations(Some("cycles"), &violations));
-        assert!(super::should_fail_on_violations(Some("orphans"), &violations));
-        assert!(!super::should_fail_on_violations(Some("layer-violations"), &violations));
+        assert!(super::should_fail_on_violations(
+            Some("cycles"),
+            &violations
+        ));
+        assert!(super::should_fail_on_violations(
+            Some("orphans"),
+            &violations
+        ));
+        assert!(!super::should_fail_on_violations(
+            Some("layer-violations"),
+            &violations
+        ));
         assert!(!super::should_fail_on_violations(None, &violations));
     }
 
