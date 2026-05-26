@@ -339,6 +339,7 @@ pub fn create_decision_record(
             subject_ids: None,
             evidence_refs: Some(vec![path.to_string_lossy().to_string()]),
             summary: Some(title.to_string()),
+            ..Default::default()
         },
     );
     Ok(id)
@@ -452,6 +453,7 @@ pub async fn decision_accept(repo: &str, id: &str) -> Result<(), CliError> {
             subject_ids: None,
             evidence_refs: Some(vec![p.to_string_lossy().to_string()]),
             summary: Some(format!("Decision {id} accepted")),
+            ..Default::default()
         },
     );
     Ok(())
@@ -490,6 +492,7 @@ pub async fn decision_supersede(repo: &str, id: &str, by: &str) -> Result<(), Cl
             subject_ids: None,
             evidence_refs: Some(vec![p.to_string_lossy().to_string()]),
             summary: Some(format!("Decision {id} superseded by {by}")),
+            ..Default::default()
         },
     );
     Ok(())

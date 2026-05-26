@@ -195,6 +195,7 @@ pub(crate) async fn try_run(
                 subject_ids: None,
                 evidence_refs,
                 summary: Some(summary.to_string()),
+                ..Default::default()
             };
             crate::commands::context_events::validate_context_event_record(&record)
                 .map_err(CliError::validation)?;

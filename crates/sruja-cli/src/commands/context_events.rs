@@ -80,6 +80,41 @@ pub struct ContextEventRecord {
     pub evidence_refs: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
+    // --- context_event/v2 host and session extensions ---
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skills_used: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+}
+
+impl Default for ContextEventRecord {
+    fn default() -> Self {
+        Self {
+            schema_version: CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+            timestamp: String::new(),
+            kind: String::new(),
+            outcome: String::new(),
+            policy_fingerprint: None,
+            strict: None,
+            details: serde_json::json!({}),
+            trace_id: None,
+            decision_id: None,
+            run_id: None,
+            workflow_id: None,
+            actor: None,
+            source: None,
+            tool: None,
+            elements: None,
+            subject_ids: None,
+            evidence_refs: None,
+            summary: None,
+            host: None,
+            skills_used: None,
+            session_id: None,
+        }
+    }
 }
 
 impl ContextEventRecord {
@@ -128,6 +163,9 @@ impl ContextEventRecord {
             subject_ids: None,
             evidence_refs: None,
             summary: None,
+            host: None,
+            skills_used: None,
+            session_id: None,
         }
     }
 
@@ -522,6 +560,9 @@ mod tests {
             subject_ids: Some(vec![]),
             evidence_refs: Some(vec!["repo.sruja".into()]),
             summary: Some("brief".into()),
+            host: None,
+            skills_used: None,
+            session_id: None,
         };
         validate_context_event_record(&ev).unwrap();
         let json = serde_json::to_string(&ev).unwrap();
@@ -551,6 +592,9 @@ mod tests {
             subject_ids: None,
             evidence_refs: None,
             summary: Some("plan".into()),
+            host: None,
+            skills_used: None,
+            session_id: None,
         };
         assert!(ev.is_decision_lineage_kind());
     }
@@ -609,6 +653,9 @@ mod tests {
             subject_ids: None,
             evidence_refs: None,
             summary: None,
+            host: None,
+            skills_used: None,
+            session_id: None,
         };
         assert!(ev.touches_element("MySystem.Api"));
         assert!(ev.touches_element("MySystem.Api.Handler"));
@@ -640,6 +687,9 @@ mod tests {
                 subject_ids: None,
                 evidence_refs: None,
                 summary: None,
+                host: None,
+                skills_used: None,
+                session_id: None,
             },
         );
         append_context_event(
@@ -663,6 +713,9 @@ mod tests {
                 subject_ids: None,
                 evidence_refs: None,
                 summary: None,
+                host: None,
+                skills_used: None,
+                session_id: None,
             },
         );
 

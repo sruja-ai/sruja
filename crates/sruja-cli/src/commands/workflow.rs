@@ -641,6 +641,7 @@ pub fn workflow_approve(
         subject_ids: None,
         evidence_refs: None,
         summary: Some(format!("Approved workflow phase {}", phase)),
+        ..Default::default()
     };
     crate::commands::context_events::append_context_event(repo, record);
 

@@ -530,6 +530,7 @@ pub async fn learn(
             subject_ids: None,
             evidence_refs: None,
             summary: None,
+            ..Default::default()
         },
     );
 

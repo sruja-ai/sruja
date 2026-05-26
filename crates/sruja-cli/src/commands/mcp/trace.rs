@@ -64,6 +64,7 @@ pub(crate) fn append_mcp_tool_call_event(
         subject_ids: None,
         evidence_refs: None,
         summary: Some(format!("mcp tools/call: {tool}")),
+        ..Default::default()
     };
 
     crate::commands::context_events::validate_context_event_record(&record)?;
