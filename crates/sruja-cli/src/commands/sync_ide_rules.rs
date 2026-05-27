@@ -25,8 +25,14 @@ fn read_file_opt(path: &Path) -> Result<Option<String>, CliError> {
     }
 }
 
-fn normalize_newlines(s: &str) -> String {
-    s.replace("\r\n", "\n")
+fn normalize_for_compare(s: &str) -> String {
+    let s = s.replace("\r\n", "\n");
+    let mut out = String::with_capacity(s.len() + 1);
+    for line in s.split('\n') {
+        out.push_str(line.trim_end());
+        out.push('\n');
+    }
+    out
 }
 
 fn write_atomic(path: &Path, contents: &str) -> Result<(), CliError> {
@@ -101,8 +107,8 @@ pub async fn sync_ide_rules(options: SyncIdeRulesOptions<'_>) -> Result<(), CliE
 
     for (rel, generated) in targets {
         let path = repo_rel(repo_root, rel);
-        let generated_norm = normalize_newlines(&generated);
-        let existing_norm = read_file_opt(&path)?.map(|s| normalize_newlines(&s));
+        let generated_norm = normalize_for_compare(&generated);
+        let existing_norm = read_file_opt(&path)?.map(|s| normalize_for_compare(&s));
 
         if options.check {
             let Some(existing) = existing_norm else {
@@ -124,7 +130,7 @@ pub async fn sync_ide_rules(options: SyncIdeRulesOptions<'_>) -> Result<(), CliE
 
     if options.check {
         if let Some(existing) = read_file_opt(&copilot_path)? {
-            if normalize_newlines(&existing) != normalize_newlines(&copilot) {
+            if normalize_for_compare(&existing) != normalize_for_compare(&copilot) {
                 return Err(CliError::validation(format!(
                     "IDE context file out of date: {} (run `sruja sync-ide-rules -r .` to update)",
                     copilot_path.display()
@@ -132,11 +138,11 @@ pub async fn sync_ide_rules(options: SyncIdeRulesOptions<'_>) -> Result<(), CliE
             }
         }
     } else {
-        write_atomic(&copilot_path, &normalize_newlines(&copilot))?;
+        write_atomic(&copilot_path, &normalize_for_compare(&copilot))?;
     }
 
-    let llms_existing = read_file_opt(&llms_arch_path)?.map(|s| normalize_newlines(&s));
-    let llms_generated = normalize_newlines(&llms_arch);
+    let llms_existing = read_file_opt(&llms_arch_path)?.map(|s| normalize_for_compare(&s));
+    let llms_generated = normalize_for_compare(&llms_arch);
     if options.check {
         let Some(existing) = llms_existing else {
             return Err(CliError::validation(format!(
