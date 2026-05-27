@@ -90,7 +90,7 @@ sruja export mermaid repo.sruja > architecture.mmd
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-# or: make build && use target/release/sruja
+# or: just build (or make build) && use target/release/sruja
 ```
 
 **"Do I need MCP?"**

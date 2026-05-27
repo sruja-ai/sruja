@@ -140,11 +140,11 @@ Reusable flows live under `.cursor/commands/` (e.g. prime, plan, implement-from-
 ```bash
 # Build all crates
 cargo build --release
-make build
+just build  # or: make build
 
 # Run all tests
 cargo test --workspace
-make test
+just test   # or: make test
 
 # Run a single test
 cargo test test_name
@@ -153,19 +153,18 @@ cargo test test_name
 cargo test -p sruja-cli
 
 # Run tests with coverage (excludes sruja-wasm — see docs/WASM_TESTING.md)
-make test-coverage
-# or: just test-coverage
+just test-coverage  # or: make test-coverage
 # WASM bindings are tested separately: just test-coverage-wasm  (alias for wasm-pack tests)
 # CI/script variant with extra llvm-cov flags:
 #   bash scripts/coverage.sh
 
 # Lint Rust code
 cargo clippy -- -D warnings
-make lint
+just lint   # or: make lint
 
 # Format Rust code
 cargo fmt
-make fmt
+just fmt    # or: make fmt
 ```
 
 ### VS Code Extension (TypeScript)
@@ -191,22 +190,22 @@ npm run compile
 
 ```bash
 # Run WASM tests
-make test-wasm
+just test-wasm   # or: make test-wasm
 cd crates/sruja-wasm && wasm-pack test --node
 
 # Build WASM
-make wasm
-make wasm-nodejs
+just wasm         # or: make wasm
+just wasm-nodejs  # or: make wasm-nodejs
 ```
 
 ### E2E Tests
 
 ```bash
 # Build and serve book first in another terminal
-make book-serve
+just book-serve  # or: make book-serve
 
 # Run Playwright E2E
-make test-e2e
+just test-e2e    # or: make test-e2e
 npm run e2e
 ```
 
@@ -352,14 +351,14 @@ WASM is used for browser and Node.js targets. LSP provides language server featu
 For multi-step agent work, follow **AI agent workflow (multi-step tasks)** above and use `.cursor/commands/` when applicable.
 
 When working on Sruja:
-1. **First Time Setup**: Run `make setup` to ensure all dependencies and git hooks are correctly installed.
+1. **First Time Setup**: Run `just setup` (or `make setup`) to ensure all dependencies and git hooks are correctly installed.
 2. **Grounded architecture authoring**: For `repo.sruja` work, prefer `.sruja/author_evidence.json` (from `sruja sync` or `sruja author evidence`) or MCP `sruja_get_author_evidence`. Treat `.sruja/graph.json` as debug/export only—not default agent context. Synthesize proposals under `.sruja/proposals/` or `repo.sruja.working`; promote to `repo.sruja` only after human review. See [docs/plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md](docs/plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md).
 3. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
-4. Run `make check` before committing to ensure consistent formatting, linting, and passing tests.
+4. Run `just check` (or `make check`) before committing to ensure consistent formatting, linting, and passing tests.
 5. For .sruja files, run `sruja lint file.sruja` after changes.
 6. Use `cargo clippy -- -D warnings` for strict linting.
-7. Build extension with `make build-extension`.
-8. Test CLI commands with `make test-cli-smoke`.
+7. Build extension with `just build-extension` (or `make build-extension`).
+8. Test CLI commands with `just test-cli-smoke` (or `make test-cli-smoke`).
 9. For Rust coverage gaps (CLI handlers, LSP, WASM, tree-sitter) and infrastructure needs, see `docs/internal/TEST_COVERAGE_PLAN.md`.
 
 ## Common Patterns
@@ -416,8 +415,8 @@ MySystem.MyContainer -> MySystem.Database "SQL"
 
 Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, Cline, Windsurf, etc.) to give them deep context about the cross-repo architecture:
 
-1. **Daily Context Sync**: Run `make daily` to check for architectural drift, build cross-repo context, and automatically update `.cursorrules`, `.copilot-instructions.md`, `CLAUDE.md`, and other editor-specific rules.
-2. **Manual Sync**: Run `make context-sync` or `sruja sync-ide-rules -r .` to regenerate `.cursorrules`, Copilot/Claude/Gemini rules, and `llms-architecture.txt` without running tests/drift checks.
+1. **Daily Context Sync**: Run `just daily` (or `make daily`) to check for architectural drift, build cross-repo context, and automatically update `.cursorrules`, `.copilot-instructions.md`, `CLAUDE.md`, and other editor-specific rules.
+2. **Manual Sync**: Run `just context-sync` (or `make context-sync`) or `sruja sync-ide-rules -r .` to regenerate `.cursorrules`, Copilot/Claude/Gemini rules, and `llms-architecture.txt` without running tests/drift checks.
 3. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
    - **Command**: `sruja mcp -r .`
    - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.
@@ -443,8 +442,8 @@ Sruja provides specialized configs for different editors:
 
 ## Troubleshooting Agent Tasks
 
-- **"Command Not Found"**: Ensure you've run `make build` and the `target/release` directory is populated.
+- **"Command Not Found"**: Ensure you've run `just build` (or `make build`) and the `target/release` directory is populated.
 - **"Invalid DSL"**: Run `sruja lint <file>` and paste the JSON error output to the assistant.
 - **"Drift Detected"**: Run `sruja drift -r . --fix` (if available) or manually align `.sruja` with code.
-- **"WASM Mismatch"**: If logic changed in `sruja-language` but extension behavior is old, run `make wasm-nodejs`.
+- **"WASM Mismatch"**: If logic changed in `sruja-language` but extension behavior is old, run `just wasm-nodejs` (or `make wasm-nodejs`).
 

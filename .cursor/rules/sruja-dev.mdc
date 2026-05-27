@@ -11,7 +11,7 @@ Project context for Sruja core and extension development.
 1. **Code Standards**: Follow the conventions in `AGENTS.md`.
 2. **Workflow**: For non-trivial work, follow `AGENTS.md` section **AI agent workflow (multi-step tasks)** — two-layer planning (scope vs task), artifact handoffs, fresh session after a frozen plan, and the system-evolution outer loop when agents miss conventions.
 3. **Architecture**: Respect C4 boundaries declared in `.sruja` files.
-4. **WASM Integrity**: If you modify `sruja-wasm` or `sruja-language`, remind the user to rebuild WASM with `make wasm-nodejs` and update the extension assets.
+4. **WASM Integrity**: If you modify `sruja-wasm` or `sruja-language`, remind the user to rebuild WASM with `just wasm-nodejs` (or `make wasm-nodejs`) and update the extension assets.
 5. **Validation**: Use `sruja lint` on any `.sruja` files after editing.
 
 ## Mandatory Gates

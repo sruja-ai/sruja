@@ -19,7 +19,7 @@ Steps:
    - **User-visible behavior** — Bullets.
    - **Files to create or change** — Path list with one-line rationale each.
    - **Task order** — Numbered steps (dependencies first).
-   - **Validation** — Exact commands: at minimum `make check` for Rust; add crate-scoped tests if they said so. For `.sruja`, include `sruja lint <file>`.
+   - **Validation** — Exact commands: at minimum `just check` (or `make check`) for Rust; add crate-scoped tests if they said so. For `.sruja`, include `sruja lint <file>`.
    - **Risks / unknowns** — What could invalidate the plan.
 
 4. Ask the user to **review and freeze** the plan before implementation.

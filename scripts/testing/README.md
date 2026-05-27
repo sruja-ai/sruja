@@ -20,10 +20,11 @@ cargo test -p sruja-cli --test extraction_cli
 
 ## Make targets
 
-- `make test` or `make test-rust` – `cargo test --workspace`
-- `make test-extraction` – extraction_cli tests (lint/discover JSON schema)
-- `make test-arch-intel` – why_e2e tests
-- `make build` – release build of CLI
+- `just test` (or `make test`) – `cargo test --workspace`
+- `just test-rust` (or `make test-rust`) – `cargo test --workspace`
+- `just test-extraction` (or `make test-extraction`) – extraction_cli tests (lint/discover JSON schema)
+- `just test-arch-intel` (or `make test-arch-intel`) – why_e2e tests
+- `just build` (or `make build`) – release build of CLI
 
 ## Comprehensive test (external repos)
 

@@ -28,7 +28,7 @@ sruja --version
 **Option C – build from source:**
 
 ```bash
-git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
+git clone https://github.com/sruja-ai/sruja.git && cd sruja && just build  # or: make build
 # Add target/release to PATH or copy target/release/sruja to a directory on PATH
 sruja --version
 ```

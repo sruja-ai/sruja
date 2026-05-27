@@ -47,7 +47,7 @@ To add a new code-level standard: (1) add or reference the policy in the archite
 
 | Action | Purpose |
 |--------|---------|
-| **build-wasm** | `make wasm` (Rust WASM build). |
+| **build-wasm** | `just wasm` (or `make wasm`) (Rust WASM build). |
 | **sruja-validate** | Rust toolchain, build sruja-cli, lint .sruja files (glob configurable), optional markdown export. |
 | **deploy-to-github-pages** | Checkout target repo, copy site contents, push. |
 | **setup-gpg** | GPG for signing. |

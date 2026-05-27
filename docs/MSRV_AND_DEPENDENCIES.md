@@ -19,7 +19,7 @@ See [.github/dependabot.yml](../.github/dependabot.yml):
 Some dependencies (for example **hashbrown** 0.17, **getrandom** 0.4.x) have documented **MSRV 1.85+** or similar. Treat those PRs as a **policy decision**, not a drive-by merge:
 
 1. **Confirm** current stable in CI is at or above the crate’s MSRV requirement (or bump the toolchain policy explicitly).
-2. **Run** `cargo check --workspace` and `make check` (or the relevant subset) on the PR branch.
+2. **Run** `cargo check --workspace` and `just check` (or `make check`, or the relevant subset) on the PR branch.
 3. If the project is **not** ready to adopt that MSRV yet, **close** the PR with a short comment linking this document and reopen or recreate when MSRV is raised intentionally.
 
 Prefer **merging grouped patch/minor** PRs (for example Tokio patch releases) quickly to reduce security and bugfix lag.

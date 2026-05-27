@@ -18,8 +18,8 @@ Provide a concise overview of the change and its motivation.
 - [ ] Linked issue or clear rationale
 - [ ] Small, focused PR (prefer incremental changes)
 - [ ] Documentation updated where relevant
-- [ ] Code formatted (`cargo fmt` / `make fmt`) and passes `cargo fmt -- --check` and `cargo clippy`
-- [ ] Tests pass (`make test`)
+- [ ] Code formatted (`cargo fmt` / `just fmt` / `make fmt`) and passes `cargo fmt -- --check` and `cargo clippy`
+- [ ] Tests pass (`just test` / `make test`)
 - [ ] No secrets/keys committed
 
 ### Impact Areas

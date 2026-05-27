@@ -16,8 +16,8 @@ Prereqs:
 Steps:
 
 ```bash
-make setup
-make build
+just setup   # or: make setup
+just build   # or: make build
 ./target/release/sruja --version
 ```
 

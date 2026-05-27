@@ -39,7 +39,7 @@ The user must provide a **phase**: `inception`, `construction`, or `operations`.
 - Gate must pass (`workflow status --check`); inception must be approved in strict mode.
 - Use `.cursor/commands/sruja-plan-feature.md` for **task-layer** `construction/task-plan.md`.
 - Link proposals in `construction/linked_proposal_ids.json`; use `sruja propose create --workflow-id <id>`.
-- App code in repo root or `workspace/`; run project tests / `make check` as appropriate.
+- App code in repo root or `workspace/`; run project tests / `just check` (or `make check`) as appropriate.
 - Approve construction phase when artifacts and proposals are ready.
 
 ## Phase — operations

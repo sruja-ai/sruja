@@ -58,8 +58,8 @@ This skill does not replace coding skills — it ensures their output passes Sru
 
 | Profile | Verifies |
 |---------|----------|
-| `coding` | `lint repo.sruja` + `make check` + `drift` |
-| `bugfix` | `focus --file` + `make check` + `intent check` |
+| `coding` | `lint repo.sruja` + `just check` (or `make check`) + `drift` |
+| `bugfix` | `focus --file` + `just check` (or `make check`) + `intent check` |
 | `review` | `review -f json` + `intent check` + `drift` |
 | `arch` | `lint repo.sruja` + `drift` + `intent check` + `review` |
 

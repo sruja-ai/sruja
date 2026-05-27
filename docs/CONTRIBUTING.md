@@ -50,7 +50,7 @@ The deployment repositories will be automatically updated when your changes are 
 
 ## Scoped tasks (for contributors and agents)
 
-Use a **single clear anchor** for non-trivial work: a GitHub issue URL, or a concrete path plus expected behavior. Write **short acceptance criteria** (what “done” means) before large diffs. Before opening a PR, run **`make check`** (format, clippy, tests) and, when you touch architecture baselines, **`sruja drift -r .`** / **`sruja lint`** as described in [AGENTS.md](../AGENTS.md). For Dependabot and MSRV decisions, see [MSRV and dependencies](MSRV_AND_DEPENDENCIES.md).
+Use a **single clear anchor** for non-trivial work: a GitHub issue URL, or a concrete path plus expected behavior. Write **short acceptance criteria** (what “done” means) before large diffs. Before opening a PR, run **`just check`** (or `make check`) (format, clippy, tests) and, when you touch architecture baselines, **`sruja drift -r .`** / **`sruja lint`** as described in [AGENTS.md](../AGENTS.md). For Dependabot and MSRV decisions, see [MSRV and dependencies](MSRV_AND_DEPENDENCIES.md).
 
 ## Development Setup
 

@@ -63,7 +63,7 @@ If you haven't already, install the Sruja CLI:
 # From Git (requires Rust)
 cargo install sruja-cli --git https://github.com/sruja-ai/sruja
 
-# Or build from source: git clone https://github.com/sruja-ai/sruja.git && cd sruja && make build
+# Or build from source: git clone https://github.com/sruja-ai/sruja.git && cd sruja && just build  # or: make build
 
 # Verify installation
 sruja --version

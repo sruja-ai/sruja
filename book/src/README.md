@@ -51,4 +51,4 @@ We're **ultra simple** – minimal surface area, no unnecessary apps or framewor
 
 > **New here?** [Quick start](getting-started.md): install CLI, run structural drift, wire MCP, install `sruja-harness`, run `verify-task` after agent edits. Add `sruja-architecture` only when you want `repo.sruja` in Git. For **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md); press **`/`** or **`S`** to search.
 
-> **Sruja "Show diagram" in code blocks:** Run `make wasm` from the repo root once, then run `make book-serve` (or `./serve.sh` from the book directory) so the WASM files are copied into the book output.
+> **Sruja "Show diagram" in code blocks:** Run `just wasm` (or `make wasm`) from the repo root once, then run `just book-serve` (or `make book-serve`, or `./serve.sh` from the book directory) so the WASM files are copied into the book output.

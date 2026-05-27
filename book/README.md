@@ -7,26 +7,26 @@ Rust-based docs. No TypeScript or Node.
 - [mdBook](https://rust-lang.github.io/mdBook/): `cargo install mdbook`
 - **Mermaid + Execute buttons:** `cargo install mdbook-mermaid`, then from the `book/` directory run `mdbook-mermaid install .` so `mermaid.min.js` and `mermaid-init.js` are copied into the book.
 
-**From repo root you can use the Makefile:**
+**From repo root you can use `just` (recommended) or the Makefile shim:**
 
 ```bash
-make book-deps    # install mdbook, mdbook-mermaid, copy Mermaid assets
-make book         # build book + copy WASM (needs: make wasm first if you want diagrams)
-make book-serve   # serve at http://localhost:3000
-make book-clean   # remove book/book/ output
+just book-deps    # or: make book-deps
+just book         # or: make book
+just book-serve   # or: make book-serve
+just book-clean   # or: make book-clean
 ```
 
 ## Build
 
 ```bash
 # From repo root (recommended):
-make book         # builds book and copies WASM (run 'make wasm' once if you need Sruja diagrams)
+just book         # builds book and copies WASM (run 'just wasm' once if you need Sruja diagrams)
 
 # Or manually from book directory:
 mdbook build && ./copy-wasm.sh
 ```
 
-`make book` runs `book-build` (mdbook build) then `book-wasm` (copy-wasm.sh). WASM is built with `make wasm` (output: `book/wasm/rust/`); run it once if you want "Show diagram" for ` ```sruja ` blocks.
+`just book` (or `make book`) runs `book-build` (mdbook build) then `book-wasm` (copy-wasm.sh). WASM is built with `just wasm` (or `make wasm`) (output: `book/wasm/rust/`); run it once if you want "Show diagram" for ` ```sruja ` blocks.
 
 If the book is deployed under a different base path, set `window.SRUJA_WASM_BASE` before the script runs (e.g. in a custom `head.hbs`).
 
@@ -37,7 +37,7 @@ Output is in `book/book/`.
 Use the wrapper so WASM is copied into the output and "Show diagram" works:
 
 ```bash
-make book-serve   # from repo root (runs build + copy-wasm + serve)
+just book-serve   # from repo root (runs build + copy-wasm + serve) (or: make book-serve)
 # or from book/:  ./serve.sh
 ```
 

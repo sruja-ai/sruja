@@ -4,7 +4,7 @@ Use this checklist on a **small Sruja repo PR** to prove the harness-plugin stor
 
 ## Prerequisites
 
-- `sruja` on PATH (`make build` or install script)
+- `sruja` on PATH (`just build` or `make build`, or install script)
 - MCP registered (`.cursor/mcp.json` or extension **Register MCP**)
 - Skills: `sruja-harness` (+ `sruja-architecture` if touching `repo.sruja`)
 
@@ -15,7 +15,7 @@ Use this checklist on a **small Sruja repo PR** to prove the harness-plugin stor
 | 1 START | `sruja drift -r . -f json` (or MCP drift state) | Note `truth_status` / violations |
 | 2 START | `sruja focus -r . --file <path>` | Paste briefing into agent context |
 | 3 ACT | Host agent (Cursor) makes the code change | Git diff |
-| 4 VERIFY | `sruja verify-task --profile coding -r . -f json` | `verify_task/v1` JSON, exit 0 |
+| 4 VERIFY | `sruja verify-task --profile coding -r . -f json` | `verify_task/v2` JSON, exit 0 |
 | 5 RECORD | On failure: `sruja agent record -r . -c "…" -H "…" -o failed -g "…"` | `.sruja/context/` learning |
 | 6 OPTIONAL | `sruja workflow status --check` if PR uses AIDLC workflow | `audit.jsonl` |
 

@@ -28,9 +28,9 @@ pub const VERIFY_TASK_SCHEMA: &str = "verify_task/v2";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VerifyProfile {
-    /// `lint repo.sruja` + `make check` + `drift` (if arch paths touched)
+    /// `lint repo.sruja` + `just check` (or `make check`) + `drift` (if arch paths touched)
     Coding,
-    /// `focus --file` + `make check` + `intent check`
+    /// `focus --file` + `just check` (or `make check`) + `intent check`
     Bugfix,
     /// `review -f json` + `intent check` + `drift`
     Review,
@@ -217,18 +217,18 @@ fn build_verification_steps(
                 });
             }
             // make/just check (or sruja check fallback)
-            if has_makefile {
-                steps.push(AgentStep {
-                    id: "make_check".to_string(),
-                    kind: "verify_cmd".to_string(),
-                    argv: vec!["make".to_string(), "check".to_string()],
-                    expected: Some("fmt + lint + test pass".to_string()),
-                });
-            } else if has_justfile {
+            if has_justfile {
                 steps.push(AgentStep {
                     id: "just_check".to_string(),
                     kind: "verify_cmd".to_string(),
                     argv: vec!["just".to_string(), "check".to_string()],
+                    expected: Some("fmt + lint + test pass".to_string()),
+                });
+            } else if has_makefile {
+                steps.push(AgentStep {
+                    id: "make_check".to_string(),
+                    kind: "verify_cmd".to_string(),
+                    argv: vec!["make".to_string(), "check".to_string()],
                     expected: Some("fmt + lint + test pass".to_string()),
                 });
             } else {
@@ -283,18 +283,18 @@ fn build_verification_steps(
                 });
             }
             // make/just check (or sruja check fallback)
-            if has_makefile {
-                steps.push(AgentStep {
-                    id: "make_check".to_string(),
-                    kind: "verify_cmd".to_string(),
-                    argv: vec!["make".to_string(), "check".to_string()],
-                    expected: Some("fmt + lint + test pass".to_string()),
-                });
-            } else if has_justfile {
+            if has_justfile {
                 steps.push(AgentStep {
                     id: "just_check".to_string(),
                     kind: "verify_cmd".to_string(),
                     argv: vec!["just".to_string(), "check".to_string()],
+                    expected: Some("fmt + lint + test pass".to_string()),
+                });
+            } else if has_makefile {
+                steps.push(AgentStep {
+                    id: "make_check".to_string(),
+                    kind: "verify_cmd".to_string(),
+                    argv: vec!["make".to_string(), "check".to_string()],
                     expected: Some("fmt + lint + test pass".to_string()),
                 });
             } else {
@@ -467,20 +467,20 @@ fn build_steps_from_config(
                 }
             }
             "check" => {
-                if repo_path.join("Makefile").exists() || repo_path.join("makefile").exists() {
-                    steps.push(AgentStep {
-                        id: "make_check".to_string(),
-                        kind: "verify_cmd".to_string(),
-                        argv: vec!["make".to_string(), "check".to_string()],
-                        expected: Some("make check passes".to_string()),
-                    });
-                } else if repo_path.join("justfile").exists() || repo_path.join("Justfile").exists()
-                {
+                if repo_path.join("justfile").exists() || repo_path.join("Justfile").exists() {
                     steps.push(AgentStep {
                         id: "just_check".to_string(),
                         kind: "verify_cmd".to_string(),
                         argv: vec!["just".to_string(), "check".to_string()],
                         expected: Some("just check passes".to_string()),
+                    });
+                } else if repo_path.join("Makefile").exists() || repo_path.join("makefile").exists()
+                {
+                    steps.push(AgentStep {
+                        id: "make_check".to_string(),
+                        kind: "verify_cmd".to_string(),
+                        argv: vec!["make".to_string(), "check".to_string()],
+                        expected: Some("make check passes".to_string()),
                     });
                 } else {
                     steps.push(AgentStep {

@@ -198,8 +198,8 @@ Extract from the existing verification executor in `agent_run.rs`. The existing 
 
 | Profile | Steps |
 |---------|-------|
-| `coding` | `make check` + `lint` + `drift` (if architecture sources touched) |
-| `bugfix` | `make check` + `intent check` |
+| `coding` | `just check` (or `make check`) + `lint` + `drift` (if architecture sources touched) |
+| `bugfix` | `just check` (or `make check`) + `intent check` |
 | `review` | `review -f json` + `intent check` + `drift` |
 | `arch` | `lint` + `drift` + `intent check` + `review -f json` |
 
