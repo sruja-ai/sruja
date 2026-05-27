@@ -88,10 +88,13 @@ pub use scan_domain::scan::{drift, drift_pr, quickstart, scan};
 pub use scan_domain::status::status;
 pub use scan_domain::sync_cmd::sync;
 pub use scan_domain::why::why;
+pub use sync_ide_rules::{sync_ide_rules, SyncIdeRulesOptions};
 pub use utility_domain::init::init;
 pub use utility_domain::run_export::run_export;
 pub use utility_domain::run_show::run_show;
 pub use utility_domain::version::version;
+
+mod sync_ide_rules;
 pub use workflow::{
     workflow_advance, workflow_approve, workflow_audit, workflow_capture_requirements,
     workflow_gate_check, workflow_get, workflow_init, workflow_install_rules, workflow_list,

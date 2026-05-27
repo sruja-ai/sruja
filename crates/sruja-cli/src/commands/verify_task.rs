@@ -138,6 +138,27 @@ fn default_evidence_pack_dir(repo_path: &Path) -> PathBuf {
     repo_path.join(".sruja").join("evidence-packs").join(ts)
 }
 
+fn binary_in_path(name: &str) -> bool {
+    let Some(paths) = std::env::var_os("PATH") else {
+        return false;
+    };
+    for dir in std::env::split_paths(&paths) {
+        if dir.join(name).exists() {
+            return true;
+        }
+        #[cfg(windows)]
+        {
+            if dir.join(format!("{name}.exe")).exists()
+                || dir.join(format!("{name}.cmd")).exists()
+                || dir.join(format!("{name}.bat")).exists()
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn write_evidence_pack(
     repo_path: &Path,
     output: &VerifyTaskOutput,
@@ -219,14 +240,14 @@ fn build_verification_steps(
                 });
             }
             // make/just check (or sruja check fallback)
-            if has_justfile {
+            if has_justfile && binary_in_path("just") {
                 steps.push(AgentStep {
                     id: "just_check".to_string(),
                     kind: "verify_cmd".to_string(),
                     argv: vec!["just".to_string(), "check".to_string()],
                     expected: Some("fmt + lint + test pass".to_string()),
                 });
-            } else if has_makefile {
+            } else if has_makefile && binary_in_path("make") {
                 steps.push(AgentStep {
                     id: "make_check".to_string(),
                     kind: "verify_cmd".to_string(),
