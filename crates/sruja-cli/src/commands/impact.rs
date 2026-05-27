@@ -10,27 +10,27 @@ use sruja_scan::graph::{compute_all_centrality, ComponentImportance};
 
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct NodeSummary {
-    id: String,
-    kind: sruja_scan::NodeKind,
-    label: String,
-    technology: Option<String>,
-    path: Option<String>,
+    pub(crate) id: String,
+    pub(crate) kind: sruja_scan::NodeKind,
+    pub(crate) label: String,
+    pub(crate) technology: Option<String>,
+    pub(crate) path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    centrality: Option<ComponentImportance>,
+    pub(crate) centrality: Option<ComponentImportance>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ImpactHit {
-    depth: usize,
-    node: NodeSummary,
+    pub(crate) depth: usize,
+    pub(crate) node: NodeSummary,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ImpactOutput {
-    target: NodeSummary,
-    max_depth: usize,
-    upstream: Vec<ImpactHit>,
-    downstream: Vec<ImpactHit>,
+    pub(crate) target: NodeSummary,
+    pub(crate) max_depth: usize,
+    pub(crate) upstream: Vec<ImpactHit>,
+    pub(crate) downstream: Vec<ImpactHit>,
 }
 
 fn resolve_target_id(graph: &Graph, repo_path: &Path, query: &str) -> Result<String, CliError> {

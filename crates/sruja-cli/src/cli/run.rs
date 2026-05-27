@@ -29,6 +29,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 with_aidlc,
                 aidlc_profile,
                 install_aidlc_rules,
+                profile,
+                template,
             } => commands::workflow_init(
                 &repo,
                 &title,
@@ -39,6 +41,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     with_aidlc,
                     aidlc_profile,
                     install_rules: install_aidlc_rules,
+                    profile,
+                    template,
                 },
             ),
             WorkflowCommand::List { repo } => commands::workflow_list(&repo),
@@ -90,6 +94,37 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     enrich_cmd.as_deref(),
                 )
                 .await
+            }
+            WorkflowCommand::CaptureRequirements {
+                repo,
+                id,
+                from_issue,
+                enrich_cmd,
+            } => commands::workflow_capture_requirements(
+                &repo,
+                id.as_deref(),
+                from_issue.as_deref(),
+                enrich_cmd.as_deref(),
+            ),
+            WorkflowCommand::RecordTestResults {
+                repo,
+                id,
+                profile,
+                from_file,
+            } => {
+                commands::workflow_record_test_results(
+                    &repo,
+                    id.as_deref(),
+                    profile.as_deref(),
+                    from_file.as_deref(),
+                )
+                .await
+            }
+            WorkflowCommand::RecordReadiness { repo, id } => {
+                commands::workflow_record_readiness(&repo, id.as_deref())
+            }
+            WorkflowCommand::Summary { repo, id, format } => {
+                commands::workflow_summary(&repo, id.as_deref(), &format)
             }
         },
         Commands::Propose { cmd } => match cmd {

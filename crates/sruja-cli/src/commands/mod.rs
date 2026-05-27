@@ -93,9 +93,10 @@ pub use utility_domain::run_export::run_export;
 pub use utility_domain::run_show::run_show;
 pub use utility_domain::version::version;
 pub use workflow::{
-    workflow_advance, workflow_approve, workflow_audit, workflow_gate_check, workflow_get,
-    workflow_init, workflow_install_rules, workflow_list, workflow_record_impact, workflow_run,
-    workflow_status, workflow_trace, workflow_validate, WorkflowInitOptions,
+    workflow_advance, workflow_approve, workflow_audit, workflow_capture_requirements,
+    workflow_gate_check, workflow_get, workflow_init, workflow_install_rules, workflow_list,
+    workflow_record_impact, workflow_record_readiness, workflow_record_test_results, workflow_run,
+    workflow_status, workflow_summary, workflow_trace, workflow_validate, WorkflowInitOptions,
 };
 
 pub use dsl_domain::check;

@@ -510,6 +510,32 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_workflow_summary",
+            "title": "Sruja Workflow Summary",
+            "description": "Get a complete structured summary of a workflow, including status, phase, profile, required/completed files, test results, design reviews, and readiness checklists.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "workflow_id": { "type": "string", "description": "Workflow ID under .sruja/workflows/" }
+                },
+                "required": ["workflow_id"]
+            }
+        }),
+        json!({
+            "name": "sruja_workflow_next_steps",
+            "title": "Sruja Workflow Next Steps",
+            "description": "Compute actionable next steps and recommendations for a workflow to proceed to the next phase, based on its profile and current status.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "workflow_id": { "type": "string", "description": "Workflow ID under .sruja/workflows/" }
+                },
+                "required": ["workflow_id"]
+            }
+        }),
+        json!({
             "name": "sruja_get_decisions",
             "title": "Sruja Decision Records",
             "description": "List Decision Record files (.sruja/decisions/*.md) with YAML front matter (generalized ADRs).",

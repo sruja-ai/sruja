@@ -599,6 +599,12 @@ pub enum WorkflowCommand {
         /// Run workflow install-rules during init
         #[arg(long)]
         install_aidlc_rules: bool,
+        /// Workflow profile (minimal|full|e2e)
+        #[arg(long, default_value = "minimal")]
+        profile: String,
+        /// Workflow scaffold template (e2e|feature|bugfix|minimal)
+        #[arg(long)]
+        template: Option<String>,
     },
     /// List workflows under .sruja/workflows/
     List {
@@ -709,6 +715,57 @@ pub enum WorkflowCommand {
         output: Option<String>,
         #[arg(long)]
         enrich_cmd: Option<String>,
+    },
+    /// Scaffold or capture requirements under .sruja/workflows/<id>/inception/requirements.md
+    CaptureRequirements {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+        /// Optional issue URL or identifier to ingest from
+        #[arg(long)]
+        from_issue: Option<String>,
+        /// Optional external enrichment command to run (reads JSON from stdin; writes markdown to stdout)
+        #[arg(long)]
+        enrich_cmd: Option<String>,
+    },
+    /// Record test verification results under .sruja/workflows/<id>/construction/test-results.json
+    RecordTestResults {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+        /// Task verification profile (coding|bugfix|review|arch)
+        #[arg(long)]
+        profile: Option<String>,
+        /// Path to a pre-recorded test output JSON file to copy
+        #[arg(long)]
+        from_file: Option<String>,
+    },
+    /// Record operations readiness checklist under .sruja/workflows/<id>/operations/readiness.json
+    RecordReadiness {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+    },
+    /// Show a beautiful end-to-end workflow summary and health dashboard
+    Summary {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }
 

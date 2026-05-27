@@ -31,18 +31,24 @@ Application code stays in the repo root or `workspace/` per AIDLC rules—not in
 
 | Command | Purpose |
 |---------|---------|
-| `workflow init --with-aidlc [--aidlc-profile minimal\|full] [--install-aidlc-rules]` | Create workflow + AIDLC dirs |
+| `workflow init [--with-aidlc] [--aidlc-profile minimal\|full] [--template e2e\|feature\|bugfix\|minimal]` | Create workflow + template-scaffolded dirs and files |
 | `workflow install-rules` | Copy rules to `.aidlc/aidlc-rules/` and `.aidlc-rule-details/` |
 | `workflow status [--check]` | Gate readiness + `aidlc` block in JSON |
 | `workflow validate` | Same checks as `status --check`, validation-focused output |
+| `workflow capture-requirements [--id ID] [--from-issue path]` | Capture requirements from text/file/issue into a structured requirements.md |
+| `workflow record-test-results [--id ID] [--from-file path] [--profile profile]` | Run task verification and record test results in `test-results.json` |
+| `workflow record-readiness [--id ID]` | Perform operations readiness checks (drift, lint, tests, rollback) |
+| `workflow summary [--id ID] [--format text\|json]` | Get a gorgeous summary dashboard or structured machine-readable JSON |
 | `workflow audit --event "..."` | Append `audit.jsonl` |
 | `workflow trace [--check]` | Run aidlc-traceability (Python) when vendored |
 | `workflow run --vision path [--dry-run]` | Optional aidlc-evaluator subprocess |
 
-## MCP
+## MCP (Model Context Protocol)
 
 - `sruja_workflow_gate_check` returns `aidlc_missing` and `aidlc_stage` when AIDLC is enabled.
-- `sruja_get_task_context` accepts optional `workflow_id` and `phase` to tune context scope.
+- `sruja_workflow_summary` returns the complete workflow summary/dashboard in structured JSON.
+- `sruja_workflow_next_steps` computes actionable next steps for the current phase & profile.
+- `sruja_get_task_context` accepts optional `workflow_id` and `phase` to tune token budget and keep focus elements.
 
 ## CI
 

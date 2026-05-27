@@ -128,7 +128,7 @@ fn default_inception_paths(config: &AidlcConfig) -> Vec<String> {
         return config.inception_required.clone();
     }
     match config.profile.as_str() {
-        "full" => vec![
+        "full" | "e2e" => vec![
             "aidlc-state.md".into(),
             "inception/requirements/requirements.md".into(),
             "inception/application-design/components.md".into(),
@@ -142,7 +142,7 @@ fn default_construction_paths(config: &AidlcConfig) -> Vec<String> {
         return config.construction_required.clone();
     }
     match config.profile.as_str() {
-        "full" => vec!["construction/build-and-test/build-and-test-summary.md".into()],
+        "full" | "e2e" => vec!["construction/build-and-test/build-and-test-summary.md".into()],
         _ => vec![],
     }
 }

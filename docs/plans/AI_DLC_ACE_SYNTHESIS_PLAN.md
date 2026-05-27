@@ -1,8 +1,8 @@
 # AI-DLC + ACE synthesis plan
 
-**Status:** In progress (W1 workflow CLI/MCP shipped; AIDLC bridge via `sruja workflow` — see [AIDLC_INTEGRATION.md](../AIDLC_INTEGRATION.md)).  
+**Status:** In progress (E2E lifecycle profile, templates, requirements capture, test integration, readiness checks, summary, grounded design reviews, and MCP tools fully implemented — see [AIDLC_INTEGRATION.md](../AIDLC_INTEGRATION.md)).  
 **Owner:** Product + CLI/MCP (`sruja-cli`, `sruja-diff`, `sruja-agent`, `sruja-engine`, `sruja-scan`).  
-**Last updated:** 2026-05-20.
+**Last updated:** 2026-05-26.
 
 This plan adapts **AWS AI-DLC** (adaptive lifecycle scaffolding, hierarchical steering, human-in-the-loop gates) and **Stanford ACE** (Generator–Reflector–Curator, delta updates to playbooks) into Sruja **without** turning Sruja into a general-purpose coding agent runtime.
 

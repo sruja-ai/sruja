@@ -270,6 +270,24 @@ pub(crate) async fn try_run(
             }))?))
         }
 
+        "sruja_workflow_summary" => {
+            let workflow_id = arguments
+                .get("workflow_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing workflow_id"))?;
+            let val = crate::commands::workflow::workflow_summary_json_value(repo, workflow_id)?;
+            finish(Ok(serde_json::to_string_pretty(&val)?))
+        }
+
+        "sruja_workflow_next_steps" => {
+            let workflow_id = arguments
+                .get("workflow_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing workflow_id"))?;
+            let val = crate::commands::workflow::workflow_next_steps_json_value(repo, workflow_id)?;
+            finish(Ok(serde_json::to_string_pretty(&val)?))
+        }
+
         "sruja_get_architecture_context" => {
             let file = arguments
                 .get("file")
