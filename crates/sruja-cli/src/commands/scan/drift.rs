@@ -386,6 +386,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
         });
 
     let graph = scan_repo(repo_path)?;
+    let agent_memory = crate::utils::agent_memory_signal::read_agent_memory_signal(repo_path)?;
 
     // Calculate architectural velocity (recent supervision ratio)
     let velocity = (|| {
@@ -474,6 +475,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
             context_score,
             health_history,
             velocity,
+            agent_memory,
         });
     }
 
@@ -535,6 +537,7 @@ pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
         context_score,
         health_history,
         velocity,
+        agent_memory,
     })
 }
 

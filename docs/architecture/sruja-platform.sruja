@@ -64,68 +64,13 @@ Sruja = system "Sruja Platform" {
     description "Command-line interface for Sruja operations"
     tags ["cli", "backend"]
 
-    Commands = component "CLI Commands" {
-      description "lint, export, and other subcommands"
+    CommandSurface = component "Command Surface" {
+      description "User-facing command interface for orchestrating scan, drift, export, critique, and proposal workflows"
       technology "Rust, crates/sruja-cli"
     }
 
-    Quickstart = component "Quickstart" {
-      description "Zero-setup architecture inventory and health signals for a repo"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    Sync = component "Sync" {
-      description "Refresh evidence and write .sruja/context.json"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    Drift = component "Drift" {
-      description "Detect architectural drift and violations"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    ContextExport = component "Context Export" {
-      description "Export task-scoped architecture context for AI tools (file + intent + blast radius)"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    Impact = component "Impact" {
-      description "Blast-radius analysis for a target node (upstream + downstream)"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    Critique = component "Critique" {
-      description "Adversarial architectural review of proposed/changed files"
-      technology "Rust, crates/sruja-cli, crates/sruja-intent"
-    }
-
-    Propose = component "Propose" {
-      description "Architectural change proposal system (create, list, approve)"
-      technology "Rust, crates/sruja-cli, crates/sruja-diff"
-    }
-
-    Focus = component "Focus" {
-      description "Task-scoped context briefing (blast radius, decisions, AI instructions)"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    ContextScore = component "Context Score" {
-      description "Context readiness score (0-100) for AI agents across 5 dimensions"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    ContextGraph = component "Context Graph" {
-      description "Interactive HTML/D3.js architecture visualization"
-      technology "Rust, crates/sruja-cli, crates/sruja-export"
-    }
-
-    Ingest = component "Ingest" {
-      description "Import external context (ADRs, design docs, API contracts) into .sruja/context/"
-      technology "Rust, crates/sruja-cli"
-    }
-
-    Compliance = component "Compliance" {
-      description "Structural drift + intent + policy violations report"
+    WorkflowSteps = component "Workflow Steps" {
+      description "Flow-bearing command steps (sync, drift, focus/context export, critique, propose) that cross core boundaries"
       technology "Rust, crates/sruja-cli"
     }
   }
@@ -348,51 +293,16 @@ Sruja = system "Sruja Platform" {
   Language -> Stdlib "Uses"
   Language -> Diagnostics "Reports via"
 
-  CLI.Commands -> Language "Parses DSL"
-  CLI.Commands -> Engine "Runs validation"
-  CLI.Commands -> Export "Generates exports"
-  CLI.Commands -> Diagnostics "Emits"
+  CLI.CommandSurface -> Language "Parses DSL"
+  CLI.CommandSurface -> Engine "Runs validation"
+  CLI.CommandSurface -> Export "Generates exports"
+  CLI.CommandSurface -> Diagnostics "Emits"
 
-  CLI.Quickstart -> Scan "Scans repository"
-  CLI.Quickstart -> Diff "Computes drift signals"
-  CLI.Quickstart -> Diagnostics "Emits"
-
-  CLI.Sync -> Scan "Refreshes evidence"
-  CLI.Sync -> Diff "Runs drift"
-  CLI.Sync -> Diagnostics "Emits"
-
-  CLI.Drift -> Diff "Computes drift"
-  CLI.Drift -> Diagnostics "Emits"
-
-  CLI.ContextExport -> Scan "Builds task context"
-  CLI.ContextExport -> Diagnostics "Emits"
-
-  CLI.Impact -> Scan "Builds graph"
-  CLI.Impact -> Diagnostics "Emits"
-
-  CLI.Critique -> Intent "Runs adversarial critique"
-  CLI.Critique -> Diff "Compares changes"
-  CLI.Critique -> Diagnostics "Emits"
-
-  CLI.Propose -> Diff "Creates proposals"
-  CLI.Propose -> Diagnostics "Emits"
-
-  CLI.Focus -> Scan "Builds task context"
-  CLI.Focus -> Graph "Traverses blast radius"
-  CLI.Focus -> Diagnostics "Emits"
-
-  CLI.ContextScore -> Scan "Checks coverage"
-  CLI.ContextScore -> Diagnostics "Emits"
-
-  CLI.ContextGraph -> Export "Generates HTML"
-  CLI.ContextGraph -> Diagnostics "Emits"
-
-  CLI.Ingest -> Language "Parses imported docs"
-  CLI.Ingest -> Diagnostics "Emits"
-
-  CLI.Compliance -> Diff "Checks structural drift"
-  CLI.Compliance -> Intent "Checks intent alignment"
-  CLI.Compliance -> Diagnostics "Emits"
+  CLI.WorkflowSteps -> Scan "Refreshes evidence / builds task context"
+  CLI.WorkflowSteps -> Graph "Traverses blast radius"
+  CLI.WorkflowSteps -> Diff "Computes drift and deltas"
+  CLI.WorkflowSteps -> Intent "Runs critique and intent alignment"
+  CLI.WorkflowSteps -> Diagnostics "Emits"
 
   Language.Parser -> Engine "Validates AST"
   Language.AST -> Export "Exports"
@@ -521,16 +431,16 @@ CICDFlow = flow "CI/CD Verification" {
 }
 
 DailyDevFlow = flow "Daily Development Loop" {
-  step Developer -> Sruja.CLI.Sync "Runs: sruja sync -r ."
-  step Sruja.CLI.Sync -> Sruja.Scan "Scans repo"
-  step Sruja.CLI.Sync -> Sruja.Diff "Detects drift"
-  step Developer -> Sruja.CLI.ContextExport "Runs: sruja context -r . --file <file> --intent <intent> -f json"
-  step Sruja.CLI.ContextExport -> Sruja.Scan "Builds task-scoped context"
-  step Developer -> Sruja.CLI.Drift "Runs: sruja drift -r . --violations-only"
-  step Developer -> Sruja.CLI.Focus "Runs: sruja focus --file <path>"
-  step Sruja.CLI.Focus -> Sruja.Graph "Traverses blast radius"
-  step Developer -> Sruja.CLI.Critique "Runs: sruja critique --staged"
-  step Sruja.CLI.Critique -> Sruja.Intent "Adversarial review"
+  step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja sync -r ."
+  step Sruja.CLI.WorkflowSteps -> Sruja.Scan "Scans repo"
+  step Sruja.CLI.WorkflowSteps -> Sruja.Diff "Detects drift"
+  step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja context -r . --file <file> --intent <intent> -f json"
+  step Sruja.CLI.WorkflowSteps -> Sruja.Scan "Builds task-scoped context"
+  step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja drift -r . --violations-only"
+  step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja focus --file <path>"
+  step Sruja.CLI.WorkflowSteps -> Sruja.Graph "Traverses blast radius"
+  step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja critique --staged"
+  step Sruja.CLI.WorkflowSteps -> Sruja.Intent "Adversarial review"
 }
 
 ReleaseFlow = flow "Release & Distribution" {

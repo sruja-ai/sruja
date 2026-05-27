@@ -136,6 +136,22 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
                 file,
                 escape_github_actions_message(&msg)
             );
+            if let Some(ref memory) = out.agent_memory {
+                if memory.is_stale {
+                    let memory_msg = format!(
+                        "Agent memory adoption low: {} learnings{}. Record guardrails when Sruja catches a miss.",
+                        memory.learnings_count,
+                        memory
+                            .age_days
+                            .map(|d| format!(", last update {d} days ago"))
+                            .unwrap_or_default()
+                    );
+                    println!(
+                        "::warning file=.sruja/agent_memory.json::title=Agent Memory Adoption::{}",
+                        escape_github_actions_message(&memory_msg)
+                    );
+                }
+            }
         }
         _ => {
             use crate::utils::table_formatter::TableFormatter;
@@ -278,6 +294,38 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
 
             blocks.push(("Environment".to_string(), env_info));
 
+            if let Some(ref memory) = out.agent_memory {
+                let mut memory_info = String::new();
+                memory_info.push_str(&format!(
+                    "Learnings:  {}\n",
+                    colors::info(&memory.learnings_count.to_string())
+                ));
+                if let Some(ref ts) = memory.latest_learning_at {
+                    memory_info.push_str(&format!("Latest:     {}\n", colors::dim(ts)));
+                }
+                if let Some(days) = memory.age_days {
+                    let age_text = format!("{days} days ago");
+                    let age = if memory.is_stale {
+                        colors::warning(&age_text)
+                    } else {
+                        colors::success(&age_text)
+                    };
+                    memory_info.push_str(&format!("Age:        {}\n", age));
+                }
+                if memory.is_stale {
+                    memory_info.push_str(&format!(
+                        "Signal:     {}\n",
+                        colors::warning("adoption low")
+                    ));
+                    if let Some(ref rec) = memory.recommendation {
+                        memory_info.push_str(&format!("Tip:        {}\n", colors::dim(rec)));
+                    }
+                } else {
+                    memory_info.push_str(&format!("Signal:     {}\n", colors::success("healthy")));
+                }
+                blocks.push(("Agent Memory".to_string(), memory_info));
+            }
+
             // 4. Recommendation (The "Smarter" bit)
             let mut recommendation = String::new();
             if out.baseline.is_none() {
@@ -294,6 +342,11 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
                 recommendation.push_str("Maintain health by resolving active violations.\n");
             } else {
                 recommendation.push_str("Looking good! Keep running sruja in your PR pipeline.\n");
+            }
+            if out.agent_memory.as_ref().is_some_and(|m| m.is_stale) {
+                recommendation.push_str(
+                    "Agent memory adoption is low — record guardrails when Sruja catches a miss.\n",
+                );
             }
             blocks.push(("Recommended Next Step".to_string(), recommendation));
 

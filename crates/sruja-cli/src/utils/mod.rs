@@ -1,3 +1,4 @@
+pub mod agent_memory_signal;
 pub mod architecture_path;
 pub mod colors;
 pub mod context;

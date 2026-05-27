@@ -73,6 +73,8 @@ pub struct StatusOutput {
     pub health_history: Vec<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub velocity: Option<sruja_diff::ArchitecturalVelocity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_memory: Option<crate::utils::agent_memory_signal::AgentMemorySignal>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

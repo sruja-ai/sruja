@@ -79,6 +79,8 @@ pub struct VerifyTaskOutput {
     pub provenance: VerifyProvenance,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub evidence_pack: Option<VerifyEvidencePack>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_memory: Option<crate::utils::agent_memory_signal::AgentMemorySignal>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -654,6 +656,7 @@ pub async fn verify_task(options: VerifyTaskOptions<'_>) -> Result<VerifyTaskOut
         .iter()
         .all(|r| matches!(r.status.as_str(), "ok" | "skipped"));
     let elapsed_ms = start.elapsed().as_millis();
+    let agent_memory = crate::utils::agent_memory_signal::read_agent_memory_signal(repo_path)?;
 
     let mut out = VerifyTaskOutput {
         schema_version: VERIFY_TASK_SCHEMA.to_string(),
@@ -671,6 +674,7 @@ pub async fn verify_task(options: VerifyTaskOptions<'_>) -> Result<VerifyTaskOut
             generated_at: chrono::Utc::now().to_rfc3339(),
         },
         evidence_pack: None,
+        agent_memory,
     };
 
     if options.evidence_pack || options.evidence_pack_dir.is_some() {
@@ -715,6 +719,16 @@ pub fn format_verify_task(output: &VerifyTaskOutput, format: &str) -> String {
                     lines.push(format!(
                         "  stderr: {}",
                         step.stderr.lines().next().unwrap_or("")
+                    ));
+                }
+            }
+
+            if let Some(ref memory) = output.agent_memory {
+                if memory.is_stale {
+                    lines.push(String::new());
+                    lines.push(format!(
+                        "[WARN] Agent memory adoption low ({} learnings). Record guardrails when Sruja catches a miss.",
+                        memory.learnings_count
                     ));
                 }
             }
