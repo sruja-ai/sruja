@@ -29,7 +29,7 @@ jobs:
     steps:
       # Full history + tags required so release-please can find the last release tag
       # (e.g. sruja-v0.17.2) and only include commits since then in the changelog.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           fetch-tags: true
