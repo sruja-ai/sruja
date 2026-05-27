@@ -154,10 +154,10 @@ pub async fn review(
     let violations_baseline_path = repo_path.join(".sruja").join("violations.baseline.json");
     let baseline_set: Option<std::collections::HashSet<String>> =
         if violations_baseline_path.exists() {
-            let content = fs::read_to_string(&violations_baseline_path)?;
-            let baseline: super::check::ViolationBaseline =
-                serde_json::from_str(&content).map_err(|e| CliError::validation(e.to_string()))?;
-            Some(baseline.fingerprints.into_iter().collect())
+            Some(
+                super::violation_shared::load_violations_baseline(&violations_baseline_path)?
+                    .fingerprints,
+            )
         } else {
             None
         };

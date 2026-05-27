@@ -30,6 +30,10 @@ sruja sync -r .
 |-----|---------|
 | [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** – Install, use, and operate the architecture/context-engineering workflow |
 | [ENTERPRISE_ADOPTION.md](ENTERPRISE_ADOPTION.md) | Enterprise adoption tiers: evaluation → CI gates → AI-DLC workflows |
+| [ENTERPRISE_POLICY.md](ENTERPRISE_POLICY.md) | Baselines/exceptions: advisory → baseline → enforce |
+| [EVIDENCE_PACK.md](EVIDENCE_PACK.md) | Evidence packs for audits: verify-task + drift/intent outputs |
+| [OFFLINE_INSTALL.md](OFFLINE_INSTALL.md) | Offline/air-gapped install and operation |
+| [PRIVACY_AND_RETENTION.md](PRIVACY_AND_RETENTION.md) | Data emitted, retention guidance, and no-telemetry posture |
 | [EnterprisePlan.md](EnterprisePlan.md) | 90-day enterprise adoption hardening plan (pilot readiness) |
 | [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) | **Multi-repo federation** – Step-by-step guide for `repo.bundle.json` and `system.index.json` |
 | [FEDERATION.md](FEDERATION.md) | Retrieval order, artifact shapes, and multi-repo composition rules |

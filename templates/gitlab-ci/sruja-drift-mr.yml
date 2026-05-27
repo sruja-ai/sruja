@@ -1,0 +1,9 @@
+drift_pr_sruja:
+  stage: test
+  image: rust:1.78
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - cargo build --release -p sruja-cli
+    - ./target/release/sruja drift-pr -r . -b "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" -H "$CI_COMMIT_SHA" -f text
+

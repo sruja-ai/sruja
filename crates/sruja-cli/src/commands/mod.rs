@@ -99,7 +99,6 @@ pub use workflow::{
     workflow_status, workflow_summary, workflow_trace, workflow_validate, WorkflowInitOptions,
 };
 
-pub use dsl_domain::check;
 pub use intent_domain::critique;
 pub use intent_domain::focus;
 pub use scan_domain::discover;

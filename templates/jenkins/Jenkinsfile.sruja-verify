@@ -1,0 +1,21 @@
+pipeline {
+  agent any
+  stages {
+    stage('Build sruja-cli') {
+      steps {
+        sh 'cargo build --release -p sruja-cli'
+      }
+    }
+    stage('Verify task (review)') {
+      steps {
+        sh './target/release/sruja verify-task --profile review -r . -f json --max-runtime-ms 600000 --evidence-pack-dir .sruja/evidence-packs'
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: '.sruja/evidence-packs/**', allowEmptyArchive: true
+        }
+      }
+    }
+  }
+}
+

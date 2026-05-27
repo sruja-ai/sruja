@@ -9,6 +9,11 @@ This directory contains reusable GitHub Actions workflows for Sruja.
 | `sruja-architecture-pr.yml` | PR gate: drift + blueprint lint | Pull Request |
 | `sruja-onboard.yml` | Onboarding brief (job summary + annotations) | Push, PR |
 
+## Other CI platforms
+
+- **GitLab CI**: see `templates/gitlab-ci/`
+- **Jenkins**: see `templates/jenkins/`
+
 ## Quick Start
 
 Copy the desired workflow to `.github/workflows/`:

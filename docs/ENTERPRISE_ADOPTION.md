@@ -63,5 +63,7 @@ Exit criteria:
 - [FEATURE_TIERS.md](FEATURE_TIERS.md) (what is Tier 1 vs advanced)
 - [AIDLC_INTEGRATION.md](AIDLC_INTEGRATION.md) (AI-DLC workflow usage)
 - [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md) (host vs harness boundary)
+- [ENTERPRISE_POLICY.md](ENTERPRISE_POLICY.md) (advisory → baseline → enforce)
+- [EVIDENCE_PACK.md](EVIDENCE_PACK.md) (audit-friendly evidence packs)
 - [EnterprisePlan.md](EnterprisePlan.md) (90-day rollout framing)
 

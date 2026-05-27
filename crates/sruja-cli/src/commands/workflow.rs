@@ -1243,6 +1243,8 @@ pub async fn workflow_record_test_results(
             profile: prof,
             file: None,
             max_runtime_ms: None,
+            evidence_pack: false,
+            evidence_pack_dir: None,
         };
         let out = crate::commands::verify_task(verify_opts).await?;
         serde_json::to_value(&out)?

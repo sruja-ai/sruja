@@ -6,6 +6,66 @@ use sruja_scan::is_path_production_relevant as scan_prod_relevant;
 use std::path::Path;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ViolationBaselineV1 {
+    pub schema_version: u32,
+    pub generated_at_unix: u64,
+    pub fingerprints: Vec<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ViolationBaselineEntry {
+    pub fingerprint: String,
+    pub reason: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ViolationBaselineV2 {
+    pub schema_version: u32,
+    pub generated_at_unix: u64,
+    pub violations: Vec<ViolationBaselineEntry>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoadedViolationBaseline {
+    /// Fingerprints that should be treated as suppressed.
+    pub fingerprints: std::collections::HashSet<String>,
+}
+
+pub fn load_violations_baseline(
+    baseline_path: &Path,
+) -> Result<LoadedViolationBaseline, crate::commands::CliError> {
+    let content = std::fs::read_to_string(baseline_path)?;
+    let json: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| crate::commands::CliError::validation(e.to_string()))?;
+    let schema = json
+        .get("schema_version")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(1);
+
+    // v1: { schema_version: 1, generated_at_unix, fingerprints: [] }
+    if schema <= 1 {
+        let baseline: ViolationBaselineV1 = serde_json::from_value(json)
+            .map_err(|e| crate::commands::CliError::validation(e.to_string()))?;
+        return Ok(LoadedViolationBaseline {
+            fingerprints: baseline.fingerprints.into_iter().collect(),
+        });
+    }
+
+    // v2: { schema_version: 2, generated_at_unix, violations: [{fingerprint, reason, expires?}] }
+    let baseline: ViolationBaselineV2 = serde_json::from_str(&content)
+        .map_err(|e| crate::commands::CliError::validation(e.to_string()))?;
+    Ok(LoadedViolationBaseline {
+        fingerprints: baseline
+            .violations
+            .into_iter()
+            .map(|v| v.fingerprint)
+            .collect(),
+    })
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ViolationSummary {
     pub kind: String,
     pub severity: String,

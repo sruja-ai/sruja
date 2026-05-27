@@ -70,6 +70,12 @@ We will respond within 48 hours and work with you to resolve the issue.
 - DSL parsing and validation is centralized in Rust (parser + validator), producing structured diagnostics without leaking sensitive data.
 - VS Code extension operations should validate user/workspace inputs (paths, URIs, JSON) before invoking the CLI or WASM.
 
+## Privacy and data handling
+
+Sruja is local-first and does not transmit repository contents to external services unless you explicitly configure enrichment (e.g. `--enrich-cmd` or OpenAI-compatible settings).
+
+See [PRIVACY_AND_RETENTION.md](PRIVACY_AND_RETENTION.md) for details on emitted data and retention guidance.
+
 ### Error Handling
 
 - Structured error types that don't leak sensitive information

@@ -1,6 +1,5 @@
 //! Check command: CI-focused tool for non-blocking exit code 0 on violations.
 
-use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,13 +27,6 @@ pub struct CheckOutput {
     pub suggestions: Vec<String>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct ViolationBaseline {
-    pub schema_version: u32,
-    pub generated_at_unix: u64,
-    pub fingerprints: Vec<String>,
-}
-
 fn is_usize_zero(v: &usize) -> bool {
     *v == 0
 }
@@ -46,13 +38,6 @@ fn resolve_repo_relative(repo_root: &Path, path: &str) -> PathBuf {
     } else {
         repo_root.join(p)
     }
-}
-
-fn load_violation_baseline(baseline_path: &Path) -> Result<HashSet<String>, CliError> {
-    let content = fs::read_to_string(baseline_path)?;
-    let baseline: ViolationBaseline =
-        serde_json::from_str(&content).map_err(|e| CliError::validation(e.to_string()))?;
-    Ok(baseline.fingerprints.into_iter().collect())
 }
 
 pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
@@ -94,10 +79,17 @@ pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let baseline = ViolationBaseline {
-        schema_version: 1,
+    let baseline = ViolationBaselineV2 {
+        schema_version: 2,
         generated_at_unix: now,
-        fingerprints,
+        violations: fingerprints
+            .into_iter()
+            .map(|fp| ViolationBaselineEntry {
+                fingerprint: fp,
+                reason: "pre-existing violation (baseline)".to_string(),
+                expires: None,
+            })
+            .collect(),
     };
 
     let out_path = resolve_repo_relative(repo_path, output);
@@ -130,7 +122,7 @@ pub async fn check(
 
     let baseline_filter_set = if let Some(b) = violations_baseline {
         let p = resolve_repo_relative(repo_path, b);
-        Some(load_violation_baseline(&p)?)
+        Some(load_violations_baseline(&p)?.fingerprints)
     } else {
         None
     };

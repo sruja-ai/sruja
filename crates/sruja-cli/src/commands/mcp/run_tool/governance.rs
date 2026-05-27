@@ -758,6 +758,8 @@ pub(crate) async fn try_run(
                 profile,
                 file,
                 max_runtime_ms,
+                evidence_pack: false,
+                evidence_pack_dir: None,
             })
             .await?;
             finish(Ok(format_verify_task(&output, "json")))

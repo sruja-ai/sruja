@@ -324,6 +324,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     format: &format,
                     violations_only,
                     fail_on: fail_on.as_deref(),
+                    violations_baseline: violations_baseline.as_deref(),
                     baseline_mode: baseline_mode.as_deref(),
                     structural_only,
                     advisory,
@@ -983,6 +984,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             profile,
             file,
             max_runtime_ms,
+            evidence_pack,
+            evidence_pack_dir,
             format,
         } => {
             let output = commands::verify_task(commands::VerifyTaskOptions {
@@ -990,6 +993,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 profile: &profile,
                 file: file.as_deref(),
                 max_runtime_ms,
+                evidence_pack,
+                evidence_pack_dir: evidence_pack_dir.as_deref(),
             })
             .await?;
             let all_passed = output.all_passed;

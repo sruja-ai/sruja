@@ -85,6 +85,7 @@ pub struct DriftRequest<'a> {
     pub format: &'a str,
     pub violations_only: bool,
     pub fail_on: Option<&'a str>,
+    pub violations_baseline: Option<&'a str>,
     pub baseline_mode: Option<&'a str>,
     pub structural_only: bool,
     pub advisory: bool,
@@ -101,6 +102,20 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
     }
 
     let actual_graph = scan_repo(repo_path)?;
+    let baseline_set = if let Some(p) = req.violations_baseline {
+        let bp = if Path::new(p).is_absolute() {
+            PathBuf::from(p)
+        } else {
+            repo_path.join(p)
+        };
+        if bp.exists() {
+            Some(crate::commands::violation_shared::load_violations_baseline(&bp)?.fingerprints)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     let resolved = if req.structural_only {
         None
@@ -142,6 +157,23 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
                 baseline_mode: mode,
             },
         );
+        let mut diff_result = diff_result;
+        if let Some(ref set) = baseline_set {
+            diff_result.violations = diff_result
+                .violations
+                .into_iter()
+                .map(|mut v| {
+                    let suppressed = set.contains(
+                        &crate::commands::violation_shared::fingerprint_violation(&v),
+                    );
+                    v.suppressed = Some(suppressed);
+                    v.baseline_delta =
+                        Some(if suppressed { "baseline" } else { "new" }.to_string());
+                    v
+                })
+                .filter(|v| v.suppressed != Some(true))
+                .collect();
+        }
 
         match req.format {
             "drift-state" => {
@@ -186,6 +218,22 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
         drift_result.scan_scope = scan_scope;
         if req.advisory {
             apply_advisory_violation_filter(&mut drift_result);
+        }
+        if let Some(ref set) = baseline_set {
+            drift_result.violations = drift_result
+                .violations
+                .into_iter()
+                .map(|mut v| {
+                    let suppressed = set.contains(
+                        &crate::commands::violation_shared::fingerprint_violation(&v),
+                    );
+                    v.suppressed = Some(suppressed);
+                    v.baseline_delta =
+                        Some(if suppressed { "baseline" } else { "new" }.to_string());
+                    v
+                })
+                .filter(|v| v.suppressed != Some(true))
+                .collect();
         }
         let could_not_infer = collect_could_not_infer(&actual_graph);
 

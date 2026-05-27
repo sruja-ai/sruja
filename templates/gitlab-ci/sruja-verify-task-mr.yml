@@ -1,0 +1,13 @@
+verify_sruja_task:
+  stage: test
+  image: rust:1.78
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - cargo build --release -p sruja-cli
+    - ./target/release/sruja verify-task --profile review -r . -f json --max-runtime-ms 600000 --evidence-pack-dir "$CI_PROJECT_DIR/.sruja/evidence-packs"
+  artifacts:
+    when: always
+    paths:
+      - .sruja/evidence-packs/
+

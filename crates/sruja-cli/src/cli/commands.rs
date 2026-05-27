@@ -938,6 +938,14 @@ pub enum Commands {
         /// Max runtime per step in milliseconds (default: 30000)
         #[arg(long)]
         max_runtime_ms: Option<u64>,
+        /// Write an evidence pack folder under `.sruja/evidence-packs/<timestamp>/`.
+        ///
+        /// Use `--evidence-pack-dir` to override the output location.
+        #[arg(long)]
+        evidence_pack: bool,
+        /// Override evidence pack output directory (implies `--evidence-pack`).
+        #[arg(long)]
+        evidence_pack_dir: Option<String>,
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,

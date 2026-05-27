@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sruja violations baseline",
+  "type": "object",
+  "required": ["schema_version", "generated_at_unix", "violations"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2
+    },
+    "generated_at_unix": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fingerprint", "reason"],
+        "properties": {
+          "fingerprint": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "expires": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
+

@@ -12,7 +12,7 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::commands::CliError;
 use crate::integrations::{load_repo_config, VerifyProfileConfig};
@@ -22,7 +22,7 @@ use super::agent_run::{
 };
 
 /// Schema version for verify-task output.
-pub const VERIFY_TASK_SCHEMA: &str = "verify_task/v1";
+pub const VERIFY_TASK_SCHEMA: &str = "verify_task/v2";
 
 /// Verification profile determines which steps to run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +76,30 @@ pub struct VerifyTaskOutput {
     pub all_passed: bool,
     pub steps: Vec<StepObservation>,
     pub elapsed_ms: u128,
+    pub provenance: VerifyProvenance,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_pack: Option<VerifyEvidencePack>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct VerifyProvenance {
+    pub sruja_version: String,
+    pub os: String,
+    pub arch: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo_commit: Option<String>,
+    pub generated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct VerifyEvidencePack {
+    pub output_dir: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub files: Vec<String>,
 }
 
 /// Options for running a verification task.
@@ -84,6 +108,75 @@ pub struct VerifyTaskOptions<'a> {
     pub profile: &'a str,
     pub file: Option<&'a str>,
     pub max_runtime_ms: Option<u64>,
+    pub evidence_pack: bool,
+    pub evidence_pack_dir: Option<&'a str>,
+}
+
+fn git_head_commit(repo_path: &Path) -> Option<String> {
+    let out = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(repo_path)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!s.is_empty()).then_some(s)
+}
+
+fn config_hash(repo_path: &Path) -> Option<String> {
+    let p = repo_path.join(".sruja").join("config.toml");
+    let txt = std::fs::read(&p).ok()?;
+    Some(blake3::hash(&txt).to_hex().to_string())
+}
+
+fn default_evidence_pack_dir(repo_path: &Path) -> PathBuf {
+    let ts = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
+    repo_path.join(".sruja").join("evidence-packs").join(ts)
+}
+
+fn write_evidence_pack(
+    repo_path: &Path,
+    output: &VerifyTaskOutput,
+) -> Result<VerifyEvidencePack, CliError> {
+    let dir = output
+        .evidence_pack
+        .as_ref()
+        .map(|p| PathBuf::from(&p.output_dir))
+        .unwrap_or_else(|| default_evidence_pack_dir(repo_path));
+    std::fs::create_dir_all(&dir)?;
+
+    let mut files = Vec::new();
+
+    let verify_path = dir.join("verify-task.json");
+    std::fs::write(
+        &verify_path,
+        serde_json::to_string_pretty(output).map_err(|e| CliError::validation(e.to_string()))?,
+    )?;
+    files.push(verify_path.display().to_string());
+
+    for step in &output.steps {
+        let filename = match step.step_id.as_str() {
+            "drift_check" => Some("drift.json"),
+            "intent_check" => Some("intent.json"),
+            "review" => Some("review.json"),
+            _ => None,
+        };
+        let Some(name) = filename else { continue };
+        let trimmed = step.stdout.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let p = dir.join(name);
+        std::fs::write(&p, trimmed)?;
+        files.push(p.display().to_string());
+    }
+
+    Ok(VerifyEvidencePack {
+        output_dir: dir.display().to_string(),
+        files,
+    })
 }
 
 /// Build verification steps for a given profile.
@@ -562,14 +655,38 @@ pub async fn verify_task(options: VerifyTaskOptions<'_>) -> Result<VerifyTaskOut
         .all(|r| matches!(r.status.as_str(), "ok" | "skipped"));
     let elapsed_ms = start.elapsed().as_millis();
 
-    Ok(VerifyTaskOutput {
+    let mut out = VerifyTaskOutput {
         schema_version: VERIFY_TASK_SCHEMA.to_string(),
         profile: profile.to_string(),
         repo: options.repo.to_string(),
         all_passed,
         steps: results,
         elapsed_ms,
-    })
+        provenance: VerifyProvenance {
+            sruja_version: env!("CARGO_PKG_VERSION").to_string(),
+            os: std::env::consts::OS.to_string(),
+            arch: std::env::consts::ARCH.to_string(),
+            config_hash: config_hash(repo_path),
+            repo_commit: git_head_commit(repo_path),
+            generated_at: chrono::Utc::now().to_rfc3339(),
+        },
+        evidence_pack: None,
+    };
+
+    if options.evidence_pack || options.evidence_pack_dir.is_some() {
+        let dir = options
+            .evidence_pack_dir
+            .map(PathBuf::from)
+            .unwrap_or_else(|| default_evidence_pack_dir(repo_path));
+        out.evidence_pack = Some(VerifyEvidencePack {
+            output_dir: dir.display().to_string(),
+            files: Vec::new(),
+        });
+        let pack = write_evidence_pack(repo_path, &out)?;
+        out.evidence_pack = Some(pack);
+    }
+
+    Ok(out)
 }
 
 /// Format verification output for display.

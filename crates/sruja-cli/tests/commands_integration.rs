@@ -2698,7 +2698,7 @@ fn verify_task_coding_profile_succeeds() {
     let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).expect("valid JSON");
     assert_eq!(
         parsed["schema_version"].as_str().unwrap_or(""),
-        "verify_task/v1"
+        "verify_task/v2"
     );
     assert_eq!(parsed["profile"].as_str().unwrap_or(""), "coding");
     assert!(parsed.get("steps").is_some(), "should have steps array");

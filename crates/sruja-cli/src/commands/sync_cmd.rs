@@ -229,10 +229,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .collect();
     let baseline_fp_path = repo_path.join(".sruja").join("violations.baseline.json");
     let baseline_set: Option<HashSet<String>> = if baseline_fp_path.exists() {
-        let txt = fs::read_to_string(&baseline_fp_path)?;
-        let base: super::check::ViolationBaseline =
-            serde_json::from_str(&txt).map_err(|e| CliError::validation(e.to_string()))?;
-        Some(base.fingerprints.into_iter().collect())
+        Some(super::violation_shared::load_violations_baseline(&baseline_fp_path)?.fingerprints)
     } else {
         None
     };

@@ -1,7 +1,6 @@
 //! Scan and Graph domain commands
 
 pub(crate) use super::author;
-pub(crate) use super::check;
 pub(crate) use super::critique;
 pub(crate) use super::violation_shared;
 pub(crate) use super::{parse_sruja_file, scan_repo_cached, scan_repo_cached_with_opts, CliError};
