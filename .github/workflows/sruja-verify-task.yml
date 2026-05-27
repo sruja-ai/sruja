@@ -31,4 +31,4 @@ jobs:
         run: cargo build --release -p sruja-cli
 
       - name: Verify coding profile
-        run: ./target/release/sruja verify-task --profile coding -r . -f json
+        run: ./target/release/sruja verify-task --profile coding -r . -f json --max-runtime-ms 600000
