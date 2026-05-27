@@ -308,40 +308,6 @@ pub fn resolve_openai_auth() -> Option<String> {
         .or_else(|| std::env::var("SRUJA_LLM_API_KEY").ok())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_agent_config_defaults_and_fields() {
-        let toml = r#"
-[integrations]
-default_provider = "cmd"
-cmd = "echo ok"
-
-[agent]
-allowed_sruja_subcommands = ["sync", "drift"]
-allowed_verify_executables = ["cargo"]
-max_steps = 3
-max_runtime_ms_per_step = 1000
-auto_record_learnings = true
-"#;
-        let cfg: SrujaConfigFile = toml::from_str(toml).expect("parse toml");
-        assert_eq!(cfg.integrations.default_provider.as_deref(), Some("cmd"));
-        assert_eq!(
-            cfg.agent.allowed_sruja_subcommands.as_deref(),
-            Some(["sync".to_string(), "drift".to_string()].as_slice())
-        );
-        assert_eq!(
-            cfg.agent.allowed_verify_executables.as_deref(),
-            Some(["cargo".to_string()].as_slice())
-        );
-        assert_eq!(cfg.agent.max_steps, Some(3));
-        assert_eq!(cfg.agent.max_runtime_ms_per_step, Some(1000));
-        assert_eq!(cfg.agent.auto_record_learnings, Some(true));
-    }
-}
-
 pub fn run_openai_markdown(
     system_prompt: &str,
     user_prompt: &str,
@@ -383,4 +349,38 @@ pub fn run_openai_markdown(
         return Err("LLM response missing choices[0].message.content".to_string());
     }
     Ok(content)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_agent_config_defaults_and_fields() {
+        let toml = r#"
+[integrations]
+default_provider = "cmd"
+cmd = "echo ok"
+
+[agent]
+allowed_sruja_subcommands = ["sync", "drift"]
+allowed_verify_executables = ["cargo"]
+max_steps = 3
+max_runtime_ms_per_step = 1000
+auto_record_learnings = true
+"#;
+        let cfg: SrujaConfigFile = toml::from_str(toml).expect("parse toml");
+        assert_eq!(cfg.integrations.default_provider.as_deref(), Some("cmd"));
+        assert_eq!(
+            cfg.agent.allowed_sruja_subcommands.as_deref(),
+            Some(["sync".to_string(), "drift".to_string()].as_slice())
+        );
+        assert_eq!(
+            cfg.agent.allowed_verify_executables.as_deref(),
+            Some(["cargo".to_string()].as_slice())
+        );
+        assert_eq!(cfg.agent.max_steps, Some(3));
+        assert_eq!(cfg.agent.max_runtime_ms_per_step, Some(1000));
+        assert_eq!(cfg.agent.auto_record_learnings, Some(true));
+    }
 }

@@ -130,7 +130,7 @@ pub(crate) mod mcp_prompts;
 pub(crate) mod mcp_resources;
 pub(crate) mod memory_cmd;
 
-pub use context::{context_export, sync_ide_rules, sync_ide_rules_check, ContextRequest};
+pub use context::{context_export, ContextRequest};
 pub use decision::{
     create_decision_record, decision_accept, decision_link, decision_list, decision_new,
     decision_show, decision_supersede, decision_trace, list_decisions,

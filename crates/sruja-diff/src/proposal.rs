@@ -473,6 +473,148 @@ fn drift_is_relevant_to_affected_ids(
     false
 }
 
+fn collect_program_defined_kinds(program: &Program) -> std::collections::HashMap<String, String> {
+    let mut out: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for item in &program.items {
+        if let TopLevelItem::KindDef(def) = item {
+            let canonical = format!("{}", def.kind);
+            out.insert(canonical.to_lowercase(), canonical);
+        }
+    }
+    out
+}
+
+fn parse_element_kind(
+    kind: &str,
+    baseline_defined_kinds: &std::collections::HashMap<String, String>,
+) -> Result<ElementKind, ProposalError> {
+    let kind = kind.trim();
+    if kind.is_empty() {
+        return Err(ProposalError::Apply(
+            "Element kind must be non-empty".to_string(),
+        ));
+    }
+
+    let lc = kind.to_lowercase();
+    let kind = match lc.as_str() {
+        "person" => ElementKind::Person,
+        "role" => ElementKind::Role,
+        "system" => ElementKind::System,
+        "container" => ElementKind::Container,
+        "component" => ElementKind::Component,
+        "database" => ElementKind::Database,
+        "queue" => ElementKind::Queue,
+        "policy" => ElementKind::Policy,
+        "requirement" => ElementKind::Requirement,
+        "adr" => ElementKind::Adr,
+        "flow" => ElementKind::Flow,
+        "scenario" => ElementKind::Scenario,
+        "story" => ElementKind::Story,
+        "datastore" | "data_store" => ElementKind::DataStore,
+        "externalsystem" | "external_system" => ElementKind::ExternalSystem,
+        _ => {
+            if let Some(canonical) = baseline_defined_kinds.get(&lc) {
+                ElementKind::Custom(canonical.clone())
+            } else {
+                return Err(ProposalError::Apply(format!(
+                    "Unknown element kind '{}'. Define it first in the baseline with '<KindId> = kind \"...\" {{ ... }}'. Allowed built-in kinds: person, role, system, container, component, database, queue, policy, requirement, adr, flow, scenario, story, datastore, externalSystem.",
+                    kind
+                )));
+            }
+        }
+    };
+
+    Ok(kind)
+}
+
+fn parse_qualified_ident(s: &str) -> QualifiedIdent {
+    QualifiedIdent::qualified(s.split('.').map(|p| p.to_string()).collect())
+}
+
+pub fn detect_unproposed_changes(
+    previous_graph: &Graph,
+    current_graph: &Graph,
+    approved_proposals: &[Proposal],
+) -> Vec<Drift> {
+    let mut drifts = Vec::new();
+
+    // 1. Find nodes that are in current but not in previous
+    let previous_ids: std::collections::HashSet<_> =
+        previous_graph.nodes.iter().map(|n| &n.id).collect();
+
+    for node in &current_graph.nodes {
+        if !previous_ids.contains(&node.id) {
+            // New node. Check if it was proposed.
+            let is_proposed = approved_proposals.iter().any(|p| {
+                p.status == ProposalStatus::Approved
+                    && p.changes.iter().any(|c| match c {
+                        ProposalChange::AddElement { id, .. } => id == &node.id,
+                        _ => false,
+                    })
+            });
+
+            if !is_proposed {
+                drifts.push(Drift {
+                    kind: DriftKind::UnproposedChange,
+                    severity: Severity::High,
+                    description: format!(
+                        "New component '{}' appeared in code without an approved proposal",
+                        node.id
+                    ),
+                    evidence: vec![Evidence {
+                        source: "scan".to_string(),
+                        location: node.path.clone(),
+                        detail: format!("Kind: {}", node.kind),
+                    }],
+                    intent_ref: None,
+                    suggestion: Some("Run 'sruja propose create' to document this change or remove it from code.".to_string()),
+                });
+            }
+        }
+    }
+
+    // 2. Find new relationships
+    let previous_edges: std::collections::HashSet<_> = previous_graph
+        .edges
+        .iter()
+        .map(|e| (e.source.clone(), e.target.clone()))
+        .collect();
+
+    for edge in &current_graph.edges {
+        if !previous_edges.contains(&(edge.source.clone(), edge.target.clone())) {
+            let is_proposed = approved_proposals.iter().any(|p| {
+                p.status == ProposalStatus::Approved
+                    && p.changes.iter().any(|c| match c {
+                        ProposalChange::AddRelationship { source, target, .. } => {
+                            source == &edge.source && target == &edge.target
+                        }
+                        _ => false,
+                    })
+            });
+
+            if !is_proposed {
+                drifts.push(Drift {
+                    kind: DriftKind::UnproposedChange,
+                    severity: Severity::Medium,
+                    description: format!(
+                        "New relationship '{} -> {}' appeared in code without an approved proposal",
+                        edge.source, edge.target
+                    ),
+                    evidence: vec![Evidence {
+                        source: "scan".to_string(),
+                        location: None,
+                        detail: "Detected via structural scan".to_string(),
+                    }],
+                    intent_ref: None,
+                    suggestion: Some("Document this relationship in a proposal.".to_string()),
+                });
+            }
+        }
+    }
+
+    drifts
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -648,146 +790,4 @@ mod tests {
             ElementKind::Custom("microservice".to_string())
         );
     }
-}
-
-fn collect_program_defined_kinds(program: &Program) -> std::collections::HashMap<String, String> {
-    let mut out: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    for item in &program.items {
-        if let TopLevelItem::KindDef(def) = item {
-            let canonical = format!("{}", def.kind);
-            out.insert(canonical.to_lowercase(), canonical);
-        }
-    }
-    out
-}
-
-fn parse_element_kind(
-    kind: &str,
-    baseline_defined_kinds: &std::collections::HashMap<String, String>,
-) -> Result<ElementKind, ProposalError> {
-    let kind = kind.trim();
-    if kind.is_empty() {
-        return Err(ProposalError::Apply(
-            "Element kind must be non-empty".to_string(),
-        ));
-    }
-
-    let lc = kind.to_lowercase();
-    let kind = match lc.as_str() {
-        "person" => ElementKind::Person,
-        "role" => ElementKind::Role,
-        "system" => ElementKind::System,
-        "container" => ElementKind::Container,
-        "component" => ElementKind::Component,
-        "database" => ElementKind::Database,
-        "queue" => ElementKind::Queue,
-        "policy" => ElementKind::Policy,
-        "requirement" => ElementKind::Requirement,
-        "adr" => ElementKind::Adr,
-        "flow" => ElementKind::Flow,
-        "scenario" => ElementKind::Scenario,
-        "story" => ElementKind::Story,
-        "datastore" | "data_store" => ElementKind::DataStore,
-        "externalsystem" | "external_system" => ElementKind::ExternalSystem,
-        _ => {
-            if let Some(canonical) = baseline_defined_kinds.get(&lc) {
-                ElementKind::Custom(canonical.clone())
-            } else {
-                return Err(ProposalError::Apply(format!(
-                    "Unknown element kind '{}'. Define it first in the baseline with '<KindId> = kind \"...\" {{ ... }}'. Allowed built-in kinds: person, role, system, container, component, database, queue, policy, requirement, adr, flow, scenario, story, datastore, externalSystem.",
-                    kind
-                )));
-            }
-        }
-    };
-
-    Ok(kind)
-}
-
-fn parse_qualified_ident(s: &str) -> QualifiedIdent {
-    QualifiedIdent::qualified(s.split('.').map(|p| p.to_string()).collect())
-}
-
-pub fn detect_unproposed_changes(
-    previous_graph: &Graph,
-    current_graph: &Graph,
-    approved_proposals: &[Proposal],
-) -> Vec<Drift> {
-    let mut drifts = Vec::new();
-
-    // 1. Find nodes that are in current but not in previous
-    let previous_ids: std::collections::HashSet<_> =
-        previous_graph.nodes.iter().map(|n| &n.id).collect();
-
-    for node in &current_graph.nodes {
-        if !previous_ids.contains(&node.id) {
-            // New node. Check if it was proposed.
-            let is_proposed = approved_proposals.iter().any(|p| {
-                p.status == ProposalStatus::Approved
-                    && p.changes.iter().any(|c| match c {
-                        ProposalChange::AddElement { id, .. } => id == &node.id,
-                        _ => false,
-                    })
-            });
-
-            if !is_proposed {
-                drifts.push(Drift {
-                    kind: DriftKind::UnproposedChange,
-                    severity: Severity::High,
-                    description: format!(
-                        "New component '{}' appeared in code without an approved proposal",
-                        node.id
-                    ),
-                    evidence: vec![Evidence {
-                        source: "scan".to_string(),
-                        location: node.path.clone(),
-                        detail: format!("Kind: {}", node.kind),
-                    }],
-                    intent_ref: None,
-                    suggestion: Some("Run 'sruja propose create' to document this change or remove it from code.".to_string()),
-                });
-            }
-        }
-    }
-
-    // 2. Find new relationships
-    let previous_edges: std::collections::HashSet<_> = previous_graph
-        .edges
-        .iter()
-        .map(|e| (e.source.clone(), e.target.clone()))
-        .collect();
-
-    for edge in &current_graph.edges {
-        if !previous_edges.contains(&(edge.source.clone(), edge.target.clone())) {
-            let is_proposed = approved_proposals.iter().any(|p| {
-                p.status == ProposalStatus::Approved
-                    && p.changes.iter().any(|c| match c {
-                        ProposalChange::AddRelationship { source, target, .. } => {
-                            source == &edge.source && target == &edge.target
-                        }
-                        _ => false,
-                    })
-            });
-
-            if !is_proposed {
-                drifts.push(Drift {
-                    kind: DriftKind::UnproposedChange,
-                    severity: Severity::Medium,
-                    description: format!(
-                        "New relationship '{} -> {}' appeared in code without an approved proposal",
-                        edge.source, edge.target
-                    ),
-                    evidence: vec![Evidence {
-                        source: "scan".to_string(),
-                        location: None,
-                        detail: "Detected via structural scan".to_string(),
-                    }],
-                    intent_ref: None,
-                    suggestion: Some("Document this relationship in a proposal.".to_string()),
-                });
-            }
-        }
-    }
-
-    drifts
 }

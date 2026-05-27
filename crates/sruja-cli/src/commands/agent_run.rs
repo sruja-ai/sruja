@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 //! Agent run loop: observe → plan → (optional) apply → verify → record learnings.
 //!
 //! This is intentionally conservative:

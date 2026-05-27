@@ -480,9 +480,11 @@ mod tests {
 
     #[test]
     fn drift_overlay_applied() {
-        let mut drift = DriftOverlay::default();
-        drift.score = 45;
-        drift.health = "minor_drift".into();
+        let mut drift = DriftOverlay {
+            score: 45,
+            health: "minor_drift".into(),
+            ..Default::default()
+        };
         drift.nodes.insert(
             "SysA".into(),
             NodeDriftInfo {

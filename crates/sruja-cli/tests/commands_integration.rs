@@ -1271,23 +1271,6 @@ export function helper() { return 1; }
 }
 
 #[test]
-fn sync_ide_rules_writes_expected_files() {
-    let repo = create_test_repo();
-    write_file(repo.path(), "repo.sruja", MINIMAL_VALID_SRUJA);
-    let repo_str = repo.path().to_str().expect("utf-8");
-
-    let (ok, _stdout, stderr) =
-        run_sruja(&["sync-ide-rules", "-r", repo_str, "--max-tokens", "1500"]);
-    assert!(ok, "sync-ide-rules should succeed: stderr={stderr}");
-
-    assert!(repo.path().join(".cursorrules").exists());
-    assert!(repo.path().join(".github/copilot-instructions.md").exists());
-    assert!(repo.path().join("CLAUDE.md").exists());
-    assert!(repo.path().join(".gemini/AGENTS.md").exists());
-    assert!(repo.path().join("llms-architecture.txt").exists());
-}
-
-#[test]
 fn dsl_import_from_exported_json_succeeds() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", MINIMAL_VALID_SRUJA);

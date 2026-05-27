@@ -178,17 +178,11 @@ deploy-trae: build-extension
 
 # --- Workflows ---
 
-# Daily sync: setup, check, federate, and update AI context
-daily: setup check federate context-sync
+# Daily sync: setup, check, federate
+daily: setup check federate
     @echo "Checking for architecture drift..."
     ./target/release/sruja drift -r . -a repo.sruja || true
-    @echo "✅ Daily setup complete. AI editors are now context-aware!"
-
-# Update AI editor context files
-context-sync:
-    @echo "Updating AI editor context..."
-    ./target/release/sruja sync-ide-rules -r .
-    @echo "✅ AI context synchronized"
+    @echo "✅ Daily setup complete!"
 
 # Federated Architecture
 federate: build

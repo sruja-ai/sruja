@@ -972,5 +972,49 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "name": "sruja_get_boundaries",
+            "title": "Sruja Get Boundaries",
+            "description": "Get architectural boundaries and allowed connections for a component or file. Falls back to inferred boundaries if no .sruja exists.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "element_id": { "type": "string", "description": "Optional component ID to filter boundaries (e.g. MySystem.Api)" },
+                    "file": { "type": "string", "description": "Optional file path to resolve target component from" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_suggest_fix",
+            "title": "Sruja Suggest Fix",
+            "description": "Given a violation (or all active violations), returns structured suggestion options to resolve it (DSL fixes, code refactoring).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "violation": {
+                        "type": "object",
+                        "description": "Optional specific violation object to generate suggestions for. If omitted, checks the entire repo and generates fixes for all active violations."
+                    }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_check_violations",
+            "title": "Sruja Check Violations",
+            "description": "Validate changes against architectural boundaries and policies. Returns list of violations. If files array is provided, validates those changed files. Otherwise, checks the entire repo.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "files": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Optional list of changed file paths to validate"
+                    }
+                }
+            }
+        }),
     ]
 }

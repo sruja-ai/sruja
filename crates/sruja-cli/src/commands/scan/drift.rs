@@ -1,3 +1,4 @@
+#![allow(clippy::await_holding_lock)]
 use std::fs;
 use std::path::{Path, PathBuf};
 

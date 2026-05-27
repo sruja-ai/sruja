@@ -103,12 +103,9 @@ export function helper() { return "ok"; }
             .unwrap_or_default(),
         "input"
     );
-    assert_eq!(
-        grounding_trace
-            .iter()
-            .any(|s| s.get("phase").and_then(|v| v.as_str()) == Some("focus_resolution")),
-        true
-    );
+    assert!(grounding_trace
+        .iter()
+        .any(|s| s.get("phase").and_then(|v| v.as_str()) == Some("focus_resolution")));
 }
 
 #[test]

@@ -1,3 +1,4 @@
+#![allow(clippy::await_holding_lock)]
 use super::*;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -166,8 +167,8 @@ fn mutating_mcp_tool_detection() {
 #[test]
 fn mcp_readonly_list_excludes_all_mutating_tools() {
     // Debug: Check what tools are in each list
-    let full = mcp_tools_for_list_with_readonly(false, ToolProfile::Full);
-    let ro = mcp_tools_for_list_with_readonly(true, ToolProfile::Full);
+    let full = mcp_tools_for_list_with_readonly(false, ToolProfile::Legacy);
+    let ro = mcp_tools_for_list_with_readonly(true, ToolProfile::Legacy);
 
     let full_names: Vec<String> = full
         .iter()
@@ -762,4 +763,83 @@ async fn mcp_tool_call_explain_element_returns_grounded_json() {
     );
     assert!(parsed.get("neighbors").is_some());
     assert!(parsed.get("notes").is_some());
+}
+
+#[tokio::test]
+async fn mcp_self_correcting_loop_integration() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let repo_path = dir.path();
+
+    let src = repo_path.join("src");
+    std::fs::create_dir_all(&src).expect("create src");
+    std::fs::write(src.join("ui.rs"), "use crate::db::query;\n").expect("write ui");
+    std::fs::write(src.join("db.rs"), "pub fn query() {}\n").expect("write db");
+    std::fs::write(
+        repo_path.join("Cargo.toml"),
+        r#"[package]
+name = "test-pkg"
+version = "0.1.0"
+edition = "2021"
+"#,
+    )
+    .expect("write cargo");
+
+    std::fs::write(
+        repo_path.join("architecture.sruja"),
+        r#"
+MySystem = system "My System" {
+  description "Test System"
+  
+  Ui = container "UI" {
+    technology "React"
+    description "Frontend UI"
+  }
+  
+  Db = database "DB" {
+    technology "PostgreSQL"
+    description "Database"
+  }
+}
+"#,
+    )
+    .expect("write dsl");
+
+    let cache = Arc::new(Mutex::new(HashMap::new()));
+
+    let out = run_tool(
+        "sruja_check_violations",
+        &json!({ "path": repo_path.to_string_lossy() }),
+        ".",
+        &cache,
+    )
+    .await
+    .expect("check_violations");
+
+    let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+    let violations = parsed
+        .get("violations")
+        .and_then(|v| v.as_array())
+        .expect("violations array");
+    assert!(!violations.is_empty(), "expected violations but got none");
+
+    let suggestions_out = run_tool(
+        "sruja_suggest_fix",
+        &json!({ "path": repo_path.to_string_lossy() }),
+        ".",
+        &cache,
+    )
+    .await
+    .expect("suggest_fix");
+
+    let suggestions_parsed: Value =
+        serde_json::from_str(&suggestions_out).expect("valid suggestions JSON");
+    let suggestions = suggestions_parsed
+        .get("suggestions")
+        .and_then(|s| s.as_array())
+        .expect("suggestions array");
+    assert!(!suggestions.is_empty(), "expected suggestions but got none");
+
+    let suggestion = &suggestions[0];
+    assert!(suggestion.get("fix_target").is_some());
+    assert!(suggestion.get("action").is_some());
 }

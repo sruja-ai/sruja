@@ -15,6 +15,12 @@ jobs:
     permissions:
       actions: read
       contents: read
+    concurrency:
+      group: sruja-drift-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash --noprofile --norc -euo pipefail {0}
     steps:
       - name: Wait for Sruja Check workflow
         uses: actions/github-script@v9
@@ -60,3 +66,14 @@ jobs:
 
               return;
             }
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build sruja (CLI)
+        run: cargo build --release -p sruja-cli
+
+      - name: Drift check (baseline repo.sruja)
+        run: ./target/release/sruja drift -r . -a repo.sruja -f github-actions

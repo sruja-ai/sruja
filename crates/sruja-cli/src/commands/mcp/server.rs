@@ -67,10 +67,12 @@ impl McpServer {
             .and_then(|v| v.as_str())
         {
             match profile {
-                "minimal" => return ToolProfile::Minimal,
-                "coding" => return ToolProfile::Coding,
-                "arch" => return ToolProfile::Arch,
-                "full" => return ToolProfile::Full,
+                "legacy" => return ToolProfile::Legacy,
+                "full" => return ToolProfile::Legacy,
+                "arch" => return ToolProfile::Legacy,
+                "coding" => return ToolProfile::Legacy,
+                "minimal" => return ToolProfile::Legacy,
+                "default" => return ToolProfile::Default,
                 _ => {}
             }
         }

@@ -379,7 +379,7 @@ pub enum Commands {
         schema: String,
     },
     /// Truth freshness and baseline state
-    #[command(visible_alias = "doctor", hide = true)]
+    #[command(visible_alias = "doctor")]
     Status {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -531,6 +531,7 @@ pub enum Commands {
     ///
     /// Produces a task-specific brief combining worktree, architecture signals, and verification hints.
     /// For full-repo onboarding, use `onboard`. For structural overview, use `quickstart`.
+    #[command(hide = true)]
     Ai {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -673,19 +674,6 @@ pub enum Commands {
         /// For `-f for-ai`: emit invariant/tools/volatile blocks for prompt-cache-friendly payloads
         #[arg(long)]
         cache_friendly: bool,
-    },
-    /// Write editor rule files from validated architecture (cursor-rules, copilot, llms-architecture.txt)
-    #[command(name = "sync-ide-rules")]
-    SyncIdeRules {
-        /// Path to repository root (single repo only)
-        #[arg(long, short = 'r', action = clap::ArgAction::Append)]
-        repo: Vec<String>,
-        /// Max tokens for generated rule bodies (approximate)
-        #[arg(long, default_value_t = 6000)]
-        max_tokens: usize,
-        /// Exit non-zero if on-disk IDE files differ from architecture-derived outputs
-        #[arg(long)]
-        check: bool,
     },
     /// Scanner introspection for AI/debug: explain scan, repomap, discovery questions
     #[command(hide = true)]
