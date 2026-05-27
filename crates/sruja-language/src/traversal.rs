@@ -128,6 +128,21 @@ pub fn collect_elements(program: &Program) -> (HashMap<String, ElementDef>, Vec<
                 };
                 elements.insert(flow.id.clone(), elem_def);
             }
+            TopLevelItem::Scenario(scenario) => {
+                let elem_def = ElementDef {
+                    location: scenario.location.clone(),
+                    assignment: ElementAssignment {
+                        location: scenario.location.clone(),
+                        name: scenario.id.clone(),
+                        kind: ElementKind::Scenario,
+                        sub_kind: None,
+                        title: Some(scenario.title.clone()),
+                        tag_refs: vec![],
+                        body: None,
+                    },
+                };
+                elements.insert(scenario.id.clone(), elem_def);
+            }
             TopLevelItem::Schema(_schema) => {}
             _ => {}
         }
@@ -647,6 +662,26 @@ requirement REQ-001 "User Authentication" {
         assert_eq!(elements.len(), 1);
         assert!(elements.contains_key("REQ-001"));
         assert_eq!(relations.len(), 0);
+    }
+
+    #[test]
+    fn test_collect_elements_scenario_for_valid_ref() {
+        let input = r#"
+ecommerce = system "Shop" {}
+Checkout = scenario "Checkout" {
+    step user -> ecommerce "buy"
+}
+Checkout -> ecommerce "describes"
+"#;
+        let program = parse_test_input(input);
+        let (elements, relations) = collect_elements(&program);
+
+        assert!(
+            elements.contains_key("Checkout"),
+            "keys: {:?}",
+            elements.keys()
+        );
+        assert_eq!(relations.len(), 1);
     }
 
     #[test]

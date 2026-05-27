@@ -30,6 +30,4 @@ LoginStory = story "User Login Flow" {
   step ecommerce.cartPage -> ecommerce "validates user"
 }
 
-Checkout -> ecommerce "describes"
-LoginStory -> ecommerce "describes"
 

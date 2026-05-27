@@ -3,12 +3,14 @@
 system = kind "System"
 
 shop = system "Shop" {
-  DB_Choice = adr "Database Selection" {
-    status "Accepted"
-    context "Choose between Postgres and Mongo"
-    decision "Use Postgres for relational needs"
-    consequences "Reliable ACID; more ops complexity"
-  }
+  description "Example shop system for governance artifacts"
+}
+
+DB_Choice = adr "Database Selection" {
+  status "Accepted"
+  context "Choose between Postgres and Mongo"
+  decision "Use Postgres for relational needs"
+  consequences "Reliable ACID; more ops complexity"
 }
 
 R1 = requirement functional "System must process orders"
@@ -29,7 +31,7 @@ NoExtToDb = policy "External APIs must not call databases" {
 
 R1 -> shop "Defines core capability"
 R2 -> shop "Quality goals"
-R3 -> shop.DB_Choice "Constrains decision"
+R3 -> DB_Choice "Constrains decision"
 R4 -> shop "Performance constraint"
 R5 -> shop "Security requirement"
-shop.DB_Choice -> shop "Documents"
+DB_Choice -> shop "Documents"
