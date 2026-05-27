@@ -326,4 +326,128 @@ mod tests {
         assert_eq!(s.current_stage.as_deref(), Some("Requirements"));
         std::fs::remove_dir_all(dir).ok();
     }
+
+    #[test]
+    fn aidlc_missing_for_phase_disabled_returns_empty() {
+        let dir =
+            std::env::temp_dir().join(format!("aidlc-missing-disabled-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let cfg = AidlcConfig {
+            enabled: false,
+            ..Default::default()
+        };
+        let missing = aidlc_missing_for_phase(&dir, "wf-1", "inception", &cfg);
+        assert!(missing.is_empty());
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn aidlc_missing_for_phase_inception_minimal_reports_missing_docs_root() {
+        let dir =
+            std::env::temp_dir().join(format!("aidlc-missing-minimal-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let cfg = AidlcConfig {
+            enabled: true,
+            profile: "minimal".to_string(),
+            ..Default::default()
+        };
+        let missing = aidlc_missing_for_phase(&dir, "wf-1", "inception", &cfg);
+        assert!(!missing.is_empty());
+        assert!(missing
+            .iter()
+            .any(|m| m.contains("aidlc docs root missing")));
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn aidlc_missing_for_phase_inception_full_reports_missing_required_files() {
+        let dir = std::env::temp_dir().join(format!("aidlc-missing-full-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let cfg = AidlcConfig {
+            enabled: true,
+            profile: "full".to_string(),
+            ..Default::default()
+        };
+
+        // Create the docs root so we test missing-file reporting, not only root-missing.
+        let docs_root = dir
+            .join(".sruja")
+            .join("workflows")
+            .join("wf-1")
+            .join("inception")
+            .join(&cfg.docs_root);
+        std::fs::create_dir_all(&docs_root).unwrap();
+        // Minimal artifact exists, others missing.
+        std::fs::write(docs_root.join("aidlc-state.md"), "# State\n").unwrap();
+
+        let missing = aidlc_missing_for_phase(&dir, "wf-1", "inception", &cfg);
+        assert!(!missing.is_empty());
+        assert!(missing
+            .iter()
+            .any(|m| m.contains("inception/requirements/requirements.md")));
+        assert!(missing
+            .iter()
+            .any(|m| m.contains("inception/application-design/components.md")));
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn install_rules_missing_source_is_error() {
+        let dir =
+            std::env::temp_dir().join(format!("aidlc-install-missing-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // Ensure env doesn't point to rules.
+        std::env::remove_var("SRUJA_AIDLC_RULES");
+        let err = install_aidlc_rules(&dir).unwrap_err();
+        let msg = format!("{err}");
+        assert!(msg.contains("Could not find aidlc-rules"));
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn build_aidlc_status_includes_state_and_missing() {
+        let dir = std::env::temp_dir().join(format!("aidlc-status-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let cfg = AidlcConfig {
+            enabled: true,
+            profile: "minimal".to_string(),
+            ..Default::default()
+        };
+        let docs_root = dir
+            .join(".sruja")
+            .join("workflows")
+            .join("wf-1")
+            .join("inception")
+            .join(&cfg.docs_root);
+        std::fs::create_dir_all(&docs_root).unwrap();
+        std::fs::write(
+            docs_root.join("aidlc-state.md"),
+            r#"# State
+- **Current Phase**: INCEPTION
+- **Current Stage**: Requirements
+"#,
+        )
+        .unwrap();
+
+        let status = build_aidlc_status(&dir, "wf-1", "inception", &cfg);
+        assert!(status.enabled);
+        assert_eq!(status.profile, "minimal");
+        assert_eq!(status.state.current_phase.as_deref(), Some("INCEPTION"));
+        assert!(
+            status.missing.is_empty(),
+            "minimal inception requires only aidlc-state.md"
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn append_workflow_audit_appends_jsonl() {
+        let dir = std::env::temp_dir().join(format!("aidlc-audit-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = append_workflow_audit(&dir, "wf-1", "stage complete", "tester").unwrap();
+        let txt = std::fs::read_to_string(&path).unwrap();
+        assert!(txt.contains("\"actor\":\"tester\""));
+        assert!(txt.contains("\"event\":\"stage complete\""));
+        std::fs::remove_dir_all(dir).ok();
+    }
 }

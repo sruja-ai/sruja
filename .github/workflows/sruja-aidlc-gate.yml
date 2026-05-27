@@ -27,4 +27,7 @@ jobs:
 
       - name: Drift check
         run: ./target/release/sruja drift -r . -a repo.sruja --format json
-        continue-on-error: true
+        # Enterprise default: enforce drift for AI-DLC workflow PRs.
+        # If you want an advisory rollout, use `drift-pr` (PR-only new violations) in your CI template
+        # or run drift in advisory mode outside this workflow.
+        continue-on-error: false

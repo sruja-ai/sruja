@@ -29,6 +29,8 @@ sruja sync -r .
 | Doc | Purpose |
 |-----|---------|
 | [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** – Install, use, and operate the architecture/context-engineering workflow |
+| [ENTERPRISE_ADOPTION.md](ENTERPRISE_ADOPTION.md) | Enterprise adoption tiers: evaluation → CI gates → AI-DLC workflows |
+| [EnterprisePlan.md](EnterprisePlan.md) | 90-day enterprise adoption hardening plan (pilot readiness) |
 | [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) | **Multi-repo federation** – Step-by-step guide for `repo.bundle.json` and `system.index.json` |
 | [FEDERATION.md](FEDERATION.md) | Retrieval order, artifact shapes, and multi-repo composition rules |
 | [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) | Context engineering principles and pipeline |

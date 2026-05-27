@@ -2,6 +2,16 @@
 
 Sruja integrates [awslabs/aidlc-workflows](https://github.com/awslabs/aidlc-workflows) as an **orchestration harness**: durable workflow artifacts, phase gates, drift/lint on `repo.sruja`, and CI checks. The **editor host** (Cursor, Claude Code, etc.) still runs AIDLC markdown rules and generates application code; Sruja does not ship an in-process LLM executor.
 
+## Enterprise adoption path
+
+This integration is designed to be adopted progressively:
+
+- **Evaluation (CLI-only):** run drift and focus/ai locally.
+- **Team adoption (CI gate):** add `verify-task` and PR-scoped drift (`drift-pr`) so CI blocks only new violations.
+- **AI-DLC workflow projects:** use durable workflow artifacts + phase gates via `sruja workflow ...`.
+
+See [ENTERPRISE_ADOPTION.md](ENTERPRISE_ADOPTION.md) for the tiered rollout guide and [FEATURE_TIERS.md](FEATURE_TIERS.md) for what’s Tier 1 vs advanced.
+
 ## Vendoring
 
 - Vendor path: `aidlc-workflows/` at the repository root (or set `SRUJA_AIDLC_RULES` to an `aidlc-rules/` directory).

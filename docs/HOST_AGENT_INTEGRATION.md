@@ -5,6 +5,16 @@
 
 Single source for integrating Sruja with any AI agent host (Cursor, Claude Code, CI, OpenHands, etc.). Sruja is a **deterministic harness** — the host owns the LLM loop.
 
+## One blessed loop
+
+This repo is cohesive when every integration (local dev, AI editor, CI, AI-DLC workflows) funnels into the same loop:
+
+```text
+START → workflow status --check (if AI-DLC) → focus/ai → host ACT → verify-task → drift-pr/drift → RECORD/LEARN
+```
+
+Adoption tiers and rollout guidance: [ENTERPRISE_ADOPTION.md](ENTERPRISE_ADOPTION.md).
+
 ---
 
 ## Boundary Table
