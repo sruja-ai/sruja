@@ -330,3 +330,78 @@ fn parse_view_identifier_or_wildcard(input: &str) -> IResult<&str, String> {
     ))
     .parse(input)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_overview_block_collects_all_fields() {
+        let input = r#"overview {
+  summary "Ship faster"
+  audience "Engineering"
+  scope "Core platform"
+  goals ["g1", "g2"]
+  nonGoals ["ng1"]
+  risks ["r1"]
+}"#;
+        let (_, overview) = parse_overview_block(input).expect("parse overview");
+        assert_eq!(overview.summary.as_deref(), Some("Ship faster"));
+        assert_eq!(overview.audience.as_deref(), Some("Engineering"));
+        assert_eq!(overview.scope.as_deref(), Some("Core platform"));
+        assert_eq!(overview.goals, vec!["g1", "g2"]);
+        assert_eq!(overview.non_goals, vec!["ng1"]);
+        assert_eq!(overview.risks, vec!["r1"]);
+    }
+
+    #[test]
+    fn parse_view_assignment_syntax_with_include_wildcard() {
+        let input = r#"ContainerView = view "Containers" of App {
+  include *
+  exclude App.Legacy
+  description "Main view"
+}"#;
+        let (_, view) = parse_view(input).expect("parse view");
+        assert_eq!(view.id, "ContainerView");
+        assert_eq!(view.title, "Containers");
+        assert_eq!(view.description.as_deref(), Some("Main view"));
+        assert_eq!(
+            view.view_of.as_ref().map(|q| q.as_string()),
+            Some("App".to_string())
+        );
+        let rules = &view.rules[0];
+        assert!(rules.include.as_ref().expect("include").wildcard);
+        let exclude = rules.exclude.as_ref().expect("exclude");
+        assert_eq!(exclude.elements, vec!["App.Legacy"]);
+    }
+
+    #[test]
+    fn parse_view_block_syntax() {
+        let input = r#"view SystemView of MySystem {
+  title "System"
+  include *
+  exclude MySystem.Legacy
+}"#;
+        let (_, view) = parse_view(input).expect("parse block view");
+        assert_eq!(view.id, "SystemView");
+        assert_eq!(view.title, "System");
+        assert_eq!(
+            view.view_of.as_ref().map(|q| q.as_string()),
+            Some("MySystem".to_string())
+        );
+        let rules = &view.rules[0];
+        assert!(rules.include.as_ref().expect("include").wildcard);
+        assert_eq!(
+            rules.exclude.as_ref().expect("exclude").elements,
+            vec!["MySystem.Legacy"]
+        );
+    }
+
+    #[test]
+    fn parse_view_without_body_has_empty_rules() {
+        let input = r#"Simple = view "Simple""#;
+        let (_, view) = parse_view(input).expect("parse minimal view");
+        assert!(view.rules.is_empty());
+        assert!(view.view_of.is_none());
+    }
+}

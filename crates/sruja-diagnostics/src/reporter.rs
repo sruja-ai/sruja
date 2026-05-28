@@ -87,3 +87,39 @@ impl ErrorReporter for BasicErrorReporter {
         &self.diagnostics
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{Severity, SourceLocation};
+
+    fn sample_diagnostic(code: &str, severity: Severity) -> Diagnostic {
+        Diagnostic::new(
+            code,
+            severity,
+            "message",
+            SourceLocation::new("f.sruja".to_string(), 1, 1),
+        )
+    }
+
+    #[test]
+    fn basic_reporter_collects_and_reports_errors() {
+        let mut reporter = BasicErrorReporter::new();
+        assert!(reporter.is_empty());
+        reporter.report(sample_diagnostic("E1", Severity::Warning));
+        reporter.report_owned(sample_diagnostic("E2", Severity::Error));
+        assert_eq!(reporter.len(), 2);
+        assert!(reporter.has_errors());
+        assert_eq!(reporter.diagnostics().len(), 2);
+        reporter.clear();
+        assert!(reporter.is_empty());
+        assert!(!reporter.has_errors());
+    }
+
+    #[test]
+    fn has_errors_false_when_only_warnings() {
+        let mut reporter = BasicErrorReporter::default();
+        reporter.report(sample_diagnostic("W1", Severity::Warning));
+        assert!(!reporter.has_errors());
+    }
+}

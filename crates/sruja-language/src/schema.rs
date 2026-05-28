@@ -234,3 +234,104 @@ impl DomainSchema {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::{NestingRule, SchemaBlock};
+    use sruja_diagnostics::SourceLocation;
+
+    fn schema_block(name: &str) -> SchemaBlock {
+        SchemaBlock {
+            location: SourceLocation::new("test.sruja".to_string(), 1, 1),
+            name: name.to_string(),
+            node_kinds: Vec::new(),
+            edge_kinds: Vec::new(),
+            nesting: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn architecture_preset_allows_c4_kinds_and_nesting() {
+        let schema = DomainSchema::architecture();
+        assert_eq!(schema.name, "architecture");
+        assert!(schema.is_node_kind_allowed("container"));
+        assert!(schema.is_edge_kind_allowed("reads_from"));
+        assert!(schema.is_nesting_allowed("system", "container"));
+        assert!(schema.is_nesting_allowed("container", "component"));
+        assert!(!schema.is_nesting_allowed("person", "container"));
+        assert!(!schema.is_node_kind_allowed("widget"));
+    }
+
+    #[test]
+    fn compliance_business_process_and_knowledge_presets() {
+        let compliance = DomainSchema::compliance();
+        assert!(compliance.is_node_kind_allowed("control"));
+        assert!(compliance.is_edge_kind_allowed("mitigates"));
+        assert!(compliance.is_nesting_allowed("regulation", "control"));
+
+        let bp = DomainSchema::business_process();
+        assert!(bp.is_node_kind_allowed("activity"));
+        assert!(bp.is_edge_kind_allowed("triggers"));
+        assert!(bp.is_nesting_allowed("process", "activity"));
+
+        let knowledge = DomainSchema::knowledge();
+        assert!(knowledge.is_node_kind_allowed("claim"));
+        assert!(knowledge.is_edge_kind_allowed("supports"));
+        assert!(knowledge.is_nesting_allowed("concept", "anything"));
+    }
+
+    #[test]
+    fn empty_schema_allows_all_kinds_and_nesting() {
+        let schema = DomainSchema::new("custom");
+        assert!(schema.is_node_kind_allowed("anything"));
+        assert!(schema.is_edge_kind_allowed("anything"));
+        assert!(schema.is_nesting_allowed("parent", "child"));
+    }
+
+    #[test]
+    fn from_ast_merges_custom_kinds_into_architecture_preset() {
+        let mut block = schema_block("architecture");
+        block.node_kinds.push("widget".to_string());
+        block.edge_kinds.push("syncs_with".to_string());
+        block.nesting.push(NestingRule {
+            parent: "system".to_string(),
+            child: "widget".to_string(),
+        });
+
+        let schema = DomainSchema::from_ast(&block);
+        assert!(schema.is_node_kind_allowed("container"));
+        assert!(schema.is_node_kind_allowed("widget"));
+        assert!(schema.is_edge_kind_allowed("syncs_with"));
+        assert!(schema.is_nesting_allowed("system", "widget"));
+    }
+
+    #[test]
+    fn from_ast_uses_builtin_for_known_schema_names() {
+        let compliance = DomainSchema::from_ast(&schema_block("compliance"));
+        assert!(compliance.is_node_kind_allowed("audit"));
+        assert!(!compliance.is_node_kind_allowed("container"));
+
+        let bp = DomainSchema::from_ast(&schema_block("business-process"));
+        assert!(bp.is_node_kind_allowed("decision"));
+
+        let knowledge = DomainSchema::from_ast(&schema_block("knowledge"));
+        assert!(knowledge.is_node_kind_allowed("source"));
+    }
+
+    #[test]
+    fn from_ast_unknown_name_starts_empty_then_merges() {
+        let mut block = schema_block("my_domain");
+        block.node_kinds.push("node_a".to_string());
+        let schema = DomainSchema::from_ast(&block);
+        assert_eq!(schema.name, "my_domain");
+        assert!(schema.is_node_kind_allowed("node_a"));
+        assert!(!schema.is_node_kind_allowed("person"));
+    }
+
+    #[test]
+    fn nesting_denied_when_parent_has_rules_but_child_not_listed() {
+        let schema = DomainSchema::architecture();
+        assert!(!schema.is_nesting_allowed("container", "database"));
+    }
+}

@@ -176,3 +176,53 @@ impl std::fmt::Display for Diagnostic {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn severity_as_str_and_from_str() {
+        assert_eq!(Severity::Error.as_str(), "Error");
+        assert_eq!(Severity::from_str("warning").unwrap(), Severity::Warning);
+        assert_eq!(Severity::from_str("INFO").unwrap(), Severity::Info);
+        assert!(Severity::from_str("critical").is_err());
+    }
+
+    #[test]
+    fn severity_display_matches_as_str() {
+        assert_eq!(format!("{}", Severity::Hint), "Hint");
+    }
+
+    #[test]
+    fn source_location_display() {
+        let loc = SourceLocation::new("a.sruja".to_string(), 2, 3);
+        assert_eq!(format!("{loc}"), "a.sruja:2:3");
+    }
+
+    #[test]
+    fn diagnostic_builder_and_display() {
+        let loc = SourceLocation::new("b.sruja".to_string(), 1, 1);
+        let diag = Diagnostic::new("E001", Severity::Error, "oops", loc.clone())
+            .with_context(vec!["line".to_string()])
+            .with_suggestions(vec!["fix it".to_string()]);
+        assert_eq!(diag.context.len(), 1);
+        assert_eq!(diag.suggestions.len(), 1);
+        let from_ref = Diagnostic::new_from_ref("W001", Severity::Warning, "warn", &loc);
+        assert_eq!(from_ref.location.file, "b.sruja");
+        assert!(format!("{diag}").contains("E001"));
+        assert!(format!("{diag}").contains("oops"));
+    }
+
+    #[test]
+    fn diagnostic_serde_roundtrip() {
+        let loc = SourceLocation::new("c.sruja".to_string(), 5, 10);
+        let diag = Diagnostic::new("E101", Severity::Info, "note", loc);
+        let json = serde_json::to_string(&diag).expect("serialize");
+        let back: Diagnostic = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.code, "E101");
+        assert_eq!(back.severity, Severity::Info);
+        assert_eq!(back.location.line, 5);
+    }
+}

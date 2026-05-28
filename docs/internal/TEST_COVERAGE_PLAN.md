@@ -68,8 +68,9 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 10. **sruja-export** context/exporter – **Done** (empty program, unknown template → general header).
 11. **sruja-cli** config – **Done** (get_builtin_views, empty yaml, get_view, AnalysisDepth, ThresholdConfig).
 12. **sruja-scan** cargo.rs – **Done** (missing Cargo.toml, invalid Cargo.toml → error).
-14. **sruja-language** parser submodules – optional (parser/tests.rs, example_files).
+14. **sruja-language** parser submodules – **Partial** (`schema.rs` unit tests; `overview_views.rs` unit + `example_files` integration for overview/view).
 15. **VS Code extension** – optional TypeScript tests for diagnostics/preview wiring.
+16. **sruja-diagnostics** `types.rs` / `reporter.rs` – **Done** (Severity/from_str, Diagnostic builders/serde, BasicErrorReporter).
 
 ---
 
@@ -91,6 +92,9 @@ Structured plan for adding missing unit and integration tests across the Sruja w
 11. sruja-export: context/exporter.rs — **Done** (empty program, unknown template).
 12. sruja-cli: config.rs — **Done** (builtin views, deserialize, get_view, AnalysisDepth, ThresholdConfig).
 13. sruja-scan: cargo.rs — **Done** (missing/invalid Cargo.toml error paths).
+14. sruja-language: schema.rs — **Done** (preset schemas, from_ast merge, kind/nesting helpers).
+15. sruja-language: overview_views.rs — **Done** (overview block, view assignment/block syntax, program integration).
+16. sruja-diagnostics: types.rs + reporter.rs — **Done** (see Phase 4 item 16 above).
 
 ---
 
