@@ -421,8 +421,8 @@ pub enum Commands {
         /// Path to repository root (single repo only)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
         repo: String,
-        /// Max tokens for generated rule bodies (approximate)
-        #[arg(long, default_value_t = 6000)]
+        /// Max tokens for generated rule bodies (approximate; matches `ai-context` default)
+        #[arg(long, default_value_t = 10000)]
         max_tokens: usize,
         /// Exit non-zero if on-disk IDE files differ from architecture-derived outputs
         #[arg(long)]

@@ -240,5 +240,8 @@ pub async fn context_export(
     Ok(())
 }
 
-pub use format::{format_invariant_brief, format_invariant_markdown, format_llms_architecture};
+pub use format::{
+    format_copilot_instructions, format_cursor_rules, format_invariant_brief,
+    format_invariant_markdown, format_llms_architecture,
+};
 pub use logic::build_architecture_context;

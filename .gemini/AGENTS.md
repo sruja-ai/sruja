@@ -54,7 +54,3 @@ When making architectural changes, you MUST follow this loop:
 
 Composed architecture from **4 repositories**.
 Index source: `./system.index.json`
-
-
-# Global AI Agent Guidelines
-You MUST read and strictly adhere to the instructions located in `AGENTS.md` before proceeding with any task.
