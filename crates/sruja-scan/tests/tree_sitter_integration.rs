@@ -73,3 +73,87 @@ pub mod b { pub fn g() { super::a::f(); } }
         .iter()
         .all(|e| node_ids.contains(e.source.as_str()) && node_ids.contains(e.target.as_str())));
 }
+
+#[test]
+fn scan_minimal_go_repo_produces_graph() {
+    let repo = TempDir::new().expect("temp dir");
+    write_file(
+        repo.path(),
+        "go.mod",
+        r#"module example.com/fixture
+
+go 1.21
+"#,
+    );
+    write_file(
+        repo.path(),
+        "main.go",
+        r#"package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello")
+}
+"#,
+    );
+
+    let graph = sruja_scan::scan_repo(repo.path()).expect("go scan");
+    assert!(
+        !graph.nodes.is_empty(),
+        "minimal Go repo should produce at least one node"
+    );
+}
+
+#[test]
+fn scan_minimal_python_repo_produces_graph() {
+    let repo = TempDir::new().expect("temp dir");
+    write_file(
+        repo.path(),
+        "pyproject.toml",
+        r#"[project]
+name = "fixture"
+version = "0.1.0"
+"#,
+    );
+    write_file(
+        repo.path(),
+        "app/main.py",
+        r#"def greet() -> str:
+    return "hi"
+
+def run():
+    print(greet())
+"#,
+    );
+
+    let graph = sruja_scan::scan_repo(repo.path()).expect("python scan");
+    assert!(
+        !graph.nodes.is_empty(),
+        "minimal Python repo should produce at least one node"
+    );
+}
+
+#[test]
+fn scan_minimal_typescript_repo_produces_graph() {
+    let repo = TempDir::new().expect("temp dir");
+    write_file(
+        repo.path(),
+        "package.json",
+        r#"{"name":"ts-fixture","version":"1.0.0","private":true}"#,
+    );
+    write_file(
+        repo.path(),
+        "src/index.ts",
+        r#"export function greet(): string {
+  return "hi";
+}
+"#,
+    );
+
+    let graph = sruja_scan::scan_repo(repo.path()).expect("typescript scan");
+    assert!(
+        !graph.nodes.is_empty(),
+        "minimal TypeScript repo should produce at least one node"
+    );
+}

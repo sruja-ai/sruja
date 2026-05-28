@@ -398,6 +398,15 @@ mod tests {
     }
 
     #[test]
+    fn parse_overview_non_goals_snake_case_alias() {
+        let input = r#"overview {
+  non_goals ["defer scaling"]
+}"#;
+        let (_, overview) = parse_overview_block(input).expect("parse overview");
+        assert_eq!(overview.non_goals, vec!["defer scaling"]);
+    }
+
+    #[test]
     fn parse_view_without_body_has_empty_rules() {
         let input = r#"Simple = view "Simple""#;
         let (_, view) = parse_view(input).expect("parse minimal view");
