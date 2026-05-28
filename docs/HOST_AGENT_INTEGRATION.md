@@ -302,6 +302,7 @@ See `.github/workflows/sruja-aidlc-gate.yml` for the label-triggered AIDLC gate.
 
 ## References
 
+- [AI_ASSISTED_DEVELOPMENT_PLAYBOOK.md](AI_ASSISTED_DEVELOPMENT_PLAYBOOK.md) — Practical “harnessed AI coding” workflow (MCP + verify-task + skills + diagrams)
 - [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) — Harness vs host boundary, continual learning
 - [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) — What Sruja does not ship
 - [AIDLC_INTEGRATION.md](AIDLC_INTEGRATION.md) — AI-DLC workflow integration
