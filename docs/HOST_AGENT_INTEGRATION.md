@@ -17,6 +17,43 @@ Adoption tiers and rollout guidance: [ENTERPRISE_ADOPTION.md](ENTERPRISE_ADOPTIO
 
 ---
 
+## Trust model: “earned confidence” (multi-agent, go/no-go)
+
+Sruja’s harness can make checks deterministic, but it cannot prevent an LLM host from producing a confident, wrong narrative. For high-stakes usage, hosts should implement a **role-separated multi-pass review** (even if it’s the same model invoked multiple times).
+
+### Normative requirement (when enabled)
+
+When `high_stakes=true` (host configuration), the host MUST treat output as shippable only after:
+
+- **Generator pass** (draft) produces changes + explicit claims.
+- **Verifier pass** produces a “GO/NO-GO” with evidence links (commands run, files read, test output).
+- **Adversary pass** produces a “GO/NO-GO” focused on failure modes, boundary violations, and abuse cases.
+- **Go/no-go rule**: any single NO-GO blocks ship and triggers either more evidence collection or human escalation.
+
+This mirrors “second opinion / four eyes” patterns in medicine, finance, and safety-critical operations.
+
+### Recommended host payloads (for CI + tooling)
+
+Hosts should standardize three artifacts per task/PR:
+
+- **`claims.json`**: structured list of critical claims + how they were verified.
+- **`verification.json`**: `sruja verify-task -f json` output for the selected profile.
+- **`go_no_go.json`**: verdicts from verifier + adversary, including disagreements and required next actions.
+
+At minimum, hosts MUST capture `verification.json` (or a lossless equivalent) and store it in CI logs.
+
+### Human escalation contract
+
+When a NO-GO occurs or agents disagree, the host SHOULD escalate with:
+
+- the minimal failing evidence (command output / failing step IDs)
+- the exact claim(s) in dispute
+- the smallest next action that would resolve uncertainty (run test X, read file Y, add invariant test Z)
+
+Hosts should avoid “debate transcripts”. The escalation payload must be short and actionable.
+
+---
+
 ## Boundary Table
 
 | Layer | Owner | Responsibility |
@@ -113,6 +150,16 @@ sruja verify-task --profile coding -r . -f json
 | `arch` | `lint repo.sruja` + `drift` + `intent check` + `review -f json` |
 
 **MCP equivalent:** `sruja_verify_task`
+
+### Optional: Verifier/Adversary gates (host-owned)
+
+Sruja intentionally does not orchestrate multiple LLM passes; the host does. A common pattern is:
+
+```text
+ACT (generator) → VERIFY (sruja) → VERIFIER PASS (GO/NO-GO) → ADVERSARY PASS (GO/NO-GO) → SHIP/ESCALATE
+```
+
+The **verifier/adversary passes MUST be conditioned on the same evidence** the generator used (files read, command outputs). Do not allow a verifier to “vote GO” without checking `verify-task` and the relevant sources of truth.
 
 #### 4. RECORD — Log the event
 

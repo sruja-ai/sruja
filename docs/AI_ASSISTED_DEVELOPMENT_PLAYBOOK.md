@@ -121,3 +121,52 @@ Examples/templates:
 - **Boundary erosion**: the harness can block forbidden dependencies, but it won’t invent missing architectural intent—write/maintain `repo.sruja` as reviewed truth.
 - **“Looks right” bugs**: structural checks don’t prove product behavior; continue to require tests + review.
 
+---
+
+## “Mission Control” for high-stakes answers (multi-agent verification)
+
+Single-agent outputs are best treated as **untrusted drafts**: they can be articulate, confident, and still wrong. For higher-stakes domains (security, compliance, finance, medical-ish, production safety), upgrade your workflow from “one agent + verify-task” to **multi-agent + go/no-go**.
+
+### Roles (split incentives)
+
+- **Draft agent (generator)**: produce a fast first-pass answer/change, plus explicit claims.
+- **Verifier agent (fact-checker)**: confirm claims against evidence (code, docs, tests, `sruja` outputs). It should try to falsify, not “polish”.
+- **Adversary agent (red team)**: look for edge cases, unsafe assumptions, boundary violations, and ways the change could mislead users or regress behavior.
+
+You do not need three LLMs to get the benefit — you need **three passes with different prompts and success criteria**. Different models can help, but role separation matters more than “N agents”.
+
+### Go / No-go protocol (earned confidence)
+
+Treat these as required checkpoints before you “ship” an answer (post it to a user, land the PR, or publish docs):
+
+1. **Evidence**: every critical claim must be backed by a source of truth:
+   - code reference, test, or runtime output
+   - `sruja focus` briefing / MCP evidence
+   - `sruja verify-task` output (JSON is preferred for automation)
+2. **Verifier “GO”** requires:
+   - `sruja verify-task --profile <coding|bugfix|review|arch> -r .` passes, and
+   - any “this is how it works” claim is cross-checked (search/read + compile/test if relevant)
+3. **Adversary “GO”** requires:
+   - explicit list of failure modes considered (inputs untrusted, nondeterminism, partial failures)
+   - boundary compliance (no new forbidden dependencies; no new drift)
+4. **Any single “NO-GO” pauses the ship**:
+   - either gather more evidence (run a command, add a test, narrow scope), or
+   - escalate to a human reviewer with a concise disagreement summary.
+
+### Practical templates (copy-paste)
+
+**Draft agent deliverable (minimum):**
+- “Here’s what I’m changing / claiming.”
+- “Here are the assumptions.”
+- “Here’s the verification plan (`verify-task` profile + targeted tests).”
+
+**Verifier agent questions:**
+- “Which claims are not directly backed by code/tests/output?”
+- “What command output would prove or disprove this?”
+- “Does the change violate Sruja boundaries or introduce drift?”
+
+**Adversary agent questions:**
+- “What breaks first at scale?”
+- “What happens on invalid input / missing files / nondeterministic ordering?”
+- “Where could this be misused or misinterpreted?”
+
