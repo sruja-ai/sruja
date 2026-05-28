@@ -9,7 +9,7 @@ use crate::commands::context::{
     build_architecture_context, format_copilot_instructions, format_cursor_rules,
     format_llms_architecture,
 };
-use crate::commands::{scan_repo_cached, CliError};
+use crate::commands::CliError;
 
 #[derive(Debug, Clone)]
 pub struct SyncIdeRulesOptions<'a> {
@@ -110,8 +110,13 @@ pub async fn sync_ide_rules(options: SyncIdeRulesOptions<'_>) -> Result<(), CliE
         )));
     }
 
-    // Single scan for all outputs so `--check` after `sync` is stable (no cache refresh mid-command).
-    let graph = scan_repo_cached(repo_root)?;
+    // Scan fresh rather than using `.sruja/cache/scan.json`.
+    //
+    // Rationale: CI runs tests/build before `sync-ide-rules --check`. Some commands/tests may
+    // (legitimately) write a cached scan graph with different settings than the IDE rule
+    // generator expects. Using the cache here can create false negatives where `--check`
+    // fails even though the checked-in files were generated from a clean scan.
+    let graph = sruja_scan::scan_repo(repo_root).map_err(|e| CliError::scan(e.to_string()))?;
     let arch_ctx =
         build_architecture_context(&graph, options.repo, None, None, 2, options.max_tokens)?;
 
