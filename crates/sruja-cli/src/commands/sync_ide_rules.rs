@@ -157,3 +157,81 @@ pub async fn sync_ide_rules(options: SyncIdeRulesOptions<'_>) -> Result<(), CliE
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::fs;
+
+    #[test]
+    fn normalize_for_compare_is_stable_and_trims_line_trailing_whitespace() {
+        let input = "a  \r\nb\t\r\n";
+        let normalized = normalize_for_compare(input);
+        assert_eq!(normalized, "a\nb\n");
+
+        // Re-normalizing should be stable (important because we write the normalized version).
+        assert_eq!(normalize_for_compare(&normalized), normalized);
+    }
+
+    #[test]
+    fn read_file_opt_returns_none_for_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("missing.txt");
+
+        let got = read_file_opt(&missing).unwrap();
+        assert!(got.is_none());
+    }
+
+    #[test]
+    fn sync_or_check_file_check_mode_errors_on_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing.txt");
+
+        let err = sync_or_check_file(&path, "x\n", true).unwrap_err();
+        match err {
+            CliError::Validation { message, .. } => {
+                assert!(message.contains("Missing IDE context file"));
+                assert!(message.contains("sync-ide-rules"));
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn sync_or_check_file_check_mode_errors_on_mismatch_after_normalization() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+
+        // Note the trailing spaces + missing final newline; normalization should still mismatch.
+        fs::write(&path, "a \n").unwrap();
+        let err = sync_or_check_file(&path, "a\nb\n", true).unwrap_err();
+        match err {
+            CliError::Validation { message, .. } => {
+                assert!(message.contains("out of date"));
+                assert!(message.contains(path.to_string_lossy().as_ref()));
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn sync_or_check_file_check_mode_ok_when_equal_after_normalization() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+
+        // Existing file has CRLF and trailing whitespace; generated is canonical.
+        fs::write(&path, "a  \r\nb\t\r\n").unwrap();
+        sync_or_check_file(&path, "a\nb\n", true).unwrap();
+    }
+
+    #[test]
+    fn sync_or_check_file_write_mode_writes_normalized_contents() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+
+        sync_or_check_file(&path, "a  \r\nb\t\r\n", false).unwrap();
+        let got = fs::read_to_string(&path).unwrap();
+        assert_eq!(got, "a\nb\n");
+    }
+}
