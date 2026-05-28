@@ -5,6 +5,22 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.52.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.51.0...sruja-v0.52.0) (2026-05-27)
+
+
+### Features
+
+* **enterprise:** add baselines, evidence packs, and multi-CI templates ([8951473](https://github.com/sruja-ai/sruja/commit/8951473b8615866a7a3ef00bad6c0397a42c71ee))
+* strategic pivot to agent-native grounding layer and slim mcp default ([919b921](https://github.com/sruja-ai/sruja/commit/919b921680f1d837af91ea01889503aed3f11ecc))
+* **telemetry:** add host, skills_used, and session_id tracking to context events ([9534be1](https://github.com/sruja-ai/sruja/commit/9534be1d5a9ad18420626a485c0637679021d983))
+* **workflow:** implement e2e workflow lifecycle, readiness checklist, and structured design reviews ([877a585](https://github.com/sruja-ai/sruja/commit/877a58558725e5e38dfc2a47a322676b943e1ddc))
+
+
+### Bug Fixes
+
+* **ci:** increase verify-task step timeout ([47b3335](https://github.com/sruja-ai/sruja/commit/47b33355cb0d58e42a99df579e9a871e2513349c))
+* **workflows:** use checkout@v4 and simplify drift ([6985e8e](https://github.com/sruja-ai/sruja/commit/6985e8e9afcb8ed3fcaa5182de9d5109c25e5c8c))
+
 ## [0.51.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.50.0...sruja-v0.51.0) (2026-05-25)
 
 
