@@ -755,10 +755,8 @@ fn parse_elements_from_yaml_frontmatter(raw: &str) -> Vec<String> {
                 }
             }
         }
-        serde_yaml::Value::String(s) => {
-            if !s.trim().is_empty() {
-                out.push(s.trim().to_string());
-            }
+        serde_yaml::Value::String(s) if !s.trim().is_empty() => {
+            out.push(s.trim().to_string());
         }
         _ => {}
     }

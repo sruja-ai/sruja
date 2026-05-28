@@ -413,6 +413,21 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
+    /// Write editor rule files from validated architecture (cursor-rules, copilot, llms-architecture.txt)
+    ///
+    /// In `--check` mode, exits non-zero if on-disk IDE files differ from architecture-derived outputs.
+    #[command(name = "sync-ide-rules")]
+    SyncIdeRules {
+        /// Path to repository root (single repo only)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Max tokens for generated rule bodies (approximate; matches `ai-context` default)
+        #[arg(long, default_value_t = 10000)]
+        max_tokens: usize,
+        /// Exit non-zero if on-disk IDE files differ from architecture-derived outputs
+        #[arg(long)]
+        check: bool,
+    },
     /// Daily action list: refresh evidence, detect drift, suggest next steps (alias: `daily`)
     #[command(visible_alias = "daily", hide = true)]
     Review {

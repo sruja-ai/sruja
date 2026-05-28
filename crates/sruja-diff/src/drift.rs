@@ -430,9 +430,17 @@ fn is_likely_doc_or_tool_path(path: &str, id: &str) -> bool {
 
 /// Paths that are commonly entry points or re-export hubs; reporting them as orphans
 /// is usually a false positive (scanner may not see dynamic requires or re-exports).
-pub fn is_likely_entry_point(path: &str, _id: &str) -> bool {
+pub fn is_likely_entry_point(path: &str, id: &str) -> bool {
     let p = path.replace('\\', "/");
     let p_lower = p.to_lowercase();
+    let id_lower = id.to_lowercase();
+
+    // Rust CLI command registries often live under a `commands` hub module. These modules
+    // are intentionally wide re-export surfaces, and flagging them as bottlenecks is
+    // usually noise (they are entry points rather than domain logic).
+    if id_lower.starts_with("module:") && id_lower.contains("_src_commands") {
+        return true;
+    }
     // Common JS/TS/Rust/Python/Go entry file names (often no static imports in the file itself)
     if p_lower.ends_with("index.js")
         || p_lower.ends_with("index.ts")

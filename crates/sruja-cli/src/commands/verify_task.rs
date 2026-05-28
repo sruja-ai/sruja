@@ -138,6 +138,27 @@ fn default_evidence_pack_dir(repo_path: &Path) -> PathBuf {
     repo_path.join(".sruja").join("evidence-packs").join(ts)
 }
 
+fn binary_in_path(name: &str) -> bool {
+    let Some(paths) = std::env::var_os("PATH") else {
+        return false;
+    };
+    for dir in std::env::split_paths(&paths) {
+        if dir.join(name).exists() {
+            return true;
+        }
+        #[cfg(windows)]
+        {
+            if dir.join(format!("{name}.exe")).exists()
+                || dir.join(format!("{name}.cmd")).exists()
+                || dir.join(format!("{name}.bat")).exists()
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn write_evidence_pack(
     repo_path: &Path,
     output: &VerifyTaskOutput,
@@ -220,13 +241,33 @@ fn build_verification_steps(
             }
             // make/just check (or sruja check fallback)
             if has_justfile {
-                steps.push(AgentStep {
-                    id: "just_check".to_string(),
-                    kind: "verify_cmd".to_string(),
-                    argv: vec!["just".to_string(), "check".to_string()],
-                    expected: Some("fmt + lint + test pass".to_string()),
-                });
-            } else if has_makefile {
+                if !binary_in_path("just") {
+                    // Repo expects `just` for its standard check flow; don't fall back to `make`,
+                    // because this repo's Makefile delegates to `just` as well.
+                    steps.push(AgentStep {
+                        id: "sruja_check".to_string(),
+                        kind: "sruja_cmd".to_string(),
+                        argv: vec![
+                            "sruja".to_string(),
+                            "check".to_string(),
+                            "-r".to_string(),
+                            ".".to_string(),
+                            "-f".to_string(),
+                            "github-actions".to_string(),
+                        ],
+                        expected: Some(
+                            "CI-style drift check passes (just not available)".to_string(),
+                        ),
+                    });
+                } else {
+                    steps.push(AgentStep {
+                        id: "just_check".to_string(),
+                        kind: "verify_cmd".to_string(),
+                        argv: vec!["just".to_string(), "check".to_string()],
+                        expected: Some("fmt + lint + test pass".to_string()),
+                    });
+                }
+            } else if has_makefile && binary_in_path("make") {
                 steps.push(AgentStep {
                     id: "make_check".to_string(),
                     kind: "verify_cmd".to_string(),

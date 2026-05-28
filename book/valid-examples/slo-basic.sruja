@@ -35,6 +35,8 @@ api = system "API Service" {
   }
 
   webApp = container "Web Application" {
+    technology "React"
+    description "Web UI for the API service"
     slo {
       availability {
         target "99.9%"

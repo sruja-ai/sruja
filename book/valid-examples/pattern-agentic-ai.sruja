@@ -401,9 +401,6 @@ LostPackage = scenario "Handle not received order" {
   step agentic.aPI -> support.ticketing "Add tracking info"
 }
 
-TicketTriage -> support "describes"
-RefundInvestigation -> support "describes"
-LostPackage -> support "describes"
 
 TriageFlow = flow "Data flow for triage" {
   step agentic.planner -> agentic.tools.databaseQuery "Order lookup"

@@ -260,6 +260,13 @@ pub fn format_cursor_rules(context: &ArchitectureContext) -> String {
         budget.push_str(&mut out, &format_system_context_markdown(system));
     }
 
+    // Keep a stable footer across IDE rule files. Some repos rely on this as a hard gate.
+    budget.push_str(&mut out, "\n\n# Global AI Agent Guidelines\n");
+    budget.push_str(
+        &mut out,
+        "You MUST read and strictly adhere to the instructions located in `AGENTS.md` before proceeding with any task.\n",
+    );
+
     budget.finish(&mut out);
     out
 }
@@ -363,6 +370,12 @@ pub fn format_copilot_instructions(context: &ArchitectureContext) -> String {
     if let Some(system) = &context.system_context {
         budget.push_str(&mut out, &format_system_context_markdown(system));
     }
+
+    budget.push_str(&mut out, "\n\n# Global AI Agent Guidelines\n");
+    budget.push_str(
+        &mut out,
+        "You MUST read and strictly adhere to the instructions located in `AGENTS.md` before proceeding with any task.\n",
+    );
 
     budget.finish(&mut out);
     out

@@ -550,6 +550,20 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
+        Commands::SyncIdeRules {
+            repo,
+            max_tokens,
+            check,
+        } => {
+            commands::utility_domain::sync_ide_rules(
+                commands::utility_domain::SyncIdeRulesOptions {
+                    repo: &repo,
+                    max_tokens,
+                    check,
+                },
+            )
+            .await
+        }
         Commands::Discover {
             cmd,
             context,

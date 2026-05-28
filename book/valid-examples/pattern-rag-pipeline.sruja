@@ -126,13 +126,13 @@ ragPlatform = system "RAG Platform" {
   ingestion.embedder -> vectorDb "Upsert vectors"
   ingestion.pdfLoader -> docStore "Fetch raw"
 
-  llm = system "llm Provider" {
-    description "OpenAI GPT-4 or Azure OpenAI"
-    metadata { tags ["external", "cost-sensitive"] }
-  }
+  gateway -> llmProvider "Generate answer"
+  ingestion.embedder -> llmProvider "Get embeddings"
+}
 
-  gateway -> llm "Generate answer"
-  ingestion.embedder -> llm "Get embeddings"
+llmProvider = system "LLM Provider" {
+  description "OpenAI GPT-4 or Azure OpenAI"
+  metadata { tags ["external", "cost-sensitive"] }
 }
 
 internalSources = system "Internal Data Sources" {
@@ -173,8 +173,8 @@ AnswerQuestion = scenario "Answer Question" {
   step ragPlatform.retrieval -> ragPlatform.vectorDb "Semantic search"
   step ragPlatform.vectorDb -> ragPlatform.retrieval "Top 20 chunks"
   step ragPlatform.retrieval -> ragPlatform.gateway "Context"
-  step ragPlatform.gateway -> ragPlatform.llm "Generate(Query + Context)"
-  step ragPlatform.llm -> ragPlatform.gateway "Answer"
+  step ragPlatform.gateway -> llmProvider "Generate(Query + Context)"
+  step llmProvider -> ragPlatform.gateway "Answer"
   step ragPlatform.gateway -> ragPlatform.ui "Stream response"
 }
 
@@ -182,7 +182,6 @@ ragPlatform.ui.chatWindow -> ragPlatform.ui "part of"
 ragPlatform.ui.citationViewer -> ragPlatform.ui "part of"
 ragPlatform.retrieval -> ragPlatform "part of"
 internalSources -> ragPlatform "provides data to"
-AnswerQuestion -> ragPlatform "describes"
 ragPlatform -> R1 "satisfies"
 ragPlatform.ingestion -> R2 "ensures"
 ragPlatform.gateway -> R3 "enforces"

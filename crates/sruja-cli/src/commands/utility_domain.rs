@@ -22,7 +22,11 @@ pub mod preflight;
 pub mod run_export;
 #[path = "run_show.rs"]
 pub mod run_show;
+#[path = "sync_ide_rules.rs"]
+pub mod sync_ide_rules;
 #[path = "version.rs"]
 pub mod version;
 #[path = "violation_shared.rs"]
 pub mod violation_shared;
+
+pub use sync_ide_rules::{sync_ide_rules, SyncIdeRulesOptions};
