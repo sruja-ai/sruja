@@ -154,6 +154,12 @@ mod tests {
     }
 
     #[test]
+    fn resolve_symbol_to_id_uses_filename_when_path_segment_has_extension() {
+        let id = resolve_symbol_to_id("scip-java maven/pkg Main.java");
+        assert_eq!(id, "Main_java");
+    }
+
+    #[test]
     fn enrich_with_scip_errors_when_index_missing() {
         let dir = make_temp_dir("sruja-scip-missing");
         let err = enrich_with_scip(&dir).expect_err("expected missing index.scip error");

@@ -101,4 +101,16 @@ mod tests {
         assert_eq!(schema.nesting[0].parent, "regulation");
         assert_eq!(schema.nesting[0].child, "policy");
     }
+
+    #[test]
+    fn test_parse_schema_architecture_name_and_node_kinds() {
+        let input = r#"schema "architecture" {
+            node_kinds: ["person", "system"]
+            edge_kinds: ["uses"]
+        }"#;
+        let (_, schema) = parse_schema(input).expect("parse architecture schema");
+        assert_eq!(schema.name, "architecture");
+        assert_eq!(schema.node_kinds, vec!["person", "system"]);
+        assert_eq!(schema.edge_kinds, vec!["uses"]);
+    }
 }

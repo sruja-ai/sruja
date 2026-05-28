@@ -107,3 +107,93 @@ impl ConfidenceScorer {
         score.clamp(0, 100) as u8
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
+
+    fn edge_with_rule(rule: &str) -> Edge {
+        Edge {
+            source: "a".to_string(),
+            target: "b".to_string(),
+            kind: EdgeKind::new(EdgeKind::CALLS),
+            evidence: vec![EdgeEvidence {
+                rule: rule.to_string(),
+                file: None,
+                line: None,
+                detail: None,
+            }],
+            confidence: EdgeConfidence::default(),
+        }
+    }
+
+    #[test]
+    fn score_graph_empty_graph_is_fully_confident() {
+        let mut graph = Graph::new();
+        ConfidenceScorer::score_graph(&mut graph);
+        assert_eq!(graph.confidence, Some(100));
+    }
+
+    #[test]
+    fn score_graph_classifies_edge_evidence() {
+        let mut graph = Graph::new();
+        graph.edges.push(edge_with_rule("typescript_import"));
+        graph.edges.push(edge_with_rule("path_proximity"));
+        graph.edges.push(Edge {
+            source: "x".to_string(),
+            target: "y".to_string(),
+            kind: EdgeKind::new(EdgeKind::CALLS),
+            evidence: vec![],
+            confidence: EdgeConfidence::default(),
+        });
+
+        ConfidenceScorer::score_graph(&mut graph);
+
+        assert_eq!(graph.edges[0].confidence, EdgeConfidence::Extracted);
+        assert_eq!(graph.edges[1].confidence, EdgeConfidence::Inferred);
+        assert_eq!(graph.edges[2].confidence, EdgeConfidence::Ambiguous);
+    }
+
+    #[test]
+    fn score_graph_boosts_connected_nodes_and_penalizes_orphan_modules() {
+        let mut graph = Graph::new();
+        graph.nodes.push(Node {
+            id: "hub".to_string(),
+            kind: NodeKind::new(NodeKind::MODULE),
+            label: "hub".to_string(),
+            path: Some("src/api/handler.rs".to_string()),
+            technology: Some("Express".to_string()),
+            ..Default::default()
+        });
+        graph.nodes.push(Node {
+            id: "orphan".to_string(),
+            kind: NodeKind::new(NodeKind::MODULE),
+            label: "orphan".to_string(),
+            ..Default::default()
+        });
+        graph.edges.push(Edge {
+            source: "hub".to_string(),
+            target: "orphan".to_string(),
+            kind: EdgeKind::new(EdgeKind::CALLS),
+            evidence: vec![EdgeEvidence {
+                rule: "import".to_string(),
+                file: None,
+                line: None,
+                detail: None,
+            }],
+            confidence: EdgeConfidence::default(),
+        });
+
+        ConfidenceScorer::score_graph(&mut graph);
+
+        let hub = graph.nodes.iter().find(|n| n.id == "hub").expect("hub");
+        let orphan = graph
+            .nodes
+            .iter()
+            .find(|n| n.id == "orphan")
+            .expect("orphan");
+        assert!(hub.confidence.unwrap_or(0) > orphan.confidence.unwrap_or(0));
+        assert!(graph.confidence.is_some());
+    }
+}

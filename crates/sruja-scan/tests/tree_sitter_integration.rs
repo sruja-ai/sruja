@@ -135,6 +135,30 @@ def run():
 }
 
 #[test]
+fn scan_minimal_java_repo_produces_graph() {
+    let repo = TempDir::new().expect("temp dir");
+    write_file(
+        repo.path(),
+        "src/Main.java",
+        r#"package com.example;
+
+public class Main {
+    public static String greet() {
+        return "hi";
+    }
+}
+"#,
+    );
+
+    let graph = sruja_scan::scan_repo(repo.path()).expect("java scan");
+    assert!(
+        graph.nodes.iter().any(|n| n.id.contains("Main_java")),
+        "minimal Java repo should include Main.java node, got: {:?}",
+        graph.nodes.iter().map(|n| &n.id).collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn scan_minimal_typescript_repo_produces_graph() {
     let repo = TempDir::new().expect("temp dir");
     write_file(

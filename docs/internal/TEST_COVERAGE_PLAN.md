@@ -128,5 +128,9 @@ The remaining ~10% gap is in areas that require significant test infrastructure.
 - **CLI**: `crates/sruja-cli/tests/commands_integration.rs` – 9 integration tests for `export` (json, mermaid), `fmt` (and `--check`), `list`, `tree`, `validate`, `scan` (Cargo repo), `version`. Reuses `common::run_sruja` and temp repos.
 - **Tree-sitter**: `sruja-scan/src/tree_sitter/detector.rs` – 6 unit tests for `detect_language` (Rust, TS/JS, Go/Python/Java, unknown) and `is_source_file`. `crates/sruja-scan/tests/tree_sitter_integration.rs` – Rust determinism + minimal **Go**, **Python**, and **TypeScript** repo scans.
 - **Scan cache/manifest**: `sruja-scan/src/manifest.rs` and `ast_cache.rs` – save/load roundtrip and hash tests.
-- **CLI sync-ide-rules**: `crates/sruja-cli/tests/sync_ide_rules_cli.rs` – writes `.cursorrules` and `llms-architecture.txt` on a minimal Cargo repo.
+- **CLI sync-ide-rules**: `crates/sruja-cli/tests/sync_ide_rules_cli.rs` – writes `.cursorrules` and `llms-architecture.txt` on a minimal Cargo repo; `--check` after sync.
+- **CLI export markdown**: `crates/sruja-cli/tests/export_formats_cli.rs`.
+- **Scan confidence**: `sruja-scan/src/confidence.rs` – edge classification and graph scoring.
+- **SCIP ingest**: `resolve_symbol_to_id` filename-with-extension branch.
+- **Tree-sitter Java**: minimal Maven layout in `tree_sitter_integration.rs`.
 - **WASM**: One additional `#[wasm_bindgen_test]` in `sruja-wasm/src/lib.rs`: `get_diagnostics_invalid_dsl_returns_diagnostics_array` (invalid DSL returns JSON array of diagnostics). `sruja_incremental_parse` is not tested under WASM because it uses `std::time::Instant::now()`, which panics on wasm32-unknown-unknown.
