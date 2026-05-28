@@ -55,6 +55,41 @@ fn sync_or_check_file(path: &Path, generated: &str, check: bool) -> Result<(), C
             )));
         };
         if existing != generated_norm {
+            // Emit a small, deterministic hint for CI logs (avoid dumping whole file).
+            let mut existing_lines = existing.lines();
+            let mut generated_lines = generated_norm.lines();
+            let mut first_diff: Option<(usize, String, String)> = None;
+            for i in 1.. {
+                let e = existing_lines.next();
+                let g = generated_lines.next();
+                match (e, g) {
+                    (Some(el), Some(gl)) if el == gl => continue,
+                    (Some(el), Some(gl)) => {
+                        first_diff = Some((i, el.to_string(), gl.to_string()));
+                        break;
+                    }
+                    (None, Some(gl)) => {
+                        first_diff = Some((i, "<EOF>".to_string(), gl.to_string()));
+                        break;
+                    }
+                    (Some(el), None) => {
+                        first_diff = Some((i, el.to_string(), "<EOF>".to_string()));
+                        break;
+                    }
+                    (None, None) => break,
+                }
+            }
+            if let Some((line_no, e, g)) = first_diff {
+                eprintln!(
+                    "sync-ide-rules mismatch {} at line {} (existing_bytes={}, generated_bytes={})",
+                    path.display(),
+                    line_no,
+                    existing.len(),
+                    generated_norm.len()
+                );
+                eprintln!("  existing: {}", e);
+                eprintln!("  generated: {}", g);
+            }
             return Err(CliError::validation(format!(
                 "IDE context file out of date: {} (run `sruja sync-ide-rules -r .` to update)",
                 path.display()
