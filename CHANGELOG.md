@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.53.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.52.1...sruja-v0.53.0) (2026-05-29)
+
+
+### Features
+
+* hybrid architecture classification with MCP tools for AI agents ([1ca85a8](https://github.com/sruja-ai/sruja/commit/1ca85a81676486b62b735d4d4d146fc6dd84b81a))
+* improve UX with status bar, architecture sidebar, gutter decorations, and welcome walkthrough ([6f7664a](https://github.com/sruja-ai/sruja/commit/6f7664acf1e02ed0aafcc766818f27e97ccee279))
+
 ## [0.52.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.52.0...sruja-v0.52.1) (2026-05-28)
 
 
