@@ -418,6 +418,20 @@ pub enum Commands {
         #[arg(long)]
         check: bool,
     },
+    /// Generate .sruja/classification.json for a repository
+    ///
+    /// Scans the repository structure and produces a classification that describes
+    /// the logical layers, boundaries, and forbidden patterns.
+    /// Edit the generated file to customize, then run `sruja sync-ide-rules` to update IDE context.
+    #[command(name = "classify")]
+    Classify {
+        /// Path to repository root (single repo only)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Overwrite existing classification.json
+        #[arg(long)]
+        force: bool,
+    },
     /// Daily action list: refresh evidence, detect drift, suggest next steps (alias: `daily`)
     #[command(visible_alias = "daily", hide = true)]
     Review {

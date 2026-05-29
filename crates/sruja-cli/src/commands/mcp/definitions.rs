@@ -1016,5 +1016,42 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "name": "sruja_classify",
+            "title": "Sruja Classify",
+            "description": "Generate or set .sruja/classification.json for a repository. Without a classification argument, runs heuristic classification. With a classification argument, writes the provided JSON directly — use this when you (the AI agent) have analyzed the codebase and determined the layers, boundaries, and rules.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "force": { "type": "boolean", "description": "Overwrite existing classification.json (default: false)" },
+                    "classification": {
+                        "type": "object",
+                        "description": "Classification JSON to write. Use this when you have analyzed the codebase and determined the architecture. Schema: { schema_version, project_type, summary: { crates?, source_files }, layers: [{ name, members }], boundaries: [{ from, to, allowed, reason }], forbidden_patterns: [] }",
+                        "properties": {
+                            "schema_version": { "type": "string" },
+                            "project_type": { "type": "string" },
+                            "summary": { "type": "object" },
+                            "layers": { "type": "array" },
+                            "boundaries": { "type": "array" },
+                            "forbidden_patterns": { "type": "array" }
+                        }
+                    }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_sync_ide_rules",
+            "title": "Sruja Sync IDE Rules",
+            "description": "Generate IDE context files (.cursorrules, copilot-instructions.md, llms-architecture.txt) from the current classification. Run this after sruja_classify to update IDE context.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "max_tokens": { "type": "integer", "description": "Maximum tokens for generated content (default: 10000)" },
+                    "check": { "type": "boolean", "description": "If true, verify files match instead of writing (default: false)" }
+                }
+            }
+        }),
     ]
 }

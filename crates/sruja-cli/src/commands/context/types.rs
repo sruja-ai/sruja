@@ -141,6 +141,9 @@ pub struct FocusNode {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContextSummary {
+    /// Number of crates in a Rust workspace. None for non-Rust projects.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_crates: Option<usize>,
     pub total_modules: usize,
     pub total_services: usize,
     pub total_databases: usize,

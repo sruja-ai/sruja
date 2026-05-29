@@ -10,6 +10,66 @@ This guide helps AI agents work effectively with the Sruja codebase.
 | `sruja focus` | **Task briefing** (blast radius, decisions, AI info) |
 | `sruja mcp -r .` | **Start MCP server** for deep context queries |
 
+## Architecture Setup (AI Agent Workflow)
+
+Use this workflow to set up architecture enforcement for any repository. No separate API key needed — the AI agent provides the intelligence, sruja provides the tools.
+
+### Step 1: Understand the codebase
+
+```
+sruja_list_architecture_index  → get structure
+sruja_get_topology             → get dependencies
+sruja_get_repomap              → get file overview
+```
+
+### Step 2: Classify the architecture
+
+Call `sruja_classify` with a classification JSON that you (the AI agent) have determined:
+
+```json
+{
+  "schema_version": "classification/v1",
+  "project_type": "rust-workspace",
+  "summary": { "crates": 14, "source_files": 500 },
+  "layers": [
+    { "name": "Core Engine", "members": ["sruja-language", "sruja-engine"] },
+    { "name": "Delivery", "members": ["sruja-cli", "sruja-wasm"] }
+  ],
+  "boundaries": [
+    { "from": "sruja-language", "to": "sruja-cli", "allowed": false, "reason": "Core should not depend on CLI" }
+  ],
+  "forbidden_patterns": [
+    "Lower-tier crates must not depend on higher-tier crates"
+  ]
+}
+```
+
+Or run `sruja classify -r .` for heuristic classification (Rust workspaces only).
+
+### Step 3: Generate IDE context
+
+```
+sruja_sync_ide_rules  → generates .cursorrules, copilot-instructions.md, llms-architecture.txt
+```
+
+### Step 4: Verify
+
+```
+sruja_check_drift  → verifies architecture rules
+```
+
+### MCP Tools Available
+
+| Tool | Purpose |
+|------|---------|
+| `sruja_classify` | Generate or set classification (accepts JSON from agent) |
+| `sruja_sync_ide_rules` | Generate IDE context from classification |
+| `sruja_list_architecture_index` | List architecture elements |
+| `sruja_get_topology` | Get upstream/downstream dependencies |
+| `sruja_get_elements` | Get element details |
+| `sruja_check_drift` | Check architecture enforcement |
+| `sruja_check_violations` | Validate changes against boundaries |
+
 ## Before Coding: Shared Understanding
 
 **IMPORTANT**: From the talks, AI produces garbage without shared understanding. Re-running the compiler just produces more garbage.
@@ -415,13 +475,13 @@ MySystem.MyContainer -> MySystem.Database "SQL"
 
 Sruja provides native integration for AI code editors (Cursor, Trae, Copilot, Cline, Windsurf, etc.) to give them deep context about the cross-repo architecture:
 
-1. **Daily Context Sync**: Run `just daily` (or `make daily`) to check for architectural drift, build cross-repo context, and automatically update `.cursorrules`, `.copilot-instructions.md`, `CLAUDE.md`, and other editor-specific rules.
-2. **Manual Sync**: Run `just context-sync` (or `make context-sync`) or `sruja sync-ide-rules -r .` to regenerate `.cursorrules`, Copilot/Claude/Gemini rules, and `llms-architecture.txt` without running tests/drift checks.
-3. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
+1. **Architecture Setup**: Run `sruja classify -r .` to generate `.sruja/classification.json`, then `sruja sync-ide-rules -r .` to generate IDE context files.
+2. **Daily Context Sync**: Run `just daily` (or `make daily`) to check for architectural drift and update IDE context.
+3. **Manual Sync**: Run `sruja sync-ide-rules -r .` to regenerate `.cursorrules`, copilot instructions, and `llms-architecture.txt`.
+4. **MCP Server**: Configure your AI editor to use the Sruja Model Context Protocol (MCP) server.
    - **Command**: `sruja mcp -r .`
-   - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, resolve cross-repo dependencies, and check compliance on the fly.
-4. **Cross-Repo Context**: Use `sruja ai-context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
-5. **Public GitHub org layout** (product + Pages deploy targets): [docs/RELATED_REPOSITORIES.md](docs/RELATED_REPOSITORIES.md)
+   - **Usage**: The MCP server exposes tools for the AI to query the architecture graph, classify repos, sync IDE rules, and check compliance on the fly.
+5. **Cross-Repo Context**: Use `sruja ai-context -r repoA -r repoB` to dynamically build context payloads when working on multi-repo features.
 
 When using AI agents, leverage Sruja's context tools:
 - **`sruja focus --file <path>`**: Generates a task-scoped briefing (blast radius, decisions, boundaries, AI instructions).
@@ -433,12 +493,18 @@ When using AI agents, leverage Sruja's context tools:
 
 ## Editor-Specific Configs
 
-Sruja provides specialized configs for different editors:
-- **Cursor**: `.cursorrules` (auto-gen), `.cursor/rules/*.mdc` (manual rules), and `.cursor/commands/*.md` (reusable agent prompts; see **AI agent workflow**).
-- **Claude Code**: `CLAUDE.md` and `.gemini/AGENTS.md` (shared with Gemini).
-- **GitHub Copilot**: `.github/copilot-instructions.md`.
-- **Windsurf**: `.windsurf/rules/`.
-- **Cline**: `.clinerules`.
+Sruja generates architecture data files. Tool-specific instructions are hand-written.
+
+**Generated by `sruja sync-ide-rules`:**
+- **Cursor**: `.cursorrules`
+- **GitHub Copilot**: `.github/copilot-instructions.md`
+- **All tools**: `llms-architecture.txt` (compact architecture brief)
+
+**Hand-written (not generated by sruja):**
+- **Claude Code**: `CLAUDE.md`
+- **General agents**: `AGENTS.md`
+- **Windsurf**: `.windsurf/rules/`
+- **Cline**: `.clinerules`
 
 ## Troubleshooting Agent Tasks
 

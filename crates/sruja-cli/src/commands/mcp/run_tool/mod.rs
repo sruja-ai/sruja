@@ -4,6 +4,7 @@ mod governance;
 mod graph;
 mod memory;
 mod read;
+mod utility;
 
 use serde_json::Value;
 use std::collections::HashMap;
@@ -47,6 +48,9 @@ pub(crate) async fn run_tool(
         return Ok(out);
     }
     if let Some(out) = memory::try_run(name, arguments, &repo, graph_cache).await? {
+        return Ok(out);
+    }
+    if let Some(out) = utility::try_run(name, arguments, &repo, graph_cache).await? {
         return Ok(out);
     }
     Err(CliError::validation(format!("Unknown tool: {name}")))

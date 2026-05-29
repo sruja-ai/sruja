@@ -124,11 +124,9 @@ pub async fn sync_ide_rules(options: SyncIdeRulesOptions<'_>) -> Result<(), CliE
     let copilot = format_copilot_instructions(&arch_ctx);
     let llms_arch = format_llms_architecture(&arch_ctx);
 
-    let targets: [(&str, &str); 3] = [
-        (".cursorrules", &cursor_rules),
-        ("CLAUDE.md", &cursor_rules),
-        (".gemini/AGENTS.md", &cursor_rules),
-    ];
+    // Only generate architecture data files. Hand-written files like CLAUDE.md
+    // and AGENTS.md are managed by the user, not by sruja.
+    let targets: [(&str, &str); 1] = [(".cursorrules", &cursor_rules)];
 
     for (rel, generated) in targets {
         sync_or_check_file(&repo_rel(repo_root, rel), generated, options.check)?;
@@ -151,7 +149,7 @@ pub async fn sync_ide_rules(options: SyncIdeRulesOptions<'_>) -> Result<(), CliE
 
     if !options.check {
         eprintln!(
-            "Synced IDE rules: .cursorrules, .github/copilot-instructions.md, CLAUDE.md, .gemini/AGENTS.md, llms-architecture.txt"
+            "Synced IDE rules: .cursorrules, .github/copilot-instructions.md, llms-architecture.txt"
         );
     }
 

@@ -2,11 +2,7 @@
 
 From `sruja sync-ide-rules`. Use MCP for detail; do not paste full `repo.sruja`.
 
-Counts: modules 2075, services 0, databases 1, external APIs 0.
+Counts: crates 14, databases 1.
 
 MCP: `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` → `sruja_get_task_context` (`cache_friendly` optional).
 Resources: `sruja://context/invariant.md`, `sruja://architecture/main`.
-
-## Boundaries (top)
-
-- **ui → data**: UI should not directly access data layer - use services

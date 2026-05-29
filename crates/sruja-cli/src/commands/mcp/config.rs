@@ -86,13 +86,15 @@ pub(crate) const MCP_MUTATING_TOOLS: &[&str] = &[
     "sruja_create_decision_record",
     "sruja_link_decision_to_element",
     "sruja_reindex_memory",
+    "sruja_classify",
+    "sruja_sync_ide_rules",
 ];
 
 pub(crate) fn is_mutating_mcp_tool(name: &str) -> bool {
     MCP_MUTATING_TOOLS.contains(&name)
 }
 
-// Default Agent-Native profile (11 focused tools)
+// Default Agent-Native profile (13 focused tools)
 pub(crate) const DEFAULT_TOOLS: &[&str] = &[
     "sruja_get_boundaries",
     "sruja_suggest_fix",
@@ -105,6 +107,8 @@ pub(crate) const DEFAULT_TOOLS: &[&str] = &[
     "sruja_get_task_context",
     "sruja_get_repomap",
     "sruja_check_drift",
+    "sruja_classify",
+    "sruja_sync_ide_rules",
 ];
 
 pub(crate) fn mcp_tools_for_list_with_readonly(readonly: bool, profile: ToolProfile) -> Vec<Value> {

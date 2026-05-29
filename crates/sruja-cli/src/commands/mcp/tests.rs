@@ -115,6 +115,7 @@ fn invariant_brief_fits_token_budget() {
     let ctx = crate::commands::context::types::ArchitectureContext {
         repo: "test".to_string(),
         summary: crate::commands::context::types::ContextSummary {
+            total_crates: None,
             total_modules: 10,
             total_services: 2,
             total_databases: 1,

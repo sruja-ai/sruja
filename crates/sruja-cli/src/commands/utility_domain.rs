@@ -8,6 +8,8 @@ pub(crate) mod generate {
     pub use super::super::generate_prompt;
 }
 
+#[path = "classify.rs"]
+pub mod classify;
 #[path = "compliance.rs"]
 pub mod compliance;
 #[path = "error.rs"]
@@ -29,4 +31,5 @@ pub mod version;
 #[path = "violation_shared.rs"]
 pub mod violation_shared;
 
+pub use classify::{classify, ClassifyOptions};
 pub use sync_ide_rules::{sync_ide_rules, SyncIdeRulesOptions};

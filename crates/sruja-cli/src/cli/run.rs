@@ -563,6 +563,12 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
+        Commands::Classify { repo, force } => {
+            commands::utility_domain::classify(commands::utility_domain::ClassifyOptions {
+                repo: &repo,
+                force,
+            })
+        }
         Commands::Discover {
             cmd,
             context,

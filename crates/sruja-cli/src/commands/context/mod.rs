@@ -176,7 +176,19 @@ pub async fn context_string_multi(
         return Ok(repomaps.join("\n\n---\n\n"));
     }
 
+    let combined_crates: Option<usize> = {
+        let all_crates: Vec<usize> = contexts
+            .iter()
+            .filter_map(|c| c.summary.total_crates)
+            .collect();
+        if all_crates.len() == contexts.len() {
+            Some(all_crates.into_iter().sum())
+        } else {
+            None
+        }
+    };
     let combined_summary = ContextSummary {
+        total_crates: combined_crates,
         total_modules: contexts.iter().map(|c| c.summary.total_modules).sum(),
         total_services: contexts.iter().map(|c| c.summary.total_services).sum(),
         total_databases: contexts.iter().map(|c| c.summary.total_databases).sum(),

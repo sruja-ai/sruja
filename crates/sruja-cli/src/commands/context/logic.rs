@@ -157,6 +157,15 @@ fn build_grounding_trace(input: GroundingTraceInputs<'_>) -> Vec<GroundingStep> 
     out
 }
 
+/// Try to load classification from .sruja/classification.json.
+fn load_classification(
+    repo: &str,
+) -> Option<crate::commands::utility_domain::classify::Classification> {
+    let path = Path::new(repo).join(".sruja").join("classification.json");
+    let content = fs::read_to_string(&path).ok()?;
+    serde_json::from_str(&content).ok()
+}
+
 pub fn build_architecture_context(
     graph: &Graph,
     repo: &str,
@@ -165,22 +174,112 @@ pub fn build_architecture_context(
     depth: usize,
     max_tokens: usize,
 ) -> Result<ArchitectureContext, CliError> {
-    let modules = count_kind(graph, NodeKind::new(NodeKind::MODULE));
-    let services = count_kind(graph, NodeKind::new(NodeKind::SERVICE));
-    let databases = count_kind(graph, NodeKind::new(NodeKind::DATABASE));
-    let external_apis = count_kind(graph, NodeKind::new(NodeKind::EXTERNAL_API));
+    // Try to load classification from .sruja/classification.json first.
+    // Fall back to heuristic classification if not found.
+    let classification = load_classification(repo);
 
-    let layers = infer_layers(graph);
+    let (total_crates, total_modules, layers, boundaries, forbidden_patterns) =
+        if let Some(ref cls) = classification {
+            // Use classification from file.
+            let total_crates = cls.summary.crates;
+            let total_modules = cls.summary.crates.unwrap_or(cls.summary.source_files);
+
+            let layers: Vec<LayerInfo> = cls
+                .layers
+                .iter()
+                .map(|l| LayerInfo {
+                    name: l.name.clone(),
+                    modules: l.members.len(),
+                    can_depend_on: vec![],
+                })
+                .collect();
+
+            let boundaries: Vec<BoundaryRule> = cls
+                .boundaries
+                .iter()
+                .map(|b| BoundaryRule {
+                    from: b.from.clone(),
+                    to: b.to.clone(),
+                    allowed: b.allowed,
+                    reason: b.reason.clone(),
+                })
+                .collect();
+
+            let forbidden_patterns = cls.forbidden_patterns.clone();
+
+            (
+                total_crates,
+                total_modules,
+                layers,
+                boundaries,
+                forbidden_patterns,
+            )
+        } else {
+            // Heuristic fallback.
+            let is_rust_workspace = count_crates(repo).is_some();
+
+            let (total_crates, total_modules) = if let Some(crate_count) = count_crates(repo) {
+                (Some(crate_count), crate_count)
+            } else {
+                (
+                    None,
+                    count_file_level_kind(graph, NodeKind::new(NodeKind::MODULE)),
+                )
+            };
+
+            let layers = if is_rust_workspace {
+                let tiers = classify_crate_tiers(repo);
+                tiers
+                    .into_iter()
+                    .map(|(name, crates)| LayerInfo {
+                        name,
+                        modules: crates.len(),
+                        can_depend_on: vec![],
+                    })
+                    .collect()
+            } else {
+                infer_layers(graph)
+            };
+
+            let boundaries = if is_rust_workspace {
+                infer_boundaries_from_deps(repo)
+            } else {
+                infer_boundaries(graph)
+            };
+
+            let forbidden_patterns = if is_rust_workspace {
+                vec![
+                    "Lower-tier crates must not depend on higher-tier crates".to_string(),
+                    "sruja-cli is the top-level aggregator — no other crate should depend on it"
+                        .to_string(),
+                    "WASM-only crates must not use native-only APIs (tree-sitter, fastembed)"
+                        .to_string(),
+                ]
+            } else {
+                vec![
+                    "Avoid direct database access from routes/handlers - use a service layer"
+                        .to_string(),
+                    "Do not import internal modules from other services directly".to_string(),
+                    "UI components should not directly call database layers".to_string(),
+                ]
+            };
+
+            (
+                total_crates,
+                total_modules,
+                layers,
+                boundaries,
+                forbidden_patterns,
+            )
+        };
+
+    let services = count_file_level_kind(graph, NodeKind::new(NodeKind::SERVICE));
+    let databases = count_file_level_kind(graph, NodeKind::new(NodeKind::DATABASE));
+    let external_apis = count_file_level_kind(graph, NodeKind::new(NodeKind::EXTERNAL_API));
 
     let max_boundary_rules = if max_tokens < 3000 { 5 } else { 30 };
-    let mut boundaries = infer_boundaries(graph);
+    let mut boundaries = boundaries;
     boundaries.truncate(max_boundary_rules);
-
-    let forbidden_patterns = vec![
-        "Avoid direct database access from routes/handlers - use a service layer".to_string(),
-        "Do not import internal modules from other services directly".to_string(),
-        "UI components should not directly call database layers".to_string(),
-    ];
 
     let centrality = sruja_scan::graph::compute_all_centrality(graph);
 
@@ -209,7 +308,8 @@ pub fn build_architecture_context(
     Ok(ArchitectureContext {
         repo: repo.to_string(),
         summary: ContextSummary {
-            total_modules: modules,
+            total_crates,
+            total_modules,
             total_services: services,
             total_databases: databases,
             total_external_apis: external_apis,
@@ -224,8 +324,155 @@ pub fn build_architecture_context(
     })
 }
 
-pub fn count_kind(graph: &Graph, kind: NodeKind) -> usize {
-    graph.nodes.iter().filter(|n| n.kind == kind).count()
+/// Count file-level nodes of a given kind, filtering out sub-file items
+/// (nodes with `#` in their ID, which represent functions/structs/enums).
+pub fn count_file_level_kind(graph: &Graph, kind: NodeKind) -> usize {
+    graph
+        .nodes
+        .iter()
+        .filter(|n| n.kind == kind && !n.id.contains('#'))
+        .count()
+}
+
+/// Count unique crates in a Rust workspace by finding `crates/*/Cargo.toml`.
+/// Returns None if the repo is not a Rust workspace (no `crates/` directory).
+pub fn count_crates(repo_root: &str) -> Option<usize> {
+    let crates_dir = Path::new(repo_root).join("crates");
+    if !crates_dir.is_dir() {
+        return None;
+    }
+    let count = std::fs::read_dir(&crates_dir)
+        .ok()?
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let path = e.path();
+            path.is_dir() && path.join("Cargo.toml").exists()
+        })
+        .count();
+    Some(count)
+}
+
+/// Classify crates into tiers based on their role in the workspace.
+/// Returns (tier_name, crate_names) pairs.
+pub fn classify_crate_tiers(repo_root: &str) -> Vec<(String, Vec<String>)> {
+    let crates_dir = Path::new(repo_root).join("crates");
+    if !crates_dir.is_dir() {
+        return Vec::new();
+    }
+
+    let mut crate_names: Vec<String> = std::fs::read_dir(&crates_dir)
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let path = e.path();
+            path.is_dir() && path.join("Cargo.toml").exists()
+        })
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .collect();
+    crate_names.sort();
+
+    // Classify by convention: cli/wasm are delivery, agent/memory are secondary, rest are core
+    let delivery: Vec<String> = crate_names
+        .iter()
+        .filter(|n| n.ends_with("-cli") || n.ends_with("-wasm"))
+        .cloned()
+        .collect();
+    let secondary: Vec<String> = crate_names
+        .iter()
+        .filter(|n| {
+            n.ends_with("-agent")
+                || n.ends_with("-memory")
+                || n.ends_with("-diff")
+                || n.ends_with("-intent")
+        })
+        .cloned()
+        .collect();
+    let extraction: Vec<String> = crate_names
+        .iter()
+        .filter(|n| n.ends_with("-extract") || n.ends_with("-export"))
+        .cloned()
+        .collect();
+    let core: Vec<String> = crate_names
+        .iter()
+        .filter(|n| !delivery.contains(n) && !secondary.contains(n) && !extraction.contains(n))
+        .cloned()
+        .collect();
+
+    let mut tiers = Vec::new();
+    if !core.is_empty() {
+        tiers.push(("Core Engine".to_string(), core));
+    }
+    if !extraction.is_empty() {
+        tiers.push(("Extraction".to_string(), extraction));
+    }
+    if !delivery.is_empty() {
+        tiers.push(("Delivery".to_string(), delivery));
+    }
+    if !secondary.is_empty() {
+        tiers.push(("Secondary".to_string(), secondary));
+    }
+    tiers
+}
+
+/// Derive boundary rules from actual Cargo.toml dependencies in a Rust workspace.
+/// Returns empty vec for non-Rust repos.
+pub fn infer_boundaries_from_deps(repo_root: &str) -> Vec<BoundaryRule> {
+    let crates_dir = Path::new(repo_root).join("crates");
+    if !crates_dir.is_dir() {
+        return Vec::new();
+    }
+
+    let mut boundaries = Vec::new();
+
+    // Collect all crate names and their internal dependencies
+    let crate_entries: Vec<(String, Vec<String>)> = std::fs::read_dir(&crates_dir)
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let path = e.path();
+            path.is_dir() && path.join("Cargo.toml").exists()
+        })
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            let cargo_toml = std::fs::read_to_string(e.path().join("Cargo.toml")).ok()?;
+            // Simple parse: find lines matching `sruja-* = { path = "..." }`
+            let deps: Vec<String> = cargo_toml
+                .lines()
+                .filter_map(|line| {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("sruja-") && trimmed.contains("path") {
+                        trimmed.split('=').next().map(|s| s.trim().to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            Some((name, deps))
+        })
+        .collect();
+
+    // Generate rules: lower-tier crates should not depend on higher-tier crates
+    // (This is enforced by Cargo, but documenting it helps AI understand the architecture)
+    for (name, deps) in &crate_entries {
+        // Flag if a non-CLI crate depends on sruja-cli (should never happen)
+        if deps.contains(&"sruja-cli".to_string()) && name != "sruja-cli" {
+            boundaries.push(BoundaryRule {
+                from: name.clone(),
+                to: "sruja-cli".to_string(),
+                allowed: false,
+                reason: format!(
+                    "{} should not depend on sruja-cli (CLI is the top-level aggregator)",
+                    name
+                ),
+            });
+        }
+    }
+
+    boundaries
 }
 
 pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
@@ -475,8 +722,9 @@ pub fn suggested_checks(intent: Option<&str>) -> Vec<String> {
 pub fn infer_layers(graph: &Graph) -> Vec<LayerInfo> {
     let mut layer_counts: HashMap<String, usize> = HashMap::new();
 
+    // Only use file-level nodes (no # in ID) for layer inference.
     for node in &graph.nodes {
-        if node.kind == NodeKind::MODULE {
+        if node.kind == NodeKind::MODULE && !node.id.contains('#') {
             if let Some(path) = &node.path {
                 let layer = infer_layer_from_path(path);
                 *layer_counts.entry(layer).or_default() += 1;
@@ -1305,10 +1553,11 @@ pub fn infer_layer_from_path(path: &str) -> String {
 pub fn infer_boundaries(graph: &Graph) -> Vec<BoundaryRule> {
     let mut boundaries = Vec::new();
 
+    // Only use file-level nodes (no # in ID) for boundary inference.
     let mut services: Vec<_> = graph
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::SERVICE)
+        .filter(|n| n.kind == NodeKind::SERVICE && !n.id.contains('#'))
         .collect();
     services.sort_by(|a, b| a.id.cmp(&b.id));
 
@@ -1411,6 +1660,7 @@ mod cache_friendly_tests {
         let arch = super::super::types::ArchitectureContext {
             repo: ".".to_string(),
             summary: ContextSummary {
+                total_crates: None,
                 total_modules: 1,
                 total_services: 0,
                 total_databases: 0,
