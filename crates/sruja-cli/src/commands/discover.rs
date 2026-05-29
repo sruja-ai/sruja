@@ -1283,13 +1283,7 @@ pub async fn discover_explain(
     repo: &str,
     format: &str,
     export_report: Option<&str>,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
     incremental: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
@@ -1303,18 +1297,8 @@ pub async fn discover_explain(
     let graph = scan_repo_cached_with_opts(repo_path, incremental)?;
     let mut explanation = build_discover_explanation(repo, repo_path, &graph)?;
 
-    if enrich || enrich_cmd.is_some() {
-        explanation.enrichment = enrich_discover_explain(
-            &explanation,
-            repo_path,
-            enrich,
-            enrich_provider,
-            enrich_cmd,
-            enrich_model,
-            enrich_base_url,
-            enrich_timeout_ms,
-            enrich_max_bytes,
-        );
+    if enrich.enrich || enrich.cmd.is_some() {
+        explanation.enrichment = enrich_discover_explain(&explanation, repo_path, enrich);
     }
 
     match format {
@@ -1349,27 +1333,21 @@ pub async fn discover_explain(
 fn enrich_discover_explain(
     explanation: &DiscoverExplanationJson,
     repo_path: &Path,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
 ) -> Option<DiscoverEnrichment> {
-    if !enrich && enrich_cmd.is_none() {
+    if !enrich.enrich && enrich.cmd.is_none() {
         return None;
     }
 
     let plan = resolve_enrichment_plan(
         repo_path,
-        enrich_cmd,
-        enrich_model,
-        enrich_base_url,
-        Some(enrich_timeout_ms),
-        Some(enrich_max_bytes),
+        enrich.cmd,
+        enrich.model,
+        enrich.base_url,
+        Some(enrich.timeout_ms),
+        Some(enrich.max_bytes),
     );
-    let provider = enrich_provider.unwrap_or(plan.provider.as_str());
+    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
     let limits = plan.limits;
 
     let payload = match serde_json::to_value(explanation) {

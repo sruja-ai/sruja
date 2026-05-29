@@ -45,27 +45,21 @@ struct CritiqueForAiOutput {
 fn build_critique_enrichment(
     repo_path: &Path,
     payload: &serde_json::Value,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
 ) -> Option<CritiqueEnrichment> {
-    if !enrich && enrich_cmd.is_none() {
+    if !enrich.enrich && enrich.cmd.is_none() {
         return None;
     }
 
     let plan = resolve_enrichment_plan(
         repo_path,
-        enrich_cmd,
-        enrich_model,
-        enrich_base_url,
-        Some(enrich_timeout_ms),
-        Some(enrich_max_bytes),
+        enrich.cmd,
+        enrich.model,
+        enrich.base_url,
+        Some(enrich.timeout_ms),
+        Some(enrich.max_bytes),
     );
-    let provider = enrich_provider.unwrap_or(plan.provider.as_str());
+    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
     let limits = plan.limits;
     let stdin_payload = serde_json::to_vec(payload).unwrap_or_default();
 
@@ -176,13 +170,7 @@ pub async fn critique(
     head: Option<String>,
     staged: bool,
     format: &str,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
     fail_on: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
@@ -247,17 +235,7 @@ pub async fn critique(
                 "changed_files": request.changed_files,
                 "report": report_value,
             });
-            let enrichment = build_critique_enrichment(
-                repo_path,
-                &payload,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
-            );
+            let enrichment = build_critique_enrichment(repo_path, &payload, enrich);
 
             let out = CritiqueForAiOutput {
                 artifact_kind: "deterministic_review".to_string(),
@@ -299,17 +277,7 @@ pub async fn critique(
                 "changed_files": request.changed_files,
                 "report": report_value,
             });
-            let enrichment = build_critique_enrichment(
-                repo_path,
-                &payload,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
-            );
+            let enrichment = build_critique_enrichment(repo_path, &payload, enrich);
             if let Some(enrichment) = enrichment {
                 if let Some(md) = enrichment.narrative_markdown.as_deref() {
                     println!();

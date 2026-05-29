@@ -12,6 +12,7 @@ mod commands;
 mod compliance;
 #[allow(missing_docs)]
 mod context_detection;
+pub mod enrichment;
 #[allow(missing_docs)]
 mod graph_store;
 #[allow(missing_docs)]

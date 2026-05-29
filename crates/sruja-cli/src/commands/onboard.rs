@@ -10,7 +10,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use crate::commands::CliError;
-use crate::commands::LlmConfig;
 use crate::context_detection::build_repo_context;
 use crate::integrations::{
     resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
@@ -107,14 +106,7 @@ pub async fn onboard(
     repo_root: &str,
     format: &str,
     max_items: usize,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
-    llm: LlmConfig<'_>,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
     output: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
@@ -197,16 +189,16 @@ pub async fn onboard(
         enrichment: None,
     };
 
-    if enrich || enrich_cmd.is_some() {
+    if enrich.enrich || enrich.cmd.is_some() {
         let plan = resolve_enrichment_plan(
             repo_path,
-            enrich_cmd,
-            enrich_model,
-            enrich_base_url,
-            Some(enrich_timeout_ms),
-            Some(enrich_max_bytes),
+            enrich.cmd,
+            enrich.model,
+            enrich.base_url,
+            Some(enrich.timeout_ms),
+            Some(enrich.max_bytes),
         );
-        let provider = enrich_provider.unwrap_or(plan.provider.as_str());
+        let provider = enrich.provider.unwrap_or(plan.provider.as_str());
         out.enrichment = Some(enrich_onboard(
             &out,
             provider,
@@ -214,7 +206,6 @@ pub async fn onboard(
             plan.model.as_deref(),
             plan.base_url.as_deref(),
             plan.limits,
-            llm,
         ));
     }
 
@@ -242,7 +233,6 @@ fn enrich_onboard(
     enrich_model: Option<&str>,
     enrich_base_url: Option<&str>,
     limits: EnrichmentLimits,
-    llm: LlmConfig<'_>,
 ) -> OnboardEnrichment {
     if provider == "cmd" {
         let Some(cmd) = enrich_cmd else {
@@ -270,25 +260,15 @@ fn enrich_onboard(
         };
     }
 
-    let provider = llm
-        .provider
+    // Use plan-resolved values directly (already resolved from CLI args, env vars, and config
+    // file by resolve_enrichment_plan in the caller). This matches the pattern used by all
+    // other enrichment handlers (critique, focus, discover, ai, agent_run).
+    let provider = provider.to_string();
+    let model = enrich_model
         .map(|s| s.to_string())
-        .or_else(|| std::env::var("SRUJA_ENRICH_PROVIDER").ok())
-        .or_else(|| std::env::var("SRUJA_LLM_PROVIDER").ok()) // back-compat
-        .unwrap_or_else(|| "openai".to_string());
-    let model = llm
-        .model
-        .map(|s| s.to_string())
-        .or_else(|| enrich_model.map(|s| s.to_string()))
-        .or_else(|| std::env::var("SRUJA_ENRICH_MODEL").ok())
-        .or_else(|| std::env::var("SRUJA_LLM_MODEL").ok()) // back-compat
         .unwrap_or_else(|| "gpt-4o-mini".to_string());
-    let base_url = llm
-        .base_url
+    let base_url = enrich_base_url
         .map(|s| s.to_string())
-        .or_else(|| enrich_base_url.map(|s| s.to_string()))
-        .or_else(|| std::env::var("SRUJA_ENRICH_BASE_URL").ok())
-        .or_else(|| std::env::var("SRUJA_LLM_BASE_URL").ok()) // back-compat
         .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
 
     // Default posture: do not fail the command if enrichment cannot run.

@@ -330,12 +330,6 @@ fn parses_ai_brief_defaults() {
                     max_tokens,
                     output,
                     enrich,
-                    enrich_provider,
-                    enrich_cmd,
-                    enrich_model,
-                    enrich_base_url,
-                    enrich_timeout_ms,
-                    enrich_max_bytes,
                 } => {
                     assert_eq!(repo, ".");
                     assert!(task.is_none());
@@ -347,13 +341,13 @@ fn parses_ai_brief_defaults() {
                     assert!(!staged);
                     assert_eq!(max_tokens, 8000);
                     assert!(output.is_none());
-                    assert!(!enrich);
-                    assert!(enrich_provider.is_none());
-                    assert!(enrich_cmd.is_none());
-                    assert!(enrich_model.is_none());
-                    assert!(enrich_base_url.is_none());
-                    assert_eq!(enrich_timeout_ms, 15000);
-                    assert_eq!(enrich_max_bytes, 20000);
+                    assert!(!enrich.enrich);
+                    assert!(enrich.enrich_provider.is_none());
+                    assert!(enrich.enrich_cmd.is_none());
+                    assert!(enrich.enrich_model.is_none());
+                    assert!(enrich.enrich_base_url.is_none());
+                    assert_eq!(enrich.enrich_timeout_ms, 15000);
+                    assert_eq!(enrich.enrich_max_bytes, 20000);
                 }
                 _ => panic!("expected Ai command"),
             }
@@ -468,7 +462,7 @@ fn parses_agent_run_defaults() {
                         assert_eq!(format, "text");
                         assert!(max_steps.is_none());
                         assert!(max_runtime_ms_per_step.is_none());
-                        assert!(!enrich);
+                        assert!(!enrich.enrich);
                         assert!(!continue_on_error);
                     }
                     _ => panic!("expected Agent run subcommand"),

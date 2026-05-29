@@ -1,5 +1,7 @@
 use clap::Subcommand;
 
+use crate::enrichment::EnrichmentArgs;
+
 #[derive(Subcommand)]
 pub enum RunCommand {
     /// Show a saved run snapshot
@@ -240,27 +242,9 @@ pub enum AgentCommand {
         /// Max runtime per step in milliseconds (bounded by config)
         #[arg(long)]
         max_runtime_ms_per_step: Option<u64>,
-        /// Optional enrichment (cmd/openai) to add narrative grounded in gathered facts.
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for enrichment in milliseconds (default: 15000)
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from enrichment stdout (default: 20000)
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add narrative grounded in gathered facts.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
         /// Continue running verification even if an apply step fails
         #[arg(long)]
         continue_on_error: bool,
@@ -297,27 +281,9 @@ pub enum AgentCommand {
         /// AI mode profile (standard|conservative|aggressive). Default: standard
         #[arg(long, default_value = "standard")]
         ai_mode: String,
-        /// Optional enrichment to add narrative grounded in gathered facts.
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for enrichment in milliseconds (default: 15000)
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from enrichment stdout (default: 20000)
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add narrative grounded in gathered facts.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
     },
     /// Suggest learnings from a facts_bundle.json (optional --write to record)
     Reflect {
@@ -767,6 +733,15 @@ pub enum WorkflowCommand {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
+    /// Show actionable next steps for the current workflow phase
+    NextSteps {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -982,27 +957,9 @@ pub enum InspectCommand {
         /// Max number of items per section
         #[arg(long, default_value_t = 8)]
         max_items: usize,
-        /// Optional LLM enrichment
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for enrichment in milliseconds
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from enrichment stdout
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add a narrative section.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
         /// Output file
         #[arg(long, short = 'o')]
         output: Option<String>,
@@ -1104,27 +1061,9 @@ pub enum GuardCommand {
         /// Output format
         #[arg(long, default_value = "text")]
         format: String,
-        /// Optional enrichment
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add a narrative critique.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
         /// Fail the command on findings level
         #[arg(long)]
         fail_on: Option<String>,
@@ -1196,5 +1135,82 @@ pub enum FederationCommand {
         /// Output path for system index
         #[arg(long, short = 'o', default_value = "system.index.json")]
         output: String,
+    },
+}
+
+/// AI-DLC workflow commands: inception → construction → operations with phase gates.
+///
+/// Simplified entry point for AI-DLC users. Wraps `sruja workflow` with
+/// AI-DLC defaults pre-filled (--with-aidlc, --install-aidlc-rules).
+#[derive(Subcommand)]
+pub enum AidlcCommand {
+    /// Create an AI-DLC workflow with defaults pre-filled
+    Init {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow title (e.g., "Add payment service")
+        #[arg(long, short = 't')]
+        title: String,
+        /// Optional workflow id (defaults to random short id)
+        #[arg(long)]
+        id: Option<String>,
+        /// AI-DLC profile: minimal (default) or full
+        #[arg(long, default_value = "minimal")]
+        profile: String,
+        /// Scaffold template: minimal, feature, bugfix, e2e
+        #[arg(long)]
+        template: Option<String>,
+        /// Target architecture element ids
+        #[arg(long = "element", short = 'e')]
+        target_elements: Vec<String>,
+    },
+    /// Show gate readiness + AI-DLC status
+    Status {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+        /// Exit non-zero if the current phase gate fails
+        #[arg(long)]
+        check: bool,
+    },
+    /// Validate workflow + AI-DLC artifact checklist
+    Validate {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+    },
+    /// Show actionable next steps for current phase
+    NextSteps {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+    },
+    /// Copy vendored AIDLC rules into .aidlc/ for the editor host
+    InstallRules {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+    },
+    /// Show a beautiful end-to-end workflow summary
+    Summary {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Workflow id (required when multiple exist)
+        #[arg(long)]
+        id: Option<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
     },
 }

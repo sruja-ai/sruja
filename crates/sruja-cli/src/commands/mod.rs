@@ -39,12 +39,9 @@ pub use scan_domain::discover::{
 pub use scan_domain::explore::explore;
 pub use utility_domain::error::CliError;
 
-#[derive(Debug, Clone, Copy)]
-pub struct LlmConfig<'a> {
-    pub provider: Option<&'a str>,
-    pub model: Option<&'a str>,
-    pub base_url: Option<&'a str>,
-}
+/// Re-export enrichment types for use by command handlers.
+#[allow(unused_imports)]
+pub use crate::enrichment::{EnrichmentArgs, EnrichmentRef};
 
 pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
     path: P,
@@ -96,8 +93,9 @@ pub use utility_domain::version::version;
 pub use workflow::{
     workflow_advance, workflow_approve, workflow_audit, workflow_capture_requirements,
     workflow_gate_check, workflow_get, workflow_init, workflow_install_rules, workflow_list,
-    workflow_record_impact, workflow_record_readiness, workflow_record_test_results, workflow_run,
-    workflow_status, workflow_summary, workflow_trace, workflow_validate, WorkflowInitOptions,
+    workflow_next_steps, workflow_record_impact, workflow_record_readiness,
+    workflow_record_test_results, workflow_run, workflow_status, workflow_summary, workflow_trace,
+    workflow_validate, WorkflowInitOptions,
 };
 
 pub use intent_domain::critique;

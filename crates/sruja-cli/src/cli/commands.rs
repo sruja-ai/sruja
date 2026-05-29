@@ -2,20 +2,28 @@ use clap::Subcommand;
 
 use super::app::ContextIntent;
 use super::subcommands::{
-    AgentCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand,
-    EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand,
-    MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
+    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand,
+    IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
 };
+use crate::enrichment::EnrichmentArgs;
 
 #[derive(Subcommand)]
 pub enum Commands {
     /// Print version information
     Version,
     /// Workflow manifest + phase gates (Inception → Construction → Operations)
-    #[command(hide = true)]
     Workflow {
         #[command(subcommand)]
         cmd: WorkflowCommand,
+    },
+    /// AI-DLC workflow: inception → construction → operations with phase gates
+    ///
+    /// Simplified entry point for AI-DLC users. Wraps `sruja workflow` with
+    /// AI-DLC defaults pre-filled (--with-aidlc, --install-aidlc-rules).
+    Aidlc {
+        #[command(subcommand)]
+        cmd: AidlcCommand,
     },
     /// Propose architectural changes for review
     #[command(hide = true)]
@@ -65,27 +73,9 @@ pub enum Commands {
         /// Output format (text, json, for-ai)
         #[arg(long, default_value = "text")]
         format: String,
-        /// Optional enrichment (cmd/openai) to add a narrative review grounded in the critique report.
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for enrichment in milliseconds (default: 15000)
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from enrichment stdout (default: 20000)
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add a narrative review grounded in the critique report.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
         /// Fail the command (exit 1) if findings of this level or higher are found
         #[arg(long)]
         fail_on: Option<String>,
@@ -579,27 +569,9 @@ pub enum Commands {
         #[arg(long, short = 'o')]
         output: Option<String>,
 
-        /// Optional enrichment (cmd/openai) to add a narrative plan grounded in the task context.
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for enrichment in milliseconds (default: 15000)
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from enrichment stdout (default: 20000)
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add a narrative plan grounded in the task context.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
     },
     /// Complete architecture brief for human or AI reader
     ///
@@ -616,30 +588,9 @@ pub enum Commands {
         /// Max number of items per section (entrypoints, elements, relationships)
         #[arg(long, default_value_t = 8)]
         max_items: usize,
-        /// Optional LLM enrichment (adds a clearly-labeled narrative section; never changes grounded scan output)
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command to run (reads onboard JSON from stdin; writes markdown to stdout).
-        /// This is the recommended enterprise path because Sruja never handles API keys or network.
-        ///
-        /// Example: --enrich-cmd 'claude -p -'  (depending on your CLI)
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for --enrich-cmd in milliseconds (default: 15000)
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from --enrich-cmd stdout (default: 20000)
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add a narrative section; never changes grounded scan output.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
         /// Output file (defaults to stdout)
         #[arg(long, short = 'o')]
         output: Option<String>,
@@ -724,27 +675,9 @@ pub enum Commands {
         /// Export the explanation report to a markdown file (e.g. GRAPH_REPORT.md)
         #[arg(long)]
         export_report: Option<String>,
-        /// Optional LLM enrichment (adds a clearly-labeled narrative section to explain; never changes grounded scan output)
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command to run (reads explain JSON from stdin; writes markdown to stdout).
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for --enrich-cmd in milliseconds (default: 15000)
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from --enrich-cmd stdout (default: 20000)
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add a narrative section to explain; never changes grounded scan output.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
         /// Run an incremental scan using AST caching (re-scan only modified files)
         #[arg(long, short = 'u', alias = "incremental")]
         update: bool,
@@ -871,27 +804,9 @@ pub enum Commands {
         /// Output format (text, json, for-ai)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
-        /// Optional enrichment (cmd/openai) to add a narrative plan grounded in the focus JSON.
-        #[arg(long)]
-        enrich: bool,
-        /// Enrichment provider (cmd|openai). Can also be set via SRUJA_ENRICH_PROVIDER or .sruja/config.toml.
-        #[arg(long, alias = "llm-provider")]
-        enrich_provider: Option<String>,
-        /// External enrichment command (reads JSON from stdin; writes markdown to stdout).
-        #[arg(long)]
-        enrich_cmd: Option<String>,
-        /// Model name (used for provider=openai). Can also be set via SRUJA_ENRICH_MODEL.
-        #[arg(long, alias = "llm-model")]
-        enrich_model: Option<String>,
-        /// Base URL (used for provider=openai). Can also be set via SRUJA_ENRICH_BASE_URL.
-        #[arg(long, alias = "llm-base-url")]
-        enrich_base_url: Option<String>,
-        /// Timeout for enrichment in milliseconds (default: 15000)
-        #[arg(long, default_value_t = 15000)]
-        enrich_timeout_ms: u64,
-        /// Max bytes to read from enrichment stdout (default: 20000)
-        #[arg(long, default_value_t = 20000)]
-        enrich_max_bytes: usize,
+        /// Optional LLM enrichment to add a narrative plan grounded in the focus JSON.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
         /// Git base ref for optional temporal context (use with `--head-ref`; if omitted, head defaults to `HEAD`)
         #[arg(long)]
         base_ref: Option<String>,
@@ -934,7 +849,6 @@ pub enum Commands {
         cmd: DecisionCommand,
     },
     /// Agentic memory: learnings, guardrails, failed hypotheses (bounded to architecture work)
-    #[command(hide = true)]
     Agent {
         #[command(subcommand)]
         cmd: AgentCommand,
@@ -985,25 +899,21 @@ pub enum Commands {
         cmd: EvolutionCommand,
     },
     /// DSL authoring tools: list, tree, explain, diff, import, compile, validate, generate
-    #[command(hide = true)]
     Dsl {
         #[command(subcommand)]
         cmd: DslCommand,
     },
     /// Analysis & scores: health, impact, why, query, scores, onboard, watch, learn
-    #[command(hide = true)]
     Inspect {
         #[command(subcommand)]
         cmd: InspectCommand,
     },
     /// Review & compliance gates: critique, compliance, baseline, drift-pr
-    #[command(hide = true)]
     Guard {
         #[command(subcommand)]
         cmd: GuardCommand,
     },
     /// Multi-repo federation: publish, compose
-    #[command(hide = true)]
     Federation {
         #[command(subcommand)]
         cmd: FederationCommand,

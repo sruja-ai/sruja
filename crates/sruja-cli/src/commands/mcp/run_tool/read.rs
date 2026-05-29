@@ -439,6 +439,15 @@ pub(crate) async fn try_run(
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
+            let enrich_ref = crate::enrichment::EnrichmentRef {
+                enrich,
+                provider: enrich_provider,
+                cmd: enrich_cmd,
+                model: enrich_model,
+                base_url: enrich_base_url,
+                timeout_ms: enrich_timeout_ms,
+                max_bytes: enrich_max_bytes,
+            };
             let text = agent_run_to_string(AgentRunOptions {
                 repo,
                 goal,
@@ -451,13 +460,7 @@ pub(crate) async fn try_run(
                 format: "for-ai",
                 max_steps,
                 max_runtime_ms_per_step,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                enrich: &enrich_ref,
                 continue_on_error,
                 trajectories: None,
             })

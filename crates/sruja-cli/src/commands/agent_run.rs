@@ -56,13 +56,7 @@ pub struct AgentRunOptions<'a> {
     pub format: &'a str,
     pub max_steps: Option<usize>,
     pub max_runtime_ms_per_step: Option<u64>,
-    pub enrich: bool,
-    pub enrich_provider: Option<&'a str>,
-    pub enrich_cmd: Option<&'a str>,
-    pub enrich_model: Option<&'a str>,
-    pub enrich_base_url: Option<&'a str>,
-    pub enrich_timeout_ms: u64,
-    pub enrich_max_bytes: usize,
+    pub enrich: &'a crate::enrichment::EnrichmentRef<'a>,
     pub continue_on_error: bool,
     pub trajectories: Option<usize>,
 }
@@ -590,27 +584,21 @@ fn drift_truth_status(drift_json: &Value) -> Option<String> {
 fn build_enrichment(
     repo_path: &Path,
     facts_payload: &Value,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
 ) -> Option<AgentEnrichment> {
-    if !enrich && enrich_cmd.is_none() {
+    if !enrich.enrich && enrich.cmd.is_none() {
         return None;
     }
 
     let plan = resolve_enrichment_plan(
         repo_path,
-        enrich_cmd,
-        enrich_model,
-        enrich_base_url,
-        Some(enrich_timeout_ms),
-        Some(enrich_max_bytes),
+        enrich.cmd,
+        enrich.model,
+        enrich.base_url,
+        Some(enrich.timeout_ms),
+        Some(enrich.max_bytes),
     );
-    let provider = enrich_provider.unwrap_or(plan.provider.as_str());
+    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
     let limits = plan.limits;
     let stdin_payload = serde_json::to_vec(facts_payload).unwrap_or_default();
 
@@ -999,17 +987,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         expected: Some("Intent vs reality report available for compliance".to_string()),
     });
 
-    let enrichment = build_enrichment(
-        repo_path,
-        &facts_payload,
-        options.enrich,
-        options.enrich_provider,
-        options.enrich_cmd,
-        options.enrich_model,
-        options.enrich_base_url,
-        options.enrich_timeout_ms,
-        options.enrich_max_bytes,
-    );
+    let enrichment = build_enrichment(repo_path, &facts_payload, options.enrich);
 
     let plan = build_agent_plan_output(
         &run_id,

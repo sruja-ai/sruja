@@ -26,13 +26,7 @@ pub struct AiBriefOptions<'a> {
     pub staged: bool,
     pub max_tokens: usize,
     pub output: Option<&'a str>,
-    pub enrich: bool,
-    pub enrich_provider: Option<&'a str>,
-    pub enrich_cmd: Option<&'a str>,
-    pub enrich_model: Option<&'a str>,
-    pub enrich_base_url: Option<&'a str>,
-    pub enrich_timeout_ms: u64,
-    pub enrich_max_bytes: usize,
+    pub enrich: &'a crate::enrichment::EnrichmentRef<'a>,
 }
 
 pub async fn ai_brief(options: AiBriefOptions<'_>) -> Result<(), CliError> {
@@ -258,19 +252,19 @@ fn build_ai_enrichment(
     selected_file: Option<&str>,
     task_context: &str,
 ) -> Option<AiEnrichment> {
-    if !options.enrich && options.enrich_cmd.is_none() {
+    if !options.enrich.enrich && options.enrich.cmd.is_none() {
         return None;
     }
 
     let plan = resolve_enrichment_plan(
         repo_path,
-        options.enrich_cmd,
-        options.enrich_model,
-        options.enrich_base_url,
-        Some(options.enrich_timeout_ms),
-        Some(options.enrich_max_bytes),
+        options.enrich.cmd,
+        options.enrich.model,
+        options.enrich.base_url,
+        Some(options.enrich.timeout_ms),
+        Some(options.enrich.max_bytes),
     );
-    let provider = options.enrich_provider.unwrap_or(plan.provider.as_str());
+    let provider = options.enrich.provider.unwrap_or(plan.provider.as_str());
     let limits = plan.limits;
 
     let parsed_task_context: serde_json::Value = serde_json::from_str(task_context)

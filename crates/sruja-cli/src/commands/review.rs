@@ -73,9 +73,17 @@ pub async fn review(
 
         if !files.is_empty() {
             // We just print it to stdout for now as part of the dashboard
+            let enrich = crate::enrichment::EnrichmentRef {
+                enrich: false,
+                provider: None,
+                cmd: None,
+                model: None,
+                base_url: None,
+                timeout_ms: 15_000,
+                max_bytes: 20_000,
+            };
             super::critique::critique(
-                repo_root, files, None, None, None, None, false, format, false, None, None, None,
-                None, 15_000, 20_000, None,
+                repo_root, files, None, None, None, None, false, format, &enrich, None,
             )
             .await?;
             println!();

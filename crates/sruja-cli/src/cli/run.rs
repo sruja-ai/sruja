@@ -5,9 +5,9 @@ use super::app::was_invoked_as;
 use super::app::ContextIntent;
 use super::commands::Commands;
 use super::subcommands::{
-    AgentCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand, EventCommand,
-    EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand, IntentCommand,
-    MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
+    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand,
+    IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
 };
 use super::Cli;
 
@@ -124,6 +124,45 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 commands::workflow_record_readiness(&repo, id.as_deref())
             }
             WorkflowCommand::Summary { repo, id, format } => {
+                commands::workflow_summary(&repo, id.as_deref(), &format)
+            }
+            WorkflowCommand::NextSteps { repo, id } => {
+                commands::workflow_next_steps(&repo, id.as_deref())
+            }
+        },
+        Commands::Aidlc { cmd } => match cmd {
+            AidlcCommand::Init {
+                repo,
+                title,
+                id,
+                profile,
+                template,
+                target_elements,
+            } => commands::workflow_init(
+                &repo,
+                &title,
+                id.as_deref(),
+                target_elements,
+                true,
+                commands::WorkflowInitOptions {
+                    with_aidlc: true,
+                    aidlc_profile: profile.clone(),
+                    install_rules: true,
+                    profile,
+                    template,
+                },
+            ),
+            AidlcCommand::Status { repo, id, check } => {
+                commands::workflow_status(&repo, id.as_deref(), check)
+            }
+            AidlcCommand::Validate { repo, id } => {
+                commands::workflow_validate(&repo, id.as_deref())
+            }
+            AidlcCommand::NextSteps { repo, id } => {
+                commands::workflow_next_steps(&repo, id.as_deref())
+            }
+            AidlcCommand::InstallRules { repo } => commands::workflow_install_rules(&repo),
+            AidlcCommand::Summary { repo, id, format } => {
                 commands::workflow_summary(&repo, id.as_deref(), &format)
             }
         },
@@ -249,13 +288,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             head,
             staged,
             format,
-            enrich,
-            enrich_provider,
-            enrich_cmd,
-            enrich_model,
-            enrich_base_url,
-            enrich_timeout_ms,
-            enrich_max_bytes,
+            ref enrich,
             fail_on,
         } => {
             commands::critique(
@@ -267,13 +300,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 head,
                 staged,
                 &format,
-                enrich,
-                enrich_provider.as_deref(),
-                enrich_cmd.as_deref(),
-                enrich_model.as_deref(),
-                enrich_base_url.as_deref(),
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                &enrich.as_ref(),
                 fail_on.as_deref(),
             )
             .await
@@ -451,14 +478,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             staged,
             max_tokens,
             output,
-            enrich,
-            enrich_provider,
-            enrich_cmd,
-            enrich_model,
-            enrich_base_url,
-            enrich_timeout_ms,
-            enrich_max_bytes,
+            ref enrich,
         } => {
+            let enrich_ref = enrich.as_ref();
             commands::ai_brief(commands::AiBriefOptions {
                 repo: &repo,
                 task: task.as_deref(),
@@ -470,13 +492,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 staged,
                 max_tokens,
                 output: output.as_deref(),
-                enrich,
-                enrich_provider: enrich_provider.as_deref(),
-                enrich_cmd: enrich_cmd.as_deref(),
-                enrich_model: enrich_model.as_deref(),
-                enrich_base_url: enrich_base_url.as_deref(),
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                enrich: &enrich_ref,
             })
             .await
         }
@@ -484,31 +500,14 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             repo,
             format,
             max_items,
-            enrich,
-            enrich_provider,
-            enrich_cmd,
-            enrich_model,
-            enrich_base_url,
-            enrich_timeout_ms,
-            enrich_max_bytes,
+            ref enrich,
             output,
         } => {
             commands::onboard(
                 &repo,
                 &format,
                 max_items,
-                enrich,
-                enrich_provider.as_deref(),
-                enrich_cmd.as_deref(),
-                enrich_model.as_deref(),
-                enrich_base_url.as_deref(),
-                enrich_timeout_ms,
-                enrich_max_bytes,
-                commands::LlmConfig {
-                    provider: enrich_provider.as_deref(),
-                    model: enrich_model.as_deref(),
-                    base_url: enrich_base_url.as_deref(),
-                },
+                &enrich.as_ref(),
                 output.as_deref(),
             )
             .await
@@ -574,13 +573,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             max_files,
             max_tokens,
             export_report,
-            enrich,
-            enrich_provider,
-            enrich_cmd,
-            enrich_model,
-            enrich_base_url,
-            enrich_timeout_ms,
-            enrich_max_bytes,
+            ref enrich,
             update,
         } => {
             let effective = if let Some(ref sub) = cmd {
@@ -613,13 +606,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         &repo,
                         &format,
                         export_report.as_deref(),
-                        enrich,
-                        enrich_provider.as_deref(),
-                        enrich_cmd.as_deref(),
-                        enrich_model.as_deref(),
-                        enrich_base_url.as_deref(),
-                        enrich_timeout_ms,
-                        enrich_max_bytes,
+                        &enrich.as_ref(),
                         update,
                     )
                     .await
@@ -700,13 +687,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             file,
             element_id,
             format,
-            enrich,
-            enrich_provider,
-            enrich_cmd,
-            enrich_model,
-            enrich_base_url,
-            enrich_timeout_ms,
-            enrich_max_bytes,
+            ref enrich,
             base_ref,
             head_ref,
         } => {
@@ -716,13 +697,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 element_id.as_deref(),
                 &format,
                 run_id.as_deref(),
-                enrich,
-                enrich_provider.as_deref(),
-                enrich_cmd.as_deref(),
-                enrich_model.as_deref(),
-                enrich_base_url.as_deref(),
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                &enrich.as_ref(),
                 base_ref.as_deref(),
                 head_ref.as_deref(),
             )
@@ -902,16 +877,11 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 format,
                 max_steps,
                 max_runtime_ms_per_step,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                ref enrich,
                 continue_on_error,
                 trajectories,
             } => {
+                let enrich_ref = enrich.as_ref();
                 commands::agent_run(commands::AgentRunOptions {
                     repo: &repo,
                     goal: &goal,
@@ -924,13 +894,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     run_id: run_id.as_deref(),
                     max_steps,
                     max_runtime_ms_per_step,
-                    enrich,
-                    enrich_provider: enrich_provider.as_deref(),
-                    enrich_cmd: enrich_cmd.as_deref(),
-                    enrich_model: enrich_model.as_deref(),
-                    enrich_base_url: enrich_base_url.as_deref(),
-                    enrich_timeout_ms,
-                    enrich_max_bytes,
+                    enrich: &enrich_ref,
                     continue_on_error,
                     trajectories,
                 })
@@ -946,14 +910,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 out,
                 print,
                 ai_mode,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                ref enrich,
             } => {
+                let enrich_ref = enrich.as_ref();
                 let out_path = out.as_deref().map(std::path::Path::new);
                 commands::agent_plan(
                     commands::AgentRunOptions {
@@ -968,13 +927,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         run_id: run_id.as_deref(),
                         max_steps: None,
                         max_runtime_ms_per_step: None,
-                        enrich,
-                        enrich_provider: enrich_provider.as_deref(),
-                        enrich_cmd: enrich_cmd.as_deref(),
-                        enrich_model: enrich_model.as_deref(),
-                        enrich_base_url: enrich_base_url.as_deref(),
-                        enrich_timeout_ms,
-                        enrich_max_bytes,
+                        enrich: &enrich_ref,
                         continue_on_error: false,
                         trajectories: None,
                     },
@@ -1113,31 +1066,14 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 repo,
                 format,
                 max_items,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                ref enrich,
                 output,
             } => {
                 commands::onboard(
                     &repo,
                     &format,
                     max_items,
-                    enrich,
-                    enrich_provider.as_deref(),
-                    enrich_cmd.as_deref(),
-                    enrich_model.as_deref(),
-                    enrich_base_url.as_deref(),
-                    enrich_timeout_ms,
-                    enrich_max_bytes,
-                    commands::LlmConfig {
-                        provider: enrich_provider.as_deref(),
-                        model: enrich_model.as_deref(),
-                        base_url: enrich_base_url.as_deref(),
-                    },
+                    &enrich.as_ref(),
                     output.as_deref(),
                 )
                 .await
@@ -1189,13 +1125,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 head,
                 staged,
                 format,
-                enrich,
-                enrich_provider,
-                enrich_cmd,
-                enrich_model,
-                enrich_base_url,
-                enrich_timeout_ms,
-                enrich_max_bytes,
+                ref enrich,
                 fail_on,
             } => {
                 commands::critique(
@@ -1207,13 +1137,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     head,
                     staged,
                     &format,
-                    enrich,
-                    enrich_provider.as_deref(),
-                    enrich_cmd.as_deref(),
-                    enrich_model.as_deref(),
-                    enrich_base_url.as_deref(),
-                    enrich_timeout_ms,
-                    enrich_max_bytes,
+                    &enrich.as_ref(),
                     fail_on.as_deref(),
                 )
                 .await

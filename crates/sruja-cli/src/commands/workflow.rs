@@ -1780,3 +1780,16 @@ pub fn workflow_next_steps_json_value(
         "recommendations": recommendations,
     }))
 }
+
+/// Public wrapper: show actionable next steps for the current workflow phase.
+pub fn workflow_next_steps(repo_root: &str, id: Option<&str>) -> Result<(), CliError> {
+    let repo = Path::new(repo_root);
+    let wf_id = if let Some(id) = id {
+        id.to_string()
+    } else {
+        resolve_single_workflow_id(repo)?
+    };
+    let value = workflow_next_steps_json_value(repo_root, &wf_id)?;
+    println!("{}", serde_json::to_string_pretty(&value)?);
+    Ok(())
+}

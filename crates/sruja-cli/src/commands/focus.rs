@@ -804,27 +804,21 @@ fn suggested_next_steps(resolved_element_id: &str) -> Vec<SuggestedCommand> {
 fn build_focus_enrichment(
     repo_path: &Path,
     briefing: &FocusBriefing,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
 ) -> Option<FocusEnrichment> {
-    if !enrich && enrich_cmd.is_none() {
+    if !enrich.enrich && enrich.cmd.is_none() {
         return None;
     }
 
     let plan = resolve_enrichment_plan(
         repo_path,
-        enrich_cmd,
-        enrich_model,
-        enrich_base_url,
-        Some(enrich_timeout_ms),
-        Some(enrich_max_bytes),
+        enrich.cmd,
+        enrich.model,
+        enrich.base_url,
+        Some(enrich.timeout_ms),
+        Some(enrich.max_bytes),
     );
-    let provider = enrich_provider.unwrap_or(plan.provider.as_str());
+    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
     let limits = plan.limits;
 
     let payload = serde_json::json!({
@@ -1151,13 +1145,7 @@ pub async fn focus(
     element_id: Option<&str>,
     format: &str,
     run_id: Option<&str>,
-    enrich: bool,
-    enrich_provider: Option<&str>,
-    enrich_cmd: Option<&str>,
-    enrich_model: Option<&str>,
-    enrich_base_url: Option<&str>,
-    enrich_timeout_ms: u64,
-    enrich_max_bytes: usize,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
     base_ref: Option<&str>,
     head_ref: Option<&str>,
 ) -> Result<(), CliError> {
@@ -1220,17 +1208,7 @@ pub async fn focus(
         "memory_truncated": briefing.memory_truncated,
     });
     let _ = write_json_snapshot(repo_path, &run_id, "focus.json", &snapshot);
-    briefing.enrichment = build_focus_enrichment(
-        repo_path,
-        &briefing,
-        enrich,
-        enrich_provider,
-        enrich_cmd,
-        enrich_model,
-        enrich_base_url,
-        enrich_timeout_ms,
-        enrich_max_bytes,
-    );
+    briefing.enrichment = build_focus_enrichment(repo_path, &briefing, enrich);
 
     match format {
         "json" => {

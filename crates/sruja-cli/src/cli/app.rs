@@ -46,7 +46,24 @@ Optional reviewed intent:
 
 Team / CI (advanced):
   sruja verify-task --profile coding -r .
-  sruja drift --ci -r .         github-actions format (replaces hidden `check`)"#
+  sruja drift --ci -r .         github-actions format (replaces hidden `check`)
+
+Grouped commands:
+  sruja dsl list|tree|diff|explain|import|compile|validate|generate|fmt|export|lsp
+  sruja inspect health|impact|why|query|context-score|onboard|quickstart|watch|learn|ingest
+  sruja guard critique|compliance|baseline|drift-pr
+  sruja propose create|list|approve
+  sruja workflow init|list|status|approve|advance|summary|next-steps
+  sruja agent history|record|curate|plan|apply|run
+  sruja federation publish|compose
+  sruja decision new|list|show|trace|link|accept|supersede
+  sruja event append|list
+  sruja memory reindex|search|timeline
+  sruja index semantic|registry|dashboard
+  sruja discover context|explain|repomap|questions
+  sruja intent check|propose|evaluate|history
+  sruja author evidence|propose
+  sruja run show|export"#
 )]
 pub struct Cli {
     #[command(subcommand)]
