@@ -25,6 +25,9 @@ import { registerExportCommands } from "./commands/export";
 import { buildContextPack } from "./contextPack";
 import { registerMcpServer } from "./mcpServer";
 import { updateDiagnostics, getDiagnosticCollection } from "./diagnostics";
+import { registerStatusBar } from "./statusBar";
+import { ArchitectureTreeProvider } from "./architectureTree";
+import { maybeShowWelcome, registerWelcomeCommand } from "./welcome";
 
 function getLspPath(): string | undefined {
   return vscode.workspace.getConfiguration("sruja").get<string>("lsp.path");
@@ -71,12 +74,26 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
+  // Status Bar
+  registerStatusBar(context, getSrujaPath);
+
   // Skills Tree View
   const skillsTreeProvider = new SrujaSkillsTreeProvider(context);
   vscode.window.registerTreeDataProvider("srujaSkills", skillsTreeProvider);
   context.subscriptions.push(
     vscode.commands.registerCommand("sruja.refreshSkills", () => skillsTreeProvider.refresh())
   );
+
+  // Architecture Tree View
+  const archTreeProvider = new ArchitectureTreeProvider(context);
+  vscode.window.registerTreeDataProvider("srujaArchitecture", archTreeProvider);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sruja.refreshStatus", () => archTreeProvider.refresh())
+  );
+
+  // Welcome walkthrough
+  registerWelcomeCommand(context);
+  maybeShowWelcome(context);
 
   const openMarkdownPreview = async (): Promise<void> => {
     const editor = vscode.window.activeTextEditor;

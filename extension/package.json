@@ -38,7 +38,8 @@
     "onLanguage:sruja",
     "workspaceContains:**/*.sruja",
     "onStartupFinished",
-    "onView:srujaSkillsView"
+    "onView:srujaSkillsView",
+    "onView:srujaArchitecture"
   ],
   "main": "./out/extension.js",
   "extensionKind": [
@@ -274,6 +275,18 @@
         "title": "Sruja: Open Markdown Preview",
         "icon": "$(open-preview)",
         "shortTitle": "Preview"
+      },
+      {
+        "command": "sruja.refreshStatus",
+        "title": "Sruja: Refresh architecture status",
+        "icon": "$(refresh)",
+        "shortTitle": "Refresh Status"
+      },
+      {
+        "command": "sruja.welcome",
+        "title": "Sruja: Get Started",
+        "icon": "$(rocket)",
+        "shortTitle": "Welcome"
       }
     ],
     "submenus": [
@@ -379,8 +392,12 @@
     "views": {
       "sruja-view": [
         {
+          "id": "srujaArchitecture",
+          "name": "Architecture"
+        },
+        {
           "id": "srujaSkillsView",
-          "name": "Sruja Skills"
+          "name": "Skills"
         }
       ]
     },

@@ -3460,7 +3460,6 @@ dependencies = [
  "console 0.15.11",
  "crossterm",
  "dialoguer",
- "env_logger",
  "fs2",
  "indicatif",
  "notify",

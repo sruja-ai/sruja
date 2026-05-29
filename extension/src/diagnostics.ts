@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { getDiagnosticsFromWasm } from "./wasm";
+import { applyGutterDecorations, clearGutterDecorations } from "./decorations";
 
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
 
@@ -26,7 +27,15 @@ export async function updateDiagnostics(
   const filename = doc.uri.fsPath;
 
   const setDiagsIfDocOpen = (diags: vscode.Diagnostic[]) => {
-    if (isDocumentStillOpen(uri)) collection.set(uri, diags);
+    if (isDocumentStillOpen(uri)) {
+      collection.set(uri, diags);
+      // Apply gutter decorations to visible editors showing this document
+      for (const editor of vscode.window.visibleTextEditors) {
+        if (editor.document.uri.toString() === uri.toString()) {
+          applyGutterDecorations(editor, diags);
+        }
+      }
+    }
   };
 
   try {
