@@ -749,6 +749,15 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 decision_id.as_deref(),
                 element_id.as_deref(),
             ),
+            MemoryCommand::SkillStats { repo, format } => {
+                commands::memory_skill_stats(&repo, &format)
+            }
+            MemoryCommand::Archive {
+                repo,
+                decay_threshold,
+                min_age_days,
+                force,
+            } => commands::memory_archive(&repo, decay_threshold, min_age_days, force),
         },
         Commands::Event { cmd } => match cmd {
             EventCommand::Append { repo, json } => {
@@ -870,6 +879,60 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             } => {
                 commands::agent_merge(&repo, &ids, &context, &hypothesis, &guardrail, &outcome)
                     .await
+            }
+            AgentCommand::Distill {
+                repo,
+                goal,
+                outcome,
+                elements,
+                detail,
+                guardrail,
+            } => {
+                commands::agent_distill(
+                    &repo,
+                    &goal,
+                    &outcome,
+                    elements.as_deref(),
+                    detail.as_deref(),
+                    guardrail.as_deref(),
+                )
+                .await
+            }
+            AgentCommand::SessionSummary {
+                repo,
+                goal,
+                success,
+                element_id,
+                summary,
+            } => {
+                commands::agent_session_summary(
+                    &repo,
+                    &goal,
+                    success,
+                    element_id.as_deref(),
+                    summary.as_deref(),
+                )
+                .await
+            }
+            AgentCommand::ProposeFact {
+                repo,
+                subject,
+                predicate,
+                object,
+                claim,
+                confidence,
+                evidence,
+            } => {
+                commands::agent_propose_fact(
+                    &repo,
+                    &subject,
+                    &predicate,
+                    &object,
+                    &claim,
+                    confidence,
+                    evidence.as_deref(),
+                )
+                .await
             }
             AgentCommand::Run {
                 run_id,

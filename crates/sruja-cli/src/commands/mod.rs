@@ -15,8 +15,8 @@ pub use intent_domain::remediation;
 
 pub use agent_reflect::agent_reflect;
 pub use intent_domain::agent::{
-    agent_clear, agent_clusters, agent_curate, agent_delete, agent_history, agent_merge,
-    agent_record, agent_update,
+    agent_clear, agent_clusters, agent_curate, agent_delete, agent_distill, agent_history,
+    agent_merge, agent_propose_fact, agent_record, agent_session_summary, agent_update,
 };
 pub use intent_domain::agent_plan::{agent_apply, agent_plan};
 pub use intent_domain::agent_run::{agent_run, agent_run_to_string, AgentRunOptions};
@@ -134,7 +134,9 @@ pub use decision::{
     decision_show, decision_supersede, decision_trace, list_decisions,
 };
 pub use event::{event_append, event_list};
-pub use memory_cmd::{memory_reindex, memory_search, memory_timeline};
+pub use memory_cmd::{
+    memory_archive, memory_reindex, memory_search, memory_skill_stats, memory_timeline,
+};
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
     scan_repo_cached_with_opts(repo_path, false)

@@ -84,6 +84,9 @@ pub struct FocusBriefing {
     /// Learnings actually injected into this briefing (subset of `find_relevant`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub surfaced_learning_ids: Vec<String>,
+    /// Summary of the last agent session (session handoff context).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_session: Option<serde_json::Value>,
 }
 
 /// Learnings surfaced for a focus target (token-budget capped), with optional retrieval accounting.
@@ -661,6 +664,9 @@ pub fn build_focus_briefing(
     // -- Context Score --
     let score = compute_context_score(graph, scan_node_count, repo_path, 0);
 
+    // -- Last Session Summary (session handoff) --
+    let last_session = load_last_session_summary(repo_path);
+
     if let Some(t) = &temporal {
         ai_instructions.push(format!(
             "Git range {}..{} maps the diff to {} scan-graph component(s).",
@@ -705,6 +711,7 @@ pub fn build_focus_briefing(
         decision_trace_events,
         decision_records,
         surfaced_learning_ids,
+        last_session,
     }
 }
 
@@ -1132,6 +1139,21 @@ fn truncate(s: &str, max_len: usize) -> String {
             format!("{}...", prefix)
         }
     }
+}
+
+/// Loads the last agent session summary for session handoff context.
+fn load_last_session_summary(repo_path: &Path) -> Option<serde_json::Value> {
+    let path = repo_path.join(".sruja").join("last_session_summary.json");
+    let content = std::fs::read_to_string(&path).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&content).ok()?;
+    // Only return if the summary is recent (within 7 days).
+    let timestamp = value.get("timestamp")?.as_str()?;
+    let parsed = chrono::DateTime::parse_from_rfc3339(timestamp).ok()?;
+    let age = chrono::Utc::now().signed_duration_since(parsed);
+    if age.num_days() > 7 {
+        return None;
+    }
+    Some(value)
 }
 
 // ──────────────────────────────────────────────────────────────

@@ -204,6 +204,75 @@ pub enum AgentCommand {
         #[arg(long, short = 'o', default_value = "success")]
         outcome: String,
     },
+    /// Record what worked (playbook) or failed after any agent completes a task.
+    ///
+    /// Standalone command for coding agents (Claude Code, Cursor, etc.) to
+    /// auto-distill learnings without going through `sruja agent run`.
+    Distill {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// What task was being performed
+        #[arg(long, short = 'c')]
+        goal: String,
+        /// Outcome: success or failed
+        #[arg(long, short = 'o', default_value = "success")]
+        outcome: String,
+        /// Comma-separated element IDs affected
+        #[arg(long, short = 'e')]
+        elements: Option<String>,
+        /// Optional: what specifically worked or failed
+        #[arg(long)]
+        detail: Option<String>,
+        /// Optional: what to do differently next time (for failures)
+        #[arg(long, short = 'g')]
+        guardrail: Option<String>,
+    },
+    /// Write a session handoff summary for the next agent session to consume.
+    ///
+    /// Coding agents call this at the end of a task so the next session
+    /// (via `sruja focus`) picks up context automatically.
+    SessionSummary {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// What task was performed
+        #[arg(long, short = 'c')]
+        goal: String,
+        /// Whether the task succeeded
+        #[arg(long)]
+        success: bool,
+        /// Optional element ID that was the focus
+        #[arg(long, short = 'e')]
+        element_id: Option<String>,
+        /// Optional: brief summary of what happened
+        #[arg(long, short = 's')]
+        summary: Option<String>,
+    },
+    /// Propose a higher-level architectural fact for human review.
+    ///
+    /// Unlike scan-derived facts, these are agent-inferred observations
+    /// (e.g., "the auth module is the most frequently changed component").
+    ProposeFact {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Subject (e.g., "AuthModule")
+        #[arg(long)]
+        subject: String,
+        /// Predicate (e.g., "has_change_frequency")
+        #[arg(long)]
+        predicate: String,
+        /// Object (e.g., "high")
+        #[arg(long)]
+        object: String,
+        /// Human-readable claim
+        #[arg(long, short = 'c')]
+        claim: String,
+        /// Confidence 0.0-1.0
+        #[arg(long, default_value_t = 0.7)]
+        confidence: f64,
+        /// Optional comma-separated evidence references
+        #[arg(long)]
+        evidence: Option<String>,
+    },
     /// Architecture-bounded agent loop: observe → plan → (optional) apply → verify → record learnings
     ///
     /// Requires Sruja evidence and a reviewable plan; not a general-purpose coding agent.
@@ -386,6 +455,27 @@ pub enum MemoryCommand {
         decision_id: Option<String>,
         #[arg(long)]
         element_id: Option<String>,
+    },
+    /// Show per-skill effectiveness from context events
+    SkillStats {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Archive stale learnings (decay score below threshold, older than min age)
+    Archive {
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Decay score threshold (entries below this are archived)
+        #[arg(long, default_value_t = 0.15)]
+        decay_threshold: f64,
+        /// Minimum age in days before an entry can be archived
+        #[arg(long, default_value_t = 30)]
+        min_age_days: i64,
+        /// Actually delete (requires confirmation)
+        #[arg(long)]
+        force: bool,
     },
 }
 

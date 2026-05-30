@@ -4,6 +4,7 @@ use sruja_agent::{
     AgenticMemory, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, MemoryError,
 };
 use std::collections::HashSet;
+use std::io::Write;
 use std::path::Path;
 
 /// Displays the history of architectural learnings and guardrails recorded in agentic memory.
@@ -153,6 +154,27 @@ pub async fn agent_curate(repo: &str, format: &str) -> Result<(), CliError> {
                 println!("     shared tags: {}", s.shared_tags.join(", "));
             }
         }
+    }
+
+    if !report.stale_entries.is_empty() {
+        println!(
+            "\n{}",
+            colors::style("Stale entries (candidates for auto-archive)").bold()
+        );
+        for s in &report.stale_entries {
+            println!(
+                "  {} age={}d decay={:.3} ret={} | {}",
+                colors::warning(&s.id.chars().take(12).collect::<String>()),
+                s.age_days,
+                s.decay_score,
+                s.retrieval_count,
+                colors::dim(&s.context)
+            );
+        }
+        println!(
+            "\n{}",
+            colors::dim("Use `sruja memory archive --force` to auto-archive stale entries.")
+        );
     }
 
     println!(
@@ -389,6 +411,223 @@ pub async fn agent_clear(repo: &str, force: bool) -> Result<(), CliError> {
     Ok(())
 }
 
+/// Proposes a higher-level architectural fact for human review.
+///
+/// Unlike deterministic scan facts, these are agent-inferred observations
+/// (e.g., "the auth module is the most frequently changed component").
+/// They enter with "proposed" status and must be reviewed before promotion.
+pub async fn agent_propose_fact(
+    repo: &str,
+    subject: &str,
+    predicate: &str,
+    object: &str,
+    claim: &str,
+    confidence: f64,
+    evidence: Option<&str>,
+) -> Result<(), CliError> {
+    let repo_path = Path::new(repo);
+    if !repo_path.exists() {
+        return Err(CliError::validation(format!(
+            "Repository not found: {repo}"
+        )));
+    }
+
+    let evidence_refs: Vec<String> = evidence
+        .map(|e| {
+            e.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let raw = format!("{subject}|{predicate}|{object}");
+    let hash = blake3::hash(raw.as_bytes()).to_hex();
+    let id = format!("fact_proposed_{}", &hash[..12]);
+
+    let fact = serde_json::json!({
+        "schema_version": "learned_fact/v1",
+        "id": id,
+        "subject": subject,
+        "predicate": predicate,
+        "object": object,
+        "claim": claim,
+        "evidence_refs": evidence_refs,
+        "confidence": confidence.clamp(0.0, 1.0),
+        "status": "proposed",
+        "source": "agent_propose",
+    });
+
+    let facts_path = repo_path.join(".sruja").join("learned_facts.jsonl");
+    if let Some(parent) = facts_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&facts_path)?;
+    writeln!(file, "{}", serde_json::to_string(&fact)?)?;
+
+    // Record in context events
+    crate::commands::context_events::append_context_event(
+        repo_path,
+        crate::commands::context_events::ContextEventRecord {
+            schema_version: crate::commands::context_events::CONTEXT_EVENTS_SCHEMA_V2.to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            kind: "fact_proposed".to_string(),
+            outcome: "ok".to_string(),
+            details: serde_json::json!({
+                "fact_id": id,
+                "subject": subject,
+                "predicate": predicate,
+                "object": object,
+            }),
+            actor: Some("agent".to_string()),
+            source: Some("cli".to_string()),
+            tool: Some("agent_propose_fact".to_string()),
+            elements: Some(vec![subject.to_string()]),
+            summary: Some(format!("Proposed fact: {}", claim)),
+            ..Default::default()
+        },
+    );
+
+    println!("Proposed fact {} for review: {}", id, claim);
+    println!("  Status: proposed (use `sruja learn review` to promote or reject)");
+    Ok(())
+}
+
+/// Standalone auto-distillation: records what worked or failed after any agent's task.
+///
+/// This is the primary API for coding agents (Claude Code, Cursor, Copilot) to
+/// build episodic memory without going through `sruja agent run`.
+///
+/// On success: records a playbook with the steps that worked.
+/// On failure: records a guardrail with what to avoid.
+pub async fn agent_distill(
+    repo: &str,
+    goal: &str,
+    outcome_str: &str,
+    elements: Option<&str>,
+    detail: Option<&str>,
+    guardrail: Option<&str>,
+) -> Result<(), CliError> {
+    let outcome = match outcome_str.to_lowercase().as_str() {
+        "success" | "succeeded" | "pass" => ExperimentOutcome::Success,
+        _ => ExperimentOutcome::Failed,
+    };
+
+    let affected_elements: Vec<String> = elements
+        .map(|e| {
+            e.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let context = format!("agent task: {}", goal);
+
+    let (hypothesis, guardrail_advice) = match outcome {
+        ExperimentOutcome::Success => {
+            let hyp = detail
+                .map(|d| format!("Task succeeded: {}", d))
+                .unwrap_or_else(|| format!("Task succeeded: {}", goal));
+            let guard =
+                guardrail.unwrap_or("This approach worked; reuse as a playbook for similar tasks.");
+            (hyp, guard.to_string())
+        }
+        ExperimentOutcome::Failed => {
+            let hyp = detail
+                .map(|d| format!("Task failed: {}", d))
+                .unwrap_or_else(|| format!("Task failed: {}", goal));
+            let guard = guardrail.unwrap_or("Investigate root cause before retrying.");
+            (hyp, guard.to_string())
+        }
+    };
+
+    let mut memory = AgenticMemory::load(Path::new(repo))
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+
+    memory.add_learning(LearningEntry {
+        id: String::new(),
+        kind: Some(match &outcome {
+            ExperimentOutcome::Success => LearningKind::Playbook,
+            ExperimentOutcome::Failed => LearningKind::Guardrail,
+        }),
+        timestamp: chrono::Utc::now(),
+        run_id: None,
+        repo: Some(repo.to_string()),
+        selector: None,
+        context,
+        hypothesis,
+        outcome: outcome.clone(),
+        reason: None,
+        guardrail_advice,
+        affected_elements,
+        evidence_refs: Vec::new(),
+        confidence: None,
+        tags: Vec::new(),
+        hitl_kind: None,
+        related_ids: Vec::new(),
+        retrieval_count: 0,
+        task_success_after: 0,
+        task_total_after: 0,
+    });
+
+    memory
+        .save(Path::new(repo))
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+
+    println!(
+        "{} Learning distilled and recorded.",
+        match outcome {
+            ExperimentOutcome::Success => "playbook",
+            ExperimentOutcome::Failed => "guardrail",
+        }
+    );
+    Ok(())
+}
+
+/// Writes a session handoff summary for the next agent session.
+///
+/// Coding agents call this at task end. The summary is loaded by
+/// `sruja focus` as `last_session` context for the next session.
+pub async fn agent_session_summary(
+    repo: &str,
+    goal: &str,
+    success: bool,
+    element_id: Option<&str>,
+    summary: Option<&str>,
+) -> Result<(), CliError> {
+    let repo_path = Path::new(repo);
+    if !repo_path.exists() {
+        return Err(CliError::validation(format!(
+            "Repository not found: {repo}"
+        )));
+    }
+
+    let session = serde_json::json!({
+        "schema_version": "session_summary/v1",
+        "goal": goal,
+        "element_id": element_id,
+        "success": success,
+        "summary": summary,
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    });
+
+    let path = repo_path.join(".sruja").join("last_session_summary.json");
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(
+        &path,
+        serde_json::to_string_pretty(&session).unwrap_or_default(),
+    )?;
+
+    println!("Session summary written to {}", path.display());
+    Ok(())
+}
+
 /// Displays thematic clusters and tags from Zettelkasten-linked agentic memory.
 pub async fn agent_clusters(
     repo: &str,
@@ -534,5 +773,88 @@ fn print_learning_summary(entry: &LearningEntry) {
     );
     if !entry.tags.is_empty() {
         println!("    tags: {}", entry.tags.join(", "));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_agent_distill_success() {
+        let dir = tempdir().unwrap();
+        let repo = dir.path().to_str().unwrap();
+
+        agent_distill(
+            repo,
+            "implemented JWT refresh",
+            "success",
+            Some("Auth.Token"),
+            Some("added refresh token rotation"),
+            None,
+        )
+        .await
+        .unwrap();
+
+        let memory = AgenticMemory::load(dir.path()).unwrap();
+        assert_eq!(memory.learnings.len(), 1);
+        assert_eq!(memory.learnings[0].kind, Some(LearningKind::Playbook));
+        assert!(matches!(
+            memory.learnings[0].outcome,
+            ExperimentOutcome::Success
+        ));
+        assert!(memory.learnings[0]
+            .affected_elements
+            .contains(&"Auth.Token".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_agent_distill_failure() {
+        let dir = tempdir().unwrap();
+        let repo = dir.path().to_str().unwrap();
+
+        agent_distill(
+            repo,
+            "fix auth bug",
+            "failed",
+            Some("Auth"),
+            Some("wrong middleware order"),
+            Some("check middleware chain order first"),
+        )
+        .await
+        .unwrap();
+
+        let memory = AgenticMemory::load(dir.path()).unwrap();
+        assert_eq!(memory.learnings.len(), 1);
+        assert_eq!(memory.learnings[0].kind, Some(LearningKind::Guardrail));
+        assert!(matches!(
+            memory.learnings[0].outcome,
+            ExperimentOutcome::Failed
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_agent_session_summary() {
+        let dir = tempdir().unwrap();
+        let repo = dir.path().to_str().unwrap();
+
+        agent_session_summary(
+            repo,
+            "refactored API layer",
+            true,
+            Some("API"),
+            Some("moved logic to service layer"),
+        )
+        .await
+        .unwrap();
+
+        let path = dir.path().join(".sruja/last_session_summary.json");
+        assert!(path.exists());
+        let content: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(content["goal"], "refactored API layer");
+        assert_eq!(content["success"], true);
+        assert_eq!(content["element_id"], "API");
     }
 }

@@ -140,12 +140,14 @@ pub struct MergeSuggestion {
     pub cluster_size: usize,
 }
 
-/// Curation report: low-utility entries and merge candidates.
+/// Curation report: low-utility entries, merge candidates, and stale entries.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurationReport {
     pub total_entries: usize,
     pub low_utility: Vec<LowUtilityEntry>,
     pub merge_suggestions: Vec<MergeSuggestion>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stale_entries: Vec<StaleEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -154,6 +156,16 @@ pub struct LowUtilityEntry {
     pub retrieval_count: u32,
     pub task_total_after: u32,
     pub utility_ratio: Option<f64>,
+    pub context: String,
+}
+
+/// An entry that has decayed below the staleness threshold.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaleEntry {
+    pub id: String,
+    pub age_days: i64,
+    pub decay_score: f64,
+    pub retrieval_count: u32,
     pub context: String,
 }
 
@@ -183,6 +195,29 @@ impl LearningEntry {
         } else {
             Some(self.task_success_after as f64 / self.task_total_after as f64)
         }
+    }
+
+    /// Decay score in [0.0, 1.0] based on age and retrieval frequency.
+    ///
+    /// Entries that are old and rarely retrieved decay toward 0.0.
+    /// Recent or frequently-retrieved entries stay near 1.0.
+    /// Uses a half-life of 90 days, boosted by retrieval count.
+    pub fn decay_score(&self) -> f64 {
+        let age = Utc::now().signed_duration_since(self.timestamp);
+        let age_days = age.num_days().max(0) as f64;
+        let half_life = 90.0_f64;
+        // Retrieval frequency extends effective freshness.
+        let retrieval_boost = (self.retrieval_count as f64).ln_1p() * 15.0;
+        let effective_age = (age_days - retrieval_boost).max(0.0);
+        2.0_f64.powf(-effective_age / half_life)
+    }
+
+    /// Age of this entry in days.
+    pub fn age_days(&self) -> i64 {
+        Utc::now()
+            .signed_duration_since(self.timestamp)
+            .num_days()
+            .max(0)
     }
 
     /// Checks if this learning entry is relevant to a specific architectural element.
@@ -574,6 +609,23 @@ impl AgenticMemory {
             })
             .collect();
 
+        let stale_threshold = 0.15_f64;
+        let stale_entries: Vec<StaleEntry> = self
+            .learnings
+            .iter()
+            .filter(|e| {
+                let score = e.decay_score();
+                score < stale_threshold && e.age_days() > 30
+            })
+            .map(|e| StaleEntry {
+                id: e.id.clone(),
+                age_days: e.age_days(),
+                decay_score: e.decay_score(),
+                retrieval_count: e.retrieval_count,
+                context: e.context.clone(),
+            })
+            .collect();
+
         let mut merge_suggestions = Vec::new();
         let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -612,7 +664,36 @@ impl AgenticMemory {
             total_entries: self.learnings.len(),
             low_utility,
             merge_suggestions,
+            stale_entries,
         }
+    }
+
+    /// Archives entries that have decayed below the staleness threshold.
+    ///
+    /// Returns the archived entries. Invariant entries are never archived.
+    pub fn auto_archive_stale(
+        &mut self,
+        decay_threshold: f64,
+        min_age_days: i64,
+    ) -> Vec<LearningEntry> {
+        let to_archive: Vec<String> = self
+            .learnings
+            .iter()
+            .filter(|e| {
+                e.decay_score() < decay_threshold
+                    && e.age_days() > min_age_days
+                    && e.kind != Some(LearningKind::Invariant)
+            })
+            .map(|e| e.id.clone())
+            .collect();
+
+        let mut archived = Vec::new();
+        for id in &to_archive {
+            if let Ok(entry) = self.delete_learning(id) {
+                archived.push(entry);
+            }
+        }
+        archived
     }
 
     pub fn get_path(repo_root: &Path) -> PathBuf {
@@ -1296,5 +1377,84 @@ mod tests {
         assert!(memory.learnings[0].related_ids.is_empty());
         assert!(memory.learnings[0].kind.is_none());
         assert!(memory.learnings[0].run_id.is_none());
+    }
+
+    #[test]
+    fn test_decay_score_recent_entry() {
+        let entry = make_entry("ctx", "hyp", vec![]);
+        let score = entry.decay_score();
+        assert!(
+            score > 0.9,
+            "Recent entry should have high decay score, got {}",
+            score
+        );
+    }
+
+    #[test]
+    fn test_decay_score_old_entry() {
+        let mut entry = make_entry("ctx", "hyp", vec![]);
+        entry.timestamp = Utc::now() - chrono::Duration::days(250);
+        let score = entry.decay_score();
+        assert!(
+            score < 0.15,
+            "Old entry should have low decay score, got {}",
+            score
+        );
+    }
+
+    #[test]
+    fn test_decay_score_with_retrievals() {
+        let mut entry = make_entry("ctx", "hyp", vec![]);
+        entry.timestamp = Utc::now() - chrono::Duration::days(120);
+        let score_no_retrievals = entry.decay_score();
+        entry.retrieval_count = 10;
+        let score_with_retrievals = entry.decay_score();
+        assert!(
+            score_with_retrievals > score_no_retrievals,
+            "Retrievals should boost decay score: {} vs {}",
+            score_with_retrievals,
+            score_no_retrievals
+        );
+    }
+
+    #[test]
+    fn test_curation_report_includes_stale() {
+        let mut memory = AgenticMemory::default();
+        let mut old = make_entry("old context", "hyp", vec![]);
+        old.timestamp = Utc::now() - chrono::Duration::days(250);
+        old.retrieval_count = 0;
+        memory.add_learning(old);
+
+        let report = memory.curation_report();
+        assert_eq!(report.stale_entries.len(), 1, "Old entry should be stale");
+        assert!(report.stale_entries[0].decay_score < 0.15);
+    }
+
+    #[test]
+    fn test_auto_archive_stale() {
+        let mut memory = AgenticMemory::default();
+        let mut old = make_entry("old", "hyp", vec![]);
+        old.timestamp = Utc::now() - chrono::Duration::days(250);
+        memory.add_learning(old);
+
+        let recent = make_entry("recent", "hyp", vec![]);
+        memory.add_learning(recent);
+
+        let archived = memory.auto_archive_stale(0.15, 30);
+        assert_eq!(archived.len(), 1, "Should archive old entry");
+        assert_eq!(memory.learnings.len(), 1, "Recent entry should remain");
+    }
+
+    #[test]
+    fn test_auto_archive_preserves_invariants() {
+        let mut memory = AgenticMemory::default();
+        let mut old_invariant = make_entry("invariant", "hyp", vec![]);
+        old_invariant.timestamp = Utc::now() - chrono::Duration::days(250);
+        old_invariant.kind = Some(LearningKind::Invariant);
+        memory.add_learning(old_invariant);
+
+        let archived = memory.auto_archive_stale(0.15, 30);
+        assert_eq!(archived.len(), 0, "Should not archive invariants");
+        assert_eq!(memory.learnings.len(), 1);
     }
 }
