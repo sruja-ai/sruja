@@ -282,7 +282,12 @@ export enum TextEditorRevealType {
   InCenter = 0,
 }
 
+export class TextEditorDecorationType {
+  dispose(): void {}
+}
+
 export const window = {
+  createTextEditorDecorationType: () => new TextEditorDecorationType(),
   createOutputChannel: () => ({ append: () => {}, appendLine: () => {}, clear: () => {}, show: () => {} }),
   showInformationMessage: async () => {},
   showWarningMessage: async () => {},
