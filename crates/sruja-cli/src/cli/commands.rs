@@ -827,6 +827,9 @@ pub enum Commands {
         /// Git head ref for optional temporal context (requires `--base-ref`)
         #[arg(long)]
         head_ref: Option<String>,
+        /// Only output active drift, failed learnings/guardrails, and boundary violations. Skip topology and enrichment.
+        #[arg(long)]
+        compact: bool,
     },
 
     /// Ingest external context (ADRs, design docs, API contracts) into .sruja/context/

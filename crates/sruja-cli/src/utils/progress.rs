@@ -123,3 +123,29 @@ fn format_elapsed(duration: Duration) -> String {
         format!("{}h {}m", secs / 3600, (secs % 3600) / 60)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_elapsed_seconds_and_minutes() {
+        assert_eq!(format_elapsed(Duration::from_secs(5)), "5s");
+        assert_eq!(format_elapsed(Duration::from_secs(125)), "2m 5s");
+    }
+
+    #[test]
+    fn multi_step_progress_advances_and_finishes() {
+        let mut progress = MultiStepProgress::new(vec!["scan", "merge"]);
+        assert_eq!(progress.current_step(), 0);
+        progress.advance(None);
+        assert_eq!(progress.current_step(), 1);
+        progress.finish_success("done");
+    }
+
+    #[test]
+    fn spinner_creates_progress_bar_with_message() {
+        let pb = spinner("working");
+        pb.finish_and_clear();
+    }
+}

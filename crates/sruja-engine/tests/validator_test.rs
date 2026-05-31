@@ -59,3 +59,80 @@ fn validator_with_default_rules_runs_cycle_detection() {
         diagnostics
     );
 }
+
+#[test]
+fn validator_reports_custom_constraint_violation() {
+    let source = r#"
+person = kind "Person"
+system = kind "System"
+container = kind "Container"
+database = kind "Database"
+
+User = person "User" { description "User" }
+
+App = system "App" {
+  description "App"
+  Web = container "Web" {
+    technology "React"
+    description "Web"
+  }
+  DB = database "DB" {
+    technology "PostgreSQL"
+    description "DB"
+  }
+}
+
+User -> App "uses"
+App.Web -> App.DB "queries"
+
+constraints {
+  "web -> database forbidden"
+}
+"#;
+    let program = parse_valid_program(source);
+    let validator = Validator::with_default_rules();
+    let diagnostics = validator.validate_sync(&program);
+    assert!(
+        diagnostics
+            .iter()
+            .any(|d| d.message.contains("Custom constraint violated")),
+        "expected custom constraint diagnostic: {diagnostics:?}"
+    );
+}
+
+#[test]
+fn validator_reports_state_machine_and_contract_issues() {
+    let source = r#"
+system = kind "System"
+component = kind "Component"
+
+App = system "App" {
+  description "App"
+
+  Svc = component "Service" {
+    description "Svc"
+    state_machine "SM" {
+      initial "Created"
+    }
+    contract "Empty" {
+      description "empty"
+    }
+  }
+}
+"#;
+    let program = parse_valid_program(source);
+    let validator = Validator::with_default_rules();
+    let diagnostics = validator.validate_sync(&program);
+    assert!(
+        diagnostics
+            .iter()
+            .any(|d| d.message.contains("Initial state")),
+        "expected state machine diagnostic: {diagnostics:?}"
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|d| d.message.contains("Contract 'Empty' is empty")),
+        "expected contract diagnostic: {diagnostics:?}"
+    );
+}

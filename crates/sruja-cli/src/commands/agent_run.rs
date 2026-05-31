@@ -128,6 +128,8 @@ pub(crate) struct StepObservation {
     pub(crate) stdout: String,
     pub(crate) stderr: String,
     pub(crate) elapsed_ms: u128,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) content_hash: Option<String>,
 }
 
 /// Apply-mode success: every executed verification step is ok or explicitly skipped.
@@ -136,6 +138,21 @@ fn agent_apply_verification_success(results: &[StepObservation]) -> bool {
         && results
             .iter()
             .all(|r| matches!(r.status.as_str(), "ok" | "skipped"))
+}
+
+pub(crate) fn compute_observation_hash(
+    step_id: &str,
+    status: &str,
+    exit_code: Option<i32>,
+    stdout: &str,
+    stderr: &str,
+    elapsed_ms: u128,
+) -> String {
+    let hash_input = format!(
+        "step_id:{}\nstatus:{}\nexit_code:{:?}\nstdout:{}\nstderr:{}\nelapsed_ms:{}",
+        step_id, status, exit_code, stdout, stderr, elapsed_ms
+    );
+    blake3::hash(hash_input.as_bytes()).to_hex().to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,6 +170,8 @@ pub(crate) struct AgentApplyOutput {
     pub(crate) observation_compression: Option<ObservationCompressionReport>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) context_prune: Option<crate::commands::context_prune::ContextPruneSuggestion>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) verification_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -223,6 +242,7 @@ mod observation_compression {
             stdout: compressed_stdout,
             stderr: compressed_stderr,
             elapsed_ms: obs.elapsed_ms,
+            content_hash: obs.content_hash.clone(),
         }
     }
 
@@ -457,17 +477,28 @@ pub(crate) async fn run_allowlisted_process(
         .map_err(|_| CliError::validation(format!("Command timed out after {max_runtime_ms}ms")))?;
     let out = out.map_err(CliError::Io)?;
 
+    let step_id = argv.join(" ");
+    let status = if out.status.success() {
+        "ok".to_string()
+    } else {
+        "error".to_string()
+    };
+    let exit_code = out.status.code();
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+    let elapsed_ms = start.elapsed().as_millis();
+    let content_hash = Some(compute_observation_hash(
+        &step_id, &status, exit_code, &stdout, &stderr, elapsed_ms,
+    ));
+
     Ok(StepObservation {
-        step_id: argv.join(" "),
-        status: if out.status.success() {
-            "ok".to_string()
-        } else {
-            "error".to_string()
-        },
-        exit_code: out.status.code(),
-        stdout: String::from_utf8_lossy(&out.stdout).trim().to_string(),
-        stderr: String::from_utf8_lossy(&out.stderr).trim().to_string(),
-        elapsed_ms: start.elapsed().as_millis(),
+        step_id,
+        status,
+        exit_code,
+        stdout,
+        stderr,
+        elapsed_ms,
+        content_hash,
     })
 }
 
@@ -711,17 +742,28 @@ pub(crate) async fn run_sruja_cmd(
         .map_err(|_| CliError::validation(format!("Command timed out after {max_runtime_ms}ms")))?;
     let out = out.map_err(CliError::Io)?;
 
+    let step_id = argv.join(" ");
+    let status = if out.status.success() {
+        "ok".to_string()
+    } else {
+        "error".to_string()
+    };
+    let exit_code = out.status.code();
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+    let elapsed_ms = start.elapsed().as_millis();
+    let content_hash = Some(compute_observation_hash(
+        &step_id, &status, exit_code, &stdout, &stderr, elapsed_ms,
+    ));
+
     Ok(StepObservation {
-        step_id: argv.join(" "),
-        status: if out.status.success() {
-            "ok".to_string()
-        } else {
-            "error".to_string()
-        },
-        exit_code: out.status.code(),
-        stdout: String::from_utf8_lossy(&out.stdout).trim().to_string(),
-        stderr: String::from_utf8_lossy(&out.stderr).trim().to_string(),
-        elapsed_ms: start.elapsed().as_millis(),
+        step_id,
+        status,
+        exit_code,
+        stdout,
+        stderr,
+        elapsed_ms,
+        content_hash,
     })
 }
 
@@ -781,8 +823,15 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             Ok(g) => g.nodes.len(),
             Err(_) => kg.nodes.len(),
         };
-        let mut briefing =
-            focus_cmd::build_focus_briefing(&kg, id, repo_path, scan_node_count, None, false);
+        let mut briefing = focus_cmd::build_focus_briefing(
+            &kg,
+            id,
+            repo_path,
+            scan_node_count,
+            None,
+            false,
+            false,
+        );
         surfaced_learning_ids = briefing.surfaced_learning_ids.clone();
         // No focus-specific enrichment here; agent enrichment is handled at the end.
         briefing.enrichment = None;
@@ -1072,6 +1121,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                         stdout: "".to_string(),
                         stderr: format!("Unknown verification kind: {}", v.kind),
                         elapsed_ms: 0,
+                        content_hash: None,
                     },
                 };
 
@@ -1258,6 +1308,18 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             let context_prune = compression_report
                 .as_ref()
                 .and_then(|r| r.context_prune.clone());
+            let verification_hash = {
+                let mut hasher = blake3::Hasher::new();
+                let mut hashed_steps = 0usize;
+                for result in &verification_results {
+                    if let Some(h) = &result.content_hash {
+                        hasher.update(h.as_bytes());
+                        hashed_steps += 1;
+                    }
+                }
+                (hashed_steps > 0).then(|| hasher.finalize().to_hex().to_string())
+            };
+
             let out = AgentApplyOutput {
                 schema_version: "agent_apply_output/v1".to_string(),
                 run_id: Some(run_id),
@@ -1268,6 +1330,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 memory_recorded,
                 observation_compression: compression_report,
                 context_prune,
+                verification_hash,
             };
 
             let apply_snapshot = serde_json::to_value(&out).unwrap_or(Value::Null);
@@ -1559,6 +1622,7 @@ async fn run_verification_steps_in_repo(
                 stdout: "".to_string(),
                 stderr: format!("Unknown verification kind: {}", v.kind),
                 elapsed_ms: 0,
+                content_hash: None,
             },
         };
         out.push(obs);
@@ -1647,6 +1711,7 @@ mod tests {
             stdout: "x".repeat(stdout_len),
             stderr: String::new(),
             elapsed_ms: 100,
+            content_hash: None,
         }
     }
 
@@ -1661,6 +1726,7 @@ mod tests {
                 stdout: String::new(),
                 stderr: String::new(),
                 elapsed_ms: 1,
+                content_hash: None,
             },
             StepObservation {
                 step_id: "b".into(),
@@ -1669,6 +1735,7 @@ mod tests {
                 stdout: String::new(),
                 stderr: String::new(),
                 elapsed_ms: 0,
+                content_hash: None,
             },
         ]));
         assert!(!agent_apply_verification_success(&[StepObservation {
@@ -1678,6 +1745,7 @@ mod tests {
             stdout: String::new(),
             stderr: String::new(),
             elapsed_ms: 1,
+            content_hash: None,
         }]));
     }
 
@@ -1713,6 +1781,16 @@ mod tests {
     }
 
     #[test]
+    fn compute_observation_hash_is_stable_and_sensitive() {
+        let h1 = super::compute_observation_hash("cargo test", "ok", Some(0), "pass", "", 42);
+        let h2 = super::compute_observation_hash("cargo test", "ok", Some(0), "pass", "", 42);
+        let h3 = super::compute_observation_hash("cargo test", "error", Some(1), "pass", "", 42);
+        assert_eq!(h1, h2);
+        assert_ne!(h1, h3);
+        assert_eq!(h1.len(), 64);
+    }
+
+    #[test]
     fn compress_preserves_status_and_exit_code() {
         let mut obs = vec![
             StepObservation {
@@ -1722,6 +1800,7 @@ mod tests {
                 stdout: "x".repeat(5000),
                 stderr: "error: something failed\ndetails...".to_string(),
                 elapsed_ms: 200,
+                content_hash: None,
             },
             make_obs("recent", 100),
         ];

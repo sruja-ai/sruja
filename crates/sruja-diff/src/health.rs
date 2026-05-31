@@ -7,8 +7,8 @@
 //!   with many issues score lower than clean ones. 90+ means "few issues."
 //! - Tests, examples, tools, and doc paths are excluded from violation counting
 //!   (see drift.rs is_likely_doc_or_tool_path).
-//! - Floor at 40 so truly problematic codebases can be identified;
-//!   40-60 = Critical, 60-75 = Poor, 75-85 = Fair, 85-95 = Good, 95+ = Excellent.
+//! - Floor at 30 so truly problematic codebases can be identified;
+//!   0-30 = Critical, 31-50 = Poor, 51-65 = Fair, 66-80 = Good, 81+ = Excellent.
 
 use crate::types::{HealthScorePenalties, Severity, Violation, ViolationKind};
 
@@ -299,7 +299,7 @@ pub fn calculate_health_score_with_density(
 #[cfg(test)]
 mod tests {
     use super::{calculate_health_score_with_breakdown, HealthGrade};
-    use crate::types::{HealthScorePenalties, Violation};
+    use crate::types::{HealthScorePenalties, Severity, Violation};
 
     #[test]
     fn health_grade_from_score_boundaries() {
@@ -337,5 +337,62 @@ mod tests {
         let penalties = HealthScorePenalties::default();
         let score = super::calculate_health_score_with_density(&violations, penalties, 50);
         assert_eq!(score, 100);
+    }
+
+    #[test]
+    fn calculate_health_score_penalizes_cycles_and_orphans() {
+        use crate::types::{Violation, ViolationKind};
+
+        fn violation(kind: ViolationKind, message: &str) -> Violation {
+            Violation {
+                kind,
+                severity: Severity::Error,
+                message: message.to_string(),
+                location: None,
+                suggestion: None,
+                sources: vec![],
+                confidence: None,
+                evidence_count: None,
+                production_relevant: Some(true),
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
+            }
+        }
+
+        let violations = vec![
+            violation(ViolationKind::CircularDependency, "cycle"),
+            violation(ViolationKind::OrphanComponent, "orphan"),
+        ];
+        let breakdown =
+            calculate_health_score_with_breakdown(&violations, HealthScorePenalties::default());
+        assert!(breakdown.score < 100);
+        assert!(breakdown.cycle_penalty > 0);
+        assert!(breakdown.orphan_penalty > 0);
+    }
+
+    #[test]
+    fn non_production_violations_are_excluded_from_score() {
+        use crate::types::{Violation, ViolationKind};
+
+        let violations = vec![Violation {
+            kind: ViolationKind::CircularDependency,
+            severity: Severity::Error,
+            message: "test-only cycle".to_string(),
+            location: None,
+            suggestion: None,
+            sources: vec![],
+            confidence: None,
+            evidence_count: None,
+            production_relevant: Some(false),
+            baseline_delta: None,
+            suppressed: None,
+            rule_id: None,
+            rationale: None,
+        }];
+        let breakdown =
+            calculate_health_score_with_breakdown(&violations, HealthScorePenalties::default());
+        assert_eq!(breakdown.score, 100);
     }
 }

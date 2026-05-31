@@ -460,4 +460,62 @@ mod tests {
         assert_eq!(DecisionStatus::Accepted.to_string(), "accepted");
         assert_eq!(DecisionStatus::Proposed.to_string(), "proposed");
     }
+
+    #[test]
+    fn graph_node_technology_roundtrip() {
+        let mut node = GraphNode::default();
+        assert!(node.technology().is_none());
+        node.set_technology(Some("Rust".to_string()));
+        assert_eq!(node.technology(), Some("Rust"));
+        node.set_technology(None);
+        assert!(node.technology().is_none());
+    }
+
+    #[test]
+    fn graph_node_gotchas_and_constraints_serialize_in_metadata() {
+        let mut node = GraphNode::default();
+        node.set_gotchas(vec!["avoid sync IO".to_string()]);
+        node.set_operational_constraints(vec!["read-only".to_string()]);
+        node.set_runbooks(vec!["restart pod".to_string()]);
+
+        assert_eq!(node.gotchas(), vec!["avoid sync IO".to_string()]);
+        assert_eq!(
+            node.operational_constraints(),
+            vec!["read-only".to_string()]
+        );
+        assert_eq!(node.runbooks(), vec!["restart pod".to_string()]);
+    }
+
+    #[test]
+    fn context_node_trait_delegates_to_graph_node() {
+        let mut node = GraphNode::default();
+        node.id = "svc".to_string();
+        node.label = "Service".to_string();
+        node.set_technology(Some("Go".to_string()));
+        node.description = Some("API service".to_string());
+
+        assert_eq!(sruja_graph_core::ContextNode::id(&node), "svc");
+        assert_eq!(sruja_graph_core::ContextNode::label(&node), "Service");
+        assert_eq!(sruja_graph_core::ContextNode::technology(&node), Some("Go"));
+        assert_eq!(
+            sruja_graph_core::ContextNode::description(&node),
+            Some("API service")
+        );
+    }
+
+    #[test]
+    fn context_edge_trait_delegates_to_graph_edge() {
+        let edge = GraphEdge {
+            id: "e1".to_string(),
+            source: "a".to_string(),
+            target: "b".to_string(),
+            kind: EdgeKind::new(EdgeKind::CALLS),
+            label: Some("calls".to_string()),
+            description: Some("dependency".to_string()),
+            source_ref: SourceReference::manual(),
+        };
+        assert_eq!(sruja_graph_core::ContextEdge::source(&edge), "a");
+        assert_eq!(sruja_graph_core::ContextEdge::target(&edge), "b");
+        assert_eq!(sruja_graph_core::ContextEdge::label(&edge), Some("calls"));
+    }
 }

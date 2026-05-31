@@ -640,6 +640,7 @@ async fn run_verify_steps(
                 stdout: "".to_string(),
                 stderr: format!("Unknown verification kind: {}", step.kind),
                 elapsed_ms: 0,
+                content_hash: None,
             },
         };
 

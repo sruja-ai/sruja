@@ -844,3 +844,118 @@ MySystem = system "My System" {
     assert!(suggestion.get("fix_target").is_some());
     assert!(suggestion.get("action").is_some());
 }
+
+fn write_mcp_fixture_repo(dir: &std::path::Path) {
+    let src = dir.join("src");
+    std::fs::create_dir_all(&src).expect("create src");
+    std::fs::write(src.join("lib.rs"), "pub fn api() {}\n").expect("write lib");
+    std::fs::write(
+        dir.join("Cargo.toml"),
+        r#"[package]
+name = "mcp-fixture"
+version = "0.1.0"
+edition = "2021"
+"#,
+    )
+    .expect("write cargo");
+    std::fs::write(
+        dir.join("repo.sruja"),
+        r#"
+system = kind "System"
+component = kind "Component"
+
+App = system "App" {
+  description "App"
+
+  Svc = component "Service" {
+    description "Service"
+    state_machine "Lifecycle" {
+      initial "Created"
+      terminal ["Done"]
+      "Created" -> "Done" on "finish"
+    }
+    contract "Get" {
+      input { id "string" }
+      output { ok "bool" }
+      error { "ERR" "failed" }
+    }
+  }
+}
+"#,
+    )
+    .expect("write dsl");
+}
+
+#[tokio::test]
+async fn mcp_governance_memory_and_read_tools_return_output() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_mcp_fixture_repo(dir.path());
+    let repo = dir.path().to_string_lossy().to_string();
+    let arch = dir.path().join("repo.sruja").to_string_lossy().to_string();
+    let cache = Arc::new(Mutex::new(HashMap::new()));
+
+    let tools: Vec<(&str, Value)> = vec![
+        (
+            "sruja_check_drift",
+            json!({ "path": repo, "architecture": arch }),
+        ),
+        (
+            "sruja_get_boundaries",
+            json!({ "path": repo, "element_id": "App" }),
+        ),
+        (
+            "sruja_validate_change",
+            json!({ "path": repo, "files": ["src/lib.rs"] }),
+        ),
+        (
+            "sruja_verify_architecture",
+            json!({ "path": repo, "files": ["src/lib.rs"] }),
+        ),
+        (
+            "sruja_preflight_check",
+            json!({ "path": repo, "target_files": ["src/lib.rs"], "intent": "change api" }),
+        ),
+        (
+            "sruja_verify_task",
+            json!({ "path": repo, "profile": "coding", "file": "src/lib.rs" }),
+        ),
+        (
+            "sruja_get_context_score",
+            json!({ "path": repo, "format": "json" }),
+        ),
+        ("sruja_get_architecture_summary", json!({ "path": repo })),
+        ("sruja_get_entrypoints", json!({ "path": repo })),
+        ("sruja_get_data_stores", json!({ "path": repo })),
+        (
+            "sruja_query_graph",
+            json!({ "path": repo, "query": "what modules exist?" }),
+        ),
+        (
+            "sruja_get_focus_briefing",
+            json!({ "path": repo, "file": "src/lib.rs" }),
+        ),
+        (
+            "sruja_critique",
+            json!({ "path": repo, "files": ["src/lib.rs"], "format": "json" }),
+        ),
+        (
+            "sruja_ai_scratchpad",
+            json!({ "path": repo, "action": "read" }),
+        ),
+        (
+            "sruja_ai_scratchpad",
+            json!({ "path": repo, "action": "append", "content": "test note" }),
+        ),
+        ("sruja_classify", json!({ "path": repo })),
+    ];
+
+    for (name, args) in tools {
+        let out = run_tool(name, &args, ".", &cache)
+            .await
+            .unwrap_or_else(|e| panic!("tool {name} failed: {e}"));
+        assert!(
+            !out.trim().is_empty(),
+            "tool {name} should return non-empty output"
+        );
+    }
+}

@@ -162,3 +162,179 @@ fn compute_reachable(
 
     reachable
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::DomainSchema;
+    use sruja_diagnostics::codes::{
+        CODE_SM_DEAD_STATE, CODE_SM_DUPLICATE_TRANSITION, CODE_SM_INITIAL_NOT_FOUND,
+        CODE_SM_NO_TERMINAL, CODE_SM_TERMINAL_HAS_OUTGOING, CODE_SM_UNREACHABLE_STATE,
+    };
+    use sruja_language::Parser;
+
+    fn parse_program(input: &str) -> Program {
+        Parser::new("test.sruja".to_string())
+            .parse(input)
+            .expect("parse")
+    }
+
+    fn codes(diags: &[Diagnostic]) -> Vec<&str> {
+        diags.iter().map(|d| d.code.as_str()).collect()
+    }
+
+    #[test]
+    fn rule_name_is_state_machine_integrity() {
+        assert_eq!(StateMachineIntegrityRule.name(), "State Machine Integrity");
+    }
+
+    #[test]
+    fn valid_state_machine_has_no_diagnostics() {
+        let program = parse_program(
+            r#"
+Svc = component "Service" {
+  state_machine "Lifecycle" {
+    initial "Created"
+    terminal ["Done"]
+
+    "Created" -> "Done" on "finish"
+  }
+}
+"#,
+        );
+        let rule = StateMachineIntegrityRule;
+        let diags = rule.validate(&program, &DomainSchema::architecture());
+        assert!(diags.is_empty(), "valid SM should pass: {diags:?}");
+    }
+
+    #[test]
+    fn initial_state_without_outgoing_and_not_terminal_is_error() {
+        let program = parse_program(
+            r#"
+Svc = component "Service" {
+  state_machine "Broken" {
+    initial "Created"
+    terminal ["Done"]
+  }
+}
+"#,
+        );
+        let rule = StateMachineIntegrityRule;
+        let diags = rule.validate(&program, &DomainSchema::architecture());
+        assert!(
+            codes(&diags).contains(&CODE_SM_INITIAL_NOT_FOUND),
+            "expected initial-not-found: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn terminal_state_with_outgoing_transition_is_error() {
+        let program = parse_program(
+            r#"
+Svc = component "Service" {
+  state_machine "Broken" {
+    initial "Created"
+    terminal ["Done"]
+
+    "Created" -> "Done" on "finish"
+    "Done" -> "Created" on "reopen"
+  }
+}
+"#,
+        );
+        let rule = StateMachineIntegrityRule;
+        let diags = rule.validate(&program, &DomainSchema::architecture());
+        assert!(
+            codes(&diags).contains(&CODE_SM_TERMINAL_HAS_OUTGOING),
+            "expected terminal-has-outgoing: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn unreachable_state_emits_warning() {
+        let program = parse_program(
+            r#"
+Svc = component "Service" {
+  state_machine "Broken" {
+    initial "Created"
+    terminal ["Done"]
+
+    "Created" -> "Done" on "finish"
+    "Orphan" -> "Done" on "skip"
+  }
+}
+"#,
+        );
+        let rule = StateMachineIntegrityRule;
+        let diags = rule.validate(&program, &DomainSchema::architecture());
+        assert!(
+            codes(&diags).contains(&CODE_SM_UNREACHABLE_STATE),
+            "expected unreachable warning: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn dead_non_terminal_state_emits_warning() {
+        let program = parse_program(
+            r#"
+Svc = component "Service" {
+  state_machine "Broken" {
+    initial "Created"
+
+    "Created" -> "Processing" on "start"
+  }
+}
+"#,
+        );
+        let rule = StateMachineIntegrityRule;
+        let diags = rule.validate(&program, &DomainSchema::architecture());
+        assert!(
+            codes(&diags).contains(&CODE_SM_DEAD_STATE),
+            "expected dead-state warning: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn duplicate_transition_on_same_event_emits_warning() {
+        let program = parse_program(
+            r#"
+Svc = component "Service" {
+  state_machine "Broken" {
+    initial "Created"
+    terminal ["Done"]
+
+    "Created" -> "Done" on "finish"
+    "Created" -> "Done" on "finish"
+  }
+}
+"#,
+        );
+        let rule = StateMachineIntegrityRule;
+        let diags = rule.validate(&program, &DomainSchema::architecture());
+        assert!(
+            codes(&diags).contains(&CODE_SM_DUPLICATE_TRANSITION),
+            "expected duplicate transition warning: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn missing_terminal_states_emits_warning() {
+        let program = parse_program(
+            r#"
+Svc = component "Service" {
+  state_machine "Broken" {
+    initial "Created"
+
+    "Created" -> "Processing" on "start"
+  }
+}
+"#,
+        );
+        let rule = StateMachineIntegrityRule;
+        let diags = rule.validate(&program, &DomainSchema::architecture());
+        assert!(
+            codes(&diags).contains(&CODE_SM_NO_TERMINAL),
+            "expected no-terminal warning: {diags:?}"
+        );
+    }
+}

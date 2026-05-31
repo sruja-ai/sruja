@@ -715,7 +715,8 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                     "element_id": { "type": "string", "description": "Element ID to focus on" },
                     "format": { "type": "string", "description": "Output format: text (default) or json" },
                     "base_ref": { "type": "string", "description": "Optional git base ref for temporal context (use with head_ref; head defaults to HEAD if omitted)" },
-                    "head_ref": { "type": "string", "description": "Optional git head ref for temporal context (requires base_ref)" }
+                    "head_ref": { "type": "string", "description": "Optional git head ref for temporal context (requires base_ref)" },
+                    "compact": { "type": "boolean", "description": "If true, skip blast radius, traces, and temporal context, reordering fields to prioritize active drift violations and boundaries (default: false)" }
                 }
             }
         }),
@@ -1050,6 +1051,18 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
                     "max_tokens": { "type": "integer", "description": "Maximum tokens for generated content (default: 10000)" },
                     "check": { "type": "boolean", "description": "If true, verify files match instead of writing (default: false)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_verify_architecture",
+            "title": "Sruja Verify Architecture",
+            "description": "Unified passive validation check. Performs lint check on DSL, detects architectural drift, and critiques recent changes against policies and intent under a single token-friendly call.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "files": { "type": "array", "items": { "type": "string" }, "description": "Optional list of changed files to target the critique and drift checks" }
                 }
             }
         }),

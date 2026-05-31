@@ -696,6 +696,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             ref enrich,
             base_ref,
             head_ref,
+            compact,
         } => {
             commands::focus(
                 &repo,
@@ -706,6 +707,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 &enrich.as_ref(),
                 base_ref.as_deref(),
                 head_ref.as_deref(),
+                compact,
             )
             .await
         }

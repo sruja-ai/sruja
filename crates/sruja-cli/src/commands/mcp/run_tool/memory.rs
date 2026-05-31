@@ -252,6 +252,10 @@ pub(crate) async fn try_run(
         "sruja_get_focus_briefing" => {
             let file = arguments.get("file").and_then(|v| v.as_str());
             let element_id = arguments.get("element_id").and_then(|v| v.as_str());
+            let compact = arguments
+                .get("compact")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
 
             let kg = crate::graph_store::load_or_build_graph(Path::new(&repo))?;
             let graph = get_or_scan_graph(graph_cache, repo).await?;
@@ -287,6 +291,7 @@ pub(crate) async fn try_run(
                 graph.nodes.len(),
                 temporal,
                 true,
+                compact,
             );
             briefing.run_id = Some(
                 run_id

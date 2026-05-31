@@ -56,15 +56,17 @@ pub struct TemporalContextBrief {
 pub struct FocusBriefing {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub active_drift_violations: Vec<sruja_diff::Violation>,
+    pub anti_patterns: Vec<String>,
+    pub boundaries: Vec<BoundaryInfo>,
+    pub ai_instructions: Vec<String>,
     pub target: FocusTarget,
     pub blast_radius: BlastRadius,
     pub reasoned_traces: Vec<ReasonedTrace>,
     pub decisions: Vec<LinkedDecision>,
-    pub boundaries: Vec<BoundaryInfo>,
     pub external_context: Vec<ExternalContextRef>,
     pub hotspot_status: HotspotStatus,
-    pub ai_instructions: Vec<String>,
-    pub anti_patterns: Vec<String>,
     pub pointer_traces: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub memory_hits: Vec<MemoryHit>,
@@ -345,6 +347,68 @@ pub fn surface_agent_learnings(
     record_retrievals: bool,
 ) -> Result<SurfacedLearnings, MemoryError> {
     let mut memory = AgenticMemory::load(repo_path)?;
+
+    // Opportunistic pruning check
+    let repo_cfg = crate::integrations::load_repo_config(repo_path);
+    let auto_prune = repo_cfg
+        .as_ref()
+        .and_then(|c| c.agent.auto_prune)
+        .unwrap_or(false);
+
+    if auto_prune {
+        let last_pruned = crate::commands::context_events::read_context_events_query(
+            repo_path,
+            crate::commands::context_events::ContextEventQuery {
+                limit: 1,
+                kind_filter: Some("memory_pruned"),
+                details_substring: None,
+                decision_id: None,
+                trace_id: None,
+                run_id: None,
+                element_id: None,
+                decision_lineage_only: false,
+            },
+        )
+        .ok()
+        .and_then(|events| events.first().cloned());
+
+        let run_prune = match last_pruned {
+            None => true,
+            Some(ev) => {
+                if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(&ev.timestamp) {
+                    let duration =
+                        chrono::Utc::now().signed_duration_since(ts.with_timezone(&chrono::Utc));
+                    duration.num_hours() >= 24
+                } else {
+                    true
+                }
+            }
+        };
+
+        if run_prune {
+            let archived = memory.auto_archive_stale(0.15, 30);
+            let pruned_ids: Vec<String> = archived.iter().map(|e| e.id.clone()).collect();
+            if !pruned_ids.is_empty() {
+                let _ = memory.save(repo_path);
+            }
+            // Log memory_pruned event (checked or actual)
+            let details = serde_json::json!({
+                "pruned_count": pruned_ids.len(),
+                "pruned_ids": pruned_ids,
+            });
+            let record = crate::commands::context_events::ContextEventRecord {
+                schema_version: crate::commands::context_events::CONTEXT_EVENTS_SCHEMA_V2
+                    .to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                kind: "memory_pruned".to_string(),
+                outcome: "ok".to_string(),
+                details,
+                ..Default::default()
+            };
+            crate::commands::context_events::append_context_event(repo_path, record);
+        }
+    }
+
     let mut relevant = memory.find_relevant(target_id);
     relevant.sort_by(|a, b| b.timestamp.cmp(&a.timestamp).then_with(|| a.id.cmp(&b.id)));
 
@@ -449,6 +513,7 @@ pub fn build_focus_briefing(
     scan_node_count: usize,
     temporal: Option<TemporalContextBrief>,
     record_retrievals: bool,
+    compact: bool,
 ) -> FocusBriefing {
     let node = graph.nodes.get(target_id);
 
@@ -470,36 +535,104 @@ pub fn build_focus_briefing(
         runbooks: node.map(|n| n.runbooks()).unwrap_or_default(),
     };
 
+    // -- Active Drift Violations --
+    let active_drift_violations = if compact {
+        let scan = sruja_scan::scan_repo(repo_path).ok();
+        let violations = if let Some(actual_graph) = &scan {
+            let resolved = crate::utils::architecture_path::resolve_architecture_path(repo_path);
+            if let Some(arch_path) = resolved {
+                if let Ok(content) = std::fs::read_to_string(&arch_path) {
+                    if let Ok(program) =
+                        sruja_language::Parser::new(arch_path.to_string_lossy().as_ref())
+                            .parse(&content)
+                    {
+                        let proposed_graph = sruja_diff::program_to_graph(&program);
+                        let diff_result = sruja_diff::compare_graphs(actual_graph, &proposed_graph);
+                        diff_result.violations
+                    } else {
+                        Vec::new()
+                    }
+                } else {
+                    Vec::new()
+                }
+            } else {
+                let drift_result = sruja_diff::detect_architectural_drift(actual_graph);
+                drift_result.violations
+            }
+        } else {
+            Vec::new()
+        };
+
+        violations
+            .into_iter()
+            .filter(|v| {
+                if let Some(loc) = &v.location {
+                    if loc == target_id
+                        || loc.starts_with(&format!("{}.", target_id))
+                        || target_id.starts_with(&format!("{}.", loc))
+                    {
+                        return true;
+                    }
+                }
+                v.sources.iter().any(|s| {
+                    let s_str = sruja_diff::SourceRef::display_string(s);
+                    s_str.contains(target_id)
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
     // -- Blast Radius --
-    let upstream = collect_dependents(graph, target_id, 3);
-    let downstream = collect_dependencies(graph, target_id, 3);
-    let blast_radius = BlastRadius {
-        total_affected: upstream.len() + downstream.len(),
-        upstream,
-        downstream,
+    let blast_radius = if compact {
+        BlastRadius {
+            total_affected: 0,
+            upstream: Vec::new(),
+            downstream: Vec::new(),
+        }
+    } else {
+        let upstream = collect_dependents(graph, target_id, 3);
+        let downstream = collect_dependencies(graph, target_id, 3);
+        BlastRadius {
+            total_affected: upstream.len() + downstream.len(),
+            upstream,
+            downstream,
+        }
     };
 
     // -- Decisions --
-    let decisions: Vec<LinkedDecision> = graph
-        .decisions
-        .values()
-        .filter(|d| {
-            d.affects.iter().any(|a| a == target_id)
-                || d.affects.iter().any(|a| target_id.starts_with(a.as_str()))
-        })
-        .map(|d| LinkedDecision {
-            id: d.id.clone(),
-            title: d.title.clone(),
-            status: format!("{:?}", d.status),
-            summary: truncate(&d.decision, 120),
-        })
-        .collect();
+    let decisions: Vec<LinkedDecision> = if compact {
+        Vec::new()
+    } else {
+        graph
+            .decisions
+            .values()
+            .filter(|d| {
+                d.affects.iter().any(|a| a == target_id)
+                    || d.affects.iter().any(|a| target_id.starts_with(a.as_str()))
+            })
+            .map(|d| LinkedDecision {
+                id: d.id.clone(),
+                title: d.title.clone(),
+                status: format!("{:?}", d.status),
+                summary: truncate(&d.decision, 120),
+            })
+            .collect()
+    };
 
     // -- Boundaries --
-    let boundaries = infer_boundaries(graph, target_id);
+    let mut boundaries = infer_boundaries(graph, target_id);
+    if compact {
+        boundaries.retain(|b| !b.allowed);
+    }
 
     // -- External Context --
-    let external_context = find_relevant_external_context(repo_path, target_id);
+    let external_context = if compact {
+        Vec::new()
+    } else {
+        find_relevant_external_context(repo_path, target_id)
+    };
 
     // -- Hotspot Status --
     let in_degree = graph.edges.iter().filter(|e| e.target == target_id).count();
@@ -531,7 +664,7 @@ pub fn build_focus_briefing(
     // -- AI Instructions --
     let mut ai_instructions: Vec<String> = Vec::new();
 
-    if is_hotspot {
+    if is_hotspot && !compact {
         ai_instructions.push(format!(
             "⚠️  This is a {} node — changes affect {} components. Proceed carefully.",
             role.to_lowercase(),
@@ -583,22 +716,28 @@ pub fn build_focus_briefing(
         Err(_) => (Vec::new(), Vec::new(), false, Vec::new(), Vec::new()),
     };
 
-    let decision_trace_events = crate::commands::context_events::read_context_events_query(
-        repo_path,
-        crate::commands::context_events::ContextEventQuery {
-            limit: 12,
-            kind_filter: None,
-            details_substring: None,
-            decision_id: None,
-            trace_id: None,
-            run_id: None,
-            element_id: Some(target_id),
-            decision_lineage_only: true,
-        },
-    )
-    .unwrap_or_default();
+    let decision_trace_events = if compact {
+        Vec::new()
+    } else {
+        crate::commands::context_events::read_context_events_query(
+            repo_path,
+            crate::commands::context_events::ContextEventQuery {
+                limit: 12,
+                kind_filter: None,
+                details_substring: None,
+                decision_id: None,
+                trace_id: None,
+                run_id: None,
+                element_id: Some(target_id),
+                decision_lineage_only: true,
+            },
+        )
+        .unwrap_or_default()
+    };
 
-    let decision_records: Vec<crate::commands::decision::DecisionListItem> =
+    let decision_records: Vec<crate::commands::decision::DecisionListItem> = if compact {
+        Vec::new()
+    } else {
         crate::commands::list_decisions(repo_path)
             .unwrap_or_default()
             .into_iter()
@@ -610,7 +749,8 @@ pub fn build_focus_briefing(
                 })
             })
             .take(10)
-            .collect();
+            .collect()
+    };
 
     if !decision_trace_events.is_empty() {
         ai_instructions.push(
@@ -693,9 +833,14 @@ pub fn build_focus_briefing(
 
     FocusBriefing {
         run_id: None,
+        active_drift_violations,
         target,
         blast_radius,
-        reasoned_traces: collect_reasoned_traces(graph, target_id),
+        reasoned_traces: if compact {
+            Vec::new()
+        } else {
+            collect_reasoned_traces(graph, target_id)
+        },
         decisions,
         boundaries,
         external_context,
@@ -711,7 +856,7 @@ pub fn build_focus_briefing(
         decision_trace_events,
         decision_records,
         surfaced_learning_ids,
-        last_session,
+        last_session: if compact { None } else { last_session },
     }
 }
 
@@ -1170,6 +1315,7 @@ pub async fn focus(
     enrich: &crate::enrichment::EnrichmentRef<'_>,
     base_ref: Option<&str>,
     head_ref: Option<&str>,
+    compact: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
@@ -1203,8 +1349,15 @@ pub async fn focus(
         (None, None) => None,
     };
 
-    let mut briefing =
-        build_focus_briefing(&kg, &target_id, repo_path, scan_node_count, temporal, true);
+    let mut briefing = build_focus_briefing(
+        &kg,
+        &target_id,
+        repo_path,
+        scan_node_count,
+        temporal,
+        true,
+        compact,
+    );
     let run_id = run_id
         .map(|s| s.to_string())
         .unwrap_or_else(generate_run_id);
@@ -1230,7 +1383,11 @@ pub async fn focus(
         "memory_truncated": briefing.memory_truncated,
     });
     let _ = write_json_snapshot(repo_path, &run_id, "focus.json", &snapshot);
-    briefing.enrichment = build_focus_enrichment(repo_path, &briefing, enrich);
+    if compact {
+        briefing.enrichment = None;
+    } else {
+        briefing.enrichment = build_focus_enrichment(repo_path, &briefing, enrich);
+    }
 
     match format {
         "json" => {
@@ -1388,6 +1545,39 @@ fn print_focus_briefing(b: &FocusBriefing) {
                 truncate(&d.title, 40),
                 "",
                 width = width.saturating_sub(6 + d.id.len() + d.title.len().min(40))
+            );
+        }
+        println!("│{:width$}│", "", width = width);
+    }
+
+    // Active drift (compact / MCP focus)
+    if !b.active_drift_violations.is_empty() {
+        println!(
+            "│  ── Active drift (target-scoped) ──{:width$}│",
+            "",
+            width = width.saturating_sub(36)
+        );
+        for v in b.active_drift_violations.iter().take(5) {
+            let loc = v
+                .location
+                .as_deref()
+                .map(|l| format!(" @ {l}"))
+                .unwrap_or_default();
+            let display = truncate(&format!("{}{}", v.message, loc), width - 8);
+            println!(
+                "│  ⚠  {}{:width$}│",
+                display,
+                "",
+                width = width.saturating_sub(6 + display.len())
+            );
+        }
+        if b.active_drift_violations.len() > 5 {
+            println!(
+                "│  … +{} more violation(s){:width$}│",
+                b.active_drift_violations.len() - 5,
+                "",
+                width = width
+                    .saturating_sub(28 + format!("{}", b.active_drift_violations.len() - 5).len())
             );
         }
         println!("│{:width$}│", "", width = width);

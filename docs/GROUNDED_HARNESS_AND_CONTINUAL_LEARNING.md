@@ -128,7 +128,10 @@ sruja agent curate -r .
 
 Utility signals (`retrieval_count`, `task_success_after`) are documented in [AGENTS.md](../AGENTS.md#agentic-memory-utility-srujaagent_memoryjson).
 
-### Bounded agent loop (not a coding agent)
+### Bounded agent loop (Headless/CI Convenience Wrappers)
+
+> [!IMPORTANT]
+> The primary integration path for active development is the host coding agent (Cursor, Claude Code, Cline, Windsurf) querying Sruja's passive MCP tools and executing Sruja check gates. The CLI commands below (`agent run`, `agent plan`, `agent apply`) are **optional headless/CI convenience wrappers** to run verification steps in non-interactive environments — they are NOT replacements for the host's orchestrator.
 
 ```bash
 # 1. Plan (reviewable JSON)
@@ -139,7 +142,7 @@ sruja agent plan -r . --goal "Reduce drift on Shop.API" --file src/shop/api.rs -
 # 3. Apply with verification
 sruja agent apply -r . --plan docs/plans/run-xxx.json
 
-# Or combined observe/plan/apply:
+# Or combined observe/plan/apply (Headless/CI only):
 sruja agent run -r . --goal "..." --file path/to/file.rs --mode plan
 sruja agent run -r . --goal "..." --file path/to/file.rs --mode apply
 ```

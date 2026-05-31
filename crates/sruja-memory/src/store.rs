@@ -919,4 +919,21 @@ mod tests {
             .unwrap();
         assert!(!tl.entries.is_empty());
     }
+
+    #[test]
+    fn reindex_rebuilds_search_index_from_disk_artifacts() {
+        let tmp = TempDir::new().unwrap();
+        write_learning_repo(tmp.path());
+        let mut store = MemoryStore::open(tmp.path()).unwrap();
+        store.reindex().expect("reindex should succeed");
+
+        let hits = store
+            .search(SearchMemoryOptions {
+                query: "bounded context",
+                limit: 5,
+                ..Default::default()
+            })
+            .expect("search after reindex");
+        assert!(!hits.is_empty());
+    }
 }

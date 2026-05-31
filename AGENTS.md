@@ -149,14 +149,16 @@ Filling the context window “because we can” still hurts quality.
 
 Sruja is the **deterministic harness** (lint, drift, evidence, MCP, agent memory); the **editor or CI host** owns the LLM loop (Act / optional Reflect). There is no `--autonomous` CLI mode. Full guide: [docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 
-### CLI `agent` loop boundaries
+### CLI `agent` loop boundaries (Sruja as Plugin, Not Agent)
 
-`sruja agent run`, `agent plan`, and `agent apply` exist for **architecture-bounded** work: they should consume Sruja evidence, emit reviewable artifacts, run verification, and record learnings under `.sruja/context/`. They are not a general-purpose coding agent, web search, or a substitute for your editor’s agent.
+Sruja is a passive **developer plugin/harness**, NOT an orchestrator agent. The host environment (Cursor, Claude Code, Cline, Windsurf, etc.) owns the developer orchestrator runtime, transcript analysis, screenshot/video capture, and code-generation loops. 
 
-- **Do**: goals tied to `repo.sruja`, scans, drift, and plans you can inspect on disk before `apply`.
-- **Do**: impact or drift checks, proposal or intent workflows, and refactors scoped to declared boundaries.
-- **Do not**: use the loop for unconstrained refactors or changes that ignore declared architecture without an explicit proposal path.
-- **Do not**: treat output as reviewed truth—merge proposals into `repo.sruja` only through your normal review flow.
+`sruja agent run`, `agent plan`, and `agent apply` exist solely as **optional headless/CI convenience helpers** for architecture-bounded validation. They are not a general-purpose coding agent, web search, or a substitute for your editor’s orchestrator.
+
+- **Do**: Use Sruja's passive gates (`lint`, `drift`, `intent check`, `focus`) and MCP tools within your host agent.
+- **Do**: Use CLI `agent` commands for headless or CI-driven verification step pipelines.
+- **Do not**: Build orchestration state machines or active reflection loops inside Sruja.
+- **Do not**: Treat Sruja apply outputs as reviewed truth—always merge proposals into `repo.sruja` through manual review.
 - **Kill rule**: if a workflow cannot name [define intent / understand context / detect drift / review change](docs/PRODUCT_FEATURE_ALIGNMENT_REPORT.md#canonical-workflows), keep it out of primary docs and automation until it can.
 
 ### Agentic memory utility (`.sruja/agent_memory.json`)

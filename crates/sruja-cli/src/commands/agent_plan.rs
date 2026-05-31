@@ -172,6 +172,7 @@ pub async fn agent_apply(plan_path: &Path, repo: &str, _format: &str) -> Result<
                 stdout: "".to_string(),
                 stderr: format!("Unknown verification kind: {}", v.kind),
                 elapsed_ms: 0,
+                content_hash: None,
             },
         };
 
@@ -237,6 +238,7 @@ pub async fn agent_apply(plan_path: &Path, repo: &str, _format: &str) -> Result<
         memory_recorded,
         observation_compression: None,
         context_prune,
+        verification_hash: None,
     };
 
     let apply_snapshot = serde_json::to_value(&out).unwrap_or(Value::Null);

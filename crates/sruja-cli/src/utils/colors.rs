@@ -146,3 +146,42 @@ pub fn sparkline(scores: &[u8]) -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn severity_icon_maps_known_levels() {
+        assert!(severity_icon("error").contains('✗') || severity_icon("error") == "✗");
+        assert!(severity_icon("warning").contains('⚠') || severity_icon("warning") == "⚠");
+        assert_eq!(severity_icon("unknown"), "•");
+    }
+
+    #[test]
+    fn health_bar_renders_score_and_width() {
+        let bar = health_bar(50, 10);
+        assert!(bar.contains("50"));
+        assert!(bar.contains('/'));
+        assert!(bar.starts_with('['));
+    }
+
+    #[test]
+    fn elapsed_display_formats_seconds_and_hours() {
+        assert_eq!(elapsed_display(Duration::from_secs(30)), "30s");
+        assert_eq!(elapsed_display(Duration::from_secs(3700)), "1h 1m");
+    }
+
+    #[test]
+    fn sparkline_empty_and_non_empty() {
+        assert!(sparkline(&[]).is_empty());
+        let line = sparkline(&[0, 50, 100]);
+        assert_eq!(line.chars().count(), 3);
+    }
+
+    #[test]
+    fn badge_wraps_text() {
+        let b = badge("OK", "success");
+        assert!(b.starts_with('[') && b.ends_with(']'));
+    }
+}

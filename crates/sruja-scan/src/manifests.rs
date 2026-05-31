@@ -431,4 +431,57 @@ spec:
         assert!(desc.contains("Image: my-registry/my-app:1.0"));
         assert!(desc.contains("Port: 8080"));
     }
+
+    #[test]
+    fn test_discover_openapi_finds_spec_at_repo_root() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("openapi.yaml"),
+            "openapi: 3.0.0\ninfo:\n  title: Demo\n",
+        )
+        .unwrap();
+
+        let graph = discover_openapi(dir.path()).unwrap();
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].kind, NodeKind::EXTERNAL_API);
+        assert_eq!(graph.nodes[0].technology.as_deref(), Some("OpenAPI"));
+    }
+
+    #[test]
+    fn test_discover_docker_finds_compose_service() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("docker-compose.yml"),
+            "services:\n  api:\n    image: nginx:latest\n    ports:\n      - '8080:80'\n",
+        )
+        .unwrap();
+
+        let graph = discover_docker(dir.path()).unwrap();
+        assert!(
+            graph.nodes.iter().any(|n| n.label.contains("Compose")),
+            "expected compose node: {:?}",
+            graph.nodes
+        );
+    }
+
+    #[test]
+    fn test_scan_other_manifests_merges_docker_openapi_and_k8s() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("Dockerfile"), "FROM node:20\n").unwrap();
+        fs::write(
+            dir.path().join("openapi.json"),
+            r#"{"openapi":"3.0.0","info":{"title":"API"}}"#,
+        )
+        .unwrap();
+        let k8s = dir.path().join("k8s");
+        fs::create_dir(&k8s).unwrap();
+        fs::write(
+            k8s.join("svc.yaml"),
+            "apiVersion: v1\nkind: Service\nmetadata:\n  name: api\n",
+        )
+        .unwrap();
+
+        let graph = scan_other_manifests(dir.path()).unwrap();
+        assert!(graph.nodes.len() >= 3, "expected merged manifest nodes");
+    }
 }

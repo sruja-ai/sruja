@@ -74,3 +74,66 @@ impl<'a> EvidenceMapper<'a> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sruja_language::DomainSchema;
+    use sruja_scan::{Node, NodeKind};
+
+    fn architecture_schema() -> DomainSchema {
+        DomainSchema::architecture()
+    }
+
+    fn scan_node(id: &str, kind: &str) -> Node {
+        Node {
+            id: id.to_string(),
+            kind: NodeKind::new(kind),
+            label: id.to_string(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn map_node_kind_returns_allowed_kind_unchanged() {
+        let schema = architecture_schema();
+        let mapper = EvidenceMapper::new(&schema);
+        let node = scan_node("db", "database");
+        assert_eq!(mapper.map_node_kind(&node), "database");
+    }
+
+    #[test]
+    fn map_node_kind_maps_class_to_component_when_allowed() {
+        let schema = architecture_schema();
+        let mapper = EvidenceMapper::new(&schema);
+        let node = scan_node("svc", "class");
+        assert_eq!(mapper.map_node_kind(&node), "component");
+    }
+
+    #[test]
+    fn map_node_kind_maps_table_to_database_when_allowed() {
+        let schema = architecture_schema();
+        let mapper = EvidenceMapper::new(&schema);
+        let node = scan_node("orders", "table");
+        assert_eq!(mapper.map_node_kind(&node), "database");
+    }
+
+    #[test]
+    fn check_relationship_violation_rejects_unknown_source_kind() {
+        let schema = architecture_schema();
+        let mapper = EvidenceMapper::new(&schema);
+        let violation =
+            mapper.check_relationship_violation("not_a_real_kind", "component", "calls");
+        assert!(violation.is_some());
+        assert!(violation.unwrap().contains("Source kind"));
+    }
+
+    #[test]
+    fn check_relationship_violation_accepts_allowed_kinds() {
+        let schema = architecture_schema();
+        let mapper = EvidenceMapper::new(&schema);
+        assert!(mapper
+            .check_relationship_violation("component", "database", "reads")
+            .is_none());
+    }
+}

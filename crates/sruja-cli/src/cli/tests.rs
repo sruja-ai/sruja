@@ -474,3 +474,28 @@ fn parses_agent_run_defaults() {
         .join()
         .expect("join");
 }
+
+#[test]
+fn parses_focus_compact_flag() {
+    std::thread::Builder::new()
+        .name("clap_parse_focus_compact".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from(["sruja", "focus", "--element-id", "Auth", "--compact"])
+                .expect("parse");
+            match cli.command {
+                Commands::Focus {
+                    element_id,
+                    compact,
+                    ..
+                } => {
+                    assert_eq!(element_id.as_deref(), Some("Auth"));
+                    assert!(compact);
+                }
+                _ => panic!("expected Focus command"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}
