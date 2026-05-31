@@ -150,7 +150,7 @@ pub fn memory_skill_stats(repo: &str, format: &str) -> Result<(), CliError> {
             }
         })
         .collect();
-    stats.sort_by(|a, b| b.total_uses.cmp(&a.total_uses));
+    stats.sort_by_key(|b| std::cmp::Reverse(b.total_uses));
 
     if format == "json" {
         let out = serde_json::json!({
