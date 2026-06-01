@@ -802,3 +802,87 @@ pub fn filter_system_index_by_kind(index: &SystemIndex, kind: &str) -> SystemInd
         conflicts: index.conflicts.clone(),
     }
 }
+
+/// Generate a local system index from the scan for single-repo use.
+///
+/// This allows human commands (map, trace, explain) to work without federation.
+/// It creates a system index from the local scan, treating the repo as a single-element system.
+pub fn generate_local_system_index(repo_root: &Path) -> Result<SystemIndex, CliError> {
+    let graph = scan_repo(repo_root).map_err(|e| CliError::Scan {
+        message: e.to_string(),
+        help: Some("Ensure your repo has source files and proper permissions.".into()),
+    })?;
+
+    let repo_id = repo_root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("local")
+        .to_string();
+
+    let git_commit = git_commit_short(repo_root);
+
+    let repos = vec![RepoEntry {
+        repo_id: repo_id.clone(),
+        repo_path: repo_root.to_string_lossy().to_string(),
+        truth_status: "scanned".to_string(),
+        git_commit,
+    }];
+
+    let mut nodes = Vec::new();
+    let mut edges = Vec::new();
+
+    // Convert scan nodes to system index nodes
+    for node in &graph.nodes {
+        let canonical_id = format!("{}::{}", repo_id, node.id);
+        nodes.push(SystemIndexNode {
+            canonical_id,
+            kind: node.kind.as_str().to_string(),
+            label: node.label.clone(),
+            technology: node.technology.clone(),
+            repo_id: repo_id.clone(),
+            local_id: node.id.clone(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            sources: Vec::new(),
+            logical_id: None,
+            aliases: Vec::new(),
+        });
+    }
+
+    // Convert scan edges to system index edges
+    for edge in &graph.edges {
+        let source = format!("{}::{}", repo_id, edge.source);
+        let target = format!("{}::{}", repo_id, edge.target);
+        edges.push(SystemIndexEdge {
+            source,
+            target,
+            kind: edge.kind.as_str().to_string(),
+            label: edge.evidence.first().and_then(|ev| ev.detail.clone()),
+            repo_id: repo_id.clone(),
+        });
+    }
+
+    Ok(SystemIndex {
+        schema_version: SYSTEM_INDEX_SCHEMA_VERSION,
+        repos,
+        nodes,
+        edges,
+        conflicts: Vec::new(),
+    })
+}
+
+/// Find system.index.json or generate a local one from scan.
+///
+/// This is a convenience function for human commands that need a system index.
+/// It first looks for an existing system.index.json, and if not found, generates
+/// a local one from the scan.
+pub fn find_or_generate_system_index(repo_root: &Path) -> Result<SystemIndex, CliError> {
+    // First, try to find an existing system.index.json
+    if let Some(idx_path) = find_system_index(repo_root) {
+        return load_system_index(&idx_path);
+    }
+
+    // If not found, generate a local one from scan
+    generate_local_system_index(repo_root)
+}

@@ -4,7 +4,7 @@ use std::path::Path;
 use colored::Colorize;
 use serde::Serialize;
 
-use super::federation::{find_system_index, load_system_index, SystemIndexNode};
+use super::federation::SystemIndexNode;
 use super::CliError;
 
 #[derive(Debug, Clone, Serialize)]
@@ -51,10 +51,7 @@ pub async fn system_map(
     focus: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
-    let idx_path = find_system_index(repo_path).ok_or_else(|| {
-        CliError::validation("No system.index.json found. Run 'sruja compose' first.".to_string())
-    })?;
-    let index = load_system_index(&idx_path)?;
+    let index = super::federation::find_or_generate_system_index(repo_path)?;
 
     let title = index
         .repos

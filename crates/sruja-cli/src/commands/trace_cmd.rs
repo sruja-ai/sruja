@@ -4,7 +4,7 @@ use std::path::Path;
 use colored::Colorize;
 use serde::Serialize;
 
-use super::federation::{find_system_index, load_system_index, SystemIndexNode};
+use super::federation::SystemIndexNode;
 use super::CliError;
 use crate::utils::colors;
 
@@ -41,13 +41,7 @@ pub async fn trace(
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
-    let system_index_path = find_system_index(repo_path).ok_or_else(|| {
-        CliError::validation(
-            "No system.index.json found. Run 'sruja compose' first, or run from a directory containing system.index.json.".to_string()
-        )
-    })?;
-
-    let index = load_system_index(&system_index_path)?;
+    let index = super::federation::find_or_generate_system_index(repo_path)?;
 
     let start_node = resolve_trace_entity(&index.nodes, query).ok_or_else(|| {
         CliError::validation(format!(
