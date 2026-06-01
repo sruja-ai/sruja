@@ -326,6 +326,33 @@ pub async fn init(
             }
         }
 
+        // Generate classification.json
+        if !dry_run {
+            let classify_pb = progress::spinner("🏷️  Generating classification...");
+            let classify_result = super::classify::classify(super::classify::ClassifyOptions {
+                repo: repo_root,
+                force: true,  // Always regenerate during init --scan
+            });
+            classify_pb.finish_and_clear();
+
+            match classify_result {
+                Ok(()) => {
+                    println!(
+                        "  {} Generated {}",
+                        colors::success("✅"),
+                        colors::dim(".sruja/classification.json")
+                    );
+                }
+                Err(e) => {
+                    println!(
+                        "  {} Could not generate classification: {}",
+                        colors::warning("⚠️"),
+                        e
+                    );
+                }
+            }
+        }
+
         // Show architecture visualization
         println!();
         println!("{}", colors::style("Architecture Visualization:").bold());
