@@ -5,6 +5,19 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.55.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.54.1...sruja-v0.55.0) (2026-06-01)
+
+
+### Features
+
+* compact focus, verification hashes, and DSL integrity rules ([78e62d2](https://github.com/sruja-ai/sruja/commit/78e62d25ab6235ed1e9ae0702ecdccfc70e6b502))
+* human-centric system intelligence commands ([0e99642](https://github.com/sruja-ai/sruja/commit/0e9964215e07d069d12b63d5ef4f16921daf4335))
+
+
+### Bug Fixes
+
+* **extension:** mock createTextEditorDecorationType for diagnostics tests ([2a5c977](https://github.com/sruja-ai/sruja/commit/2a5c9775c561b090369d9236be198a637544817e))
+
 ## [0.54.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.54.0...sruja-v0.54.1) (2026-05-31)
 
 
