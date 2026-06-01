@@ -1,89 +1,76 @@
-// Sruja architecture — auto-generated from code scan
-// This is a starting point. Review and refine to match your team's understanding.
-// Run `sruja lint repo.sruja` after making changes.
-//
-// Scan stats: 2576 components, 2233 relationships
-// Generated: 2026-06-01 21:02 UTC
+import { * } from 'sruja.ai/stdlib'
 
-Sruja = system "Sruja" {
-  description "Structural map from workspace manifests (packages + declared deps). This is not domain architecture: add actors, data stores, and runtime flows in repo.sruja after review."
-  Sruja_Agent = container "sruja-agent" {
-    description "Workspace package `sruja-agent` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
+Developer = person "Developer" {
+  description "Uses Sruja CLI and VS Code extension during day-to-day development"
+}
+
+Sruja = system "Sruja Platform" {
+  description "AI-first tools for defining, validating, and exporting architecture-as-code, grounded in evidence from the repo (code, dependency graphs, and specs) to steer AI-assisted development"
+  tags ["platform", "architecture-as-code", "ai-first"]
+
+  CLI = container "Sruja CLI" {
+    technology "Rust, clap"
+    description "Command-line interface for Sruja operations (lint, export, drift, context, and more)"
+    tags ["cli"]
+  }
+
+  Core = container "Core (Language + Validation + Diagnostics)" {
     technology "Rust"
+    description "Parsing, validation rules, and diagnostic formatting"
+    tags ["core"]
   }
-  Sruja_Cli = container "sruja-cli" {
-    description "Workspace package `sruja-cli` from Cargo/npm metadata. Hints: manifest lists HTTP client libraries. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
+
+  Context = container "Context Engineering (Scan + Graph + Drift + Intent)" {
+    technology "Rust, Tree-sitter"
+    description "Evidence capture (scan + graph), drift detection, intent checks, and context that grounds AI suggestions in repo truth"
+    tags ["context"]
+  }
+
+  Agent = container "Agent & Memory" {
     technology "Rust"
+    description "Agentic memory, MaTTS trajectories, learning loop, and cognitive architecture for AI-assisted development"
+    tags ["agent", "memory", "cognitive"]
   }
-  Sruja_Diagnostics = container "sruja-diagnostics" {
-    description "Workspace package `sruja-diagnostics` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
+
+  Export = container "Export System" {
     technology "Rust"
+    description "Exports validated architecture models to multiple formats"
+    tags ["export"]
   }
-  Sruja_Diff = container "sruja-diff" {
-    description "Workspace package `sruja-diff` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
+
+  Book = container "Documentation Site (mdBook)" {
+    technology "Rust, mdBook"
+    description "Docs site and courses built from markdown; published as a static site"
+    tags ["docs"]
   }
-  Sruja_E2e = container "sruja-e2e" {
-    description "Workspace package `sruja-e2e` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Node.js"
+
+  IDE = container "IDE Support (VS Code + WASM)" {
+    technology "TypeScript, WASM"
+    description "Editor validation, diagnostics, and preview powered by the WASM build"
+    tags ["ide"]
   }
-  Sruja_Engine = container "sruja-engine" {
-    description "Workspace package `sruja-engine` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
-  }
-  Sruja_Export = container "sruja-export" {
-    description "Workspace package `sruja-export` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
-  }
-  Sruja_Extract = container "sruja-extract" {
-    description "Workspace package `sruja-extract` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
-  }
-  Sruja_Graph = container "sruja-graph" {
-    description "Workspace package `sruja-graph` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
-  }
-  Sruja_Graph_Core = container "sruja-graph-core" {
-    description "Workspace package `sruja-graph-core` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
-  }
-  Sruja_Intent = container "sruja-intent" {
-    description "Workspace package `sruja-intent` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
-  }
-  Sruja_Language = container "sruja-language" {
-    description "Workspace package `sruja-language` from Cargo/npm metadata. Rename to match how your team talks about the system; add relationships that reflect runtime behavior."
-    technology "Rust"
-  }
-  OtherPackages = container "Other packages" {
-    description "3 additional workspace package(s) omitted (cap 12). Split or merge boundaries manually after review."
-  }
-  crates_sruja-scan_src_tree_sitter_classifier_rs = database "classifier" {
-    description "Inferred database from scan manifests or heuristics — verify before promoting."
-    technology "Rust"
-  }
-  Sruja.Sruja_Agent -> Sruja.Sruja_Diagnostics "depends on (workspace)"
-  Sruja.Sruja_Agent -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Agent "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Diagnostics "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Diff "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Engine "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Export "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Extract "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Graph "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Intent "depends on (workspace)"
-  Sruja.Sruja_Cli -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Diff -> Sruja.Sruja_Diagnostics "depends on (workspace)"
-  Sruja.Sruja_Diff -> Sruja.Sruja_Intent "depends on (workspace)"
-  Sruja.Sruja_Diff -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Engine -> Sruja.Sruja_Diagnostics "depends on (workspace)"
-  Sruja.Sruja_Engine -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Export -> Sruja.Sruja_Diagnostics "depends on (workspace)"
-  Sruja.Sruja_Export -> Sruja.Sruja_Graph "depends on (workspace)"
-  Sruja.Sruja_Export -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Extract -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Graph -> Sruja.Sruja_Graph_Core "depends on (workspace)"
-  Sruja.Sruja_Graph -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Intent -> Sruja.Sruja_Language "depends on (workspace)"
-  Sruja.Sruja_Language -> Sruja.Sruja_Diagnostics "depends on (workspace)"
+
+  CLI -> Core "Parses and validates"
+  CLI -> Context "Scans repos and checks drift"
+  CLI -> Agent "Manages memory and learning"
+  CLI -> Export "Exports outputs"
+  CLI -> Book "Builds and validates examples"
+
+  Core -> Export "Validates before export"
+
+  Agent -> Context "Queries graph for context"
+  Agent -> Core "Uses diagnostics for verification"
+
+  IDE -> Core "Parses and validates"
+  IDE -> Export "Renders exports and diagrams"
+}
+
+Developer -> Sruja "Uses"
+Developer -> Sruja.CLI "Runs quickstart/sync/context/drift/critique/focus"
+Developer -> Sruja.IDE "Edits architecture"
+Developer -> Sruja.Book "Reads docs"
+
+view index {
+  title "Sruja Repo Overview"
+  include *
 }
