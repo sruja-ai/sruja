@@ -37,5 +37,5 @@ runs:
         npx -y http-server@14 "${{ inputs.book-output-dir }}" -p 3000 -a 127.0.0.1 -c-1 --silent &
         SERVER_PID=$!
         trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-        npx wait-on "http://127.0.0.1:3000/docs/how-sruja-works.html" --timeout 60000
+        npx wait-on "http://127.0.0.1:3000/docs/e2e-show-diagram.html" --timeout 60000
         BOOK_BASE_URL=http://127.0.0.1:3000 npm run e2e

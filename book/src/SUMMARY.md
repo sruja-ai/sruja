@@ -223,3 +223,4 @@
 - [CLI](reference/cli.md)
 - [Language](reference/language.md)
 - [Language specification (full)](reference/language-spec.md)
+- [E2E diagram smoke (CI)](docs/e2e-show-diagram.md)

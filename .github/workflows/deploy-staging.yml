@@ -7,6 +7,10 @@ on:
     branches: [main]
     paths:
       - "book/**"
+      - "e2e/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "package-lock.json"
       - "crates/sruja-wasm/**"
       - "crates/sruja-cli/**"
       - "crates/sruja-export/**"
@@ -18,10 +22,6 @@ on:
       - ".github/actions/deploy-to-github-pages/**"
       - ".github/actions/book-e2e-smoke/**"
       - ".github/templates/**"
-      - "e2e/**"
-      - "playwright.config.ts"
-      - "package.json"
-      - "package-lock.json"
   workflow_dispatch:
 
 permissions:
