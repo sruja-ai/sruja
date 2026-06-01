@@ -3,9 +3,11 @@
 use std::fs;
 use std::path::Path;
 
+use colored::Colorize;
 use super::generate::generate_prompt;
 use super::scan::quickstart;
 use super::CliError;
+use sruja_export::mermaid::exporter::{MermaidConfig, MermaidExporter};
 
 /// Initialize Sruja in the given repo: ensure `.sruja/`, run quickstart, optionally generate prompt or auto-onboard.
 #[allow(clippy::too_many_arguments)]
@@ -13,11 +15,13 @@ pub async fn init(
     repo_root: &str,
     generate_prompt_file: bool,
     auto: bool,
+    scan: bool,
     force: bool,
     hook: bool,
     ci: bool,
     dry_run: bool,
     schema: &str,
+    sync_rules: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     use crate::utils::{colors, progress};
@@ -116,11 +120,14 @@ pub async fn init(
     }
 
     let mut should_auto = auto;
+    let mut should_scan = scan;
     let mut should_ci = ci;
     let mut should_hook = hook;
+    let mut should_sync_rules = sync_rules;
 
     if schema != "architecture" {
         should_auto = false;
+        should_scan = false;
     }
 
     if is_interactive {
@@ -135,6 +142,7 @@ pub async fn init(
             .with_prompt("Select additional setup components:")
             .item_checked("GitHub Actions workflow", ci)
             .item_checked("Git pre-commit hook", hook)
+            .item_checked("Sync IDE rules (.cursorrules, copilot-instructions.md)", sync_rules)
             .interact()
             .unwrap_or_default();
 
@@ -144,6 +152,9 @@ pub async fn init(
             }
             if i == 1 {
                 should_hook = true;
+            }
+            if i == 2 {
+                should_sync_rules = true;
             }
         }
     }
@@ -228,7 +239,214 @@ pub async fn init(
         }
     }
 
-    if !should_auto {
+    if should_scan {
+        let pb = progress::spinner("🔍 Scanning repository architecture...");
+        let graph_result = sruja_scan::scan_repo(repo_path).map_err(|e| CliError::Scan {
+            message: e.to_string(),
+            help: Some("Ensure your repo has source files and proper permissions.".into()),
+        });
+
+        let graph = match graph_result {
+            Ok(g) => g,
+            Err(e) => {
+                pb.abandon();
+                return Err(e);
+            }
+        };
+
+        let repo_sruja_path = repo_path.join("repo.sruja");
+        if repo_sruja_path.exists() && !force {
+            pb.finish_and_clear();
+            println!(
+                "  {} repo.sruja already exists. Use --force to overwrite.",
+                colors::warning("⚠️")
+            );
+            return Ok(());
+        }
+
+        // Generate repo.sruja from scan
+        let program = super::scan::draft_summary::build_summary_draft_program(
+            &graph,
+            "repo.sruja",
+        );
+        let printer = sruja_export::DslPrinter::new();
+        let dsl = printer.print(&program);
+
+        let header = format!(
+            r#"// Sruja architecture — auto-generated from code scan
+// This is a starting point. Review and refine to match your team's understanding.
+// Run `sruja lint repo.sruja` after making changes.
+//
+// Scan stats: {} components, {} relationships
+// Generated: {}
+
+"#,
+            graph.nodes.len(),
+            graph.edges.len(),
+            chrono::Utc::now().format("%Y-%m-%d %H:%M UTC")
+        );
+
+        if !dry_run {
+            fs::write(&repo_sruja_path, format!("{}{}", header, dsl))?;
+        }
+        pb.finish_and_clear();
+
+        println!(
+            "  {} Generated {}",
+            colors::success("✅"),
+            colors::info("repo.sruja")
+        );
+
+        // Run lint on the generated file
+        if !dry_run {
+            let lint_pb = progress::spinner("🔧 Validating architecture...");
+            let lint_result = crate::commands::lint(
+                &repo_sruja_path.to_string_lossy(),
+                "text",
+                None,
+                None,
+            )
+            .await;
+            lint_pb.finish_and_clear();
+
+            match lint_result {
+                Ok(()) => {
+                    println!(
+                        "  {} Lint passed — no errors",
+                        colors::success("✅")
+                    );
+                }
+                Err(e) => {
+                    println!(
+                        "  {} Lint warnings: {}",
+                        colors::warning("⚠️"),
+                        e
+                    );
+                }
+            }
+        }
+
+        // Show architecture visualization
+        println!();
+        println!("{}", colors::style("Architecture Visualization:").bold());
+        println!("{}", "─".repeat(60).truecolor(100, 100, 100));
+
+        // Generate Mermaid diagram
+        let mermaid_exporter = MermaidExporter::new(MermaidConfig {
+            direction: "LR".to_string(),
+            view_level: 0,
+            target_id: None,
+        });
+        let mermaid = mermaid_exporter.export(&program);
+        println!("{}", mermaid);
+
+        println!("{}", "─".repeat(60).truecolor(100, 100, 100));
+
+        // Show health score
+        let drift_report = sruja_diff::detect_architectural_drift(&graph);
+
+        let score = drift_report.health_score;
+        let score_str = format!("{}/100", score);
+        let colored_score = match score {
+            80..=100 => score_str.green().bold(),
+            60..=79 => score_str.yellow().bold(),
+            _ => score_str.red().bold(),
+        };
+        println!();
+        println!(
+            "  {} Architecture Health Score: {}",
+            colors::style("💚").bold(),
+            colored_score
+        );
+
+        // Show violations summary
+        let errors = drift_report.violations.iter().filter(|v| matches!(v.severity, sruja_diff::Severity::Error)).count();
+        let warnings = drift_report.violations.iter().filter(|v| matches!(v.severity, sruja_diff::Severity::Warning)).count();
+        if errors > 0 || warnings > 0 {
+            println!(
+                "    {} errors, {} warnings",
+                errors.to_string().red(),
+                warnings.to_string().yellow()
+            );
+        }
+
+        // Show summary card
+        println!();
+        println!("  {}", colors::style("Architecture Summary:").bold());
+        println!(
+            "    • Components:   {}",
+            colors::style(graph.nodes.len().to_string()).bold()
+        );
+        println!(
+            "    • Relations:    {}",
+            colors::style(graph.edges.len().to_string()).bold()
+        );
+        println!(
+            "    • Entrypoints:  {}",
+            colors::style(
+                graph
+                    .nodes
+                    .iter()
+                    .filter(|n| n.kind == sruja_scan::NodeKind::SERVICE)
+                    .count()
+                    .to_string()
+            )
+            .bold()
+        );
+
+        // Sync IDE rules if requested
+        if should_sync_rules && !dry_run {
+            println!();
+            let sync_pb = progress::spinner("📝 Syncing IDE rules...");
+            let sync_result = super::sync_ide_rules::sync_ide_rules(
+                super::sync_ide_rules::SyncIdeRulesOptions {
+                    repo: repo_root,
+                    max_tokens: 10000,
+                    check: false,
+                },
+            )
+            .await;
+            sync_pb.finish_and_clear();
+
+            match sync_result {
+                Ok(()) => {
+                    println!(
+                        "  {} Synced IDE rules (.cursorrules, copilot-instructions.md, llms-architecture.txt)",
+                        colors::success("✅")
+                    );
+                }
+                Err(e) => {
+                    println!(
+                        "  {} Could not sync IDE rules: {}",
+                        colors::warning("⚠️"),
+                        e
+                    );
+                }
+            }
+        }
+
+        // Print next steps
+        println!();
+        println!("{}", colors::style("Next steps:").bold());
+        println!(
+            "  1. {} Review repo.sruja and rename components to match your team's language.",
+            colors::info("Review:"),
+        );
+        println!(
+            "  2. {} Run 'sruja drift -r . -a repo.sruja' to check for drift.",
+            colors::info("Check:")
+        );
+        println!(
+            "  3. {} Run 'sruja watch' while you code for live feedback.",
+            colors::info("Monitor:")
+        );
+        println!(
+            "  4. {} Add repo.sruja to version control.",
+            colors::info("Commit:")
+        );
+    }
+
+    if !should_auto && !should_scan {
         let dest_filename = if schema == "architecture" {
             "repo.sruja".to_string()
         } else {

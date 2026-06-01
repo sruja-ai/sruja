@@ -386,12 +386,19 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             path,
             prompt,
             auto,
+            scan,
             force,
             hook,
             ci,
             dry_run,
             schema,
-        } => commands::init(&path, prompt, auto, force, hook, ci, dry_run, &schema).await,
+            sync_rules,
+        } => {
+            commands::init(
+                &path, prompt, auto, scan, force, hook, ci, dry_run, &schema, sync_rules,
+            )
+            .await
+        }
         Commands::Status {
             path,
             format,

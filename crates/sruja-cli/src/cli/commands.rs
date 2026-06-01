@@ -341,6 +341,9 @@ pub enum Commands {
     ///
     /// OSS hero: `sruja start -r .` then `sruja drift -r . --structural-only --advisory`.
     /// For full briefing, use `onboard` (hidden). For task briefs, use `focus` or `ai`.
+    ///
+    /// Quickstart: `sruja init --scan -r .` scans the repo, generates repo.sruja, shows
+    /// architecture visualization, health score, and syncs IDE rules — all in under 60 seconds.
     #[command(visible_alias = "start")]
     Init {
         /// Repository root (defaults to current directory)
@@ -352,7 +355,10 @@ pub enum Commands {
         /// Scan workspace and write repo.sruja.draft (structural evidence; author repo.sruja separately)
         #[arg(long, short = 'a', group = "init_mode")]
         auto: bool,
-        /// Overwrite repo.sruja if it already exists (only meaningful with --auto)
+        /// Full scan: generate repo.sruja, show architecture visualization, health score, and sync IDE rules
+        #[arg(long, short = 's', group = "init_mode")]
+        scan: bool,
+        /// Overwrite repo.sruja if it already exists (only meaningful with --auto or --scan)
         #[arg(long, short = 'f')]
         force: bool,
         /// Install a git pre-commit hook to run Sruja checks
@@ -367,6 +373,9 @@ pub enum Commands {
         /// Schema to use (architecture, compliance, business_process, knowledge)
         #[arg(long, default_value = "architecture")]
         schema: String,
+        /// Sync IDE rules after scan (.cursorrules, copilot-instructions.md, llms-architecture.txt)
+        #[arg(long)]
+        sync_rules: bool,
     },
     /// Truth freshness and baseline state
     #[command(visible_alias = "doctor")]

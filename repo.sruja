@@ -26,6 +26,12 @@ Sruja = system "Sruja Platform" {
     tags ["context"]
   }
 
+  Agent = container "Agent & Memory" {
+    technology "Rust"
+    description "Agentic memory, MaTTS trajectories, learning loop, and cognitive architecture for AI-assisted development"
+    tags ["agent", "memory", "cognitive"]
+  }
+
   Export = container "Export System" {
     technology "Rust"
     description "Exports validated architecture models to multiple formats"
@@ -46,10 +52,14 @@ Sruja = system "Sruja Platform" {
 
   CLI -> Core "Parses and validates"
   CLI -> Context "Scans repos and checks drift"
+  CLI -> Agent "Manages memory and learning"
   CLI -> Export "Exports outputs"
   CLI -> Book "Builds and validates examples"
 
   Core -> Export "Validates before export"
+
+  Agent -> Context "Queries graph for context"
+  Agent -> Core "Uses diagnostics for verification"
 
   IDE -> Core "Parses and validates"
   IDE -> Export "Renders exports and diagrams"
