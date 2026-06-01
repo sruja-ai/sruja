@@ -117,6 +117,14 @@ pub mod extensions_config;
 pub mod learn;
 pub use learn::learn;
 
+pub mod before;
+pub mod cognitive_debt;
+pub mod explain_cmd;
+pub mod map_cmd;
+pub mod narrative;
+pub mod trace_cmd;
+pub mod what_if;
+
 pub(crate) mod context;
 pub(crate) mod context_events;
 pub(crate) mod context_prune;

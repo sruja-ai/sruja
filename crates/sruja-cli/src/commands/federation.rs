@@ -315,6 +315,191 @@ fn collect_bundle_paths(inputs: &[String], recursive: bool) -> Result<Vec<PathBu
     Ok(out)
 }
 
+fn normalize_for_match(s: &str) -> String {
+    s.to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect::<String>()
+}
+
+pub fn infer_cross_repo_edges(index: &SystemIndex) -> Vec<SystemIndexEdge> {
+    let mut inferred = Vec::new();
+    if index.repos.len() < 2 {
+        return inferred;
+    }
+
+    let node_repo_map: std::collections::HashMap<&str, &str> = index
+        .nodes
+        .iter()
+        .map(|n| (n.canonical_id.as_str(), n.repo_id.as_str()))
+        .collect();
+
+    let mut label_map: std::collections::HashMap<String, Vec<(String, String, String)>> =
+        std::collections::HashMap::new();
+    for n in &index.nodes {
+        let norm = normalize_for_match(&n.label);
+        label_map.entry(norm).or_default().push((
+            n.canonical_id.clone(),
+            n.repo_id.clone(),
+            n.kind.clone(),
+        ));
+        for alias in &n.aliases {
+            let norm_alias = normalize_for_match(alias);
+            label_map.entry(norm_alias).or_default().push((
+                n.canonical_id.clone(),
+                n.repo_id.clone(),
+                n.kind.clone(),
+            ));
+        }
+        if let Some(ref lid) = n.logical_id {
+            let norm_lid = normalize_for_match(lid);
+            label_map.entry(norm_lid).or_default().push((
+                n.canonical_id.clone(),
+                n.repo_id.clone(),
+                n.kind.clone(),
+            ));
+        }
+    }
+
+    let mut tech_map: std::collections::HashMap<String, Vec<(String, String, String)>> =
+        std::collections::HashMap::new();
+    for n in &index.nodes {
+        if let Some(ref tech) = n.technology {
+            let norm_tech = normalize_for_match(tech);
+            tech_map.entry(norm_tech).or_default().push((
+                n.canonical_id.clone(),
+                n.repo_id.clone(),
+                n.kind.clone(),
+            ));
+        }
+    }
+
+    let mut seen_edges: std::collections::HashSet<(String, String)> =
+        std::collections::HashSet::new();
+
+    let mut maybe_add_edge = |src: &str,
+                              tgt: &str,
+                              kind: &str,
+                              label: Option<String>,
+                              list: &mut Vec<SystemIndexEdge>| {
+        if src == tgt {
+            return;
+        }
+        let src_repo = node_repo_map.get(src);
+        let tgt_repo = node_repo_map.get(tgt);
+        if src_repo == tgt_repo {
+            return;
+        }
+        let key = (src.to_string(), tgt.to_string());
+        if seen_edges.insert(key) {
+            list.push(SystemIndexEdge {
+                source: src.to_string(),
+                target: tgt.to_string(),
+                kind: kind.to_string(),
+                label,
+                repo_id: "system:inferred".to_string(),
+            });
+        }
+    };
+
+    for entries in label_map.values() {
+        if entries.len() < 2 {
+            continue;
+        }
+        for i in 0..entries.len() {
+            for j in (i + 1)..entries.len() {
+                let (ref id_a, ref repo_a, _) = entries[i];
+                let (ref id_b, ref repo_b, _) = entries[j];
+                if repo_a == repo_b {
+                    continue;
+                }
+                maybe_add_edge(
+                    id_a,
+                    id_b,
+                    "depends_on",
+                    Some("inferred: name similarity".to_string()),
+                    &mut inferred,
+                );
+            }
+        }
+    }
+
+    for entries in tech_map.values() {
+        let queues: Vec<_> = entries
+            .iter()
+            .filter(|(_, _, kind)| kind == "queue")
+            .collect();
+        let consumers: Vec<_> = entries
+            .iter()
+            .filter(|(_, _, kind)| kind != "queue")
+            .collect();
+        for q in &queues {
+            for c in &consumers {
+                if q.1 == c.1 {
+                    continue;
+                }
+                maybe_add_edge(
+                    &q.0,
+                    &c.0,
+                    "publishes_to",
+                    Some("inferred: technology heuristic".to_string()),
+                    &mut inferred,
+                );
+            }
+        }
+    }
+
+    let mut alias_lid_map: std::collections::HashMap<String, Vec<(String, String)>> =
+        std::collections::HashMap::new();
+    for n in &index.nodes {
+        for alias in &n.aliases {
+            let norm = normalize_for_match(alias);
+            alias_lid_map
+                .entry(norm)
+                .or_default()
+                .push((n.canonical_id.clone(), n.repo_id.clone()));
+        }
+        if let Some(ref lid) = n.logical_id {
+            let norm = normalize_for_match(lid);
+            alias_lid_map
+                .entry(norm)
+                .or_default()
+                .push((n.canonical_id.clone(), n.repo_id.clone()));
+        }
+    }
+
+    for entries in alias_lid_map.values() {
+        let mut by_repo: std::collections::HashMap<&str, Vec<&str>> =
+            std::collections::HashMap::new();
+        for (id, repo) in entries {
+            by_repo.entry(repo.as_str()).or_default().push(id.as_str());
+        }
+        if by_repo.len() < 2 {
+            continue;
+        }
+        let repos: Vec<_> = by_repo.iter().collect();
+        for i in 0..repos.len() {
+            for j in (i + 1)..repos.len() {
+                let (_repo_a, ids_a) = repos[i];
+                let (_repo_b, ids_b) = repos[j];
+                for id_a in ids_a {
+                    for id_b in ids_b {
+                        maybe_add_edge(
+                            id_a,
+                            id_b,
+                            "depends_on",
+                            Some("inferred: API/alias match".to_string()),
+                            &mut inferred,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    inferred
+}
+
 pub async fn compose(
     inputs: &[String],
     recursive: bool,
@@ -506,13 +691,17 @@ pub async fn compose(
         }
     }
 
-    let index = SystemIndex {
+    let mut index = SystemIndex {
         schema_version: SYSTEM_INDEX_SCHEMA_VERSION,
         repos,
         nodes,
         edges,
         conflicts,
     };
+
+    let inferred = infer_cross_repo_edges(&index);
+    let inferred_count = inferred.len();
+    index.edges.extend(inferred);
 
     let out_path = Path::new(output_path);
     if let Some(parent) = out_path.parent() {
@@ -535,11 +724,12 @@ pub async fn compose(
     })?;
 
     eprintln!(
-        "Wrote {} ({} repos, {} nodes, {} edges, {} conflict(s))",
+        "Wrote {} ({} repos, {} nodes, {} edges, {} inferred, {} conflict(s))",
         output_path,
         index.repos.len(),
         index.nodes.len(),
         index.edges.len(),
+        inferred_count,
         index.conflicts.len()
     );
     Ok(())

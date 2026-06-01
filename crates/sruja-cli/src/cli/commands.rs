@@ -3,8 +3,8 @@ use clap::Subcommand;
 use super::app::ContextIntent;
 use super::subcommands::{
     AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
-    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand,
-    IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, HumanCommand, IndexCommand,
+    InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
 };
 use crate::enrichment::EnrichmentArgs;
 
@@ -934,5 +934,10 @@ pub enum Commands {
     Federation {
         #[command(subcommand)]
         cmd: FederationCommand,
+    },
+    /// Human-centric system intelligence: trace, explain, map, before, daily, what-if
+    Human {
+        #[command(subcommand)]
+        cmd: HumanCommand,
     },
 }

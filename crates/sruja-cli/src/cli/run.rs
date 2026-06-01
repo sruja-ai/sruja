@@ -6,8 +6,8 @@ use super::app::ContextIntent;
 use super::commands::Commands;
 use super::subcommands::{
     AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
-    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, IndexCommand, InspectCommand,
-    IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, HumanCommand, IndexCommand,
+    InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
 };
 use super::Cli;
 
@@ -1248,6 +1248,44 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 recursive,
                 output,
             } => commands::compose(&input, recursive, &output).await,
+        },
+        Commands::Human { cmd } => match cmd {
+            HumanCommand::Trace {
+                query,
+                repo,
+                depth,
+                team,
+                format,
+            } => commands::trace_cmd::trace(&query, &repo, depth, team.as_deref(), &format).await,
+            HumanCommand::Explain {
+                target,
+                repo,
+                format,
+                persist,
+            } => commands::explain_cmd::explain_element(&target, &repo, &format, persist).await,
+            HumanCommand::Map {
+                repo,
+                format,
+                team,
+                focus,
+            } => {
+                commands::map_cmd::system_map(&repo, &format, team.as_deref(), focus.as_deref())
+                    .await
+            }
+            HumanCommand::Before { file, repo, format } => {
+                commands::before::before(&repo, &file, &format).await
+            }
+            HumanCommand::Daily { repo, format } => {
+                commands::review(&repo, &format, false, false).await
+            }
+            HumanCommand::CognitiveDebt { repo, format, ci } => {
+                commands::cognitive_debt::cognitive_debt(&repo, &format, ci).await
+            }
+            HumanCommand::WhatIf {
+                query,
+                repo,
+                format,
+            } => commands::what_if::what_if(&query, &repo, &format).await,
         },
     };
 

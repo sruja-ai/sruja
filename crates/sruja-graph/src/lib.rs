@@ -19,6 +19,7 @@ pub mod query;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scan_merge;
 pub mod scc;
+pub mod system_graph;
 pub mod treewidth;
 
 pub use bm25::{Bm25Hit, SparseIndex};
@@ -45,6 +46,10 @@ pub use query::{
 #[cfg(not(target_arch = "wasm32"))]
 pub use scan_merge::merge_scan_into_graph;
 pub use scc::{CondensationEdge, Scc, SccAnalyzer, SccResult};
+pub use system_graph::{
+    BlastRadius, EdgeConfidence, SystemEdge, SystemGraph, SystemHubNode, SystemNode, SystemRepo,
+    TraceHop, TraceResult,
+};
 pub use treewidth::{
     ComplexityHotspot, ComplexityRating, RefactorPattern, RefactorSuggestion, TreeBag,
     TreewidthAnalyzer, TreewidthResult,

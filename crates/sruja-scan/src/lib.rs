@@ -22,6 +22,8 @@ mod manifests;
 #[allow(missing_docs)]
 pub mod npm;
 #[allow(missing_docs)]
+pub mod ownership;
+#[allow(missing_docs)]
 pub mod repomap;
 #[allow(missing_docs)]
 pub mod scan_scope;
