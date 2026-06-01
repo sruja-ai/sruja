@@ -5,6 +5,26 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.56.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.55.1...sruja-v0.56.0) (2026-06-01)
+
+
+### Features
+
+* add confidence report command for post-AI-edit review ([53fe826](https://github.com/sruja-ai/sruja/commit/53fe82667216e5f5f6508035dc2ec9fd53d831f3))
+
+
+### Bug Fixes
+
+* **ci:** align IDE rules with CI and gate deploys with book E2E ([85c1cbe](https://github.com/sruja-ai/sruja/commit/85c1cbe888ee3893e36613395c5f038562d1d2dd))
+* **ci:** cache Playwright and extend deploy timeout for book E2E ([4cb5e77](https://github.com/sruja-ai/sruja/commit/4cb5e7750b55479f8350d036745707c66b865b21))
+* **ci:** install mdbook-mermaid assets before deploy book build ([50e372a](https://github.com/sruja-ai/sruja/commit/50e372a1d919194bd398fd96d5aa56dc4a5b12e8))
+* **ci:** run deploy book E2E in Playwright container job ([c99d736](https://github.com/sruja-ai/sruja/commit/c99d736ca285af2cac92d00d243b706b3d5fb39b))
+* **ci:** serve book with http-server for WASM MIME in deploy E2E ([d0a35dc](https://github.com/sruja-ai/sruja/commit/d0a35dcc48fd6bb08f7c5858068f800174be10a2))
+* **ci:** serve built book statically for deploy E2E ([542bc3f](https://github.com/sruja-ai/sruja/commit/542bc3f70bf419b1444e13e500e4ab740b2d0e4f))
+* **ci:** stop mdbook serve after deploy E2E smoke ([d2615d7](https://github.com/sruja-ai/sruja/commit/d2615d733223e654a8ce065329f017504f516b48))
+* **ci:** use minimal Sruja page for deploy book E2E ([16f1899](https://github.com/sruja-ai/sruja/commit/16f1899db29f7ad2a0139e86b410926b77502417))
+* **ci:** use tcp URI for serve@14 in book deploy E2E ([8589784](https://github.com/sruja-ai/sruja/commit/8589784d0e163df261548a3484f94346d31f6872))
+
 ## [0.55.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.55.0...sruja-v0.55.1) (2026-06-01)
 
 
