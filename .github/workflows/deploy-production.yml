@@ -11,22 +11,18 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BOOK_ARTIFACT: book-site
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build and deploy to production
+  build:
+    name: Build book site
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     steps:
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-
       - name: Checkout main
         uses: actions/checkout@v4
         with:
@@ -99,10 +95,54 @@ jobs:
       - name: Copy install script into book output
         run: cp scripts/install.sh book/book/install.sh
 
+      - name: Upload book site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BOOK_ARTIFACT }}
+          path: book/book
+          retention-days: 1
+
+  e2e:
+    name: Book E2E smoke
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download book site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BOOK_ARTIFACT }}
+          path: book/book
+
       - name: E2E smoke (book Show diagram)
         uses: ./.github/actions/book-e2e-smoke
         with:
           book-output-dir: book/book
+          skip-browser-install: "true"
+
+  deploy:
+    name: Deploy to production
+    needs: [build, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download book site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.BOOK_ARTIFACT }}
+          path: book/book
 
       - name: Deploy to production (prod-website)
         uses: ./.github/actions/deploy-to-github-pages
