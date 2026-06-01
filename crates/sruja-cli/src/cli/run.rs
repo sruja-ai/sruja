@@ -1042,6 +1042,27 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             }
             Ok(())
         }
+        Commands::Confidence {
+            repo,
+            profile,
+            file,
+            max_runtime_ms,
+            evidence_pack,
+            evidence_pack_dir,
+            format,
+        } => {
+            let report = commands::confidence(commands::ConfidenceOptions {
+                repo: &repo,
+                profile: &profile,
+                file: file.as_deref(),
+                max_runtime_ms,
+                evidence_pack,
+                evidence_pack_dir: evidence_pack_dir.as_deref(),
+            })
+            .await?;
+            println!("{}", commands::format_confidence(&report, &format));
+            Ok(())
+        }
         Commands::Run { cmd } => match cmd {
             RunCommand::Show {
                 repo,

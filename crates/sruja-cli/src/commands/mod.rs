@@ -68,6 +68,7 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
     }
 }
 pub use author::{author_evidence, author_propose};
+pub use confidence::{confidence, format_confidence, ConfidenceOptions};
 pub use drift_state::drift_state_print as drift_state;
 pub use dsl_domain::completions::completions;
 pub use dsl_domain::generate::generate_prompt;
@@ -119,6 +120,7 @@ pub use learn::learn;
 
 pub mod before;
 pub mod cognitive_debt;
+pub mod confidence;
 pub mod explain_cmd;
 pub mod map_cmd;
 pub mod narrative;

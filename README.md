@@ -37,6 +37,16 @@ Add to Cursor (template in [.cursor/mcp.json](.cursor/mcp.json)):
 
 Before a task: `sruja focus -r . --file path/to/file.rs`. After edits: `sruja verify-task --profile coding -r .`.
 
+### Post-AI-edit confidence report
+
+After AI edits code, generate a confidence report showing what changed, what evidence was checked, and what risks remain:
+
+```bash
+sruja confidence -r . -f md
+```
+
+The report includes: verification results, changed files, intent/architecture alignment, blockers, and follow-up commands for the 3AM review. See [`.cursor/commands/sruja-confidence-report.md`](.cursor/commands/sruja-confidence-report.md).
+
 ## Step 3 — Skills (harness + optional architecture)
 
 **Harness** (recommended for every agent workflow):

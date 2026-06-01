@@ -25,6 +25,16 @@ Override output directory (recommended for CI):
 sruja verify-task --profile review -r . --evidence-pack-dir "$RUNNER_TEMP/sruja-evidence" -f json
 ```
 
+## Confidence Reports
+
+Evidence packs also work with the `confidence` command:
+
+```bash
+sruja confidence -r . --evidence-pack -f json
+```
+
+The confidence report references the evidence pack location so reviewers can drill into raw verification outputs when the summary isn't enough.
+
 ## SBOM guidance (optional)
 
 Sruja does not generate SBOMs automatically, but you can attach them alongside evidence packs:

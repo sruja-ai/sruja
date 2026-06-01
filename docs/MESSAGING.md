@@ -67,11 +67,13 @@ See [STRUCTURIZR_VS_SRUJA.md](./STRUCTURIZR_VS_SRUJA.md).
 ```text
 1. MCP: focus / drift state / boundary context
 2. Host LLM edits code
-3. sruja verify-task --profile coding -r .
+3. sruja confidence -r . -f md          (or verify-task for CI gates)
 4. sruja agent record -c "…" on failure (optional)
 ```
 
-`sruja agent run` is internal/deprecated — use `agent plan` + host apply + `verify-task`.
+The **confidence report** composes verify-task, intent check, drift, and review into a single human-readable artifact: what changed, what evidence was checked, what risks remain, and what to inspect at 3AM.
+
+`sruja agent run` is internal/deprecated — use `agent plan` + host apply + `confidence`.
 
 ---
 

@@ -896,6 +896,33 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
+    /// Post-AI-edit confidence report: what changed, what evidence was checked, what risks remain
+    ///
+    /// Advisory by default — exits successfully even if the report contains blockers.
+    /// Only exits non-zero for fatal execution/input errors.
+    Confidence {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Verification profile: review, coding, bugfix, arch
+        #[arg(long, short = 'p', default_value = "review")]
+        profile: String,
+        /// File path focus (required for bugfix profile)
+        #[arg(long)]
+        file: Option<String>,
+        /// Max runtime per step in milliseconds (default: 30000)
+        #[arg(long)]
+        max_runtime_ms: Option<u64>,
+        /// Write an evidence pack folder under `.sruja/evidence-packs/<timestamp>/`.
+        #[arg(long)]
+        evidence_pack: bool,
+        /// Override evidence pack output directory (implies `--evidence-pack`).
+        #[arg(long)]
+        evidence_pack_dir: Option<String>,
+        /// Output format: md (default), text, json
+        #[arg(long, short = 'f', default_value = "md")]
+        format: String,
+    },
     /// Inspect and replay saved run snapshots under `.sruja/runs/`
     #[command(hide = true)]
     Run {
