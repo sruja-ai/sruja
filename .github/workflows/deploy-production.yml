@@ -20,7 +20,7 @@ jobs:
   deploy:
     name: Build and deploy to production
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -100,15 +100,9 @@ jobs:
         run: cp scripts/install.sh book/book/install.sh
 
       - name: E2E smoke (book Show diagram)
-        run: |
-          set -euo pipefail
-          npm ci
-          npx playwright install chromium --with-deps
-          npx -y serve@14 book/book -l 3000 --listen 127.0.0.1 --no-request-logging &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          npx wait-on http://127.0.0.1:3000/docs/how-sruja-works.html --timeout 60000
-          npm run e2e
+        uses: ./.github/actions/book-e2e-smoke
+        with:
+          book-output-dir: book/book
 
       - name: Deploy to production (prod-website)
         uses: ./.github/actions/deploy-to-github-pages

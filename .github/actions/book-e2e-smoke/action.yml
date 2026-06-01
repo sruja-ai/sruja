@@ -1,0 +1,35 @@
+# Serve a built mdBook output and run the book "Show diagram" Playwright smoke test.
+name: Book E2E smoke
+description: Playwright smoke test for book Show diagram (static serve)
+inputs:
+  book-output-dir:
+    description: Path to mdbook build output (e.g. book/book)
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install Node dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Cache Playwright browsers
+      id: playwright-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+    - name: Install Playwright Chromium
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx playwright install chromium
+
+    - name: E2E smoke (book Show diagram)
+      shell: bash
+      run: |
+        set -euo pipefail
+        npx -y serve@14 "${{ inputs.book-output-dir }}" -l 3000 --listen 127.0.0.1 --no-request-logging &
+        SERVER_PID=$!
+        trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+        npx wait-on "http://127.0.0.1:3000/docs/how-sruja-works.html" --timeout 60000
+        BOOK_BASE_URL=http://127.0.0.1:3000 npm run e2e
