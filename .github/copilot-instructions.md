@@ -11,9 +11,3 @@ This workspace has 14 crates, 1 databases.
 
 ## Before Committing
 Run: `sruja drift -r .` to check for architectural violations.
-
-
-## Multi-Repo System Context
-
-Composed architecture from **4 repositories**.
-Index source: `./system.index.json`

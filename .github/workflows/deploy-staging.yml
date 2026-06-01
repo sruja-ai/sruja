@@ -110,6 +110,14 @@ jobs:
       - name: Copy install script into book output
         run: cp scripts/install.sh book/book/install.sh
 
+      - name: E2E smoke (book Show diagram)
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+          cd book && mdbook serve --port 3000 --hostname 127.0.0.1 &
+          npx wait-on http://127.0.0.1:3000 --timeout 120000
+          npm run e2e
+
       - name: Deploy to staging-website
         uses: ./.github/actions/deploy-to-github-pages
         with:

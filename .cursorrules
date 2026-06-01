@@ -38,9 +38,3 @@ Compact brief: `llms-architecture.txt`. Full DSL only via MCP `sruja://architect
 2. Use existing patterns in the codebase
 3. If adding a new dependency, verify it does not violate boundaries
 4. Run `sruja drift -r .` after changes to verify architecture health
-
-
-## Multi-Repo System Context
-
-Composed architecture from **4 repositories**.
-Index source: `./system.index.json`
