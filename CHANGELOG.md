@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.55.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.55.0...sruja-v0.55.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* unblock CI after ownership tests and extension type mismatch ([ae14f6b](https://github.com/sruja-ai/sruja/commit/ae14f6b8ee32b91ae3c604500e480a3e7e147413))
+
 ## [0.55.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.54.1...sruja-v0.55.0) (2026-06-01)
 
 
