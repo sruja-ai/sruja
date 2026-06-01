@@ -101,9 +101,12 @@ jobs:
 
       - name: E2E smoke (book Show diagram)
         run: |
+          set -euo pipefail
           npm ci
           npx playwright install chromium --with-deps
           cd book && mdbook serve --port 3000 --hostname 127.0.0.1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           npx wait-on http://127.0.0.1:3000 --timeout 120000
           npm run e2e
 
