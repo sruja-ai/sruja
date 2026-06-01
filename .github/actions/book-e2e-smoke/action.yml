@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        npx -y serve@14 "${{ inputs.book-output-dir }}" -l 3000 --listen 127.0.0.1 --no-request-logging &
+        npx -y serve@14 "${{ inputs.book-output-dir }}" --listen tcp://127.0.0.1:3000 --no-request-logging &
         SERVER_PID=$!
         trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
         npx wait-on "http://127.0.0.1:3000/docs/how-sruja-works.html" --timeout 60000
