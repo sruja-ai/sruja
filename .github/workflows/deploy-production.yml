@@ -104,10 +104,10 @@ jobs:
           set -euo pipefail
           npm ci
           npx playwright install chromium --with-deps
-          cd book && mdbook serve --port 3000 --hostname 127.0.0.1 &
+          npx -y serve@14 book/book -l 3000 --listen 127.0.0.1 --no-request-logging &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          npx wait-on http://127.0.0.1:3000 --timeout 120000
+          npx wait-on http://127.0.0.1:3000/docs/how-sruja-works.html --timeout 60000
           npm run e2e
 
       - name: Deploy to production (prod-website)
