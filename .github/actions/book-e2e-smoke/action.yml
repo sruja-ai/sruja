@@ -33,7 +33,8 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        npx -y serve@14 "${{ inputs.book-output-dir }}" --listen tcp://127.0.0.1:3000 --no-request-logging &
+        # http-server sets application/wasm (serve@14 does not; WASM init fails in CI).
+        npx -y http-server@14 "${{ inputs.book-output-dir }}" -p 3000 -a 127.0.0.1 -c-1 --silent &
         SERVER_PID=$!
         trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
         npx wait-on "http://127.0.0.1:3000/docs/how-sruja-works.html" --timeout 60000

@@ -18,8 +18,9 @@ test("book Show diagram renders diagram for sruja code block", async ({ page }) 
   await expect(preview).toBeVisible();
 
   // Wait for success: button becomes "Hide diagram" (WASM ran and Mermaid was invoked)
+  const wasmTimeout = process.env.CI ? 60_000 : 20_000;
   await expect(page.getByRole("button", { name: "Hide diagram" }).first()).toBeVisible({
-    timeout: 20_000,
+    timeout: wasmTimeout,
   });
 
   // Diagram rendered as SVG (Mermaid output)

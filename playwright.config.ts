@@ -17,5 +17,5 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  timeout: 30_000,
+  timeout: process.env.CI ? 90_000 : 30_000,
 });
