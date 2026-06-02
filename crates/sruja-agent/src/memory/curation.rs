@@ -6,11 +6,11 @@ use super::types::{
 use super::AgenticMemory;
 
 /// Entries with many retrievals but low post-retrieval success (deletion candidates).
-pub fn low_utility_entries<'a>(
-    memory: &'a AgenticMemory,
+pub fn low_utility_entries(
+    memory: &AgenticMemory,
     min_retrievals: u32,
     max_utility_ratio: f64,
-) -> Vec<&'a LearningEntry> {
+) -> Vec<&LearningEntry> {
     memory
         .learnings
         .iter()

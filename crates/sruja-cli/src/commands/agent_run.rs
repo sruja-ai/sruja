@@ -12,8 +12,7 @@ use std::path::{Path, PathBuf};
 use tokio::time::{timeout, Duration};
 
 use crate::commands::CliError;
-use crate::integrations::{load_repo_config, resolve_enrichment_plan, resolve_openai_auth};
-use crate::integrations::{run_cmd_enrichment, run_openai_markdown};
+use crate::integrations::{load_repo_config, EnrichmentResult};
 use crate::utils::run_id::generate_run_id;
 use crate::utils::run_snapshots::write_json_snapshot;
 
@@ -280,20 +279,14 @@ mod observation_compression {
     }
 }
 
-fn agent_enrichment(
-    status: &str,
-    provider: &str,
-    model: Option<String>,
-    error: Option<String>,
-    narrative_markdown: Option<String>,
-) -> AgentEnrichment {
+fn agent_enrichment(result: EnrichmentResult) -> AgentEnrichment {
     AgentEnrichment {
         artifact_kind: "llm_interpretation".to_string(),
-        status: status.to_string(),
-        provider: provider.to_string(),
-        model,
-        error,
-        narrative_markdown,
+        status: result.status,
+        provider: result.provider,
+        model: result.model,
+        error: result.error,
+        narrative_markdown: result.narrative_markdown,
     }
 }
 
@@ -611,99 +604,19 @@ fn drift_truth_status(drift_json: &Value) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build_enrichment(
     repo_path: &Path,
     facts_payload: &Value,
     enrich: &crate::enrichment::EnrichmentRef<'_>,
 ) -> Option<AgentEnrichment> {
-    if !enrich.enrich && enrich.cmd.is_none() {
-        return None;
-    }
-
-    let plan = resolve_enrichment_plan(
+    crate::integrations::build_enrichment(
         repo_path,
-        enrich.cmd,
-        enrich.model,
-        enrich.base_url,
-        Some(enrich.timeout_ms),
-        Some(enrich.max_bytes),
-    );
-    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
-    let limits = plan.limits;
-    let stdin_payload = serde_json::to_vec(facts_payload).unwrap_or_default();
-
-    if provider == "cmd" {
-        let Some(cmd) = plan.cmd.as_deref() else {
-            return Some(agent_enrichment(
-                "skipped",
-                "cmd",
-                None,
-                Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
-                None,
-            ));
-        };
-        return Some(match run_cmd_enrichment(cmd, &stdin_payload, limits) {
-            Ok(md) => agent_enrichment("ok", "external_cmd", None, None, Some(md)),
-            Err(e) => agent_enrichment("error", "external_cmd", None, Some(e), None),
-        });
-    }
-
-    if provider != "openai" {
-        return Some(agent_enrichment(
-            "skipped",
-            provider,
-            None,
-            Some(
-                "Unsupported provider. Use provider=cmd (recommended) or provider=openai."
-                    .to_string(),
-            ),
-            None,
-        ));
-    }
-
-    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
-    let base_url = plan
-        .base_url
-        .as_deref()
-        .unwrap_or("https://api.openai.com/v1");
-    let Some(api_key) = resolve_openai_auth() else {
-        return Some(agent_enrichment(
-            "skipped",
-            "openai",
-            Some(model.to_string()),
-            Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
-            None,
-        ));
-    };
-
-    let user_prompt = format!(
-        r#"You are assisting an AI coding agent.\n\nYou MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say \"unknown\".\n\nProduce markdown with these sections:\n- \"One-paragraph plan\"\n- \"Risks / unknowns to verify\" (bullets)\n- \"Suggested test/verification steps\" (bullets)\n- \"Clarifying questions\" (bullets)\n\nJSON facts:\n{}"#,
-        facts_payload
-    );
-
-    match run_openai_markdown(
+        facts_payload,
+        enrich,
         "You are a careful repo assistant. Never fabricate.",
-        &user_prompt,
-        model,
-        base_url,
-        &api_key,
-    ) {
-        Ok(md) => Some(agent_enrichment(
-            "ok",
-            "openai",
-            Some(model.to_string()),
-            None,
-            Some(md),
-        )),
-        Err(e) => Some(agent_enrichment(
-            "error",
-            "openai",
-            Some(model.to_string()),
-            Some(e),
-            None,
-        )),
-    }
+        crate::integrations::DEFAULT_ENRICHMENT_PROMPT_TEMPLATE,
+    )
+    .map(agent_enrichment)
 }
 
 pub(crate) async fn run_sruja_cmd(
@@ -1038,25 +951,45 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
 
     let enrichment = build_enrichment(repo_path, &facts_payload, options.enrich);
 
-    let plan = build_agent_plan_output(
-        &run_id,
-        &run_id,
-        options.repo,
-        options.goal,
-        options.file,
-        options.element_id,
-        options.query,
-        resolved_element_id,
-        facts_payload.clone(),
+    let plan = AgentPlanOutput {
+        artifact_kind: "deterministic_plan".to_string(),
+        trace_id: Some(run_id.clone()),
+        schema_version: "agent_plan_output/v1".to_string(),
+        run_id: Some(run_id.clone()),
+        repo: options.repo.to_string(),
+        goal: options.goal.to_string(),
+        target: AgentTarget {
+            selector: options
+                .file
+                .map(|s| format!("file:{s}"))
+                .or_else(|| options.element_id.map(|s| format!("element_id:{s}")))
+                .or_else(|| options.query.map(|s| format!("query:{s}")))
+                .unwrap_or_else(|| "unknown".to_string()),
+            resolved_element_id,
+        },
+        facts_refs: vec![
+            "sync".to_string(),
+            "focus".to_string(),
+            "impact".to_string(),
+            "drift".to_string(),
+            "agent_history".to_string(),
+        ],
+        facts: facts_payload.clone(),
         steps,
         verification,
         risks,
         open_questions,
-        budgets.clone(),
-        allowlist_source,
-        mode,
+        budgets: budgets.clone(),
+        safety: AgentSafety {
+            mode: match mode {
+                AgentMode::Plan => "plan".to_string(),
+                AgentMode::Apply => "apply".to_string(),
+            },
+            allowlist_source,
+            denied_steps: Vec::new(),
+        },
         enrichment,
-    );
+    };
 
     // Persist snapshot for replay/resume.
     let plan_snapshot = serde_json::to_value(&plan).unwrap_or(Value::Null);
@@ -1384,66 +1317,6 @@ pub async fn agent_run(options: AgentRunOptions<'_>) -> Result<(), CliError> {
     let s = agent_run_to_string(options).await?;
     println!("{s}");
     Ok(())
-}
-
-#[allow(clippy::too_many_arguments)]
-fn build_agent_plan_output(
-    run_id: &str,
-    trace_id: &str,
-    repo: &str,
-    goal: &str,
-    file: Option<&str>,
-    element_id: Option<&str>,
-    query: Option<&str>,
-    resolved_element_id: Option<String>,
-    facts: Value,
-    steps: Vec<AgentStep>,
-    verification: Vec<AgentStep>,
-    risks: Vec<String>,
-    open_questions: Vec<String>,
-    budgets: AgentBudgets,
-    allowlist_source: String,
-    mode: AgentMode,
-    enrichment: Option<AgentEnrichment>,
-) -> AgentPlanOutput {
-    AgentPlanOutput {
-        artifact_kind: "deterministic_plan".to_string(),
-        trace_id: Some(trace_id.to_string()),
-        schema_version: "agent_plan_output/v1".to_string(),
-        run_id: Some(run_id.to_string()),
-        repo: repo.to_string(),
-        goal: goal.to_string(),
-        target: AgentTarget {
-            selector: file
-                .map(|s| format!("file:{s}"))
-                .or_else(|| element_id.map(|s| format!("element_id:{s}")))
-                .or_else(|| query.map(|s| format!("query:{s}")))
-                .unwrap_or_else(|| "unknown".to_string()),
-            resolved_element_id,
-        },
-        facts_refs: vec![
-            "sync".to_string(),
-            "focus".to_string(),
-            "impact".to_string(),
-            "drift".to_string(),
-            "agent_history".to_string(),
-        ],
-        facts,
-        steps,
-        verification,
-        risks,
-        open_questions,
-        budgets,
-        safety: AgentSafety {
-            mode: match mode {
-                AgentMode::Plan => "plan".to_string(),
-                AgentMode::Apply => "apply".to_string(),
-            },
-            allowlist_source,
-            denied_steps: Vec::new(),
-        },
-        enrichment,
-    }
 }
 
 fn build_trajectory_outcome(

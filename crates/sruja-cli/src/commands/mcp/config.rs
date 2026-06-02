@@ -51,7 +51,7 @@ pub(crate) fn get_mcp_tool_profile() -> ToolProfile {
             "minimal" => ToolProfile::Minimal,
             "coding" => ToolProfile::Coding,
             "arch" => ToolProfile::Arch,
-            "full" | "legacy" => ToolProfile::Full,
+            "full" => ToolProfile::Full,
             _ => ToolProfile::Default,
         };
     }

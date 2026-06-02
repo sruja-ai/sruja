@@ -70,7 +70,7 @@ impl McpServer {
                 "minimal" => return ToolProfile::Minimal,
                 "coding" => return ToolProfile::Coding,
                 "arch" => return ToolProfile::Arch,
-                "full" | "legacy" => return ToolProfile::Full,
+                "full" => return ToolProfile::Full,
                 "default" => return ToolProfile::Default,
                 _ => {}
             }

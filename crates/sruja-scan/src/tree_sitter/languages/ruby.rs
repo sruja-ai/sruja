@@ -1,7 +1,5 @@
 //! Ruby parser using Tree-sitter.
 
-#![allow(dead_code)]
-
 use std::path::Path;
 
 use super::{Definition, DefinitionKind, ParsedFile};

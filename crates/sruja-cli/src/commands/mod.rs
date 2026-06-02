@@ -123,7 +123,6 @@ pub mod cognitive_debt;
 pub mod confidence;
 pub mod explain_cmd;
 pub mod map_cmd;
-pub mod narrative;
 pub mod trace_cmd;
 pub mod what_if;
 

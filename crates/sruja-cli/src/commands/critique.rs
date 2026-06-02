@@ -1,26 +1,12 @@
 //! Critique command: adversarial architectural review of changes.
 
 use crate::commands::{scan_repo_cached, CliError};
-use crate::integrations::{
-    resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
-};
+use crate::integrations::EnrichmentResult;
 use crate::utils::architecture_path;
 use sruja_intent::{
     format_critique_json, format_critique_text, CritiqueEngine, CritiqueRequest, CritiqueSeverity,
 };
 use std::path::Path;
-
-#[derive(Debug, serde::Serialize)]
-struct CritiqueEnrichment {
-    status: String,
-    provider: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    narrative_markdown: Option<String>,
-}
 
 #[derive(Debug, serde::Serialize)]
 struct CritiqueForAiOutput {
@@ -38,126 +24,21 @@ struct CritiqueForAiOutput {
     changed_files: Vec<String>,
     report: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
-    enrichment: Option<CritiqueEnrichment>,
+    enrichment: Option<EnrichmentResult>,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build_critique_enrichment(
     repo_path: &Path,
     payload: &serde_json::Value,
     enrich: &crate::enrichment::EnrichmentRef<'_>,
-) -> Option<CritiqueEnrichment> {
-    if !enrich.enrich && enrich.cmd.is_none() {
-        return None;
-    }
-
-    let plan = resolve_enrichment_plan(
+) -> Option<EnrichmentResult> {
+    crate::integrations::build_enrichment(
         repo_path,
-        enrich.cmd,
-        enrich.model,
-        enrich.base_url,
-        Some(enrich.timeout_ms),
-        Some(enrich.max_bytes),
-    );
-    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
-    let limits = plan.limits;
-    let stdin_payload = serde_json::to_vec(payload).unwrap_or_default();
-
-    if provider == "cmd" {
-        let Some(cmd) = plan.cmd.as_deref() else {
-            return Some(CritiqueEnrichment {
-                status: "skipped".to_string(),
-                provider: "cmd".to_string(),
-                model: None,
-                error: Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
-                narrative_markdown: None,
-            });
-        };
-        return Some(match run_cmd_enrichment(cmd, &stdin_payload, limits) {
-            Ok(md) => CritiqueEnrichment {
-                status: "ok".to_string(),
-                provider: "external_cmd".to_string(),
-                model: None,
-                error: None,
-                narrative_markdown: Some(md),
-            },
-            Err(e) => CritiqueEnrichment {
-                status: "error".to_string(),
-                provider: "external_cmd".to_string(),
-                model: None,
-                error: Some(e),
-                narrative_markdown: None,
-            },
-        });
-    }
-
-    if provider != "openai" {
-        return Some(CritiqueEnrichment {
-            status: "skipped".to_string(),
-            provider: provider.to_string(),
-            model: None,
-            error: Some(
-                "Unsupported provider. Use provider=cmd (recommended) or provider=openai."
-                    .to_string(),
-            ),
-            narrative_markdown: None,
-        });
-    }
-
-    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
-    let base_url = plan
-        .base_url
-        .as_deref()
-        .unwrap_or("https://api.openai.com/v1");
-    let Some(api_key) = resolve_openai_auth() else {
-        return Some(CritiqueEnrichment {
-            status: "skipped".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
-            narrative_markdown: None,
-        });
-    };
-
-    let user_prompt = format!(
-        r#"You are performing an adversarial architecture review for a code change.
-
-You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
-
-Produce markdown with these sections:
-- "High-level critique summary"
-- "Top risks" (bullets)
-- "Suggested mitigations" (bullets)
-- "Suggested verification steps" (bullets)
-- "Clarifying questions" (bullets)
-
-JSON facts:
-{}"#,
-        payload
-    );
-
-    match run_openai_markdown(
+        payload,
+        enrich,
         "You are a careful architecture reviewer. Never fabricate.",
-        &user_prompt,
-        model,
-        base_url,
-        &api_key,
-    ) {
-        Ok(md) => Some(CritiqueEnrichment {
-            status: "ok".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: None,
-            narrative_markdown: Some(md),
-        }),
-        Err(e) => Some(CritiqueEnrichment {
-            status: "error".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: Some(e),
-            narrative_markdown: None,
-        }),
-    }
+        crate::integrations::CRITIQUE_ENRICHMENT_PROMPT_TEMPLATE,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]

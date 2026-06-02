@@ -1716,12 +1716,10 @@ pub fn workflow_next_steps_json_value(
             let test_results_path = construction_dir(repo, wf_id).join("test-results.json");
             if !test_results_path.exists() {
                 steps.push("Run and record test verification results using `sruja workflow record-test-results`".to_string());
-            } else {
-                if let Ok(text) = std::fs::read_to_string(&test_results_path) {
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
-                        if val["all_passed"].as_bool() != Some(true) {
-                            steps.push("Fix test failures in verification suite and re-record test results".to_string());
-                        }
+            } else if let Ok(text) = std::fs::read_to_string(&test_results_path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if val["all_passed"].as_bool() != Some(true) {
+                        steps.push("Fix test failures in verification suite and re-record test results".to_string());
                     }
                 }
             }
@@ -1744,12 +1742,10 @@ pub fn workflow_next_steps_json_value(
             let readiness_path = operations_dir(repo, wf_id).join("readiness.json");
             if !readiness_path.exists() {
                 steps.push("Perform operations readiness checks and record results using `sruja workflow record-readiness`".to_string());
-            } else {
-                if let Ok(text) = std::fs::read_to_string(&readiness_path) {
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
-                        if val["all_ready"].as_bool() != Some(true) {
-                            steps.push("Resolve readiness blockers (such as architectural drift, lint failures, or failing tests) and re-record readiness".to_string());
-                        }
+            } else if let Ok(text) = std::fs::read_to_string(&readiness_path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if val["all_ready"].as_bool() != Some(true) {
+                        steps.push("Resolve readiness blockers (such as architectural drift, lint failures, or failing tests) and re-record readiness".to_string());
                     }
                 }
             }

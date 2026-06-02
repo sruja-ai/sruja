@@ -13,9 +13,7 @@ use std::process::Command;
 use crate::commands::context::types::TokenBudget;
 use crate::commands::CliError;
 use crate::graph_store;
-use crate::integrations::{
-    resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
-};
+use crate::integrations::EnrichmentResult;
 use crate::utils::colors;
 use crate::utils::run_id::generate_run_id;
 use crate::utils::run_snapshots::write_json_snapshot;
@@ -76,7 +74,7 @@ pub struct FocusBriefing {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temporal: Option<TemporalContextBrief>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enrichment: Option<FocusEnrichment>,
+    pub enrichment: Option<EnrichmentResult>,
     /// Recent decision/workflow lineage from `.sruja/context_events.jsonl` (v2 kinds) for this element.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub decision_trace_events: Vec<crate::commands::context_events::ContextEventRecord>,
@@ -136,18 +134,6 @@ pub struct FocusForAiTarget {
 pub struct SuggestedCommand {
     pub purpose: String,
     pub argv: Vec<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct FocusEnrichment {
-    pub status: String,
-    pub provider: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub narrative_markdown: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -952,128 +938,23 @@ fn suggested_next_steps(resolved_element_id: &str) -> Vec<SuggestedCommand> {
     ]
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build_focus_enrichment(
     repo_path: &Path,
     briefing: &FocusBriefing,
     enrich: &crate::enrichment::EnrichmentRef<'_>,
-) -> Option<FocusEnrichment> {
-    if !enrich.enrich && enrich.cmd.is_none() {
-        return None;
-    }
-
-    let plan = resolve_enrichment_plan(
-        repo_path,
-        enrich.cmd,
-        enrich.model,
-        enrich.base_url,
-        Some(enrich.timeout_ms),
-        Some(enrich.max_bytes),
-    );
-    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
-    let limits = plan.limits;
-
+) -> Option<EnrichmentResult> {
     let payload = serde_json::json!({
         "schema_version": "focus_enrichment_input/v1",
         "repo": repo_path.display().to_string(),
         "briefing": briefing,
     });
-    let stdin_payload = serde_json::to_vec(&payload).unwrap_or_default();
-
-    if provider == "cmd" {
-        let Some(cmd) = plan.cmd.as_deref() else {
-            return Some(FocusEnrichment {
-                status: "skipped".to_string(),
-                provider: "cmd".to_string(),
-                model: None,
-                error: Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
-                narrative_markdown: None,
-            });
-        };
-        return Some(match run_cmd_enrichment(cmd, &stdin_payload, limits) {
-            Ok(md) => FocusEnrichment {
-                status: "ok".to_string(),
-                provider: "cmd".to_string(),
-                model: None,
-                error: None,
-                narrative_markdown: Some(md),
-            },
-            Err(e) => FocusEnrichment {
-                status: "error".to_string(),
-                provider: "cmd".to_string(),
-                model: None,
-                error: Some(e),
-                narrative_markdown: None,
-            },
-        });
-    }
-
-    if provider != "openai" {
-        return Some(FocusEnrichment {
-            status: "skipped".to_string(),
-            provider: provider.to_string(),
-            model: None,
-            error: Some(
-                "Unsupported provider. Use provider=cmd (recommended) or provider=openai."
-                    .to_string(),
-            ),
-            narrative_markdown: None,
-        });
-    }
-
-    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
-    let base_url = plan
-        .base_url
-        .as_deref()
-        .unwrap_or("https://api.openai.com/v1");
-    let Some(api_key) = resolve_openai_auth() else {
-        return Some(FocusEnrichment {
-            status: "skipped".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
-            narrative_markdown: None,
-        });
-    };
-
-    let user_prompt = format!(
-        r#"You are assisting an AI coding agent.
-
-You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
-
-Produce markdown with these sections:
-- "One-paragraph plan"
-- "Risks / unknowns to verify" (bullets)
-- "Suggested test/verification steps" (bullets)
-- "Clarifying questions" (bullets)
-
-JSON facts:
-{}"#,
-        payload
-    );
-
-    match run_openai_markdown(
+    crate::integrations::build_enrichment(
+        repo_path,
+        &payload,
+        enrich,
         "You are a careful repo assistant. Never fabricate.",
-        &user_prompt,
-        model,
-        base_url,
-        &api_key,
-    ) {
-        Ok(md) => Some(FocusEnrichment {
-            status: "ok".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: None,
-            narrative_markdown: Some(md),
-        }),
-        Err(e) => Some(FocusEnrichment {
-            status: "error".to_string(),
-            provider: "openai".to_string(),
-            model: Some(model.to_string()),
-            error: Some(e),
-            narrative_markdown: None,
-        }),
-    }
+        crate::integrations::DEFAULT_ENRICHMENT_PROMPT_TEMPLATE,
+    )
 }
 
 /// Collect upstream dependents (who depends on this node).
@@ -1275,14 +1156,12 @@ fn find_relevant_external_context(repo_path: &Path, target_id: &str) -> Vec<Exte
 fn truncate(s: &str, max_len: usize) -> String {
     if s.chars().count() <= max_len {
         s.to_string()
+    } else if max_len <= 3 {
+        ".".repeat(max_len)
     } else {
-        if max_len <= 3 {
-            ".".repeat(max_len)
-        } else {
-            let keep = max_len.saturating_sub(3);
-            let prefix: String = s.chars().take(keep).collect();
-            format!("{}...", prefix)
-        }
+        let keep = max_len.saturating_sub(3);
+        let prefix: String = s.chars().take(keep).collect();
+        format!("{}...", prefix)
     }
 }
 

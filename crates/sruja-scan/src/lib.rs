@@ -231,14 +231,12 @@ pub fn is_safe_path(path: &Path, repo_canon: &Path) -> bool {
             Ok(canon) => canon.starts_with(repo_canon),
             Err(_) => false,
         }
+    } else if path.is_absolute() && path.starts_with(repo_canon) {
+        true
     } else {
-        if path.is_absolute() && path.starts_with(repo_canon) {
-            true
-        } else {
-            match path.canonicalize() {
-                Ok(canon) => canon.starts_with(repo_canon),
-                Err(_) => false,
-            }
+        match path.canonicalize() {
+            Ok(canon) => canon.starts_with(repo_canon),
+            Err(_) => false,
         }
     }
 }

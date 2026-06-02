@@ -168,8 +168,8 @@ fn mutating_mcp_tool_detection() {
 #[test]
 fn mcp_readonly_list_excludes_all_mutating_tools() {
     // Debug: Check what tools are in each list
-    let full = mcp_tools_for_list_with_readonly(false, ToolProfile::Legacy);
-    let ro = mcp_tools_for_list_with_readonly(true, ToolProfile::Legacy);
+    let full = mcp_tools_for_list_with_readonly(false, ToolProfile::Full);
+    let ro = mcp_tools_for_list_with_readonly(true, ToolProfile::Full);
 
     let full_names: Vec<String> = full
         .iter()

@@ -4,7 +4,6 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, serde::Deserialize)]
-#[allow(dead_code)]
 pub struct SrujaConfigFile {
     #[serde(default)]
     pub integrations: IntegrationsConfig,
@@ -105,9 +104,9 @@ pub struct ContextEngineeringConfig {
 ///
 /// Loaded from `[verify]` in `.sruja/config.toml`.
 #[derive(Debug, Clone, Default, serde::Deserialize)]
-#[allow(dead_code)]
 pub struct VerifyConfig {
     /// Default verification profile (coding, bugfix, review, arch).
+    #[allow(dead_code)]
     pub default_profile: Option<String>,
     /// Custom step definitions for the coding profile.
     pub coding: Option<VerifyProfileConfig>,
@@ -121,11 +120,11 @@ pub struct VerifyConfig {
 
 /// Per-profile verification configuration.
 #[derive(Debug, Clone, serde::Deserialize)]
-#[allow(dead_code)]
 pub struct VerifyProfileConfig {
     /// Verification steps to run (e.g. ["lint", "check", "drift-if-arch"]).
     pub steps: Option<Vec<String>>,
     /// Timeout per step in milliseconds.
+    #[allow(dead_code)]
     pub timeout_ms: Option<u64>,
 }
 
@@ -308,6 +307,159 @@ pub fn resolve_openai_auth() -> Option<String> {
         .or_else(|| std::env::var("SRUJA_ENRICH_API_KEY").ok())
         // Back-compat
         .or_else(|| std::env::var("SRUJA_LLM_API_KEY").ok())
+}
+
+/// Default user prompt template for generic enrichment (plan/risks/questions).
+pub const DEFAULT_ENRICHMENT_PROMPT_TEMPLATE: &str = r#"You are assisting an AI coding agent.
+
+You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
+
+Produce markdown with these sections:
+- "One-paragraph plan"
+- "Risks / unknowns to verify" (bullets)
+- "Suggested test/verification steps" (bullets)
+- "Clarifying questions" (bullets)
+
+JSON facts:
+{}"#;
+
+/// Critique-specific prompt template for adversarial architecture review.
+pub const CRITIQUE_ENRICHMENT_PROMPT_TEMPLATE: &str = r#"You are performing an adversarial architecture review for a code change.
+
+You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
+
+Produce markdown with these sections:
+- "High-level critique summary"
+- "Top risks" (bullets)
+- "Suggested mitigations" (bullets)
+- "Suggested verification steps" (bullets)
+- "Clarifying questions" (bullets)
+
+JSON facts:
+{}"#;
+
+/// Shared enrichment result returned by [`build_enrichment`].
+///
+/// All commands that support `--enrich` produce the same shape;
+/// command-specific wrappers (e.g. `AgentEnrichment`) can convert from this.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct EnrichmentResult {
+    pub status: String,
+    pub provider: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub narrative_markdown: Option<String>,
+}
+
+/// Build an enrichment result from a JSON payload using the shared enrichment pipeline.
+///
+/// Returns `None` when enrichment is not enabled and no command is configured.
+/// Otherwise resolves the provider (cmd / openai) and executes the enrichment.
+///
+/// `user_prompt_template` must contain exactly one `{}` placeholder where the
+/// JSON payload will be inserted. Use [`DEFAULT_ENRICHMENT_PROMPT_TEMPLATE`] for
+/// the standard "plan/risks/questions" output.
+pub fn build_enrichment(
+    repo_path: &Path,
+    payload: &serde_json::Value,
+    enrich: &crate::enrichment::EnrichmentRef<'_>,
+    system_prompt: &str,
+    user_prompt_template: &str,
+) -> Option<EnrichmentResult> {
+    if !enrich.enrich && enrich.cmd.is_none() {
+        return None;
+    }
+
+    let plan = resolve_enrichment_plan(
+        repo_path,
+        enrich.cmd,
+        enrich.model,
+        enrich.base_url,
+        Some(enrich.timeout_ms),
+        Some(enrich.max_bytes),
+    );
+    let provider = enrich.provider.unwrap_or(plan.provider.as_str());
+    let limits = plan.limits;
+    let stdin_payload = serde_json::to_vec(payload).unwrap_or_default();
+
+    if provider == "cmd" {
+        let Some(cmd) = plan.cmd.as_deref() else {
+            return Some(EnrichmentResult {
+                status: "skipped".to_string(),
+                provider: "cmd".to_string(),
+                model: None,
+                error: Some("No command configured. Pass --enrich-cmd or set SRUJA_ENRICH_CMD (or .sruja/config.toml [integrations].cmd).".to_string()),
+                narrative_markdown: None,
+            });
+        };
+        return Some(match run_cmd_enrichment(cmd, &stdin_payload, limits) {
+            Ok(md) => EnrichmentResult {
+                status: "ok".to_string(),
+                provider: "external_cmd".to_string(),
+                model: None,
+                error: None,
+                narrative_markdown: Some(md),
+            },
+            Err(e) => EnrichmentResult {
+                status: "error".to_string(),
+                provider: "external_cmd".to_string(),
+                model: None,
+                error: Some(e),
+                narrative_markdown: None,
+            },
+        });
+    }
+
+    if provider != "openai" {
+        return Some(EnrichmentResult {
+            status: "skipped".to_string(),
+            provider: provider.to_string(),
+            model: None,
+            error: Some(
+                "Unsupported provider. Use provider=cmd (recommended) or provider=openai."
+                    .to_string(),
+            ),
+            narrative_markdown: None,
+        });
+    }
+
+    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
+    let base_url = plan
+        .base_url
+        .as_deref()
+        .unwrap_or("https://api.openai.com/v1");
+    let Some(api_key) = resolve_openai_auth() else {
+        return Some(EnrichmentResult {
+            status: "skipped".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: Some("Missing API key (set OPENAI_API_KEY or SRUJA_ENRICH_API_KEY; SRUJA_LLM_API_KEY is deprecated).".to_string()),
+            narrative_markdown: None,
+        });
+    };
+
+    let user_prompt = user_prompt_template.replacen("{}", &payload.to_string(), 1);
+
+    match run_openai_markdown(system_prompt, &user_prompt, model, base_url, &api_key) {
+        Ok(md) => Some(EnrichmentResult {
+            status: "ok".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: None,
+            narrative_markdown: Some(md),
+        }),
+        Err(e) => Some(EnrichmentResult {
+            status: "error".to_string(),
+            provider: "openai".to_string(),
+            model: Some(model.to_string()),
+            error: Some(e),
+            narrative_markdown: None,
+        }),
+    }
 }
 
 pub fn run_openai_markdown(
