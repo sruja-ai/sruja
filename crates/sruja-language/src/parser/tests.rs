@@ -530,4 +530,161 @@ Payments = container "Payment Service" {
         assert_eq!(body.criticality, Some(crate::ast::Criticality::High));
         assert_eq!(body.sources.len(), 3);
     }
+
+    #[test]
+    fn test_parse_import_simple() {
+        let input = r#"import "projectA""#;
+        let result = parse_import(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, import_stmt) = result.unwrap();
+        assert_eq!(import_stmt.elements.len(), 1);
+        assert_eq!(import_stmt.from, "projectA");
+    }
+
+    #[test]
+    fn test_parse_import_wildcard() {
+        let input = r#"import { * } from "projectA""#;
+        let result = parse_import(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, import_stmt) = result.unwrap();
+        assert_eq!(import_stmt.elements.len(), 1);
+        assert_eq!(import_stmt.from, "projectA");
+    }
+
+    #[test]
+    fn test_parse_import_multiple_elements() {
+        let input = r#"import { ServiceA, ServiceB, ServiceC } from "projectA""#;
+        let result = parse_import(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, import_stmt) = result.unwrap();
+        assert_eq!(import_stmt.elements.len(), 3);
+        assert_eq!(import_stmt.from, "projectA");
+    }
+
+    #[test]
+    fn test_parse_relation_with_technology() {
+        let input = r#"SystemA -> SystemB "Uses" "SystemA uses SystemB" technology "HTTP""#;
+        let result = parse_relation(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, rel) = result.unwrap();
+        assert_eq!(rel.from.parts, vec!["SystemA"]);
+        assert_eq!(rel.to.parts, vec!["SystemB"]);
+        assert_eq!(rel.label, Some("Uses".to_string()));
+        assert_eq!(rel.description, Some("SystemA uses SystemB".to_string()));
+        assert_eq!(rel.technology, Some("HTTP".to_string()));
+    }
+
+    #[test]
+    fn test_parse_relation_with_tech_shorthand() {
+        let input = r#"SystemA -> SystemB "Uses" tech "gRPC""#;
+        let result = parse_relation(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, rel) = result.unwrap();
+        assert_eq!(rel.technology, Some("gRPC".to_string()));
+    }
+
+    #[test]
+    fn test_parse_relation_with_tags() {
+        let input = r#"SystemA -> SystemB "Uses" [#api, @external]"#;
+        let result = parse_relation(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, rel) = result.unwrap();
+        assert_eq!(rel.tags, vec!["#api".to_string(), "@external".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_relation_minimal() {
+        let input = r#"A -> B"#;
+        let result = parse_relation(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, rel) = result.unwrap();
+        assert_eq!(rel.from.parts, vec!["A"]);
+        assert_eq!(rel.to.parts, vec!["B"]);
+        assert!(rel.label.is_none());
+        assert!(rel.description.is_none());
+        assert!(rel.technology.is_none());
+        assert!(rel.tags.is_empty());
+    }
+
+    #[test]
+    fn test_parse_qualified_ident_nested() {
+        let input = "System.Container.Component";
+        let result = parse_qualified_ident(input);
+        assert!(result.is_ok());
+        let (_, qid) = result.unwrap();
+        assert_eq!(qid.parts, vec!["System", "Container", "Component"]);
+    }
+
+    #[test]
+    fn test_parse_qualified_ident_single() {
+        let input = "MySystem";
+        let result = parse_qualified_ident(input);
+        assert!(result.is_ok());
+        let (_, qid) = result.unwrap();
+        assert_eq!(qid.parts, vec!["MySystem"]);
+    }
+
+    #[test]
+    fn test_parse_element_with_gotchas() {
+        let input = r#"
+API = container "API Service" {
+  gotcha "Rate limiting is not implemented"
+  gotcha "No retry logic"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.gotchas.len(), 2);
+        assert_eq!(body.gotchas[0], "Rate limiting is not implemented");
+        assert_eq!(body.gotchas[1], "No retry logic");
+    }
+
+    #[test]
+    fn test_parse_element_with_operational_constraints() {
+        let input = r#"
+DB = database "Primary DB" {
+  constraint "Must be backed up every 6 hours"
+  constraint "Read replicas in us-east-1 only"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.operational_constraints.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_element_with_runbooks() {
+        let input = r#"
+Service = container "My Service" {
+  runbook "https://wiki.example.com/runbook"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(body.runbooks.len(), 1);
+        assert_eq!(body.runbooks[0], "https://wiki.example.com/runbook");
+    }
+
+    #[test]
+    fn test_parse_element_with_knowledge() {
+        let input = r#"
+API = container "API" {
+  knowledge "This service handles all external API requests"
+}
+"#;
+        let result = parse_element_def(input.trim());
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, elem) = result.unwrap();
+        let body = elem.assignment.body.as_ref().unwrap();
+        assert_eq!(
+            body.knowledge,
+            Some("This service handles all external API requests".to_string())
+        );
+    }
 }
