@@ -957,3 +957,530 @@ fn parse_policy_rule_line(input: &str) -> IResult<&str, crate::ast::PolicyRuleAs
     ))
     .parse(input)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::PolicyRuleAst;
+
+    #[test]
+    fn test_parse_flow_minimal() {
+        let input = r#"flow LoginFlow"#;
+        let result = parse_flow(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, flow) = result.unwrap();
+        assert_eq!(flow.id, "LoginFlow");
+        assert_eq!(flow.title, "LoginFlow");
+        assert!(flow.description.is_none());
+        assert!(flow.steps.is_empty());
+    }
+
+    #[test]
+    fn test_parse_flow_with_title() {
+        let input = r#"flow LoginFlow "User Login""#;
+        let result = parse_flow(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, flow) = result.unwrap();
+        assert_eq!(flow.id, "LoginFlow");
+        assert_eq!(flow.title, "User Login");
+    }
+
+    #[test]
+    fn test_parse_flow_with_title_and_description() {
+        let input = r#"flow LoginFlow "User Login" "Successful login flow""#;
+        let result = parse_flow(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, flow) = result.unwrap();
+        assert_eq!(flow.id, "LoginFlow");
+        assert_eq!(flow.title, "User Login");
+        assert_eq!(flow.description, Some("Successful login flow".to_string()));
+    }
+
+    #[test]
+    fn test_parse_flow_with_steps() {
+        let input = r#"flow LoginFlow "User Login" {
+            User -> WebApp "open"
+            WebApp -> DB "query"
+        }"#;
+        let result = parse_flow(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, flow) = result.unwrap();
+        assert_eq!(flow.steps.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_requirement_minimal() {
+        let input = r#"requirement R1"#;
+        let result = parse_requirement(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, req) = result.unwrap();
+        assert_eq!(req.id, "R1");
+        assert_eq!(req.r#type, "functional");
+        assert_eq!(req.title, "R1");
+    }
+
+    #[test]
+    fn test_parse_requirement_with_type_and_title() {
+        let input = r#"requirement R1 functional "User can log in""#;
+        let result = parse_requirement(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, req) = result.unwrap();
+        assert_eq!(req.id, "R1");
+        assert_eq!(req.r#type, "functional");
+        assert_eq!(req.title, "User can log in");
+    }
+
+    #[test]
+    fn test_parse_requirement_with_details() {
+        let input = r#"requirement R1 functional "User can log in" {
+            description "Must support SSO"
+            tags [#auth, @pii]
+        }"#;
+        let result = parse_requirement(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, req) = result.unwrap();
+        assert_eq!(req.description, Some("Must support SSO".to_string()));
+        assert_eq!(req.tags, vec!["#auth".to_string(), "@pii".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_adr_minimal() {
+        let input = r#"adr ADR_1"#;
+        let result = parse_adr(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, adr) = result.unwrap();
+        assert_eq!(adr.id, "ADR_1");
+        assert_eq!(adr.title, "ADR_1");
+        assert!(adr.status.is_none());
+    }
+
+    #[test]
+    fn test_parse_adr_with_title() {
+        let input = r#"adr ADR_1 "Use PostgreSQL""#;
+        let result = parse_adr(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, adr) = result.unwrap();
+        assert_eq!(adr.id, "ADR_1");
+        assert_eq!(adr.title, "Use PostgreSQL");
+    }
+
+    #[test]
+    fn test_parse_adr_with_fields() {
+        let input = r#"adr ADR_1 "Use PostgreSQL" {
+            status "accepted"
+            context "Need a reliable database"
+            decision "Use PostgreSQL for all services"
+            consequences "Need to manage migrations"
+            affects "DatabaseService"
+        }"#;
+        let result = parse_adr(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, adr) = result.unwrap();
+        assert_eq!(adr.status, Some("accepted".to_string()));
+        assert_eq!(adr.context, Some("Need a reliable database".to_string()));
+        assert_eq!(
+            adr.decision,
+            Some("Use PostgreSQL for all services".to_string())
+        );
+        assert_eq!(
+            adr.consequences,
+            Some("Need to manage migrations".to_string())
+        );
+        assert_eq!(adr.affects, vec!["DatabaseService".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_policy_minimal() {
+        let input = r#"policy SecurityPolicy"#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.id, "SecurityPolicy");
+        assert_eq!(policy.title, "SecurityPolicy");
+        assert_eq!(policy.category, "general");
+        assert_eq!(policy.enforcement, "warn");
+    }
+
+    #[test]
+    fn test_parse_policy_with_title() {
+        let input = r#"policy SecurityPolicy "Security Rules""#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.id, "SecurityPolicy");
+        assert_eq!(policy.title, "Security Rules");
+    }
+
+    #[test]
+    fn test_parse_policy_with_block() {
+        let input = r#"policy SecurityPolicy "Security Rules" {
+            category "security"
+            enforcement "deny"
+            description "Enforce security policies"
+            rule require tags on { kind "container" } tags [#secure] message "Must have secure tag"
+        }"#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.category, "security");
+        assert_eq!(policy.enforcement, "deny");
+        assert_eq!(
+            policy.description,
+            Some("Enforce security policies".to_string())
+        );
+        assert_eq!(policy.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_policy_rule_deny_edge() {
+        let input = r#"rule deny edge from { id "A" } to { id "B" } message "no direct connection""#;
+        let wrapped = format!("{{ {} }}", input);
+        let result = parse_policy_block(&wrapped);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, (_, rules)) = result.unwrap();
+        assert_eq!(rules.len(), 1);
+        match &rules[0] {
+            PolicyRuleAst::DenyEdge { from, to, message, .. } => {
+                assert_eq!(from.id, Some("A".to_string()));
+                assert_eq!(to.id, Some("B".to_string()));
+                assert_eq!(message.as_deref(), Some("no direct connection"));
+            }
+            _ => panic!("expected DenyEdge"),
+        }
+    }
+
+    #[test]
+    fn test_parse_policy_rule_require_tags() {
+        let input = r#"rule require tags on { kind "container" } tags [#secure, @compliant] message "Tags required""#;
+        let wrapped = format!("{{ {} }}", input);
+        let result = parse_policy_block(&wrapped);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, (_, rules)) = result.unwrap();
+        assert_eq!(rules.len(), 1);
+        match &rules[0] {
+            PolicyRuleAst::RequireTags {
+                selector,
+                tags,
+                message,
+                ..
+            } => {
+                assert_eq!(selector.kind, Some("container".to_string()));
+                assert_eq!(
+                    tags,
+                    &vec!["#secure".to_string(), "@compliant".to_string()]
+                );
+                assert_eq!(message.as_deref(), Some("Tags required"));
+            }
+            _ => panic!("expected RequireTags"),
+        }
+    }
+
+    #[test]
+    fn test_parse_policy_rule_require_metadata() {
+        let input =
+            r#"rule require metadata on { kind "service" } key "owner" value "team-alpha""#;
+        let wrapped = format!("{{ {} }}", input);
+        let result = parse_policy_block(&wrapped);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, (_, rules)) = result.unwrap();
+        assert_eq!(rules.len(), 1);
+        match &rules[0] {
+            PolicyRuleAst::RequireMetadata {
+                selector,
+                key,
+                value,
+                ..
+            } => {
+                assert_eq!(selector.kind, Some("service".to_string()));
+                assert_eq!(key, "owner");
+                assert_eq!(value.as_deref(), Some("team-alpha"));
+            }
+            _ => panic!("expected RequireMetadata"),
+        }
+    }
+
+    #[test]
+    fn test_parse_policy_rule_require_slo() {
+        let input = r#"rule require slo on { kind "container" } message "SLO required""#;
+        let wrapped = format!("{{ {} }}", input);
+        let result = parse_policy_block(&wrapped);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, (_, rules)) = result.unwrap();
+        assert_eq!(rules.len(), 1);
+        match &rules[0] {
+            PolicyRuleAst::RequireSlo {
+                selector, message, ..
+            } => {
+                assert_eq!(selector.kind, Some("container".to_string()));
+                assert_eq!(message.as_deref(), Some("SLO required"));
+            }
+            _ => panic!("expected RequireSlo"),
+        }
+    }
+
+    #[test]
+    fn test_parse_scenario_minimal() {
+        let input = r#"scenario LoginFlow"#;
+        let result = parse_scenario(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.id, "LoginFlow");
+        assert_eq!(scenario.title, "LoginFlow");
+        assert!(scenario.description.is_none());
+        assert!(scenario.steps.is_empty());
+    }
+
+    #[test]
+    fn test_parse_scenario_with_title() {
+        let input = r#"scenario LoginFlow "User Login""#;
+        let result = parse_scenario(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.id, "LoginFlow");
+        assert_eq!(scenario.title, "User Login");
+    }
+
+    #[test]
+    fn test_parse_scenario_with_steps() {
+        let input = r#"scenario LoginFlow "User Login" {
+            User -> WebApp "Credentials"
+            WebApp -> DB "Verify"
+        }"#;
+        let result = parse_scenario(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.steps.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_scenario_assignment_minimal() {
+        let input = r#"LoginFlow = scenario "User Login""#;
+        let result = parse_scenario_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.id, "LoginFlow");
+        assert_eq!(scenario.title, "User Login");
+    }
+
+    #[test]
+    fn test_parse_flow_assignment_minimal() {
+        let input = r#"Login = flow "Login Flow""#;
+        let result = parse_flow_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, flow) = result.unwrap();
+        assert_eq!(flow.id, "Login");
+        assert_eq!(flow.title, "Login Flow");
+    }
+
+    #[test]
+    fn test_parse_requirement_assignment_minimal() {
+        let input = r#"R1 = requirement functional "User can log in""#;
+        let result = parse_requirement_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, req) = result.unwrap();
+        assert_eq!(req.id, "R1");
+        assert_eq!(req.r#type, "functional");
+        assert_eq!(req.title, "User can log in");
+    }
+
+    #[test]
+    fn test_parse_adr_assignment_minimal() {
+        let input = r#"ADR_1 = adr "Use PostgreSQL""#;
+        let result = parse_adr_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, adr) = result.unwrap();
+        assert_eq!(adr.id, "ADR_1");
+        assert_eq!(adr.title, "Use PostgreSQL");
+    }
+
+    #[test]
+    fn test_parse_policy_assignment_minimal() {
+        let input = r#"P = policy "Security""#;
+        let result = parse_policy_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.id, "P");
+        assert_eq!(policy.title, "Security");
+    }
+
+    #[test]
+    fn test_parse_step_line_basic() {
+        let input = r#"User -> WebApp "open""#;
+        let result = parse_scenario_step(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, step) = result.unwrap();
+        assert_eq!(step.from.unwrap().parts, vec!["User"]);
+        assert_eq!(step.to.unwrap().parts, vec!["WebApp"]);
+        assert_eq!(step.description, Some("open".to_string()));
+    }
+
+    #[test]
+    fn test_parse_step_line_with_tags() {
+        let input = r#"User -> WebApp "open" [#auth]"#;
+        let result = parse_scenario_step(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, step) = result.unwrap();
+        assert_eq!(step.tags, vec!["#auth".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_step_line_with_order() {
+        let input = r#"User -> WebApp "open" order 5"#;
+        let result = parse_scenario_step(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, step) = result.unwrap();
+        assert_eq!(step.order, Some(5));
+    }
+
+    #[test]
+    fn test_parse_step_line_with_step_keyword() {
+        let input = r#"step User -> WebApp "open""#;
+        let result = parse_scenario_step(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, step) = result.unwrap();
+        assert_eq!(step.from.unwrap().parts, vec!["User"]);
+    }
+
+    #[test]
+    fn test_parse_scenario_with_block_body() {
+        let input = r#"scenario Checkout "Checkout Flow" {
+            title "Checkout Flow"
+            description "User checks out"
+            steps [
+                User -> WebApp "browse"
+                WebApp -> DB "load"
+            ]
+        }"#;
+        let result = parse_scenario(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.title, "Checkout Flow");
+        assert_eq!(scenario.description, Some("User checks out".to_string()));
+        assert_eq!(scenario.steps.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_requirement_with_type_in_block() {
+        let input = r#"requirement R1 "Must be available" {
+            type nonfunctional
+            description "Must be available 99.9%"
+            tags [#critical, @production]
+        }"#;
+        let result = parse_requirement(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, req) = result.unwrap();
+        assert_eq!(req.r#type, "nonfunctional");
+        assert_eq!(
+            req.description,
+            Some("Must be available 99.9%".to_string())
+        );
+        assert_eq!(
+            req.tags,
+            vec!["#critical".to_string(), "@production".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_parse_policy_with_rules() {
+        let input = r#"policy SecurityPolicy "Security Rules" {
+            category "security"
+            enforcement "deny"
+            rule require tags on { kind "container" } tags [#secure]
+        }"#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.category, "security");
+        assert_eq!(policy.enforcement, "deny");
+        assert_eq!(policy.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_policy_with_deny_edge_rule() {
+        let input = r#"policy SecurityPolicy "Security Rules" {
+            rule deny edge from { id "A" } to { id "B" } message "no direct connection"
+        }"#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_policy_with_require_metadata_rule() {
+        let input = r#"policy SecurityPolicy "Security Rules" {
+            rule require metadata on { kind "service" } key "owner" value "team-alpha"
+        }"#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_policy_with_require_slo_rule() {
+        let input = r#"policy SecurityPolicy "Security Rules" {
+            rule require slo on { kind "container" } message "SLO required"
+        }"#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.rules.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_policy_with_multiple_rules() {
+        let input = r#"policy SecurityPolicy "Security Rules" {
+            category "security"
+            rule require tags on { kind "container" } tags [#secure]
+            rule deny edge from { id "A" } to { id "B" }
+            rule require metadata on { kind "service" } key "owner"
+        }"#;
+        let result = parse_policy(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, policy) = result.unwrap();
+        assert_eq!(policy.rules.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_flow_body() {
+        let input = r#"{
+            User -> WebApp "open"
+            WebApp -> DB "query"
+        }"#;
+        let result = parse_flow_body(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, steps) = result.unwrap();
+        assert_eq!(steps.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_scenario_body() {
+        let input = r#"{
+            User -> WebApp "Credentials"
+            WebApp -> DB "Verify"
+        }"#;
+        let result = parse_scenario_body(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, steps) = result.unwrap();
+        assert_eq!(steps.len(), 2);
+    }
+
+    #[test]
+    fn test_story_keyword_alias() {
+        let input = r#"story LoginFlow "User Login""#;
+        let result = parse_scenario(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.id, "LoginFlow");
+    }
+
+    #[test]
+    fn test_story_assignment_keyword_alias() {
+        let input = r#"LoginFlow = story "User Login""#;
+        let result = parse_scenario_assignment(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, scenario) = result.unwrap();
+        assert_eq!(scenario.id, "LoginFlow");
+    }
+}

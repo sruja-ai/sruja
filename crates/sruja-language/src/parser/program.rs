@@ -91,3 +91,266 @@ pub(super) fn parse_top_level_item(input: &str) -> IResult<&str, TopLevelItem> {
     ))
     .parse(input)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ast::TopLevelItem;
+
+    #[test]
+    fn test_parse_program_empty() {
+        let input = "";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let (_, program) = result.unwrap();
+        assert!(program.items.is_empty());
+    }
+
+    #[test]
+    fn test_parse_program_whitespace_only() {
+        let input = "   \n  \n  ";
+        let result = parse_program(input);
+        assert!(result.is_ok());
+        let (_, program) = result.unwrap();
+        assert!(program.items.is_empty());
+    }
+
+    #[test]
+    fn test_parse_program_single_element() {
+        let input = r#"MySystem = system "My System""#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 1);
+        assert!(matches!(program.items[0], TopLevelItem::ElementDef(_)));
+    }
+
+    #[test]
+    fn test_parse_program_multiple_elements() {
+        let input = r#"
+MySystem = system "My System"
+WebApp = container "Web Application"
+DB = database "Database"
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_program_with_relations() {
+        let input = r#"
+MySystem = system "My System"
+WebApp = container "Web Application"
+MySystem -> WebApp "contains"
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_program_with_import() {
+        let input = r#"
+import { ServiceA, ServiceB } from "projectA"
+MySystem = system "My System"
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_program_with_scenario() {
+        let input = r#"
+scenario LoginFlow "User Login" {
+    User -> WebApp "Credentials"
+    WebApp -> DB "Verify"
+}
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_program_with_flow() {
+        let input = r#"
+flow LoginFlow "User Login" {
+    User -> WebApp "open"
+    WebApp -> DB "query"
+}
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_program_with_requirement() {
+        let input = r#"
+requirement R1 functional "User can log in" {
+    description "Must support SSO"
+    tags [#auth, @pii]
+}
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_program_with_adr() {
+        let input = r#"
+adr ADR_1 "Use PostgreSQL" {
+    status "accepted"
+    context "Need a reliable database"
+}
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_program_with_policy() {
+        let input = r#"
+policy SecurityPolicy "Security Rules" {
+    category "security"
+    enforcement "deny"
+}
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert_eq!(program.items.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_program_with_comments() {
+        let input = r#"
+// This is a comment
+MySystem = system "My System"
+/* Multi-line
+   comment */
+SystemA -> SystemB "Uses"
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        // The relation may or may not parse depending on context
+        assert!(program.items.len() >= 2);
+    }
+
+    #[test]
+    fn test_parse_top_level_item_element() {
+        let input = r#"MySystem = system "My System""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::ElementDef(_)));
+    }
+
+    #[test]
+    fn test_parse_top_level_item_relation() {
+        let input = r#"SystemA -> SystemB "Uses""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::Relation(_)));
+    }
+
+    #[test]
+    fn test_parse_top_level_item_import() {
+        let input = r#"import { ServiceA } from "projectA""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::Import(_)));
+    }
+
+    #[test]
+    fn test_parse_top_level_item_scenario() {
+        let input = r#"scenario LoginFlow "User Login""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::Scenario(_)));
+    }
+
+    #[test]
+    fn test_parse_top_level_item_flow() {
+        let input = r#"flow LoginFlow "User Login""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::Flow(_)));
+    }
+
+    #[test]
+    fn test_parse_top_level_item_requirement() {
+        let input = r#"requirement R1 functional "User can log in""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::Requirement(_)));
+    }
+
+    #[test]
+    fn test_parse_top_level_item_adr() {
+        let input = r#"adr ADR_1 "Use PostgreSQL""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::Adr(_)));
+    }
+
+    #[test]
+    fn test_parse_top_level_item_policy() {
+        let input = r#"policy SecurityPolicy "Security Rules""#;
+        let result = parse_top_level_item(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, item) = result.unwrap();
+        assert!(matches!(item, TopLevelItem::Policy(_)));
+    }
+
+    #[test]
+    fn test_parse_program_complex() {
+        let input = r#"
+// Systems
+MyApp = system "My Application" {
+    description "A web application"
+}
+
+// Containers
+WebApp = container "Web Application" {
+    technology "React"
+    description "Frontend"
+}
+
+API = container "API Service" {
+    technology "Node.js"
+    description "Backend API"
+}
+
+DB = database "Database" {
+    technology "PostgreSQL"
+    description "Main database"
+}
+
+// Import
+import { SharedLib } from "shared"
+"#;
+        let result = parse_program(input);
+        assert!(result.is_ok(), "should parse: {:?}", result.err());
+        let (_, program) = result.unwrap();
+        assert!(program.items.len() >= 4);
+    }
+}

@@ -18,8 +18,7 @@ mod relations;
 mod schema;
 mod state_machine;
 
-#[cfg(test)]
-mod tests;
+// Tests are defined inline below
 
 use primitives::{line_to_byte_offset, ws};
 use program::{parse_program, parse_top_level_item};
@@ -237,6 +236,387 @@ fn advance_one_utf8_char(input: &str, pos: usize) -> usize {
         .map(|ch| pos.saturating_add(ch.len_utf8()))
         .unwrap_or(input.len())
         .min(input.len())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_line_col_1_indexed_first_line() {
+        let input = "hello world";
+        let (line, col) = line_col_1_indexed(input, 5);
+        assert_eq!(line, 1);
+        assert_eq!(col, 6);
+    }
+
+    #[test]
+    fn test_line_col_1_indexed_second_line() {
+        let input = "hello\nworld";
+        let (line, col) = line_col_1_indexed(input, 7);
+        assert_eq!(line, 2);
+        assert_eq!(col, 2); // Position 7 is 'o' in "world" (w=1, o=2)
+    }
+
+    #[test]
+    fn test_line_col_1_indexed_empty_input() {
+        let input = "";
+        let (line, col) = line_col_1_indexed(input, 0);
+        assert_eq!(line, 1);
+        assert_eq!(col, 1);
+    }
+
+    #[test]
+    fn test_line_col_1_indexed_at_newline() {
+        let input = "hello\nworld";
+        let (line, col) = line_col_1_indexed(input, 5);
+        assert_eq!(line, 1);
+        assert_eq!(col, 6);
+    }
+
+    #[test]
+    fn test_line_col_1_indexed_pos_exceeds_len() {
+        let input = "hello";
+        let (line, col) = line_col_1_indexed(input, 100);
+        assert_eq!(line, 1);
+        assert_eq!(col, 6);
+    }
+
+    #[test]
+    fn test_context_snippet_basic() {
+        let input = "line1\nline2\nline3\nline4\nline5";
+        let snippet = context_snippet(input, 3, 1, 1, 1);
+        assert!(snippet.iter().any(|s| s.contains("line2")));
+        assert!(snippet.iter().any(|s| s.contains("line3")));
+        assert!(snippet.iter().any(|s| s.contains("line4")));
+    }
+
+    #[test]
+    fn test_context_snippet_with_caret() {
+        let input = "hello world";
+        let snippet = context_snippet(input, 1, 6, 0, 0);
+        assert!(snippet.iter().any(|s| s.contains("^")));
+    }
+
+    #[test]
+    fn test_context_snippet_zero_line() {
+        let input = "hello";
+        let snippet = context_snippet(input, 0, 1, 2, 2);
+        assert!(snippet.is_empty());
+    }
+
+    #[test]
+    fn test_count_char_basic() {
+        assert_eq!(count_char("hello", 'l'), 2);
+        assert_eq!(count_char("hello", 'o'), 1);
+        assert_eq!(count_char("hello", 'x'), 0);
+    }
+
+    #[test]
+    fn test_count_char_empty() {
+        assert_eq!(count_char("", 'a'), 0);
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_architecture_block() {
+        let input = r#"architecture "My Arch" { }"#;
+        let remaining = input;
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_SYNTAX_ERROR);
+        assert!(msg.contains("architecture"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_missing_brace() {
+        let input = r#"MySystem = system "My System" {"#;
+        let remaining = "";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_MISSING_BRACE);
+        assert!(msg.contains("Missing closing `}`"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_missing_bracket() {
+        let input = r#"tags ["a", "b""#;
+        let remaining = "";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_MISSING_BRACE);
+        assert!(msg.contains("Missing closing `]`"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_unterminated_string() {
+        let input = r#"MySystem = system "My System"#;
+        let remaining = "";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_INVALID_STRING);
+        assert!(msg.contains("Unterminated string"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_equals_without_identifier() {
+        let input = "= system \"My System\"";
+        let remaining = "= system \"My System\"";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_UNEXPECTED_TOKEN);
+        assert!(msg.contains("Expected an identifier before `=`"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_arrow_without_source() {
+        let input = "-> SystemB \"calls\"";
+        let remaining = "-> SystemB \"calls\"";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_UNEXPECTED_TOKEN);
+        assert!(msg.contains("Expected an identifier before a relationship arrow"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_unexpected_closing_delimiter() {
+        let input = "}";
+        let remaining = "}";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_UNEXPECTED_TOKEN);
+        assert!(msg.contains("Unexpected closing delimiter"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_missing_identifier_assignment() {
+        let input = "system \"My System\"";
+        let remaining = "system \"My System\"";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_SYNTAX_ERROR);
+        assert!(msg.contains("Missing identifier assignment"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_relationship_without_label() {
+        let input = "A -> B";
+        let remaining = "A -> B";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_some());
+        let (code, msg, _) = result.unwrap();
+        assert_eq!(code, sruja_diagnostics::codes::CODE_SYNTAX_ERROR);
+        assert!(msg.contains("Relationships must have a double-quoted label"));
+    }
+
+    #[test]
+    fn test_detect_common_syntax_diagnostic_no_match() {
+        let input = "normal code";
+        let remaining = "normal code";
+        let result = detect_common_syntax_diagnostic(input, remaining);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_advance_past_current_line_basic() {
+        let input = "line1\nline2\nline3";
+        let result = advance_past_current_line(input, 0);
+        assert_eq!(result, 6); // After "line1\n"
+    }
+
+    #[test]
+    fn test_advance_past_current_line_at_end() {
+        let input = "line1\nline2";
+        let result = advance_past_current_line(input, 10);
+        assert_eq!(result, 11); // End of input
+    }
+
+    #[test]
+    fn test_advance_past_current_line_no_newline() {
+        let input = "single line";
+        let result = advance_past_current_line(input, 0);
+        assert_eq!(result, 11);
+    }
+
+    #[test]
+    fn test_advance_one_utf8_char_ascii() {
+        let input = "hello";
+        let result = advance_one_utf8_char(input, 0);
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn test_advance_one_utf8_char_multibyte() {
+        let input = "héllo";
+        let result = advance_one_utf8_char(input, 0);
+        assert_eq!(result, 1); // 'h' is 1 byte
+        let result = advance_one_utf8_char(input, 1);
+        assert_eq!(result, 3); // 'é' is 2 bytes
+    }
+
+    #[test]
+    fn test_advance_one_utf8_char_at_end() {
+        let input = "hello";
+        let result = advance_one_utf8_char(input, 5);
+        assert_eq!(result, 5);
+    }
+
+    #[test]
+    fn test_advance_one_utf8_char_empty() {
+        let input = "";
+        let result = advance_one_utf8_char(input, 0);
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn test_nom_err_remaining_input_error() {
+        let err = nom::Err::Error(nom::error::Error::new("hello", nom::error::ErrorKind::Tag));
+        let result = nom_err_remaining_input(&err);
+        assert_eq!(result, Some("hello"));
+    }
+
+    #[test]
+    fn test_nom_err_remaining_input_failure() {
+        let err = nom::Err::Failure(nom::error::Error::new("world", nom::error::ErrorKind::Tag));
+        let result = nom_err_remaining_input(&err);
+        assert_eq!(result, Some("world"));
+    }
+
+    #[test]
+    fn test_nom_err_remaining_input_incomplete() {
+        let err = nom::Err::Incomplete(nom::Needed::new(5));
+        let result = nom_err_remaining_input(&err);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parser_new() {
+        let parser = Parser::new("test.sruja");
+        assert_eq!(parser.filename, "test.sruja");
+    }
+
+    #[test]
+    fn test_parser_new_with_string() {
+        let parser = Parser::new("test.sruja".to_string());
+        assert_eq!(parser.filename, "test.sruja");
+    }
+
+    #[test]
+    fn test_parser_line_number() {
+        let parser = Parser::new("test.sruja");
+        let input = "line1\nline2\nline3";
+        assert_eq!(parser.line_number(input, 0), 1);
+        assert_eq!(parser.line_number(input, 6), 2);
+        assert_eq!(parser.line_number(input, 12), 3);
+    }
+
+    #[test]
+    fn test_parser_location() {
+        let parser = Parser::new("test.sruja");
+        let input = "line1\nline2";
+        let loc = parser.location(input, 7);
+        assert_eq!(loc.file, "test.sruja");
+        assert_eq!(loc.line, 2);
+        assert_eq!(loc.column, 2); // Position 7 is 'i' in "line2" (l=1, i=2)
+    }
+
+    #[test]
+    fn test_build_diagnostic_from_nom_err() {
+        let input = "hello world";
+        let err = nom::Err::Error(nom::error::Error::new("world", nom::error::ErrorKind::Tag));
+        let diag = build_diagnostic_from_nom_err("test.sruja", input, &err);
+        assert_eq!(diag.location.file, "test.sruja");
+        assert!(diag.message.contains("Parse error"));
+    }
+
+    #[test]
+    fn test_generic_parse_suggestions() {
+        let suggestions = generic_parse_suggestions();
+        assert_eq!(suggestions.len(), 3);
+        assert!(suggestions[0].contains("missing `}`"));
+        assert!(suggestions[1].contains("quoted"));
+        assert!(suggestions[2].contains("assignments"));
+    }
+
+    #[test]
+    fn test_parser_parse_empty_input() {
+        let parser = Parser::new("test.sruja");
+        let result = parser.parse("");
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        assert!(program.items.is_empty());
+    }
+
+    #[test]
+    fn test_parser_parse_whitespace_only() {
+        let parser = Parser::new("test.sruja");
+        let result = parser.parse("   \n  \n  ");
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        assert!(program.items.is_empty());
+    }
+
+    #[test]
+    fn test_parser_parse_valid_element() {
+        let parser = Parser::new("test.sruja");
+        let result = parser.parse(r#"MySystem = system "My System""#);
+        assert!(result.is_ok());
+        let program = result.unwrap();
+        assert_eq!(program.items.len(), 1);
+    }
+
+    #[test]
+    fn test_parser_parse_multiple_errors() {
+        let parser = Parser::new("test.sruja");
+        let input = "=\n->";
+        let result = parser.parse(input);
+        assert!(result.is_err());
+        let diags = result.err().unwrap();
+        assert!(diags.len() >= 2);
+    }
+
+    #[test]
+    fn test_parser_parse_with_comments() {
+        let parser = Parser::new("test.sruja");
+        let input = r#"
+// This is a comment
+MySystem = system "My System"
+/* Multi-line
+   comment */
+SystemA -> SystemB "Uses"
+"#;
+        let result = parser.parse(input);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parser_parse_incrementally() {
+        let parser = Parser::new("test.sruja");
+        let input = "A = system \"A\"\nB = system \"B\"\nA -> B \"uses\"\n";
+        let existing = parser.parse(input).expect("initial parse");
+        let edited = "A = system \"A\"\nB = system \"B Updated\"\nA -> B \"uses\"\n";
+        let change_start = 22;
+        let change_end = 35;
+        let result = parser.parse_incrementally(edited, change_start, change_end, &existing, 2);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_parser_parse_incrementally_error() {
+        let parser = Parser::new("test.sruja");
+        let input = "A = system \"A\"\nB = system \"B\"\nA -> B \"uses\"\n";
+        let existing = parser.parse(input).expect("initial parse");
+        let edited = "A = system \"A\"\n= invalid\nA -> B \"uses\"\n";
+        let result = parser.parse_incrementally(edited, 16, 26, &existing, 2);
+        assert!(result.is_err());
+    }
 }
 
 fn build_diagnostic_from_nom_err(
