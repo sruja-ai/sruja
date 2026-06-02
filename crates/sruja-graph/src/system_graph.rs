@@ -425,3 +425,382 @@ impl SystemGraph {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_node(id: &str, kind: &str, label: &str, repo_id: &str) -> SystemNode {
+        SystemNode {
+            canonical_id: id.to_string(),
+            kind: kind.to_string(),
+            label: label.to_string(),
+            technology: None,
+            repo_id: repo_id.to_string(),
+            local_id: id.to_string(),
+            owner: None,
+            domain: None,
+            criticality: None,
+            aliases: Vec::new(),
+            gotchas: Vec::new(),
+            operational_constraints: Vec::new(),
+        }
+    }
+
+    fn create_test_edge(source: &str, target: &str, kind: &str) -> SystemEdge {
+        SystemEdge {
+            source: source.to_string(),
+            target: target.to_string(),
+            kind: kind.to_string(),
+            label: None,
+            repo_id: "test-repo".to_string(),
+            confidence: EdgeConfidence::Extracted,
+            is_cross_repo: false,
+        }
+    }
+
+    fn create_test_graph() -> SystemGraph {
+        let repos = vec![SystemRepo {
+            repo_id: "test-repo".to_string(),
+            repo_path: "/test".to_string(),
+            truth_status: "verified".to_string(),
+            git_commit: Some("abc123".to_string()),
+        }];
+
+        let nodes = vec![
+            create_test_node("frontend", "service", "Frontend", "test-repo"),
+            create_test_node("api", "container", "API Service", "test-repo"),
+            create_test_node("db", "database", "Database", "test-repo"),
+            create_test_node("auth", "service", "Auth Service", "test-repo"),
+        ];
+
+        let edges = vec![
+            create_test_edge("frontend", "api", "calls"),
+            create_test_edge("api", "db", "reads"),
+            create_test_edge("api", "auth", "calls"),
+        ];
+
+        SystemGraph::new(repos, nodes, edges)
+    }
+
+    #[test]
+    fn test_system_graph_new() {
+        let graph = create_test_graph();
+        assert_eq!(graph.nodes.len(), 4);
+        assert_eq!(graph.edges.len(), 3);
+        assert_eq!(graph.repos.len(), 1);
+    }
+
+    #[test]
+    fn test_get_node() {
+        let graph = create_test_graph();
+        assert!(graph.get_node("frontend").is_some());
+        assert!(graph.get_node("nonexistent").is_none());
+        assert_eq!(graph.get_node("frontend").unwrap().label, "Frontend");
+    }
+
+    #[test]
+    fn test_neighbors_out() {
+        let graph = create_test_graph();
+        let api_neighbors = graph.neighbors_out("api");
+        assert_eq!(api_neighbors.len(), 2);
+        assert!(api_neighbors.contains(&"db".to_string()));
+        assert!(api_neighbors.contains(&"auth".to_string()));
+
+        let db_neighbors = graph.neighbors_out("db");
+        assert!(db_neighbors.is_empty());
+
+        let nonexistent = graph.neighbors_out("nonexistent");
+        assert!(nonexistent.is_empty());
+    }
+
+    #[test]
+    fn test_neighbors_in() {
+        let graph = create_test_graph();
+        let api_incoming = graph.neighbors_in("api");
+        assert_eq!(api_incoming.len(), 1);
+        assert!(api_incoming.contains(&"frontend".to_string()));
+
+        let frontend_incoming = graph.neighbors_in("frontend");
+        assert!(frontend_incoming.is_empty());
+    }
+
+    #[test]
+    fn test_blast_radius() {
+        let graph = create_test_graph();
+        let radius = graph.blast_radius("api", 2);
+
+        assert_eq!(radius.target, "api");
+        assert_eq!(radius.max_depth, 2);
+        assert_eq!(radius.downstream.len(), 2);
+        assert_eq!(radius.upstream.len(), 1);
+
+        assert!(radius.downstream.iter().any(|h| h.canonical_id == "db"));
+        assert!(radius.downstream.iter().any(|h| h.canonical_id == "auth"));
+        assert!(radius.upstream.iter().any(|h| h.canonical_id == "frontend"));
+    }
+
+    #[test]
+    fn test_blast_radius_zero_depth() {
+        let graph = create_test_graph();
+        let radius = graph.blast_radius("api", 0);
+        assert!(radius.downstream.is_empty());
+        assert!(radius.upstream.is_empty());
+    }
+
+    #[test]
+    fn test_find_path() {
+        let graph = create_test_graph();
+        let path = graph.find_path("frontend", "db");
+        assert!(path.is_some());
+        let path = path.unwrap();
+        assert_eq!(path[0], "frontend");
+        assert_eq!(path[1], "api");
+        assert_eq!(path[2], "db");
+    }
+
+    #[test]
+    fn test_find_path_no_path() {
+        let graph = create_test_graph();
+        let path = graph.find_path("db", "frontend");
+        assert!(path.is_none());
+    }
+
+    #[test]
+    fn test_find_path_nonexistent_source() {
+        let graph = create_test_graph();
+        let path = graph.find_path("nonexistent", "db");
+        assert!(path.is_none());
+    }
+
+    #[test]
+    fn test_find_path_same_node() {
+        let graph = create_test_graph();
+        let path = graph.find_path("api", "api");
+        assert!(path.is_some());
+        assert_eq!(path.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_entrypoints() {
+        let graph = create_test_graph();
+        let entrypoints = graph.entrypoints();
+        assert_eq!(entrypoints.len(), 1);
+        assert_eq!(entrypoints[0].canonical_id, "frontend");
+    }
+
+    #[test]
+    fn test_data_stores() {
+        let graph = create_test_graph();
+        let stores = graph.data_stores();
+        assert_eq!(stores.len(), 1);
+        assert_eq!(stores[0].canonical_id, "db");
+    }
+
+    #[test]
+    fn test_hubs() {
+        let graph = create_test_graph();
+        let hubs = graph.hubs(2);
+        assert!(hubs.iter().any(|h| h.canonical_id == "api"));
+
+        let no_hubs = graph.hubs(10);
+        assert!(no_hubs.is_empty());
+    }
+
+    #[test]
+    fn test_teams() {
+        let mut graph = create_test_graph();
+        graph.nodes.get_mut("api").unwrap().owner = Some("platform-team".to_string());
+        graph.nodes.get_mut("db").unwrap().owner = Some("data-team".to_string());
+
+        let teams = graph.teams();
+        assert!(teams.contains_key("platform-team"));
+        assert!(teams.contains_key("data-team"));
+        assert!(teams.contains_key("unowned"));
+    }
+
+    #[test]
+    fn test_by_repo() {
+        let graph = create_test_graph();
+        let by_repo = graph.by_repo();
+        assert!(by_repo.contains_key("test-repo"));
+        assert_eq!(by_repo.get("test-repo").unwrap().len(), 4);
+    }
+
+    #[test]
+    fn test_trace_flow() {
+        let graph = create_test_graph();
+        let result = graph.trace_flow("frontend", 3);
+
+        assert_eq!(result.query, "frontend");
+        assert!(!result.hops.is_empty());
+        assert!(result.hops[0].node_id == "frontend");
+        assert!(result.repos_touched >= 1);
+    }
+
+    #[test]
+    fn test_trace_flow_nonexistent() {
+        let graph = create_test_graph();
+        let result = graph.trace_flow("nonexistent", 3);
+
+        assert_eq!(result.query, "nonexistent");
+        assert!(result.hops.is_empty());
+        assert_eq!(result.repos_touched, 0);
+        assert!(!result.warnings.is_empty());
+    }
+
+    #[test]
+    fn test_trace_flow_spof_detection() {
+        let graph = create_test_graph();
+        let result = graph.trace_flow("frontend", 2);
+
+        let spof_warnings: Vec<&String> = result
+            .warnings
+            .iter()
+            .filter(|w| w.contains("SPOF"))
+            .collect();
+        assert!(!spof_warnings.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_entity_by_id() {
+        let graph = create_test_graph();
+        let result = graph.resolve_entity("api");
+        assert_eq!(result, Some("api".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_entity_by_label() {
+        let graph = create_test_graph();
+        let result = graph.resolve_entity("API Service");
+        assert_eq!(result, Some("api".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_entity_case_insensitive() {
+        let graph = create_test_graph();
+        let result = graph.resolve_entity("api service");
+        assert_eq!(result, Some("api".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_entity_partial_match() {
+        let graph = create_test_graph();
+        let result = graph.resolve_entity("front");
+        assert_eq!(result, Some("frontend".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_entity_not_found() {
+        let graph = create_test_graph();
+        let result = graph.resolve_entity("nonexistent");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_resolve_entity_with_aliases() {
+        let mut graph = create_test_graph();
+        graph
+            .nodes
+            .get_mut("api")
+            .unwrap()
+            .aliases
+            .push("backend".to_string());
+
+        let result = graph.resolve_entity("backend");
+        assert_eq!(result, Some("api".to_string()));
+    }
+
+    #[test]
+    fn test_edge_confidence_default() {
+        let confidence = EdgeConfidence::default();
+        assert_eq!(confidence, EdgeConfidence::Extracted);
+    }
+
+    #[test]
+    fn test_edge_confidence_variants() {
+        assert_ne!(EdgeConfidence::Extracted, EdgeConfidence::Inferred);
+        assert_ne!(EdgeConfidence::Extracted, EdgeConfidence::Ambiguous);
+        assert_ne!(EdgeConfidence::Inferred, EdgeConfidence::Ambiguous);
+    }
+
+    #[test]
+    fn test_system_graph_with_cross_repo_edges() {
+        let repos = vec![
+            SystemRepo {
+                repo_id: "repo1".to_string(),
+                repo_path: "/repo1".to_string(),
+                truth_status: "verified".to_string(),
+                git_commit: None,
+            },
+            SystemRepo {
+                repo_id: "repo2".to_string(),
+                repo_path: "/repo2".to_string(),
+                truth_status: "verified".to_string(),
+                git_commit: None,
+            },
+        ];
+
+        let nodes = vec![
+            create_test_node("svc1", "service", "Service 1", "repo1"),
+            create_test_node("svc2", "service", "Service 2", "repo2"),
+        ];
+
+        let edges = vec![SystemEdge {
+            source: "svc1".to_string(),
+            target: "svc2".to_string(),
+            kind: "calls".to_string(),
+            label: Some("API call".to_string()),
+            repo_id: "repo1".to_string(),
+            confidence: EdgeConfidence::Inferred,
+            is_cross_repo: true,
+        }];
+
+        let graph = SystemGraph::new(repos, nodes, edges);
+
+        let hubs = graph.hubs(1);
+        assert!(hubs.iter().any(|h| h.is_cross_repo));
+    }
+
+    #[test]
+    fn test_system_graph_dedup_edges() {
+        let repos = vec![];
+        let nodes = vec![
+            create_test_node("a", "service", "A", "repo"),
+            create_test_node("b", "service", "B", "repo"),
+        ];
+
+        let edges = vec![
+            create_test_edge("a", "b", "calls"),
+            create_test_edge("a", "b", "calls"),
+        ];
+
+        let graph = SystemGraph::new(repos, nodes, edges);
+        let neighbors = graph.neighbors_out("a");
+        assert_eq!(neighbors.len(), 1);
+    }
+
+    #[test]
+    fn test_blast_radius_sorting() {
+        let repos = vec![];
+        let nodes = vec![
+            create_test_node("root", "service", "Root", "repo"),
+            create_test_node("child1", "service", "Child 1", "repo"),
+            create_test_node("child2", "service", "Child 2", "repo"),
+            create_test_node("grandchild", "service", "Grandchild", "repo"),
+        ];
+
+        let edges = vec![
+            create_test_edge("root", "child1", "calls"),
+            create_test_edge("root", "child2", "calls"),
+            create_test_edge("child1", "grandchild", "calls"),
+        ];
+
+        let graph = SystemGraph::new(repos, nodes, edges);
+        let radius = graph.blast_radius("root", 3);
+
+        assert_eq!(radius.downstream[0].depth, 1);
+        assert_eq!(radius.downstream[1].depth, 1);
+        assert_eq!(radius.downstream[2].depth, 2);
+    }
+}

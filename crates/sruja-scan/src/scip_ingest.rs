@@ -167,4 +167,122 @@ mod tests {
         // Best-effort cleanup (avoid failing the test if deletion fails).
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn resolve_symbol_to_id_handles_simple_symbol() {
+        let id = resolve_symbol_to_id("my_symbol");
+        assert_eq!(id, "my_symbol");
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_handles_dotted_path() {
+        let id = resolve_symbol_to_id("com.example.MyClass");
+        assert_eq!(id, "com_example_MyClass");
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_handles_slashed_path() {
+        let id = resolve_symbol_to_id("src/main/java/MyClass");
+        assert_eq!(id, "src_main_java_MyClass");
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_handles_scip_symbol_format() {
+        let id = resolve_symbol_to_id("scip-java com.example MyClass");
+        assert_eq!(id, "scip-java_com_example_MyClass");
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_handles_mixed_separators() {
+        let id = resolve_symbol_to_id("com.example/my.module.Class");
+        assert_eq!(id, "com_example");
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_handles_backslash() {
+        let id = resolve_symbol_to_id("src\\main\\MyClass");
+        assert_eq!(id, "src_main_MyClass");
+    }
+
+    #[test]
+    fn scip_index_struct_creation() {
+        let doc = DocumentInfo {
+            relative_path: "src/main.rs".to_string(),
+            occurrences: vec![
+                OccurrenceInfo {
+                    symbol: "com.example.MyClass".to_string(),
+                    line: 10,
+                },
+                OccurrenceInfo {
+                    symbol: "local_var".to_string(),
+                    line: 15,
+                },
+            ],
+        };
+
+        assert_eq!(doc.relative_path, "src/main.rs");
+        assert_eq!(doc.occurrences.len(), 2);
+        assert_eq!(doc.occurrences[0].line, 10);
+        assert_eq!(doc.occurrences[1].symbol, "local_var");
+    }
+
+    #[test]
+    fn scip_index_multiple_documents() {
+        let docs = vec![
+            DocumentInfo {
+                relative_path: "file1.rs".to_string(),
+                occurrences: vec![],
+            },
+            DocumentInfo {
+                relative_path: "file2.rs".to_string(),
+                occurrences: vec![],
+            },
+        ];
+
+        assert_eq!(docs.len(), 2);
+        assert_eq!(docs[0].relative_path, "file1.rs");
+        assert_eq!(docs[1].relative_path, "file2.rs");
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_empty_after_split() {
+        let id = resolve_symbol_to_id(" ");
+        assert_eq!(id, "_");
+    }
+
+    #[test]
+    fn is_interesting_symbol_with_whitespace() {
+        assert!(is_interesting_symbol("  "));
+        assert!(is_interesting_symbol("a"));
+        assert!(is_interesting_symbol("local"));
+        assert!(!is_interesting_symbol("local "));
+        assert!(!is_interesting_symbol("local foo"));
+    }
+
+    #[test]
+    fn document_info_with_empty_occurrences() {
+        let doc = DocumentInfo {
+            relative_path: "empty.rs".to_string(),
+            occurrences: Vec::new(),
+        };
+
+        assert!(doc.occurrences.is_empty());
+    }
+
+    #[test]
+    fn occurrence_info_creation() {
+        let occ = OccurrenceInfo {
+            symbol: "test".to_string(),
+            line: 42,
+        };
+
+        assert_eq!(occ.symbol, "test");
+        assert_eq!(occ.line, 42);
+    }
+
+    #[test]
+    fn resolve_symbol_to_id_preserves_underscores() {
+        let id = resolve_symbol_to_id("my_symbol_name");
+        assert_eq!(id, "my_symbol_name");
+    }
 }
