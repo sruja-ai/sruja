@@ -3217,26 +3217,11 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
         ),
         (
             19,
-            "sruja_commit_evolution",
-            serde_json::json!({ "path": repo_str, "id": "fitness-1", "target": "test", "result": "PASS", "detail": "ok" }),
-        ),
-        (
-            20,
             "sruja_check_drift",
             serde_json::json!({ "path": repo_str, "architecture": "repo.sruja" }),
         ),
         (
-            21,
-            "sruja_propose_topology_change",
-            serde_json::json!({
-                "path": repo_str,
-                "description": "Add worker system",
-                "add_elements": ["Worker:system:Worker"],
-                "add_relationships": ["App->Worker:calls"]
-            }),
-        ),
-        (
-            22,
+            20,
             "sruja_get_workflow",
             serde_json::json!({ "path": repo_str, "workflow_id": "wf-mcp" }),
         ),
@@ -3251,12 +3236,12 @@ fn mcp_server_roundtrip_tools_resources_prompts_and_tools_call() {
             serde_json::json!({ "path": repo_str, "workflow_id": "wf-mcp" }),
         ),
         (
-            23,
+            21,
             "sruja_record_decision_event",
             serde_json::json!({ "path": repo_str, "kind": "guardrail", "summary": "test decision event", "outcome": "ok" }),
         ),
         (
-            24,
+            22,
             "sruja_get_context_events",
             serde_json::json!({ "path": repo_str, "limit": 5 }),
         ),

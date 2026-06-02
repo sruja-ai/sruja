@@ -270,7 +270,6 @@ async fn mcp_tools_list_returns_sruja_tools() {
     assert!(names.contains(&"sruja_get_drift_state".to_string()));
     assert!(names.contains(&"sruja_get_context_events".to_string()));
     assert!(names.contains(&"sruja_get_decisions".to_string()));
-    assert!(names.contains(&"sruja_get_decision_trace".to_string()));
     assert!(names.contains(&"sruja_record_context_event".to_string()));
     assert!(names.contains(&"sruja_record_decision_event".to_string()));
     assert!(names.contains(&"sruja_create_decision_record".to_string()));
@@ -278,7 +277,6 @@ async fn mcp_tools_list_returns_sruja_tools() {
     assert!(names.contains(&"sruja_get_learned_facts".to_string()));
     assert!(names.contains(&"sruja_get_evidence_graph".to_string()));
     assert!(names.contains(&"sruja_get_author_evidence".to_string()));
-    assert!(names.contains(&"sruja_get_agent_learnings".to_string()));
     assert!(names.contains(&"sruja_search_memory".to_string()));
     assert!(names.contains(&"sruja_get_memory_timeline".to_string()));
 
@@ -338,29 +336,6 @@ async fn mcp_tool_call_discovery_explanation_returns_summary() {
 
     assert!(out.contains("# Sruja Discovery Explanation"));
     assert!(out.contains("Why Sruja Thinks That"));
-}
-
-#[tokio::test]
-async fn mcp_tool_call_neighbors_returns_neighbors() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let src = dir.path().join("src");
-    fs::create_dir_all(&src).expect("src");
-    fs::write(src.join("main.rs"), "mod sub;\nfn main() {}\n").expect("main");
-    fs::write(src.join("sub.rs"), "pub fn run() {}\n").expect("sub");
-
-    let cache = Arc::new(Mutex::new(HashMap::new()));
-    let out = run_tool(
-        "sruja_get_neighbors",
-        &json!({ "path": dir.path().to_string_lossy(), "id": "src_sub_rs" }),
-        ".",
-        &cache,
-    )
-    .await
-    .expect("neighbors");
-
-    assert!(out.contains("# Neighbors of src_sub_rs"));
-    assert!(out.contains("Upstream"));
-    assert!(out.contains("Downstream"));
 }
 
 #[tokio::test]
@@ -904,10 +879,6 @@ async fn mcp_governance_memory_and_read_tools_return_output() {
             json!({ "path": repo, "element_id": "App" }),
         ),
         (
-            "sruja_validate_change",
-            json!({ "path": repo, "files": ["src/lib.rs"] }),
-        ),
-        (
             "sruja_verify_architecture",
             json!({ "path": repo, "files": ["src/lib.rs"] }),
         ),
@@ -923,7 +894,6 @@ async fn mcp_governance_memory_and_read_tools_return_output() {
             "sruja_get_context_score",
             json!({ "path": repo, "format": "json" }),
         ),
-        ("sruja_get_architecture_summary", json!({ "path": repo })),
         ("sruja_get_entrypoints", json!({ "path": repo })),
         ("sruja_get_data_stores", json!({ "path": repo })),
         (
@@ -937,14 +907,6 @@ async fn mcp_governance_memory_and_read_tools_return_output() {
         (
             "sruja_critique",
             json!({ "path": repo, "files": ["src/lib.rs"], "format": "json" }),
-        ),
-        (
-            "sruja_ai_scratchpad",
-            json!({ "path": repo, "action": "read" }),
-        ),
-        (
-            "sruja_ai_scratchpad",
-            json!({ "path": repo, "action": "append", "content": "test note" }),
         ),
         ("sruja_classify", json!({ "path": repo })),
     ];

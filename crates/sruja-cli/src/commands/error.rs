@@ -41,6 +41,8 @@ pub enum CliError {
     NotInitialized { path: String },
     #[error("Configuration directory .sruja/ is corrupted or files are missing")]
     ConfigCorrupted { message: String },
+    #[error("CI gate threshold exceeded")]
+    CiGateExceeded { message: String },
 }
 
 impl CliError {
@@ -108,6 +110,7 @@ impl CliError {
             CliError::NotInitialized { .. } => 9,
             CliError::ConfigCorrupted { .. } => 10,
             CliError::Discovery(_) => 11,
+            CliError::CiGateExceeded { .. } => 12,
         }
     }
 
@@ -259,6 +262,14 @@ impl CliError {
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Ensure the repository root is correct.");
                 eprintln!("  2. Check if the architecture file is valid and readable.");
+            }
+            CliError::CiGateExceeded { message } => {
+                eprintln!("{} CI gate threshold exceeded: {}", colors::error("Error:"), message);
+                eprintln!();
+                eprintln!("{}", colors::style("Remediation:").bold());
+                eprintln!("  1. Review the impact of your changes.");
+                eprintln!("  2. Consider breaking the change into smaller PRs.");
+                eprintln!("  3. To bypass, add the 'high-impact-approved' label to the PR.");
             }
         }
     }

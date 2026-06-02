@@ -1,0 +1,86 @@
+name: Sruja Human CI Gate
+on:
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  impact-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build sruja (CLI)
+        run: cargo build --release -p sruja-cli
+
+      - name: Check blast radius
+        id: check
+        run: |
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only "origin/${{ github.base_ref }}" HEAD)
+          
+          # Check each changed file for high blast radius
+          HIGH_IMPACT=false
+          REPORT=""
+          
+          for file in $CHANGED_FILES; do
+            if [[ -f "$file" ]]; then
+              BEFORE_OUTPUT=$(./target/release/sruja human before "$file" -r . -f json 2>/dev/null || echo '{}')
+              if [[ "$BEFORE_OUTPUT" != "{}" ]]; then
+                DOWNSTREAM_COUNT=$(echo "$BEFORE_OUTPUT" | jq -r '.downstream_count // 0')
+                if [[ "$DOWNSTREAM_COUNT" -gt 10 ]]; then
+                  TARGET_LABEL=$(echo "$BEFORE_OUTPUT" | jq -r '.target_label // "unknown"')
+                  REPORT="${REPORT}⚠️ HIGH IMPACT: ${file} (${TARGET_LABEL}) affects ${DOWNSTREAM_COUNT} downstream elements"$'\n'
+                  HIGH_IMPACT=true
+                fi
+              fi
+            fi
+          done
+          
+          # Check changed crates
+          CHANGED_CRATES=$(echo "$CHANGED_FILES" | grep 'crates/' | cut -d'/' -f1-2 | sort -u)
+          for crate_path in $CHANGED_CRATES; do
+            CRATE_NAME=$(basename "$crate_path")
+            WHATIF_OUTPUT=$(./target/release/sruja human what-if "$CRATE_NAME" -r . -f json 2>/dev/null || echo '{}')
+            if [[ "$WHATIF_OUTPUT" != "{}" ]]; then
+              DIRECT_COUNT=$(echo "$WHATIF_OUTPUT" | jq -r '.direct_effects | length')
+              BLAST_REPOS=$(echo "$WHATIF_OUTPUT" | jq -r '.blast_repos // 0')
+              if [[ "$DIRECT_COUNT" -gt 5 ]] || [[ "$BLAST_REPOS" -gt 1 ]]; then
+                REPORT="${REPORT}⚠️ HIGH IMPACT: ${CRATE_NAME} affects ${DIRECT_COUNT} elements across ${BLAST_REPOS} repos"$'\n'
+                HIGH_IMPACT=true
+              fi
+            fi
+          done
+          
+          # Output report
+          if [[ "$HIGH_IMPACT" == "true" ]]; then
+            echo "high_impact=true" >> "$GITHUB_OUTPUT"
+            echo "$REPORT"
+            echo ""
+            echo "These changes have a high blast radius. Please:"
+            echo "1. Review the impact carefully"
+            echo "2. Run 'sruja human explain <element>' for details"
+            echo "3. Consider breaking the change into smaller PRs"
+          else
+            echo "high_impact=false" >> "$GITHUB_OUTPUT"
+            echo "✅ No high-impact changes detected."
+          fi
+
+      - name: Block if high impact and not approved
+        if: steps.check.outputs.high_impact == 'true'
+        run: |
+          HAS_LABEL=$(gh pr view "${{ github.event.pull_request.number }}" --json labels -q '.labels[].name' | grep -c 'high-impact-approved' || true)
+          if [[ "$HAS_LABEL" -eq 0 ]]; then
+            echo "::error::High-impact changes require 'high-impact-approved' label."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}

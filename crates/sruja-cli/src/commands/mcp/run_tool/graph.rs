@@ -313,51 +313,6 @@ pub(crate) async fn try_run(
             finish(Ok(serde_json::to_string_pretty(&wrapped)?))
         }
 
-        "sruja_semantic_search" => {
-            let query = arguments
-                .get("query")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::validation("Missing query"))?;
-            let top_k = arguments.get("top_k").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
-
-            let vector_path = std::path::Path::new(&repo)
-                .join(".sruja")
-                .join("vectors.json");
-            if !vector_path.exists() {
-                return finish(Ok("Semantic index not found. Please run `sruja index` first to generate embeddings.".to_string()));
-            }
-
-            let index_json = tokio::fs::read_to_string(&vector_path).await?;
-            let index: sruja_export::vector::VectorIndex = serde_json::from_str(&index_json)?;
-
-            let mut searcher = sruja_export::vector::SemanticSearcher::new().map_err(|e| {
-                CliError::Io(std::io::Error::other(format!(
-                    "Failed to init searcher: {}",
-                    e
-                )))
-            })?;
-
-            let results = searcher.search(&index, query, top_k).map_err(|e| {
-                CliError::Io(std::io::Error::other(format!("Search failed: {}", e)))
-            })?;
-
-            let mut out = format!("# Semantic Search Results for: \"{}\"\n\n", query);
-            if results.is_empty() {
-                out.push_str("No matching components found.\n");
-            } else {
-                for (id, score) in results {
-                    let node = index.nodes.iter().find(|n| n.id == id);
-                    let label = node.map(|n| n.label.as_str()).unwrap_or(&id);
-                    let desc = node.map(|n| n.description.as_str()).unwrap_or("");
-                    out.push_str(&format!(
-                        "- **{}** (Score: {:.2})\n  ID: {}\n  Description: {}\n",
-                        label, score, id, desc
-                    ));
-                }
-            }
-            finish(Ok(out))
-        }
-
         "sruja_query_graph" => {
             let query = arguments
                 .get("query")

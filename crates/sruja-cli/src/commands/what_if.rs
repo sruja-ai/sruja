@@ -32,7 +32,7 @@ pub struct RiskItem {
     pub description: String,
 }
 
-pub async fn what_if(query: &str, repo_root: &str, format: &str) -> Result<(), CliError> {
+pub async fn what_if(query: &str, repo_root: &str, format: &str, ci: bool, threshold: usize) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     let index = super::federation::find_or_generate_system_index(repo_path)?;
 
@@ -137,6 +137,15 @@ pub async fn what_if(query: &str, repo_root: &str, format: &str) -> Result<(), C
     match format {
         "json" => println!("{}", serde_json::to_string_pretty(&output)?),
         _ => print_whatif_text(&output),
+    }
+
+    if ci && output.direct_effects.len() > threshold {
+        return Err(CliError::CiGateExceeded {
+            message: format!(
+                "{} direct effects exceed threshold of {}",
+                output.direct_effects.len(), threshold
+            ),
+        });
     }
 
     Ok(())

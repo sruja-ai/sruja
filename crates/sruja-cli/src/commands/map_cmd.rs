@@ -17,6 +17,7 @@ pub struct MapOutput {
     pub team_count: usize,
     pub groups: Vec<MapGroup>,
     pub spofs: Vec<String>,
+    pub filtered_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,6 +50,7 @@ pub async fn system_map(
     format: &str,
     team: Option<&str>,
     focus: Option<&str>,
+    all: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     let index = super::federation::find_or_generate_system_index(repo_path)?;
@@ -80,6 +82,24 @@ pub async fn system_map(
         .nodes
         .iter()
         .filter(|n| {
+            if all {
+                return true;
+            }
+            // Show architecturally significant kinds
+            if matches!(
+                n.kind.as_str(),
+                "service" | "container" | "database" | "queue" | "external_api" | "component"
+            ) {
+                return true;
+            }
+            // Also show modules that are top-level (crate-level) — they represent real architectural units
+            // Heuristic: canonical_id contains "crate:" or label starts with crate prefix
+            if n.kind == "module" && n.canonical_id.contains("crate:") {
+                return true;
+            }
+            false
+        })
+        .filter(|n| {
             if let Some(t) = team {
                 n.owner.as_deref() == Some(t)
             } else {
@@ -97,6 +117,13 @@ pub async fn system_map(
             }
         })
         .collect();
+
+    // Count filtered out nodes for summary
+    let total_nodes = index.nodes.len();
+    let filtered_count = total_nodes - filtered_nodes.len();
+
+    // Build set of filtered node IDs for edge filtering
+    let filtered_ids: HashSet<&str> = filtered_nodes.iter().map(|n| n.canonical_id.as_str()).collect();
 
     let mut repo_groups: BTreeMap<String, Vec<&SystemIndexNode>> = BTreeMap::new();
     for node in &filtered_nodes {
@@ -121,6 +148,7 @@ pub async fn system_map(
                 .get(node.canonical_id.as_str())
                 .map(|v| {
                     v.iter()
+                        .filter(|(tgt_id, _, _)| filtered_ids.contains(tgt_id))
                         .filter_map(|(tgt_id, kind, _label)| {
                             node_map.get(tgt_id).map(|t| MapTarget {
                                 label: t.label.clone(),
@@ -187,6 +215,7 @@ pub async fn system_map(
         team_count: all_teams.len(),
         groups,
         spofs,
+        filtered_count,
     };
 
     match format {
@@ -208,6 +237,12 @@ fn print_map_text(o: &MapOutput) {
         )
         .bold()
     );
+    if o.filtered_count > 0 {
+        println!(
+            "  ({})",
+            format!("{} modules/docs/assets hidden — use --all to show", o.filtered_count).dimmed()
+        );
+    }
     println!();
 
     for group in &o.groups {

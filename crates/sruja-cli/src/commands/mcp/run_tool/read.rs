@@ -321,58 +321,6 @@ pub(crate) async fn try_run(
             finish(Ok(content))
         }
 
-        "sruja_get_architecture_summary" => {
-            let content = crate::commands::context::context_string(
-                repo,
-                "markdown",
-                crate::commands::context::ContextRequest {
-                    run_id,
-                    file: None,
-                    element_id: None,
-                    query: None,
-                    base_ref: None,
-                    head_ref: None,
-                    intent: None,
-                    depth: 1,
-                    max_tokens: 3000,
-                    cache_friendly: false,
-                },
-            )
-            .await?;
-            finish(Ok(content))
-        }
-
-        "sruja_get_neighbors" => {
-            let id = arguments
-                .get("id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::validation("Missing id"))?;
-            let depth = arguments.get("depth").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
-
-            let graph = get_or_scan_graph(graph_cache, repo).await?;
-            let radius = graph.blast_radius(id, depth);
-
-            let mut out = format!("# Neighbors of {}\n\n", id);
-            out.push_str("## Upstream (depend on this)\n");
-            if radius.upstream.is_empty() {
-                out.push_str("- None\n");
-            } else {
-                for n in radius.upstream {
-                    out.push_str(&format!("- {} (depth: {})\n", n.id, n.depth));
-                }
-            }
-
-            out.push_str("\n## Downstream (this depends on)\n");
-            if radius.downstream.is_empty() {
-                out.push_str("- None\n");
-            } else {
-                for n in radius.downstream {
-                    out.push_str(&format!("- {} (depth: {})\n", n.id, n.depth));
-                }
-            }
-            finish(Ok(out))
-        }
-
         "sruja_find_path" => {
             let source = arguments
                 .get("source")

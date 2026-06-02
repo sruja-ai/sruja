@@ -179,48 +179,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
-            "name": "sruja_evaluate_mutation",
-            "title": "Sruja Evaluate Mutation",
-            "description": "Evaluate declared fitness functions on a .sruja file to check architectural and behavioral scores.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "architecture": { "type": "string", "description": "Path to the .sruja architecture file (defaults to repo.sruja)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_propose_topology_change",
-            "title": "Sruja Propose Topology Change",
-            "description": "Propose an architectural topology mutation and run impact analysis and drift checks before committing.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "description": { "type": "string", "description": "Description of the proposed change" },
-                    "add_elements": { "type": "array", "items": { "type": "string" }, "description": "List of elements in format 'id:kind:label[:tech]'" },
-                    "add_relationships": { "type": "array", "items": { "type": "string" }, "description": "List of relationships in format 'source->target[:label]'" }
-                },
-                "required": ["description"]
-            }
-        }),
-        json!({
-            "name": "sruja_commit_evolution",
-            "title": "Sruja Commit Evolution",
-            "description": "Commit an evolutionary mutation log record into the history log.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "id": { "type": "string", "description": "Fitness ID of the evaluated function" },
-                    "target": { "type": "string", "description": "Target criteria of the function" },
-                    "result": { "type": "string", "description": "Evaluation result (PASS/FAIL/ERROR)" },
-                    "detail": { "type": "string", "description": "Detailed log or command output" }
-                },
-                "required": ["id", "target", "result"]
-            }
-        }),
-        json!({
             "name": "sruja_add_element",
             "title": "Sruja Add Element",
             "description": "Add a new element (system, container, component, database, person) to the architecture.",
@@ -276,20 +234,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-        json!({
-            "name": "sruja_get_neighbors",
-            "title": "Sruja Get Neighbors",
-            "description": "Get immediate upstream and downstream neighbors of a component.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "id": { "type": "string", "description": "Component ID" },
-                    "depth": { "type": "integer", "description": "Search depth (default: 1)", "minimum": 1 }
-                },
-                "required": ["id"]
-            }
-        }),
+
         json!({
             "name": "sruja_find_path",
             "title": "Sruja Find Path",
@@ -326,17 +271,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-        json!({
-            "name": "sruja_get_architecture_summary",
-            "title": "Sruja Architecture Summary",
-            "description": "Get a compact, high-level summary of how the architecture works (layers, boundaries, and key flows).",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
-                }
-            }
-        }),
+
         json!({
             "name": "sruja_get_hydrated_context",
             "title": "Sruja Hydrated Context",
@@ -358,19 +293,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "required": ["id"]
             }
         }),
-        json!({
-            "name": "sruja_validate_change",
-            "title": "Sruja Validate Change",
-            "description": "Validate architectural impact of a set of changed files. Runs fast lint and drift checks on the impacted area. Ideal for self-validation before committing.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "files": { "type": "array", "items": { "type": "string" }, "description": "List of changed file paths" }
-                },
-                "required": ["files"]
-            }
-        }),
+
         json!({
             "name": "sruja_get_task_context",
             "title": "Sruja Task Context",
@@ -399,20 +322,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-        json!({
-            "name": "sruja_semantic_search",
-            "title": "Sruja Semantic Search",
-            "description": "Embedding-only similarity search over architecture elements (requires a built vector index). Prefer sruja_hybrid_query when you are unsure whether the answer is purely semantic or needs graph structure.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "query": { "type": "string", "description": "Search query (e.g. 'payment processing', 'database access')" },
-                    "top_k": { "type": "integer", "description": "Number of results to return (default: 5)" }
-                },
-                "required": ["query"]
-            }
-        }),
+
         json!({
             "name": "sruja_query_graph",
             "title": "Sruja Query Graph",
@@ -546,20 +456,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-        json!({
-            "name": "sruja_get_decision_trace",
-            "title": "Sruja Decision Trace",
-            "description": "Return context_events.jsonl rows for a decision_id (append-only lineage).",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "decision_id": { "type": "string", "description": "Decision id e.g. DR-2026-001" },
-                    "limit": { "type": "integer", "description": "Max events (default: 50)" }
-                },
-                "required": ["decision_id"]
-            }
-        }),
+
         json!({
             "name": "sruja_record_context_event",
             "title": "Sruja Record Context Event",
@@ -689,19 +586,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "required": ["fact_id", "decision"]
             }
         }),
-        json!({
-            "name": "sruja_get_agent_learnings",
-            "title": "Sruja Agent Learnings",
-            "description": "Return Agentic Memory entries relevant to an architecture element ID (same matching rules as focus memory_hits).",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "element_id": { "type": "string", "description": "Architecture element ID (e.g. MySystem.Api)" }
-                },
-                "required": ["element_id"]
-            }
-        }),
+
         json!({
             "name": "sruja_get_focus_briefing",
             "title": "Sruja Focus Briefing",
@@ -831,20 +716,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "required": ["target_files"]
             }
         }),
-        json!({
-            "name": "sruja_ai_scratchpad",
-            "title": "Sruja AI Scratchpad",
-            "description": "Read or write to the shared AI architectural scratchpad (legacy markdown format). Use sruja_record_learning for structured agentic memory.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "action": { "type": "string", "description": "Action: 'read' or 'append'" },
-                    "content": { "type": "string", "description": "Markdown content to append (if action is append)." }
-                },
-                "required": ["action"]
-            }
-        }),
+
         json!({
             "name": "sruja_sandbox",
             "title": "Sruja Experiment Sandbox",
@@ -907,7 +779,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_hybrid_query",
             "title": "Sruja Hybrid Query",
-            "description": "Preferred default for most natural-language architecture questions: classifies query complexity and routes to graph-only, semantic-only, or hybrid retrieval. Use sruja_query_graph when you need that explicit pipeline; use sruja_semantic_search for embedding-only ranked nodes.",
+            "description": "Preferred default for most natural-language architecture questions: classifies query complexity and routes to graph-only, semantic-only, or hybrid retrieval. Use sruja_query_graph when you need that explicit pipeline.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

@@ -83,31 +83,6 @@ pub(crate) async fn try_run(
             finish(Ok(serde_json::to_string_pretty(&items)?))
         }
 
-        "sruja_get_decision_trace" => {
-            let decision_id = arguments
-                .get("decision_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::validation("missing decision_id".to_string()))?;
-            let limit = arguments
-                .get("limit")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(50) as usize;
-            let events = crate::commands::context_events::read_context_events_query(
-                Path::new(&repo),
-                crate::commands::context_events::ContextEventQuery {
-                    limit,
-                    kind_filter: None,
-                    details_substring: None,
-                    decision_id: Some(decision_id),
-                    trace_id: None,
-                    run_id: None,
-                    element_id: None,
-                    decision_lineage_only: false,
-                },
-            )?;
-            finish(Ok(serde_json::to_string_pretty(&events)?))
-        }
-
         "sruja_record_context_event" => {
             let ev = arguments
                 .get("event")
@@ -236,17 +211,6 @@ pub(crate) async fn try_run(
                 .ok_or_else(|| CliError::validation("missing element_id".to_string()))?;
             crate::commands::decision::decision_link(repo, decision_id, element_id).await?;
             finish(Ok(r#"{"ok":true}"#.to_string()))
-        }
-
-        "sruja_get_agent_learnings" => {
-            let element_id = arguments
-                .get("element_id")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::validation("Missing element_id"))?;
-            let surfaced =
-                crate::commands::focus::surface_agent_learnings(Path::new(&repo), element_id, true)
-                    .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
-            finish(Ok(serde_json::to_string_pretty(&surfaced.hits)?))
         }
 
         "sruja_get_focus_briefing" => {

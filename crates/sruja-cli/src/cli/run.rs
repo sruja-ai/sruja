@@ -1296,12 +1296,13 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 format,
                 team,
                 focus,
+                all,
             } => {
-                commands::map_cmd::system_map(&repo, &format, team.as_deref(), focus.as_deref())
+                commands::map_cmd::system_map(&repo, &format, team.as_deref(), focus.as_deref(), all)
                     .await
             }
-            HumanCommand::Before { file, repo, format } => {
-                commands::before::before(&repo, &file, &format).await
+            HumanCommand::Before { file, repo, format, ci, threshold } => {
+                commands::before::before(&repo, &file, &format, ci, threshold).await
             }
             HumanCommand::Daily { repo, format } => {
                 commands::review(&repo, &format, false, false).await
@@ -1313,7 +1314,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 query,
                 repo,
                 format,
-            } => commands::what_if::what_if(&query, &repo, &format).await,
+                ci,
+                threshold,
+            } => commands::what_if::what_if(&query, &repo, &format, ci, threshold).await,
         },
     };
 

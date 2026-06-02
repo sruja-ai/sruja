@@ -143,7 +143,7 @@ async fn messages_review_change(repo: &str, args: &Value) -> Result<Vec<Value>, 
     let mut context = format_invariant_brief(&arch);
     context.push_str(&format!(
         "\n## Review\nFiles: {files}\nSummary: {description}\n\n\
-         Run `sruja_check_drift` / `sruja_validate_change`; check decisions; report boundary gaps.\n"
+         Run `sruja_check_drift` / `sruja_check_violations`; check decisions; report boundary gaps.\n"
     ));
 
     if let Ok(decisions) = list_decisions(Path::new(repo)) {

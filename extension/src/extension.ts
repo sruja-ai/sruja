@@ -22,6 +22,7 @@ import { registerKnowledgeCommands, pushDocsThreadEntryFromActiveEditor } from "
 import { registerCommandCenter } from "./commands/commandCenter";
 import { registerValidationCommands } from "./commands/validation";
 import { registerExportCommands } from "./commands/export";
+import { registerHumanCommands } from "./commands/human";
 import { buildContextPack } from "./contextPack";
 import { registerMcpServer } from "./mcpServer";
 import { updateDiagnostics, getDiagnosticCollection } from "./diagnostics";
@@ -52,6 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerCommandCenter(context);
   registerValidationCommands(context, updateDiagnostics);
   registerExportCommands(context);
+  registerHumanCommands(context, getSrujaPath);
 
   // Register Language Providers
   context.subscriptions.push(

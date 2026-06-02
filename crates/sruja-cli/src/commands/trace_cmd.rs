@@ -66,18 +66,22 @@ fn resolve_trace_entity<'a>(
 ) -> Option<&'a SystemIndexNode> {
     let q = query.to_lowercase();
 
+    // 1. Exact match on canonical_id
     if let Some(n) = nodes.iter().find(|n| n.canonical_id == query) {
         return Some(n);
     }
 
+    // 2. Exact match on local_id
     if let Some(n) = nodes.iter().find(|n| n.local_id == query) {
         return Some(n);
     }
 
+    // 3. Exact match on label
     if let Some(n) = nodes.iter().find(|n| n.label.to_lowercase() == q) {
         return Some(n);
     }
 
+    // 4. Exact match on aliases
     if let Some(n) = nodes
         .iter()
         .find(|n| n.aliases.iter().any(|a| a.to_lowercase() == q))
@@ -85,9 +89,46 @@ fn resolve_trace_entity<'a>(
         return Some(n);
     }
 
-    nodes
+    // 5. Substring match on label or local_id
+    if let Some(n) = nodes
         .iter()
         .find(|n| n.label.to_lowercase().contains(&q) || n.local_id.to_lowercase().contains(&q))
+    {
+        return Some(n);
+    }
+
+    // 6. Multi-word matching: split query and check if all words appear in label
+    let words: Vec<&str> = q.split_whitespace().collect();
+    if words.len() > 1 {
+        if let Some(n) = nodes.iter().find(|n| {
+            let label = n.label.to_lowercase();
+            words.iter().all(|w| label.contains(w))
+        }) {
+            return Some(n);
+        }
+    }
+
+    // 7. Fuzzy matching: check if any word in query matches any word in label
+    for word in &words {
+        if let Some(n) = nodes.iter().find(|n| {
+            let label = n.label.to_lowercase();
+            label.contains(word)
+        }) {
+            return Some(n);
+        }
+    }
+
+    // 8. Technology matching: check if query matches technology
+    if let Some(n) = nodes.iter().find(|n| {
+        n.technology
+            .as_deref()
+            .map(|t| t.to_lowercase().contains(&q))
+            .unwrap_or(false)
+    }) {
+        return Some(n);
+    }
+
+    None
 }
 
 fn build_trace(

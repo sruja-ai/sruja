@@ -287,6 +287,36 @@
         "title": "Sruja: Get Started",
         "icon": "$(rocket)",
         "shortTitle": "Welcome"
+      },
+      {
+        "command": "sruja.humanMap",
+        "title": "Sruja: Human Map — How does the system work?",
+        "icon": "$(map)",
+        "shortTitle": "Human Map"
+      },
+      {
+        "command": "sruja.humanTrace",
+        "title": "Sruja: Human Trace — What happens when...",
+        "icon": "$(search)",
+        "shortTitle": "Human Trace"
+      },
+      {
+        "command": "sruja.humanExplain",
+        "title": "Sruja: Human Explain — What is this thing?",
+        "icon": "$(info)",
+        "shortTitle": "Human Explain"
+      },
+      {
+        "command": "sruja.humanBefore",
+        "title": "Sruja: Human Before — What will I break?",
+        "icon": "$(warning)",
+        "shortTitle": "Human Before"
+      },
+      {
+        "command": "sruja.humanWhatIf",
+        "title": "Sruja: Human What-If — What if I change X?",
+        "icon": "$(lightbulb)",
+        "shortTitle": "Human What-If"
       }
     ],
     "submenus": [

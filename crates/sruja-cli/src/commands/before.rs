@@ -28,7 +28,7 @@ pub struct DownstreamInfo {
     pub kind: String,
 }
 
-pub async fn before(repo_root: &str, file: &str, format: &str) -> Result<(), CliError> {
+pub async fn before(repo_root: &str, file: &str, format: &str, ci: bool, threshold: usize) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     let index = super::federation::find_or_generate_system_index(repo_path)?;
 
@@ -120,6 +120,15 @@ pub async fn before(repo_root: &str, file: &str, format: &str) -> Result<(), Cli
     match format {
         "json" => println!("{}", serde_json::to_string_pretty(&output)?),
         _ => print_before_text(&output),
+    }
+
+    if ci && output.downstream_count > threshold {
+        return Err(CliError::CiGateExceeded {
+            message: format!(
+                "{} downstream elements exceed threshold of {}",
+                output.downstream_count, threshold
+            ),
+        });
     }
 
     Ok(())

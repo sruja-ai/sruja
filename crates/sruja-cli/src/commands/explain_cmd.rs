@@ -71,21 +71,69 @@ pub async fn explain_element(
 
 fn resolve_entity<'a>(nodes: &'a [SystemIndexNode], query: &str) -> Option<&'a SystemIndexNode> {
     let q = query.to_lowercase();
-    nodes
+
+    // 1. Exact match on canonical_id
+    if let Some(n) = nodes.iter().find(|n| n.canonical_id == query) {
+        return Some(n);
+    }
+
+    // 2. Exact match on local_id
+    if let Some(n) = nodes.iter().find(|n| n.local_id == query) {
+        return Some(n);
+    }
+
+    // 3. Exact match on label
+    if let Some(n) = nodes.iter().find(|n| n.label.to_lowercase() == q) {
+        return Some(n);
+    }
+
+    // 4. Exact match on aliases
+    if let Some(n) = nodes
         .iter()
-        .find(|n| n.canonical_id == query)
-        .or_else(|| nodes.iter().find(|n| n.local_id == query))
-        .or_else(|| nodes.iter().find(|n| n.label.to_lowercase() == q))
-        .or_else(|| {
-            nodes
-                .iter()
-                .find(|n| n.aliases.iter().any(|a| a.to_lowercase() == q))
-        })
-        .or_else(|| {
-            nodes.iter().find(|n| {
-                n.label.to_lowercase().contains(&q) || n.local_id.to_lowercase().contains(&q)
-            })
-        })
+        .find(|n| n.aliases.iter().any(|a| a.to_lowercase() == q))
+    {
+        return Some(n);
+    }
+
+    // 5. Substring match on label or local_id
+    if let Some(n) = nodes.iter().find(|n| {
+        n.label.to_lowercase().contains(&q) || n.local_id.to_lowercase().contains(&q)
+    }) {
+        return Some(n);
+    }
+
+    // 6. Multi-word matching: split query and check if all words appear in label
+    let words: Vec<&str> = q.split_whitespace().collect();
+    if words.len() > 1 {
+        if let Some(n) = nodes.iter().find(|n| {
+            let label = n.label.to_lowercase();
+            words.iter().all(|w| label.contains(w))
+        }) {
+            return Some(n);
+        }
+    }
+
+    // 7. Fuzzy matching: check if any word in query matches any word in label
+    for word in &words {
+        if let Some(n) = nodes.iter().find(|n| {
+            let label = n.label.to_lowercase();
+            label.contains(word)
+        }) {
+            return Some(n);
+        }
+    }
+
+    // 8. Technology matching: check if query matches technology
+    if let Some(n) = nodes.iter().find(|n| {
+        n.technology
+            .as_deref()
+            .map(|t| t.to_lowercase().contains(&q))
+            .unwrap_or(false)
+    }) {
+        return Some(n);
+    }
+
+    None
 }
 
 fn build_explain(
@@ -159,10 +207,37 @@ fn build_explain(
     );
 
     let caller_count = incoming.len();
+    let outgoing_count = outgoing.len();
+    
+    // SPOF warning: single caller
     if caller_count == 1 && matches!(node.kind.as_str(), "service" | "container") {
         spof_warnings.push(format!(
             "{} has only 1 caller \u{2014} SPOF risk",
             node.label
+        ));
+    }
+
+    // Hub warning: many incoming and outgoing connections
+    if caller_count >= 3 && outgoing_count >= 3 {
+        spof_warnings.push(format!(
+            "{} is a hub node ({} in, {} out) \u{2014} high coupling",
+            node.label, caller_count, outgoing_count
+        ));
+    }
+
+    // Fan-out warning: many outgoing dependencies
+    if outgoing_count >= 5 {
+        spof_warnings.push(format!(
+            "{} has {} outgoing dependencies \u{2014} high fan-out",
+            node.label, outgoing_count
+        ));
+    }
+
+    // Single point of failure: many incoming, few outgoing
+    if caller_count >= 3 && outgoing_count <= 1 {
+        spof_warnings.push(format!(
+            "{} is called by {} elements but only depends on {} \u{2014} bottleneck risk",
+            node.label, caller_count, outgoing_count
         ));
     }
 

@@ -48,34 +48,37 @@ pub(crate) fn get_mcp_tool_profile() -> ToolProfile {
     // Check environment variable first
     if let Ok(profile) = std::env::var(ENV_MCP_TOOL_PROFILE) {
         return match profile.as_str() {
-            "legacy" => ToolProfile::Legacy,
-            "full" => ToolProfile::Legacy,
-            "arch" => ToolProfile::Legacy,
-            "coding" => ToolProfile::Legacy,
-            "minimal" => ToolProfile::Legacy,
+            "minimal" => ToolProfile::Minimal,
+            "coding" => ToolProfile::Coding,
+            "arch" => ToolProfile::Arch,
+            "full" | "legacy" => ToolProfile::Full,
             _ => ToolProfile::Default,
         };
     }
 
-    // Default to new default profile
+    // Default to coding profile
     ToolProfile::Default
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ToolProfile {
+    /// Minimal: 5 core tools for basic architecture queries
+    Minimal,
+    /// Coding: 12 tools for active development workflows
+    Coding,
+    /// Arch: 18 tools for architecture review and governance
+    Arch,
+    /// Full: all tools (legacy compatibility)
+    Full,
+    /// Default alias (maps to Coding)
     Default,
-    Legacy,
 }
 
 /// Tools that write under `.sruja`, mutate git state, run user-supplied gate commands, or may apply repo changes.
 pub(crate) const MCP_MUTATING_TOOLS: &[&str] = &[
-    "sruja_propose_topology_change",
-    "sruja_evaluate_mutation",
-    "sruja_commit_evolution",
     "sruja_add_element",
     "sruja_add_relationship",
     "sruja_propose_change",
-    "sruja_ai_scratchpad",
     "sruja_sandbox",
     "sruja_evaluate_proposal",
     "sruja_record_learning",
@@ -94,21 +97,51 @@ pub(crate) fn is_mutating_mcp_tool(name: &str) -> bool {
     MCP_MUTATING_TOOLS.contains(&name)
 }
 
-// Default Agent-Native profile (13 focused tools)
-pub(crate) const DEFAULT_TOOLS: &[&str] = &[
-    "sruja_get_boundaries",
-    "sruja_suggest_fix",
-    "sruja_check_violations",
-    "sruja_verify_task",
-    "sruja_get_decisions",
+/// Minimal profile: 5 core tools for basic architecture queries
+const MINIMAL_TOOLS: &[&str] = &[
+    "sruja_list_architecture_index",
     "sruja_get_topology",
     "sruja_get_elements",
+    "sruja_check_drift",
+    "sruja_check_violations",
+];
+
+/// Coding profile: 12 tools for active development workflows
+const CODING_TOOLS: &[&str] = &[
     "sruja_list_architecture_index",
+    "sruja_get_topology",
+    "sruja_get_elements",
+    "sruja_check_drift",
+    "sruja_check_violations",
+    "sruja_get_boundaries",
+    "sruja_suggest_fix",
+    "sruja_verify_task",
     "sruja_get_task_context",
     "sruja_get_repomap",
-    "sruja_check_drift",
     "sruja_classify",
     "sruja_sync_ide_rules",
+];
+
+/// Arch profile: 18 tools for architecture review and governance
+const ARCH_TOOLS: &[&str] = &[
+    "sruja_list_architecture_index",
+    "sruja_get_topology",
+    "sruja_get_elements",
+    "sruja_check_drift",
+    "sruja_check_violations",
+    "sruja_get_boundaries",
+    "sruja_suggest_fix",
+    "sruja_verify_task",
+    "sruja_get_task_context",
+    "sruja_get_repomap",
+    "sruja_classify",
+    "sruja_sync_ide_rules",
+    "sruja_get_decisions",
+    "sruja_critique",
+    "sruja_get_focus_briefing",
+    "sruja_get_context_score",
+    "sruja_preflight_check",
+    "sruja_verify_architecture",
 ];
 
 pub(crate) fn mcp_tools_for_list_with_readonly(readonly: bool, profile: ToolProfile) -> Vec<Value> {
@@ -127,11 +160,28 @@ pub(crate) fn mcp_tools_for_list_with_readonly(readonly: bool, profile: ToolProf
     };
 
     // Then filter by profile
-    if profile == ToolProfile::Default {
-        filtered_defs.retain(|t| {
-            let tool_name = t.get("name").and_then(|n| n.as_str()).unwrap_or("");
-            DEFAULT_TOOLS.contains(&tool_name)
-        });
+    match profile {
+        ToolProfile::Minimal => {
+            filtered_defs.retain(|t| {
+                let tool_name = t.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                MINIMAL_TOOLS.contains(&tool_name)
+            });
+        }
+        ToolProfile::Coding | ToolProfile::Default => {
+            filtered_defs.retain(|t| {
+                let tool_name = t.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                CODING_TOOLS.contains(&tool_name)
+            });
+        }
+        ToolProfile::Arch => {
+            filtered_defs.retain(|t| {
+                let tool_name = t.get("name").and_then(|n| n.as_str()).unwrap_or("");
+                ARCH_TOOLS.contains(&tool_name)
+            });
+        }
+        ToolProfile::Full => {
+            // No filtering - return all tools
+        }
     }
 
     filtered_defs
