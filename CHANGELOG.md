@@ -5,6 +5,20 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.57.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.56.0...sruja-v0.57.0) (2026-06-02)
+
+
+### Features
+
+* add classification generation to init --scan ([7d21e7f](https://github.com/sruja-ai/sruja/commit/7d21e7f32291b8e71ddfb13b8be7c7d861c238e9))
+* make human commands work without federation ([eaa315b](https://github.com/sruja-ai/sruja/commit/eaa315bcffd370728d311335a6332e57c4a421c7))
+* Phase 1 human commands — map, trace, explain, before, what-if ([beee897](https://github.com/sruja-ai/sruja/commit/beee897150cc35c1337487efa1962fc0f5895bd4))
+
+
+### Bug Fixes
+
+* restore original repo.sruja with Agent container ([0f13ee6](https://github.com/sruja-ai/sruja/commit/0f13ee6040bd396155739dc94cb5dca54bff75f5))
+
 ## [0.56.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.55.1...sruja-v0.56.0) (2026-06-01)
 
 
