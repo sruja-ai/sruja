@@ -44,7 +44,7 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         });
     }
 
-    let orphans = find_orphan_modules(graph);
+    let orphans = find_orphan_modules_with_config(graph, config.exclude_barrel_files);
     for orphan in &orphans {
         let sources = collect_node_path_source(graph, orphan);
         violations.push(Violation {
@@ -97,7 +97,7 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         });
     }
 
-    let god_modules = find_god_modules(graph, config.god_module_threshold);
+    let god_modules = find_god_modules_with_config(graph, config.god_module_threshold, config.exclude_barrel_files);
     for module in &god_modules {
         let sources = collect_node_path_source(graph, &module.name);
         violations.push(Violation {
@@ -526,7 +526,14 @@ fn top_targets_for_module(graph: &sruja_scan::Graph, module_id: &str, n: usize) 
 /// Find modules with no incoming or outgoing dependency edges.
 /// Excludes containment edges (module:->file) and nodes that look like doc/tools/tests
 /// so health score is not dominated by false positives in Go/JS/Python repos.
+///
+/// If `exclude_barrel_files` is true, also excludes barrel files like mod.rs, __init__.py, index.ts.
 pub fn find_orphan_modules(graph: &Graph) -> Vec<String> {
+    find_orphan_modules_with_config(graph, true)
+}
+
+/// Find orphan modules with configurable barrel file exclusion.
+pub fn find_orphan_modules_with_config(graph: &Graph, exclude_barrel_files: bool) -> Vec<String> {
     let mut has_incoming: HashSet<&str> = HashSet::new();
     let mut has_outgoing: HashSet<&str> = HashSet::new();
 
@@ -554,6 +561,14 @@ pub fn find_orphan_modules(graph: &Graph) -> Vec<String> {
         .filter(|n| {
             let path = n.path.as_deref().unwrap_or("");
             !is_likely_framework_consumed(path, &n.id)
+        })
+        .filter(|n| {
+            if exclude_barrel_files {
+                let path = n.path.as_deref().unwrap_or("");
+                !sruja_scan::is_barrel_file(std::path::Path::new(path))
+            } else {
+                true
+            }
         })
         .map(|n| n.id.clone())
         .collect()
@@ -658,7 +673,7 @@ struct GodModuleInfo {
     dependency_count: usize,
 }
 
-fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
+fn find_god_modules_with_config(graph: &Graph, threshold: usize, exclude_barrel_files: bool) -> Vec<GodModuleInfo> {
     let mut dep_counts: HashMap<&str, usize> = HashMap::new();
 
     for edge in &graph.edges {
@@ -672,6 +687,14 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
         .filter(|n| {
             let path = n.path.as_deref().unwrap_or("");
             !is_likely_doc_or_tool_path(path, &n.id) && !is_likely_entry_point(path, &n.id)
+        })
+        .filter(|n| {
+            if exclude_barrel_files {
+                let path = n.path.as_deref().unwrap_or("");
+                !sruja_scan::is_barrel_file(std::path::Path::new(path))
+            } else {
+                true
+            }
         })
         .filter_map(|n| {
             let count = dep_counts.get(n.id.as_str()).copied().unwrap_or(0);
@@ -690,8 +713,8 @@ fn find_god_modules(graph: &Graph, threshold: usize) -> Vec<GodModuleInfo> {
 #[cfg(test)]
 mod tests {
     use super::{
-        detect_architectural_drift_with_config, find_circular_dependencies, find_god_modules,
-        find_layer_violations_advanced, find_orphan_modules,
+        detect_architectural_drift_with_config, find_circular_dependencies,
+        find_god_modules_with_config, find_layer_violations_advanced, find_orphan_modules_with_config,
     };
     use crate::types::{DriftConfig, ViolationKind};
     use sruja_scan::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
@@ -774,7 +797,7 @@ mod tests {
             .push(node("b", NodeKind::new(NodeKind::MODULE), Some("src/b.rs")));
         g.edges.push(edge("a", "b"));
 
-        let orphans = find_orphan_modules(&g);
+        let orphans = find_orphan_modules_with_config(&g, true);
         assert!(orphans.is_empty(), "a and b are connected");
 
         g.nodes.push(node(
@@ -782,9 +805,127 @@ mod tests {
             NodeKind::new(NodeKind::MODULE),
             Some("src/orphan.rs"),
         ));
-        let orphans = find_orphan_modules(&g);
+        let orphans = find_orphan_modules_with_config(&g, true);
         assert_eq!(orphans.len(), 1);
         assert_eq!(orphans[0], "orphan");
+    }
+
+    #[test]
+    fn find_orphan_modules_excludes_barrel_files_when_configured() {
+        let mut g = Graph::default();
+        // Use paths that won't be excluded by is_likely_entry_point
+        // Note: is_likely_entry_point excludes files ending with mod.rs, __init__.py, index.ts, etc.
+        g.nodes.push(node(
+            "helper_mod",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/utils/helper_mod.rs"),
+        ));
+        g.nodes.push(node(
+            "helper_init",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/utils/helper_init.py"),
+        ));
+        g.nodes.push(node(
+            "helper_index",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/utils/helper_index.ts"),
+        ));
+        g.nodes.push(node(
+            "real_orphan",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/real_orphan.rs"),
+        ));
+
+        // is_likely_entry_point excludes helper_mod.rs and helper_index.ts
+        // So without barrel exclusion, only 2 are orphans
+        let orphans = find_orphan_modules_with_config(&g, false);
+        assert_eq!(orphans.len(), 2, "entry point filter excludes some files");
+        assert!(orphans.contains(&"helper_init".to_string()));
+        assert!(orphans.contains(&"real_orphan".to_string()));
+
+        // With barrel exclusion: still 2 (none are barrel files)
+        let orphans = find_orphan_modules_with_config(&g, true);
+        assert_eq!(orphans.len(), 2, "non-barrel files should not be excluded");
+    }
+
+    #[test]
+    fn find_god_modules_excludes_barrel_files_when_configured() {
+        let mut g = Graph::default();
+        // Create a mod.rs node with many dependencies (in /tests/ to avoid entry point detection)
+        // is_likely_entry_point already excludes mod.rs in /tests/ directory
+        g.nodes.push(node(
+            "barrel",
+            NodeKind::new(NodeKind::MODULE),
+            Some("tests/utils/helpers/mod.rs"),
+        ));
+        for i in 0..15 {
+            let dep = format!("dep_{}", i);
+            g.nodes
+                .push(node(&dep, NodeKind::new(NodeKind::MODULE), Some(&format!("src/{}.rs", dep))));
+            g.edges.push(edge("barrel", &dep));
+        }
+        // Create a regular node with many dependencies
+        g.nodes.push(node(
+            "god",
+            NodeKind::new(NodeKind::MODULE),
+            Some("src/god.rs"),
+        ));
+        for i in 0..15 {
+            let dep = format!("god_dep_{}", i);
+            g.nodes
+                .push(node(&dep, NodeKind::new(NodeKind::MODULE), Some(&format!("src/{}.rs", dep))));
+            g.edges.push(edge("god", &dep));
+        }
+
+        // is_likely_entry_point already excludes mod.rs in /tests/ directory
+        // So even without barrel exclusion, only god is a god module
+        let gods = find_god_modules_with_config(&g, 10, false);
+        assert_eq!(gods.len(), 1, "entry point filter already excludes barrel files");
+        assert_eq!(gods[0].name, "god");
+
+        // With barrel exclusion: same result
+        let gods = find_god_modules_with_config(&g, 10, true);
+        assert_eq!(gods.len(), 1, "barrel exclusion confirms entry point filter");
+        assert_eq!(gods[0].name, "god");
+    }
+
+    #[test]
+    fn find_orphan_modules_excludes_mod_rs_and_init_py() {
+        let mut g = Graph::default();
+        // These are barrel files in /tests/ directory
+        // is_likely_entry_point excludes them because they end with mod.rs/__init__.py/index.ts
+        // and don't contain "/tests/" (they START with "tests/")
+        g.nodes.push(node(
+            "mod_node",
+            NodeKind::new(NodeKind::MODULE),
+            Some("tests/helpers/mod.rs"),
+        ));
+        g.nodes.push(node(
+            "init_node",
+            NodeKind::new(NodeKind::MODULE),
+            Some("tests/helpers/__init__.py"),
+        ));
+        g.nodes.push(node(
+            "index_node",
+            NodeKind::new(NodeKind::MODULE),
+            Some("tests/helpers/index.ts"),
+        ));
+        g.nodes.push(node(
+            "real_orphan",
+            NodeKind::new(NodeKind::MODULE),
+            Some("tests/real_orphan.rs"),
+        ));
+
+        // is_likely_entry_point already excludes mod.rs, __init__.py, index.ts
+        // So even without barrel exclusion, only real_orphan is an orphan
+        let orphans = find_orphan_modules_with_config(&g, false);
+        assert_eq!(orphans.len(), 1, "entry point filter already excludes barrel files");
+        assert_eq!(orphans[0], "real_orphan");
+
+        // With barrel exclusion: same result
+        let orphans = find_orphan_modules_with_config(&g, true);
+        assert_eq!(orphans.len(), 1, "barrel exclusion confirms entry point filter");
+        assert_eq!(orphans[0], "real_orphan");
     }
 
     #[test]
@@ -838,7 +979,7 @@ mod tests {
             g.edges.push(edge("docs_mod", &dep));
         }
 
-        let god_modules = find_god_modules(&g, 3);
+        let god_modules = find_god_modules_with_config(&g, 3, true);
         assert_eq!(god_modules.len(), 1);
         assert_eq!(god_modules[0].name, "god");
         assert_eq!(god_modules[0].dependency_count, 3);
@@ -888,6 +1029,7 @@ mod tests {
 
         let config = DriftConfig {
             god_module_threshold: 2,
+            exclude_barrel_files: true,
         };
         let report = detect_architectural_drift_with_config(&g, &config);
 

@@ -52,7 +52,8 @@ pub use graph::{
 };
 pub use repomap::{generate_repomap, generate_repomap_from_graph, RepoMapOptions};
 pub use scan_scope::{
-    is_path_production_relevant, should_exclude_with_config, ScanScope, DEFAULT_EXCLUDE_PATTERNS,
+    is_barrel_file, is_path_production_relevant, should_exclude_with_config, ScanScope,
+    BARREL_PATTERNS, DEFAULT_EXCLUDE_PATTERNS,
 };
 pub use tree_sitter::{detect_language, parse_file, scan_with_tree_sitter, ScanConfig};
 

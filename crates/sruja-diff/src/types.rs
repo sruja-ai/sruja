@@ -205,12 +205,15 @@ impl Default for HealthScorePenalties {
 pub struct DriftConfig {
     /// Minimum number of dependencies before a module is flagged as a god module.
     pub god_module_threshold: usize,
+    /// Whether to exclude barrel files (mod.rs, __init__.py, index.ts) from orphan and god-module checks.
+    pub exclude_barrel_files: bool,
 }
 
 impl Default for DriftConfig {
     fn default() -> Self {
         Self {
             god_module_threshold: 10,
+            exclude_barrel_files: false,
         }
     }
 }

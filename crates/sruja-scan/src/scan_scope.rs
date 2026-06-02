@@ -20,6 +20,29 @@ use std::sync::{Arc, Mutex};
 
 use crate::tree_sitter::ScanConfig;
 
+/// Barrel file patterns that re-export from other modules.
+///
+/// These files are typically not architecture elements themselves but rather
+/// aggregation points. They should be excluded from orphan and god-module checks.
+///
+/// Note: `lib.rs` is intentionally excluded — it often contains real implementation
+/// code (crate root), not just re-exports.
+pub const BARREL_PATTERNS: &[&str] = &[
+    // Rust
+    "mod.rs",
+    // Python
+    "__init__.py",
+    // JavaScript/TypeScript
+    "index.js",
+    "index.ts",
+    "index.jsx",
+    "index.tsx",
+    // Go
+    "doc.go",
+    // Java
+    "package-info.java",
+];
+
 /// Default exclude patterns for production-relevant code scanning.
 ///
 /// These patterns exclude generated, vendored, fixture, docs, and evaluation-heavy
@@ -300,6 +323,27 @@ pub fn is_path_production_relevant(path: &str) -> bool {
     }
 
     true
+}
+
+/// Check if a file is a barrel file (re-export aggregator).
+///
+/// Barrel files like mod.rs, __init__.py, index.ts are typically not architecture
+/// elements themselves but rather aggregation points. They should be excluded from
+/// orphan and god-module checks.
+///
+/// # Examples
+/// ```
+/// use std::path::Path;
+/// use sruja_scan::scan_scope::is_barrel_file;
+///
+/// assert!(is_barrel_file(Path::new("crates/sruja-scan/src/mod.rs")));
+/// assert!(is_barrel_file(Path::new("src/__init__.py")));
+/// assert!(is_barrel_file(Path::new("src/index.ts")));
+/// assert!(!is_barrel_file(Path::new("src/main.rs")));
+/// ```
+pub fn is_barrel_file(path: &Path) -> bool {
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    BARREL_PATTERNS.contains(&file_name)
 }
 
 /// Check if a path should be excluded based on default patterns.
@@ -653,5 +697,34 @@ mod tests {
         // File extensions
         assert!(!is_path_production_relevant("README.md"));
         assert!(!is_path_production_relevant("ARCHITECTURE.rst"));
+    }
+
+    #[test]
+    fn test_is_barrel_file() {
+        // Rust barrel files
+        assert!(is_barrel_file(Path::new("crates/sruja-scan/src/mod.rs")));
+        assert!(is_barrel_file(Path::new("./crates/sruja-agent/src/lib.rs")));
+        assert!(is_barrel_file(Path::new("src/mod.rs")));
+        
+        // Python barrel files
+        assert!(is_barrel_file(Path::new("src/__init__.py")));
+        assert!(is_barrel_file(Path::new("package/__init__.py")));
+        
+        // JavaScript/TypeScript barrel files
+        assert!(is_barrel_file(Path::new("src/index.ts")));
+        assert!(is_barrel_file(Path::new("src/index.js")));
+        assert!(is_barrel_file(Path::new("src/index.tsx")));
+        assert!(is_barrel_file(Path::new("src/index.jsx")));
+        
+        // Go barrel files
+        assert!(is_barrel_file(Path::new("pkg/doc.go")));
+        
+        // Java barrel files
+        assert!(is_barrel_file(Path::new("src/main/java/package-info.java")));
+        
+        // Non-barrel files
+        assert!(!is_barrel_file(Path::new("src/main.rs")));
+        assert!(!is_barrel_file(Path::new("src/app.ts")));
+        assert!(!is_barrel_file(Path::new("src/utils.py")));
     }
 }

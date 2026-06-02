@@ -89,6 +89,7 @@ pub struct DriftRequest<'a> {
     pub baseline_mode: Option<&'a str>,
     pub structural_only: bool,
     pub advisory: bool,
+    pub exclude_barrel_files: bool,
 }
 
 pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
@@ -214,7 +215,11 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
         }
     } else {
         let (_, scan_scope) = resolve_scan_scope(repo_path);
-        let mut drift_result = sruja_diff::detect_architectural_drift(&actual_graph);
+        let drift_config = sruja_diff::DriftConfig {
+            exclude_barrel_files: req.exclude_barrel_files,
+            ..Default::default()
+        };
+        let mut drift_result = sruja_diff::detect_architectural_drift_with_config(&actual_graph, &drift_config);
         drift_result.scan_scope = scan_scope;
         if req.advisory {
             apply_advisory_violation_filter(&mut drift_result);

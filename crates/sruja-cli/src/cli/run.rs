@@ -336,6 +336,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             baseline_mode,
             structural_only,
             advisory,
+            exclude_barrel_files,
         } => {
             if ci {
                 let ci_format = if format == "text" {
@@ -355,6 +356,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     baseline_mode: baseline_mode.as_deref(),
                     structural_only,
                     advisory,
+                    exclude_barrel_files,
                 })
                 .await
             }

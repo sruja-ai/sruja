@@ -292,6 +292,9 @@ pub enum Commands {
         /// First-run friendly: always print scan summary; omit orphan info findings
         #[arg(long)]
         advisory: bool,
+        /// Exclude barrel files (mod.rs, __init__.py, index.ts) from orphan and god-module checks
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        exclude_barrel_files: bool,
     },
     /// Structured drift payload for AI host injection (`drift_state/v1` JSON)
     #[command(name = "drift-state")]
