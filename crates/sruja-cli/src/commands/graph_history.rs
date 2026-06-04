@@ -51,15 +51,15 @@ pub fn graph_history(
             }
         })
         .filter(|s| {
-            if let Some(ref elem) = element {
+            if let Some(elem) = element {
                 s.deltas.iter().any(|d| d.references_element(elem))
             } else {
                 true
             }
         })
         .filter(|s| {
-            if let Some(ref k) = kind {
-                s.deltas.iter().any(|d| d.kind_str() == *k)
+            if let Some(k) = kind {
+                s.deltas.iter().any(|d| d.kind_str() == k)
             } else {
                 true
             }

@@ -123,7 +123,10 @@ pub async fn system_map(
     let filtered_count = total_nodes - filtered_nodes.len();
 
     // Build set of filtered node IDs for edge filtering
-    let filtered_ids: HashSet<&str> = filtered_nodes.iter().map(|n| n.canonical_id.as_str()).collect();
+    let filtered_ids: HashSet<&str> = filtered_nodes
+        .iter()
+        .map(|n| n.canonical_id.as_str())
+        .collect();
 
     let mut repo_groups: BTreeMap<String, Vec<&SystemIndexNode>> = BTreeMap::new();
     for node in &filtered_nodes {
@@ -240,7 +243,11 @@ fn print_map_text(o: &MapOutput) {
     if o.filtered_count > 0 {
         println!(
             "  ({})",
-            format!("{} modules/docs/assets hidden — use --all to show", o.filtered_count).dimmed()
+            format!(
+                "{} modules/docs/assets hidden — use --all to show",
+                o.filtered_count
+            )
+            .dimmed()
         );
     }
     println!();

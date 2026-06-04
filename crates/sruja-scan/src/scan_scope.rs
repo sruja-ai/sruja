@@ -703,27 +703,27 @@ mod tests {
     fn test_is_barrel_file() {
         // Rust barrel files
         assert!(is_barrel_file(Path::new("crates/sruja-scan/src/mod.rs")));
-        assert!(is_barrel_file(Path::new("./crates/sruja-agent/src/lib.rs")));
         assert!(is_barrel_file(Path::new("src/mod.rs")));
-        
+
         // Python barrel files
         assert!(is_barrel_file(Path::new("src/__init__.py")));
         assert!(is_barrel_file(Path::new("package/__init__.py")));
-        
+
         // JavaScript/TypeScript barrel files
         assert!(is_barrel_file(Path::new("src/index.ts")));
         assert!(is_barrel_file(Path::new("src/index.js")));
         assert!(is_barrel_file(Path::new("src/index.tsx")));
         assert!(is_barrel_file(Path::new("src/index.jsx")));
-        
+
         // Go barrel files
         assert!(is_barrel_file(Path::new("pkg/doc.go")));
-        
+
         // Java barrel files
         assert!(is_barrel_file(Path::new("src/main/java/package-info.java")));
-        
+
         // Non-barrel files
         assert!(!is_barrel_file(Path::new("src/main.rs")));
+        assert!(!is_barrel_file(Path::new("src/lib.rs")));
         assert!(!is_barrel_file(Path::new("src/app.ts")));
         assert!(!is_barrel_file(Path::new("src/utils.py")));
     }

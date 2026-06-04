@@ -96,9 +96,10 @@ fn resolve_entity<'a>(nodes: &'a [SystemIndexNode], query: &str) -> Option<&'a S
     }
 
     // 5. Substring match on label or local_id
-    if let Some(n) = nodes.iter().find(|n| {
-        n.label.to_lowercase().contains(&q) || n.local_id.to_lowercase().contains(&q)
-    }) {
+    if let Some(n) = nodes
+        .iter()
+        .find(|n| n.label.to_lowercase().contains(&q) || n.local_id.to_lowercase().contains(&q))
+    {
         return Some(n);
     }
 
@@ -208,7 +209,7 @@ fn build_explain(
 
     let caller_count = incoming.len();
     let outgoing_count = outgoing.len();
-    
+
     // SPOF warning: single caller
     if caller_count == 1 && matches!(node.kind.as_str(), "service" | "container") {
         spof_warnings.push(format!(

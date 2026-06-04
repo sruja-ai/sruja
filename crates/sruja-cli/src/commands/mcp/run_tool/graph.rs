@@ -459,11 +459,7 @@ pub(crate) async fn try_run(
             let matched_learnings: Vec<Value> = kg
                 .learnings
                 .values()
-                .filter(|l| {
-                    l.affected_elements
-                        .iter()
-                        .any(|e| node_ids.contains(e))
-                })
+                .filter(|l| l.affected_elements.iter().any(|e| node_ids.contains(e)))
                 .map(|l| {
                     json!({
                         "id": l.id,
@@ -630,6 +626,52 @@ pub(crate) async fn try_run(
                 grounded,
             );
             finish(Ok(serde_json::to_string_pretty(&wrapped)?))
+        }
+        "sruja_get_quick_context" => {
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+
+            let centrality = sruja_scan::graph::centrality::compute_all_centrality(&graph);
+            let mut top_modules: Vec<_> = centrality.iter().collect();
+            top_modules.sort_by(|a, b| b.1.pagerank.total_cmp(&a.1.pagerank));
+
+            let entrypoints: Vec<&String> = graph
+                .nodes
+                .iter()
+                .filter(|n| !graph.edges.iter().any(|e| e.target == n.id))
+                .map(|n| &n.id)
+                .collect();
+
+            let stores: Vec<Value> = graph
+                .nodes
+                .iter()
+                .filter(|n| n.kind.as_str() == "database" || n.kind.as_str() == "queue")
+                .map(|n| {
+                    json!({
+                        "id": n.id,
+                        "kind": n.kind.as_str()
+                    })
+                })
+                .collect();
+
+            let summary = json!({
+                "total_nodes": graph.nodes.len(),
+                "total_edges": graph.edges.len(),
+                "top_modules": top_modules.iter().take(5).map(|(id, s)| {
+                    json!({
+                        "id": id,
+                        "pagerank": s.pagerank
+                    })
+                }).collect::<Vec<_>>(),
+                "entrypoints": entrypoints,
+                "data_stores": stores,
+                "auto_context": {
+                    "services": graph.auto_context.services_from_compose,
+                    "ci_pipelines": graph.auto_context.ci_pipelines,
+                    "infra": graph.auto_context.infra_dependencies
+                }
+            });
+
+            finish(Ok(serde_json::to_string_pretty(&summary)?))
         }
         _ => Ok(None),
     }

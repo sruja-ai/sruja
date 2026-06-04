@@ -522,6 +522,7 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         edges,
         incidents: Vec::new(),
         confidence: None,
+        auto_context: Default::default(),
     };
     graph.canonicalize();
     Ok(graph)

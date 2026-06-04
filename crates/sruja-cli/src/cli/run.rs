@@ -402,6 +402,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
+        Commands::Density { path, format } => commands::density(&path, &format).await,
         Commands::Status {
             path,
             format,
@@ -827,9 +828,13 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 element,
                 kind,
                 format,
-            } => {
-                commands::graph_history(&repo, since.as_deref(), element.as_deref(), kind.as_deref(), &format)
-            }
+            } => commands::graph_history(
+                &repo,
+                since.as_deref(),
+                element.as_deref(),
+                kind.as_deref(),
+                &format,
+            ),
         },
         Commands::Requirements {
             repo,
@@ -837,13 +842,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             priority,
             status,
         } => {
-            commands::requirements_list(
-                &repo,
-                &format,
-                priority.as_deref(),
-                status.as_deref(),
-            )
-            .await
+            commands::requirements_list(&repo, &format, priority.as_deref(), status.as_deref())
+                .await
         }
         Commands::Agent { cmd } => match cmd {
             AgentCommand::History {
@@ -1326,12 +1326,22 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 focus,
                 all,
             } => {
-                commands::map_cmd::system_map(&repo, &format, team.as_deref(), focus.as_deref(), all)
-                    .await
+                commands::map_cmd::system_map(
+                    &repo,
+                    &format,
+                    team.as_deref(),
+                    focus.as_deref(),
+                    all,
+                )
+                .await
             }
-            HumanCommand::Before { file, repo, format, ci, threshold } => {
-                commands::before::before(&repo, &file, &format, ci, threshold).await
-            }
+            HumanCommand::Before {
+                file,
+                repo,
+                format,
+                ci,
+                threshold,
+            } => commands::before::before(&repo, &file, &format, ci, threshold).await,
             HumanCommand::Daily { repo, format } => {
                 commands::review(&repo, &format, false, false).await
             }

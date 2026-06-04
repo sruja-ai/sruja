@@ -129,6 +129,7 @@ pub fn program_to_graph(program: &Program) -> Graph {
         edges,
         incidents,
         confidence: None,
+        auto_context: Default::default(),
     }
 }
 

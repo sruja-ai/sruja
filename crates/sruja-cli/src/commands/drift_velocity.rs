@@ -36,7 +36,10 @@ impl std::fmt::Display for TrendDirection {
 }
 
 /// Compute drift velocity for a given period
-pub fn compute_velocity(repo: &Path, period_days: i64) -> Result<DriftVelocity, crate::commands::CliError> {
+pub fn compute_velocity(
+    repo: &Path,
+    period_days: i64,
+) -> Result<DriftVelocity, crate::commands::CliError> {
     let snapshots = load_snapshots(repo)?;
     let cutoff = Utc::now() - Duration::days(period_days);
 
@@ -135,12 +138,7 @@ pub fn format_velocity_text(velocity: &DriftVelocity) -> String {
     writeln!(output, "  Edges: {:+}", velocity.edge_count_delta).unwrap();
 
     if velocity.violation_count_delta != 0 {
-        writeln!(
-            output,
-            "  Violations: {:+}",
-            velocity.violation_count_delta
-        )
-        .unwrap();
+        writeln!(output, "  Violations: {:+}", velocity.violation_count_delta).unwrap();
     }
 
     writeln!(output, "  Trend: {}", velocity.trend).unwrap();

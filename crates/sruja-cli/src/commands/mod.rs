@@ -4,6 +4,7 @@
 //! See REFACTORING_PLAN.md for the layout.
 
 pub mod author;
+pub mod density;
 pub mod dsl_domain;
 pub mod intent_domain;
 pub mod scan_domain;
@@ -70,6 +71,7 @@ pub fn parse_sruja_file<P: AsRef<std::path::Path>>(
 }
 pub use author::{author_evidence, author_propose};
 pub use confidence::{confidence, format_confidence, ConfidenceOptions};
+pub use density::density;
 pub use drift_state::drift_state_print as drift_state;
 pub use dsl_domain::completions::completions;
 pub use dsl_domain::generate::generate_prompt;
@@ -132,24 +134,24 @@ pub(crate) mod context;
 pub(crate) mod context_events;
 pub(crate) mod context_prune;
 pub mod decision;
-pub mod requirements;
 pub(crate) mod diagnostic_vfs;
 pub(crate) mod drift_state;
 pub mod event;
 pub(crate) mod mcp_prompts;
 pub(crate) mod mcp_resources;
 pub(crate) mod memory_cmd;
+pub mod requirements;
 
 pub use context::{context_export, ContextRequest};
 pub use decision::{
     create_decision_record, decision_accept, decision_link, decision_list, decision_new,
     decision_show, decision_supersede, decision_trace, list_decisions,
 };
-pub use requirements::requirements_list;
 pub use event::{event_append, event_list};
 pub use memory_cmd::{
     memory_archive, memory_reindex, memory_search, memory_skill_stats, memory_timeline,
 };
+pub use requirements::requirements_list;
 
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
     scan_repo_cached_with_opts(repo_path, false)

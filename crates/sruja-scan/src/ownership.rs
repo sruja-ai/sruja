@@ -268,7 +268,10 @@ mod tests {
 
         let result = parse_codeowners(dir.path());
         assert!(result.is_some());
-        assert_eq!(result.unwrap().owners.get("*.rs"), Some(&"@team".to_string()));
+        assert_eq!(
+            result.unwrap().owners.get("*.rs"),
+            Some(&"@team".to_string())
+        );
     }
 
     #[test]
@@ -308,7 +311,10 @@ mod tests {
         let result = parse_codeowners(dir.path()).unwrap();
         assert_eq!(result.owners.len(), 3);
         assert_eq!(result.owners.get("*.rs"), Some(&"@rust-team".to_string()));
-        assert_eq!(result.owners.get("*.ts"), Some(&"@frontend-team".to_string()));
+        assert_eq!(
+            result.owners.get("*.ts"),
+            Some(&"@frontend-team".to_string())
+        );
         assert_eq!(result.owners.get("/src/"), Some(&"@core-team".to_string()));
     }
 
@@ -352,11 +358,7 @@ mod tests {
     fn test_parse_manifest_owners_npm_maintainers() {
         let dir = tempfile::tempdir().unwrap();
         let pkg = dir.path().join("package.json");
-        std::fs::write(
-            &pkg,
-            r#"{"name": "test", "maintainers": ["Alice", "Bob"]}"#,
-        )
-        .unwrap();
+        std::fs::write(&pkg, r#"{"name": "test", "maintainers": ["Alice", "Bob"]}"#).unwrap();
 
         let result = parse_manifest_owners(dir.path());
         assert_eq!(
@@ -464,7 +466,10 @@ mod tests {
         );
         assert_eq!(OwnershipSource::GitHistory, OwnershipSource::GitHistory);
         assert_eq!(OwnershipSource::Fallback, OwnershipSource::Fallback);
-        assert_ne!(OwnershipSource::Codeowners, OwnershipSource::PackageManifest);
+        assert_ne!(
+            OwnershipSource::Codeowners,
+            OwnershipSource::PackageManifest
+        );
     }
 
     #[test]

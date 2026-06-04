@@ -97,7 +97,11 @@ pub fn detect_architectural_drift_with_config(graph: &Graph, config: &DriftConfi
         });
     }
 
-    let god_modules = find_god_modules_with_config(graph, config.god_module_threshold, config.exclude_barrel_files);
+    let god_modules = find_god_modules_with_config(
+        graph,
+        config.god_module_threshold,
+        config.exclude_barrel_files,
+    );
     for module in &god_modules {
         let sources = collect_node_path_source(graph, &module.name);
         violations.push(Violation {
@@ -673,7 +677,11 @@ struct GodModuleInfo {
     dependency_count: usize,
 }
 
-fn find_god_modules_with_config(graph: &Graph, threshold: usize, exclude_barrel_files: bool) -> Vec<GodModuleInfo> {
+fn find_god_modules_with_config(
+    graph: &Graph,
+    threshold: usize,
+    exclude_barrel_files: bool,
+) -> Vec<GodModuleInfo> {
     let mut dep_counts: HashMap<&str, usize> = HashMap::new();
 
     for edge in &graph.edges {
@@ -714,7 +722,8 @@ fn find_god_modules_with_config(graph: &Graph, threshold: usize, exclude_barrel_
 mod tests {
     use super::{
         detect_architectural_drift_with_config, find_circular_dependencies,
-        find_god_modules_with_config, find_layer_violations_advanced, find_orphan_modules_with_config,
+        find_god_modules_with_config, find_layer_violations_advanced,
+        find_orphan_modules_with_config,
     };
     use crate::types::{DriftConfig, ViolationKind};
     use sruja_scan::{Edge, EdgeEvidence, EdgeKind, Graph, Node, NodeKind};
@@ -860,8 +869,11 @@ mod tests {
         ));
         for i in 0..15 {
             let dep = format!("dep_{}", i);
-            g.nodes
-                .push(node(&dep, NodeKind::new(NodeKind::MODULE), Some(&format!("src/{}.rs", dep))));
+            g.nodes.push(node(
+                &dep,
+                NodeKind::new(NodeKind::MODULE),
+                Some(&format!("src/{}.rs", dep)),
+            ));
             g.edges.push(edge("barrel", &dep));
         }
         // Create a regular node with many dependencies
@@ -872,20 +884,31 @@ mod tests {
         ));
         for i in 0..15 {
             let dep = format!("god_dep_{}", i);
-            g.nodes
-                .push(node(&dep, NodeKind::new(NodeKind::MODULE), Some(&format!("src/{}.rs", dep))));
+            g.nodes.push(node(
+                &dep,
+                NodeKind::new(NodeKind::MODULE),
+                Some(&format!("src/{}.rs", dep)),
+            ));
             g.edges.push(edge("god", &dep));
         }
 
         // is_likely_entry_point already excludes mod.rs in /tests/ directory
         // So even without barrel exclusion, only god is a god module
         let gods = find_god_modules_with_config(&g, 10, false);
-        assert_eq!(gods.len(), 1, "entry point filter already excludes barrel files");
+        assert_eq!(
+            gods.len(),
+            1,
+            "entry point filter already excludes barrel files"
+        );
         assert_eq!(gods[0].name, "god");
 
         // With barrel exclusion: same result
         let gods = find_god_modules_with_config(&g, 10, true);
-        assert_eq!(gods.len(), 1, "barrel exclusion confirms entry point filter");
+        assert_eq!(
+            gods.len(),
+            1,
+            "barrel exclusion confirms entry point filter"
+        );
         assert_eq!(gods[0].name, "god");
     }
 
@@ -919,12 +942,20 @@ mod tests {
         // is_likely_entry_point already excludes mod.rs, __init__.py, index.ts
         // So even without barrel exclusion, only real_orphan is an orphan
         let orphans = find_orphan_modules_with_config(&g, false);
-        assert_eq!(orphans.len(), 1, "entry point filter already excludes barrel files");
+        assert_eq!(
+            orphans.len(),
+            1,
+            "entry point filter already excludes barrel files"
+        );
         assert_eq!(orphans[0], "real_orphan");
 
         // With barrel exclusion: same result
         let orphans = find_orphan_modules_with_config(&g, true);
-        assert_eq!(orphans.len(), 1, "barrel exclusion confirms entry point filter");
+        assert_eq!(
+            orphans.len(),
+            1,
+            "barrel exclusion confirms entry point filter"
+        );
         assert_eq!(orphans[0], "real_orphan");
     }
 

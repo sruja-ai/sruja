@@ -107,6 +107,44 @@ pub enum EdgeConfidence {
     Ambiguous,
 }
 
+/// Auto-discovered context from repository files (docker-compose, CI, terraform, README).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutoContext {
+    /// Service names extracted from docker-compose files
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub services_from_compose: Vec<String>,
+    /// CI pipeline filenames from .github/workflows/
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ci_pipelines: Vec<String>,
+    /// Infrastructure file paths from terraform/infra directories
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub infra_dependencies: Vec<String>,
+    /// Architecture section extracted from README.md
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub readme_summary: Option<String>,
+    /// URLs referenced in .env.example
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub referenced_urls: Vec<String>,
+}
+
+impl AutoContext {
+    pub fn is_empty(&self) -> bool {
+        self.services_from_compose.is_empty()
+            && self.ci_pipelines.is_empty()
+            && self.infra_dependencies.is_empty()
+            && self.readme_summary.is_none()
+            && self.referenced_urls.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum BlastRadiusDirection {
+    #[default]
+    Upstream,
+    Downstream,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Edge {
     pub source: String,
@@ -130,6 +168,9 @@ pub struct Graph {
     /// Overall graph discovery confidence (0-100)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confidence: Option<u8>,
+    /// Auto-discovered context from repository files
+    #[serde(default, skip_serializing_if = "AutoContext::is_empty")]
+    pub auto_context: AutoContext,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -148,13 +189,6 @@ pub struct Incident {
     pub resolution: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lesson: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum BlastRadiusDirection {
-    Upstream,
-    Downstream,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -229,6 +263,7 @@ impl Graph {
             edges: Vec::new(),
             incidents: Vec::new(),
             confidence: None,
+            auto_context: AutoContext::default(),
         }
     }
 

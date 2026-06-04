@@ -54,7 +54,7 @@ impl Rule for GovernanceValidationRule {
                 let is_accepted = req
                     .status
                     .as_deref()
-                    .map_or(false, |s| s.to_lowercase() == "accepted");
+                    .is_some_and(|s| s.to_lowercase() == "accepted");
                 if is_accepted && req.affects.is_empty() {
                     diags.push(
                         Diagnostic::new(

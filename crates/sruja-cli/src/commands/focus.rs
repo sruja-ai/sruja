@@ -791,7 +791,7 @@ pub fn build_focus_briefing(
             .filter(|r| {
                 r.priority
                     .as_deref()
-                    .map_or(false, |p| p == "must" || p == "should")
+                    .is_some_and(|p| p == "must" || p == "should")
             })
             .count();
         if high_priority_count > 0 {
@@ -1131,10 +1131,7 @@ fn collect_reasoned_traces(graph: &KnowledgeGraph, target_id: &str) -> Vec<Reaso
 }
 
 /// Collect requirements from `.sruja` files whose `affects` include the target element.
-fn collect_linked_requirements(
-    repo_path: &Path,
-    target_id: &str,
-) -> Vec<LinkedRequirementSummary> {
+fn collect_linked_requirements(repo_path: &Path, target_id: &str) -> Vec<LinkedRequirementSummary> {
     let resolved = crate::utils::architecture_path::resolve_architecture_path(repo_path);
     let arch_path = match resolved {
         Some(p) => p,
@@ -1144,12 +1141,11 @@ fn collect_linked_requirements(
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };
-    let program = match sruja_language::Parser::new(arch_path.to_string_lossy().as_ref())
-        .parse(&content)
-    {
-        Ok(p) => p,
-        Err(_) => return Vec::new(),
-    };
+    let program =
+        match sruja_language::Parser::new(arch_path.to_string_lossy().as_ref()).parse(&content) {
+            Ok(p) => p,
+            Err(_) => return Vec::new(),
+        };
 
     program
         .items
@@ -1403,6 +1399,11 @@ pub async fn focus(
                     println!();
                     println!("{}", md);
                 }
+            }
+            // Add density hint
+            if let Some(hint) = crate::commands::density::density_hint(repo_path) {
+                println!();
+                println!("  {}", colors::dim(&hint));
             }
         }
     }

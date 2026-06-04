@@ -25,8 +25,7 @@ pub struct RequirementListItem {
 }
 
 fn parse_requirements_from_repo(repo_path: &Path) -> Result<Vec<RequirementListItem>, CliError> {
-    let resolved =
-        crate::utils::architecture_path::resolve_architecture_path(repo_path);
+    let resolved = crate::utils::architecture_path::resolve_architecture_path(repo_path);
     let arch_path = match resolved {
         Some(p) => p,
         None => return Ok(Vec::new()),
@@ -72,14 +71,14 @@ pub async fn requirements_list(
         items.retain(|r| {
             r.priority
                 .as_deref()
-                .map_or(false, |rp| rp.eq_ignore_ascii_case(p))
+                .is_some_and(|rp| rp.eq_ignore_ascii_case(p))
         });
     }
     if let Some(s) = status {
         items.retain(|r| {
             r.status
                 .as_deref()
-                .map_or(false, |rs| rs.eq_ignore_ascii_case(s))
+                .is_some_and(|rs| rs.eq_ignore_ascii_case(s))
         });
     }
 

@@ -1,4 +1,4 @@
-use crate::graph::{Graph, Node, NodeKind};
+use crate::graph::{AutoContext, Graph, Node, NodeKind};
 use crate::ScanError;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -337,6 +337,166 @@ fn discover_k8s(repo_root: &Path) -> Result<Graph, ScanError> {
     Ok(graph)
 }
 
+/// Discover auto-context from repository files (docker-compose, CI, terraform, README).
+pub fn discover_auto_context(repo_root: &Path) -> AutoContext {
+    let mut ctx = AutoContext::default();
+
+    // docker-compose*.yml
+    for name in &[
+        "docker-compose.yml",
+        "docker-compose.yaml",
+        "compose.yml",
+        "compose.yaml",
+    ] {
+        let path = repo_root.join(name);
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                ctx.services_from_compose
+                    .extend(extract_compose_services(&content));
+            }
+        }
+    }
+
+    // .github/workflows/*.yml
+    let workflows_dir = repo_root.join(".github/workflows");
+    if workflows_dir.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(&workflows_dir) {
+            for entry in entries.flatten() {
+                if let Ok(entry_type) = entry.file_type() {
+                    if entry_type.is_file() {
+                        let path = entry.path();
+                        if path
+                            .extension()
+                            .map(|e| e == "yml" || e == "yaml")
+                            .unwrap_or(false)
+                        {
+                            ctx.ci_pipelines
+                                .push(entry.file_name().to_string_lossy().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // terraform/*.tf or infra/
+    for dir in &["terraform", "infra", "infrastructure"] {
+        let tf_dir = repo_root.join(dir);
+        if tf_dir.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(&tf_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().map(|e| e == "tf").unwrap_or(false) {
+                        ctx.infra_dependencies.push(path.display().to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // README.md - extract architecture section
+    let readme = repo_root.join("README.md");
+    if readme.exists() {
+        if let Ok(content) = std::fs::read_to_string(&readme) {
+            ctx.readme_summary = extract_architecture_section(&content);
+        }
+    }
+
+    // .env.example - extract URLs
+    let env_example = repo_root.join(".env.example");
+    if env_example.exists() {
+        if let Ok(content) = std::fs::read_to_string(&env_example) {
+            ctx.referenced_urls = extract_urls_from_env(&content);
+        }
+    }
+
+    ctx
+}
+
+fn extract_compose_services(content: &str) -> Vec<String> {
+    let mut services = Vec::new();
+    let mut in_services = false;
+    let mut indent_level = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "services:" {
+            in_services = true;
+            indent_level = line.len() - line.trim_start().len();
+            continue;
+        }
+
+        if in_services {
+            let current_indent = line.len() - line.trim_start().len();
+            // If we're back to the same or lesser indent, we've left the services block
+            if current_indent <= indent_level && !trimmed.is_empty() && !trimmed.starts_with('#') {
+                break;
+            }
+
+            // Service names are at indent_level + 2 and end with ':'
+            if current_indent == indent_level + 2
+                && trimmed.ends_with(':')
+                && !trimmed.starts_with('#')
+            {
+                let service_name = trimmed.trim_end_matches(':').to_string();
+                if !service_name.is_empty() {
+                    services.push(service_name);
+                }
+            }
+        }
+    }
+
+    services
+}
+
+fn extract_architecture_section(content: &str) -> Option<String> {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut in_section = false;
+    let mut section_lines = Vec::new();
+
+    for line in &lines {
+        let lower = line.to_lowercase();
+        if lower.starts_with("## architecture") || lower.starts_with("## overview") {
+            in_section = true;
+            continue;
+        }
+        if in_section && line.starts_with("## ") {
+            break;
+        }
+        if in_section {
+            section_lines.push(*line);
+        }
+    }
+
+    if section_lines.is_empty() {
+        None
+    } else {
+        let section = section_lines.join("\n").trim().to_string();
+        if section.is_empty() {
+            None
+        } else {
+            Some(section)
+        }
+    }
+}
+
+fn extract_urls_from_env(content: &str) -> Vec<String> {
+    let mut urls = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+        if let Some(value) = line.split('=').nth(1) {
+            let value = value.trim().trim_matches('"').trim_matches('\'');
+            if value.starts_with("http://") || value.starts_with("https://") {
+                urls.push(value.to_string());
+            }
+        }
+    }
+    urls
+}
+
 fn extract_containers(spec: &serde_yaml::Value) -> Option<&Vec<serde_yaml::Value>> {
     // Try Pod
     if let Some(containers) = spec.get("containers").and_then(|c| c.as_sequence()) {
@@ -483,5 +643,125 @@ spec:
 
         let graph = scan_other_manifests(dir.path()).unwrap();
         assert!(graph.nodes.len() >= 3, "expected merged manifest nodes");
+    }
+
+    #[test]
+    fn test_discover_auto_context_empty() {
+        let dir = tempdir().unwrap();
+        let ctx = discover_auto_context(dir.path());
+        assert!(ctx.is_empty());
+    }
+
+    #[test]
+    fn test_discover_auto_context_compose() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("docker-compose.yml"),
+            "services:\n  api:\n    image: nginx\n  db:\n    image: postgres\n",
+        )
+        .unwrap();
+
+        let ctx = discover_auto_context(dir.path());
+        assert_eq!(ctx.services_from_compose.len(), 2);
+        assert!(ctx.services_from_compose.contains(&"api".to_string()));
+        assert!(ctx.services_from_compose.contains(&"db".to_string()));
+    }
+
+    #[test]
+    fn test_discover_auto_context_ci_pipelines() {
+        let dir = tempdir().unwrap();
+        let workflows = dir.path().join(".github/workflows");
+        fs::create_dir_all(&workflows).unwrap();
+        fs::write(workflows.join("ci.yml"), "name: CI\n").unwrap();
+        fs::write(workflows.join("deploy.yaml"), "name: Deploy\n").unwrap();
+
+        let ctx = discover_auto_context(dir.path());
+        assert_eq!(ctx.ci_pipelines.len(), 2);
+    }
+
+    #[test]
+    fn test_discover_auto_context_terraform() {
+        let dir = tempdir().unwrap();
+        let tf_dir = dir.path().join("terraform");
+        fs::create_dir(&tf_dir).unwrap();
+        fs::write(
+            tf_dir.join("main.tf"),
+            "resource \"aws_instance\" \"web\" {}\n",
+        )
+        .unwrap();
+
+        let ctx = discover_auto_context(dir.path());
+        assert_eq!(ctx.infra_dependencies.len(), 1);
+    }
+
+    #[test]
+    fn test_discover_auto_context_readme() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("README.md"),
+            "# My Project\n\n## Architecture\n\nThis is a microservices app.\n\n## Usage\n\nRun it.",
+        )
+        .unwrap();
+
+        let ctx = discover_auto_context(dir.path());
+        assert!(ctx.readme_summary.is_some());
+        assert!(ctx.readme_summary.unwrap().contains("microservices"));
+    }
+
+    #[test]
+    fn test_discover_auto_context_env_urls() {
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join(".env.example"),
+            "API_URL=https://api.example.com\nDB_HOST=localhost\nOTHER=https://other.com\n",
+        )
+        .unwrap();
+
+        let ctx = discover_auto_context(dir.path());
+        assert_eq!(ctx.referenced_urls.len(), 2);
+        assert!(ctx
+            .referenced_urls
+            .contains(&"https://api.example.com".to_string()));
+    }
+
+    #[test]
+    fn test_extract_compose_services() {
+        let content = r#"services:
+  api:
+    image: nginx
+    ports:
+      - '8080:80'
+  db:
+    image: postgres
+  redis:
+    image: redis"#;
+
+        let services = extract_compose_services(content);
+        assert_eq!(services.len(), 3);
+        assert!(services.contains(&"api".to_string()));
+        assert!(services.contains(&"db".to_string()));
+        assert!(services.contains(&"redis".to_string()));
+    }
+
+    #[test]
+    fn test_extract_architecture_section() {
+        let content =
+            "# Title\n\n## Architecture\n\nSome arch text.\n\nMore details.\n\n## Usage\n\nRun it.";
+        let section = extract_architecture_section(content);
+        assert!(section.is_some());
+        let section = section.unwrap();
+        assert!(section.contains("Some arch text"));
+        assert!(section.contains("More details"));
+        assert!(!section.contains("## Usage"));
+    }
+
+    #[test]
+    fn test_extract_urls_from_env() {
+        let content =
+            "# Comment\nAPI_URL=https://api.example.com\nDB=localhost\nOTHER='https://other.com'\n";
+        let urls = extract_urls_from_env(content);
+        assert_eq!(urls.len(), 2);
+        assert!(urls.contains(&"https://api.example.com".to_string()));
+        assert!(urls.contains(&"https://other.com".to_string()));
     }
 }

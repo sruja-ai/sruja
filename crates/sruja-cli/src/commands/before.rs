@@ -28,7 +28,13 @@ pub struct DownstreamInfo {
     pub kind: String,
 }
 
-pub async fn before(repo_root: &str, file: &str, format: &str, ci: bool, threshold: usize) -> Result<(), CliError> {
+pub async fn before(
+    repo_root: &str,
+    file: &str,
+    format: &str,
+    ci: bool,
+    threshold: usize,
+) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     let index = super::federation::find_or_generate_system_index(repo_path)?;
 

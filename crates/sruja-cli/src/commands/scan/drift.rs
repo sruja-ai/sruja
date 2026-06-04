@@ -219,7 +219,8 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
             exclude_barrel_files: req.exclude_barrel_files,
             ..Default::default()
         };
-        let mut drift_result = sruja_diff::detect_architectural_drift_with_config(&actual_graph, &drift_config);
+        let mut drift_result =
+            sruja_diff::detect_architectural_drift_with_config(&actual_graph, &drift_config);
         drift_result.scan_scope = scan_scope;
         if req.advisory {
             apply_advisory_violation_filter(&mut drift_result);
@@ -290,8 +291,19 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
     if req.format == "text" {
         if let Ok(velocity) = crate::commands::drift_velocity::compute_velocity(repo_path, 7) {
             if velocity.snapshot_count > 0 {
-                print!("{}", crate::commands::drift_velocity::format_velocity_text(&velocity));
+                print!(
+                    "{}",
+                    crate::commands::drift_velocity::format_velocity_text(&velocity)
+                );
             }
+        }
+    }
+
+    // Add density hint for text format
+    if req.format == "text" {
+        if let Some(hint) = crate::commands::density::density_hint(repo_path) {
+            println!();
+            println!("  {}", crate::utils::colors::dim(&hint));
         }
     }
 

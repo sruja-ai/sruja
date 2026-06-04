@@ -264,7 +264,11 @@ impl CliError {
                 eprintln!("  2. Check if the architecture file is valid and readable.");
             }
             CliError::CiGateExceeded { message } => {
-                eprintln!("{} CI gate threshold exceeded: {}", colors::error("Error:"), message);
+                eprintln!(
+                    "{} CI gate threshold exceeded: {}",
+                    colors::error("Error:"),
+                    message
+                );
                 eprintln!();
                 eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!("  1. Review the impact of your changes.");

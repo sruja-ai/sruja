@@ -381,6 +381,15 @@ pub enum Commands {
         #[arg(long)]
         sync_rules: bool,
     },
+    /// Show current density tier and progression hints
+    Density {
+        /// Repository root (defaults to current directory)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        path: String,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Truth freshness and baseline state
     #[command(visible_alias = "doctor")]
     Status {

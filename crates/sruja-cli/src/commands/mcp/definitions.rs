@@ -234,7 +234,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         json!({
             "name": "sruja_find_path",
             "title": "Sruja Find Path",
@@ -271,7 +270,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         json!({
             "name": "sruja_get_hydrated_context",
             "title": "Sruja Hydrated Context",
@@ -293,7 +291,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "required": ["id"]
             }
         }),
-
         json!({
             "name": "sruja_get_task_context",
             "title": "Sruja Task Context",
@@ -322,7 +319,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         json!({
             "name": "sruja_query_graph",
             "title": "Sruja Query Graph",
@@ -456,7 +452,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         json!({
             "name": "sruja_record_context_event",
             "title": "Sruja Record Context Event",
@@ -586,7 +581,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "required": ["fact_id", "decision"]
             }
         }),
-
         json!({
             "name": "sruja_get_focus_briefing",
             "title": "Sruja Focus Briefing",
@@ -716,7 +710,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "required": ["target_files"]
             }
         }),
-
         json!({
             "name": "sruja_sandbox",
             "title": "Sruja Experiment Sandbox",
@@ -935,6 +928,17 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" },
                     "files": { "type": "array", "items": { "type": "string" }, "description": "Optional list of changed files to target the critique and drift checks" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_quick_context",
+            "title": "Sruja Quick Context",
+            "description": "Get a compact repository summary for zero-setup AI context. Returns top modules by centrality, entrypoints, data stores, and auto-discovered context (CI, compose, terraform). Token budget: ~300 tokens.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
                 }
             }
         }),

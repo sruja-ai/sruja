@@ -18,7 +18,7 @@ pub mod graph;
 #[allow(missing_docs)]
 pub mod manifest;
 #[allow(missing_docs)]
-mod manifests;
+pub mod manifests;
 #[allow(missing_docs)]
 pub mod npm;
 #[allow(missing_docs)]
@@ -45,7 +45,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 pub use graph::{
-    detect_communities, summarize_communities, BlastRadiusDirection, BlastRadiusNode,
+    detect_communities, summarize_communities, AutoContext, BlastRadiusDirection, BlastRadiusNode,
     BlastRadiusResult, CommunityInfo, Criticality, Edge, EdgeEvidence, EdgeKind, Graph, Incident,
     Node, NodeKind, ResolvedContract, ResolvedError, ResolvedField, ResolvedStateMachine,
     ResolvedTransition,
@@ -127,6 +127,9 @@ pub fn scan_repo(repo_root: &Path) -> Result<Graph, ScanError> {
         graph.merge(assets_graph);
     }
 
+    // Discover auto-context (docker-compose, CI, terraform, README)
+    graph.auto_context = manifests::discover_auto_context(repo_root);
+
     // Calculate discovery confidence
     confidence::ConfidenceScorer::score_graph(&mut graph);
 
@@ -162,6 +165,9 @@ pub fn scan_repo_incremental(repo_root: &Path) -> Result<Graph, ScanError> {
         tracing::debug!("Merging docs and assets into graph");
         graph.merge(assets_graph);
     }
+
+    // Discover auto-context (docker-compose, CI, terraform, README)
+    graph.auto_context = manifests::discover_auto_context(repo_root);
 
     // Calculate discovery confidence
     confidence::ConfidenceScorer::score_graph(&mut graph);

@@ -3,10 +3,10 @@
 use std::fs;
 use std::path::Path;
 
-use colored::Colorize;
 use super::generate::generate_prompt;
 use super::scan::quickstart;
 use super::CliError;
+use colored::Colorize;
 use sruja_export::mermaid::exporter::{MermaidConfig, MermaidExporter};
 
 /// Initialize Sruja in the given repo: ensure `.sruja/`, run quickstart, optionally generate prompt or auto-onboard.
@@ -142,7 +142,10 @@ pub async fn init(
             .with_prompt("Select additional setup components:")
             .item_checked("GitHub Actions workflow", ci)
             .item_checked("Git pre-commit hook", hook)
-            .item_checked("Sync IDE rules (.cursorrules, copilot-instructions.md)", sync_rules)
+            .item_checked(
+                "Sync IDE rules (.cursorrules, copilot-instructions.md)",
+                sync_rules,
+            )
             .interact()
             .unwrap_or_default();
 
@@ -213,6 +216,47 @@ pub async fn init(
                     .bold()
                 );
 
+                // Data stores
+                let stores: Vec<&str> = graph
+                    .nodes
+                    .iter()
+                    .filter(|n| n.kind.as_str() == "database" || n.kind.as_str() == "queue")
+                    .map(|n| n.label.as_str())
+                    .collect();
+                if !stores.is_empty() {
+                    println!(
+                        "    • Data Stores:  {}",
+                        colors::style(stores.len().to_string()).bold()
+                    );
+                }
+
+                // Auto-discovered context
+                if !graph.auto_context.is_empty() {
+                    println!();
+                    println!("  {}", colors::style("Auto-discovered Context:").bold());
+                    if !graph.auto_context.services_from_compose.is_empty() {
+                        println!(
+                            "    • Compose Services: {}",
+                            colors::info(&graph.auto_context.services_from_compose.join(", "))
+                        );
+                    }
+                    if !graph.auto_context.ci_pipelines.is_empty() {
+                        println!(
+                            "    • CI Pipelines:     {}",
+                            colors::info(&graph.auto_context.ci_pipelines.join(", "))
+                        );
+                    }
+                    if !graph.auto_context.infra_dependencies.is_empty() {
+                        println!(
+                            "    • Infrastructure:   {}",
+                            colors::info(&format!(
+                                "{} terraform files",
+                                graph.auto_context.infra_dependencies.len()
+                            ))
+                        );
+                    }
+                }
+
                 println!();
                 println!("{}", colors::style("Next steps:").bold());
                 println!(
@@ -265,10 +309,7 @@ pub async fn init(
         }
 
         // Generate repo.sruja from scan
-        let program = super::scan::draft_summary::build_summary_draft_program(
-            &graph,
-            "repo.sruja",
-        );
+        let program = super::scan::draft_summary::build_summary_draft_program(&graph, "repo.sruja");
         let printer = sruja_export::DslPrinter::new();
         let dsl = printer.print(&program);
 
@@ -300,28 +341,16 @@ pub async fn init(
         // Run lint on the generated file
         if !dry_run {
             let lint_pb = progress::spinner("🔧 Validating architecture...");
-            let lint_result = crate::commands::lint(
-                &repo_sruja_path.to_string_lossy(),
-                "text",
-                None,
-                None,
-            )
-            .await;
+            let lint_result =
+                crate::commands::lint(&repo_sruja_path.to_string_lossy(), "text", None, None).await;
             lint_pb.finish_and_clear();
 
             match lint_result {
                 Ok(()) => {
-                    println!(
-                        "  {} Lint passed — no errors",
-                        colors::success("✅")
-                    );
+                    println!("  {} Lint passed — no errors", colors::success("✅"));
                 }
                 Err(e) => {
-                    println!(
-                        "  {} Lint warnings: {}",
-                        colors::warning("⚠️"),
-                        e
-                    );
+                    println!("  {} Lint warnings: {}", colors::warning("⚠️"), e);
                 }
             }
         }
@@ -331,7 +360,7 @@ pub async fn init(
             let classify_pb = progress::spinner("🏷️  Generating classification...");
             let classify_result = super::classify::classify(super::classify::ClassifyOptions {
                 repo: repo_root,
-                force: true,  // Always regenerate during init --scan
+                force: true, // Always regenerate during init --scan
             });
             classify_pb.finish_and_clear();
 
@@ -387,8 +416,16 @@ pub async fn init(
         );
 
         // Show violations summary
-        let errors = drift_report.violations.iter().filter(|v| matches!(v.severity, sruja_diff::Severity::Error)).count();
-        let warnings = drift_report.violations.iter().filter(|v| matches!(v.severity, sruja_diff::Severity::Warning)).count();
+        let errors = drift_report
+            .violations
+            .iter()
+            .filter(|v| matches!(v.severity, sruja_diff::Severity::Error))
+            .count();
+        let warnings = drift_report
+            .violations
+            .iter()
+            .filter(|v| matches!(v.severity, sruja_diff::Severity::Warning))
+            .count();
         if errors > 0 || warnings > 0 {
             println!(
                 "    {} errors, {} warnings",
@@ -425,14 +462,13 @@ pub async fn init(
         if should_sync_rules && !dry_run {
             println!();
             let sync_pb = progress::spinner("📝 Syncing IDE rules...");
-            let sync_result = super::sync_ide_rules::sync_ide_rules(
-                super::sync_ide_rules::SyncIdeRulesOptions {
+            let sync_result =
+                super::sync_ide_rules::sync_ide_rules(super::sync_ide_rules::SyncIdeRulesOptions {
                     repo: repo_root,
                     max_tokens: 10000,
                     check: false,
-                },
-            )
-            .await;
+                })
+                .await;
             sync_pb.finish_and_clear();
 
             match sync_result {

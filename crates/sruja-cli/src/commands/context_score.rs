@@ -6,8 +6,8 @@
 
 use std::path::Path;
 
-use crate::commands::CliError;
 use crate::commands::sync_cmd::ScoreHistoryEntry;
+use crate::commands::CliError;
 use crate::graph_store;
 use crate::utils::colors;
 use sruja_graph::{compute_context_score, ContextScore, DimensionScore};

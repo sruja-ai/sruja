@@ -1719,7 +1719,10 @@ pub fn workflow_next_steps_json_value(
             } else if let Ok(text) = std::fs::read_to_string(&test_results_path) {
                 if let Ok(val) = serde_json::from_str::<serde_json::Value>(&text) {
                     if val["all_passed"].as_bool() != Some(true) {
-                        steps.push("Fix test failures in verification suite and re-record test results".to_string());
+                        steps.push(
+                            "Fix test failures in verification suite and re-record test results"
+                                .to_string(),
+                        );
                     }
                 }
             }

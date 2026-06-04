@@ -204,6 +204,22 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
 
             blocks.push(("Truth & signals".to_string(), health_info));
 
+            // 1b. Density Tier
+            let density = crate::commands::density::compute_density(repo_path);
+            let mut density_info = String::new();
+            let tier_label = format!("Tier {} ({})", density.tier as u8, density.tier_name);
+            let colored_tier = match density.tier {
+                crate::commands::density::DensityTier::Sparse => colors::warning(&tier_label),
+                crate::commands::density::DensityTier::Medium => colors::info(&tier_label),
+                crate::commands::density::DensityTier::Dense => colors::success(&tier_label),
+                crate::commands::density::DensityTier::Rich => colors::success(&tier_label),
+            };
+            density_info.push_str(&format!("Current: {}\n", colored_tier));
+            if let Some(ref next) = density.next_step {
+                density_info.push_str(&format!("Next:    {}\n", colors::dim(next)));
+            }
+            blocks.push(("Density".to_string(), density_info));
+
             // 2. Supervision / Velocity Block
             if let Some(ref velocity) = out.velocity {
                 let mut supervision_info = String::new();
