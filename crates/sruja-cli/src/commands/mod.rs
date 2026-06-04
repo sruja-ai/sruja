@@ -37,6 +37,7 @@ pub use scan_domain::discover::{
     discover_context, discover_explain, discover_questions, discover_repomap_cmd,
 };
 pub use scan_domain::explore::explore;
+pub use scan_domain::graph_history::graph_history;
 pub use utility_domain::error::CliError;
 
 /// Re-export enrichment types for use by command handlers.
@@ -121,6 +122,7 @@ pub use learn::learn;
 pub mod before;
 pub mod cognitive_debt;
 pub mod confidence;
+pub mod drift_velocity;
 pub mod explain_cmd;
 pub mod map_cmd;
 pub mod trace_cmd;

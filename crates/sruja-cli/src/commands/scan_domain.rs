@@ -13,6 +13,8 @@ pub mod context_score;
 pub mod discover;
 #[path = "explore.rs"]
 pub mod explore;
+#[path = "graph_history.rs"]
+pub mod graph_history;
 #[path = "health.rs"]
 pub mod health;
 #[path = "impact.rs"]

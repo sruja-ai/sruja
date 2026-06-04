@@ -439,12 +439,76 @@ pub(crate) async fn try_run(
                 }
             }
 
+            // Collect decisions, learnings, and events for matched nodes
+            let node_ids: Vec<String> = seen_nodes.iter().cloned().collect();
+
+            let matched_decisions: Vec<Value> = kg
+                .decisions
+                .values()
+                .filter(|d| d.affects.iter().any(|a| node_ids.contains(a)))
+                .map(|d| {
+                    json!({
+                        "id": d.id,
+                        "title": d.title,
+                        "status": format!("{:?}", d.status),
+                        "affects": d.affects
+                    })
+                })
+                .collect();
+
+            let matched_learnings: Vec<Value> = kg
+                .learnings
+                .values()
+                .filter(|l| {
+                    l.affected_elements
+                        .iter()
+                        .any(|e| node_ids.contains(e))
+                })
+                .map(|l| {
+                    json!({
+                        "id": l.id,
+                        "kind": l.kind,
+                        "outcome": l.outcome,
+                        "guardrail_advice": l.guardrail_advice,
+                        "affected_elements": l.affected_elements,
+                        "confidence": l.confidence
+                    })
+                })
+                .collect();
+
+            let matched_events: Vec<Value> = kg
+                .recent_events
+                .iter()
+                .filter(|e| e.elements.iter().any(|el| node_ids.contains(el)))
+                .map(|e| {
+                    json!({
+                        "timestamp": e.timestamp.to_rfc3339(),
+                        "kind": e.kind,
+                        "elements": e.elements,
+                        "outcome": e.outcome,
+                        "summary": e.summary
+                    })
+                })
+                .collect();
+
+            let token_estimate = estimate_query_tokens(
+                &matched_nodes,
+                &relations,
+                &matched_decisions,
+                &matched_learnings,
+                &matched_events,
+            );
+
             let grounded = json!({
                 "query": query,
                 "complexity": format!("{:?}", complexity),
                 "strategy": format!("{:?}", strategy),
                 "matched_nodes": matched_nodes,
-                "relationships": relations
+                "relationships": relations,
+                "decisions": matched_decisions,
+                "learnings": matched_learnings,
+                "events": matched_events,
+                "token_estimate": token_estimate
             });
 
             if !enrich && enrich_cmd.is_none() {
@@ -569,4 +633,27 @@ pub(crate) async fn try_run(
         }
         _ => Ok(None),
     }
+}
+
+/// Estimate token count for a query result containing nodes, relationships,
+/// decisions, learnings, and events.
+fn estimate_query_tokens(
+    nodes: &[Value],
+    relations: &[Value],
+    decisions: &[Value],
+    learnings: &[Value],
+    events: &[Value],
+) -> usize {
+    // Rough estimate: ~4 chars per token
+    let json_size = serde_json::to_string(&json!({
+        "nodes": nodes,
+        "relationships": relations,
+        "decisions": decisions,
+        "learnings": learnings,
+        "events": events
+    }))
+    .map(|s| s.len())
+    .unwrap_or(0);
+
+    json_size / 4
 }

@@ -1412,3 +1412,25 @@ pub enum HumanCommand {
         threshold: usize,
     },
 }
+
+#[derive(Subcommand)]
+pub enum GraphCommand {
+    /// Show graph change history over time
+    History {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Filter by time period (e.g., "7d", "30d", "90d")
+        #[arg(long)]
+        since: Option<String>,
+        /// Filter by element ID
+        #[arg(long)]
+        element: Option<String>,
+        /// Filter by delta kind (node_added, edge_added, etc.)
+        #[arg(long)]
+        kind: Option<String>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+}

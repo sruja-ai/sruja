@@ -286,6 +286,15 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
         }
     }
 
+    // Add velocity section for text format
+    if req.format == "text" {
+        if let Ok(velocity) = crate::commands::drift_velocity::compute_velocity(repo_path, 7) {
+            if velocity.snapshot_count > 0 {
+                print!("{}", crate::commands::drift_velocity::format_velocity_text(&velocity));
+            }
+        }
+    }
+
     Ok(())
 }
 

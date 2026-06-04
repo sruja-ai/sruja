@@ -125,6 +125,61 @@ fn iso8601_now() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub(crate) struct ScoreHistoryEntry {
+    pub date: String,
+    pub score: u8,
+    pub commit: Option<String>,
+}
+
+/// Append a score history entry to .sruja/score_history.jsonl
+fn append_score_history(
+    repo_path: &Path,
+    score: u8,
+    commit: Option<String>,
+) -> Result<(), CliError> {
+    let path = repo_path.join(".sruja/score_history.jsonl");
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let entry = ScoreHistoryEntry {
+        date: chrono::Utc::now().format("%Y-%m-%d").to_string(),
+        score,
+        commit,
+    };
+
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)?;
+    use std::io::Write;
+    writeln!(file, "{}", serde_json::to_string(&entry)?)?;
+
+    // Keep only last 90 entries
+    trim_score_history(&path, 90)?;
+
+    Ok(())
+}
+
+fn trim_score_history(path: &Path, max_count: usize) -> Result<(), CliError> {
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let content = std::fs::read_to_string(path)?;
+    let lines: Vec<&str> = content.lines().collect();
+
+    if lines.len() <= max_count {
+        return Ok(());
+    }
+
+    let keep = &lines[lines.len() - max_count..];
+    std::fs::write(path, keep.join("\n") + "\n")?;
+
+    Ok(())
+}
+
 /// Read git HEAD commit (short) if repo is a git work tree; otherwise None.
 fn git_commit_short(repo_path: &Path) -> Option<String> {
     std::process::Command::new("git")
@@ -314,6 +369,13 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         health_score,
         context_path: context_path.clone(),
     };
+
+    // Append score history if health_score is available
+    if let Some(score) = health_score {
+        if let Err(e) = append_score_history(repo_path, score, git_commit_short(repo_path)) {
+            eprintln!("Warning: Failed to save score history: {}", e);
+        }
+    }
 
     match format {
         "json" => {

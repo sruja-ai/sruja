@@ -7,9 +7,38 @@
 use std::path::Path;
 
 use crate::commands::CliError;
+use crate::commands::sync_cmd::ScoreHistoryEntry;
 use crate::graph_store;
 use crate::utils::colors;
 use sruja_graph::{compute_context_score, ContextScore, DimensionScore};
+
+fn load_score_history(repo_path: &Path) -> Vec<ScoreHistoryEntry> {
+    let path = repo_path.join(".sruja/score_history.jsonl");
+    if !path.exists() {
+        return Vec::new();
+    }
+
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+
+    content
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .filter_map(|line| serde_json::from_str::<ScoreHistoryEntry>(line).ok())
+        .collect()
+}
+
+fn compute_trend(history: &[ScoreHistoryEntry], current_score: u8) -> Option<(i16, u8)> {
+    if history.len() < 2 {
+        return None;
+    }
+
+    // Get the previous score (second to last)
+    let prev = history.get(history.len() - 2)?;
+    let delta = current_score as i16 - prev.score as i16;
+    Some((delta, prev.score))
+}
 
 pub async fn context_score(
     repo_root: &str,
@@ -82,11 +111,22 @@ pub async fn context_score(
                         "AI preparedness (0–100). For structural violations use `sruja health`; for truth/baseline sync use `sruja status`.".to_string(),
                     ),
                 );
+
+                // Add history to JSON output
+                let history = load_score_history(repo_path);
+                if !history.is_empty() {
+                    map.insert(
+                        "history".to_string(),
+                        serde_json::to_value(&history).unwrap_or(serde_json::Value::Null),
+                    );
+                }
             }
             println!("{}", serde_json::to_string_pretty(&v)?);
         }
         _ => {
-            print_context_score(&score);
+            let history = load_score_history(repo_path);
+            let trend = compute_trend(&history, score.score);
+            print_context_score(&score, trend.as_ref());
         }
     }
 
@@ -123,7 +163,7 @@ fn dimension_bar(dim: &DimensionScore, width: usize) -> String {
     format!("{}{}", filled, empty)
 }
 
-fn print_context_score(score: &ContextScore) {
+fn print_context_score(score: &ContextScore, trend: Option<&(i16, u8)>) {
     println!(
         "{}",
         colors::dim(
@@ -137,6 +177,27 @@ fn print_context_score(score: &ContextScore) {
         colors::style("Context Score:").bold(),
         colors::health_bar(score.score, 20)
     );
+
+    // Show trend if available
+    if let Some((delta, prev_score)) = trend {
+        let msg = if *delta > 0 {
+            format!("+{} (was {})", delta, prev_score)
+        } else if *delta < 0 {
+            format!("{} (was {})", delta, prev_score)
+        } else {
+            format!("stable (was {})", prev_score)
+        };
+
+        let trend_str = if *delta > 0 {
+            colors::success(&msg)
+        } else if *delta < 0 {
+            colors::error(&msg)
+        } else {
+            colors::dim(&msg)
+        };
+        println!("│  {:<24} {}  │", "Trend:", trend_str);
+    }
+
     println!("│                                                      │");
 
     // Dimension breakdown

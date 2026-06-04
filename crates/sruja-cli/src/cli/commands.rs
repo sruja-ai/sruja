@@ -3,8 +3,9 @@ use clap::Subcommand;
 use super::app::ContextIntent;
 use super::subcommands::{
     AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
-    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, HumanCommand, IndexCommand,
-    InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    EventCommand, EvolutionCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand,
+    IndexCommand, InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand,
+    WorkflowCommand,
 };
 use crate::enrichment::EnrichmentArgs;
 
@@ -876,6 +877,11 @@ pub enum Commands {
     Decision {
         #[command(subcommand)]
         cmd: DecisionCommand,
+    },
+    /// Graph temporal queries (history, velocity, etc.)
+    Graph {
+        #[command(subcommand)]
+        cmd: GraphCommand,
     },
     /// List and filter requirements from .sruja files
     Requirements {

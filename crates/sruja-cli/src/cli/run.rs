@@ -6,8 +6,9 @@ use super::app::ContextIntent;
 use super::commands::Commands;
 use super::subcommands::{
     AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
-    EventCommand, EvolutionCommand, FederationCommand, GuardCommand, HumanCommand, IndexCommand,
-    InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    EventCommand, EvolutionCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand,
+    IndexCommand, InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand,
+    WorkflowCommand,
 };
 use super::Cli;
 
@@ -817,6 +818,17 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             DecisionCommand::Accept { repo, id } => commands::decision_accept(&repo, &id).await,
             DecisionCommand::Supersede { repo, id, by } => {
                 commands::decision_supersede(&repo, &id, &by).await
+            }
+        },
+        Commands::Graph { cmd } => match cmd {
+            GraphCommand::History {
+                repo,
+                since,
+                element,
+                kind,
+                format,
+            } => {
+                commands::graph_history(&repo, since.as_deref(), element.as_deref(), kind.as_deref(), &format)
             }
         },
         Commands::Requirements {

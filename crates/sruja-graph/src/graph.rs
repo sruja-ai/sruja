@@ -12,7 +12,42 @@ pub struct KnowledgeGraph {
     pub policies: HashMap<PolicyId, Policy>,
     pub requirements: HashMap<RequirementId, Requirement>,
     pub incidents: HashMap<String, Incident>,
+    pub learnings: HashMap<String, GraphLearning>,
+    pub recent_events: Vec<ContextEventSummary>,
     pub metadata: GraphMetadata,
+}
+
+/// A learning entry stored in the knowledge graph.
+/// This is a graph-native representation of agent learnings,
+/// enabling traversal queries alongside architecture elements.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphLearning {
+    pub id: String,
+    pub kind: String,
+    pub context: String,
+    pub hypothesis: String,
+    pub outcome: String,
+    pub guardrail_advice: String,
+    pub affected_elements: Vec<String>,
+    pub related_ids: Vec<String>,
+    pub confidence: Option<String>,
+    pub tags: Vec<String>,
+    pub hitl_kind: Option<String>,
+    pub retrieval_count: u32,
+    pub task_success_after: u32,
+    pub task_total_after: u32,
+    pub timestamp: DateTime<Utc>,
+}
+
+/// A compact summary of a context event, embedded in the knowledge graph.
+/// This enables temporal queries without reading the full JSONL log.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextEventSummary {
+    pub timestamp: DateTime<Utc>,
+    pub kind: String,
+    pub elements: Vec<String>,
+    pub outcome: String,
+    pub summary: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -243,6 +278,118 @@ impl KnowledgeGraph {
         self.incidents.get(id)
     }
 
+    pub fn add_learning(&mut self, learning: GraphLearning) {
+        self.learnings.insert(learning.id.clone(), learning);
+        self.touch();
+    }
+
+    pub fn get_learning(&self, id: &str) -> Option<&GraphLearning> {
+        self.learnings.get(id)
+    }
+
+    /// Get learnings that directly affect a specific node.
+    pub fn get_learnings_for_node(&self, node_id: &str) -> Vec<&GraphLearning> {
+        self.learnings
+            .values()
+            .filter(|l| l.affected_elements.contains(&node_id.to_string()))
+            .collect()
+    }
+
+    /// Get learnings affecting any node in the given cluster (deduplicated).
+    pub fn get_learnings_for_cluster(&self, node_ids: &[String]) -> Vec<&GraphLearning> {
+        let id_set: std::collections::HashSet<&String> = node_ids.iter().collect();
+        self.learnings
+            .values()
+            .filter(|l| {
+                l.affected_elements
+                    .iter()
+                    .any(|e| id_set.contains(e))
+            })
+            .collect()
+    }
+
+    /// Traverse related_ids to find neighboring learnings.
+    pub fn get_learning_neighbors(&self, learning_id: &str) -> Vec<&GraphLearning> {
+        let Some(learning) = self.learnings.get(learning_id) else {
+            return Vec::new();
+        };
+        learning
+            .related_ids
+            .iter()
+            .filter_map(|rid| self.learnings.get(rid))
+            .collect()
+    }
+
+    /// Get recent events that reference a specific element.
+    pub fn get_events_for_node(&self, node_id: &str) -> Vec<&ContextEventSummary> {
+        self.recent_events
+            .iter()
+            .filter(|e| e.elements.contains(&node_id.to_string()))
+            .collect()
+    }
+
+    /// Get recent events that reference any node in the given cluster.
+    pub fn get_events_for_cluster(&self, node_ids: &[String]) -> Vec<&ContextEventSummary> {
+        let id_set: std::collections::HashSet<&String> = node_ids.iter().collect();
+        self.recent_events
+            .iter()
+            .filter(|e| e.elements.iter().any(|el| id_set.contains(el)))
+            .collect()
+    }
+
+    /// Set recent events (used during graph build).
+    pub fn set_recent_events(&mut self, events: Vec<ContextEventSummary>) {
+        self.recent_events = events;
+        self.touch();
+    }
+
+    /// Get decisions affecting any node in the blast radius of a target node.
+    pub fn get_decisions_for_blast_radius(&self, target_id: &str) -> Vec<&Decision> {
+        let mut affected = std::collections::HashSet::new();
+        affected.insert(target_id.to_string());
+
+        // Collect upstream and downstream nodes (1 hop)
+        for edge in &self.edges {
+            if edge.source == target_id {
+                affected.insert(edge.target.clone());
+            }
+            if edge.target == target_id {
+                affected.insert(edge.source.clone());
+            }
+        }
+
+        self.decisions
+            .values()
+            .filter(|d| d.affects.iter().any(|a| affected.contains(a)))
+            .collect()
+    }
+
+    /// Traverse supersedes links to get a decision chain.
+    pub fn get_decision_chain(&self, decision_id: &str) -> Vec<&Decision> {
+        let mut chain = Vec::new();
+        let mut visited = std::collections::HashSet::new();
+        let mut current = decision_id;
+
+        while let Some(decision) = self.decisions.get(current) {
+            if !visited.insert(current.to_string()) {
+                break;
+            }
+            chain.push(decision);
+            // Check if this decision supersedes another
+            if let Some(supersedes_id) = decision
+                .alternatives
+                .iter()
+                .find(|a| a.starts_with("supersedes:"))
+            {
+                current = &supersedes_id[11..];
+            } else {
+                break;
+            }
+        }
+
+        chain
+    }
+
     pub fn find_nodes_by_kind(&self, kind: NodeKind) -> Vec<&ArchitectureNode> {
         self.nodes.values().filter(|n| n.kind == kind).collect()
     }
@@ -283,6 +430,7 @@ impl KnowledgeGraph {
                 .count(),
             total_policies: self.policies.len(),
             total_requirements: self.requirements.len(),
+            total_learnings: self.learnings.len(),
         }
     }
 }
@@ -296,6 +444,7 @@ pub struct GraphStats {
     pub proposed_decisions: usize,
     pub total_policies: usize,
     pub total_requirements: usize,
+    pub total_learnings: usize,
 }
 
 #[cfg(test)]
@@ -810,5 +959,225 @@ mod tests {
         let json = graph.to_json().unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert!(parsed.get("nodes").unwrap().as_object().unwrap().is_empty());
+    }
+
+    fn test_learning(id: &str, affected: Vec<&str>) -> GraphLearning {
+        GraphLearning {
+            id: id.to_string(),
+            kind: "guardrail".to_string(),
+            context: "test context".to_string(),
+            hypothesis: "test hypothesis".to_string(),
+            outcome: "failed".to_string(),
+            guardrail_advice: "don't do X".to_string(),
+            affected_elements: affected.into_iter().map(String::from).collect(),
+            related_ids: Vec::new(),
+            confidence: Some("high".to_string()),
+            tags: Vec::new(),
+            hitl_kind: None,
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
+            timestamp: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_add_learning() {
+        let mut graph = KnowledgeGraph::new();
+        let learning = test_learning("L1", vec!["api"]);
+        graph.add_learning(learning);
+        assert!(graph.get_learning("L1").is_some());
+    }
+
+    #[test]
+    fn test_get_learnings_for_node() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_learning(test_learning("L1", vec!["api", "db"]));
+        graph.add_learning(test_learning("L2", vec!["db"]));
+        graph.add_learning(test_learning("L3", vec!["web"]));
+
+        let api_learnings = graph.get_learnings_for_node("api");
+        assert_eq!(api_learnings.len(), 1);
+        assert_eq!(api_learnings[0].id, "L1");
+
+        let db_learnings = graph.get_learnings_for_node("db");
+        assert_eq!(db_learnings.len(), 2);
+    }
+
+    #[test]
+    fn test_get_learnings_for_cluster() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_learning(test_learning("L1", vec!["api"]));
+        graph.add_learning(test_learning("L2", vec!["db"]));
+        graph.add_learning(test_learning("L3", vec!["web"]));
+
+        let cluster = vec!["api".to_string(), "db".to_string()];
+        let learnings = graph.get_learnings_for_cluster(&cluster);
+        assert_eq!(learnings.len(), 2);
+    }
+
+    #[test]
+    fn test_get_learning_neighbors() {
+        let mut graph = KnowledgeGraph::new();
+        let mut l1 = test_learning("L1", vec!["api"]);
+        l1.related_ids = vec!["L2".to_string()];
+        graph.add_learning(l1);
+        graph.add_learning(test_learning("L2", vec!["db"]));
+        graph.add_learning(test_learning("L3", vec!["web"]));
+
+        let neighbors = graph.get_learning_neighbors("L1");
+        assert_eq!(neighbors.len(), 1);
+        assert_eq!(neighbors[0].id, "L2");
+    }
+
+    #[test]
+    fn test_get_decisions_for_blast_radius() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_node(test_node("api")).unwrap();
+        graph.add_node(test_node("db")).unwrap();
+        graph.add_node(test_node("cache")).unwrap();
+        graph
+            .add_edge(test_edge("e1", "api", "db", EdgeKind::new(EdgeKind::CALLS)))
+            .unwrap();
+
+        let d1 = Decision {
+            id: "ADR-1".to_string(),
+            title: "API Decision".to_string(),
+            status: DecisionStatus::Accepted,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec!["api".to_string()],
+        };
+        let d2 = Decision {
+            id: "ADR-2".to_string(),
+            title: "DB Decision".to_string(),
+            status: DecisionStatus::Accepted,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec!["db".to_string()],
+        };
+        let d3 = Decision {
+            id: "ADR-3".to_string(),
+            title: "Cache Decision".to_string(),
+            status: DecisionStatus::Accepted,
+            context: String::new(),
+            decision: String::new(),
+            consequences: String::new(),
+            alternatives: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            ratified_at: None,
+            author: None,
+            source: SourceReference::manual(),
+            affects: vec!["cache".to_string()],
+        };
+        graph.add_decision(d1).unwrap();
+        graph.add_decision(d2).unwrap();
+        graph.add_decision(d3).unwrap();
+
+        // Blast radius of "api" should include "api" and "db" (downstream), but not "cache"
+        let decisions = graph.get_decisions_for_blast_radius("api");
+        assert_eq!(decisions.len(), 2);
+        let ids: Vec<&str> = decisions.iter().map(|d| d.id.as_str()).collect();
+        assert!(ids.contains(&"ADR-1"));
+        assert!(ids.contains(&"ADR-2"));
+        assert!(!ids.contains(&"ADR-3"));
+    }
+
+    #[test]
+    fn test_stats_includes_learnings() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_learning(test_learning("L1", vec!["api"]));
+        graph.add_learning(test_learning("L2", vec!["db"]));
+
+        let stats = graph.stats();
+        assert_eq!(stats.total_learnings, 2);
+    }
+
+    #[test]
+    fn test_learning_roundtrip_json() {
+        let mut graph = KnowledgeGraph::new();
+        graph.add_learning(test_learning("L1", vec!["api"]));
+
+        let json = graph.to_json().unwrap();
+        let restored = KnowledgeGraph::from_json(&json).unwrap();
+        assert!(restored.get_learning("L1").is_some());
+        assert_eq!(restored.learnings.len(), 1);
+    }
+
+    fn test_event(kind: &str, elements: Vec<&str>) -> ContextEventSummary {
+        ContextEventSummary {
+            timestamp: Utc::now(),
+            kind: kind.to_string(),
+            elements: elements.into_iter().map(String::from).collect(),
+            outcome: "ok".to_string(),
+            summary: None,
+        }
+    }
+
+    #[test]
+    fn test_set_recent_events() {
+        let mut graph = KnowledgeGraph::new();
+        let events = vec![
+            test_event("drift_detected", vec!["api"]),
+            test_event("intent_check", vec!["db"]),
+        ];
+        graph.set_recent_events(events);
+        assert_eq!(graph.recent_events.len(), 2);
+    }
+
+    #[test]
+    fn test_get_events_for_node() {
+        let mut graph = KnowledgeGraph::new();
+        graph.set_recent_events(vec![
+            test_event("drift_detected", vec!["api", "db"]),
+            test_event("intent_check", vec!["db"]),
+            test_event("sync", vec!["web"]),
+        ]);
+
+        let api_events = graph.get_events_for_node("api");
+        assert_eq!(api_events.len(), 1);
+
+        let db_events = graph.get_events_for_node("db");
+        assert_eq!(db_events.len(), 2);
+    }
+
+    #[test]
+    fn test_get_events_for_cluster() {
+        let mut graph = KnowledgeGraph::new();
+        graph.set_recent_events(vec![
+            test_event("drift_detected", vec!["api"]),
+            test_event("intent_check", vec!["db"]),
+            test_event("sync", vec!["web"]),
+        ]);
+
+        let cluster = vec!["api".to_string(), "db".to_string()];
+        let events = graph.get_events_for_cluster(&cluster);
+        assert_eq!(events.len(), 2);
+    }
+
+    #[test]
+    fn test_events_roundtrip_json() {
+        let mut graph = KnowledgeGraph::new();
+        graph.set_recent_events(vec![test_event("drift", vec!["api"])]);
+
+        let json = graph.to_json().unwrap();
+        let restored = KnowledgeGraph::from_json(&json).unwrap();
+        assert_eq!(restored.recent_events.len(), 1);
+        assert_eq!(restored.recent_events[0].kind, "drift");
     }
 }

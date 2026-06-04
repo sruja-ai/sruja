@@ -19,6 +19,7 @@ pub mod query;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scan_merge;
 pub mod scc;
+pub mod snapshot;
 pub mod system_graph;
 pub mod treewidth;
 
@@ -34,7 +35,7 @@ pub use coupling::{
     CouplingAnalyzer, CouplingResult, CouplingSummary, CouplingViolation, CouplingViolationType,
     ModuleCoupling, Zone,
 };
-pub use graph::KnowledgeGraph;
+pub use graph::{ContextEventSummary, GraphLearning, KnowledgeGraph};
 pub use hybrid_retrieval::{
     classify_query, execute_graph_only, execute_hybrid, select_strategy, HybridResult,
     QueryComplexity, RetrievalStrategy, SemanticCandidate,
@@ -46,6 +47,7 @@ pub use query::{
 #[cfg(not(target_arch = "wasm32"))]
 pub use scan_merge::merge_scan_into_graph;
 pub use scc::{CondensationEdge, Scc, SccAnalyzer, SccResult};
+pub use snapshot::{compute_deltas, GraphDelta, GraphSnapshot};
 pub use system_graph::{
     BlastRadius, EdgeConfidence, SystemEdge, SystemGraph, SystemHubNode, SystemNode, SystemRepo,
     TraceHop, TraceResult,

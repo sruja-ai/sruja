@@ -2,7 +2,8 @@
 //!
 //! Provides knowledge graph storage and retrieval for context engineering.
 
-use sruja_graph::KnowledgeGraph;
+use sruja_graph::{ContextEventSummary, GraphLearning, GraphSnapshot, KnowledgeGraph};
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
@@ -11,6 +12,8 @@ use crate::commands::CliError;
 
 const GRAPH_FILE: &str = ".sruja/cache/kg.json";
 const LEGACY_GRAPH_FILE: &str = ".sruja/graph.json";
+pub(crate) const SNAPSHOTS_FILE: &str = ".sruja/graph_snapshots.jsonl";
+const MAX_SNAPSHOTS: usize = 100;
 
 fn atomic_write_file(path: &std::path::Path, contents: &[u8]) -> Result<(), CliError> {
     use std::io::Write;
@@ -120,13 +123,260 @@ pub fn build_and_save_graph(repo: &Path) -> Result<KnowledgeGraph, CliError> {
     let mut kg = KnowledgeGraph::new();
     sruja_graph::merge_scan_into_graph(&mut kg, &scan_graph, &repo.display().to_string());
     merge_decision_records_from_repo(repo, &mut kg)?;
+    merge_learnings_from_memory(repo, &mut kg);
+    merge_recent_events(repo, &mut kg);
 
     let commit_sha = get_current_commit_sha(repo);
-    kg.metadata.commit_sha = commit_sha;
+    kg.metadata.commit_sha = commit_sha.clone();
+
+    // Compute deltas and append snapshot before saving
+    let graph_path = repo.join(GRAPH_FILE);
+    if graph_path.exists() {
+        if let Ok(prev_kg) = load_graph_from(&graph_path) {
+            let deltas = sruja_graph::snapshot::compute_deltas(&prev_kg, &kg);
+            if !deltas.is_empty() {
+                let snapshot = GraphSnapshot {
+                    timestamp: chrono::Utc::now(),
+                    commit_sha: commit_sha.clone().unwrap_or_default(),
+                    deltas,
+                };
+                if let Err(e) = append_snapshot(repo, &snapshot) {
+                    eprintln!("Warning: Failed to save graph snapshot: {}", e);
+                }
+            }
+        }
+    }
 
     save_graph(repo, &kg)?;
 
     Ok(kg)
+}
+
+/// Merge agent learnings from `.sruja/agent_memory.json` into the knowledge graph.
+/// This makes learnings traversable alongside architecture elements.
+fn merge_learnings_from_memory(repo: &Path, graph: &mut KnowledgeGraph) {
+    let memory_path = repo.join(".sruja/agent_memory.json");
+    if !memory_path.exists() {
+        return;
+    }
+
+    let Ok(json) = std::fs::read_to_string(&memory_path) else {
+        return;
+    };
+
+    let Ok(memory) = serde_json::from_str::<serde_json::Value>(&json) else {
+        return;
+    };
+
+    let Some(entries) = memory.get("entries").and_then(|e| e.as_array()) else {
+        return;
+    };
+
+    for entry in entries {
+        let Some(id) = entry.get("id").and_then(|v| v.as_str()) else {
+            continue;
+        };
+
+        let kind = entry
+            .get("kind")
+            .and_then(|v| v.as_str())
+            .unwrap_or("guardrail");
+
+        let context = entry
+            .get("context")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let hypothesis = entry
+            .get("hypothesis")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let outcome = entry
+            .get("outcome")
+            .and_then(|v| v.as_str())
+            .unwrap_or("success")
+            .to_string();
+
+        let guardrail_advice = entry
+            .get("guardrail_advice")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+
+        let affected_elements = entry
+            .get("affected_elements")
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let related_ids = entry
+            .get("related_ids")
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let confidence = entry
+            .get("confidence")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        let tags = entry
+            .get("tags")
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let hitl_kind = entry
+            .get("hitl_kind")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        let retrieval_count = entry
+            .get("retrieval_count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as u32;
+
+        let task_success_after = entry
+            .get("task_success_after")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as u32;
+
+        let task_total_after = entry
+            .get("task_total_after")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as u32;
+
+        let timestamp = entry
+            .get("timestamp")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .unwrap_or_else(chrono::Utc::now);
+
+        graph.learnings.insert(
+            id.to_string(),
+            GraphLearning {
+                id: id.to_string(),
+                kind: kind.to_string(),
+                context,
+                hypothesis,
+                outcome,
+                guardrail_advice,
+                affected_elements,
+                related_ids,
+                confidence,
+                tags,
+                hitl_kind,
+                retrieval_count,
+                task_success_after,
+                task_total_after,
+                timestamp,
+            },
+        );
+    }
+
+    if !graph.learnings.is_empty() {
+        graph.touch();
+    }
+}
+
+/// Merge recent context events from `.sruja/context_events.jsonl` into the graph.
+/// Keeps only the last 50 events, compacted into summaries.
+fn merge_recent_events(repo: &Path, graph: &mut KnowledgeGraph) {
+    let events_path = repo.join(".sruja/context_events.jsonl");
+    if !events_path.exists() {
+        return;
+    }
+
+    let Ok(content) = std::fs::read_to_string(&events_path) else {
+        return;
+    };
+
+    let max_events = 50;
+    let cutoff_days = 30;
+    let cutoff = chrono::Utc::now() - chrono::Duration::days(cutoff_days);
+
+    let mut summaries: Vec<ContextEventSummary> = Vec::new();
+
+    for line in content.lines().rev() {
+        if summaries.len() >= max_events {
+            break;
+        }
+
+        let Ok(event) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+
+        let timestamp = event
+            .get("timestamp")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .unwrap_or_else(chrono::Utc::now);
+
+        // Skip events older than cutoff
+        if timestamp < cutoff {
+            continue;
+        }
+
+        let kind = event
+            .get("kind")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let outcome = event
+            .get("outcome")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let elements = event
+            .get("elements")
+            .or_else(|| event.get("details").and_then(|d| d.get("elements")))
+            .and_then(|v| v.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let summary = event
+            .get("summary")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        summaries.push(ContextEventSummary {
+            timestamp,
+            kind,
+            elements,
+            outcome,
+            summary,
+        });
+    }
+
+    // Reverse so oldest is first
+    summaries.reverse();
+
+    if !summaries.is_empty() {
+        graph.set_recent_events(summaries);
+    }
 }
 
 /// Merge Decision Records from `.sruja/decisions/*.md` into `graph` so `graph.json` stays aligned
@@ -184,6 +434,43 @@ pub fn save_graph(repo: &Path, graph: &KnowledgeGraph) -> Result<(), CliError> {
 
     let json = serde_json::to_string(graph)?;
     atomic_write_file(&cache_dir.join("kg.json"), json.as_bytes())?;
+
+    Ok(())
+}
+
+/// Append a snapshot to the JSONL file and trim to MAX_SNAPSHOTS
+fn append_snapshot(repo: &Path, snapshot: &GraphSnapshot) -> Result<(), CliError> {
+    let path = repo.join(SNAPSHOTS_FILE);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)?;
+    writeln!(file, "{}", serde_json::to_string(snapshot)?)?;
+
+    // Trim to last MAX_SNAPSHOTS
+    trim_snapshots(repo, MAX_SNAPSHOTS)?;
+    Ok(())
+}
+
+/// Keep only the last N snapshots in the JSONL file
+fn trim_snapshots(repo: &Path, max_count: usize) -> Result<(), CliError> {
+    let path = repo.join(SNAPSHOTS_FILE);
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let content = std::fs::read_to_string(&path)?;
+    let lines: Vec<&str> = content.lines().collect();
+
+    if lines.len() <= max_count {
+        return Ok(());
+    }
+
+    let keep = &lines[lines.len() - max_count..];
+    std::fs::write(&path, keep.join("\n") + "\n")?;
 
     Ok(())
 }
