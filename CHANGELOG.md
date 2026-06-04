@@ -5,6 +5,15 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.58.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.57.0...sruja-v0.58.0) (2026-06-04)
+
+
+### Features
+
+* add barrel file exclusion to reduce drift noise ([5d7dd94](https://github.com/sruja-ai/sruja/commit/5d7dd9490d6c9bee62e3ddf893cd25e8ecd55600))
+* **graph:** add temporal graph tracking - snapshots, history, drift velocity, score trends ([0bb5fc1](https://github.com/sruja-ai/sruja/commit/0bb5fc150e739c670aa1dd8cfe5d36eef38831f7))
+* **requirements:** enrich DSL with PRD-aligned fields and wire into enforcement ([8e393ae](https://github.com/sruja-ai/sruja/commit/8e393ae854f96412377b4dde7198184b8e5e0142))
+
 ## [0.57.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.56.0...sruja-v0.57.0) (2026-06-02)
 
 
