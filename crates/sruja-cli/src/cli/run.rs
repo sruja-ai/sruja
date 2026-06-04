@@ -580,6 +580,14 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 force,
             })
         }
+        Commands::GenerateSkill { repo, output } => {
+            commands::utility_domain::generate_skill_prompt(
+                commands::utility_domain::GenerateSkillPromptOptions {
+                    repo: &repo,
+                    output: output.as_deref(),
+                },
+            )
+        }
         Commands::Discover {
             cmd,
             context,

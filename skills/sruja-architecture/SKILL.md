@@ -209,6 +209,45 @@ Do not load `references/AGENTS.md`, `references/REFERENCE.md`, or entire `rules/
 | Deep semantic discovery | `rules/query/scip-discovery.md` |
 | Full design / refactor / patterns | `references/AGENTS.md` |
 
+## Auto-Capturing Knowledge from Conversations
+
+When users share conventions, patterns, or workflows in conversation, automatically record them using the existing `sruja_record_learning` MCP tool.
+
+**Detect these patterns:**
+- "Always do X", "Never do Y", "We use Z for..."
+- "When you see X, do Y", "For X, use Y"
+- "The convention is...", "The pattern is..."
+- "We follow X approach", "Our team does Y"
+
+**Capture using MCP tool `sruja_record_learning`:**
+```json
+{
+  "context": "user convention: [brief description]",
+  "hypothesis": "the convention/pattern shared",
+  "outcome": "success",
+  "guardrail_advice": "how to apply this"
+}
+```
+
+**Example:**
+```json
+{
+  "context": "user convention: error handling pattern",
+  "hypothesis": "Always use Result<T, E> with thiserror for error handling",
+  "outcome": "success",
+  "guardrail_advice": "Never use unwrap() in production code"
+}
+```
+
+**How it works:**
+1. User shares knowledge in conversation ("We always use X pattern")
+2. You detect the knowledge-sharing pattern
+3. You call `sruja_record_learning` MCP tool
+4. Knowledge is stored in `.sruja/agent_memory.json`
+5. Next sessions retrieve it via `sruja_get_agent_learnings` or `sruja focus`
+
+This creates an auto-learning loop without explicit user action, using existing tools.
+
 ## Related References
 
 - Discovery and refinement: `references/REFERENCE.md`

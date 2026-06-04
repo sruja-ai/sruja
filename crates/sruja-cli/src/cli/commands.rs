@@ -454,6 +454,19 @@ pub enum Commands {
         #[arg(long)]
         force: bool,
     },
+    /// Generate a prompt for AI to extract procedural knowledge and create a project skill
+    ///
+    /// Collects sruja evidence (classification, context, graph) and formats it into a prompt
+    /// that AI agents can use to extract procedural knowledge and generate a project-specific skill.
+    #[command(name = "generate-skill")]
+    GenerateSkill {
+        /// Path to repository root (single repo only)
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output file for the prompt (default: stdout)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+    },
     /// Daily action list: refresh evidence, detect drift, suggest next steps (alias: `daily`)
     #[command(visible_alias = "daily", hide = true)]
     Review {

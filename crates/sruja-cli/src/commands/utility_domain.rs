@@ -26,6 +26,8 @@ pub mod run_export;
 pub mod run_show;
 #[path = "sync_ide_rules.rs"]
 pub mod sync_ide_rules;
+#[path = "generate_skill.rs"]
+pub mod generate_skill;
 #[path = "version.rs"]
 pub mod version;
 #[path = "violation_shared.rs"]
@@ -34,4 +36,5 @@ pub mod violation_shared;
 pub mod repo_manifest;
 
 pub use classify::{classify, ClassifyOptions};
+pub use generate_skill::{generate_skill_prompt, GenerateSkillPromptOptions};
 pub use sync_ide_rules::{sync_ide_rules, SyncIdeRulesOptions};
