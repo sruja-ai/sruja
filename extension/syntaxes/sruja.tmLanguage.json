@@ -29,7 +29,7 @@
     "keywords": {
       "patterns": [{
         "name": "keyword.control.sruja",
-        "match": "\\b(system|container|component|person|database|datastore|queue|relation|description|technology|tags|metadata|requirement|adr|policy|category|enforcement|rule|deny|require|edge|from|to|except|message|suggest|on|key|value|meta|scenario|story|flow|step|view|include|exclude|of|recursive|source|id|aliases|owner|domain|criticality)\\b"
+        "match": "\\b(system|container|component|person|database|datastore|queue|relation|description|technology|tags|metadata|requirement|adr|policy|category|enforcement|rule|deny|require|edge|from|to|except|message|suggest|on|key|value|meta|scenario|story|flow|step|view|include|exclude|of|recursive|source|id|aliases|owner|domain|criticality|priority|status|acceptance_criteria|user_journey|affects|given|when|then)\\b"
       }]
     },
     "tags": {

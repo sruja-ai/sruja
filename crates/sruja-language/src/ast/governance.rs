@@ -24,6 +24,13 @@ pub struct Flow {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AcceptanceCriteria {
+    pub given: Option<String>,
+    pub when: Option<String>,
+    pub then: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Requirement {
     pub location: SourceLocation,
     pub id: String,
@@ -31,6 +38,14 @@ pub struct Requirement {
     pub r#type: String,
     pub description: Option<String>,
     pub tags: Vec<String>,
+    pub priority: Option<String>,
+    pub status: Option<String>,
+    pub acceptance_criteria: Vec<AcceptanceCriteria>,
+    pub user_journey: Option<String>,
+    pub scenarios: Vec<String>,
+    pub adrs: Vec<String>,
+    pub affects: Vec<String>,
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

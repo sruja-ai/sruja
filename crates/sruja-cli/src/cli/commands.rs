@@ -877,6 +877,21 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: DecisionCommand,
     },
+    /// List and filter requirements from .sruja files
+    Requirements {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Filter by priority (must, should, could, wont)
+        #[arg(long)]
+        priority: Option<String>,
+        /// Filter by status (proposed, accepted, deprecated)
+        #[arg(long)]
+        status: Option<String>,
+    },
     /// Agentic memory: learnings, guardrails, failed hypotheses (bounded to architecture work)
     Agent {
         #[command(subcommand)]

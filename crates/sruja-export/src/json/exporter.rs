@@ -463,9 +463,23 @@ impl Exporter {
                         title: req.title.clone(),
                         r#type: Some(req.r#type.clone()),
                         description: req.description.clone(),
-                        priority: None,
-                        status: None,
+                        priority: req.priority.clone(),
+                        status: req.status.clone(),
                         elements: vec![],
+                        acceptance_criteria: req
+                            .acceptance_criteria
+                            .iter()
+                            .map(|ac| AcceptanceCriteriaDump {
+                                given: ac.given.clone(),
+                                when: ac.when.clone(),
+                                then: ac.then.clone(),
+                            })
+                            .collect(),
+                        user_journey: req.user_journey.clone(),
+                        scenarios: req.scenarios.clone(),
+                        adrs: req.adrs.clone(),
+                        affects: req.affects.clone(),
+                        source: req.source.clone(),
                     });
                 }
                 sruja_language::TopLevelItem::Adr(adr) => {

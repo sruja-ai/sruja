@@ -366,6 +366,29 @@ pub struct RequirementDump {
     pub status: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub elements: Vec<String>, // FQN references
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub acceptance_criteria: Vec<AcceptanceCriteriaDump>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_journey: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub scenarios: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub adrs: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub affects: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
+/// Acceptance criteria dump
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AcceptanceCriteriaDump {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub given: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub when: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub then: Option<String>,
 }
 
 /// ADR dump

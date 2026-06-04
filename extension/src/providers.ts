@@ -201,6 +201,32 @@ export class SrujaHoverProvider implements vscode.HoverProvider {
       markdown.appendMarkdown(`*Title:* ${element.title}\n\n`);
     }
 
+    // Show enriched requirement fields
+    if (element.kind === "requirement") {
+      const symbols = await getDocumentSymbolsFromWasm(this.context, document.getText(), document.uri.fsPath, document.uri.toString(), document.version);
+      const sym = symbols?.find(s => s.kind === "requirement" && s.name === element.id);
+      if (sym && sym.kind === "requirement") {
+        if (sym.priority) {
+          markdown.appendMarkdown(`*Priority:* ${sym.priority}\n\n`);
+        }
+        if (sym.status) {
+          markdown.appendMarkdown(`*Status:* ${sym.status}\n\n`);
+        }
+        if (sym.source) {
+          markdown.appendMarkdown(`*Source:* ${sym.source}\n\n`);
+        }
+        if (sym.scenarios && sym.scenarios.length > 0) {
+          markdown.appendMarkdown(`*Scenarios:* ${sym.scenarios.join(", ")}\n\n`);
+        }
+        if (sym.adrs && sym.adrs.length > 0) {
+          markdown.appendMarkdown(`*ADRs:* ${sym.adrs.join(", ")}\n\n`);
+        }
+        if (sym.affects && sym.affects.length > 0) {
+          markdown.appendMarkdown(`*Affects:* ${sym.affects.join(", ")}\n\n`);
+        }
+      }
+    }
+
     // Add parent info for nested elements
     const dotIndex = element.id.lastIndexOf('.');
     if (dotIndex !== -1) {

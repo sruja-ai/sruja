@@ -81,6 +81,9 @@ pub struct FocusBriefing {
     /// On-disk Decision Records (`.sruja/decisions/`) whose `elements` include this focus target.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub decision_records: Vec<crate::commands::decision::DecisionListItem>,
+    /// Requirements from `.sruja` files whose `affects` include this focus target.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub linked_requirements: Vec<LinkedRequirementSummary>,
     /// Learnings actually injected into this briefing (subset of `find_relevant`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub surfaced_learning_ids: Vec<String>,
@@ -169,6 +172,35 @@ pub struct LinkedDecision {
     pub title: String,
     pub status: String,
     pub summary: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LinkedRequirementSummary {
+    pub id: String,
+    pub title: String,
+    pub r#type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub acceptance_criteria: Vec<AcceptanceCriteriaSummary>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub affects: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub adrs: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub scenarios: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AcceptanceCriteriaSummary {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub given: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub when: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub then: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -587,17 +619,14 @@ pub fn build_focus_briefing(
         }
     };
 
-    // -- Decisions --
+    // -- Decisions (including blast radius) --
     let decisions: Vec<LinkedDecision> = if compact {
         Vec::new()
     } else {
-        graph
-            .decisions
-            .values()
-            .filter(|d| {
-                d.affects.iter().any(|a| a == target_id)
-                    || d.affects.iter().any(|a| target_id.starts_with(a.as_str()))
-            })
+        // Get decisions affecting the target node and its blast radius
+        let blast_radius_decisions = graph.get_decisions_for_blast_radius(target_id);
+        blast_radius_decisions
+            .into_iter()
             .map(|d| LinkedDecision {
                 id: d.id.clone(),
                 title: d.title.clone(),
@@ -738,6 +767,12 @@ pub fn build_focus_briefing(
             .collect()
     };
 
+    let linked_requirements: Vec<LinkedRequirementSummary> = if compact {
+        Vec::new()
+    } else {
+        collect_linked_requirements(repo_path, target_id)
+    };
+
     if !decision_trace_events.is_empty() {
         ai_instructions.push(
             "Recent decision/workflow lineage events exist for this element — see briefing.decision_trace_events."
@@ -749,6 +784,27 @@ pub fn build_focus_briefing(
             "On-disk Decision Records reference this element — see briefing.decision_records (treat learned_facts as hypotheses until reviewed)."
                 .to_string(),
         );
+    }
+    if !linked_requirements.is_empty() {
+        let high_priority_count = linked_requirements
+            .iter()
+            .filter(|r| {
+                r.priority
+                    .as_deref()
+                    .map_or(false, |p| p == "must" || p == "should")
+            })
+            .count();
+        if high_priority_count > 0 {
+            ai_instructions.push(format!(
+                "{} linked requirement(s) with must/should priority affect this element — see briefing.linked_requirements. Read acceptance criteria before changing behavior.",
+                high_priority_count
+            ));
+        } else {
+            ai_instructions.push(
+                "Requirements reference this element — see briefing.linked_requirements."
+                    .to_string(),
+            );
+        }
     }
 
     // -- Fallback to Legacy Anti Patterns (From AI Scratchpad) --
@@ -841,6 +897,7 @@ pub fn build_focus_briefing(
         enrichment: None,
         decision_trace_events,
         decision_records,
+        linked_requirements,
         surfaced_learning_ids,
         last_session: if compact { None } else { last_session },
     }
@@ -1070,6 +1127,68 @@ fn collect_reasoned_traces(graph: &KnowledgeGraph, target_id: &str) -> Vec<Reaso
             reasoning: s.reasoning,
             decision_ref: s.decision_ref,
         })
+        .collect()
+}
+
+/// Collect requirements from `.sruja` files whose `affects` include the target element.
+fn collect_linked_requirements(
+    repo_path: &Path,
+    target_id: &str,
+) -> Vec<LinkedRequirementSummary> {
+    let resolved = crate::utils::architecture_path::resolve_architecture_path(repo_path);
+    let arch_path = match resolved {
+        Some(p) => p,
+        None => return Vec::new(),
+    };
+    let content = match std::fs::read_to_string(&arch_path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let program = match sruja_language::Parser::new(arch_path.to_string_lossy().as_ref())
+        .parse(&content)
+    {
+        Ok(p) => p,
+        Err(_) => return Vec::new(),
+    };
+
+    program
+        .items
+        .iter()
+        .filter_map(|item| {
+            if let sruja_language::TopLevelItem::Requirement(req) = item {
+                let matches = req.affects.iter().any(|a| {
+                    a == target_id
+                        || target_id.starts_with(&format!("{a}."))
+                        || a.starts_with(&format!("{target_id}."))
+                });
+                if matches {
+                    Some(LinkedRequirementSummary {
+                        id: req.id.clone(),
+                        title: req.title.clone(),
+                        r#type: req.r#type.clone(),
+                        priority: req.priority.clone(),
+                        status: req.status.clone(),
+                        acceptance_criteria: req
+                            .acceptance_criteria
+                            .iter()
+                            .map(|ac| AcceptanceCriteriaSummary {
+                                given: ac.given.clone(),
+                                when: ac.when.clone(),
+                                then: ac.then.clone(),
+                            })
+                            .collect(),
+                        affects: req.affects.clone(),
+                        adrs: req.adrs.clone(),
+                        scenarios: req.scenarios.clone(),
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .take(20)
         .collect()
 }
 

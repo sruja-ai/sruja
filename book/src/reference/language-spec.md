@@ -317,21 +317,33 @@ From -> To "Label" [tag1, tag2]
 ### Requirements
 
 ```sruja
-// partial
+// Minimal
 R1 = requirement functional "Description"
 R2 = requirement nonfunctional "Description"
 R3 = requirement constraint "Description"
 R4 = requirement performance "Description"
 R5 = requirement security "Description"
 
-// With body block
-R6 = requirement functional "Description" {
+// Enriched with PRD-aligned fields
+R6 = requirement functional "User can checkout" {
     description "Detailed description"
-    metadata {
-        priority "high"
+    priority "must"                    // MoSCoW: must | should | could | wont
+    status "accepted"                  // proposed | accepted | deprecated | superseded
+    user_journey "Narrative of the user's path through the feature"
+    acceptance_criteria {
+        given "Precondition"
+        when "User action"
+        then "Expected outcome"
     }
+    scenario CheckoutFlow              // Link to scenario element
+    adr ADR001                         // Link to ADR element
+    affects System.Container.Component // Link to architecture elements
+    source "prd://checkout-prd"        // Cross-repo PRD reference
+    tags ["checkout", "critical"]
 }
 ```
+
+Requirements support MoSCoW priority, acceptance criteria (Given-When-Then), and traceability links to scenarios, ADRs, and architecture elements. The `source` field enables cross-repo PRD linking — multiple repos can reference the same central PRD.
 
 ### ADRs (Architectural Decision Records)
 

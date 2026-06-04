@@ -25,7 +25,83 @@ impl Rule for GovernanceValidationRule {
             return vec![];
         }
 
+        let mut diags: Vec<Diagnostic> = Vec::new();
+
+        // Validate requirement priorities directly from AST
+        for item in &program.items {
+            if let sruja_language::TopLevelItem::Requirement(req) = item {
+                if let Some(priority) = &req.priority {
+                    let p = priority.to_lowercase();
+                    if p != "must" && p != "should" && p != "could" && p != "wont" {
+                        diags.push(
+                            Diagnostic::new(
+                                sruja_diagnostics::codes::CODE_BEST_PRACTICE,
+                                Severity::Warning,
+                                format!(
+                                    "Invalid priority '{}' for requirement '{}'. Expected: must, should, could, or wont",
+                                    priority, req.id
+                                ),
+                                req.location.clone(),
+                            )
+                            .with_suggestions(vec![
+                                "Valid priorities: must, should, could, wont (MoSCoW)".to_string(),
+                            ]),
+                        );
+                    }
+                }
+
+                // Accepted requirements must have affects (traceability)
+                let is_accepted = req
+                    .status
+                    .as_deref()
+                    .map_or(false, |s| s.to_lowercase() == "accepted");
+                if is_accepted && req.affects.is_empty() {
+                    diags.push(
+                        Diagnostic::new(
+                            sruja_diagnostics::codes::CODE_BEST_PRACTICE,
+                            Severity::Warning,
+                            format!(
+                                "Accepted requirement '{}' has no 'affects' — add traceability to architecture elements",
+                                req.id
+                            ),
+                            req.location.clone(),
+                        )
+                        .with_suggestions(vec![
+                            "Add 'affects System.Container' to link this requirement to code".to_string(),
+                        ]),
+                    );
+                }
+            }
+        }
+
         let (elements, _relations) = collect_elements(program);
+
+        // Validate requirement affects references exist in the architecture
+        for item in &program.items {
+            if let sruja_language::TopLevelItem::Requirement(req) = item {
+                for affect in &req.affects {
+                    let exists = elements.contains_key(affect)
+                        || elements.keys().any(|k| k.starts_with(&format!("{affect}.")));
+                    if !exists {
+                        diags.push(
+                            Diagnostic::new(
+                                sruja_diagnostics::codes::CODE_INVALID_PROPERTY,
+                                Severity::Warning,
+                                format!(
+                                    "Requirement '{}' affects '{}' which is not found in the architecture",
+                                    req.id, affect
+                                ),
+                                req.location.clone(),
+                            )
+                            .with_suggestions(vec![
+                                format!("Ensure '{}' is defined in a .sruja file", affect),
+                                "Check spelling and casing of the element ID".to_string(),
+                            ]),
+                        );
+                    }
+                }
+            }
+        }
 
         // kind -> id -> first definition
         let mut seen: HashMap<&'static str, HashMap<String, FirstSeen>> = HashMap::new();
@@ -39,8 +115,6 @@ impl Rule for GovernanceValidationRule {
         ] {
             seen.insert(k, HashMap::new());
         }
-
-        let mut diags: Vec<Diagnostic> = Vec::new();
 
         for elem in elements.values() {
             let kind_key = normalize_governance_kind(&elem.assignment.kind);
@@ -155,5 +229,67 @@ api = container "API"
             diags.is_empty(),
             "systems/containers don't require unique IDs for governance"
         );
+    }
+
+    #[test]
+    fn accepted_requirement_without_affects_warns() {
+        let input = r#"
+R1 = requirement functional "Must login" {
+    status "accepted"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.iter().any(|d| d.message.contains("no 'affects'")));
+    }
+
+    #[test]
+    fn accepted_requirement_with_affects_passes() {
+        let input = r#"
+MySys = system "My System"
+MySys.API = container "API"
+R1 = requirement functional "Must login" {
+    status "accepted"
+    affects MySys.API
+}
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.iter().any(|d| d.message.contains("no 'affects'")));
+    }
+
+    #[test]
+    fn requirement_affects_missing_element_warns() {
+        let input = r#"
+R1 = requirement functional "Must login" {
+    affects NonExistent
+}
+"#;
+        let diags = validate_program(input);
+        assert!(
+            diags.iter().any(|d| d.message.contains("not found in the architecture")),
+            "Expected 'not found' warning, got: {:?}",
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn invalid_priority_warns() {
+        let input = r#"
+R1 = requirement functional "Must login" {
+    priority "critical"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(diags.iter().any(|d| d.message.contains("Invalid priority")));
+    }
+
+    #[test]
+    fn valid_priority_passes() {
+        let input = r#"
+R1 = requirement functional "Must login" {
+    priority "must"
+}
+"#;
+        let diags = validate_program(input);
+        assert!(!diags.iter().any(|d| d.message.contains("Invalid priority")));
     }
 }

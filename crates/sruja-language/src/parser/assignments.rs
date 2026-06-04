@@ -11,7 +11,7 @@ use nom::{
 };
 use sruja_diagnostics::SourceLocation;
 
-use crate::ast::{Adr, Flow, Policy, Requirement, Scenario, ScenarioStep};
+use crate::ast::{AcceptanceCriteria, Adr, Flow, Policy, Requirement, Scenario, ScenarioStep};
 
 use super::blocks::{parse_kv_string_block, parse_metadata_block};
 use super::primitives::{
@@ -117,11 +117,27 @@ pub(crate) fn parse_requirement_assignment(input: &str) -> IResult<&str, Require
 
     let mut description = None;
     let mut tags = Vec::new();
+    let mut priority = None;
+    let mut status = None;
+    let mut acceptance_criteria = Vec::new();
+    let mut user_journey = None;
+    let mut scenarios = Vec::new();
+    let mut adrs = Vec::new();
+    let mut affects = Vec::new();
+    let mut source = None;
     if let Some(d) = details {
         if d.description.is_some() {
             description = d.description;
         }
         tags = d.tags;
+        priority = d.priority;
+        status = d.status;
+        acceptance_criteria = d.acceptance_criteria;
+        user_journey = d.user_journey;
+        scenarios = d.scenarios;
+        adrs = d.adrs;
+        affects = d.affects;
+        source = d.source;
     }
 
     Ok((
@@ -133,6 +149,14 @@ pub(crate) fn parse_requirement_assignment(input: &str) -> IResult<&str, Require
             r#type,
             description,
             tags,
+            priority,
+            status,
+            acceptance_criteria,
+            user_journey,
+            scenarios,
+            adrs,
+            affects,
+            source,
         },
     ))
 }
@@ -434,12 +458,28 @@ pub(crate) fn parse_requirement(input: &str) -> IResult<&str, Requirement> {
     let mut out_type = r#type.unwrap_or_else(|| "functional".to_string());
     let mut description = None;
     let mut tags = Vec::new();
+    let mut priority = None;
+    let mut status = None;
+    let mut acceptance_criteria = Vec::new();
+    let mut user_journey = None;
+    let mut scenarios = Vec::new();
+    let mut adrs = Vec::new();
+    let mut affects = Vec::new();
+    let mut source = None;
     if let Some(d) = details {
         if d.r#type.is_some() {
             out_type = d.r#type.unwrap_or(out_type);
         }
         description = d.description;
         tags = d.tags;
+        priority = d.priority;
+        status = d.status;
+        acceptance_criteria = d.acceptance_criteria;
+        user_journey = d.user_journey;
+        scenarios = d.scenarios;
+        adrs = d.adrs;
+        affects = d.affects;
+        source = d.source;
     }
 
     Ok((
@@ -451,6 +491,14 @@ pub(crate) fn parse_requirement(input: &str) -> IResult<&str, Requirement> {
             description,
             tags,
             id,
+            priority,
+            status,
+            acceptance_criteria,
+            user_journey,
+            scenarios,
+            adrs,
+            affects,
+            source,
         },
     ))
 }
@@ -460,6 +508,14 @@ struct RequirementDetails {
     r#type: Option<String>,
     description: Option<String>,
     tags: Vec<String>,
+    priority: Option<String>,
+    status: Option<String>,
+    acceptance_criteria: Vec<AcceptanceCriteria>,
+    user_journey: Option<String>,
+    scenarios: Vec<String>,
+    adrs: Vec<String>,
+    affects: Vec<String>,
+    source: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -467,7 +523,46 @@ enum RequirementField {
     Type(String),
     Description(String),
     Tags(Vec<String>),
+    Priority(String),
+    Status(String),
+    AcceptanceCriteria(AcceptanceCriteria),
+    UserJourney(String),
+    Scenario(String),
+    Adr(String),
+    Affects(String),
+    Source(String),
     Ignored,
+}
+
+fn parse_acceptance_criteria_block(input: &str) -> IResult<&str, AcceptanceCriteria> {
+    use nom::sequence::delimited;
+    let (input, _) = tag("acceptance_criteria").parse(input)?;
+    let (input, _) = ws0(input)?;
+    let (input, fields) = delimited(
+        preceded(ws0, char('{')),
+        many0(preceded(ws, parse_acceptance_criteria_field)),
+        preceded(ws0, char('}')),
+    )
+    .parse(input)?;
+
+    let mut ac = AcceptanceCriteria {
+        given: None,
+        when: None,
+        then: None,
+    };
+    for (k, v) in fields {
+        match k.as_str() {
+            "given" => ac.given = Some(v),
+            "when" => ac.when = Some(v),
+            "then" => ac.then = Some(v),
+            _ => {}
+        }
+    }
+    Ok((input, ac))
+}
+
+fn parse_acceptance_criteria_field(input: &str) -> IResult<&str, (String, String)> {
+    parse_kv_string(input)
 }
 
 fn parse_requirement_field(input: &str) -> IResult<&str, RequirementField> {
@@ -490,6 +585,40 @@ fn parse_requirement_field(input: &str) -> IResult<&str, RequirementField> {
             ),
             RequirementField::Tags,
         ),
+        map(
+            preceded(tag("priority"), preceded(ws1, parse_string)),
+            RequirementField::Priority,
+        ),
+        map(
+            preceded(tag("status"), preceded(ws1, parse_string)),
+            RequirementField::Status,
+        ),
+        map(parse_acceptance_criteria_block, |ac| {
+            RequirementField::AcceptanceCriteria(ac)
+        }),
+        map(
+            preceded(tag("user_journey"), preceded(ws1, parse_string)),
+            RequirementField::UserJourney,
+        ),
+        map(
+            preceded(
+                tag("scenario"),
+                preceded(ws1, alt((parse_string, parse_identifier))),
+            ),
+            RequirementField::Scenario,
+        ),
+        map(
+            preceded(tag("adr"), preceded(ws1, alt((parse_string, parse_identifier)))),
+            RequirementField::Adr,
+        ),
+        map(
+            preceded(tag("affects"), preceded(ws1, alt((parse_string, parse_identifier)))),
+            RequirementField::Affects,
+        ),
+        map(
+            preceded(tag("source"), preceded(ws1, parse_string)),
+            RequirementField::Source,
+        ),
         map(parse_metadata_block, |_| RequirementField::Ignored),
     ))
     .parse(input)
@@ -510,6 +639,14 @@ fn parse_requirement_details(input: &str) -> IResult<&str, RequirementDetails> {
             RequirementField::Type(t) => details.r#type = Some(t),
             RequirementField::Description(d) => details.description = Some(d),
             RequirementField::Tags(t) => details.tags = t,
+            RequirementField::Priority(p) => details.priority = Some(p),
+            RequirementField::Status(s) => details.status = Some(s),
+            RequirementField::AcceptanceCriteria(ac) => details.acceptance_criteria.push(ac),
+            RequirementField::UserJourney(uj) => details.user_journey = Some(uj),
+            RequirementField::Scenario(s) => details.scenarios.push(s),
+            RequirementField::Adr(a) => details.adrs.push(a),
+            RequirementField::Affects(a) => details.affects.push(a),
+            RequirementField::Source(s) => details.source = Some(s),
             RequirementField::Ignored => {}
         }
     }

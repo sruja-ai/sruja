@@ -2,8 +2,27 @@
 
 use sruja_language::{Adr, Policy, PolicyRuleAst, PolicySelectorAst, Requirement};
 
+fn quote_if_dotted(s: &str) -> String {
+    if s.contains('.') {
+        format!("\"{}\"", s)
+    } else {
+        s.to_string()
+    }
+}
+
 pub fn print_requirement(out: &mut String, req: &Requirement) {
-    if req.description.is_some() {
+    let has_body = req.priority.is_some()
+        || req.status.is_some()
+        || !req.acceptance_criteria.is_empty()
+        || req.user_journey.is_some()
+        || !req.scenarios.is_empty()
+        || !req.adrs.is_empty()
+        || !req.affects.is_empty()
+        || req.source.is_some()
+        || !req.tags.is_empty()
+        || (req.description.is_some() && req.description.as_ref() != Some(&req.title));
+
+    if !has_body {
         out.push_str("requirement ");
         out.push_str(&req.id);
         out.push(' ');
@@ -32,7 +51,54 @@ pub fn print_requirement(out: &mut String, req: &Requirement) {
         out.push_str(&req.title);
         out.push('"');
     }
-    out.push('\n');
+    out.push_str(" {\n");
+    if let Some(desc) = &req.description {
+        out.push_str(&format!("    description \"{}\"\n", desc));
+    }
+    if let Some(priority) = &req.priority {
+        out.push_str(&format!("    priority \"{}\"\n", priority));
+    }
+    if let Some(status) = &req.status {
+        out.push_str(&format!("    status \"{}\"\n", status));
+    }
+    if let Some(user_journey) = &req.user_journey {
+        out.push_str(&format!("    user_journey \"{}\"\n", user_journey));
+    }
+    for ac in &req.acceptance_criteria {
+        out.push_str("    acceptance_criteria {\n");
+        if let Some(given) = &ac.given {
+            out.push_str(&format!("        given \"{}\"\n", given));
+        }
+        if let Some(when) = &ac.when {
+            out.push_str(&format!("        when \"{}\"\n", when));
+        }
+        if let Some(then) = &ac.then {
+            out.push_str(&format!("        then \"{}\"\n", then));
+        }
+        out.push_str("    }\n");
+    }
+    for scenario in &req.scenarios {
+        out.push_str(&format!("    scenario {}\n", quote_if_dotted(scenario)));
+    }
+    for adr in &req.adrs {
+        out.push_str(&format!("    adr {}\n", quote_if_dotted(adr)));
+    }
+    for affect in &req.affects {
+        out.push_str(&format!("    affects {}\n", quote_if_dotted(affect)));
+    }
+    if let Some(source) = &req.source {
+        out.push_str(&format!("    source \"{}\"\n", source));
+    }
+    if !req.tags.is_empty() {
+        let formatted = req
+            .tags
+            .iter()
+            .map(|t| format!("\"{}\"", t))
+            .collect::<Vec<_>>()
+            .join(", ");
+        out.push_str(&format!("    tags [{}]\n", formatted));
+    }
+    out.push_str("}\n");
 }
 
 pub fn print_adr(out: &mut String, adr: &Adr) {
@@ -296,11 +362,58 @@ mod tests {
             title: "Must login".to_string(),
             description: Some("User must be able to login".to_string()),
             tags: vec![],
+            priority: None,
+            status: None,
+            acceptance_criteria: vec![],
+            user_journey: None,
+            scenarios: vec![],
+            adrs: vec![],
+            affects: vec![],
+            source: None,
         };
         print_requirement(&mut out, &req);
-        assert!(out.contains(
-            "requirement REQ_1 functional \"Must login\" \"User must be able to login\""
-        ));
+        assert!(out.contains("REQ_1 = requirement functional \"Must login\""));
+        assert!(out.contains("description \"User must be able to login\""));
+    }
+
+    #[test]
+    fn test_print_requirement_with_enriched_fields() {
+        use sruja_language::AcceptanceCriteria;
+        let mut out = String::new();
+        let req = Requirement {
+            location: SourceLocation::new("test".to_string(), 1, 1),
+            id: "R1".to_string(),
+            r#type: "functional".to_string(),
+            title: "User can log in".to_string(),
+            description: None,
+            tags: vec!["auth".to_string()],
+            priority: Some("must".to_string()),
+            status: Some("accepted".to_string()),
+            acceptance_criteria: vec![AcceptanceCriteria {
+                given: Some("User has valid credentials".to_string()),
+                when: Some("User submits login form".to_string()),
+                then: Some("System authenticates and redirects".to_string()),
+            }],
+            user_journey: Some("User opens app and enters credentials".to_string()),
+            scenarios: vec!["LoginFlow".to_string()],
+            adrs: vec!["ADR001".to_string()],
+            affects: vec!["MySystem.Auth".to_string()],
+            source: Some("prd://checkout-prd".to_string()),
+        };
+        print_requirement(&mut out, &req);
+        assert!(out.contains("R1 = requirement functional \"User can log in\""));
+        assert!(out.contains("priority \"must\""));
+        assert!(out.contains("status \"accepted\""));
+        assert!(out.contains("user_journey \"User opens app and enters credentials\""));
+        assert!(out.contains("acceptance_criteria {"));
+        assert!(out.contains("given \"User has valid credentials\""));
+        assert!(out.contains("when \"User submits login form\""));
+        assert!(out.contains("then \"System authenticates and redirects\""));
+        assert!(out.contains("scenario LoginFlow"));
+        assert!(out.contains("adr ADR001"));
+        assert!(out.contains("affects \"MySystem.Auth\""));
+        assert!(out.contains("source \"prd://checkout-prd\""));
+        assert!(out.contains("tags [\"auth\"]"));
     }
 
     #[test]

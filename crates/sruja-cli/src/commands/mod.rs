@@ -130,6 +130,7 @@ pub(crate) mod context;
 pub(crate) mod context_events;
 pub(crate) mod context_prune;
 pub mod decision;
+pub mod requirements;
 pub(crate) mod diagnostic_vfs;
 pub(crate) mod drift_state;
 pub mod event;
@@ -142,6 +143,7 @@ pub use decision::{
     create_decision_record, decision_accept, decision_link, decision_list, decision_new,
     decision_show, decision_supersede, decision_trace, list_decisions,
 };
+pub use requirements::requirements_list;
 pub use event::{event_append, event_list};
 pub use memory_cmd::{
     memory_archive, memory_reindex, memory_search, memory_skill_stats, memory_timeline,

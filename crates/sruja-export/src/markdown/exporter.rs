@@ -586,8 +586,67 @@ impl MarkdownExporter {
                 out.push_str(&format!("**ID:** {}\n\n", escape_inline(&req.id)));
             }
             out.push_str(&format!("**Type:** {}\n\n", escape_inline(&req.r#type)));
+            if let Some(priority) = &req.priority {
+                out.push_str(&format!(
+                    "**Priority:** {}\n\n",
+                    escape_inline(priority)
+                ));
+            }
+            if let Some(status) = &req.status {
+                out.push_str(&format!(
+                    "**Status:** {}\n\n",
+                    escape_inline(status)
+                ));
+            }
             if let Some(desc) = &req.description {
                 out.push_str(&format!("{}\n\n", escape_inline(desc)));
+            }
+            if let Some(user_journey) = &req.user_journey {
+                out.push_str(&format!(
+                    "**User Journey:** {}\n\n",
+                    escape_inline(user_journey)
+                ));
+            }
+            if !req.acceptance_criteria.is_empty() {
+                out.push_str("**Acceptance Criteria:**\n\n");
+                for ac in &req.acceptance_criteria {
+                    out.push_str("- ");
+                    if let Some(given) = &ac.given {
+                        out.push_str(&format!("**Given** {} ", escape_inline(given)));
+                    }
+                    if let Some(when) = &ac.when {
+                        out.push_str(&format!("**When** {} ", escape_inline(when)));
+                    }
+                    if let Some(then) = &ac.then {
+                        out.push_str(&format!("**Then** {}", escape_inline(then)));
+                    }
+                    out.push('\n');
+                }
+                out.push('\n');
+            }
+            if !req.scenarios.is_empty() {
+                out.push_str(&format!(
+                    "**Scenarios:** {}\n\n",
+                    escape_inline(&req.scenarios.join(", "))
+                ));
+            }
+            if !req.adrs.is_empty() {
+                out.push_str(&format!(
+                    "**ADRs:** {}\n\n",
+                    escape_inline(&req.adrs.join(", "))
+                ));
+            }
+            if !req.affects.is_empty() {
+                out.push_str(&format!(
+                    "**Affects:** {}\n\n",
+                    escape_inline(&req.affects.join(", "))
+                ));
+            }
+            if let Some(source) = &req.source {
+                out.push_str(&format!(
+                    "**Source:** {}\n\n",
+                    escape_inline(source)
+                ));
             }
             if !req.tags.is_empty() {
                 out.push_str(&format!(

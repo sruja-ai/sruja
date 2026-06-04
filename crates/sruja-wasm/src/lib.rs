@@ -791,7 +791,7 @@ pub fn sruja_get_document_symbols(dsl: &str, filename: Option<String>) -> Result
             }
             sruja_language::TopLevelItem::Requirement(req) => {
                 let (line, ch, end_ch) = symbol_range(dsl, &req.location, &req.id);
-                symbols.push(json!({
+                let mut sym = json!({
                     "kind": "requirement",
                     "name": req.id.clone(),
                     "detail": req.r#type.clone(),
@@ -800,7 +800,26 @@ pub fn sruja_get_document_symbols(dsl: &str, filename: Option<String>) -> Result
                         "end": {"line": line, "character": end_ch}
                     },
                     "children": []
-                }));
+                });
+                if let Some(priority) = &req.priority {
+                    sym["priority"] = json!(priority);
+                }
+                if let Some(status) = &req.status {
+                    sym["status"] = json!(status);
+                }
+                if !req.affects.is_empty() {
+                    sym["affects"] = json!(req.affects);
+                }
+                if !req.scenarios.is_empty() {
+                    sym["scenarios"] = json!(req.scenarios);
+                }
+                if !req.adrs.is_empty() {
+                    sym["adrs"] = json!(req.adrs);
+                }
+                if let Some(source) = &req.source {
+                    sym["source"] = json!(source);
+                }
+                symbols.push(sym);
             }
             sruja_language::TopLevelItem::Adr(adr) => {
                 let (line, ch, end_ch) = symbol_range(dsl, &adr.location, &adr.id);

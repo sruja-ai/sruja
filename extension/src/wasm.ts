@@ -280,6 +280,13 @@ export interface SrujaDocumentSymbol {
   detail: string;
   range: { start: { line: number; character: number }; end: { line: number; character: number } };
   children: SrujaDocumentSymbol[];
+  /** Enriched requirement fields (only present when kind === "requirement") */
+  priority?: string;
+  status?: string;
+  affects?: string[];
+  scenarios?: string[];
+  adrs?: string[];
+  source?: string;
 }
 
 /** Type guard for SrujaElement - validates all required fields */

@@ -819,6 +819,20 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 commands::decision_supersede(&repo, &id, &by).await
             }
         },
+        Commands::Requirements {
+            repo,
+            format,
+            priority,
+            status,
+        } => {
+            commands::requirements_list(
+                &repo,
+                &format,
+                priority.as_deref(),
+                status.as_deref(),
+            )
+            .await
+        }
         Commands::Agent { cmd } => match cmd {
             AgentCommand::History {
                 repo,
