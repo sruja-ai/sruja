@@ -28,13 +28,12 @@ In a distributed system, network partitions (P) are inevitable. Therefore, you m
 
 ---
 
-## 🛠️ Sruja Perspective: Documenting Guarantees
+##  Sruja Perspective: Documenting Guarantees
 
 When defining data stores in Sruja, it is helpful to document their consistency guarantees, especially for distributed databases.
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
-
 
 DataLayer = system "Data Layer" {
     UserDB = database "User Database" {
@@ -76,7 +75,6 @@ Ready to apply what you've learned? Take the interactive quiz for this lesson!
 **Explanation:**
 Consistency ensures all nodes see the same data at the same time. When a write is confirmed, any subsequent read returns that value.
 
-
 </details>
 
 ---
@@ -94,7 +92,6 @@ Consistency ensures all nodes see the same data at the same time. When a write i
 
 **Explanation:**
 Availability means the system is always responsive. Even if some nodes are out of sync, the system returns a response (possibly stale data) rather than an error.
-
 
 </details>
 
@@ -114,7 +111,6 @@ Availability means the system is always responsive. Even if some nodes are out o
 
 **Explanation:**
 Partition Tolerance ensures the system works even when network communication between nodes fails. In distributed systems, partitions are inevitable, so P is mandatory.
-
 
 </details>
 

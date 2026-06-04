@@ -8,7 +8,7 @@ summary: "Understanding context, containers, and components without special DSL 
 
 I'll never forget the board meeting where I learned this lesson the hard way.
 
-The VP of Engineering asked me to present our architecture to the executive team. I spent hours crafting this beautiful, comprehensive diagram showing every service, database, queue, and API endpoint. It was a masterpiece of technical completeness.
+The VP of Engineering asked me to present our architecture to the executive team. I spent hours crafting this beautiful, full diagram showing every service, database, queue, and API endpoint. It was a masterpiece of technical completeness.
 
 I proudly projected it on the screen.
 
@@ -174,7 +174,7 @@ Same system. Different lenses.
 
 Here's the framework I use to decide which views to create:
 
-### Always Create These Views:
+### Always Create These Views
 
 **1. Context View (Executive)**
 - **Audience:** Executives, stakeholders, non-technical team members
@@ -194,7 +194,7 @@ Here's the framework I use to decide which views to create:
 - **Hides:** External systems, high-level architecture
 - **Use when:** Onboarding developers, planning sprints, debugging
 
-### Create Conditionally:
+### Create Conditionally
 
 **4. Data Flow View**
 - **Create when:** System has complex data pipelines, multiple data stores, or data compliance requirements

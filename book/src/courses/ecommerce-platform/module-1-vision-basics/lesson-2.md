@@ -82,7 +82,6 @@ Before modeling architecture, let's capture product requirements:
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 // Product Requirements (from product team)
 requirement R1 functional "Merchants can create and manage online stores"
 requirement R2 functional "Shoppers can browse products and make purchases"
@@ -110,7 +109,6 @@ Now let's model the system context:
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 // Product Requirements
 requirement R1 functional "Merchants can create and manage online stores"

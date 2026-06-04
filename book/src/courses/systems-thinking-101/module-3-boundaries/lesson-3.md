@@ -185,10 +185,6 @@ Shop.API = container "API Service" {
 }
 ```
 
-I once worked on a system that had no timeout configured. An external service got slow, and our threads hung indefinitely. The entire system ground to a halt.
-
-Set timeouts. Always. Even if the external service is usually fast.
-
 ### 3. Data Consistency: What Happens When Things Go Wrong?
 
 What if the payment succeeds but saving the order fails? Or the order saves but the payment fails?
@@ -209,10 +205,6 @@ You need strategies for handling this:
 - **Compensating transactions** — If the order save fails after payment, refund automatically
 - **Eventual consistency** — Accept that things might be inconsistent briefly, then reconcile
 - **Two-phase commits** — Complex, but guarantees consistency
-
-I once worked on a system where we charged customers but lost their orders. We spent weeks manually reconciling payments and orders. Awful experience.
-
-Plan for consistency issues at boundaries. They will happen.
 
 ### 4. Security: What Protects Your Data?
 
@@ -301,8 +293,6 @@ Don't let data format be implicit. Specify:
 - Date formats (timezone matters!)
 - Currency formats
 - Number formats (decimal precision, rounding)
-
-I once dealt with a system where dates were sometimes in US format (MM/DD/YYYY) and sometimes in ISO format (YYYY-MM-DD), depending on which service you called. Bugs everywhere.
 
 ### SLA and Reliability
 
@@ -669,8 +659,6 @@ You can now create architectures that clearly distinguish what you control from 
 You're building resilient systems.
 
 In the next module, you'll learn about **flows**—how information moves through your system over time. You'll discover how to model data flow, process flows, and temporal behaviors that tell a richer story than static diagrams can.
-
-See you there!
 
 ---
 

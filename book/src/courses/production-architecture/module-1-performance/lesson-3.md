@@ -16,7 +16,6 @@ Use SLOs to set thresholds for alerts and capacity changes.
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 API = system "API Server" {
   Gateway = container "Gateway" {
     scale { metric "req/s" min 500 max 5000 }

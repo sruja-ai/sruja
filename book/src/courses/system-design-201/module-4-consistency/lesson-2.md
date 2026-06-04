@@ -15,7 +15,6 @@ They document trade‑offs and prevent accidental coupling across services.
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 constraints {
 rule "No cross‑service transactions"
 rule "Idempotent event handlers"

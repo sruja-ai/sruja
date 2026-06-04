@@ -434,7 +434,6 @@ Ready to apply what you've learned? Take the interactive quiz for this lesson!
 **Explanation:**
 Functional requirements define the features and capabilities of the system. Examples: "User can post a tweet," "User can browse products."
 
-
 </details>
 
 ---
@@ -454,7 +453,6 @@ Functional requirements define the features and capabilities of the system. Exam
 
 **Explanation:**
 Non-functional requirements define the quality attributes and constraints of the system. Examples: "Must handle 100M users," "Response time &lt;200ms."
-
 
 </details>
 
@@ -625,7 +623,6 @@ Non-functional requirements define the quality attributes and constraints of the
 
 **Explanation:**
 Trade-offs are fundamental to system design. There are no perfect solutions—every architecture choice involves benefits and costs. "It depends" is the correct answer because it depends on which trade-offs you choose.
-
 
 </details>
 

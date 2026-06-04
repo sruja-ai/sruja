@@ -25,7 +25,6 @@ We don't just make this decision; we _document_ it so future engineers know why.
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 // Requirements that drive the architecture decision
 requirement R1 functional "Must support 10,000+ stores"
 requirement R2 performance "API response < 200ms p95"

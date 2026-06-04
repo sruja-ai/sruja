@@ -26,7 +26,7 @@ Each module contains hands-on examples with Sruja syntax. You'll write `.sruja` 
 
 ## Why Systems Thinking?
 
-- **Holistic understanding**: See the whole system, not just parts
+- **full understanding**: See the whole system, not just parts
 - **Natural patterns**: Model real-world interactions and feedback
 - **Clear boundaries**: Understand what's in scope vs. context
 - **Flow visualization**: See how data and information move

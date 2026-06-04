@@ -14,7 +14,7 @@ Two hours later, I found a comment from eight months ago: "PostgreSQL because we
 
 That was it. No context about what alternatives we considered. No explanation of the trade-offs. No record of who made the decision or why.
 
-We had beautiful architecture diagrams. We had detailed API specs. We had comprehensive test coverage. But we had **no memory of our decisions**.
+We had beautiful architecture diagrams. We had detailed API specs. We had full test coverage. But we had **no memory of our decisions**.
 
 That's when I learned: **architecture without context is just pretty pictures**. You need to capture not just WHAT you built, but WHY you built it that way.
 
@@ -37,18 +37,6 @@ Let me walk you through each one.
 ## 1. Kinds and Types: Define Your Vocabulary
 
 ### The Naming Chaos Story
-
-I once joined a project where everyone named things differently:
-
-- "Database" vs "DB" vs "DataStore" vs "Persistence"
-- "Service" vs "API" vs "Backend" vs "Server"
-- "Queue" vs "MessageBus" vs "EventStream" vs "Broker"
-
-The architecture had 47 elements. It felt like 47 different architects had named them.
-
-When I tried to write validation rules like "all databases must be encrypted," I couldn't. Because "databases" were hidden among "DataStores," "DBs," and "Persistence Layers."
-
-**The fix:** Define your vocabulary upfront. Decide what you'll call things, then stick to it.
 
 ### How Sruja Helps
 

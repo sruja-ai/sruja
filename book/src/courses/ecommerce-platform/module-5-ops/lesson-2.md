@@ -20,7 +20,6 @@ Look at your Sruja **User Journey** for "Purchase".
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Customer = person "Customer"
 
 Platform = system "E-Commerce Platform" {
@@ -62,7 +61,6 @@ Let's update the architecture:
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 Customer = person "Customer"
 

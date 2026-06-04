@@ -59,21 +59,21 @@ _Effective patterns for AI-assisted architecture work_
 
 ## Raw Thoughts from Analysis
 
-### v0.23.0+ Features to Cover:
+### v0.23.0+ Features to Cover
 - `sruja mcp` command (MCP stdio server)
 - `sruja context` command for building context
 - `sruja focus` for task-specific briefing
 - `sruja context-score` for AI-readiness scoring
 - Editor integrations (Cursor, GitHub Copilot, Cline, Windsurf)
 
-### Related Concepts:
+### Related Concepts
 - Model Context Protocol (MCP)
 - AI-editor context optimization
 - Cross-repo architecture context
 - Context-driven development
 - AI pair programming
 
-### Key Commands:
+### Key Commands
 - `sruja mcp -r .`
 - `sruja context -r repoA -r repoB`
 - `sruja focus --file <path>`
@@ -81,7 +81,7 @@ _Effective patterns for AI-assisted architecture work_
 - `sruja why <component-id>`
 - `sruja impact <component-id>`
 
-### Editor Setup:
+### Editor Setup
 ```json
 // Cursor: .cursor/mcp.json
 {
@@ -94,7 +94,7 @@ _Effective patterns for AI-assisted architecture work_
 }
 ```
 
-### Lesson Ideas:
+### Lesson Ideas
 
 1. **MCP Server Setup**
    - What is MCP and why it matters

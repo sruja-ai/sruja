@@ -55,7 +55,6 @@ Model each microservice as a **separate system** within the architecture. This c
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Customer = person "Online Customer"
 
 // Each microservice is a separate system
@@ -215,7 +214,7 @@ include *
 
 ## What Interviewers Look For
 
-### ✅ Good Answer (What You Just Did)
+###  Good Answer (What You Just Did)
 
 1. **Clear service boundaries** - Each service is a separate system
 2. **Single responsibility** - Each service has one clear purpose
@@ -223,7 +222,7 @@ include *
 4. **Addressed data ownership** - Each service owns its database
 5. **Explained trade-offs** - Why microservices vs monolith
 
-### ❌ Bad Answer (Common Mistakes)
+###  Bad Answer (Common Mistakes)
 
 1. Services too granular (one service per function)
 2. Services too coarse (monolith split incorrectly)
@@ -277,7 +276,6 @@ Add them to your design (extending the main architecture):
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 Customer = person "Online Customer"
 

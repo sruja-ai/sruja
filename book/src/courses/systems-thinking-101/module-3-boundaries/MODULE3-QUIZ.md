@@ -481,4 +481,3 @@ Ready to move on? In [Module 4: Flows](../module-4-flows/module-overview.md), yo
 - Identifying bottlenecks and performance issues
 - Visualizing temporal patterns (feedback loops, delays, queues)
 
-See you there!

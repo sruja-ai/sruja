@@ -51,16 +51,6 @@ Let me share some real-world examples that changed my perspective.
 
 ### 1. Self-Regulation Without Explicit Logic
 
-I once worked on a load balancer that needed to scale servers up and down based on traffic. The team implemented a simple rule: "if CPU > 80%, add a server." This created a feedback loop:
-
-```
-High CPU detected → Add server → CPU decreases → System monitors → [loop repeats]
-```
-
-We didn't design this as a feedback loop—it emerged from the rule. And it worked beautifully. The system self-regulated without explicit programming.
-
-The lesson: Feedback loops don't always need to be designed. They can emerge from simple rules interacting with each other.
-
 ### 2. Learning Systems That Actually Learn
 
 I consulted on a recommendation engine that started with terrible suggestions. Users rated things, and the system improved over time. What fascinated me was how the learning emerged from the feedback loop:
@@ -208,10 +198,6 @@ UserExperience = scenario "Feature Usage Feedback" {
 ```
 
 This is a **learning and adaptation feedback loop**. The system learns from how users interact, the team makes changes, and users have a better experience next time.
-
-I once launched a feature without this feedback loop. We assumed users would love it. Six months later, we checked analytics and found 60% abandonment. We fixed issues, but the damage was done. We'd lost months of user trust.
-
-The lesson: Always build feedback loops into your systems. Don't assume—measure, learn, adapt.
 
 ### Example 3: Cache Hit Rate Optimization
 
@@ -492,8 +478,6 @@ This is a **feedback loop**—a runtime, behavioral pattern. It's good because:
 | In systems thinking | Avoid | Embrace |
 | Example | Module A → Module B → Module A | User → System → User → System |
 
-I spent years avoiding any circular structures in my architectures. Then I learned about feedback loops in systems thinking and realized I'd been throwing away a powerful tool. Now I embrace feedback loops while avoiding circular dependencies. The distinction is crucial.
-
 ## Why Feedback Loops Are Natural, Not Errors
 
 Here's something I've learned: In traditional software engineering, we're trained to avoid circular dependencies. But in systems thinking, feedback loops aren't errors—they're natural, desirable patterns.
@@ -642,4 +626,3 @@ But we've only talked about **what** feedback loops are and **why** they matter.
 
 In the next lesson, you'll learn about **types of feedback loops**—positive (reinforcing), negative (balancing), and delayed (oscillating). You'll discover when to use each type, how to identify virtuous vs. vicious cycles, and what controls prevent runaway behavior.
 
-See you there!

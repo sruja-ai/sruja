@@ -43,7 +43,7 @@ Output shows:
 # Show what depends on UserService
 sruja impact UserService -r . --depth 3
 
-# Output:
+# Output
 # Component: UserService
 # ├── Downstream (3)
 # │   ├── OrderProcessor → calls UserService
@@ -58,7 +58,7 @@ sruja impact UserService -r . --depth 3
 # Planning to remove LegacyAuth
 sruja impact LegacyAuth -r . --depth 5
 
-# Shows:
+# Shows
 # - All components that call LegacyAuth
 # - All tests that depend on it
 # - Migration steps needed
@@ -70,7 +70,7 @@ sruja impact LegacyAuth -r . --depth 5
 # In PR, comment with impact
 sruja impact --diff --file changed-file.rs
 
-# "This change affects:
+# "This change affects
 # - PaymentService (critical)
 # - 12 downstream tests
 # Consider: updating PaymentContract first"
@@ -210,11 +210,11 @@ This lesson completes the Production Readiness module. You've learned:
 
 ## Raw Notes for Enhancement
 
-### v0.20.0 Feature:
+### v0.20.0 Feature
 - `sruja impact <component>` - impact analysis command
 - `--depth` flag for traversal depth
 - Blast radius visualization
 
-### Could be added as:
+### Could be added as
 - **System Design 101**: Module 4 - Production Readiness, Lesson 6
 - **System Design 201**: Could be a standalone lesson in Module 4 (Consistency)

@@ -59,28 +59,28 @@ _Prove your architecture meets intent_
 
 ## Raw Thoughts from Analysis
 
-### v0.34.0, v0.35.0 Features to Cover:
+### v0.34.0, v0.35.0 Features to Cover
 - `intent` command and domain
 - Phase 4: Adversarial Critique Engine ("Angry Agent")
 - Phase 3: Dynamic intent check and evidence mapping
 - `sruja propose` command
 - `sruja review` command
 
-### Related Concepts:
+### Related Concepts
 - Intent-first development
 - Architectural rationale (ADR)
 - Critique-driven iteration
 - Evidence-based validation
 - Compliance and audit trails
 
-### Key Commands:
+### Key Commands
 - `sruja intent propose -r . --from-diff`
 - `sruja intent check -r .`
 - `sruja critique -r .`
 - `sruja review -r .`
 - `sruja propose -r .`
 
-### Lesson Ideas:
+### Lesson Ideas
 
 1. **Writing Architectural Intent**
    - Intent syntax: what you want, not how

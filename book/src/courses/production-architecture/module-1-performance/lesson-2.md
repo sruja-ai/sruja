@@ -43,7 +43,6 @@ Let's model the payment system with explicit SLOs:
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
   technology "Rust, gRPC"
@@ -129,7 +128,7 @@ include *
 
 ## What Interviewers Look For
 
-### ✅ Good Answer (What You Just Did)
+###  Good Answer (What You Just Did)
 
 1. **Defined SLOs explicitly** - Shows you think about measurable targets
 2. **Addressed all requirements** - Availability, latency, throughput
@@ -137,7 +136,7 @@ include *
 4. **Scalability** - Showed how to handle 1M txn/s
 5. **Redundancy** - Multiple replicas, failover strategies
 
-### ❌ Bad Answer (Common Mistakes)
+###  Bad Answer (Common Mistakes)
 
 1. Not defining SLOs or performance targets
 2. Ignoring availability requirements
@@ -197,7 +196,6 @@ include *
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
   slo {
@@ -227,7 +225,6 @@ include *
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
   slo {
@@ -256,7 +253,6 @@ include *
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {
@@ -300,7 +296,6 @@ Add redundancy to your design:
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
-
 
 PaymentService = system "Payment Processing" {
 PaymentAPI = container "Payment API" {

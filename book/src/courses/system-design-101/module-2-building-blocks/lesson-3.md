@@ -901,7 +901,7 @@ Write-Through would cache every product on write (inefficient). Write-Back has d
 
 ## Next Steps
 
-Now that we understand caching strategies, eviction policies, and real-world implementations, let's put it all together with a comprehensive system design exercise.
+Now that we understand caching strategies, eviction policies, and real-world implementations, let's put it all together with a full system design exercise.
 
 👉 **[Complete Module 2: The Building Blocks](./module-overview)**
 

@@ -31,13 +31,12 @@ Don't write to the DB immediately.
 
 ---
 
-## 🛠️ Sruja Perspective: Modeling Write Flows
+##  Sruja Perspective: Modeling Write Flows
 
 We can use Sruja to model the "Write-Behind" architecture.
 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
-
 
 CounterService = system "View Counter" {
     API = container "Ingestion API" {

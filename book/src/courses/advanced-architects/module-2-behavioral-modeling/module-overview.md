@@ -59,21 +59,21 @@ _Testing architectural behavior with scenarios_
 
 ## Raw Thoughts from Analysis
 
-### v0.34.0 Features to Cover:
+### v0.34.0 Features to Cover
 - `state_machine` syntax in DSL
 - `contract` syntax for API contracts
 - `scenario` validation
 - State machine integrity rules
 - Contract integrity validation
 
-### Related Concepts:
+### Related Concepts
 - Behavioral DSL
 - State machine validation
 - Contract-first design
 - API versioning
 - Scenario-based testing
 
-### Key DSL Elements:
+### Key DSL Elements
 
 ```sruja
 <!-- partial -->
@@ -107,7 +107,7 @@ PaymentContract = contract "Payment API" {
 }
 ```
 
-### Lesson Ideas:
+### Lesson Ideas
 
 1. **State Machines**
    - Model order lifecycle, user sessions, workflow processes

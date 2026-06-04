@@ -19,14 +19,6 @@ By the end of this lesson, you'll be able to:
 
 Think about the last system diagram you looked at or created. What stood out to you? Was it the individual boxes—API, database, cache? Or was it the lines connecting them?
 
-Here's the thing: Parts are necessary, but relationships are where systems come alive.
-
-Parts tell you **what exists**. Relationships tell you **how things work**.
-
-Consider this analogy: A pile of LEGO bricks isn't a castle. It's just... LEGO bricks. But connect them in specific ways, and suddenly you have structure, function, and behavior.
-
-That's the power of relationships. Systems aren't just collections of parts—they're collections of parts **and the connections between them**.
-
 ## Understanding Parts vs. Relationships
 
 Let's dive deeper into this distinction because it's foundational for everything you'll model in Sruja.

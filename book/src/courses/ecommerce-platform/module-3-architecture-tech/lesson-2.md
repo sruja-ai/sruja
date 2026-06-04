@@ -21,7 +21,6 @@ We define these choices in our `container` and `database` definitions.
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 Platform = system "E-Commerce Platform" {
 WebApp = container "Storefront & Admin" {
   technology "Next.js, TypeScript"

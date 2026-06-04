@@ -43,14 +43,13 @@ HTTP is request/response (pull). For chat, we need **push**.
 
 ---
 
-## 🛠️ Sruja Perspective: Modeling Real-Time Flows
+##  Sruja Perspective: Modeling Real-Time Flows
 
 We can use Sruja to model the WebSocket connections and the async message processing.
 
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 requirement R1 functional "Real-time messaging"
 requirement R2 functional "Message history"

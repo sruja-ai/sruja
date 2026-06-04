@@ -4,7 +4,7 @@ The primary command-line interface for Sruja, providing tools for architectural 
 
 ## Overview
 
-`sruja-cli` serves as the user-facing entry point for the Sruja platform. it orchestrates the various Sruja crates to provide a seamless "Architecture as Code" experience.
+`sruja-cli` is the user-facing entry point for Sruja. It orchestrates the core crates to provide the "Architecture as Code" workflow.
 
 ## Key Features
 
@@ -13,8 +13,6 @@ The primary command-line interface for Sruja, providing tools for architectural 
 - **Drift Detection:** `sruja drift` compares your declared architecture with the real-time code evidence.
 - **Export:** `sruja export` generates Mermaid diagrams, Markdown documentation, and JSON models.
 - **Agentic Memory:** `sruja agent` provides a history of architectural learnings and guardrails to guide AI agents.
-
-## Usage
 
 ### Basic Commands
 

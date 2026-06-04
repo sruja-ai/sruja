@@ -253,4 +253,3 @@ Ready to move on? In [Module 3: Boundaries](../module-3-boundaries/module-overvi
 - Designing decoupled, maintainable systems
 - Making architectural decisions about integration patterns
 
-See you there!

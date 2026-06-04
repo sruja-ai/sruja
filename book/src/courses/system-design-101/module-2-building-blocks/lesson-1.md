@@ -287,7 +287,7 @@ Clients → Load Balancer → Erlang Nodes → Message Store
 - **Cons:** Uneven distribution (some servers have more active users), complexity in failover
 - **Performance:** 100K concurrent WebSockets, <50ms message delivery
 
-## 🛠️ Sruja Perspective: Modeling Load Balancers
+##  Sruja Perspective: Modeling Load Balancers
 
 In Sruja, we treat load balancers as critical infrastructure components with clear trade-offs documented.
 

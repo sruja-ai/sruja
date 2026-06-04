@@ -1,8 +1,6 @@
-# Sruja Design Philosophy: The Unified Intuitive DSL
-
 ## Objective
 
-Create a modeling language that empowers **all developers** - from students to enterprise architects - to design systems with confidence, while naturally guiding them toward simplicity and preventing over-engineering.
+Create a modeling language that helps **all developers** — from students to enterprise architects — design systems with confidence, while guiding them toward simplicity and preventing over-engineering.
 
 **Core Principles**:
 
@@ -10,7 +8,7 @@ Create a modeling language that empowers **all developers** - from students to e
 2. **Empower, don't restrict**: The language should enable all developers, not limit them, but guide them toward good design.
 3. **Approachability first**: Complex concepts should be available but not encouraged unless truly needed.
 4. **Prevent over-engineering**: The language itself should make simple designs easier than complex ones.
-5. **Systems thinking made simple**: Enable holistic system understanding through intuitive syntax, without requiring complex theory.
+5. **Systems thinking made simple**: Enable full system understanding through intuitive syntax, without requiring complex theory.
 
 ## Methodology Analysis
 
@@ -96,8 +94,6 @@ Order -> Payment "Triggers"
 ```
 
 **Rationale**: Arrows are universal. Everyone understands "A -> B" means "A relates to B".
-
-## Proposed Syntax: "The Universal Model"
 
 ### Level 1: Beginner (C4 Style)
 
@@ -199,8 +195,6 @@ Customer -> Shop.API "Uses"
 Shop.API -> Shop.DB "Reads/Writes"
 ```
 
-## Key Design Decisions
-
 ### 1. Progressive Disclosure
 
 - **Beginner**: Start with `system`, `container`, `component` (C4)
@@ -238,8 +232,6 @@ The same keyword (`data`) means different things in different contexts:
 
 **Rationale**: One keyword, multiple interpretations based on context. Reduces vocabulary size.
 
-## Preventing Over-Engineering: Simplicity by Design
-
 ### How Sruja Guides Toward Simplicity
 
 **1. Start Simple**
@@ -272,8 +264,6 @@ The same keyword (`data`) means different things in different contexts:
 - `module` = "How is this organized?" (Logical grouping)
 - Keep it focused on what you're actually modeling
 
-## Missing Concepts & Future Considerations
-
 ### Currently Missing (but important):
 
 1. **Constraints/Validation**: How to express "email must be valid", "age > 0"?
@@ -292,8 +282,6 @@ The same keyword (`data`) means different things in different contexts:
 - Consider `constraint` keyword for validation rules
 - Consider relationship syntax: `User -> Order[1:*]`
 - ✅ `flow` and `scenario`/`story` already implemented for flow thinking (DFD and BDD-style)
-
-## Migration Path
 
 ### From C4 to Sruja:
 
@@ -348,7 +336,7 @@ datastore Database {
 
 ## Systems Thinking: Simple and Intuitive
 
-**Goal**: Empower developers to think about systems holistically - understanding how parts interact, boundaries, and emergent behavior - without requiring complex theory.
+**Goal**: Help developers think about systems as a whole — understanding how parts interact, boundaries, and emergent behavior — without requiring complex theory.
 
 ### Core Systems Thinking Concepts (Simplified)
 

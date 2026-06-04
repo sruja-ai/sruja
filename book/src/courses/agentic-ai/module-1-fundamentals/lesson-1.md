@@ -42,7 +42,6 @@ Modeling agents is complex because relationships are often dynamic. Sruja helps 
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Agent = component "Research Agent"
 LLM = component "Model Provider"
 Tool = component "Search Tool"

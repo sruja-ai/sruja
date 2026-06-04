@@ -48,7 +48,6 @@ Let's model this architecture:
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Viewer = person "Video Viewer"
 
 StreamingPlatform = system "Video Streaming Service" {
@@ -102,7 +101,6 @@ This is where you show your scaling knowledge. Let's add scaling configuration:
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 Viewer = person "Video Viewer"
 
 StreamingPlatform = system "Video Streaming Service" {
@@ -151,7 +149,7 @@ include *
 
 ## What Interviewers Look For
 
-### ✅ Good Answer (What You Just Did)
+###  Good Answer (What You Just Did)
 
 1. **Clarified requirements** before designing
 2. **Started with high-level** architecture
@@ -159,7 +157,7 @@ include *
 4. **Addressed scaling** with specific numbers
 5. **Explained trade-offs** (CDN vs origin server)
 
-### ❌ Bad Answer (Common Mistakes)
+###  Bad Answer (Common Mistakes)
 
 1. Jumping straight to code/implementation details
 2. Not asking clarifying questions
@@ -194,7 +192,6 @@ Add caching to your design:
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 StreamingPlatform = system "Video Streaming Service" {
 VideoAPI = container "Video API" {

@@ -1,7 +1,7 @@
 ---
 title: "Systems Thinking"
 weight: 25
-summary: "Learn to model systems holistically: parts, boundaries, flows, feedback loops, and context."
+summary: "Learn to model systems as a whole: parts, boundaries, flows, feedback loops, and context."
 tags: ["systems", "modeling"]
 ---
 

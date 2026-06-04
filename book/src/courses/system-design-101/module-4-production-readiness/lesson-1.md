@@ -185,7 +185,7 @@ ADR005 = adr "Use PostgreSQL for transactional data" {
 
 ## ADR Structure: The Complete Template
 
-Here's a comprehensive ADR template you can adapt:
+Here's a full ADR template you can adapt:
 
 ```sruja
 // partial
@@ -310,7 +310,7 @@ Let me show you some famous ADRs from real companies:
 **Consequences:**
 - Positive: No breaking changes for existing users
 - Negative: Multiple API versions to maintain
-- Neutral: Requires comprehensive testing across versions
+- Neutral: Requires full testing across versions
 
 **Why this ADR is famous:** Solved API evolution elegantly.
 
@@ -318,7 +318,7 @@ Let me show you some famous ADRs from real companies:
 
 Not every decision needs an ADR. Here's the framework I use:
 
-### Always Write an ADR:
+### Always Write an ADR
 
 **1. Technology Choices**
 - Choosing a database (PostgreSQL vs. MongoDB vs. CockroachDB)
@@ -355,7 +355,7 @@ Not every decision needs an ADR. Here's the framework I use:
 
 **Why:** This affects how architecture evolves.
 
-### Sometimes Write an ADR:
+### Sometimes Write an ADR
 
 **6. API Design Decisions**
 - REST vs. GraphQL vs. gRPC
@@ -381,7 +381,7 @@ Not every decision needs an ADR. Here's the framework I use:
 **Write when:** Complex deployment requirements
 **Skip when:** Simple deployment
 
-### Rarely Write an ADR:
+### Rarely Write an ADR
 
 **9. Implementation Details**
 - Variable naming conventions

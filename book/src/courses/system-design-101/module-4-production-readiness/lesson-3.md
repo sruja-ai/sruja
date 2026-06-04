@@ -246,7 +246,7 @@ view index {
 
 **The problem:** Inconsistent APIs made integration difficult. Every team invented their own patterns.
 
-**The solution:** Google API Design Guide - comprehensive standards for all APIs.
+**The solution:** Google API Design Guide - full standards for all APIs.
 
 **The enforcement:** Automated linters check every API definition. Non-compliant APIs fail CI builds. No exceptions.
 
@@ -750,7 +750,7 @@ When implementing Governance as Code, use this framework:
 - CI/CD integration
 
 **Phase 3: Scale (Govern seriously)**
-- Comprehensive policies
+- full policies
 - Continuous enforcement
 - Self-service with guardrails
 

@@ -474,4 +474,3 @@ Now you know how to define all the parts of your system. But parts alone don't t
 
 In the next lesson, you'll learn about relationships—how to model the connections between your elements. You'll learn to write clear, meaningful labels that describe exactly how parts communicate with each other.
 
-See you there!

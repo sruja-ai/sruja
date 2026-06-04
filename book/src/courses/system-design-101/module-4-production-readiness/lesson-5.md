@@ -6,26 +6,6 @@ summary: "Track architecture evolution using Git, ADRs, and SLOs."
 
 # Lesson 5: Tracking Architecture Evolution
 
-I spent three weeks as an architecture archaeologist.
-
-A new VP of Engineering joined our company and asked a simple question: "How did our architecture get to where it is today? What decisions shaped it?"
-
-I thought it would be easy. I'd just look at the architecture documentation and tell the story.
-
-**The problem:** There was no architecture documentation. Not really. We had:
-
-- An outdated Confluence wiki with diagrams from 2019
-- A Google Drive folder with PowerPoint slides from various presentations
-- A Figma board with "current architecture" that hadn't been updated in 8 months
-- Various README files scattered across 47 repositories
-- And, if I was lucky, some comments in code
-
-I spent three weeks digging through Git history, Slack archives, Jira tickets, and interviewing the five engineers who'd been there longest. I reconstructed a partial history. But most of the "why" was lost. The people who made the decisions had left. The Slack channels had been archived. The context was gone.
-
-**What I learned:** Architecture without history is just a snapshot. It tells you WHAT the system looks like, but not HOW it got there or WHY. And without that context, you're destined to repeat the same mistakes.
-
-This lesson is about tracking architecture evolution: not just what your architecture is, but how it changes over time and why. It's also the final lesson in this course, so we'll wrap up everything you've learned.
-
 ## Why Track Architecture Evolution?
 
 ### The Five Problems of Lost History
@@ -86,7 +66,7 @@ Git tracks **what** changed and **when**:
 # What changed in the architecture?
 git log --oneline --follow architecture.sruja
 
-# Output:
+# Output
 e4f8c2a Add Redis cache layer (see ADR-005)
 a3b7d1f Split payment service from main API
 9c2e5f3 Increase API replicas to 10 (SLO improvement)
@@ -558,7 +538,7 @@ Keep a high-level timeline of your architecture's evolution:
 ### Q3 (July - September)
 - Multi-region deployment (ADR-019)
 - Implemented Chaos Engineering (ADR-020)
-- Added comprehensive monitoring (ADR-021)
+- Added full monitoring (ADR-021)
 - SLO Impact: Availability 99.7% → 99.9%
 
 ### Q4 (October - December)
@@ -884,7 +864,7 @@ git show v2024.01:architecture.sruja | sruja export
 
 **Phase 3: Mature System**
 - Regular evolution reviews
-- Comprehensive ADR history
+- full ADR history
 - Multi-year SLO tracking
 
 **Phase 4: Legacy System**
@@ -925,7 +905,7 @@ git log --oneline --follow architecture.sruja
 
 ---
 
-# 🎉 Course Complete: System Design 101
+#  Course Complete: System Design 101
 
 Congratulations! You've completed the entire System Design 101 course. Let's reflect on what you've learned.
 

@@ -11,10 +11,6 @@ Each had a name like "view1", "temp", "test-final", "new-view-v2", and my person
 
 When I asked the team which view to show executives, they said: "Probably view12? Or maybe view18? Definitely not view23 - that one's outdated."
 
-I spent two days consolidating those 47 views into 7 coherent perspectives. Two days of archaeology, trying to understand why each view existed, what audience it served, and whether it was still relevant.
-
-Here's what I learned: **views are powerful, but without governance, they become technical debt**. This lesson is about managing views at scale - not just creating them, but maintaining them, organizing them, and knowing when to kill them.
-
 ## The VIEW Governance Framework
 
 After that disaster, I created a framework for view management. I call it VIEW:
@@ -49,7 +45,7 @@ The mistake I made early in my career was creating views for everything. Every m
 
 Here's the framework I use now:
 
-### Always Create:
+### Always Create
 
 **1. Executive View**
 - **Purpose:** Show business value and scope
@@ -72,7 +68,7 @@ Here's the framework I use now:
 - **Excludes:** External systems, high-level architecture
 - **Update frequency:** When implementation patterns change
 
-### Create Conditionally:
+### Create Conditionally
 
 **4. Security View**
 - **Create when:** Handling sensitive data, compliance requirements
@@ -104,7 +100,7 @@ Here's the framework I use now:
 - **Includes:** Services/components involved in feature
 - **Excludes:** Unrelated parts of system
 
-### Rarely Create:
+### Rarely Create
 
 **9. User Journey Views**
 - **Usually better as:** Scenarios (see Lesson 6)

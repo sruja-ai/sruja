@@ -54,10 +54,6 @@ The static relationship just tells you "customer uses the web app." The flow tel
 
 ### Why This Matters
 
-I once worked on a system where we had perfect static diagrams showing all the components. But nobody understood the actual order processing flow. When we debugged issues, we'd spend hours tracing through code because the diagrams didn't show sequence.
-
-We added flows, and suddenly everything became clear. Developers could see the complete path from customer action to database storage. Product managers could see exactly what users experienced. Everyone had the same mental model of how things moved through the system.
-
 ## Why Flows Matter: The Real Benefits
 
 After years of modeling systems, I've found flows reveal things static relationships never can. Let me show you what flows actually surface.
@@ -716,4 +712,3 @@ But we've only talked about **what** flows are. We haven't talked about **how** 
 
 In the next lesson, you'll learn about **Data Flow Diagrams**—how to model DFD-style data flows that show lineage, transformations, and analytics pipelines. You'll discover how to document where data comes from, how it changes, and where it ultimately ends up.
 
-See you there!

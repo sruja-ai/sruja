@@ -220,7 +220,7 @@ You're designing an e-commerce system with these constraints:
 
 **Conflict:** Business wants ML-based recommendations, but team has no ML expertise and budget doesn't support ML infrastructure (would need $1,500/month for GPU instances).
 
-**Resolution:** Use external recommendation service as a dependency. It costs $100/month and uses their ML expertise. System stays within budget and leverages external dependency.
+**Resolution:** Use external recommendation service as a dependency. It costs $100/month and uses their ML expertise. System stays within budget and uses external dependency.
 
 This is context-aware design—you're working within constraints, not fighting them.
 

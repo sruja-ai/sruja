@@ -43,7 +43,6 @@ The `OrderService` can no longer call `Inventory` functions directly. It must ma
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 OrderService = system "Order Service" {
 // ...
 OrderService -> InventoryService "gRPC CheckStock"

@@ -110,8 +110,6 @@ Flows reveal dynamic behavior, data movement, bottlenecks, and component collabo
 
 ---
 
-
-
 **Question 3:** Why model both happy and error paths?
 
 - [ ] a) Documentation requirement

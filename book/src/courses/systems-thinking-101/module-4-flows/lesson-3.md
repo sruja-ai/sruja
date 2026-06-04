@@ -46,14 +46,6 @@ Think of it like a story: "As a customer, I want to buy a product so I can use i
 
 ## Why User Journeys Matter
 
-I've learned this the hard way. I once built a feature without modeling user journeys, and when we launched, users were completely confused.
-
-They couldn't find the checkout button. When they did, error messages were cryptic. The "success" page didn't tell them what to do next. Support tickets flooded in. We had to rebuild the entire feature.
-
-If I'd modeled user journeys upfront, we would have seen these issues immediately. The journey would have shown: "User clicks checkout → System shows error 'ERR_500' → User is confused."
-
-**User journeys matter because:**
-
 ### 1. Requirements Clarity
 
 User journeys turn vague requirements into concrete scenarios:
@@ -148,8 +140,6 @@ RegistrationEdgeCases = scenario "Registration Edge Cases" {
   WebApp -> Customer "Shows error: Password too weak"
 }
 ```
-
-I once launched a feature without modeling edge cases. Users started using weird inputs, emojis in names, passwords with special characters, and the system broke in creative ways. Model edge cases upfront.
 
 ## Creating User Journeys in Sruja
 
@@ -299,8 +289,6 @@ ErrorRegistration = scenario "User Registration (Error Path: Duplicate Email)" {
 - Always model critical error paths
 - Focus on errors users actually encounter
 - Ensure error messages are helpful, not cryptic
-
-I once worked on a system where error messages were like "ERR_500_CHECKOUT_FAILED." Users had no idea what went wrong. We rewrote them to be helpful: "Payment failed. Please check your card details or try a different payment method." Support tickets dropped by 70%.
 
 ### Pattern 3: Branching Path
 
@@ -556,8 +544,6 @@ GatewayOutageCheckout = scenario "Checkout During Payment Outage" {
 - They help teams discuss "what if" scenarios
 - They prevent surprises in production
 
-I once launched a feature without modeling edge cases. Users immediately found scenarios we hadn't considered—checking out with gift cards during sales, checking out from different countries with different currencies, checking out with addresses that don't validate. We spent months fixing edge cases we could have caught upfront.
-
 ## What to Remember
 
 User journeys tell the story of how users interact with your system—from their perspective. When you create user journeys:
@@ -788,8 +774,6 @@ Congratulations! You've completed Module 4: Flows. You now understand:
 You can now create diagrams that tell complete stories—stories about how data moves through your system, and stories about how users experience your system. You can model data lineage, transformations, bottlenecks, and user journeys.
 
 In the next module, you'll learn about **feedback loops**—how systems regulate themselves through circular cause-and-effect relationships. You'll discover how positive feedback loops amplify change and negative feedback loops stabilize systems. You'll learn to recognize these patterns in real systems and understand their powerful effects.
-
-See you there!
 
 ---
 

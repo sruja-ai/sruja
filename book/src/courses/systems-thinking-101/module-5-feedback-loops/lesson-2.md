@@ -84,8 +84,6 @@ ViralGrowth = scenario "Viral Growth Loop" {
 - May amplify undesirable behaviors (fake news, spam)
 
 **Real-world example:**
-I once worked on a social media algorithm that showed viral content more aggressively. Engagement spiked for a few weeks, then crashed because users got sick of seeing the same type of content. The positive feedback loop had run its course. We needed to dampen it—show diverse content even if it meant lower short-term engagement.
-
 ### Pattern 2: Vicious Cycle (Collapse)
 
 Output counteracts input, leading to runaway collapse:
@@ -245,8 +243,6 @@ RateLimiting = scenario "Stabilizing Control" {
 - When fairness matters (don't let heavy users dominate)
 
 **Real-world example:**
-I once saw a rate limiting system cause more harm than good. It was configured with a hard limit, and when users hit it, they'd get throttled and immediately retry, creating a burst of traffic that was worse than just letting them through. We added hysteresis—the limit would decrease temporarily after being hit, then slowly recover. This smoothed out traffic and actually improved throughput for everyone while protecting the system.
-
 ## Delayed Feedback (Time-Based)
 
 Feedback that occurs after a delay can cause oscillation or overcorrection:
@@ -287,8 +283,6 @@ DelayedFeedback = scenario "Oscillating Control" {
 - When you need to add damping or predictive adjustments
 
 **Real-world example:**
-I once worked on a caching system that would cache data for 30 minutes. But the data source would update every 10 minutes. The cache would show stale data, then refresh, then show stale data again. This created oscillation—applications would see new data for 20 minutes, then old data for 20 minutes, then new again. Users complained: "Why is the data jumping around? Is it broken?" We fixed it by making the cache time consistent with the source—stale data at the same time as source updates. Eliminating the time delay eliminated the oscillation.
-
 ## Comparing Feedback Loop Types
 
 Different feedback loops serve different purposes:
@@ -659,4 +653,3 @@ Now you understand the different types of feedback loops—positive (reinforcing
 
 In the next lesson, you'll learn to **model cycles explicitly** in Sruja. You'll discover how to create valid feedback loops, distinguish them from circular dependencies (which are bad), and use cycles to represent self-regulating systems, learning mechanisms, and adaptive behaviors.
 
-See you there!

@@ -109,8 +109,6 @@ For highly regulated industries (healthcare, finance, government), compliance in
 - What security controls are in place
 - Whether you can use it for sensitive data
 
-I once worked on a healthcare project where someone chose an email provider without checking HIPAA compliance. We had to rebuild the integration later. Lesson learned: **document compliance requirements upfront**.
-
 ## Common Boundary Patterns
 
 After modeling hundreds of systems, I've noticed patterns that repeat constantly. Let me show you the ones I see most often.
@@ -679,4 +677,3 @@ But we've only talked about **defining** boundaries. We haven't talked about wha
 
 In the next lesson, you'll learn about crossing boundaries—how to model integrations, plan for failures, document interface contracts, and design fallback strategies. You'll discover why every boundary crossing is both an opportunity and a risk.
 
-See you there!

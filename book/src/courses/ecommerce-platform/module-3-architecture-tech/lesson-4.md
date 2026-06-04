@@ -18,7 +18,6 @@ Sruja focuses on **architectural concerns**: which services exist, how they rela
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 customer = person "Customer"
 
 ecommerce = system "E-Commerce Platform" {

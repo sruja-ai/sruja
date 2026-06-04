@@ -25,7 +25,6 @@ We can model this flow using a `scenario` or `story` in Sruja to visualize the s
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 component Agent
 component Tool
 component User

@@ -16,7 +16,6 @@ Focus on hot paths to reason about scaling, backpressure, and caching. High-thro
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Pipeline = system "Data Pipeline" {
 Ingest = container "Ingestion Service" {
   technology "Kafka Consumer"

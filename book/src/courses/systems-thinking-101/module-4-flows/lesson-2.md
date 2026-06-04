@@ -77,8 +77,6 @@ This flow tells you the complete story: customer data originates in CRM, gets ex
 
 Without this flow, would you know customer data comes from the CRM? Would you know it gets enriched with clickstream data? Would you know it's aggregated daily? Probably not.
 
-I once worked on a project where nobody knew where analytics data came from. We spent weeks tracking down data lineage every time we found an issue. We added data flows, and suddenly everyone knew the complete path.
-
 ### 2. Process Understanding: What Actually Happens?
 
 Data flows reveal the processing steps your data goes through—the "how" not just the "what."
@@ -134,8 +132,6 @@ Each arrow shows a transformation:
 - Enriched → Aggregated (metrics computed)
 
 This documentation is invaluable. When someone asks, "What happened to this data?" you can point to the flow and show them each transformation step.
-
-I once inherited a system where nobody documented data transformations. We found mysterious records in the warehouse—dates in the wrong format, currencies mixed up, values that made no sense. We spent months reverse-engineering what transformations were happening. Document it upfront.
 
 ### 4. Bottleneck Identification: Where Will Things Slow Down?
 
@@ -300,7 +296,7 @@ RealTimeAnalyticsFlow = flow "Real-Time Analytics Pipeline" {
 
 ### Pattern 4: Lambda Architecture
 
-Batch processing for comprehensive analytics plus real-time for speed.
+Batch processing for full analytics plus real-time for speed.
 
 ```sruja
 // partial
@@ -323,10 +319,10 @@ LambdaArchitectureFlow = flow "Lambda Architecture" {
 **Characteristics:**
 - Two paths: fast (speed layer) and accurate (batch layer)
 - Speed layer provides quick but possibly incomplete results
-- Batch layer provides comprehensive but delayed results
+- Batch layer provides full but delayed results
 - Query service merges both for best of both worlds
 
-**Use when:** You need both real-time responsiveness and comprehensive accuracy.
+**Use when:** You need both real-time responsiveness and full accuracy.
 
 ## Documenting Data Transformations
 
@@ -566,4 +562,3 @@ But data flows are just one type of flow. There's another crucial type—**user 
 
 In the next lesson, you'll learn about user journeys. You'll discover how to model BDD-style scenarios, document happy paths and error paths, and capture the complete user experience from start to finish.
 
-See you there!

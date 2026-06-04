@@ -5,16 +5,6 @@ summary: "Focus diagrams with views; improve legibility with styling."
 
 # Lesson 5: Views & Styling
 
-I once worked with an architect who loved colors. His diagrams were... enthusiastic.
-
-Every service had a different color. Databases were purple. APIs were orange. Message queues were pink. External systems were yellow. Internal systems were green. And the relationships? Rainbow gradients.
-
-It looked like a unicorn had exploded on his screen.
-
-When I asked him to walk me through the architecture, he spent 10 minutes explaining his color coding system. By minute 3, I'd forgotten what we were looking at. By minute 10, I had a headache.
-
-Here's the thing: **styling should clarify, not decorate**. When done right, styling makes diagrams instantly understandable. When done wrong, it creates visual noise that obscures the very thing you're trying to show.
-
 ## The Traffic Light Principle
 
 Think about traffic lights. They use three colors with specific meanings:
@@ -293,7 +283,7 @@ Size communicates scale. Style communicates meaning.
 
 Here's my framework for deciding when to apply styling:
 
-### Always Style:
+### Always Style
 
 **1. Element Types**
 - Databases should look different from services
@@ -311,7 +301,7 @@ Here's my framework for deciding when to apply styling:
 - Sync vs. async communication
 - Permanent vs. temporary data
 
-### Sometimes Style:
+### Sometimes Style
 
 **4. Performance Indicators**
 - Hot paths (frequently used)
@@ -323,7 +313,7 @@ Here's my framework for deciding when to apply styling:
 - Team B's services
 - Shared infrastructure
 
-### Rarely Style:
+### Rarely Style
 
 **6. Technology Stack**
 - Java vs. Python services

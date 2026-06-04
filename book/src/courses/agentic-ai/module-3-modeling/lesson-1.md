@@ -18,7 +18,6 @@ If your AI is a product that users interact with, model it as a **System**.
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 User = person "User"
 AI_Assistant = system "Support Bot"
 
@@ -37,7 +36,6 @@ If you are designing the internals, agents are often **Containers** (deployable 
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 AI_Assistant = system "AI Assistant" {
 Router = container "Router Agent"
 Search = container "Search Agent"
@@ -52,7 +50,6 @@ If you are designing a single agent's logic, the specific tools and chains are *
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 AI_Assistant = system "AI Assistant" {
 SearchAgent = container "Search Agent" {

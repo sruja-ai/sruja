@@ -7,18 +7,6 @@ time: "6 min"
 
 # The Context Trap: Why Great Architecture Needs More Than Great Code
 
-I once worked on what we thought was the perfect e-commerce platform. Clean microservices architecture, elegant APIs, comprehensive test coverage, the works. We were proud. Three months after launch, the project was cancelled.
-
-The problem? We'd built the wrong thing.
-
-Our payment processing was elegant—but the company had negotiated a deal with a specific payment provider we couldn't use. Our real-time inventory tracking was brilliant—but the warehouse team needed daily batches, not real-time updates. Our admin interface was beautiful—but the support team needed bulk operations, not pretty screens.
-
-We had built a technical masterpiece that solved nobody's actual problems.
-
-The missing piece was context. We'd designed the system in isolation, without understanding the organizational constraints, stakeholder needs, and business realities that surrounded it. The architecture was technically sound but organizationally wrong.
-
-This lesson is about avoiding that trap. You'll learn how to see the invisible environment that shapes every system—the stakeholders, dependencies, constraints, and success criteria that determine whether your architecture succeeds or fails, regardless of how elegant your code might be.
-
 ## Learning Goals
 
 By the end of this lesson, you'll be able to:

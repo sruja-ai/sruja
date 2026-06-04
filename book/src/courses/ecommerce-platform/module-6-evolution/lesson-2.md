@@ -15,7 +15,6 @@ We decided to move from `Stripe` to `Adyen` for lower fees. But we can't switch 
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 Stripe = system "Legacy Payment Gateway" {
 metadata {
   tags ["deprecated"]

@@ -69,7 +69,6 @@ Sruja allows you to define horizontal scaling requirements explicitly using the 
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 ECommerce = system "E-Commerce System" {
     WebServer = container "Web App" {
         technology "Rust, Axum"
@@ -124,7 +123,6 @@ Ready to apply what you've learned? Take the interactive quiz for this lesson!
 **Explanation:**
 Vertical scaling (or scaling up) means making a single machine more powerful. Example: Upgrading from 4GB RAM to 64GB RAM on one server.
 
-
 </details>
 
 ---
@@ -143,7 +141,6 @@ Vertical scaling (or scaling up) means making a single machine more powerful. Ex
 
 **Explanation:**
 Horizontal scaling (or scaling out) means adding more machines to handle increased load. Example: Adding 10 servers instead of upgrading one server to be more powerful.
-
 
 </details>
 
@@ -258,7 +255,6 @@ Horizontal scaling (or scaling out) means adding more machines to handle increas
 **Explanation:**
 Latency is the time from when a request is sent to when the response is received. Think of it as the time it takes to drive from point A to point B.
 
-
 </details>
 
 ---
@@ -277,7 +273,6 @@ Latency is the time from when a request is sent to when the response is received
 
 **Explanation:**
 Throughput is the volume of work a system can handle. Think of it as the width of a highway—how many cars can travel per hour.
-
 
 </details>
 
@@ -412,7 +407,6 @@ Throughput is the volume of work a system can handle. Think of it as the width o
 
 **Explanation:**
 Load balancers are the "traffic cops" that distribute requests across multiple servers, enabling horizontal scaling and providing resilience by routing around failed servers.
-
 
 </details>
 

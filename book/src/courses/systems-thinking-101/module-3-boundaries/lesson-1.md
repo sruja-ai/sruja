@@ -76,8 +76,6 @@ PaymentGateway = system "Payment Gateway"
 
 When something breaks with payments, who fixes it? If the boundary is clear, everyone knows: **your team** fixes anything inside Shop, **the payment vendor** fixes anything in PaymentGateway. No confusion, no finger-pointing.
 
-I once worked on a project where a team spent three days arguing about who owned a broken integration because nobody had bothered to document the boundary. Three days of developer time—wasted.
-
 ### 2. Risk Management: What Could Go Wrong?
 
 Every time you cross a boundary, you're introducing risk. You're depending on something outside your control.
@@ -600,4 +598,3 @@ But there's a question we haven't answered: **how do you actually mark component
 
 In the next lesson, you'll learn exactly that. We'll cover how to annotate boundary elements, model team and organizational boundaries, and create diagrams that make it instantly clear what's inside versus what's outside.
 
-See you there!

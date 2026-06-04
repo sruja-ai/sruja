@@ -1,12 +1,10 @@
-# Architecture Documentation: sruja-engine
-
 ## Overview
 
 The `sruja-engine` crate provides the core validation engine for Sruja architecture definitions. It is responsible for detecting errors, enforcing architectural patterns, and ensuring best practices across architecture descriptions.
 
 ### Purpose
 
-The engine serves as the brain behind Sruja's validation capabilities, transforming raw architecture definitions into actionable feedback through a robust, extensible rule system.
+The engine validates Sruja architecture definitions, runs rules, and generates diagnostics.
 
 ### Scope
 
@@ -19,8 +17,6 @@ The engine serves as the brain behind Sruja's validation capabilities, transform
 2. **Error Reporting**: Generate clear, actionable diagnostics with context and suggestions
 3. **Performance**: Support both synchronous and parallel validation for various use cases
 4. **Extensibility**: Provide clean APIs for custom validation rules
-
-## System Architecture
 
 ### High-Level Components
 
@@ -82,8 +78,6 @@ src/
 └── utils/
     └── mod.rs         # Shared utilities for rules
 ```
-
-## Design Principles
 
 ### 1. Composability Over Monolith
 
@@ -149,8 +143,6 @@ Diagnostic::new(...)
 - Validator is cloneable
 - Uses Arc for shared ownership
 - No interior mutability without synchronization
-
-## Core Components
 
 ### Validator
 
@@ -220,8 +212,6 @@ Diagnostic
 - Include context: "First defined at line 5:3"
 - Multiple suggestions: Provide at least 2 ways to fix
 
-## Data Flow
-
 ### Validation Flow (Synchronous)
 
 ```
@@ -281,8 +271,6 @@ For each rule:
 4. Collect diagnostics
 5. Check fail-fast and new errors → break
 
-## Performance Optimization
-
 ### Current Optimizations
 
 1. **Early Exit**: Empty programs return immediately
@@ -307,8 +295,6 @@ For each rule:
 2. **Rule Dependency Graph**: Skip rules if dependencies unchanged
 3. **Index Caching**: Pre-compute element indexes for repeated validation
 4. **SIMD Operations**: For large-scale text processing rules
-
-## Error Handling Strategy
 
 ### Philosophy
 
@@ -347,8 +333,6 @@ for item in &items {
     }
 }
 ```
-
-## Testing Strategy
 
 ### Test Pyramid
 
@@ -415,8 +399,6 @@ mod tests {
 }
 ```
 
-## Extension Points
-
 ### Adding Custom Rules
 
 1. **Implement Rule Trait**:
@@ -481,8 +463,6 @@ metadata {
 }
 ```
 
-## Trade-offs and Design Decisions
-
 ### Why Synchronous by Default?
 
 **Decision**: Validator defaults to synchronous execution
@@ -537,8 +517,6 @@ metadata {
 
 **Trade-off**: Memory overhead compared to bit array
 
-## Future Enhancements
-
 ### Short Term (Next 3 Months)
 
 1. **Rule Performance Profiling**: Built-in profiling for rule execution time
@@ -562,8 +540,6 @@ metadata {
 1. **Rule Result Type**: Change from `Vec<Diagnostic>` to `impl Iterator<Item=Diagnostic>`
 2. **Rule State**: Allow stateful rules with `validate_mut(&mut self, &Program)`
 3. **Error Codes**: Reorganize error code ranges
-
-## Maintenance Guide
 
 ### Adding a New Rule
 
@@ -596,8 +572,6 @@ metadata {
 3. **Optimize**: Focus on hot paths in rules
 4. **Verify**: Ensure optimizations don't break tests
 
-## Security Considerations
-
 ### Input Validation
 
 - Never trust input from external sources
@@ -615,8 +589,6 @@ metadata {
 - Reject programs >10MB in size
 - Reject >100,000 elements
 - Reject >10,000 relations
-
-## References
 
 ### Related Crates
 

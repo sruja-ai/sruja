@@ -20,7 +20,6 @@ Sruja models **which services exist and how they connect**. For detailed API sch
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 customer = person "Customer"
 
 ecommerce = system "E-Commerce Platform" {

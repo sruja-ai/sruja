@@ -19,7 +19,6 @@ A central "Supervisor" agent routes tasks to worker agents and aggregates result
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Supervisor = container "Orchestrator"
 
 Coder = container "Coding Agent" {

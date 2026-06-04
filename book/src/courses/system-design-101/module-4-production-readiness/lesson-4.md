@@ -865,7 +865,7 @@ This checks:
 - Define availability SLO
 - Basic monitoring
 
-**Phase 3: Growth (Comprehensive SLOs)**
+**Phase 3: Growth (full SLOs)**
 - Traffic increasing
 - Add latency, error rate SLOs
 - Error budget tracking
@@ -879,4 +879,4 @@ This checks:
 
 ---
 
-**Next up:** Lesson 5 brings everything together with a comprehensive production readiness review - how to know when your architecture is truly ready for production.
+**Next up:** Lesson 5 brings everything together with a full production readiness review - how to know when your architecture is truly ready for production.

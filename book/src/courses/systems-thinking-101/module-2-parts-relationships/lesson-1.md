@@ -334,4 +334,3 @@ Now that you know how to identify parts, you're probably wondering: "How do I ac
 
 In the next lesson, you'll learn exactly that. We'll cover the four core element types (person, system, container, component), how to use them, and what details to include. You'll have a complete toolkit for modeling any software system.
 
-See you there!

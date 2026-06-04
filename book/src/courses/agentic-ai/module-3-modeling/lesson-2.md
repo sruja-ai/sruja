@@ -19,7 +19,6 @@ Use `requirement` blocks to specify safety properties.
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 container Agent
 container BankAPI
 

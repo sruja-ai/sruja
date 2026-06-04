@@ -39,14 +39,13 @@ The process of switching to a redundant system upon failure. This can be manual 
 
 ---
 
-## 🛠️ Sruja Perspective: Modeling Redundancy
+##  Sruja Perspective: Modeling Redundancy
 
 You can explicitly model redundant components in Sruja to visualize your high-availability strategy.
 
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 Payments = system "Payment System" {
     PaymentService = container "Payment Service" {
@@ -91,7 +90,6 @@ Ready to apply what you've learned? Take the interactive quiz for this lesson!
 **Explanation:**
 Availability measures how often a system is up and accessible. It's about uptime percentage (e.g., 99.9%).
 
-
 </details>
 
 ---
@@ -109,7 +107,6 @@ Availability measures how often a system is up and accessible. It's about uptime
 
 **Explanation:**
 Reliability measures how often a system functions correctly without errors. A system can be available (up) but unreliable (returning 500 errors).
-
 
 </details>
 
@@ -442,7 +439,6 @@ Reliability measures how often a system functions correctly without errors. A sy
 **Explanation:**
 Failover is the process of automatically or manually switching to a redundant system upon failure. This is critical for high availability systems.
 Failover can be automatic (system detects failure and switches) or manual (operator triggers switch).
-
 
 </details>
 

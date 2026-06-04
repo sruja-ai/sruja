@@ -33,7 +33,7 @@ Full reference: [Grounded harness and continual learning](../../../../docs/GROUN
 
 ```bash
 sruja agent plan -r . --goal "Fix drift on Checkout" --element-id Shop.Checkout --print
-# Review plan JSON, then:
+# Review plan JSON, then
 sruja agent apply -r . --plan docs/plans/<run-id>.json
 ```
 
@@ -73,7 +73,7 @@ sruja agent record -r . \
   --hitl-kind precedent
 
 sruja agent curate -r .
-# After reviewing curate output, merge duplicates into one entry:
+# After reviewing curate output, merge duplicates into one entry
 sruja agent merge -r . --ids id1,id2 -c "Merged context" -H "..." -g "Combined guardrail"
 ```
 

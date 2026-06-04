@@ -38,7 +38,6 @@ You have two identical environments (Blue and Green). One is live, the other is 
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 ECommerce = system "E-Commerce Platform" {
     API = container "REST API" {
         technology "Rust"
@@ -139,7 +138,6 @@ You roll out the new version to a small percentage of users (e.g., 5%) and monit
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 API = system "REST API" {
     APIv1 = container "API v1.2.3" {
         technology "Rust"
@@ -184,7 +182,6 @@ Document the rollout plan in metadata:
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 ECommerce = system "E-Commerce Platform" {
 API = container "API Service" {
@@ -272,7 +269,6 @@ Sometimes you don't need a deployment strategy—use feature flags instead:
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Platform = system "Platform" {
 FeatureFlags = container "Feature Flag Service" {
   technology "LaunchDarkly, Split.io"
@@ -298,7 +294,6 @@ Model your observability during deployments:
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 Observability = system "Observability Stack" {
 Prometheus = container "Metrics" {

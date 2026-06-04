@@ -51,7 +51,6 @@ This is where Sruja's `policy` feature is perfect! Show how you enforce complian
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 // HIPAA Compliance Policy
 HIPAACompliance = policy "All patient data must be encrypted and access logged" {
   category "compliance"
@@ -149,7 +148,7 @@ include *
 
 ## What Interviewers Look For
 
-### ✅ Good Answer (What You Just Did)
+###  Good Answer (What You Just Did)
 
 1. **Understood compliance requirements** - Mentioned specific HIPAA rules
 2. **Defined policies explicitly** - Showed governance thinking
@@ -157,7 +156,7 @@ include *
 4. **Addressed security** - Encryption, access control, audit logging
 5. **Explained enforcement** - How policies are enforced
 
-### ❌ Bad Answer (Common Mistakes)
+###  Bad Answer (Common Mistakes)
 
 1. Not understanding compliance requirements
 2. No mention of policies or governance
@@ -219,7 +218,6 @@ Add data retention policy:
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 HIPAACompliance = policy "All patient data must be encrypted and access logged" {
   category "compliance"

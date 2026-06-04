@@ -12,7 +12,7 @@ Understand the basic concept of systems thinking and its importance in architect
 
 ## What is Systems Thinking?
 
-Systems thinking is a **holistic approach** to understanding how components interact as part of a whole. Instead of looking at parts in isolation, it focuses on **relationships**, **patterns**, and **emergent behaviors** that arise when components work together.
+Systems thinking is a **full approach** to understanding how components interact as part of a whole. Instead of looking at parts in isolation, it focuses on **relationships**, **patterns**, and **emergent behaviors** that arise when components work together.
 
 Traditional architecture often takes a reductionist approach: break systems into parts, understand each part, then put them together. But this misses the magic—the interactions that emerge only when parts work together.
 
@@ -154,7 +154,7 @@ Systems thinking focuses on **relationships and interactions**, not just compone
 **Question 1:** What is systems thinking?
 
 - [ ] a) A way to optimize code performance
-- [ ] b) A holistic approach to understanding how components interact as part of a whole
+- [ ] b) A full approach to understanding how components interact as part of a whole
 - [ ] c) A method for breaking down systems into smaller parts
 - [ ] d) A database design technique
 

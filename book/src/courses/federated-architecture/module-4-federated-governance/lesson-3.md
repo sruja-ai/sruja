@@ -42,7 +42,7 @@ jobs:
 # Check drift with fix suggestions
 sruja drift -r . -a repo.sruja
 
-# For auto-fix capabilities, update the architecture to match code:
+# For auto-fix capabilities, update the architecture to match code
 # sruja init --auto  # writes repo.sruja.draft; author repo.sruja with skill
 ```
 

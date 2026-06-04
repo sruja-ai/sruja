@@ -40,14 +40,13 @@ How do we generate the alias?
 
 ---
 
-## 🛠️ Sruja Perspective: Modeling the Flow
+##  Sruja Perspective: Modeling the Flow
 
 We can use Sruja to model the system components and the user scenario for redirection.
 
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 R1 = requirement functional "Shorten long URL"
 R2 = requirement functional "Redirect short URL"

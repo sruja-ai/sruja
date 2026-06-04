@@ -20,7 +20,6 @@ Use tags and metadata to make security posture explicit.
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 Shop = system "Shop" {
   UserDB = database "User DB" {
     tags ["pii", "encrypted"]

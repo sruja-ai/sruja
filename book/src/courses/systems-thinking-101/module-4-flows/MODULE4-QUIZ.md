@@ -481,4 +481,3 @@ Ready to move on? In [Module 5: Feedback Loops](../module-5-feedback-loops/modul
 - Understanding how amplifying loops can lead to runaway growth or collapse
 - Designing systems that balance stability and growth
 
-See you there!

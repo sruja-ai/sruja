@@ -40,7 +40,6 @@ We can map these components to Sruja elements:
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 AgentSystem = system "Customer Support Bot" {
 Brain = container "Orchestrator" {
   description "Main control loop"

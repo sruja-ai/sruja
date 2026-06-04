@@ -8,7 +8,7 @@ summary: "Production-ready architectures. Learn how to model Fintech, E-Commerce
 
 Theory is good, but code is better. Below are **production-grade** Sruja models that you can copy, paste, and adapt.
 
-Every example here follows our ["FAANG-level" quality standards](docs/style-guide.md):
+Every example here follows our [quality standards](docs/style-guide.md):
 
 1.  **Clear Requirements**: Functional & Non-functional.
 2.  **Proper Hierarchies**: Context -> Container -> Component.

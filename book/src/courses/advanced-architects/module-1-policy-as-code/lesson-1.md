@@ -34,7 +34,6 @@ Constraints define **hard rules** that must be followed. Violations block CI/CD.
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 // Constraint: Presentation layer cannot access datastores directly
 constraint C1 {
 description "Presentation layer must not access datastores"
@@ -101,7 +100,6 @@ Conventions define **best practices** and **naming standards**. They're warnings
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 // Convention: Naming standards
 convention N1 {
 description "Service names should follow pattern: <domain>-<function>"
@@ -138,7 +136,6 @@ Here's how a large organization enforces standards across teams:
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 // Global constraint: All services must have SLOs
 constraint Global1 {

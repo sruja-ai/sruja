@@ -16,7 +16,6 @@ Translate business expectations into measurable targets; build dashboards around
 // partial
 import { * } from 'sruja.ai/stdlib'
 
-
 ECommerce = system "E-Commerce" {
     slo {
         availability { target "99.9%" window "30 days" }

@@ -26,14 +26,13 @@ A **User Scenario** describes the series of steps a user takes to achieve a spec
 
 ---
 
-## 🛠️ Sruja Perspective: Modeling Scenarios
+##  Sruja Perspective: Modeling Scenarios
 
 Sruja provides a dedicated `scenario` keyword to model these interactions explicitly. This allows you to visualize the flow of data across your defined architecture.
 
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 R1 = requirement functional "User can buy a ticket"
 R2 = requirement performance "Process payment in < 2s"

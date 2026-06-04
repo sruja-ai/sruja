@@ -59,20 +59,20 @@ _Integrating evolution into development workflow_
 
 ## Raw Thoughts from Analysis
 
-### v0.42.0 Features to Cover:
+### v0.42.0 Features to Cover
 - `sruja evolution` - outcome-driven evolutionary architectures
 - `sruja health` / health status dashboard
 - fitness evaluation
 - enterprise graph health metrics
 
-### Related Concepts:
+### Related Concepts
 - Outcome-driven architecture
 - Architectural fitness functions
 - Health metrics aggregation
 - Evolutionary vs traditional architecture
 - Sruja maturation phases (Instrumentation, Context Hints, Infra Discovery)
 
-### Lesson Ideas:
+### Lesson Ideas
 
 1. **Fitness Functions & Health Metrics**
    - Define fitness function: `fitness(cpu_utilization < 80%, availability > 99.9%, latency_p99 < 200ms)`

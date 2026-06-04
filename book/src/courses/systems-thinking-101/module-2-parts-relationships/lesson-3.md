@@ -405,4 +405,3 @@ Now you know how to define parts and connect them with relationships. You can cr
 
 But there's one more thing: **how do you organize all these parts**? That's what the next lesson is about. You'll learn about hierarchy and nesting—how to structure your systems in a way that's clear, consistent, and scalable.
 
-See you there!

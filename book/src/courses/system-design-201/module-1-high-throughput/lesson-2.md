@@ -38,14 +38,13 @@ Where does the rate limiter live?
 
 ---
 
-## 🛠️ Sruja Perspective: Middleware Modeling
+##  Sruja Perspective: Middleware Modeling
 
 In Sruja, we can model the Rate Limiter as a component within the API Gateway, backed by a fast datastore like Redis.
 
 ```sruja
 // partial
 import { * } from 'sruja.ai/stdlib'
-
 
 APIGateway = system "API Gateway" {
     GatewayService = container "Gateway" {

@@ -15,7 +15,6 @@ Governance ensures systems remain secure, maintainable, and consistent as they e
 ```sruja
 import { * } from 'sruja.ai/stdlib'
 
-
 SecurityPolicy = policy "Security Policy" {
 description "Security posture for services"
 }

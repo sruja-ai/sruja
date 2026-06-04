@@ -652,7 +652,7 @@ Modeling context isn't bureaucracy. It's survival.
 
 Congratulations! You've completed **Module 6: Context** and the entire **Systems Thinking 101** course!
 
-## 🎉 Course Complete!
+##  Course Complete!
 
 You did it. You've made it through all six modules of Systems Thinking 101. That's no small achievement—this material fundamentally changes how you see software systems.
 

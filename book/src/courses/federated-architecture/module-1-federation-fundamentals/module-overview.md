@@ -53,13 +53,13 @@ _Compose bundles into system index_
 
 ## Raw Thoughts
 
-### v0.35.0 Features to Cover:
+### v0.35.0 Features to Cover
 - `sruja publish` command
 - `sruja compose` command
 - Architecture Index MVP with Federated Registry
 - Bundle schema and system index schema
 
-### Key Concepts:
+### Key Concepts
 - `repo.bundle.json` - published architecture artifact
 - `system.index.json` - composed multi-repo graph
 - Canonical IDs: `repo_id::local_id`

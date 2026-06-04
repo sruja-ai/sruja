@@ -502,8 +502,6 @@ You can now create diagrams that tell stories about how systems work—stories t
 
 In the next module, you'll learn about **boundaries**—how to define where one system ends and another begins. This is crucial for understanding dependencies, managing complexity, and designing systems that are decoupled and maintainable.
 
-See you there!
-
 ---
 
 ## Module 2 Complete!
