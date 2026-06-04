@@ -47,6 +47,12 @@ pub struct ImportStatement {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportElement {
+    /// Import a specific named element (e.g., `import { MyBoundary } from "path"`)
     Ident(String),
+    /// Import all elements (e.g., `import "path"` or `import { * } from "path"`)
     Wildcard,
+    /// Import all boundaries from a file (e.g., `import { boundary } from "path"`)
+    Boundary,
+    /// Import all policies from a file (e.g., `import { policy } from "path"`)
+    Policy,
 }

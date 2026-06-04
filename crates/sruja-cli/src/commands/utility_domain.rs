@@ -30,6 +30,8 @@ pub mod sync_ide_rules;
 pub mod version;
 #[path = "violation_shared.rs"]
 pub mod violation_shared;
+#[path = "repo_manifest.rs"]
+pub mod repo_manifest;
 
 pub use classify::{classify, ClassifyOptions};
 pub use sync_ide_rules::{sync_ide_rules, SyncIdeRulesOptions};

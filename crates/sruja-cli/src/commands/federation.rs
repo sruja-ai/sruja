@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use super::discover::discover_context_json_from_graph;
+use super::repo_manifest;
 use super::CliError;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;
@@ -505,7 +506,51 @@ pub async fn compose(
     recursive: bool,
     output_path: &str,
 ) -> Result<(), CliError> {
-    let paths = collect_bundle_paths(inputs, recursive)?;
+    // If no inputs provided, try to load from manifest
+    let paths: Vec<PathBuf> = if inputs.is_empty() {
+        let repo_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let manifest = repo_manifest::load_manifest(&repo_root)?;
+
+        if manifest.repos.is_empty() {
+            // No manifest, fall back to collect_bundle_paths which will error
+            collect_bundle_paths(inputs, recursive)?
+        } else {
+            let repo_paths = repo_manifest::get_all_repo_paths(&repo_root, &manifest);
+            let mut bundle_paths = Vec::new();
+
+            for (name, path) in &repo_paths {
+                let bundle_path = path.join("repo.bundle.json");
+                if !bundle_path.exists() {
+                    // Auto-publish if bundle doesn't exist
+                    eprintln!("Auto-publishing bundle for repo '{}'...", name);
+                    publish(
+                        &path.to_string_lossy(),
+                        Some(name),
+                        &bundle_path.to_string_lossy(),
+                    )
+                    .await
+                    .map_err(|e| {
+                        CliError::validation(format!(
+                            "Auto-publish failed for repo '{}': {}",
+                            name, e
+                        ))
+                    })?;
+                }
+                bundle_paths.push(bundle_path);
+            }
+
+            if bundle_paths.is_empty() {
+                return Err(CliError::validation(
+                    "No repos found. Add repos to .sruja/repos.toml or provide -i inputs.".to_string(),
+                ));
+            }
+
+            bundle_paths
+        }
+    } else {
+        collect_bundle_paths(inputs, recursive)?
+    };
+
     if paths.is_empty() {
         return Err(CliError::validation(
             "No bundle files found. Provide a path to a repo.bundle.json (or *.repo.bundle.json) file, or a directory containing such files. Tip: use --recursive when bundles are nested in subdirectories.".to_string(),

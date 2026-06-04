@@ -512,6 +512,8 @@ impl Exporter {
                             .map(|e| match e {
                                 sruja_language::ImportElement::Ident(ident) => ident.clone(),
                                 sruja_language::ImportElement::Wildcard => "*".to_string(),
+                                sruja_language::ImportElement::Boundary => "boundary".to_string(),
+                                sruja_language::ImportElement::Policy => "policy".to_string(),
                             })
                             .collect(),
                         from: import.from.clone(),

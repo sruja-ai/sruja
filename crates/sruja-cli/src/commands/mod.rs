@@ -110,6 +110,8 @@ pub use scan_domain::sync_cmd;
 pub use utility_domain::error;
 pub use utility_domain::federation;
 pub use utility_domain::preflight;
+#[allow(unused_imports)]
+pub use utility_domain::repo_manifest;
 pub use utility_domain::violation_shared;
 
 pub use intent_domain::critique::critique;

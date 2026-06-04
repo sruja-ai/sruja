@@ -10,6 +10,8 @@ pub fn print_import(out: &mut String, import: &ImportStatement) {
         .map(|e| match e {
             ImportElement::Ident(s) => s.clone(),
             ImportElement::Wildcard => "*".to_string(),
+            ImportElement::Boundary => "boundary".to_string(),
+            ImportElement::Policy => "policy".to_string(),
         })
         .collect();
     out.push_str(&elems.join(", "));

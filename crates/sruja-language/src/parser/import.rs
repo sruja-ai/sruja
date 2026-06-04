@@ -54,10 +54,33 @@ pub(crate) fn parse_import(input: &str) -> IResult<&str, ImportStatement> {
     alt((structured, simple)).parse(input)
 }
 
+/// Parse a keyword only if not followed by an identifier character.
+fn parse_keyword<'a>(keyword: &'static str) -> impl Fn(&'a str) -> IResult<&'a str, &'a str> {
+    move |input: &'a str| {
+        let (rest, matched) = nom::bytes::complete::tag(keyword)(input)?;
+        // Check that the next char is not an identifier char (alphanumeric, _, -)
+        if rest.is_empty() {
+            Ok((rest, matched))
+        } else {
+            let next = rest.chars().next().unwrap();
+            if next.is_alphanumeric() || next == '_' || next == '-' {
+                Err(nom::Err::Error(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::Tag,
+                )))
+            } else {
+                Ok((rest, matched))
+            }
+        }
+    }
+}
+
 pub(crate) fn parse_import_element(input: &str) -> IResult<&str, ImportElement> {
     use nom::branch::alt;
     alt((
         value(ImportElement::Wildcard, char('*')),
+        value(ImportElement::Boundary, parse_keyword("boundary")),
+        value(ImportElement::Policy, parse_keyword("policy")),
         map(parse_identifier, ImportElement::Ident),
     ))
     .parse(input)
