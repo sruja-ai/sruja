@@ -79,7 +79,7 @@ Sruja exposes **many** MCP tools (graph navigation, drift, NL retrieval, focus b
 |----------|---------|
 | `SRUJA_MCP_READONLY=1` | Only **read/query** tools are advertised and callable (no proposals, sandbox, scratchpad append, gate commands, or `sruja_agent_run`). |
 | `SRUJA_MCP_LOG=1` | One JSON line per tool invocation on **stderr** (`tool`, `repo`, `ms`, `ok`, `error`) for pipelines and dashboards. |
-| `SRUJA_MCP_TOOL_PROFILE=minimal|coding|arch|full` | Filter tools by profile: `minimal` (~10-12), `coding` (~15-18, default), `arch` (authoring helpers), `full` (all tools). |
+| `SRUJA_MCP_TOOL_PROFILE=minimal|coding|arch|full` | Filter tools by profile: `minimal` (10), `coding` (15, default), `arch` (17, authoring helpers), `full` (all tools). |
 
 Default (Cursor `mcp.json`):
 

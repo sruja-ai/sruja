@@ -10,7 +10,7 @@ Public story references **Tier 1 only**. Tier 2 is documented under Advanced; Ti
 | **Brief agent** | `focus`, `ai` | Ladder + `sruja_get_focus_briefing`, `sruja_get_task_context`, `sruja_hybrid_query` |
 | **Verify** | `verify-task`, `lint` (when `repo.sruja` exists) | `sruja_verify_task` |
 
-**Also Tier 1:** `mcp` (stdio server; default `SRUJA_MCP_TOOL_PROFILE=coding`, ≤18 tools).
+**Also Tier 1:** `mcp` (stdio server; default `SRUJA_MCP_TOOL_PROFILE=coding`, 15 tools).
 
 **Tier 1b (optional):** `sruja-architecture` skill — promotes scan evidence to reviewed `repo.sruja`. Not required day one.
 

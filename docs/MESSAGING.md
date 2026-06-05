@@ -49,7 +49,7 @@ The skill runs Tier-1 commands (sync, drift, lint) — it is an accelerator, not
 
 ## MCP tool profiles
 
-- **`coding`** (default, ≤18 tools): ladder, focus, drift, verify, memory search, hybrid query, critique, prune.
+- **`coding`** (default, 15 tools): ladder, focus, drift, verify, memory search, hybrid query, critique, prune.
 - **`minimal`**, **`arch`**, **`full`** (compat only — not in public templates).
 
 Set `SRUJA_MCP_TOOL_PROFILE=coding`. **Not** in coding profile: `sruja_agent_run` — hosts run the LLM loop; Sruja supplies `verify-task` and evidence.

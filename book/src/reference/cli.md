@@ -107,6 +107,6 @@ As part of feature tightening (Phase T), Sruja provides canonical paths for core
 | Retrieval | `sruja focus` / MCP focus briefing | `get_architecture_context`, `get_hydrated_context` |
 | Drift Gate | `sruja drift`, `sruja drift-pr` | deprecated `check` |
 
-MCP tool profiles (`minimal`, `coding`, `arch`, `full`) control which tools are available via MCP. The default `coding` profile provides ~15-18 tools focused on coding workflows.
+MCP tool profiles (`minimal`, `coding`, `arch`, `full`) control which tools are available via MCP. The default `coding` profile provides 15 tools focused on coding workflows.
 
 Run `sruja --help` for full options.

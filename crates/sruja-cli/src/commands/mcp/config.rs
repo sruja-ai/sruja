@@ -97,51 +97,62 @@ pub(crate) fn is_mutating_mcp_tool(name: &str) -> bool {
     MCP_MUTATING_TOOLS.contains(&name)
 }
 
-/// Minimal profile: 5 core tools for basic architecture queries
+/// Minimal profile: 10 core tools for basic architecture queries
 const MINIMAL_TOOLS: &[&str] = &[
     "sruja_list_architecture_index",
     "sruja_get_topology",
     "sruja_get_elements",
-    "sruja_check_drift",
-    "sruja_check_violations",
-];
-
-/// Coding profile: 12 tools for active development workflows
-const CODING_TOOLS: &[&str] = &[
-    "sruja_list_architecture_index",
-    "sruja_get_topology",
-    "sruja_get_elements",
-    "sruja_check_drift",
-    "sruja_check_violations",
-    "sruja_get_boundaries",
-    "sruja_suggest_fix",
-    "sruja_verify_task",
     "sruja_get_task_context",
-    "sruja_get_repomap",
-    "sruja_classify",
-    "sruja_sync_ide_rules",
-];
-
-/// Arch profile: 18 tools for architecture review and governance
-const ARCH_TOOLS: &[&str] = &[
-    "sruja_list_architecture_index",
-    "sruja_get_topology",
-    "sruja_get_elements",
-    "sruja_check_drift",
-    "sruja_check_violations",
-    "sruja_get_boundaries",
-    "sruja_suggest_fix",
-    "sruja_verify_task",
-    "sruja_get_task_context",
-    "sruja_get_repomap",
-    "sruja_classify",
-    "sruja_sync_ide_rules",
-    "sruja_get_decisions",
-    "sruja_critique",
     "sruja_get_focus_briefing",
-    "sruja_get_context_score",
-    "sruja_preflight_check",
-    "sruja_verify_architecture",
+    "sruja_get_drift_state",
+    "sruja_verify_task",
+    "sruja_search_memory",
+    "sruja_check_drift",
+    "sruja_get_repomap",
+];
+
+/// Coding profile: 15 tools for active development workflows (default)
+const CODING_TOOLS: &[&str] = &[
+    // All minimal tools
+    "sruja_list_architecture_index",
+    "sruja_get_topology",
+    "sruja_get_elements",
+    "sruja_get_task_context",
+    "sruja_get_focus_briefing",
+    "sruja_get_drift_state",
+    "sruja_verify_task",
+    "sruja_search_memory",
+    "sruja_check_drift",
+    "sruja_get_repomap",
+    // Coding-specific additions
+    "sruja_get_author_evidence",
+    "sruja_hybrid_query",
+    "sruja_explain_discovery",
+    "sruja_critique",
+    "sruja_suggest_context_prune",
+];
+
+/// Arch profile: 17 tools for architecture review and governance
+const ARCH_TOOLS: &[&str] = &[
+    // All coding tools
+    "sruja_list_architecture_index",
+    "sruja_get_topology",
+    "sruja_get_elements",
+    "sruja_get_task_context",
+    "sruja_get_focus_briefing",
+    "sruja_get_drift_state",
+    "sruja_verify_task",
+    "sruja_search_memory",
+    "sruja_check_drift",
+    "sruja_get_repomap",
+    "sruja_get_author_evidence",
+    "sruja_hybrid_query",
+    "sruja_explain_discovery",
+    "sruja_critique",
+    "sruja_suggest_context_prune",
+    // Arch-specific additions (readonly-safe authoring helpers)
+    "sruja_explain_element",
+    "sruja_evaluate_proposal",
 ];
 
 pub(crate) fn mcp_tools_for_list_with_readonly(readonly: bool, profile: ToolProfile) -> Vec<Value> {

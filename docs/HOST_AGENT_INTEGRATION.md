@@ -215,8 +215,8 @@ sruja sync -r .
 # Command: sruja mcp -r .
 
 Tools available vary by profile:
-- minimal (~10-12 tools): Core ladder + focus briefing + essential utilities
-- coding (~15-18 tools, default): Minimal + hybrid query + critique + context pruning
+- minimal (10 tools): Core ladder + focus briefing + essential utilities
+- coding (15 tools, default): Minimal + hybrid query + critique + context pruning
 - arch: Coding + read-only authoring helpers
 - full: All tools (backward compatible)
 
