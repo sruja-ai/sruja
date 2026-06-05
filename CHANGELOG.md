@@ -5,6 +5,15 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.59.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.58.0...sruja-v0.59.0) (2026-06-05)
+
+
+### Features
+
+* add generate-skill command and auto-capture instructions ([90e6cd6](https://github.com/sruja-ai/sruja/commit/90e6cd65ddf7d2f3377b094f5bca9247527605d2))
+* **density:** add progressive density tiers and auto-context discovery ([708ab79](https://github.com/sruja-ai/sruja/commit/708ab79ef0c312581a3a836c7b283f1636e28c5b))
+* **federation:** add repo manifest and shared schema imports ([2388d8d](https://github.com/sruja-ai/sruja/commit/2388d8da82cabb814c1e3654dc5ec9d4e3b95082))
+
 ## [0.58.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.57.0...sruja-v0.58.0) (2026-06-04)
 
 
