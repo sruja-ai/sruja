@@ -4,11 +4,11 @@ How to test the **check**, **review**, **publish**, and **compose** commands loc
 
 ---
 
-## 1. `sruja check` (CI drift check, always exit 0)
+## 1. `sruja drift --ci` (CI drift check, always exit 0)
 
 ### Automated tests
 
-Run the e2e tests (uses a temp repo, runs `sruja check` in JSON, text, and github-actions formats):
+Run the e2e tests (uses a temp repo, runs `sruja drift --ci` in JSON, text, and github-actions formats):
 
 ```bash
 cargo test -p sruja-cli --test check_e2e
@@ -29,13 +29,13 @@ From the repo root (or any path with a baseline and optional code):
 cargo build --release -p sruja-cli
 
 # Default: github-actions format (for CI)
-sruja check -r .
+sruja drift --ci -r .
 
 # Text summary
-sruja check -r . -f text
+sruja drift --ci -r . -f text
 
 # JSON (for tooling)
-sruja check -r . -f json
+sruja drift --ci -r . -f json
 ```
 
 **What to verify:** Exit code is always 0. Output shows truth status, violation count, and (for `-f github-actions`) `::notice`/`::warning` annotations.
@@ -46,7 +46,7 @@ The workflow [`.github/workflows/sruja-check.yml`](../.github/workflows/sruja-ch
 
 ```bash
 cargo install --path crates/sruja-cli
-sruja check -r . --format github-actions
+sruja drift --ci -r . --format github-actions
 ```
 
 To test it: open a PR against `main`; the "Sruja Check" job will run.
@@ -127,7 +127,7 @@ cargo test --workspace
 
 | Feature   | Automated tests              | Manual test                          | CI |
 |----------|------------------------------|--------------------------------------|----|
-| **check**  | `cargo test -p sruja-cli --test check_e2e` | `sruja check -r . -f text` / `json` / `github-actions` | Sruja Check workflow on PR |
+| **check**  | `cargo test -p sruja-cli --test check_e2e` | `sruja drift --ci -r . -f text` / `json` / `github-actions` | Sruja Check workflow on PR |
 | **review** | —                            | `sruja review -r .` / `-f json`      | — |
 | **publish**| —                            | `sruja publish -r . -o repo.bundle.json` | — |
 | **compose**| —                            | `sruja compose -i repo.bundle.json -o system.index.json` | — |

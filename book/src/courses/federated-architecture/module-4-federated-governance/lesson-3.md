@@ -147,7 +147,7 @@ sruja ai-context -r .
 
 ### Q1: What command runs architecture checks in CI mode?
 
-A) `sruja check`
+A) `sruja drift --ci`
 B) `sruja drift --ci`
 C) `sruja validate`
 D) `sruja test`

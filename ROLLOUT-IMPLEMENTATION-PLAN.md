@@ -184,7 +184,7 @@ Contract requirements:
 | Add typed enums for `truth_status`, `confidence`, and `risk` | Backend | 0.5 day | 2.4.1 |
 | Implement canonical selector inputs: `file`, `element_id`, `query`, `git_diff(base_ref, head_ref)` | Backend | 1 day | 2.4.1 |
 | Implement shared resolver pipeline returning `TaskContext` | Backend | 3 days | 2.4.2, 2.4.3 |
-| Wire `sruja context --format json` to emit `TaskContext` | Backend | 1 day | 2.4.4 |
+| Wire `sruja ai-context --format json` to emit `TaskContext` | Backend | 1 day | 2.4.4 |
 | Rewire PR review / `drift-pr` to reuse resolver and emit lineage + confidence | Backend | 2 days | 2.4.4 |
 | Implement semantic fallback as recall-only (populate `semantic_candidates` when resolution is ambiguous/empty) | Backend | 2 days | 2.4.4 |
 | Implement hydration as assembly stage of `TaskContext` with deterministic budgets | Backend | 2 days | 2.4.4 |
@@ -206,7 +206,7 @@ Contract requirements:
 - Backward compatibility: existing MCP tool names and legacy CLI JSON continue to work for one release via adapters over `TaskContext`.
 
 ### Phase 2.4 Exit Criteria
-- [ ] `sruja context --format json` returns `schema_version: task_context/v1` payload
+- [ ] `sruja ai-context --format json` returns `schema_version: task_context/v1` payload
 - [ ] PR review/drift output includes impacted lineage + `selection_reason` + `confidence`
 - [ ] Resolver uses one shared pipeline for selection/impact/hydration/semantic fallback
 - [ ] Compatibility aliases exist for one release and are adapter-only
@@ -366,9 +366,9 @@ We'll share findings by [date].
 |------|---------|----------|
 | Bundle generation | `sruja publish` | Valid `repo.bundle.json` |
 | Directory compose | `sruja compose ./bundles/` | System index created |
-| Check JSON output | `sruja check -r . --format json` | Valid JSON with contract fields |
+| Check JSON output | `sruja drift --ci -r . --format json` | Valid JSON with contract fields |
 | Review JSON output | `sruja review --format json` | Valid JSON with drift items |
-| GitHub Actions output | `sruja check --format github` | Valid GitHub Actions annotations |
+| GitHub Actions output | `sruja drift --ci --format github` | Valid GitHub Actions annotations |
 
 ### Regression Tests
 | Test | Expected |

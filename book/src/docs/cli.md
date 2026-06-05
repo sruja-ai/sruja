@@ -107,15 +107,15 @@ The **sruja-architecture skill** is the primary way to get value; it runs discov
 | **`sruja discover --context -r <path> --format json`** | Evidence for the skill: repo structure, technologies, modules (skill runs this) |
 | **`sruja sync -r <path>`** | Refresh `.sruja/context.json` (summary) and `.sruja/graph.json` (full graph); skill uses these for evidence |
 | **`sruja drift -r <path> -a repo.sruja`** | Declared vs actual; skill uses for refinement; CI for gates |
-| **`sruja context -r <path>`** | Export architecture context for AI tools |
+| **`sruja ai-context -r <path>`** | Export architecture context for AI tools |
 | **`sruja quickstart -r <path>`** | First look: structural overview and baseline generation (recommended for evaluation) |
 | **`sruja onboard -r <path>`** | One-shot onboarding brief for humans and agents (deterministic; optional enrichment) |
 | **`sruja status -r <path>`** | Show baseline + health + truth status (reviewed / drifted / unknown) |
 | **`sruja review -r <path>`** | Review workflow: refresh evidence, detect drift, propose updates/open questions |
 | **`sruja impact <target> -r <path>`** | Blast radius analysis (upstream dependents + downstream dependencies) |
 | **`sruja why "question" -r <path>`** | Ask architecture questions with deterministic evidence from the knowledge graph |
-| **`sruja check -r <path> -f github-actions`** | CI-focused drift check output |
-| **`sruja baseline -r <path>`** | Snapshot current violations to ignore them in CI (`sruja check --baseline ...`) |
+| **`sruja drift --ci -r <path> -f github-actions`** | CI-focused drift check output |
+| **`sruja baseline -r <path>`** | Snapshot current violations to ignore them in CI (`sruja drift --baseline ...`) |
 | **`sruja intent check -r <path> -i <intent_dir>`** | Compare declared architectural intent vs actual implementation |
 | **`sruja compliance -r <path> -a repo.sruja -i <intent_dir>`** | Structural drift + intent + policy violations (exit 1 if non-compliant) |
 | **`sruja publish -r <path> -o repo.bundle.json`** | Export repo truth + evidence for federation |
@@ -130,7 +130,7 @@ sruja discover --context -r . --format json
 sruja drift -r . -a repo.sruja
 sruja impact Shop.WebApp -r .
 sruja why "why did we choose PostgreSQL?" -r .
-sruja context -r . -f markdown -o .cursor/rules/architecture.md
+sruja ai-context -r . -f markdown -o .cursor/rules/architecture.md
 ```
 
 ### Repo workflow (recommended)
@@ -168,7 +168,7 @@ Aliases:
 sruja baseline -r . -o .sruja/violations.baseline.json
 
 # CI check that ignores existing issues and reports only new ones
-sruja check -r . --baseline .sruja/violations.baseline.json -f github-actions
+sruja drift --ci -r . --baseline .sruja/violations.baseline.json -f github-actions
 ```
 
 ### MCP (optional)

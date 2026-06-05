@@ -83,4 +83,4 @@ git push origin main
 
 ## Optional: sruja-check workflow
 
-`sruja-check.yml` runs on PR: `cargo install --path crates/sruja-cli` then `sruja check -r . --format github-actions`. It only needs the CLI to build and `sruja check` to pass; no export changes required for that.
+`sruja-check.yml` runs on PR: `cargo install --path crates/sruja-cli` then `sruja drift --ci -r . --format github-actions`. It only needs the CLI to build and `sruja drift --ci` to pass; no export changes required for that.

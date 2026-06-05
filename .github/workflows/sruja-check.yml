@@ -28,4 +28,4 @@ jobs:
         if: github.event_name != 'pull_request'
         run: sruja drift -r . --violations-only
       - name: Sruja check (annotations)
-        run: sruja check -r . --format github-actions
+        run: sruja drift -r . --ci --format github-actions

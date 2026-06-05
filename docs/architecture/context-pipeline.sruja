@@ -133,7 +133,7 @@ ContextEngineering = system "Sruja Context Engineering" {
     }
 
     ContextExportCommand = component "Context Export Command" {
-      description "Runs sruja context -r . to export task-scoped architecture context for AI tools"
+      description "Runs sruja ai-context -r . to export task-scoped architecture context for AI tools"
     }
 
     PublishCommand = component "Publish Command" {

@@ -124,7 +124,7 @@ fn context_format_json_returns_task_context_v1_schema_version() {
     let temp = create_test_repo();
     write_file(temp.path(), "src/main.rs", "fn main() {}\n");
     let repo_str = temp.path().to_str().expect("path utf-8");
-    let (success, stdout, stderr) = run_sruja(&["context", "-r", repo_str, "-f", "json"]);
+    let (success, stdout, stderr) = run_sruja(&["ai-context", "-r", repo_str, "-f", "json"]);
 
     assert!(
         success,

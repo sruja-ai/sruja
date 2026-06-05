@@ -74,20 +74,6 @@ fn parses_drift_state_subcommand() {
 }
 
 #[test]
-fn parses_context_alias() {
-    std::thread::Builder::new()
-        .name("clap_parse_large_stack".to_string())
-        .stack_size(16 * 1024 * 1024)
-        .spawn(|| {
-            let cli = Cli::try_parse_from(["sruja", "context"]).expect("parse via alias");
-            assert!(matches!(cli.command, Commands::AiContext { .. }));
-        })
-        .expect("spawn")
-        .join()
-        .expect("join");
-}
-
-#[test]
 fn parses_discover_subcommands() {
     std::thread::Builder::new()
         .name("clap_parse_large_stack".to_string())
@@ -329,6 +315,8 @@ fn parses_ai_brief_defaults() {
                     staged,
                     max_tokens,
                     output,
+                    format,
+                    cache_friendly,
                     enrich,
                 } => {
                     assert_eq!(repo, ".");
@@ -341,6 +329,8 @@ fn parses_ai_brief_defaults() {
                     assert!(!staged);
                     assert_eq!(max_tokens, 8000);
                     assert!(output.is_none());
+                    assert_eq!(format, "markdown");
+                    assert!(!cache_friendly);
                     assert!(!enrich.enrich);
                     assert!(enrich.enrich_provider.is_none());
                     assert!(enrich.enrich_cmd.is_none());

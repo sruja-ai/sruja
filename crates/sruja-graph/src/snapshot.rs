@@ -71,9 +71,7 @@ impl GraphDelta {
             GraphDelta::NodeAdded { node_id, .. } => node_id == element,
             GraphDelta::NodeRemoved { node_id } => node_id == element,
             GraphDelta::NodeChanged { node_id, .. } => node_id == element,
-            GraphDelta::EdgeAdded { source, target, .. } => {
-                source == element || target == element
-            }
+            GraphDelta::EdgeAdded { source, target, .. } => source == element || target == element,
             GraphDelta::EdgeRemoved { source, target, .. } => {
                 source == element || target == element
             }
@@ -119,7 +117,9 @@ pub fn compute_deltas(old: &KnowledgeGraph, new: &KnowledgeGraph) -> Vec<GraphDe
     // Nodes removed (in old, not in new)
     for id in old.nodes.keys() {
         if !new.nodes.contains_key(id) {
-            deltas.push(GraphDelta::NodeRemoved { node_id: id.clone() });
+            deltas.push(GraphDelta::NodeRemoved {
+                node_id: id.clone(),
+            });
         }
     }
 
@@ -259,12 +259,7 @@ fn compare_nodes(id: &str, old: &GraphNode, new: &GraphNode, deltas: &mut Vec<Gr
     }
 }
 
-fn compare_decisions(
-    id: &str,
-    old: &Decision,
-    new: &Decision,
-    deltas: &mut Vec<GraphDelta>,
-) {
+fn compare_decisions(id: &str, old: &Decision, new: &Decision, deltas: &mut Vec<GraphDelta>) {
     if old.status != new.status {
         deltas.push(GraphDelta::DecisionStatusChanged {
             decision_id: id.to_string(),
@@ -300,7 +295,9 @@ mod tests {
 
         let deltas = compute_deltas(&old, &new);
         assert_eq!(deltas.len(), 1);
-        assert!(matches!(deltas[0], GraphDelta::NodeAdded { ref node_id, .. } if node_id == "svc1"));
+        assert!(
+            matches!(deltas[0], GraphDelta::NodeAdded { ref node_id, .. } if node_id == "svc1")
+        );
     }
 
     #[test]

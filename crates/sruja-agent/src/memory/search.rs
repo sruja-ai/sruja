@@ -115,7 +115,8 @@ pub fn extract_tags(entry: &LearningEntry) -> Vec<String> {
 /// Relatedness is determined by shared affected elements, overlapping tags,
 /// or matching context keywords -- implementing Zettelkasten's association logic.
 pub fn find_related_indices(memory: &AgenticMemory, new_entry: &LearningEntry) -> Vec<usize> {
-    let new_tags: std::collections::HashSet<&str> = new_entry.tags.iter().map(|s| s.as_str()).collect();
+    let new_tags: std::collections::HashSet<&str> =
+        new_entry.tags.iter().map(|s| s.as_str()).collect();
     let new_elements: std::collections::HashSet<&str> = new_entry
         .affected_elements
         .iter()

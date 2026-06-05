@@ -169,7 +169,7 @@ D) Database schema
 
 A) `sruja validate`
 B) `sruja lint`
-C) `sruja check`
+C) `sruja drift --ci`
 D) `sruja verify`
 
 ### Q3: What are guard conditions used for?

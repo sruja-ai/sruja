@@ -623,7 +623,7 @@ fn suggested_commands(repo_path: &Path) -> Vec<String> {
     commands.push("sruja discover explain -r .".to_string());
     commands.push("sruja context-score -r .".to_string());
     commands.push("sruja drift -r .".to_string());
-    commands.push("sruja check -r .".to_string());
+    commands.push("sruja drift --ci -r .".to_string());
     commands.sort();
     commands.dedup();
     commands

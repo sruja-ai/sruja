@@ -62,9 +62,8 @@ pub fn load_manifest(repo_root: &Path) -> Result<RepoManifest, CliError> {
         ))
     })?;
 
-    let manifest: RepoManifest = toml::from_str(&content).map_err(|e| {
-        CliError::validation(format!("Invalid {}: {}", manifest_path.display(), e))
-    })?;
+    let manifest: RepoManifest = toml::from_str(&content)
+        .map_err(|e| CliError::validation(format!("Invalid {}: {}", manifest_path.display(), e)))?;
 
     Ok(manifest)
 }
@@ -82,9 +81,8 @@ pub fn save_manifest(repo_root: &Path, manifest: &RepoManifest) -> Result<(), Cl
         })?;
     }
 
-    let content = toml::to_string_pretty(manifest).map_err(|e| {
-        CliError::validation(format!("Failed to serialize manifest: {}", e))
-    })?;
+    let content = toml::to_string_pretty(manifest)
+        .map_err(|e| CliError::validation(format!("Failed to serialize manifest: {}", e)))?;
 
     std::fs::write(&manifest_path, content).map_err(|e| {
         CliError::Io(std::io::Error::new(
@@ -97,10 +95,7 @@ pub fn save_manifest(repo_root: &Path, manifest: &RepoManifest) -> Result<(), Cl
 }
 
 /// Resolve repo entries to absolute paths, filtering out missing repos.
-pub fn resolve_repo_paths(
-    repo_root: &Path,
-    manifest: &RepoManifest,
-) -> HashMap<String, PathBuf> {
+pub fn resolve_repo_paths(repo_root: &Path, manifest: &RepoManifest) -> HashMap<String, PathBuf> {
     let mut resolved = HashMap::new();
 
     for (name, entry) in &manifest.repos {
@@ -123,7 +118,9 @@ pub fn resolve_repo_paths(
 pub fn auto_discover_sibling_repos(repo_root: &Path) -> Vec<(String, PathBuf)> {
     let mut discovered = Vec::new();
 
-    let canonical_root = repo_root.canonicalize().unwrap_or_else(|_| repo_root.to_path_buf());
+    let canonical_root = repo_root
+        .canonicalize()
+        .unwrap_or_else(|_| repo_root.to_path_buf());
 
     if let Some(parent) = canonical_root.parent() {
         if let Ok(entries) = std::fs::read_dir(parent) {
@@ -149,10 +146,7 @@ pub fn auto_discover_sibling_repos(repo_root: &Path) -> Vec<(String, PathBuf)> {
 
 /// Get resolved repo paths from manifest, including auto-discovered siblings
 /// that are not already in the manifest.
-pub fn get_all_repo_paths(
-    repo_root: &Path,
-    manifest: &RepoManifest,
-) -> HashMap<String, PathBuf> {
+pub fn get_all_repo_paths(repo_root: &Path, manifest: &RepoManifest) -> HashMap<String, PathBuf> {
     let mut all_paths = resolve_repo_paths(repo_root, manifest);
 
     // Add auto-discovered siblings not already in manifest

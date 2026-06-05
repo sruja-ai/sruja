@@ -129,7 +129,7 @@ pub async fn evolution_log(repo: &str) -> Result<(), CliError> {
 
     if !log_path.exists() {
         println!("No evolution history found under .sruja/evolution.log.");
-        println!("Run 'sruja evaluate' to execute fitness functions and populate history.");
+        println!("Run 'sruja intent evaluate' to execute fitness functions and populate history.");
         return Ok(());
     }
 

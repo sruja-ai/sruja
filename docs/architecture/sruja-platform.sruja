@@ -434,7 +434,7 @@ DailyDevFlow = flow "Daily Development Loop" {
   step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja sync -r ."
   step Sruja.CLI.WorkflowSteps -> Sruja.Scan "Scans repo"
   step Sruja.CLI.WorkflowSteps -> Sruja.Diff "Detects drift"
-  step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja context -r . --file <file> --intent <intent> -f json"
+  step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja ai-context -r . --file <file> --intent <intent> -f json"
   step Sruja.CLI.WorkflowSteps -> Sruja.Scan "Builds task-scoped context"
   step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja drift -r . --violations-only"
   step Developer -> Sruja.CLI.WorkflowSteps "Runs: sruja focus --file <path>"

@@ -982,8 +982,15 @@ fn context_multi_repo_json_includes_combined_summary_and_repos() {
     write_minimal_cargo_repo(repo_b.path());
     let repo_b_str = repo_b.path().to_str().expect("utf-8");
 
-    let (success, stdout, stderr) =
-        run_sruja(&["context", "-r", repo_a_str, "-r", repo_b_str, "-f", "json"]);
+    let (success, stdout, stderr) = run_sruja(&[
+        "ai-context",
+        "-r",
+        repo_a_str,
+        "-r",
+        repo_b_str,
+        "-f",
+        "json",
+    ]);
 
     assert!(
         success,
@@ -2045,7 +2052,7 @@ fn review_json_succeeds_without_baseline() {
 }
 
 #[test]
-fn baseline_and_check_json_succeeds() {
+fn baseline_and_drift_ci_json_succeeds() {
     let repo = create_test_repo();
     write_minimal_cargo_repo(repo.path());
     let repo_str = repo.path().to_str().expect("utf-8");
@@ -2069,17 +2076,18 @@ fn baseline_and_check_json_succeeds() {
     assert!(std::path::Path::new(baseline_path_printed).exists());
 
     let (check_success, check_stdout, check_stderr) = run_sruja(&[
-        "check",
+        "drift",
         "-r",
         repo_str,
         "-f",
         "json",
+        "--ci",
         "--baseline",
         baseline_path_printed,
     ]);
     assert!(
         check_success,
-        "check should succeed: stderr={}",
+        "drift --ci should succeed: stderr={}",
         check_stderr
     );
     let parsed: serde_json::Value = serde_json::from_str(check_stdout.trim()).expect("valid JSON");

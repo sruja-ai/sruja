@@ -22,7 +22,7 @@ export function helper() { return "ok"; }
 
     let repo_str = repo.path().to_str().expect("utf-8");
     let (ok, stdout, stderr) = run_sruja(&[
-        "context",
+        "ai-context",
         "-r",
         repo_str,
         "-f",
@@ -129,7 +129,7 @@ export function helper() { return "ok"; }
 
     let repo_str = repo.path().to_str().expect("utf-8");
     let (ok, stdout, stderr) = run_sruja(&[
-        "context",
+        "ai-context",
         "-r",
         repo_str,
         "-f",

@@ -1,4 +1,4 @@
-//! E2E tests for sruja evaluate and sruja evolution commands.
+//! E2E tests for sruja intent evaluate and sruja intent history commands.
 
 mod common;
 use common::{create_test_repo, run_sruja, write_file};
@@ -11,7 +11,7 @@ fitness AccuracyTarget {
 "#;
 
 #[test]
-fn test_evaluate_command_basic() {
+fn test_intent_evaluate_basic() {
     let repo = create_test_repo();
     write_file(repo.path(), "arch.sruja", FITNESS_SRUJA);
 
@@ -24,9 +24,9 @@ fn test_evaluate_command_basic() {
 
     let path_str = repo.path().join("arch.sruja").to_str().unwrap().to_string();
 
-    // Run evaluate
-    let (success, stdout, stderr) = run_sruja(&["evaluate", "-a", &path_str]);
-    assert!(success, "evaluate should succeed: stderr={}", stderr);
+    // Run intent evaluate
+    let (success, stdout, stderr) = run_sruja(&["intent", "evaluate", "-a", &path_str]);
+    assert!(success, "intent evaluate should succeed: stderr={}", stderr);
     assert!(
         stdout.contains("AccuracyTarget"),
         "should evaluate AccuracyTarget"
@@ -36,12 +36,12 @@ fn test_evaluate_command_basic() {
         "should pass the fitness check"
     );
 
-    // Also assert that evolution log works
+    // Also assert that intent history works
     let repo_str = repo.path().to_str().unwrap();
-    let (log_success, log_stdout, log_stderr) = run_sruja(&["evolution", "log", "-r", repo_str]);
+    let (log_success, log_stdout, log_stderr) = run_sruja(&["intent", "history", "-r", repo_str]);
     assert!(
         log_success,
-        "evolution log should succeed: stderr={}",
+        "intent history should succeed: stderr={}",
         log_stderr
     );
     assert!(
@@ -55,7 +55,7 @@ fn test_evaluate_command_basic() {
 }
 
 #[test]
-fn test_evaluate_command_no_fitness() {
+fn test_intent_evaluate_no_fitness() {
     let repo = create_test_repo();
     write_file(
         repo.path(),
@@ -64,10 +64,10 @@ fn test_evaluate_command_no_fitness() {
     );
     let path_str = repo.path().join("arch.sruja").to_str().unwrap().to_string();
 
-    let (success, stdout, stderr) = run_sruja(&["evaluate", "-a", &path_str]);
+    let (success, stdout, stderr) = run_sruja(&["intent", "evaluate", "-a", &path_str]);
     assert!(
         success,
-        "evaluate should succeed gracefully: stderr={}",
+        "intent evaluate should succeed gracefully: stderr={}",
         stderr
     );
     assert!(
@@ -77,14 +77,14 @@ fn test_evaluate_command_no_fitness() {
 }
 
 #[test]
-fn test_evolution_log_empty() {
+fn test_intent_history_empty() {
     let repo = create_test_repo();
     let repo_str = repo.path().to_str().unwrap();
 
-    let (success, stdout, stderr) = run_sruja(&["evolution", "log", "-r", repo_str]);
+    let (success, stdout, stderr) = run_sruja(&["intent", "history", "-r", repo_str]);
     assert!(
         success,
-        "evolution log should succeed gracefully: stderr={}",
+        "intent history should succeed gracefully: stderr={}",
         stderr
     );
     assert!(

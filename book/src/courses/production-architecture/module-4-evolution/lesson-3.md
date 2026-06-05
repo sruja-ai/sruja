@@ -47,13 +47,13 @@ sruja scan -r . --infra
 
 ```bash
 # Run evolution analysis
-sruja evolution -r .
+sruja intent history -r .
 
 # Show recommended changes
-sruja evolution -r . --propose
+sruja intent history -r . --propose
 
 # Apply recommended changes
-sruja evolution -r . --fix
+sruja intent history -r . --fix
 ```
 
 ## Drift Detection and Resolution
@@ -108,7 +108,7 @@ See [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_
 
 - name: Evolution Check (daily)
   if: github.event_name == 'schedule'
-  run: sruja evolution -r . --propose
+  run: sruja intent history -r . --propose
 ```
 
 ## Summary
@@ -118,7 +118,7 @@ The continuous evolution workflow:
 2. **Measure**: Run health checks
 3. **Detect**: Find drift with `sruja drift`
 4. **Propose**: Get evolution suggestions
-5. **Apply**: Use `sruja evolution --fix`
+5. **Apply**: Use `sruja intent history --fix`
 6. **Learn**: Agentic memory improves over time
 
 ## Module Complete!

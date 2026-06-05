@@ -541,7 +541,8 @@ pub async fn compose(
 
             if bundle_paths.is_empty() {
                 return Err(CliError::validation(
-                    "No repos found. Add repos to .sruja/repos.toml or provide -i inputs.".to_string(),
+                    "No repos found. Add repos to .sruja/repos.toml or provide -i inputs."
+                        .to_string(),
                 ));
             }
 

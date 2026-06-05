@@ -60,7 +60,7 @@ _Integrating evolution into development workflow_
 ## Raw Thoughts from Analysis
 
 ### v0.42.0 Features to Cover
-- `sruja evolution` - outcome-driven evolutionary architectures
+- `sruja intent history` - outcome-driven evolutionary architectures
 - `sruja health` / health status dashboard
 - fitness evaluation
 - enterprise graph health metrics
@@ -88,6 +88,6 @@ _Integrating evolution into development workflow_
 
 3. **Continuous Evolution**
    - Sruja maturation phases workflow
-   - Using `sruja evolution` command
+   - Using `sruja intent history` command
    - Drift detection and `--fix`
    - Autonomous optimization loop pattern (from agentic memory)

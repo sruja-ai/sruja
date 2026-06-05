@@ -108,7 +108,8 @@ pub async fn context_score(
                 map.insert(
                     "metric_description".to_string(),
                     serde_json::Value::String(
-                        "AI preparedness (0–100). For structural violations use `sruja health`; for truth/baseline sync use `sruja status`.".to_string(),
+                        "AI preparedness (0–100). Use `sruja status` for a unified view."
+                            .to_string(),
                     ),
                 );
 
@@ -166,9 +167,7 @@ fn dimension_bar(dim: &DimensionScore, width: usize) -> String {
 fn print_context_score(score: &ContextScore, trend: Option<&(i16, u8)>) {
     println!(
         "{}",
-        colors::dim(
-            "Metric: AI preparedness (0–100). For structural violations use `sruja health`; for truth/baseline sync use `sruja status`."
-        )
+        colors::dim("AI preparedness (0–100). Use `sruja status` for a unified view.")
     );
     println!();
     println!("╭──────────────────────────────────────────────────────╮");

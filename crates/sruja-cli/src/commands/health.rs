@@ -139,7 +139,7 @@ pub async fn health(
                 map.insert(
                     "metric_description".to_string(),
                     serde_json::Value::String(
-                        "Structural violations vs declared architecture (0–100). For truth sync use `sruja status`; for AI readiness use `sruja context-score`.".to_string(),
+                        "Structural violations vs declared architecture (0–100). Use `sruja status` for a unified view.".to_string(),
                     ),
                 );
             }
@@ -154,7 +154,7 @@ pub async fn health(
             println!(
                 "{}",
                 colors::dim(
-                    "Metric: structural violations vs declared architecture (0–100). For truth sync use `sruja status`; for AI readiness use `sruja context-score`."
+                    "Structural violations vs declared architecture (0–100). Use `sruja status` for a unified view."
                 )
             );
 

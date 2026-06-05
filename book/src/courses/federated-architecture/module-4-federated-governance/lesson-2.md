@@ -125,7 +125,7 @@ jobs:
 A) `sruja report`
 B) `sruja compliance`
 C) `sruja audit`
-D) `sruja check`
+D) `sruja drift --ci`
 
 ### Q2: What does `sruja drift --ci` do?
 

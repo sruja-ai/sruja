@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use sruja_diagnostics::SourceLocation;
+use std::str::FromStr;
 
 use super::*;
 
@@ -527,7 +527,10 @@ fn test_criticality_as_str() {
 fn test_criticality_from_str_case_insensitive() {
     assert_eq!(Criticality::from_str("LOW").unwrap(), Criticality::Low);
     assert_eq!(Criticality::from_str("High").unwrap(), Criticality::High);
-    assert_eq!(Criticality::from_str("CRITICAL").unwrap(), Criticality::Critical);
+    assert_eq!(
+        Criticality::from_str("CRITICAL").unwrap(),
+        Criticality::Critical
+    );
 }
 
 #[test]
@@ -558,7 +561,10 @@ fn test_source_kind_display() {
     assert_eq!(format!("{}", SourceKind::Config), "config");
     assert_eq!(format!("{}", SourceKind::GraphQL), "graphql");
     assert_eq!(format!("{}", SourceKind::Helm), "helm");
-    assert_eq!(format!("{}", SourceKind::Custom("custom".to_string())), "custom");
+    assert_eq!(
+        format!("{}", SourceKind::Custom("custom".to_string())),
+        "custom"
+    );
 }
 
 #[test]
@@ -580,13 +586,31 @@ fn test_source_kind_as_str() {
 #[test]
 fn test_source_kind_from_str() {
     use std::str::FromStr;
-    assert_eq!(SourceKind::from_str("openapi").unwrap(), SourceKind::OpenApi);
-    assert_eq!(SourceKind::from_str("asyncapi").unwrap(), SourceKind::AsyncApi);
-    assert_eq!(SourceKind::from_str("kubernetes").unwrap(), SourceKind::Kubernetes);
+    assert_eq!(
+        SourceKind::from_str("openapi").unwrap(),
+        SourceKind::OpenApi
+    );
+    assert_eq!(
+        SourceKind::from_str("asyncapi").unwrap(),
+        SourceKind::AsyncApi
+    );
+    assert_eq!(
+        SourceKind::from_str("kubernetes").unwrap(),
+        SourceKind::Kubernetes
+    );
     assert_eq!(SourceKind::from_str("k8s").unwrap(), SourceKind::Kubernetes);
-    assert_eq!(SourceKind::from_str("dockerfile").unwrap(), SourceKind::Dockerfile);
-    assert_eq!(SourceKind::from_str("docker").unwrap(), SourceKind::Dockerfile);
-    assert_eq!(SourceKind::from_str("terraform").unwrap(), SourceKind::Terraform);
+    assert_eq!(
+        SourceKind::from_str("dockerfile").unwrap(),
+        SourceKind::Dockerfile
+    );
+    assert_eq!(
+        SourceKind::from_str("docker").unwrap(),
+        SourceKind::Dockerfile
+    );
+    assert_eq!(
+        SourceKind::from_str("terraform").unwrap(),
+        SourceKind::Terraform
+    );
     assert_eq!(SourceKind::from_str("tf").unwrap(), SourceKind::Terraform);
     assert_eq!(SourceKind::from_str("docs").unwrap(), SourceKind::Docs);
     assert_eq!(SourceKind::from_str("doc").unwrap(), SourceKind::Docs);
@@ -594,7 +618,10 @@ fn test_source_kind_from_str() {
     assert_eq!(SourceKind::from_str("proto").unwrap(), SourceKind::Proto);
     assert_eq!(SourceKind::from_str("protobuf").unwrap(), SourceKind::Proto);
     assert_eq!(SourceKind::from_str("config").unwrap(), SourceKind::Config);
-    assert_eq!(SourceKind::from_str("graphql").unwrap(), SourceKind::GraphQL);
+    assert_eq!(
+        SourceKind::from_str("graphql").unwrap(),
+        SourceKind::GraphQL
+    );
     assert_eq!(SourceKind::from_str("gql").unwrap(), SourceKind::GraphQL);
     assert_eq!(SourceKind::from_str("helm").unwrap(), SourceKind::Helm);
     assert_eq!(
@@ -753,7 +780,10 @@ fn test_element_assignment_with_body() {
     });
 
     assert!(assignment.body.is_some());
-    assert_eq!(assignment.body.unwrap().description, Some("A test system".to_string()));
+    assert_eq!(
+        assignment.body.unwrap().description,
+        Some("A test system".to_string())
+    );
 }
 
 #[test]
@@ -849,7 +879,10 @@ fn test_element_kind_def_creation() {
         style: None,
     };
 
-    assert_eq!(kind_def.kind, ElementKind::Custom("microservice".to_string()));
+    assert_eq!(
+        kind_def.kind,
+        ElementKind::Custom("microservice".to_string())
+    );
     assert_eq!(kind_def.title, Some("Microservice".to_string()));
 }
 

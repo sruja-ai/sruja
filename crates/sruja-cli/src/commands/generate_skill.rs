@@ -194,7 +194,8 @@ pub fn generate_skill_prompt(options: GenerateSkillPromptOptions<'_>) -> Result<
 
     if evidence.is_empty() {
         return Err(CliError::validation(
-            "No sruja evidence found. Run `sruja sync -r .` and `sruja classify -r .` first.".to_string(),
+            "No sruja evidence found. Run `sruja sync -r .` and `sruja classify -r .` first."
+                .to_string(),
         ));
     }
 

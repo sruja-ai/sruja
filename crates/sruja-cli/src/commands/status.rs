@@ -30,7 +30,9 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
 
         if !log_path.exists() {
             println!("No evolution history found under .sruja/evolution.log.");
-            println!("Run 'sruja evaluate' to execute fitness functions and populate history.");
+            println!(
+                "Run 'sruja intent evaluate' to execute fitness functions and populate history."
+            );
             return Ok(());
         }
 
@@ -119,7 +121,7 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
                 map.insert(
                     "metric_description".to_string(),
                     serde_json::Value::String(
-                        "Truth sync and baseline state. For structural violations use `sruja health`; for AI readiness use `sruja context-score`.".to_string(),
+                        "Repository status: truth freshness, structural health, AI readiness, and agent memory.".to_string(),
                     ),
                 );
             }
@@ -128,7 +130,7 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
         "github" | "github-actions" => {
             let file = out.baseline.as_deref().unwrap_or(".sruja/context.json");
             let msg = format!(
-                "Truth status: {}. Violations: {}. (Metric: truth freshness — use `sruja health` for structural score, `sruja context-score` for AI readiness.)",
+                "Truth status: {}. Violations: {}.",
                 out.truth_status, out.violations_count
             );
             println!(
@@ -160,7 +162,7 @@ pub async fn status(repo_root: &str, format: &str, evolution: bool) -> Result<()
             println!(
                 "{}",
                 colors::dim(
-                    "Metric: truth freshness / baseline / sync (not `sruja health` structural score; not `sruja context-score` AI readiness)."
+                    "Shows: truth freshness, structural health, AI readiness, density, and agent memory."
                 )
             );
 

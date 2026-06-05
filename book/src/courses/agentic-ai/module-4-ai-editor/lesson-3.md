@@ -201,7 +201,7 @@ D) It's not necessary
 ### Q3: What command shows the blast radius of changing a component?
 
 A) `sruja lint`
-B) `sruja context`
+B) `sruja ai-context`
 C) `sruja impact`
 D) `sruja drift`
 

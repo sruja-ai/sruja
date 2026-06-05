@@ -1,45 +1,59 @@
-//! E2E tests for `sruja check` (CI-focused drift check, always exit 0).
+//! E2E tests for `sruja drift --ci` (CI-focused drift check).
 
 mod common;
 use common::*;
 
 #[test]
-fn check_exits_zero_json() {
+fn drift_ci_exits_zero_json() {
     let repo = create_test_repo();
     write_file(repo.path(), "lib.js", "export function x() {}");
-    let (ok, stdout, _stderr) =
-        run_sruja(&["check", "-r", repo.path().to_str().unwrap(), "-f", "json"]);
-    assert!(ok, "sruja check must exit 0");
+    let (ok, stdout, _stderr) = run_sruja(&[
+        "drift",
+        "-r",
+        repo.path().to_str().unwrap(),
+        "-f",
+        "json",
+        "--ci",
+    ]);
+    assert!(ok, "sruja drift --ci must exit 0");
     let parsed: serde_json::Value = serde_json::from_str(&stdout).expect("JSON output");
     assert!(parsed.get("truth_status").is_some());
     assert!(parsed.get("violations_count").is_some());
 }
 
 #[test]
-fn check_exits_zero_text() {
+fn drift_ci_exits_zero_text() {
     let repo = create_test_repo();
     write_file(repo.path(), "lib.js", "export function x() {}");
-    let (ok, stdout, _stderr) =
-        run_sruja(&["check", "-r", repo.path().to_str().unwrap(), "-f", "text"]);
-    assert!(ok, "sruja check must exit 0");
+    // Note: --ci overrides text format to github-actions
+    let (ok, stdout, _stderr) = run_sruja(&[
+        "drift",
+        "-r",
+        repo.path().to_str().unwrap(),
+        "-f",
+        "text",
+        "--ci",
+    ]);
+    assert!(ok, "sruja drift --ci must exit 0");
     assert!(
-        stdout.contains("Truth:"),
-        "text output should contain Truth:"
+        stdout.contains("::notice") || stdout.contains("Truth status:"),
+        "output should contain CI annotation or truth status"
     );
 }
 
 #[test]
-fn check_exits_zero_github_actions() {
+fn drift_ci_exits_zero_github_actions() {
     let repo = create_test_repo();
     write_file(repo.path(), "lib.js", "export function x() {}");
     let (ok, stdout, _stderr) = run_sruja(&[
-        "check",
+        "drift",
         "-r",
         repo.path().to_str().unwrap(),
         "-f",
         "github-actions",
+        "--ci",
     ]);
-    assert!(ok, "sruja check must exit 0");
+    assert!(ok, "sruja drift --ci must exit 0");
     assert!(
         stdout.contains("::notice") || stdout.contains("Sruja"),
         "github-actions output should contain annotation or Sruja"

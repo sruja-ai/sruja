@@ -161,7 +161,7 @@ D) It deploys applications
 A) `sruja server start`
 B) `sruja mcp -r .`
 C) `sruja connect`
-D) `sruja context`
+D) `sruja ai-context`
 
 ## Next Steps
 

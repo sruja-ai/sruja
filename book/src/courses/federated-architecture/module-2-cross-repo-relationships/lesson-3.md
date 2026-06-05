@@ -180,7 +180,7 @@ D) A CI/CD pipeline
 A) `sruja lint`
 B) `sruja drift`
 C) `sruja validate`
-D) `sruja check`
+D) `sruja drift --ci`
 
 ## Module Complete!
 

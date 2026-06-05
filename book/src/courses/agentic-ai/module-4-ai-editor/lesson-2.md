@@ -191,7 +191,7 @@ This updates:
 
 ### Q1: What command generates AI context for your codebase?
 
-A) `sruja context`
+A) `sruja ai-context`
 B) `sruja ai-context`
 C) `sruja generate`
 D) `sruja build`

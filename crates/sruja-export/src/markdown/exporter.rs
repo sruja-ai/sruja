@@ -587,16 +587,10 @@ impl MarkdownExporter {
             }
             out.push_str(&format!("**Type:** {}\n\n", escape_inline(&req.r#type)));
             if let Some(priority) = &req.priority {
-                out.push_str(&format!(
-                    "**Priority:** {}\n\n",
-                    escape_inline(priority)
-                ));
+                out.push_str(&format!("**Priority:** {}\n\n", escape_inline(priority)));
             }
             if let Some(status) = &req.status {
-                out.push_str(&format!(
-                    "**Status:** {}\n\n",
-                    escape_inline(status)
-                ));
+                out.push_str(&format!("**Status:** {}\n\n", escape_inline(status)));
             }
             if let Some(desc) = &req.description {
                 out.push_str(&format!("{}\n\n", escape_inline(desc)));
@@ -643,10 +637,7 @@ impl MarkdownExporter {
                 ));
             }
             if let Some(source) = &req.source {
-                out.push_str(&format!(
-                    "**Source:** {}\n\n",
-                    escape_inline(source)
-                ));
+                out.push_str(&format!("**Source:** {}\n\n", escape_inline(source)));
             }
             if !req.tags.is_empty() {
                 out.push_str(&format!(

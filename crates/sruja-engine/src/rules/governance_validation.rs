@@ -81,7 +81,9 @@ impl Rule for GovernanceValidationRule {
             if let sruja_language::TopLevelItem::Requirement(req) = item {
                 for affect in &req.affects {
                     let exists = elements.contains_key(affect)
-                        || elements.keys().any(|k| k.starts_with(&format!("{affect}.")));
+                        || elements
+                            .keys()
+                            .any(|k| k.starts_with(&format!("{affect}.")));
                     if !exists {
                         diags.push(
                             Diagnostic::new(
@@ -265,7 +267,9 @@ R1 = requirement functional "Must login" {
 "#;
         let diags = validate_program(input);
         assert!(
-            diags.iter().any(|d| d.message.contains("not found in the architecture")),
+            diags
+                .iter()
+                .any(|d| d.message.contains("not found in the architecture")),
             "Expected 'not found' warning, got: {:?}",
             diags.iter().map(|d| &d.message).collect::<Vec<_>>()
         );

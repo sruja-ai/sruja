@@ -512,7 +512,7 @@ fn validate_sruja_cmd_args(argv: &[String]) -> Result<(), CliError> {
             }
             Ok(())
         }
-        "check" => Ok(()),  // Expected: sruja check -r . -f github-actions
+        "check" => Ok(()),  // Expected: sruja drift --ci -r . -f github-actions
         "drift" => Ok(()),  // Expected: sruja drift -r . -f json
         "review" => Ok(()), // Expected: sruja review -r . -f json
         "intent" => {

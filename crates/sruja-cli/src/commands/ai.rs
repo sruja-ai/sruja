@@ -334,7 +334,7 @@ fn suggested_commands(repo_path: &Path, changed_files: &[String]) -> Vec<String>
         }
     }
 
-    commands.push("sruja check -r .".to_string());
+    commands.push("sruja drift --ci -r .".to_string());
     commands.sort();
     commands.dedup();
     commands
@@ -422,7 +422,7 @@ mod tests {
         let commands = suggested_commands(dir.path(), &["repo.sruja".to_string()]);
 
         assert!(commands.contains(&"sruja lint repo.sruja".to_string()));
-        assert!(commands.contains(&"sruja check -r .".to_string()));
+        assert!(commands.contains(&"sruja drift --ci -r .".to_string()));
     }
 
     #[test]

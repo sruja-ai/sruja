@@ -14,7 +14,7 @@ Sruja still approximates parts of the decision-trace idea for **software archite
 |------------------------|----------|
 | 1. Execution / observability | `sruja sync`, repository scan, manifests, SCIP—signals from the codebase and tooling |
 | 2. Semantic aggregation | Boundary inference, file→element binding, focus hydration, hybrid query routing |
-| 3. Graph + time | `.sruja` declarations, drift vs baseline, `sruja context` with `--base-ref` / `--head-ref`, optional **temporal block** on `sruja focus` |
+| 3. Graph + time | `.sruja` declarations, drift vs baseline, `sruja ai-context` with `--base-ref` / `--head-ref`, optional **temporal block** on `sruja focus` |
 | 4. Agent memory | `.sruja/agent_memory.json`, run snapshots under `.sruja/runs/`, **facts bundles** under `.sruja/agent/runs/<run_id>/`, append-only **context events** in `.sruja/context_events.jsonl` (intent check, drift, merged proposals) |
 
 **Context events** (`context_events.jsonl`) and **MCP** tools `sruja_get_context_events` / `sruja_get_agent_learnings` expose that lineage to agents without conflating it with the declared architecture graph itself. Decision and workflow traces use **`context_event/v2`** rows (optional `trace_id`, `decision_id`, `actor`, `source`, and related fields); use `sruja event append` / `sruja decision trace` to record and inspect them.

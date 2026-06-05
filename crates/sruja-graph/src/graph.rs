@@ -300,11 +300,7 @@ impl KnowledgeGraph {
         let id_set: std::collections::HashSet<&String> = node_ids.iter().collect();
         self.learnings
             .values()
-            .filter(|l| {
-                l.affected_elements
-                    .iter()
-                    .any(|e| id_set.contains(e))
-            })
+            .filter(|l| l.affected_elements.iter().any(|e| id_set.contains(e)))
             .collect()
     }
 

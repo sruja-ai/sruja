@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 pub use types::{
-    CurationReport, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch,
-    LowUtilityEntry, MemoryError, MergeSuggestion, StaleEntry,
+    CurationReport, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, LowUtilityEntry,
+    MemoryError, MergeSuggestion, StaleEntry,
 };
 
 /// Persistent store for architectural learnings and agentic guardrails.

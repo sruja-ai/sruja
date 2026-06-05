@@ -608,11 +608,17 @@ fn parse_requirement_field(input: &str) -> IResult<&str, RequirementField> {
             RequirementField::Scenario,
         ),
         map(
-            preceded(tag("adr"), preceded(ws1, alt((parse_string, parse_identifier)))),
+            preceded(
+                tag("adr"),
+                preceded(ws1, alt((parse_string, parse_identifier))),
+            ),
             RequirementField::Adr,
         ),
         map(
-            preceded(tag("affects"), preceded(ws1, alt((parse_string, parse_identifier)))),
+            preceded(
+                tag("affects"),
+                preceded(ws1, alt((parse_string, parse_identifier))),
+            ),
             RequirementField::Affects,
         ),
         map(
@@ -1270,14 +1276,17 @@ mod tests {
 
     #[test]
     fn test_parse_policy_rule_deny_edge() {
-        let input = r#"rule deny edge from { id "A" } to { id "B" } message "no direct connection""#;
+        let input =
+            r#"rule deny edge from { id "A" } to { id "B" } message "no direct connection""#;
         let wrapped = format!("{{ {} }}", input);
         let result = parse_policy_block(&wrapped);
         assert!(result.is_ok(), "should parse: {:?}", result.err());
         let (_, (_, rules)) = result.unwrap();
         assert_eq!(rules.len(), 1);
         match &rules[0] {
-            PolicyRuleAst::DenyEdge { from, to, message, .. } => {
+            PolicyRuleAst::DenyEdge {
+                from, to, message, ..
+            } => {
                 assert_eq!(from.id, Some("A".to_string()));
                 assert_eq!(to.id, Some("B".to_string()));
                 assert_eq!(message.as_deref(), Some("no direct connection"));
@@ -1302,10 +1311,7 @@ mod tests {
                 ..
             } => {
                 assert_eq!(selector.kind, Some("container".to_string()));
-                assert_eq!(
-                    tags,
-                    &vec!["#secure".to_string(), "@compliant".to_string()]
-                );
+                assert_eq!(tags, &vec!["#secure".to_string(), "@compliant".to_string()]);
                 assert_eq!(message.as_deref(), Some("Tags required"));
             }
             _ => panic!("expected RequireTags"),
@@ -1314,8 +1320,7 @@ mod tests {
 
     #[test]
     fn test_parse_policy_rule_require_metadata() {
-        let input =
-            r#"rule require metadata on { kind "service" } key "owner" value "team-alpha""#;
+        let input = r#"rule require metadata on { kind "service" } key "owner" value "team-alpha""#;
         let wrapped = format!("{{ {} }}", input);
         let result = parse_policy_block(&wrapped);
         assert!(result.is_ok(), "should parse: {:?}", result.err());
@@ -1507,10 +1512,7 @@ mod tests {
         assert!(result.is_ok(), "should parse: {:?}", result.err());
         let (_, req) = result.unwrap();
         assert_eq!(req.r#type, "nonfunctional");
-        assert_eq!(
-            req.description,
-            Some("Must be available 99.9%".to_string())
-        );
+        assert_eq!(req.description, Some("Must be available 99.9%".to_string()));
         assert_eq!(
             req.tags,
             vec!["#critical".to_string(), "@production".to_string()]

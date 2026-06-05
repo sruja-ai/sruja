@@ -16,24 +16,24 @@ pub mod compliance;
 pub mod error;
 #[path = "federation.rs"]
 pub mod federation;
+#[path = "generate_skill.rs"]
+pub mod generate_skill;
 #[path = "init.rs"]
 pub mod init;
 #[path = "preflight.rs"]
 pub mod preflight;
+#[path = "repo_manifest.rs"]
+pub mod repo_manifest;
 #[path = "run_export.rs"]
 pub mod run_export;
 #[path = "run_show.rs"]
 pub mod run_show;
 #[path = "sync_ide_rules.rs"]
 pub mod sync_ide_rules;
-#[path = "generate_skill.rs"]
-pub mod generate_skill;
 #[path = "version.rs"]
 pub mod version;
 #[path = "violation_shared.rs"]
 pub mod violation_shared;
-#[path = "repo_manifest.rs"]
-pub mod repo_manifest;
 
 pub use classify::{classify, ClassifyOptions};
 pub use generate_skill::{generate_skill_prompt, GenerateSkillPromptOptions};

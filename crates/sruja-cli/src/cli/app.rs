@@ -21,10 +21,6 @@ impl ContextIntent {
     }
 }
 
-pub(crate) fn was_invoked_as(alias: &str) -> bool {
-    std::env::args().nth(1).is_some_and(|arg| arg == alias)
-}
-
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
@@ -46,7 +42,7 @@ Optional reviewed intent:
 
 Team / CI (advanced):
   sruja verify-task --profile coding -r .
-  sruja drift --ci -r .         github-actions format (replaces hidden `check`)
+  sruja drift --ci -r .         github-actions format
 
 Grouped commands:
   sruja dsl list|tree|diff|explain|import|compile|validate|generate|fmt|export|lsp

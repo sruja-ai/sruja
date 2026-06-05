@@ -144,8 +144,8 @@ sruja verify-task --profile coding -r . -f json
 
 | Profile | Steps |
 |---------|-------|
-| `coding` | `lint repo.sruja` + `just check` (or `make check` / `sruja check`) + `drift` |
-| `bugfix` | `focus --file` + `just check` (or `make check` / `sruja check`) + `intent check` |
+| `coding` | `lint repo.sruja` + `just check` (or `make check` / `sruja drift --ci`) + `drift` |
+| `bugfix` | `focus --file` + `just check` (or `make check` / `sruja drift --ci`) + `intent check` |
 | `review` | `review -f json` + `intent check` + `drift` |
 | `arch` | `lint repo.sruja` + `drift` + `intent check` + `review -f json` |
 

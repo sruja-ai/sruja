@@ -124,7 +124,7 @@ sruja impact OrderService -r . --depth 2
 
 A) `sruja validate`
 B) `sruja lint`
-C) `sruja check`
+C) `sruja drift --ci`
 D) `sruja verify`
 
 ### Q2: When modeling external services you don't control, what should you use?

@@ -33,16 +33,6 @@ pub enum RunCommand {
     },
 }
 
-#[derive(Subcommand)]
-pub enum EvolutionCommand {
-    /// Show evolution log/history of mutations and fitness scores
-    Log {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-    },
-}
-
 #[derive(Subcommand, Clone)]
 pub enum DiscoverCommand {
     /// Repo context summary for AI/debug (technologies, shape). For a human first read use `quickstart`.

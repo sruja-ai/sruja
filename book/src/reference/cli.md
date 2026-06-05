@@ -67,8 +67,7 @@
 | `sruja tree <file>` | Print element tree |
 | `sruja watch -r .` | Keep feedback live while coding |
 | `sruja doctor -r .` | Alias for `status` |
-| `sruja drift --ci -r .` | **Preferred** CI drift check (GitHub Actions annotations; replaces deprecated `check`) |
-| `sruja check -r .` | Deprecated alias for drift-style CI output — use `drift --ci` |
+| `sruja drift --ci -r .` | CI drift check (GitHub Actions annotations) |
 | `sruja baseline -r .` | Snapshot violations for baseline ignore in CI |
 | `sruja ai -r . --task "..."` | Paste-ready AI coding brief (optional `--enrich` / `--enrich-cmd`) |
 | `sruja focus -r . --file <path>` | Context briefing before starting work |

@@ -1,14 +1,12 @@
 use crate::commands;
 use crate::commands::CliError;
 
-use super::app::was_invoked_as;
 use super::app::ContextIntent;
 use super::commands::Commands;
 use super::subcommands::{
     AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
-    EventCommand, EvolutionCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand,
-    IndexCommand, InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand,
-    WorkflowCommand,
+    EventCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand, IndexCommand,
+    InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
 };
 use super::Cli;
 
@@ -427,14 +425,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             let skip = skip_proposals || !apply_proposals;
             commands::learn(&path, file.as_deref(), since.as_deref(), skip, &format).await
         }
-        Commands::Check {
-            path,
-            format,
-            violations_baseline,
-        } => {
-            eprintln!("warning: 'sruja check' is deprecated, use 'sruja drift --ci'");
-            commands::check(&path, &format, violations_baseline.as_deref()).await
-        }
         Commands::Baseline { repo, output } => commands::baseline(&repo, &output).await,
         Commands::Publish {
             repo,
@@ -479,34 +469,59 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             .await
         }
         Commands::Ai {
-            repo,
-            task,
-            file,
-            element_id,
-            query,
-            base_ref,
-            head_ref,
+            ref repo,
+            ref task,
+            ref file,
+            ref element_id,
+            ref query,
+            ref base_ref,
+            ref head_ref,
             staged,
             max_tokens,
-            output,
+            ref output,
+            ref format,
+            cache_friendly,
             ref enrich,
-        } => {
-            let enrich_ref = enrich.as_ref();
-            commands::ai_brief(commands::AiBriefOptions {
-                repo: &repo,
-                task: task.as_deref(),
-                file: file.as_deref(),
-                element_id: element_id.as_deref(),
-                query: query.as_deref(),
-                base_ref: base_ref.as_deref(),
-                head_ref: head_ref.as_deref(),
-                staged,
-                max_tokens,
-                output: output.as_deref(),
-                enrich: &enrich_ref,
-            })
-            .await
-        }
+        } => match format.as_str() {
+            "json" | "for-ai" => {
+                let repos = vec![repo.clone()];
+                commands::context_export(
+                    &repos,
+                    format,
+                    output.as_deref(),
+                    commands::ContextRequest {
+                        run_id: None,
+                        file: file.as_deref(),
+                        element_id: element_id.as_deref(),
+                        query: query.as_deref(),
+                        base_ref: base_ref.as_deref(),
+                        head_ref: head_ref.as_deref(),
+                        intent: None,
+                        depth: 2,
+                        max_tokens,
+                        cache_friendly,
+                    },
+                )
+                .await
+            }
+            _ => {
+                let enrich_ref = enrich.as_ref();
+                commands::ai_brief(commands::AiBriefOptions {
+                    repo,
+                    task: task.as_deref(),
+                    file: file.as_deref(),
+                    element_id: element_id.as_deref(),
+                    query: query.as_deref(),
+                    base_ref: base_ref.as_deref(),
+                    head_ref: head_ref.as_deref(),
+                    staged,
+                    max_tokens,
+                    output: output.as_deref(),
+                    enrich: &enrich_ref,
+                })
+                .await
+            }
+        },
         Commands::Onboard {
             repo,
             format,
@@ -538,9 +553,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             max_tokens,
             cache_friendly,
         } => {
-            if was_invoked_as("context") {
-                eprintln!("warning: 'sruja context' is deprecated, use 'sruja ai-context'");
-            }
             commands::context_export(
                 &repo,
                 &format,
@@ -1119,16 +1131,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 events_limit,
             } => commands::run_export(&repo, &run_id, out.as_deref(), events_limit).await,
         },
-        Commands::Evaluate { architecture } => {
-            eprintln!("warning: 'sruja evaluate' is deprecated, use 'sruja intent evaluate'");
-            commands::evaluate(&architecture).await
-        }
-        Commands::Evolution { cmd } => {
-            eprintln!("warning: 'sruja evolution' is deprecated, use 'sruja intent history'");
-            match cmd {
-                EvolutionCommand::Log { repo } => commands::evolution_log(&repo).await,
-            }
-        }
         Commands::Dsl { cmd } => match cmd {
             DslCommand::List { file } => commands::list_elements(&file).await,
             DslCommand::Tree { file } => commands::tree(&file).await,

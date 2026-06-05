@@ -703,8 +703,8 @@ jobs:
           curl -fsSL https://sruja.ai/install.sh | bash
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Run Sruja check (annotations)
-        run: sruja check -r . --format github-actions
+      - name: Run Sruja drift check (annotations)
+        run: sruja drift -r . --ci --format github-actions
 "#;
 
     let onboard_workflow = r#"name: Sruja Onboarding Brief

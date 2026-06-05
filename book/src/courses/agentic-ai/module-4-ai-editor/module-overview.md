@@ -61,7 +61,7 @@ _Effective patterns for AI-assisted architecture work_
 
 ### v0.23.0+ Features to Cover
 - `sruja mcp` command (MCP stdio server)
-- `sruja context` command for building context
+- `sruja ai-context` command for building context
 - `sruja focus` for task-specific briefing
 - `sruja context-score` for AI-readiness scoring
 - Editor integrations (Cursor, GitHub Copilot, Cline, Windsurf)
@@ -75,7 +75,7 @@ _Effective patterns for AI-assisted architecture work_
 
 ### Key Commands
 - `sruja mcp -r .`
-- `sruja context -r repoA -r repoB`
+- `sruja ai-context -r repoA -r repoB`
 - `sruja focus --file <path>`
 - `sruja context-score -r .`
 - `sruja why <component-id>`
@@ -103,9 +103,9 @@ _Effective patterns for AI-assisted architecture work_
    - Testing with `sruja mcp -r .`
 
 2. **Context-Driven Assistance**
-   - Building context with `sruja context`
+   - Building context with `sruja ai-context`
    - Using `sruja focus` for task briefing
-   - Cross-repo context (`sruja context -r repoA -r repoB`)
+   - Cross-repo context (`sruja ai-context -r repoA -r repoB`)
    - Optimizing context score
 
 3. **AI Pair Programming Patterns**

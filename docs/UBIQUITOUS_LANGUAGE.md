@@ -42,7 +42,7 @@ This document defines the shared terminology for Sruja development. All conversa
 | `sruja scan` | Extract architecture evidence from code |
 | `sruja export` | Export architecture diagram |
 | `sruja drift` | Detect architecture drift |
-| `sruja context` | Build context payload for AI editors |
+| `sruja ai-context` | Build context payload for AI editors |
 | `sruja doctor` | Validate health signals |
 | `sruja mcp` | Start MCP server |
 

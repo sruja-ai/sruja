@@ -239,7 +239,7 @@ fn build_verification_steps(
                     expected: Some("repo.sruja parses and lints cleanly".to_string()),
                 });
             }
-            // make/just check (or sruja check fallback)
+            // make/just check (or sruja drift --ci fallback)
             if has_justfile {
                 if !binary_in_path("just") {
                     // Repo expects `just` for its standard check flow; don't fall back to `make`,
@@ -325,7 +325,7 @@ fn build_verification_steps(
                     expected: Some("Focus briefing generated for the bugfix target".to_string()),
                 });
             }
-            // make/just check (or sruja check fallback)
+            // make/just check (or sruja drift --ci fallback)
             if has_justfile {
                 steps.push(AgentStep {
                     id: "just_check".to_string(),
@@ -527,17 +527,18 @@ fn build_steps_from_config(
                     });
                 } else {
                     steps.push(AgentStep {
-                        id: "sruja_check".to_string(),
+                        id: "sruja_drift_ci".to_string(),
                         kind: "sruja_cmd".to_string(),
                         argv: vec![
                             "sruja".to_string(),
-                            "check".to_string(),
+                            "drift".to_string(),
                             "-r".to_string(),
                             ".".to_string(),
+                            "--ci".to_string(),
                             "-f".to_string(),
                             "github-actions".to_string(),
                         ],
-                        expected: Some("sruja check passes".to_string()),
+                        expected: Some("sruja drift --ci passes".to_string()),
                     });
                 }
             }
