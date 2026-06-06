@@ -5,13 +5,12 @@ use std::path::{Path, PathBuf};
 use crate::report::{ComplianceReport, ComplianceStatus, DriftEntry, PolicyViolationEntry};
 use sruja_diff::{compare_graphs, detect_architectural_drift, program_to_graph};
 use sruja_intent::{
-    compare::{DriftKind, DriftReport as IntentDriftReport},
+    compare::{DriftDetector, DriftKind, DriftReport as IntentDriftReport},
     IntentContext, IntentModel,
 };
 use sruja_scan::scan_repo;
 
 use super::CliError;
-use crate::compliance::evaluate_policy_violations;
 
 fn resolve_intent_dir(repo_path: &Path, intent_opt: Option<&str>) -> PathBuf {
     if let Some(p) = intent_opt {
@@ -99,7 +98,7 @@ pub async fn compliance(
         }
     }
 
-    let policy_drifts = evaluate_policy_violations(&merged_model, &scan_graph);
+    let policy_drifts = DriftDetector::evaluate_policy_violations(&merged_model, &scan_graph);
     if !policy_drifts.is_empty() {
         intent_report.drifts.extend(policy_drifts);
         intent_report.recompute_summary_and_score();

@@ -6,6 +6,8 @@
 
 use std::collections::HashMap;
 
+pub mod centrality;
+
 /// A generic node in the context graph.
 pub trait ContextNode {
     /// Unique identifier for the node.

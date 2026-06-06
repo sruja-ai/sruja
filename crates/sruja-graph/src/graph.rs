@@ -1,5 +1,6 @@
 //! Knowledge Graph implementation
 
+use crate::learning::LearningEntry;
 use crate::*;
 use chrono::Utc;
 use std::collections::HashMap;
@@ -12,31 +13,9 @@ pub struct KnowledgeGraph {
     pub policies: HashMap<PolicyId, Policy>,
     pub requirements: HashMap<RequirementId, Requirement>,
     pub incidents: HashMap<String, Incident>,
-    pub learnings: HashMap<String, GraphLearning>,
+    pub learnings: HashMap<String, LearningEntry>,
     pub recent_events: Vec<ContextEventSummary>,
     pub metadata: GraphMetadata,
-}
-
-/// A learning entry stored in the knowledge graph.
-/// This is a graph-native representation of agent learnings,
-/// enabling traversal queries alongside architecture elements.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GraphLearning {
-    pub id: String,
-    pub kind: String,
-    pub context: String,
-    pub hypothesis: String,
-    pub outcome: String,
-    pub guardrail_advice: String,
-    pub affected_elements: Vec<String>,
-    pub related_ids: Vec<String>,
-    pub confidence: Option<String>,
-    pub tags: Vec<String>,
-    pub hitl_kind: Option<String>,
-    pub retrieval_count: u32,
-    pub task_success_after: u32,
-    pub task_total_after: u32,
-    pub timestamp: DateTime<Utc>,
 }
 
 /// A compact summary of a context event, embedded in the knowledge graph.
@@ -278,17 +257,17 @@ impl KnowledgeGraph {
         self.incidents.get(id)
     }
 
-    pub fn add_learning(&mut self, learning: GraphLearning) {
+    pub fn add_learning(&mut self, learning: LearningEntry) {
         self.learnings.insert(learning.id.clone(), learning);
         self.touch();
     }
 
-    pub fn get_learning(&self, id: &str) -> Option<&GraphLearning> {
+    pub fn get_learning(&self, id: &str) -> Option<&LearningEntry> {
         self.learnings.get(id)
     }
 
     /// Get learnings that directly affect a specific node.
-    pub fn get_learnings_for_node(&self, node_id: &str) -> Vec<&GraphLearning> {
+    pub fn get_learnings_for_node(&self, node_id: &str) -> Vec<&LearningEntry> {
         self.learnings
             .values()
             .filter(|l| l.affected_elements.contains(&node_id.to_string()))
@@ -296,7 +275,7 @@ impl KnowledgeGraph {
     }
 
     /// Get learnings affecting any node in the given cluster (deduplicated).
-    pub fn get_learnings_for_cluster(&self, node_ids: &[String]) -> Vec<&GraphLearning> {
+    pub fn get_learnings_for_cluster(&self, node_ids: &[String]) -> Vec<&LearningEntry> {
         let id_set: std::collections::HashSet<&String> = node_ids.iter().collect();
         self.learnings
             .values()
@@ -305,7 +284,7 @@ impl KnowledgeGraph {
     }
 
     /// Traverse related_ids to find neighboring learnings.
-    pub fn get_learning_neighbors(&self, learning_id: &str) -> Vec<&GraphLearning> {
+    pub fn get_learning_neighbors(&self, learning_id: &str) -> Vec<&LearningEntry> {
         let Some(learning) = self.learnings.get(learning_id) else {
             return Vec::new();
         };
@@ -446,6 +425,7 @@ pub struct GraphStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::learning::{ExperimentOutcome, LearningKind};
 
     fn test_node(id: &str) -> ArchitectureNode {
         ArchitectureNode {
@@ -957,23 +937,28 @@ mod tests {
         assert!(parsed.get("nodes").unwrap().as_object().unwrap().is_empty());
     }
 
-    fn test_learning(id: &str, affected: Vec<&str>) -> GraphLearning {
-        GraphLearning {
+    fn test_learning(id: &str, affected: Vec<&str>) -> LearningEntry {
+        LearningEntry {
             id: id.to_string(),
-            kind: "guardrail".to_string(),
+            kind: Some(LearningKind::Guardrail),
+            timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
             context: "test context".to_string(),
             hypothesis: "test hypothesis".to_string(),
-            outcome: "failed".to_string(),
+            outcome: ExperimentOutcome::Failed,
+            reason: None,
             guardrail_advice: "don't do X".to_string(),
             affected_elements: affected.into_iter().map(String::from).collect(),
-            related_ids: Vec::new(),
+            evidence_refs: vec![],
             confidence: Some("high".to_string()),
             tags: Vec::new(),
             hitl_kind: None,
+            related_ids: Vec::new(),
             retrieval_count: 0,
             task_success_after: 0,
             task_total_after: 0,
-            timestamp: Utc::now(),
         }
     }
 

@@ -15,6 +15,7 @@ pub mod context_score;
 pub mod coupling;
 pub mod graph;
 pub mod hybrid_retrieval;
+pub mod learning;
 pub mod query;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scan_merge;
@@ -35,10 +36,13 @@ pub use coupling::{
     CouplingAnalyzer, CouplingResult, CouplingSummary, CouplingViolation, CouplingViolationType,
     ModuleCoupling, Zone,
 };
-pub use graph::{ContextEventSummary, GraphLearning, KnowledgeGraph};
+pub use graph::{ContextEventSummary, KnowledgeGraph};
 pub use hybrid_retrieval::{
     classify_query, execute_graph_only, execute_hybrid, select_strategy, HybridResult,
     QueryComplexity, RetrievalStrategy, SemanticCandidate,
+};
+pub use learning::{
+    ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, MemoryError,
 };
 pub use query::{
     LlmGuidedWhyResult, LlmGuidedWhyStep, PolicyViolation, QueryError, QueryResult,

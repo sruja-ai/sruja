@@ -11,6 +11,7 @@ use std::collections::{HashMap, HashSet};
 use sruja_diagnostics::{Diagnostic, Severity, SourceLocation};
 use sruja_language::{collect_elements, ElementDef, ElementKind, Program};
 
+use crate::find_element;
 use crate::validator::Rule;
 
 pub struct DatabaseIsolationRule;
@@ -115,23 +116,6 @@ fn find_element_location(
     name: &str,
 ) -> Option<SourceLocation> {
     find_element(elements, name).map(|e| e.location.clone())
-}
-
-fn find_element<'a>(
-    elements: &'a HashMap<String, ElementDef>,
-    name: &str,
-) -> Option<&'a ElementDef> {
-    if let Some(e) = elements.get(name) {
-        return Some(e);
-    }
-    let suffix = format!(".{}", name);
-    elements.iter().find_map(|(fqn, e)| {
-        if fqn == name || fqn.ends_with(&suffix) {
-            Some(e)
-        } else {
-            None
-        }
-    })
 }
 
 #[cfg(test)]

@@ -2,7 +2,7 @@
 //!
 //! Provides knowledge graph storage and retrieval for context engineering.
 
-use sruja_graph::{ContextEventSummary, GraphLearning, GraphSnapshot, KnowledgeGraph};
+use sruja_graph::{ContextEventSummary, GraphSnapshot, KnowledgeGraph, LearningEntry};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
@@ -172,122 +172,12 @@ fn merge_learnings_from_memory(repo: &Path, graph: &mut KnowledgeGraph) {
         return;
     };
 
-    for entry in entries {
-        let Some(id) = entry.get("id").and_then(|v| v.as_str()) else {
+    for entry_value in entries {
+        let Ok(learning) = serde_json::from_value::<LearningEntry>(entry_value.clone()) else {
+            eprintln!("Warning: skipping learning entry that failed to deserialize");
             continue;
         };
-
-        let kind = entry
-            .get("kind")
-            .and_then(|v| v.as_str())
-            .unwrap_or("guardrail");
-
-        let context = entry
-            .get("context")
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string();
-
-        let hypothesis = entry
-            .get("hypothesis")
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string();
-
-        let outcome = entry
-            .get("outcome")
-            .and_then(|v| v.as_str())
-            .unwrap_or("success")
-            .to_string();
-
-        let guardrail_advice = entry
-            .get("guardrail_advice")
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string();
-
-        let affected_elements = entry
-            .get("affected_elements")
-            .and_then(|v| v.as_array())
-            .map(|a| {
-                a.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let related_ids = entry
-            .get("related_ids")
-            .and_then(|v| v.as_array())
-            .map(|a| {
-                a.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let confidence = entry
-            .get("confidence")
-            .and_then(|v| v.as_str())
-            .map(String::from);
-
-        let tags = entry
-            .get("tags")
-            .and_then(|v| v.as_array())
-            .map(|a| {
-                a.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let hitl_kind = entry
-            .get("hitl_kind")
-            .and_then(|v| v.as_str())
-            .map(String::from);
-
-        let retrieval_count = entry
-            .get("retrieval_count")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32;
-
-        let task_success_after = entry
-            .get("task_success_after")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32;
-
-        let task_total_after = entry
-            .get("task_total_after")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32;
-
-        let timestamp = entry
-            .get("timestamp")
-            .and_then(|v| v.as_str())
-            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt| dt.with_timezone(&chrono::Utc))
-            .unwrap_or_else(chrono::Utc::now);
-
-        graph.learnings.insert(
-            id.to_string(),
-            GraphLearning {
-                id: id.to_string(),
-                kind: kind.to_string(),
-                context,
-                hypothesis,
-                outcome,
-                guardrail_advice,
-                affected_elements,
-                related_ids,
-                confidence,
-                tags,
-                hitl_kind,
-                retrieval_count,
-                task_success_after,
-                task_total_after,
-                timestamp,
-            },
-        );
+        graph.learnings.insert(learning.id.clone(), learning);
     }
 
     if !graph.learnings.is_empty() {

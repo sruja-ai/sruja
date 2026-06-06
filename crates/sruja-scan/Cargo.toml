@@ -9,6 +9,7 @@ description = "Repo scanner that infers an architecture graph from source code"
 
 [dependencies]
 sruja-language = { path = "../sruja-language" }
+sruja-graph-core = { path = "../sruja-graph-core" }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -347,27 +347,71 @@ impl SystemGraph {
     }
 
     pub fn resolve_entity(&self, query: &str) -> Option<String> {
-        let q_lower = query.to_lowercase();
+        let q = query.to_lowercase();
 
+        // 1. Exact key lookup
         if self.nodes.contains_key(query) {
             return Some(query.to_string());
         }
 
+        // 2. Exact match on local_id
         for node in self.nodes.values() {
-            if node.label.to_lowercase() == q_lower {
+            if node.local_id == query {
                 return Some(node.canonical_id.clone());
             }
         }
 
+        // 3. Case-insensitive exact match on label
         for node in self.nodes.values() {
-            if node.aliases.iter().any(|a| a.to_lowercase() == q_lower) {
+            if node.label.to_lowercase() == q {
                 return Some(node.canonical_id.clone());
             }
         }
 
+        // 4. Case-insensitive exact match on aliases
         for node in self.nodes.values() {
-            if node.label.to_lowercase().contains(&q_lower)
-                || node.local_id.to_lowercase().contains(&q_lower)
+            if node.aliases.iter().any(|a| a.to_lowercase() == q) {
+                return Some(node.canonical_id.clone());
+            }
+        }
+
+        // 5. Substring match on label or local_id
+        for node in self.nodes.values() {
+            if node.label.to_lowercase().contains(&q)
+                || node.local_id.to_lowercase().contains(&q)
+            {
+                return Some(node.canonical_id.clone());
+            }
+        }
+
+        // 6. Multi-word matching: split query and check if all words appear in label
+        let words: Vec<&str> = q.split_whitespace().collect();
+        if words.len() > 1 {
+            for node in self.nodes.values() {
+                let label = node.label.to_lowercase();
+                if words.iter().all(|w| label.contains(w)) {
+                    return Some(node.canonical_id.clone());
+                }
+            }
+        }
+
+        // 7. Fuzzy matching: check if any word in query matches any word in label
+        for word in &words {
+            for node in self.nodes.values() {
+                let label = node.label.to_lowercase();
+                if label.contains(word) {
+                    return Some(node.canonical_id.clone());
+                }
+            }
+        }
+
+        // 8. Technology matching: check if query matches technology
+        for node in self.nodes.values() {
+            if node
+                .technology
+                .as_deref()
+                .map(|t| t.to_lowercase().contains(&q))
+                .unwrap_or(false)
             {
                 return Some(node.canonical_id.clone());
             }

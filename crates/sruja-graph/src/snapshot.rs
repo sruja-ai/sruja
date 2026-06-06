@@ -190,8 +190,8 @@ pub fn compute_deltas(old: &KnowledgeGraph, new: &KnowledgeGraph) -> Vec<GraphDe
                 deltas.push(GraphDelta::LearningChanged {
                     learning_id: id.clone(),
                     field: "outcome".to_string(),
-                    old: old_learning.outcome.clone(),
-                    new: new_learning.outcome.clone(),
+                    old: old_learning.outcome.to_string(),
+                    new: new_learning.outcome.to_string(),
                 });
             }
             if old_learning.guardrail_advice != new_learning.guardrail_advice {

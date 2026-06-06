@@ -9,8 +9,6 @@ mod cli;
 #[allow(missing_docs)]
 mod commands;
 #[allow(missing_docs)]
-mod compliance;
-#[allow(missing_docs)]
 mod context_detection;
 pub mod enrichment;
 #[allow(missing_docs)]

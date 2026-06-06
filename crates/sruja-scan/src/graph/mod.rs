@@ -562,6 +562,86 @@ impl Default for Graph {
     }
 }
 
+// Implement ContextGraph traits for sruja-graph-core integration
+
+impl sruja_graph_core::ContextNode for Node {
+    fn id(&self) -> &str {
+        &self.id
+    }
+
+    fn kind(&self) -> &str {
+        self.kind.as_str()
+    }
+
+    fn label(&self) -> &str {
+        &self.label
+    }
+
+    fn technology(&self) -> Option<&str> {
+        self.technology.as_deref()
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn metadata(&self) -> &HashMap<String, String> {
+        &self.metadata
+    }
+}
+
+impl sruja_graph_core::ContextEdge for Edge {
+    fn id(&self) -> &str {
+        // Edges don't have explicit IDs; use source->target as composite key
+        &self.source
+    }
+
+    fn source(&self) -> &str {
+        &self.source
+    }
+
+    fn target(&self) -> &str {
+        &self.target
+    }
+
+    fn kind(&self) -> &str {
+        self.kind.as_str()
+    }
+
+    fn label(&self) -> Option<&str> {
+        None
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+}
+
+impl sruja_graph_core::ContextGraph for Graph {
+    type Node = Node;
+    type Edge = Edge;
+
+    fn nodes(&self) -> Vec<&Self::Node> {
+        self.nodes.iter().collect()
+    }
+
+    fn edges(&self) -> Vec<&Self::Edge> {
+        self.edges.iter().collect()
+    }
+
+    fn get_node(&self, id: &str) -> Option<&Self::Node> {
+        self.nodes.iter().find(|n| n.id == id)
+    }
+
+    fn get_edges_from(&self, node_id: &str) -> Vec<&Self::Edge> {
+        self.edges.iter().filter(|e| e.source == node_id).collect()
+    }
+
+    fn get_edges_to(&self, node_id: &str) -> Vec<&Self::Edge> {
+        self.edges.iter().filter(|e| e.target == node_id).collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

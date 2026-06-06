@@ -12,6 +12,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 chrono.workspace = true
 sruja-diagnostics = { path = "../sruja-diagnostics" }
+sruja-graph = { path = "../sruja-graph" }
 sruja-language = { path = "../sruja-language" }
 fs2 = "0.4.3"
 

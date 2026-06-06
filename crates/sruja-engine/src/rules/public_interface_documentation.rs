@@ -7,8 +7,9 @@
 //!   - warn if missing description
 //!   - for containers, warn if missing technology
 
+use crate::find_element;
 use crate::DomainSchema;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use sruja_diagnostics::{Diagnostic, Severity};
 use sruja_language::{
@@ -135,23 +136,6 @@ impl Rule for PublicInterfaceDocumentationRule {
     }
 }
 
-fn find_element<'a>(
-    elements: &'a HashMap<String, ElementDef>,
-    name: &str,
-) -> Option<&'a ElementDef> {
-    if let Some(e) = elements.get(name) {
-        return Some(e);
-    }
-    let suffix = format!(".{}", name);
-    elements.iter().find_map(|(k, e)| {
-        if k == name || k.ends_with(&suffix) {
-            Some(e)
-        } else {
-            None
-        }
-    })
-}
-
 fn extract_desc_tech(elem: &ElementDef) -> (String, String) {
     let mut desc = String::new();
     let mut tech = String::new();
@@ -186,7 +170,6 @@ fn extract_desc_tech(elem: &ElementDef) -> (String, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::DomainSchema;
     use sruja_language::Parser;
 
     fn validate_program(input: &str) -> Vec<Diagnostic> {
