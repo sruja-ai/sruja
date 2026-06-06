@@ -155,7 +155,7 @@ Use sruja-architecture skill. Run `sruja sync -r .` then `sruja drift -r . -a re
 ### Impact analysis ("What breaks if I change X?")
 
 ```
-Use sruja-architecture skill. For impact of changing element <element_id>: run `sruja explain <element_id> --file repo.sruja` (and optionally `sruja tree repo.sruja` for full hierarchy). Summarize: what depends on this element (incoming), what it depends on (outgoing), and which components would be affected if it is removed or changed. Use evidence only; do not invent dependencies.
+Use sruja-architecture skill. For impact of changing element <element_id>: run `sruja human explain <element_id> --file repo.sruja` (and optionally `sruja tree repo.sruja` for full hierarchy). Summarize: what depends on this element (incoming), what it depends on (outgoing), and which components would be affected if it is removed or changed. Use evidence only; do not invent dependencies.
 ```
 
 ### Requirement traceability ("Which components implement R1?")

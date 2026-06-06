@@ -69,7 +69,7 @@ decision ADR_012 {
 
 **Adoption path:**
 1. `sruja init` → auto-discovers architecture from code (zero human effort, immediate value)
-2. `sruja trace`, `sruja explain`, `sruja map` → human gets system understanding
+2. `sruja human trace`, `sruja human explain`, `sruja human map` → human gets system understanding
 3. Optionally add policies, gotchas, boundaries → enforcement layer activates
 4. `sruja drift` → catches when code violates declared policies
 
@@ -119,12 +119,12 @@ Sruja's value comes from the deterministic graph — the scanner, the traversal 
 ```
 Free (deterministic, no LLM)           $0.00
   ├─ sruja scan                         tree-sitter + manifests
-  ├─ sruja map                          graph layout + ASCII render
-  ├─ sruja trace                        graph traversal + template render
-  ├─ sruja explain                      template render from graph data
-  ├─ sruja before                       blast radius + template render
-  ├─ sruja daily                        diff detection + template render
-  ├─ sruja cognitive-debt               metric computation (all math)
+  ├─ sruja human map                          graph layout + ASCII render
+  ├─ sruja human trace                        graph traversal + template render
+  ├─ sruja human explain                      template render from graph data
+  ├─ sruja human before                       blast radius + template render
+  ├─ sruja human daily                        diff detection + template render
+  ├─ sruja human cognitive-debt               metric computation (all math)
   └─ sruja drift / lint / classify      deterministic rules
 
 Near-Free (local embeddings, no API)    ~$0.00
@@ -139,8 +139,8 @@ Cheap (small model, ~$0.001/call)
   └─ Non-Rust classification            Haiku/Flash for crate tier inference
 
 Moderate (large model, ~$0.01-0.05/call)
-  ├─ sruja what-if risk narrative       Sonnet for nuanced risk reasoning
-  └─ sruja explain --enrich             Sonnet for rich situation model
+  ├─ sruja human what-if risk narrative       Sonnet for nuanced risk reasoning
+  └─ sruja human explain --enrich             Sonnet for rich situation model
 ```
 
 ### Cost Architecture
@@ -151,11 +151,11 @@ Every command works perfectly with template rendering. The `--enrich` flag (whic
 
 | Command | Default (free) | With `--enrich` (LLM) |
 |---|---|---|
-| `sruja trace "..."` | Template flow diagram | Polished narrative flow |
-| `sruja explain X` | Structured template output | Rich human-readable prose |
-| `sruja map` | ASCII diagram | Polished system overview |
-| `sruja before` | Impact template | Nuanced risk assessment |
-| `sruja what-if "..."` | Blast radius + facts | Risk narrative with reasoning |
+| `sruja human trace "..."` | Template flow diagram | Polished narrative flow |
+| `sruja human explain X` | Structured template output | Rich human-readable prose |
+| `sruja human map` | ASCII diagram | Polished system overview |
+| `sruja human before` | Impact template | Nuanced risk assessment |
+| `sruja human what-if "..."` | Blast radius + facts | Risk narrative with reasoning |
 | `sruja cognitive-debt` | Metric scores + template | Prioritized recommendations |
 
 **Target: 95% of usage is free. 5% uses LLM.**
@@ -192,7 +192,7 @@ Sruja already has cache-friendly context (`build_cache_friendly_task_export()` i
   + "Produce markdown explaining this element"
 ```
 
-Anthropic caches at 90% discount. OpenAI at 50%. With a ~2K token cached prefix, a `sruja explain --enrich` call costs:
+Anthropic caches at 90% discount. OpenAI at 50%. With a ~2K token cached prefix, a `sruja human explain --enrich` call costs:
 - Anthropic: $0.003 (cached read) + $0.015 (new output) = **~$0.02**
 - OpenAI: $0.005 (cached) + $0.015 (output) = **~$0.02**
 - Without caching: ~$0.05
@@ -263,7 +263,7 @@ API calls: 47 (all --enrich)
 Total: $0.36
 Free operations: 892 (scan, trace, explain, map, daily, drift)
 
-Most expensive command: sruja explain PaymentService --enrich ($0.02)
+Most expensive command: sruja human explain PaymentService --enrich ($0.02)
 ```
 
 Track in `.sruja/usage.jsonl` — append-only log of LLM calls with model, tokens, cost.
@@ -370,7 +370,7 @@ Populate ownership without requiring humans to declare it:
 - Fallback: `git log --format='%ae'` → most frequent author = owner.
 - Store on `RepoBundle.contracts` and `owners` fields (already reserved, currently unused).
 
-Ownership enables team-scoped views: `sruja map --team @fintech`.
+Ownership enables team-scoped views: `sruja human map --team @fintech`.
 
 ```
 File: crates/sruja-scan/src/ownership.rs (new ~200 lines)
@@ -385,20 +385,20 @@ File: crates/sruja-cli/src/commands/federation.rs (wire into publish())
 
 **Goal:** Ship the three commands that answer the three questions engineers ask every day:
 
-1. **"What happens when..."** → `sruja trace`
-2. **"What is this thing?"** → `sruja explain`
-3. **"How does the system work?"** → `sruja map`
+1. **"What happens when..."** → `sruja human trace`
+2. **"What is this thing?"** → `sruja human explain`
+3. **"How does the system work?"** → `sruja human map`
 
 All three work from scan alone. DSL adds richness where available. No `.sruja` file required.
 
 ---
 
-#### W1.1: `sruja trace` — "What happens when..."
+#### W1.1: `sruja human trace` — "What happens when..."
 
 The flagship. Traces a flow across all repos in the system.
 
 ```bash
-$ sruja trace "user clicks checkout"
+$ sruja human trace "user clicks checkout"
 
 ── Trace: "user clicks checkout" ──
 
@@ -422,9 +422,9 @@ Owners: @checkout-ui @platform @commerce @fintech @risk
 ```
 
 ```bash
-$ sruja trace "user clicks checkout" --depth 5    # deeper
-$ sruja trace "user clicks checkout" --team @fintech  # my team's involvement
-$ sruja trace "user clicks checkout" --json        # machine-readable
+$ sruja human trace "user clicks checkout" --depth 5    # deeper
+$ sruja human trace "user clicks checkout" --team @fintech  # my team's involvement
+$ sruja human trace "user clicks checkout" --json        # machine-readable
 ```
 
 **How it works:**
@@ -442,12 +442,12 @@ File: crates/sruja-cli/src/commands/trace.rs (new ~500 lines)
 
 ---
 
-#### W1.2: `sruja explain` — "What is this thing?"
+#### W1.2: `sruja human explain` — "What is this thing?"
 
 Tells a human *why* something exists, not just what it does. The situation model builder.
 
 ```bash
-$ sruja explain PaymentService
+$ sruja human explain PaymentService
 
 ── PaymentService ──
   repo: payments  |  team: @fintech  |  criticality: HIGH
@@ -481,8 +481,8 @@ Decisions: ADR-012 (sync fraud check), ADR-008 (Kafka for events)
 ```
 
 ```bash
-$ sruja explain PaymentService --md        # markdown output
-$ sruja explain PaymentService --persist   # save to docs/architecture/PaymentService.md
+$ sruja human explain PaymentService --md        # markdown output
+$ sruja human explain PaymentService --persist   # save to docs/architecture/PaymentService.md
 ```
 
 **How it works:**
@@ -501,12 +501,12 @@ File: crates/sruja-cli/src/commands/explain_cmd.rs (new ~450 lines)
 
 ---
 
-#### W1.3: `sruja map` — "How does the system work?"
+#### W1.3: `sruja human map` — "How does the system work?"
 
 A compressed cognitive map. The "new engineer onboarding" command.
 
 ```bash
-$ sruja map
+$ sruja human map
 
 ── E-Commerce Platform ──
 5 repos · 12 services · 4 databases · 3 topics · 4 teams
@@ -537,10 +537,10 @@ OrderService (orders repo · @commerce)
 ```
 
 ```bash
-$ sruja map --team @fintech       # only what my team owns/touches
-$ sruja map --focus PaymentService  # neighborhood around a service
-$ sruja map --drift                # highlight what's changed recently
-$ sruja map --html                 # interactive web view
+$ sruja human map --team @fintech       # only what my team owns/touches
+$ sruja human map --focus PaymentService  # neighborhood around a service
+$ sruja human map --drift                # highlight what's changed recently
+$ sruja human map --html                 # interactive web view
 ```
 
 **How it works:**
@@ -608,9 +608,9 @@ Changes in your repos (last 24h):
 
 ⚠ Attention needed:
   PaymentService added Redis dependency. 
-    4 repos depend on PaymentService. Run: sruja explain PaymentService
+    4 repos depend on PaymentService. Run: sruja human explain PaymentService
   FraudService baseline drifted (2 undocumented changes).
-    Run: sruja explain FraudService
+    Run: sruja human explain FraudService
 
 Your team's (@fintech) services:
   PaymentService — HIGH criticality · 4 downstream repos
@@ -636,7 +636,7 @@ File: crates/sruja-cli/src/commands/review.rs (extend, ~300 lines)
 Before touching code, check what you're about to affect. **Entirely deterministic — runs instantly, costs nothing.**
 
 ```bash
-$ sruja before src/payment.rs
+$ sruja human before src/payment.rs
 
 ── Impact Preview: src/payment.rs ──
 
@@ -656,7 +656,7 @@ What to know:
 Who to notify: @commerce (orders), @risk (fraud)
 
 Run after your change:
-  sruja trace "user clicks checkout" — verify flow still works
+  sruja human trace "user clicks checkout" — verify flow still works
   sruja drift — check for new violations
 ```
 
@@ -678,7 +678,7 @@ Extend the existing HTML explorer to support cross-repo system landscapes:
 - Click a service → see its `explain` page.
 - Filter by team, repo, criticality, technology.
 - Embed `trace` results as animated flow paths.
-- One command: `sruja map --html` → opens in browser.
+- One command: `sruja human map --html` → opens in browser.
 
 ```
 File: crates/sruja-export/src/explorer.rs (extend, ~400 lines)
@@ -724,7 +724,7 @@ HIGH RISK:
     8 downstream consumers · 4 repos · 2 undocumented deps · 0 recent ADRs
     Bus factor: 1 (@jane authored 73% of changes)
     → If @jane leaves or PaymentService breaks, 4 teams are blocked.
-    → Run: sruja explain PaymentService
+    → Run: sruja human explain PaymentService
 
 MEDIUM RISK:
   APIGateway (infra repo)
@@ -785,8 +785,8 @@ File: crates/sruja-cli/src/enrichment.rs (extend, ~100 lines — caching + routi
 Wire the existing `vector.rs` embedding module so `trace` and `explain` find things by description — **all local, no API call**:
 
 - Index all nodes from scan graph (labels, descriptions, technologies) using fastembed BGE-small-en-v1.5 (already a dependency, runs via ONNX on CPU).
-- `sruja trace "how does payment work"` → matches PaymentService even if the user didn't use the exact name.
-- `sruja explain "the thing that calls stripe"` → resolves to StripeAdapter.
+- `sruja human trace "how does payment work"` → matches PaymentService even if the user didn't use the exact name.
+- `sruja human explain "the thing that calls stripe"` → resolves to StripeAdapter.
 - Entity resolution cascade: exact match (free) → keyword (free) → embedding cosine top-3 (free, local) → LLM disambiguate ($0.001, only if 2+ candidates score within 5%).
 
 **Cost: $0 for 95%+ of queries. ~$0.001 when truly ambiguous.**
@@ -798,7 +798,7 @@ File: crates/sruja-export/src/vector.rs (extend for scan graph, ~80 lines)
 
 ---
 
-#### W3.4: `sruja what-if` — Safe Change Modeling
+#### W3.4: `sruja human what-if` — Safe Change Modeling
 
 Before making a change, simulate the impact:
 
@@ -807,7 +807,7 @@ Before making a change, simulate the impact:
 - **`--enrich` (paid):** LLM adds risk reasoning — why something is HIGH risk, what the implications are. Uses Sonnet for nuanced reasoning (~$0.02).
 
 ```bash
-$ sruja what-if "remove FraudService sync check"
+$ sruja human what-if "remove FraudService sync check"
 
 ── What-If ──
 
@@ -826,7 +826,7 @@ Decisions to update: ADR-012 (sync fraud check) → supersede
 
 Next steps:
   1. Write ADR for async fraud before coding
-  2. Run: sruja explain FraudService
+  2. Run: sruja human explain FraudService
   3. Notify @fintech @risk
 ```
 
@@ -863,8 +863,8 @@ File: crates/sruja-cli/src/commands/org.rs (new ~400 lines)
 
 When senior engineers leave, their mental models shouldn't leave with them:
 
-- `sruja explain PaymentService --persist` → saves to `docs/architecture/PaymentService.md`.
-- `sruja map --persist` → saves the system map as a living document.
+- `sruja human explain PaymentService --persist` → saves to `docs/architecture/PaymentService.md`.
+- `sruja human map --persist` → saves the system map as a living document.
 - When code changes, Sruja flags which persisted docs are now stale.
 - Onboarding docs stay current without manual maintenance.
 
@@ -916,16 +916,16 @@ Phase 0 — Scan-First Foundation (3 weeks)
 Phase 1 — Three Commands (5 weeks)
   │     depends on: W0.2, W0.3, W0.4
   │
-  ├─ W1.1 sruja trace ($0 default)
-  ├─ W1.2 sruja explain ($0 default, $0.02 with --enrich)
-  ├─ W1.3 sruja map ($0 default)
+  ├─ W1.1 sruja human trace ($0 default)
+  ├─ W1.2 sruja human explain ($0 default, $0.02 with --enrich)
+  ├─ W1.3 sruja human map ($0 default)
   └─ W1.4 MCP cross-repo wiring
        │
 Phase 2 — Make It Sticky (4 weeks)
   │     depends on: Phase 1
   │
-  ├─ W2.1 sruja daily — morning briefing ($0)
-  ├─ W2.2 sruja before — pre-change impact ($0)
+  ├─ W2.1 sruja human daily — morning briefing ($0)
+  ├─ W2.2 sruja human before — pre-change impact ($0)
   ├─ W2.3 Web explorer ($0)
   └─ W2.4 VS Code integration
        │
@@ -935,7 +935,7 @@ Phase 3 — AI Amplification (5 weeks)
   ├─ W3.1 Cognitive debt score ($0)
   ├─ W3.2 Grounded narratives ($0.002–0.02 with --enrich only)
   ├─ W3.3 Semantic entity resolution ($0 local embeddings, $0.001 LLM fallback)
-  ├─ W3.4 sruja what-if ($0 default, $0.02 with --enrich)
+  ├─ W3.4 sruja human what-if ($0 default, $0.02 with --enrich)
   └─ W3.5 Cost dashboard + usage tracking
        │
 Phase 4 — Organization-Scale (6 weeks)
@@ -978,7 +978,7 @@ Phase 4 — Organization-Scale (6 weeks)
 |---|---|---|
 | Onboarding time | 50% reduction | New engineers describe system after 2h with `map`+`trace` |
 | Change confidence | Engineers can name blast radius before coding | `sruja before` usage |
-| Cognitive debt visibility | All HIGH-risk elements surfaced in CI | `sruja cognitive-debt --ci` exit code |
+| Cognitive debt visibility | All HIGH-risk elements surfaced in CI | `sruja human cognitive-debt --ci` exit code |
 | Daily usage | >30% of engineers run a comprehension command daily | Opt-in telemetry |
 | Review quality | Fewer "I didn't realize this would break X" incidents | Incident retrospectives |
 | **LLM cost per engineer** | **< $2/month** | `sruja costs` — 95% of usage is free |

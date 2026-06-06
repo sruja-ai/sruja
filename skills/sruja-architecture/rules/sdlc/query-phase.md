@@ -12,7 +12,7 @@ Developers and architects need to answer questions about the architecture withou
 
 ## Correct Approach
 
-**Impact analysis:** Run `sruja explain <element_id> --file repo.sruja` to get incoming/outgoing relations and description. Optionally `sruja tree repo.sruja` for full hierarchy. Summarize dependents and dependencies; do not invent. Note: `sruja tree` takes a file path, not an element; there is no `--depth` flag.
+**Impact analysis:** Run `sruja human explain <element_id> --file repo.sruja` to get incoming/outgoing relations and description. Optionally `sruja tree repo.sruja` for full hierarchy. Summarize dependents and dependencies; do not invent. Note: `sruja tree` takes a file path, not an element; there is no `--depth` flag.
 
 **Requirement traceability:** Read repo.sruja for requirement definitions. Identify which elements are linked via tags, references, or narrative. If not linked, suggest how to add traceability. Optionally use `sruja export markdown repo.sruja` to see requirements in exported docs.
 

@@ -30,7 +30,7 @@ Standard architecture discovery (Tree-sitter) is fast but limited to syntax. For
 
 4. **Perform Deep Query.** Use the enriched graph with:
    - `sruja impact <target> -r . --depth 3`
-   - `sruja explain <id> --file repo.sruja`
+   - `sruja human explain <id> --file repo.sruja`
 
 ## CLI Notes
 

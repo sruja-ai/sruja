@@ -14,7 +14,7 @@ Before changing or removing an element (e.g. a service or database), developers 
 
 1. **Identify the element.** Use the element ID as it appears in repo.sruja (e.g. `AuthService`, `Application.Database`).
 
-2. **Run architecture-level impact (DSL).** Execute `sruja explain <element_id> --file repo.sruja`. The output includes:
+2. **Run architecture-level impact (DSL).** Execute `sruja human explain <element_id> --file repo.sruja`. The output includes:
    - Element description
    - Incoming relations (who depends on this element)
    - Outgoing relations (what this element depends on)
@@ -40,7 +40,7 @@ Use only data from the CLI and DSL; do not invent dependencies.
 
 ## CLI Notes
 
-- `sruja explain <id> --file repo.sruja` — architecture (DSL) impact. Use `--file` if the baseline is not repo.sruja.
+- `sruja human explain <id> --file repo.sruja` — architecture (DSL) impact. Use `--file` if the baseline is not repo.sruja.
 - `sruja tree repo.sruja` — correct (tree accepts a file path).
 - `sruja impact <target> -r . --depth 3` — code (scan graph) impact. `<target>` can be an exact node id or a substring match against id/label/path.
 
@@ -52,4 +52,4 @@ Use only data from the CLI and DSL; do not invent dependencies.
 
 ## Summary
 
-**Impact analysis: for DSL use `sruja explain <element_id> --file repo.sruja`; for code refactors use `sruja impact <target> -r . --depth 3` (or `-f json`). Summarize dependents and dependencies from evidence only.**
+**Impact analysis: for DSL use `sruja human explain <element_id> --file repo.sruja`; for code refactors use `sruja impact <target> -r . --depth 3` (or `-f json`). Summarize dependents and dependencies from evidence only.**

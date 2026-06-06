@@ -302,7 +302,7 @@ Use these to answer questions without editing the DSL.
 **User need:** "What breaks if I change or remove X?"
 
 **Steps:**
-- Run `sruja explain <element_id> --file repo.sruja` to get incoming/outgoing relation counts and element description.
+- Run `sruja human explain <element_id> --file repo.sruja` to get incoming/outgoing relation counts and element description.
 - Optionally run `sruja tree repo.sruja` to see full hierarchy (tree takes a file path, not an element).
 - Summarize: dependents (incoming), dependencies (outgoing), and which parts of the system would be affected.
 
