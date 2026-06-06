@@ -1,0 +1,26 @@
+# Core Engine Constraints
+
+Patterns for Core Engine crates (language, engine, diagnostics, graph, graph-core, scan).
+
+## Scopes
+- `crates/sruja-language/**/*.rs`
+- `crates/sruja-engine/**/*.rs`
+- `crates/sruja-diagnostics/**/*.rs`
+- `crates/sruja-graph/**/*.rs`
+- `crates/sruja-graph-core/**/*.rs`
+- `crates/sruja-scan/**/*.rs`
+
+## Rules
+
+1. **Pure functions preferred**: Core functions should be deterministic and side-effect free. I/O belongs in CLI or scan crates.
+2. **No CLI dependencies**: Core crates must never depend on `sruja-cli` or `clap`.
+3. **No WASM dependencies**: Core crates must never depend on `sruja-wasm` or `wasm-bindgen`.
+4. **Error types**: Use `thiserror` for all error enums. Never use `anyhow` in library crates.
+5. **Public API surface**: Keep `lib.rs` as the public API surface. Implementation details go in submodules.
+6. **Serde everywhere**: All public types that cross boundaries should derive `Serialize` + `Deserialize`.
+7. **Module docs**: Every `lib.rs` and `mod.rs` starts with `//!` doc comments describing the module's purpose.
+8. **Test coverage**: Files with non-trivial logic should have a `#[cfg(test)] mod tests` with unit tests. Pure re-export or type-definition files are exempt.
+
+## Layer Boundary
+
+Core Engine crates have **no external dependencies allowed** (per classification). They form the foundation that all other layers build upon. If you need functionality from another layer, it belongs here — not pulled in as a dependency.

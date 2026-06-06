@@ -29,3 +29,5 @@ jobs:
         run: sruja drift -r . --violations-only
       - name: Sruja check (annotations)
         run: sruja drift -r . --ci --format github-actions
+      - name: Generated IDE files drift check
+        run: sruja sync-ide-rules -r . --check

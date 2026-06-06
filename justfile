@@ -178,8 +178,14 @@ deploy-trae: build-extension
 
 # --- Workflows ---
 
-# Daily sync: setup, check, federate
-daily: setup check federate
+# Check generated IDE files for drift against committed classification
+ide-drift: build
+    @echo "Checking generated IDE files for drift..."
+    ./target/release/sruja sync-ide-rules -r . --check
+    @echo "✅ IDE files are in sync"
+
+# Daily sync: setup, check, federate, ide-drift
+daily: setup check federate ide-drift
     @echo "Checking for architecture drift..."
     ./target/release/sruja drift -r . -a repo.sruja || true
     @echo "✅ Daily setup complete!"

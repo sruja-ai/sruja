@@ -1,5 +1,17 @@
 This guide helps AI agents work effectively with the Sruja codebase.
 
+## Table of Contents
+
+- [Quick Reference](#-quick-reference-top-5-commands)
+- [Architecture Setup](#architecture-setup-ai-agent-workflow)
+- [Before Coding: Shared Understanding](#before-coding-shared-understanding)
+- [AI Agent Workflow](#ai-agent-workflow-multi-step-tasks)
+- [Code-Embedded Architecture Metadata](#code-embedded-architecture-metadata)
+- [Build, Lint, and Test Commands](#build-lint-and-test-commands)
+- [Code Style Guidelines](#code-style-guidelines)
+- [Editor-Specific Configs](#editor-specific-configs)
+- [Troubleshooting](#troubleshooting-agent-tasks)
+
 ## ⚡ Quick Reference (Top 5 Commands)
 
 | Command | Purpose |
@@ -407,6 +419,34 @@ The codebase follows a workspace pattern with multiple crates:
 - **CLI**: commands and user interface
 
 WASM is used for browser and Node.js targets. LSP provides language server features.
+
+## Code-Embedded Architecture Metadata
+
+Link source code to architecture elements using module-level doc comments. This creates a bidirectional binding that is both human-readable and machine-queryable.
+
+### Convention
+
+Add `@element` and `@layer` annotations in `//!` doc comments at the top of each module's `lib.rs` or `mod.rs`:
+
+```rust
+//! @element Sruja.CLI
+//! @layer Delivery
+//! @boundary CLI must not depend on sruja-wasm internals
+//!
+//! Command-line interface for Sruja operations.
+```
+
+### Rules
+
+- `@element` — The architecture element ID from `repo.sruja` (dot notation for nested: `Sruja.Context.Scan`)
+- `@layer` — The layer name from classification (Core Engine, Extraction, Delivery, Secondary)
+- `@boundary` — Optional: specific constraints for this module
+- Keep annotations in the first 5 lines of the doc comment for discoverability
+- Use `sruja focus --file <path>` to resolve file-to-element mappings at runtime
+
+### Why
+
+Source code cannot express **why** decisions were made. Code-embedded metadata bridges this gap by linking modules to Decision Records and architecture elements, giving AI agents the context they need without leaving the source file.
 
 ## Key Commands for AI Agents
 

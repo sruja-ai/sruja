@@ -1,0 +1,24 @@
+# WASM Constraints
+
+WASM-only crate constraints. Violations here break browser/Node builds.
+
+## Scopes
+- `crates/sruja-wasm/**/*.rs`
+
+## Rules
+
+1. **No native-only APIs**: Never use `std::fs`, `std::net`, `std::process`, threads, or blocking I/O. Use `wasm_bindgen` abstractions.
+2. **No `println!`**: Use `web_sys::console::log_1` or `wasm_bindgen::JsValue` for logging.
+3. **No `std::time::Instant`**: Use `js_sys::Date::now()` or `web_sys::Performance` for timing.
+4. **No `anyhow`**: Use `wasm_bindgen::JsError` or custom error types that implement `Into<JsValue>`.
+5. **Serialize all boundaries**: All data crossing the WASM/JS boundary must implement `serde::Serialize` + `serde::Deserialize`.
+6. **Feature-gate native code**: If a function needs both native and WASM paths, use `#[cfg(target_arch = "wasm32")]` / `#[cfg(not(target_arch = "wasm32"))]`.
+7. **Keep exports minimal**: Only expose functions intended for JS consumption via `#[wasm_bindgen]`.
+
+## Verification
+
+After modifying WASM crates, run:
+```bash
+just wasm-nodejs        # build for Node
+just test-wasm          # run wasm-pack tests
+```

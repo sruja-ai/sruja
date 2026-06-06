@@ -1,0 +1,39 @@
+# VS Code Extension Patterns
+
+Patterns for the Sruja VS Code extension (TypeScript).
+
+## Scopes
+- `extension/src/**/*.ts`
+
+## Rules
+
+1. **Use VS Code API**: All editor interactions go through the `vscode` namespace. Never use Node.js `fs` for workspace operations — use `vscode.workspace.fs`.
+2. **Dispose resources**: All disposables (providers, commands, channels) must be registered via `context.subscriptions.push()` or the extension's `Disposable` store.
+3. **Async/await**: All async operations use `async/await`, not `.then()` chains.
+4. **Error handling**: Wrap VS Code API calls in try/catch. Show user-facing errors with `vscode.window.showErrorMessage()`. Log details to the OutputChannel.
+5. **WASM integration**: Load WASM via `src/wasm.ts`. Never import WASM modules directly — use the wrapper.
+6. **Type safety**: Use strict TypeScript. No `any` types. Use `unknown` + type guards for untrusted data.
+7. **Null handling**: Use `undefined` consistently. Prefer `??` over `||` for nullish coalescing. Use `?.` for optional chaining.
+8. **Constants**: Use UPPER_SNAKE_CASE for module-level constants. Use descriptive names.
+
+## Patterns
+
+```typescript
+import * as vscode from 'vscode';
+
+export function activate(context: vscode.ExtensionContext): void {
+    const channel = vscode.window.createOutputChannel('Sruja');
+    context.subscriptions.push(channel);
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('sruja.validate', async () => {
+            try {
+                // ...
+            } catch (err) {
+                vscode.window.showErrorMessage(`Sruja: ${err}`);
+                channel.appendLine(`Error: ${err}`);
+            }
+        })
+    );
+}
+```

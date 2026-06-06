@@ -1,0 +1,40 @@
+# CLI Handler Patterns
+
+Patterns for Sruja CLI command handlers. Keeps the CLI thin and consistent.
+
+## Scopes
+- `crates/sruja-cli/src/commands/**/*.rs`
+
+## Rules
+
+1. **Handlers are thin**: CLI handlers parse args, call library functions, format output. Business logic lives in engine/language/scan crates.
+2. **Use clap derive**: All commands use `#[derive(Parser)]` from clap. Subcommands use `#[derive(Subcommand)]`.
+3. **Exit codes**: Return `ExitCode` from main. Use `ExitCode::SUCCESS` / `ExitCode::FAILURE`. Never `std::process::exit()` directly.
+4. **Output formats**: Support `--format json|text|github-actions` where applicable. JSON output uses `serde_json::to_string_pretty`.
+5. **Error display**: Use `anyhow::Result` for error propagation in CLI. Display errors with `eprintln!` to stderr, never stdout.
+6. **Repo path**: Accept `-r, --repo <PATH>` with default `.`. Use `PathBuf` for the type.
+7. **Verbose flag**: Use `-v, --verbose` (counting) for log levels. Map `-v` to info, `-vv` to debug, `-vvv` to trace.
+8. **No global state**: Each command handler receives its parsed args. No lazy_static or global singletons.
+
+## Patterns
+
+```rust
+use anyhow::Result;
+use clap::Parser;
+use std::path::PathBuf;
+
+#[derive(Parser)]
+pub struct MyCommand {
+    #[arg(short, long, default_value = ".")]
+    repo: PathBuf,
+    #[arg(short, long, default_value = "text")]
+    format: OutputFormat,
+}
+
+pub fn run(cmd: MyCommand) -> Result<()> {
+    // 1. Validate inputs
+    // 2. Call library function
+    // 3. Format and print output
+    Ok(())
+}
+```
