@@ -8,9 +8,7 @@ use super::discover::discover_context_json_from_graph;
 use super::violation_shared::*;
 use super::CliError;
 use crate::utils::{architecture_path, colors};
-use sruja_diff::Violation;
 use sruja_scan::scan_repo;
-use std::collections::HashSet;
 
 pub(crate) struct RepoWriteLock {
     path: std::path::PathBuf,
@@ -230,32 +228,10 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .as_ref()
         .and_then(|p| p.to_str().map(String::from));
 
-    let (truth_status, violations, health_score) = if let Some(ref baseline_file) = baseline_path {
-        let content = fs::read_to_string(baseline_file)?;
-        let parser = sruja_language::Parser::new(baseline_file.to_string_lossy().as_ref());
-        let program = parser.parse(&content).map_err(|diags| {
-            CliError::parse_with_diagnostics(baseline_file.to_string_lossy().to_string(), diags)
-        })?;
-        let proposed_graph = sruja_diff::program_to_graph(&program);
-        let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
-        let truth = match diff.truth_status {
-            sruja_diff::TruthStatus::Reviewed => "reviewed",
-            sruja_diff::TruthStatus::Drifted => "drifted",
-            sruja_diff::TruthStatus::Unknown => "unknown",
-        };
-        (
-            truth.to_string(),
-            diff.violations,
-            Some(diff.summary.health_score),
-        )
-    } else {
-        let drift = sruja_diff::detect_architectural_drift(&graph);
-        (
-            "unknown".to_string(),
-            drift.violations,
-            Some(drift.health_score),
-        )
-    };
+    // Use shared analysis pipeline for the compare step.
+    let analysis = crate::commands::analysis::run_analysis_default(repo_path)?;
+    let truth_status = &analysis.truth_status;
+    let health_score = analysis.health_score;
 
     // Write versioned context.json with evidence + truth state (plan: updated_at, git_commit, baseline_path, truth_status).
     value["updated_at"] = serde_json::Value::String(iso8601_now());
@@ -271,41 +247,9 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .map(|s| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
 
-    // Add normalized violations with shared metadata, split by baseline suppression if baseline file exists.
-    let violations: Vec<Violation> = violations
-        .into_iter()
-        .map(|mut v| {
-            v.production_relevant = Some(true);
-            if v.evidence_count.is_none() {
-                v.evidence_count = Some(v.sources.len());
-            }
-            v
-        })
-        .collect();
-    let baseline_fp_path = repo_path.join(".sruja").join("violations.baseline.json");
-    let baseline_set: Option<HashSet<String>> = if baseline_fp_path.exists() {
-        Some(super::violation_shared::load_violations_baseline(&baseline_fp_path)?.fingerprints)
-    } else {
-        None
-    };
-    let (active, suppressed): (Vec<Violation>, Vec<Violation>) = if let Some(ref set) = baseline_set
-    {
-        violations
-            .into_iter()
-            .map(|mut v| {
-                let sup = set.contains(&fingerprint_violation(&v));
-                v.suppressed = Some(sup);
-                v.baseline_delta = Some(if sup { "baseline" } else { "new" }.to_string());
-                v
-            })
-            .partition(|v| v.suppressed != Some(true))
-    } else {
-        (violations, Vec::new())
-    };
-
-    let active_summ: Vec<ViolationSummary> = active.iter().map(summarize_violation).collect();
-    let suppressed_summ: Vec<ViolationSummary> =
-        suppressed.iter().map(summarize_violation).collect();
+    // Use violations from shared analysis pipeline.
+    let active_summ: Vec<ViolationSummary> = analysis.active_violations.iter().map(summarize_violation).collect();
+    let suppressed_summ: Vec<ViolationSummary> = analysis.suppressed_violations.iter().map(summarize_violation).collect();
 
     value["violations"] =
         serde_json::to_value(&active_summ).map_err(|e| CliError::validation(e.to_string()))?;
@@ -366,15 +310,13 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         truth_status: truth_status.clone(),
         baseline: baseline.clone(),
         violations_count: active_summ.len(),
-        health_score,
+        health_score: Some(health_score),
         context_path: context_path.clone(),
     };
 
     // Append score history if health_score is available
-    if let Some(score) = health_score {
-        if let Err(e) = append_score_history(repo_path, score, git_commit_short(repo_path)) {
-            eprintln!("Warning: Failed to save score history: {}", e);
-        }
+    if let Err(e) = append_score_history(repo_path, health_score, git_commit_short(repo_path)) {
+        eprintln!("Warning: Failed to save score history: {}", e);
     }
 
     match format {
@@ -407,9 +349,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
                 active_summ.len()
             );
 
-            if let Some(score) = health_score {
-                eprintln!("Health score: {}", colors::health_bar(score, 20));
-            }
+            eprintln!("Health score: {}", colors::health_bar(health_score, 20));
 
             if !active_summ.is_empty() {
                 eprintln!();

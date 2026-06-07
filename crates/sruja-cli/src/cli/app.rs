@@ -24,42 +24,51 @@ impl ContextIntent {
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
-    about = "Structural drift detection and agent context for your codebase",
-    long_about = "Deterministic scan-first workflow: drift without .sruja, then focus/MCP for editors, verify-task for gates. Optional repo.sruja is for viz + strict CI only.",
-    after_help = r#"OSS start (no .sruja required):
-  sruja start -r .              Create .sruja/ and .srujaignore
-  sruja drift -r . --structural-only --advisory   Structural scan + findings
+    about = "Architecture-aware AI coding: define architecture, keep code aligned, guide AI editors",
+    long_about = "Sruja gives AI editors and CI pipelines architecture context.\n\n\
+        Define your architecture once (repo.sruja or inferred from code),\n\
+        keep code aligned (drift detection), and guide AI coding (MCP/focus).\n\n\
+        Deterministic scan-first workflow: check without .sruja, then focus/MCP\n\
+        for editors, verify-task for gates. Optional repo.sruja is for viz + strict CI.",
+    after_help = r#"Quick start:
+  sruja init -r .               Set up .sruja/ and scan
+  sruja check -r .              Detect drift (structural or vs repo.sruja)
+  sruja status -r .             Unified dashboard (health, density, AI readiness)
+  sruja focus -r . --file <f>   Architecture briefing for AI coding
 
-Agent context (any source file):
-  sruja focus -r . --file <path>
-  sruja ai -r . --task "…"
-  sruja mcp -r .                MCP server (profile: coding, ≤18 tools)
+Daily workflow:
+  sruja sync -r .               Refresh evidence + sync IDE rules
+  sruja check -r . --pr         Check only new violations in a PR
+  sruja watch -r .              Live feedback while coding
 
-Optional reviewed intent:
-  sruja sync -r .
-  sruja lint repo.sruja
-  sruja drift -r . -a repo.sruja
+Editor integration:
+  sruja mcp -r .                MCP server for Cursor, Claude Code, etc.
+  sruja focus -r . --format for-ai  Paste-ready AI brief
 
-Team / CI (advanced):
-  sruja verify-task --profile coding -r .
-  sruja drift --ci -r .         github-actions format
+CI / gates:
+  sruja check -r . --ci         GitHub Actions format
+  sruja check baseline -r .     Snapshot violations for suppression
+  sruja verify-task -r .        Run verification steps
 
-Grouped commands:
-  sruja dsl list|tree|diff|explain|import|compile|validate|generate|fmt|export|lsp
-  sruja inspect health|impact|why|query|context-score|onboard|quickstart|watch|learn|ingest
-  sruja guard critique|compliance|baseline|drift-pr
-  sruja propose create|list|approve
-  sruja workflow init|list|status|approve|advance|summary|next-steps
-  sruja agent history|record|curate|plan|apply|run
-  sruja federation publish|compose
+DSL authoring:
+  sruja lint <file>             Validate .sruja file
+  sruja dsl list|tree|diff|explain|import|compile|generate|fmt|export
+
+Knowledge & decisions:
   sruja decision new|list|show|trace|link|accept|supersede
+  sruja memory search|timeline|reindex
+  sruja agent history|record|curate|plan|apply
   sruja event append|list
-  sruja memory reindex|search|timeline
-  sruja index semantic|registry|dashboard
-  sruja discover context|explain|repomap|questions
+
+Workflow & review:
+  sruja workflow init|status|approve|advance|summary|next-steps
+  sruja propose create|list|approve
   sruja intent check|propose|evaluate|history
-  sruja author evidence|propose
-  sruja run show|export"#
+
+Multi-repo:
+  sruja federation publish|compose
+
+Docs: https://sruja.dev | Repo: https://github.com/sruja/sruja"#
 )]
 pub struct Cli {
     #[command(subcommand)]

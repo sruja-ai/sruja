@@ -17,17 +17,6 @@ pub(crate) async fn try_run(
 ) -> Result<Option<String>, CliError> {
     let _run_id = arguments.get("run_id").and_then(|v| v.as_str());
     match name {
-        "sruja_check_drift" => {
-            let architecture = arguments
-                .get("architecture")
-                .and_then(|v| v.as_str())
-                .map(str::to_string);
-            let content =
-                crate::commands::scan::drift_json_string(repo, architecture.as_deref(), false)
-                    .await?;
-            finish(Ok(content))
-        }
-
         "sruja_get_task_context" => {
             let element_id = arguments.get("element_id").and_then(|v| v.as_str());
             let file = arguments.get("file").and_then(|v| v.as_str());

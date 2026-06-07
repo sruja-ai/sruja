@@ -57,15 +57,20 @@ fn parses_ai_context_defaults() {
 }
 
 #[test]
-fn parses_drift_state_subcommand() {
+fn parses_check_drift_state_format() {
     std::thread::Builder::new()
         .name("clap_parse_drift_state".to_string())
         .stack_size(16 * 1024 * 1024)
         .spawn(|| {
-            let cli = Cli::try_parse_from(["sruja", "drift-state", "-r", "."]).expect("parse");
+            let cli =
+                Cli::try_parse_from(["sruja", "check", "-r", ".", "--format", "drift-state"])
+                    .expect("parse");
             match cli.command {
-                Commands::DriftState { repo } => assert_eq!(repo, "."),
-                _ => panic!("expected DriftState command"),
+                Commands::Check { repo, format, .. } => {
+                    assert_eq!(repo, ".");
+                    assert_eq!(format, "drift-state");
+                }
+                _ => panic!("expected Check command with drift-state format"),
             }
         })
         .expect("spawn")
@@ -226,34 +231,40 @@ fn parses_propose_subcommands() {
 }
 
 #[test]
-fn parses_drift_ci_flag() {
+fn parses_check_ci_flag() {
     std::thread::Builder::new()
         .name("clap_parse_large_stack".to_string())
         .stack_size(16 * 1024 * 1024)
         .spawn(|| {
-            let cli = Cli::try_parse_from(["sruja", "drift", "--ci"]).expect("parse");
+            let cli = Cli::try_parse_from(["sruja", "check", "--ci"]).expect("parse");
             match cli.command {
-                Commands::Drift { ci, .. } => assert!(ci),
-                _ => panic!("expected Drift command"),
+                Commands::Check { ci, .. } => assert!(ci),
+                _ => panic!("expected Check command"),
             }
 
-            let cli2 = Cli::try_parse_from(["sruja", "drift"]).expect("parse");
+            let cli2 = Cli::try_parse_from(["sruja", "check"]).expect("parse");
             match cli2.command {
-                Commands::Drift { ci, .. } => assert!(!ci),
-                _ => panic!("expected Drift command"),
+                Commands::Check { ci, .. } => assert!(!ci),
+                _ => panic!("expected Check command"),
             }
 
-            let cli3 = Cli::try_parse_from([
+            let cli3 = Cli::try_parse_from(["sruja", "drift", "--ci"]).expect("parse alias");
+            match cli3.command {
+                Commands::Check { ci, .. } => assert!(ci),
+                _ => panic!("expected Check command via drift alias"),
+            }
+
+            let cli4 = Cli::try_parse_from([
                 "sruja",
-                "drift",
+                "check",
                 "-r",
                 ".",
                 "--structural-only",
                 "--advisory",
             ])
             .expect("parse");
-            match cli3.command {
-                Commands::Drift {
+            match cli4.command {
+                Commands::Check {
                     structural_only,
                     advisory,
                     ..
@@ -261,7 +272,7 @@ fn parses_drift_ci_flag() {
                     assert!(structural_only);
                     assert!(advisory);
                 }
-                _ => panic!("expected Drift command"),
+                _ => panic!("expected Check command"),
             }
         })
         .expect("spawn")
@@ -297,14 +308,14 @@ fn parses_intent_evaluate_and_history() {
 }
 
 #[test]
-fn parses_ai_brief_defaults() {
+fn parses_ai_as_focus_alias() {
     std::thread::Builder::new()
         .name("clap_parse_large_stack".to_string())
         .stack_size(16 * 1024 * 1024)
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "ai"]).expect("parse");
             match cli.command {
-                Commands::Ai {
+                Commands::Focus {
                     repo,
                     task,
                     file,
@@ -318,6 +329,7 @@ fn parses_ai_brief_defaults() {
                     format,
                     cache_friendly,
                     enrich,
+                    ..
                 } => {
                     assert_eq!(repo, ".");
                     assert!(task.is_none());
@@ -329,17 +341,19 @@ fn parses_ai_brief_defaults() {
                     assert!(!staged);
                     assert_eq!(max_tokens, 8000);
                     assert!(output.is_none());
-                    assert_eq!(format, "markdown");
+                    assert_eq!(format, "text");
                     assert!(!cache_friendly);
                     assert!(!enrich.enrich);
-                    assert!(enrich.enrich_provider.is_none());
-                    assert!(enrich.enrich_cmd.is_none());
-                    assert!(enrich.enrich_model.is_none());
-                    assert!(enrich.enrich_base_url.is_none());
-                    assert_eq!(enrich.enrich_timeout_ms, 15000);
-                    assert_eq!(enrich.enrich_max_bytes, 20000);
                 }
-                _ => panic!("expected Ai command"),
+                _ => panic!("expected Focus command (ai alias)"),
+            }
+
+            let cli2 = Cli::try_parse_from(["sruja", "focus"]).expect("parse focus");
+            match cli2.command {
+                Commands::Focus { format, .. } => {
+                    assert_eq!(format, "text");
+                }
+                _ => panic!("expected Focus command"),
             }
         })
         .expect("spawn")
@@ -376,7 +390,7 @@ fn parses_ai_brief_focus_options() {
             ])
             .expect("parse");
             match cli.command {
-                Commands::Ai {
+                Commands::Focus {
                     task,
                     file,
                     element_id,
@@ -401,7 +415,7 @@ fn parses_ai_brief_focus_options() {
                     assert_eq!(max_tokens, 12000);
                     assert_eq!(output.as_deref(), Some("brief.md"));
                 }
-                _ => panic!("expected Ai command"),
+                _ => panic!("expected Focus command (ai alias)"),
             }
         })
         .expect("spawn")

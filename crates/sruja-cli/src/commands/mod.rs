@@ -3,6 +3,7 @@
 //! Commands are split by domain: dsl, scan, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
+pub mod analysis;
 pub mod author;
 pub mod density;
 pub mod dsl_domain;

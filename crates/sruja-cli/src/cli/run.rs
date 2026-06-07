@@ -324,7 +324,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             json,
         } => commands::explain(&element_id, file.as_deref(), json).await,
         Commands::Import { format, file } => commands::import(&format, &file).await,
-        Commands::Drift {
+        Commands::Check {
             repo,
             architecture,
             format,
@@ -336,8 +336,27 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             structural_only,
             advisory,
             exclude_barrel_files,
+            pr,
+            base,
+            head,
+            compliance,
+            intent,
+            strict,
         } => {
-            if ci {
+            if pr {
+                commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await
+            } else if compliance {
+                commands::compliance(
+                    &repo,
+                    architecture.as_deref(),
+                    intent.as_deref(),
+                    &format,
+                    strict,
+                )
+                .await
+            } else if format == "drift-state" {
+                commands::drift_state(&repo)
+            } else if ci {
                 let ci_format = if format == "text" {
                     "github-actions".to_string()
                 } else {
@@ -360,13 +379,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await
             }
         }
-        Commands::DriftPr {
-            repo,
-            base,
-            head,
-            format,
-        } => commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await,
-        Commands::DriftState { repo } => commands::drift_state(&repo),
         Commands::Quickstart {
             path,
             format,
@@ -468,60 +480,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
-        Commands::Ai {
-            ref repo,
-            ref task,
-            ref file,
-            ref element_id,
-            ref query,
-            ref base_ref,
-            ref head_ref,
-            staged,
-            max_tokens,
-            ref output,
-            ref format,
-            cache_friendly,
-            ref enrich,
-        } => match format.as_str() {
-            "json" | "for-ai" => {
-                let repos = vec![repo.clone()];
-                commands::context_export(
-                    &repos,
-                    format,
-                    output.as_deref(),
-                    commands::ContextRequest {
-                        run_id: None,
-                        file: file.as_deref(),
-                        element_id: element_id.as_deref(),
-                        query: query.as_deref(),
-                        base_ref: base_ref.as_deref(),
-                        head_ref: head_ref.as_deref(),
-                        intent: None,
-                        depth: 2,
-                        max_tokens,
-                        cache_friendly,
-                    },
-                )
-                .await
-            }
-            _ => {
-                let enrich_ref = enrich.as_ref();
-                commands::ai_brief(commands::AiBriefOptions {
-                    repo,
-                    task: task.as_deref(),
-                    file: file.as_deref(),
-                    element_id: element_id.as_deref(),
-                    query: query.as_deref(),
-                    base_ref: base_ref.as_deref(),
-                    head_ref: head_ref.as_deref(),
-                    staged,
-                    max_tokens,
-                    output: output.as_deref(),
-                    enrich: &enrich_ref,
-                })
-                .await
-            }
-        },
         Commands::Onboard {
             repo,
             format,
@@ -723,24 +681,73 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             repo,
             file,
             element_id,
+            task,
+            query,
             format,
             ref enrich,
             base_ref,
             head_ref,
             compact,
+            staged,
+            max_tokens,
+            output,
+            cache_friendly,
         } => {
-            commands::focus(
-                &repo,
-                file.as_deref(),
-                element_id.as_deref(),
-                &format,
-                run_id.as_deref(),
-                &enrich.as_ref(),
-                base_ref.as_deref(),
-                head_ref.as_deref(),
-                compact,
-            )
-            .await
+            // Route based on format and flags
+            match format.as_str() {
+                "json" | "for-ai" if task.is_some() || file.is_some() || element_id.is_some() => {
+                    let repos = vec![repo.clone()];
+                    commands::context_export(
+                        &repos,
+                        &format,
+                        output.as_deref(),
+                        commands::ContextRequest {
+                            run_id: run_id.as_deref(),
+                            file: file.as_deref(),
+                            element_id: element_id.as_deref(),
+                            query: query.as_deref(),
+                            base_ref: base_ref.as_deref(),
+                            head_ref: head_ref.as_deref(),
+                            intent: None,
+                            depth: 2,
+                            max_tokens,
+                            cache_friendly,
+                        },
+                    )
+                    .await
+                }
+                "markdown" | "json" => {
+                    let enrich_ref = enrich.as_ref();
+                    commands::ai_brief(commands::AiBriefOptions {
+                        repo: &repo,
+                        task: task.as_deref(),
+                        file: file.as_deref(),
+                        element_id: element_id.as_deref(),
+                        query: query.as_deref(),
+                        base_ref: base_ref.as_deref(),
+                        head_ref: head_ref.as_deref(),
+                        staged,
+                        max_tokens,
+                        output: output.as_deref(),
+                        enrich: &enrich_ref,
+                    })
+                    .await
+                }
+                _ => {
+                    commands::focus(
+                        &repo,
+                        file.as_deref(),
+                        element_id.as_deref(),
+                        &format,
+                        run_id.as_deref(),
+                        &enrich.as_ref(),
+                        base_ref.as_deref(),
+                        head_ref.as_deref(),
+                        compact,
+                    )
+                    .await
+                }
+            }
         }
         Commands::Ingest {
             sources,

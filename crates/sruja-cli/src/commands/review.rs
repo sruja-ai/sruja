@@ -5,7 +5,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use super::violation_shared::*;
-use super::{scan_repo_cached, CliError};
+use super::CliError;
 use crate::utils::architecture_path::{
     resolve_architecture_path, resolve_architecture_path_or_default,
 };
@@ -94,47 +94,11 @@ pub async fn review(
 
     // Review is the day-to-day workflow, so refresh cached evidence first.
     super::sync_cmd::sync(repo_root, "quiet").await?;
-    let graph = scan_repo_cached(repo_path)?;
 
-    let (truth_status, violations, health_score) = if let Some(ref baseline) = baseline_path {
-        let content = fs::read_to_string(baseline)?;
-        let parser = sruja_language::Parser::new(baseline.to_string_lossy().as_ref());
-        let program = parser.parse(&content).map_err(|diags| {
-            CliError::parse_with_diagnostics(baseline.to_string_lossy().to_string(), diags)
-        })?;
-        let proposed_graph = sruja_diff::program_to_graph(&program);
-        let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
+    // Use shared analysis pipeline instead of duplicating scan+compare logic.
+    let analysis = crate::commands::analysis::run_analysis_default(repo_path)?;
 
-        let truth = match diff.truth_status {
-            sruja_diff::TruthStatus::Reviewed => "reviewed",
-            sruja_diff::TruthStatus::Drifted => "drifted",
-            sruja_diff::TruthStatus::Unknown => "unknown",
-        };
-
-        (
-            truth.to_string(),
-            diff.violations,
-            Some(diff.summary.health_score),
-        )
-    } else {
-        let drift = sruja_diff::detect_architectural_drift(&graph);
-        let truth = match drift.truth_status {
-            sruja_diff::TruthStatus::Reviewed => "reviewed",
-            sruja_diff::TruthStatus::Drifted => "drifted",
-            sruja_diff::TruthStatus::Unknown => "unknown",
-        };
-
-        (
-            truth.to_string(),
-            drift.violations,
-            Some(drift.health_score),
-        )
-    };
-
-    let mut filtered_violations: Vec<_> = violations
-        .into_iter()
-        .filter(is_production_relevant)
-        .collect();
+    let mut filtered_violations: Vec<Violation> = analysis.active_violations;
 
     // Sort by severity (error first)
     filtered_violations.sort_by(|a, b| {
@@ -159,61 +123,35 @@ pub async fn review(
         }
     }
 
-    let violations_baseline_path = repo_path.join(".sruja").join("violations.baseline.json");
-    let baseline_set: Option<std::collections::HashSet<String>> =
-        if violations_baseline_path.exists() {
-            Some(
-                super::violation_shared::load_violations_baseline(&violations_baseline_path)?
-                    .fingerprints,
-            )
-        } else {
-            None
-        };
-
-    let (active_violations, suppressed_violations): (Vec<Violation>, Vec<Violation>) =
-        if let Some(ref set) = baseline_set {
-            filtered_violations
-                .into_iter()
-                .map(|mut v| {
-                    let suppressed = set.contains(&fingerprint_violation(&v));
-                    v.suppressed = Some(suppressed);
-                    v.baseline_delta =
-                        Some(if suppressed { "baseline" } else { "new" }.to_string());
-                    v
-                })
-                .partition(|v| v.suppressed != Some(true))
-        } else {
-            (filtered_violations, Vec::new())
-        };
-
-    let has_drift =
-        truth_status == "drifted" || (baseline_path.is_none() && !active_violations.is_empty());
+    let has_drift = analysis.truth_status == "drifted"
+        || (baseline_path.is_none() && !filtered_violations.is_empty());
     let (new_components, missing_components, drifted_dependencies) =
-        categorize_violations(&active_violations);
-    let open_questions = generate_open_questions(&active_violations);
+        categorize_violations(&filtered_violations);
+    let open_questions = generate_open_questions(&filtered_violations);
     let suggestions = generate_suggestions(
         repo_root,
         baseline_path.as_deref(),
-        &truth_status,
-        &active_violations,
+        &analysis.truth_status,
+        &filtered_violations,
     );
 
     let context_score = (|| {
         let kg = crate::graph_store::load_or_build_graph(repo_path).ok()?;
         let age_hours = crate::utils::context::context_age_hours(repo_path);
-        Some(sruja_graph::compute_context_score(&kg, graph.nodes.len(), repo_path, age_hours).score)
+        Some(sruja_graph::compute_context_score(&kg, analysis.graph.nodes.len(), repo_path, age_hours).score)
     })();
 
     let elapsed = start_time.elapsed();
     let output = ReviewOutput {
-        truth_status: truth_status.clone(),
+        truth_status: analysis.truth_status.clone(),
         baseline: baseline_path.and_then(|p| p.to_str().map(String::from)),
         has_drift,
-        violations_count: active_violations.len(),
-        health_score,
-        suppressed_count: suppressed_violations.len(),
-        violations: active_violations.iter().map(summarize_violation).collect(),
-        suppressed_violations: suppressed_violations
+        violations_count: filtered_violations.len(),
+        health_score: Some(analysis.health_score),
+        suppressed_count: analysis.suppressed_violations.len(),
+        violations: filtered_violations.iter().map(summarize_violation).collect(),
+        suppressed_violations: analysis
+            .suppressed_violations
             .iter()
             .map(summarize_violation)
             .collect(),

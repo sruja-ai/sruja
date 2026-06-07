@@ -157,37 +157,6 @@ pub(crate) async fn try_run(
             ))
         }
 
-        "sruja_search_memory" => {
-            let query = arguments
-                .get("query")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::validation("missing query".to_string()))?;
-            let limit = arguments
-                .get("limit")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(20) as usize;
-            let store = sruja_memory::MemoryStore::open(Path::new(&repo))
-                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
-            let hits = store
-                .search(sruja_memory::SearchMemoryOptions {
-                    query,
-                    element_id: arguments.get("element_id").and_then(|v| v.as_str()),
-                    decision_id: arguments.get("decision_id").and_then(|v| v.as_str()),
-                    hitl_kind: arguments.get("hitl_kind").and_then(|v| v.as_str()),
-                    source: None,
-                    trust: None,
-                    limit,
-                })
-                .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
-            finish(Ok(serde_json::to_string_pretty(&serde_json::json!({
-                "schema_version": "memory_search/v1",
-                "query": query,
-                "count": hits.len(),
-                "hits": hits,
-                "note": "hypothesis vs reviewed_truth; never auto-merge into repo.sruja"
-            }))?))
-        }
-
         "sruja_get_memory_timeline" => {
             let store = sruja_memory::MemoryStore::open(Path::new(&repo))
                 .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
@@ -288,61 +257,6 @@ pub(crate) async fn try_run(
             finish(Ok(serde_json::to_string_pretty(&val)?))
         }
 
-        "sruja_get_architecture_context" => {
-            let file = arguments
-                .get("file")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let element_id = arguments
-                .get("element_id")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let intent = arguments
-                .get("intent")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let content = crate::commands::context::context_string(
-                repo,
-                "markdown",
-                crate::commands::context::ContextRequest {
-                    run_id,
-                    file: file.as_deref(),
-                    element_id: element_id.as_deref(),
-                    query: None,
-                    base_ref: None,
-                    head_ref: None,
-                    intent: intent.as_deref(),
-                    depth: 2,
-                    max_tokens: 10000,
-                    cache_friendly: false,
-                },
-            )
-            .await?;
-            finish(Ok(content))
-        }
-
-        "sruja_find_path" => {
-            let source = arguments
-                .get("source")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::validation("Missing source"))?;
-            let target = arguments
-                .get("target")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| CliError::validation("Missing target"))?;
-
-            let graph = get_or_scan_graph(graph_cache, repo).await?;
-            match graph.find_path(source, target) {
-                Some(path) => finish(Ok(format!(
-                    "# Path from {} to {}\n\n{}",
-                    source,
-                    target,
-                    path.join(" -> ")
-                ))),
-                None => finish(Ok(format!("No path found from {} to {}", source, target))),
-            }
-        }
-
         "sruja_agent_run" => {
             let goal = arguments
                 .get("goal")
@@ -416,85 +330,6 @@ pub(crate) async fn try_run(
             finish(Ok(text))
         }
 
-        "sruja_get_entrypoints" => {
-            let graph = get_or_scan_graph(graph_cache, repo).await?;
-            let mut entrypoints = Vec::new();
-
-            let mut has_incoming = HashMap::new();
-            for edge in &graph.edges {
-                *has_incoming.entry(edge.target.as_str()).or_insert(0) += 1;
-            }
-
-            for node in &graph.nodes {
-                let is_high_level = matches!(
-                    node.kind.as_str(),
-                    sruja_scan::NodeKind::SERVICE
-                        | sruja_scan::NodeKind::EXTERNAL_API
-                        | sruja_scan::NodeKind::SYSTEM
-                );
-                let no_incoming = has_incoming.get(node.id.as_str()).cloned().unwrap_or(0) == 0;
-
-                if is_high_level || no_incoming {
-                    entrypoints.push(format!("- {} ({})", node.id, node.kind));
-                }
-            }
-
-            if entrypoints.is_empty() {
-                finish(Ok("No clear entrypoints discovered.".to_string()))
-            } else {
-                entrypoints.sort();
-                finish(Ok(format!(
-                    "# Architecture Entrypoints\n\n{}",
-                    entrypoints.join("\n")
-                )))
-            }
-        }
-
-        "sruja_get_data_stores" => {
-            let graph = get_or_scan_graph(graph_cache, repo).await?;
-            let mut stores = Vec::new();
-
-            for node in &graph.nodes {
-                if matches!(
-                    node.kind.as_str(),
-                    sruja_scan::NodeKind::DATABASE | sruja_scan::NodeKind::QUEUE
-                ) {
-                    let tech = node
-                        .technology
-                        .as_deref()
-                        .map(|t| format!(" ({})", t))
-                        .unwrap_or_default();
-                    stores.push(format!("- {}: {}{}", node.id, node.kind, tech));
-                }
-            }
-
-            if stores.is_empty() {
-                finish(Ok(
-                    "No data stores (databases/queues) discovered.".to_string()
-                ))
-            } else {
-                stores.sort();
-                finish(Ok(format!(
-                    "# Discovered Data Stores\n\n{}",
-                    stores.join("\n")
-                )))
-            }
-        }
-
-        "sruja_explain_discovery" => {
-            let format = arguments
-                .get("format")
-                .and_then(|v| v.as_str())
-                .unwrap_or("text");
-            finish(match format {
-                "json" => crate::commands::discover::discover_explanation_json(repo),
-                "text" => crate::commands::discover::discover_explanation_string(repo),
-                _ => Err(CliError::validation(format!(
-                    "Unknown format: {}. Use: text or json",
-                    format
-                ))),
-            })
-        }
         _ => Ok(None),
     }
 }

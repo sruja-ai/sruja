@@ -95,23 +95,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
-            "name": "sruja_search_memory",
-            "title": "Sruja Search Memory",
-            "description": "FTS search over indexed learnings, context events, and decision records (.sruja/memory.sqlite). Results labeled hypothesis vs reviewed_truth—never auto-writes repo.sruja.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "query": { "type": "string", "description": "Full-text search query" },
-                    "element_id": { "type": "string", "description": "Optional architecture element filter" },
-                    "decision_id": { "type": "string", "description": "Optional decision id filter" },
-                    "hitl_kind": { "type": "string", "description": "Optional HITL kind filter (precedent, exception, correction, guardrail)" },
-                    "limit": { "type": "integer", "description": "Max hits (default 20)", "minimum": 1, "maximum": 100 }
-                },
-                "required": ["query"]
-            }
-        }),
-        json!({
             "name": "sruja_get_memory_timeline",
             "title": "Sruja Memory Timeline",
             "description": "Chronological memory slice around an anchor event id or ISO timestamp (learnings, events, decisions).",
@@ -136,45 +119,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_get_architecture_context",
-            "title": "Sruja Architecture Context",
-            "description": "Export high-level architecture context and project rules. Provide a file or element_id to get a localized, task-scoped context map.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "run_id": { "type": "string", "description": "Optional run ID for tracing (defaults to auto-generated)" },
-                    "file": { "type": "string", "description": "Optional file focus for task-scoped context (relative to repo root)" },
-                    "element_id": { "type": "string", "description": "Optional architecture element ID focus (e.g. MySystem.Api)" },
-                    "intent": { "type": "string", "description": "Optional intent hint (add-feature, refactor, fix-bug)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_explain_discovery",
-            "title": "Sruja Discovery Explanation",
-            "description": "Explain what Sruja discovered in the repo, why it inferred that shape, and what to review next.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "format": { "type": "string", "description": "Output format: text (default) or json" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_check_drift",
-            "title": "Sruja Drift Check",
-            "description": "Detect architectural drift in the codebase (returns JSON with violations and suggestions).",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "architecture": { "type": "string", "description": "Optional path to a .sruja architecture file" }
                 }
             }
         }),
@@ -212,86 +156,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
-            "name": "sruja_get_system_context",
-            "title": "Sruja System Context",
-            "description": "Get the full multi-repo system architecture from the composed system.index.json. Returns all systems, containers, components, databases, their relationships, and cross-repo conflicts.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Start path to search for system.index.json (walks up to find it, defaults to .)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_list_elements",
-            "title": "Sruja List Elements",
-            "description": "List architectural elements from the composed system index, filtered by kind (system, container, component, database, queue, person). Returns elements across all federated repos with their canonical IDs and lineage.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Start path to search for system.index.json (defaults to .)" },
-                    "kind": { "type": "string", "description": "Element kind to filter by: system, container, component, database, queue, person. If omitted, returns all elements." }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_find_path",
-            "title": "Sruja Find Path",
-            "description": "Find the path between two components in the architecture graph.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "source": { "type": "string", "description": "Source component ID" },
-                    "target": { "type": "string", "description": "Target component ID" }
-                },
-                "required": ["source", "target"]
-            }
-        }),
-        json!({
-            "name": "sruja_get_entrypoints",
-            "title": "Sruja Get Entrypoints",
-            "description": "List all entrypoints (External APIs, Systems, or components with no incoming edges) in the codebase.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_get_data_stores",
-            "title": "Sruja Get Data Stores",
-            "description": "List all data stores (Databases, Queues) discovered in the architecture.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_get_hydrated_context",
-            "title": "Sruja Hydrated Context",
-            "description": "Get architectural context for a component hydrated with its actual source code and immediate neighbors. Ideal for AI code reviews.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "id": { "type": "string", "description": "Component ID to hydrate" },
-                    "max_tokens": { "type": "integer", "description": "Maximum tokens for the hydrated context (default: 20000)" },
-                    "enrich": { "type": "boolean", "description": "If true, add optional enrichment (cmd/openai) grounded in the hydrated context. Default: false." },
-                    "enrich_provider": { "type": "string", "description": "Enrichment provider: cmd|openai. Default: cmd." },
-                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)." },
-                    "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
-                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
-                    "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
-                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
-                },
-                "required": ["id"]
-            }
-        }),
-        json!({
             "name": "sruja_get_task_context",
             "title": "Sruja Task Context",
             "description": "Get high-fidelity architectural context for a specific task. Supports selection by element ID, file path, git diff (base/head refs), or search query. Returns focus elements, neighbors, impact analysis, hydrated source code, and a grounding_trace that explains how the focus and evidence were selected.",
@@ -316,58 +180,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                     "cache_friendly": { "type": "boolean", "description": "If true, return invariant/tools/volatile JSON for prompt-cache-friendly payloads (default: false)." },
                     "workflow_id": { "type": "string", "description": "Workflow under .sruja/workflows/ for phase-scoped context." },
                     "phase": { "type": "string", "description": "Workflow phase (inception|construction|operations) to tune token budget." }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_query_graph",
-            "title": "Sruja Query Graph",
-            "description": "Natural-language Q&A over the architecture graph with scan-backed facts and optional enrich narrative. Prefer sruja_hybrid_query as the default entry point unless you specifically need this graph-query path or enrich tuning.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "query": { "type": "string", "description": "The natural language query (e.g. 'what connects auth to database?')" },
-                    "enrich": { "type": "boolean", "description": "Add LLM narrative grounded in the matched subgraph context. Default: false." },
-                    "enrich_provider": { "type": "string", "description": "Enrichment provider: cmd|openai. Default: cmd." },
-                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)." },
-                    "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
-                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
-                    "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
-                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
-                },
-                "required": ["query"]
-            }
-        }),
-        json!({
-            "name": "sruja_explain_element",
-            "title": "Sruja Explain Element",
-            "description": "Deep-dive on an architectural element, its centrality, neighbors, and extracted comments with optional LLM narrative.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "id": { "type": "string", "description": "Unique ID of the architectural element (e.g. MySystem.Api)" },
-                    "enrich": { "type": "boolean", "description": "Add LLM narrative grounded in the element context. Default: false." },
-                    "enrich_provider": { "type": "string", "description": "Enrichment provider: cmd|openai. Default: cmd." },
-                    "enrich_cmd": { "type": "string", "description": "External enrichment command (stdin JSON -> stdout markdown)." },
-                    "enrich_model": { "type": "string", "description": "Model name for provider=openai (default: gpt-4o-mini)." },
-                    "enrich_base_url": { "type": "string", "description": "Base URL for provider=openai (default: https://api.openai.com/v1)." },
-                    "enrich_timeout_ms": { "type": "integer", "description": "Timeout for enrichment (ms, default: 15000)." },
-                    "enrich_max_bytes": { "type": "integer", "description": "Max bytes to read from enrichment stdout (default: 20000)." }
-                },
-                "required": ["id"]
-            }
-        }),
-        json!({
-            "name": "sruja_get_context_score",
-            "title": "Sruja Context Score",
-            "description": "Get the context engineering score (0-100) and AI-readiness breakdown for the repository.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "format": { "type": "string", "description": "Output format: text (default) or json" }
                 }
             }
         }),
@@ -466,30 +278,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
-            "name": "sruja_record_decision_event",
-            "title": "Sruja Record Decision Event",
-            "description": "Append a context_event/v2 row for decision/workflow lineage (kind, decision_id, summary, optional trace fields).",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "kind": { "type": "string", "description": "Event kind e.g. context_retrieved, validation_passed" },
-                    "decision_id": { "type": "string", "description": "Decision id (optional for some kinds)" },
-                    "outcome": { "type": "string", "description": "ok | fail | warn (default: ok)" },
-                    "summary": { "type": "string", "description": "Human-readable one-line summary" },
-                    "trace_id": { "type": "string" },
-                    "run_id": { "type": "string" },
-                    "workflow_id": { "type": "string" },
-                    "actor": { "type": "string", "description": "agent | human | ci | system" },
-                    "source": { "type": "string", "description": "mcp | cli | ci | editor | external" },
-                    "tool": { "type": "string" },
-                    "elements": { "type": "array", "items": { "type": "string" } },
-                    "evidence_refs": { "type": "array", "items": { "type": "string" } }
-                },
-                "required": ["kind", "summary"]
-            }
-        }),
-        json!({
             "name": "sruja_create_decision_record",
             "title": "Sruja Create Decision Record",
             "description": "Create a proposed Decision Record under .sruja/decisions/ and emit decision_opened event.",
@@ -519,30 +307,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
-            "name": "sruja_get_learned_facts",
-            "title": "Sruja Learned Facts",
-            "description": "Read hypotheses from .sruja/learned_facts.jsonl (deterministic scan + drift vs reviewed architecture). Treat as candidates, not repo.sruja truth.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "limit": { "type": "integer", "description": "Max facts to return (default: 200)" },
-                    "status": { "type": "string", "description": "Optional filter: observed | inferred | proposed | reviewed | rejected | stale" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_get_evidence_graph",
-            "title": "Sruja Evidence Graph",
-            "description": "Load .sruja/evidence_graph.json (scan-derived graph snapshot written by `sruja learn`).",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
-                }
-            }
-        }),
-        json!({
             "name": "sruja_get_author_evidence",
             "title": "Sruja Author Evidence",
             "description": "Load or build `.sruja/author_evidence.json` (a capped, citeable evidence bundle for grounded architecture authoring).",
@@ -550,64 +314,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "path": { "type": "string", "description": "Repository root path (defaults to .)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_get_evidence_for_claim",
-            "title": "Sruja Evidence For Claim",
-            "description": "Resolve a learned fact by id and attach matching scan nodes from the evidence graph when ids align.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "claim_id": { "type": "string", "description": "Learned fact id (e.g. fact_a1b2c3d4e5f67890)" }
-                },
-                "required": ["claim_id"]
-            }
-        }),
-        json!({
-            "name": "sruja_record_learn_feedback",
-            "title": "Sruja Record Learn Feedback",
-            "description": "Append approve/reject for a learned fact id to .sruja/learn_feedback.jsonl so future `sruja learn` runs can skip rejected proposals.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "fact_id": { "type": "string", "description": "Learned fact id" },
-                    "decision": { "type": "string", "description": "approve | reject" },
-                    "reason": { "type": "string", "description": "Optional human reason (especially for reject)" }
-                },
-                "required": ["fact_id", "decision"]
-            }
-        }),
-        json!({
-            "name": "sruja_get_focus_briefing",
-            "title": "Sruja Focus Briefing",
-            "description": "Get a task-scoped architectural briefing for a specific file or element. Includes blast radius, linked decisions, AI instructions, optional git-range temporal context, and agent memory hits.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "run_id": { "type": "string", "description": "Optional run ID for tracing (defaults to auto-generated)" },
-                    "file": { "type": "string", "description": "File path to focus on" },
-                    "element_id": { "type": "string", "description": "Element ID to focus on" },
-                    "format": { "type": "string", "description": "Output format: text (default) or json" },
-                    "base_ref": { "type": "string", "description": "Optional git base ref for temporal context (use with head_ref; head defaults to HEAD if omitted)" },
-                    "head_ref": { "type": "string", "description": "Optional git head ref for temporal context (requires base_ref)" },
-                    "compact": { "type": "boolean", "description": "If true, skip blast radius, traces, and temporal context, reordering fields to prioritize active drift violations and boundaries (default: false)" }
-                }
-            }
-        }),
-        json!({
-            "name": "sruja_get_operational_context",
-            "title": "Sruja Operational Context",
-            "description": "Get operational knowledge (gotchas, constraints, runbooks) and recent incidents for the repository or a specific element.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "element_id": { "type": "string", "description": "Optional element ID focus" }
                 }
             }
         }),
@@ -772,7 +478,7 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
         json!({
             "name": "sruja_hybrid_query",
             "title": "Sruja Hybrid Query",
-            "description": "Preferred default for most natural-language architecture questions: classifies query complexity and routes to graph-only, semantic-only, or hybrid retrieval. Use sruja_query_graph when you need that explicit pipeline.",
+            "description": "Preferred default for most natural-language architecture questions: classifies query complexity and routes to graph-only, semantic-only, or hybrid retrieval.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -780,19 +486,6 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                     "query": { "type": "string", "description": "Natural language query about the architecture" }
                 },
                 "required": ["query"]
-            }
-        }),
-        json!({
-            "name": "sruja_memory_clusters",
-            "title": "Sruja Memory Clusters",
-            "description": "View thematic clusters and tags from Zettelkasten-linked agentic memory. Shows how learnings relate to each other. Can filter by entry ID (for a specific cluster) or tag.",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
-                    "entry_id": { "type": "string", "description": "Optional entry ID to show its cluster" },
-                    "tag": { "type": "string", "description": "Optional tag to filter entries by" }
-                }
             }
         }),
         json!({

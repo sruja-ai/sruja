@@ -31,7 +31,7 @@ pub async fn health(
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
 
-    // 1. Parse architecture file
+    // 1. Parse architecture file (health always needs the program for score computation)
     let mut arch_path = crate::utils::architecture_path::resolve_architecture_path_or_default(
         repo_path,
         architecture,
@@ -48,25 +48,13 @@ pub async fn health(
             .ok_or_else(|| CliError::validation("Architecture path is not valid UTF-8"))?,
     )?;
 
-    // 2. Run drift detection to get violations
+    // 2. Use shared analysis pipeline for scan + compare
     let pb = progress::spinner("Calculating health score...");
-    let graph = match sruja_scan::scan_repo(repo_path) {
-        Ok(g) => g,
-        Err(e) => {
-            pb.abandon();
-            return Err(CliError::scan_with_help(
-                e.to_string(),
-                "Ensure your repo has readable source files and your ignore rules are correct.",
-            ));
-        }
-    };
-
-    let proposed_graph = sruja_diff::program_to_graph(&program);
-    let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
+    let analysis = crate::commands::analysis::run_analysis_default(repo_path)?;
     pb.finish_and_clear();
 
     // 3. Calculate score
-    let health = calculate_health(&diff.violations, &program);
+    let health = calculate_health(&analysis.active_violations, &program);
 
     // 4. Persistence & Trend
     let dot_sruja = repo_path.join(".sruja");
