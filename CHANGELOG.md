@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.60.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.59.0...sruja-v0.60.0) (2026-06-08)
+
+
+### Features
+
+* **mcp:** consolidate tool profiles to match FEATURE_CONSOLIDATION.md ([9d34a96](https://github.com/sruja-ai/sruja/commit/9d34a96c3c957d8188b3f8245bda0c78cad01792))
+
 ## [0.59.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.58.0...sruja-v0.59.0) (2026-06-05)
 
 
