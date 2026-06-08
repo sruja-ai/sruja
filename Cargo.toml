@@ -45,13 +45,13 @@ js-sys = "0.3"
 web-sys = "0.3"
 proptest = "1.5"
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.22", features = ["v4", "serde", "js"] }
+uuid = { version = "1.23", features = ["v4", "serde", "js"] }
 git2 = { version = "0.20", default-features = false, features = ["vendored-libgit2"] }
 scip = "0.7.0"
 protobuf = "3"
 prost = "0.13"
 prost-types = "0.13"
-fastembed = "5.0"
+fastembed = "5.16"
 hnsw_rs = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
