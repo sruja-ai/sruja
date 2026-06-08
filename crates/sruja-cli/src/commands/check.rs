@@ -1,7 +1,6 @@
 //! Check command: CI-focused tool for non-blocking exit code 0 on violations.
 
 use std::fs;
-use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use super::violation_shared::*;
@@ -31,23 +30,8 @@ fn is_usize_zero(v: &usize) -> bool {
     *v == 0
 }
 
-fn resolve_repo_relative(repo_root: &Path, path: &str) -> PathBuf {
-    let p = Path::new(path);
-    if p.is_absolute() {
-        p.to_path_buf()
-    } else {
-        repo_root.join(p)
-    }
-}
-
 pub async fn baseline(repo_root: &str, output: &str) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
+    let repo_path = validate_repo_exists(repo_root)?;
 
     let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
@@ -109,13 +93,7 @@ pub async fn check(
     format: &str,
     violations_baseline: Option<&str>,
 ) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
+    let repo_path = validate_repo_exists(repo_root)?;
 
     let graph = scan_repo(repo_path).map_err(|e| CliError::scan(e.to_string()))?;
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
@@ -181,21 +159,8 @@ pub async fn check(
         })
         .collect();
 
-    let (active_violations, suppressed_violations): (Vec<Violation>, Vec<Violation>) =
-        if let Some(ref set) = baseline_filter_set {
-            filtered_violations
-                .into_iter()
-                .map(|mut v| {
-                    let suppressed = set.contains(&fingerprint_violation(&v));
-                    v.suppressed = Some(suppressed);
-                    v.baseline_delta =
-                        Some(if suppressed { "baseline" } else { "new" }.to_string());
-                    v
-                })
-                .partition(|v| v.suppressed != Some(true))
-        } else {
-            (filtered_violations, Vec::new())
-        };
+    let (active_violations, suppressed_violations) =
+        apply_baseline_filter(filtered_violations, &baseline_filter_set);
 
     let violations: Vec<ViolationSummary> =
         active_violations.iter().map(summarize_violation).collect();
@@ -249,7 +214,6 @@ pub async fn check(
             );
 
             for v_sum in &output.violations {
-                // Find original violation from summarized one if needed, but we can just use v_sum
                 let sev = match v_sum.severity.as_str() {
                     "error" => "error",
                     "warning" => "warning",
@@ -267,7 +231,6 @@ pub async fn check(
                     .replace('\n', "%0A")
                     .replace('\r', "%0D");
 
-                // Use first source for annotation
                 if let Some(src) = v_sum.sources.first() {
                     let src_file = src.file.as_deref().unwrap_or(file);
                     if let Some(line) = src.line {

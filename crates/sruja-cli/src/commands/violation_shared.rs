@@ -293,3 +293,46 @@ pub fn summarize_violation(v: &Violation) -> ViolationSummary {
         sources: v.sources.clone(),
     }
 }
+
+/// Apply baseline filter to violations, marking them as suppressed or new.
+/// Returns (active_violations, suppressed_violations).
+pub fn apply_baseline_filter(
+    violations: Vec<Violation>,
+    baseline_set: &Option<std::collections::HashSet<String>>,
+) -> (Vec<Violation>, Vec<Violation>) {
+    if let Some(ref set) = baseline_set {
+        violations
+            .into_iter()
+            .map(|mut v| {
+                let suppressed = set.contains(&fingerprint_violation(&v));
+                v.suppressed = Some(suppressed);
+                v.baseline_delta = Some(if suppressed { "baseline" } else { "new" }.to_string());
+                v
+            })
+            .partition(|v| v.suppressed != Some(true))
+    } else {
+        (violations, Vec::new())
+    }
+}
+
+/// Validate that a repository path exists.
+pub fn validate_repo_exists(repo_root: &str) -> Result<&Path, crate::commands::CliError> {
+    let repo_path = Path::new(repo_root);
+    if !repo_path.exists() {
+        return Err(crate::commands::CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo_root),
+        )));
+    }
+    Ok(repo_path)
+}
+
+/// Resolve a potentially relative path against a repository root.
+pub fn resolve_repo_relative(repo_root: &Path, path: &str) -> std::path::PathBuf {
+    let p = Path::new(path);
+    if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        repo_root.join(p)
+    }
+}

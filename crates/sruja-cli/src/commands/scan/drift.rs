@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::commands::CliError;
+use crate::commands::violation_shared::{apply_baseline_filter, resolve_repo_relative, validate_repo_exists};
 use crate::integrations::load_repo_config;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;
@@ -93,22 +94,11 @@ pub struct DriftRequest<'a> {
 }
 
 pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
-    let repo_path = Path::new(req.repo_root);
-
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", req.repo_root),
-        )));
-    }
+    let repo_path = validate_repo_exists(req.repo_root)?;
 
     let actual_graph = scan_repo(repo_path)?;
     let baseline_set = if let Some(p) = req.violations_baseline {
-        let bp = if Path::new(p).is_absolute() {
-            PathBuf::from(p)
-        } else {
-            repo_path.join(p)
-        };
+        let bp = resolve_repo_relative(repo_path, p);
         if bp.exists() {
             Some(crate::commands::violation_shared::load_violations_baseline(&bp)?.fingerprints)
         } else {
@@ -160,20 +150,8 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
         );
         let mut diff_result = diff_result;
         if let Some(ref set) = baseline_set {
-            diff_result.violations = diff_result
-                .violations
-                .into_iter()
-                .map(|mut v| {
-                    let suppressed = set.contains(
-                        &crate::commands::violation_shared::fingerprint_violation(&v),
-                    );
-                    v.suppressed = Some(suppressed);
-                    v.baseline_delta =
-                        Some(if suppressed { "baseline" } else { "new" }.to_string());
-                    v
-                })
-                .filter(|v| v.suppressed != Some(true))
-                .collect();
+            let (active, _) = apply_baseline_filter(diff_result.violations, &Some(set.clone()));
+            diff_result.violations = active;
         }
 
         match req.format {
@@ -226,20 +204,8 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
             apply_advisory_violation_filter(&mut drift_result);
         }
         if let Some(ref set) = baseline_set {
-            drift_result.violations = drift_result
-                .violations
-                .into_iter()
-                .map(|mut v| {
-                    let suppressed = set.contains(
-                        &crate::commands::violation_shared::fingerprint_violation(&v),
-                    );
-                    v.suppressed = Some(suppressed);
-                    v.baseline_delta =
-                        Some(if suppressed { "baseline" } else { "new" }.to_string());
-                    v
-                })
-                .filter(|v| v.suppressed != Some(true))
-                .collect();
+            let (active, _) = apply_baseline_filter(drift_result.violations, &Some(set.clone()));
+            drift_result.violations = active;
         }
         let could_not_infer = collect_could_not_infer(&actual_graph);
 
@@ -316,14 +282,7 @@ pub async fn drift_json_string(
     architecture_path: Option<&str>,
     violations_only: bool,
 ) -> Result<String, CliError> {
-    let repo_path = Path::new(repo_root);
-
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
+    let repo_path = validate_repo_exists(repo_root)?;
 
     let actual_graph = scan_repo(repo_path)?;
 
@@ -389,13 +348,7 @@ pub async fn drift_json_string(
 }
 
 pub async fn status_result(repo_root: &str) -> Result<StatusOutput, CliError> {
-    let repo_path = Path::new(repo_root);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
+    let repo_path = validate_repo_exists(repo_root)?;
 
     let baseline = architecture_path::resolve_architecture_path(repo_path)
         .and_then(|p| p.to_str().map(String::from));
@@ -574,13 +527,7 @@ pub async fn drift_pr(
     head_ref: Option<&str>,
     format: &str,
 ) -> Result<(), CliError> {
-    let repo_path = Path::new(repo_root);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo_root),
-        )));
-    }
+    let repo_path = validate_repo_exists(repo_root)?;
 
     let base = base_ref.unwrap_or("origin/main");
     let head = head_ref.unwrap_or("HEAD");
