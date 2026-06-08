@@ -898,32 +898,6 @@ pub fn load_system_index(path: &Path) -> Result<SystemIndex, CliError> {
     })
 }
 
-/// Extract a filtered slice of the system index: only elements of matched kinds.
-pub fn filter_system_index_by_kind(index: &SystemIndex, kind: &str) -> SystemIndex {
-    let kind_lower = kind.to_lowercase();
-    let nodes: Vec<SystemIndexNode> = index
-        .nodes
-        .iter()
-        .filter(|n| n.kind.to_lowercase() == kind_lower)
-        .cloned()
-        .collect();
-    let node_ids: std::collections::HashSet<&str> =
-        nodes.iter().map(|n| n.canonical_id.as_str()).collect();
-    let edges: Vec<SystemIndexEdge> = index
-        .edges
-        .iter()
-        .filter(|e| node_ids.contains(e.source.as_str()) || node_ids.contains(e.target.as_str()))
-        .cloned()
-        .collect();
-    SystemIndex {
-        schema_version: index.schema_version,
-        repos: index.repos.clone(),
-        nodes,
-        edges,
-        conflicts: index.conflicts.clone(),
-    }
-}
-
 /// Generate a local system index from the scan for single-repo use.
 ///
 /// This allows human commands (map, trace, explain) to work without federation.

@@ -1,6 +1,6 @@
-# Courses
+# Learning (optional)
 
-Structured courses to learn architecture-as-code with Sruja, from fundamentals to production patterns.
+Long-form learning material. This is optional and not required to use Sruja as an AI coding harness (MCP + context graph + focus/verify gates).
 
 | Course                                                                | Description                                                                     |
 | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -12,4 +12,4 @@ Structured courses to learn architecture-as-code with Sruja, from fundamentals t
 | [Agentic AI](agentic-ai/course-overview.md)                           | Fundamentals, patterns, modeling for AI systems                                 |
 | [Advanced Architects](advanced-architects/course-overview.md)         | Policy as code and advanced topics                                              |
 
-Start with **Systems Thinking 101** or **System Design 101** if you're new; use the [Beginner path](../docs/beginner-path.md) to combine courses with tutorials and challenges.
+Start with **Systems Thinking 101** or **System Design 101** if you're new. For Sruja product usage, use [Quick start](../getting-started.md) and the core docs.

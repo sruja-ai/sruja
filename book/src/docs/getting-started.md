@@ -1,254 +1,147 @@
 ---
 title: "Getting Started"
 weight: 1
-summary: "Generate architecture with AI in 5 minutes."
+summary: "Start with drift + focus + verify-task. Add repo.sruja only when you want reviewed intent in CI."
 difficulty: "beginner"
 estimatedTime: "5 minutes"
 ---
 
 # Getting Started
 
-**Architecture from your code—no DSL learning required.**
+Sruja’s core value is **keeping AI edits aligned with your repo structure**:
 
-Your AI writes and maintains `.sruja` files. You just need to know what to ask for.
+- **Before** edits: brief the agent with `focus`
+- **After** edits: run deterministic gates with `verify-task`
+- **Always**: detect structural drift from real code, not from diagrams
 
----
-
-## Prerequisites
-
-- **AI editor** – Cursor, Copilot, Claude, Continue.dev, etc.
-- **AI skill** – Install first: `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (see [Install as a Skill](../../docs/INSTALL_AS_SKILL.md))
-- **Sruja CLI** – Needed when the skill runs discover/lint/drift; the skill will guide you to install it if missing (`curl -fsSL https://sruja.ai/install.sh | bash`)
+You can get value on day one **without** writing any `.sruja` files.
 
 ---
 
-## Step 1: Gather evidence (or let the skill do it)
+## Two ways to use Sruja
 
-When you use the **sruja-architecture skill**, it runs discovery for you. Discovery is **not** just a file list—under the hood the CLI runs **Tree-sitter** on your code to build a **graph of components and their dependency relations** (who imports whom, which modules call which). That graph is the evidence the skill uses.
+- **Tier 1 (recommended first): harness without `repo.sruja`**
+  - Structural scan + drift checks from your actual code
+  - Agent briefings (`focus`) and post-edit gates (`verify-task`)
+  - Best for evaluation and immediate guardrails
+- **Tier 2 (optional): reviewed intent in Git (`repo.sruja`)**
+  - Versioned, reviewable architecture intent
+  - CI drift gates compare reality vs declared intent
+  - Exports (Markdown/Mermaid) become derived artifacts
 
-If you want to run discovery yourself (e.g. to inspect the summary), run:
+---
+
+## Tier 1: Harness in 5 minutes (no `repo.sruja`)
+
+### Step 1: Install the CLI
 
 ```bash
-cd your-project
-sruja discover --context -r . --format json
+curl -fsSL https://sruja.ai/install.sh | bash
 ```
 
-**What this does:** Scans your repo with Tree-sitter, builds the component/dependency graph, then outputs a **summary** of that graph (so the AI can scope and ask targeted questions). The skill prefers `.sruja/context.json` and `.sruja/graph.json` when present (e.g. after `sruja sync` or the extension's **Refresh repo context**); when missing, it runs discover for you—no need to run a command first. For the full graph on demand: `sruja scan -r . -o graph.json`, or use the graph written by sync at `.sruja/graph.json`.
+If you’re working from source in this repo:
 
-**Summary output includes:**
-- Component and edge **counts** (from the Tree-sitter graph)
-- Primary language and framework
-- Inferred architecture style (monolith / microservices)
-- Suggested areas (top-level path segments for scoping)
-
-**Example summary (actual schema):**
-
-```json
-{
-  "repo": "my-app",
-  "scan_scope": { "included": [], "excluded": [] },
-  "components": 42,
-  "edges": 58,
-  "primary_language": "TypeScript",
-  "framework": "React",
-  "architecture_style": "monolith",
-  "domain": null,
-  "suggested_areas": ["src", "lib", "apps"]
-}
+```bash
+just build  # or: make build
+./target/release/sruja --help
 ```
 
-The **full graph** is written by `sruja sync` to `.sruja/graph.json`. You can also produce it on demand with `sruja scan -r . -o graph.json`.
+### Step 2: Get a first structural read
+
+From your repo root:
+
+```bash
+sruja start -r .
+sruja drift -r . --structural-only --advisory
+```
+
+This reports repo-level structural issues that AI edits tend to introduce (cycles, layer violations, hub modules), plus an “uncertain” section where inference isn’t confident.
+
+### Step 3: Use Sruja with an AI editor (focus → edit → verify)
+
+Run a file-scoped briefing before a risky edit:
+
+```bash
+sruja focus -r . --file path/to/file.rs
+```
+
+After the agent edits:
+
+```bash
+sruja verify-task --profile coding -r .
+```
+
+### Step 4 (optional): Wire MCP for tool-based briefings
+
+If your editor supports MCP, run Sruja as an MCP stdio server:
+
+```bash
+sruja mcp -r .
+```
+
+For host/editor setup details, see [Host agent integration](https://github.com/sruja-ai/sruja/blob/main/docs/HOST_AGENT_INTEGRATION.md).
 
 ---
 
-## Step 2: Generate Architecture with AI
+## Tier 2 (optional): Reviewed `repo.sruja` in Git
 
-In your AI editor, run:
+Tier 2 is for teams that want **reviewed intent** in Git and strict CI enforcement. Keep it minimal at first.
 
-```
-Use sruja-architecture. Analyze the discovery output:
-[JSON from step 1],
-identify systems, containers, and their relationships,
-generate repo.sruja using C4 context and container levels,
-then run `sruja lint` and fix until it passes.
-```
+### Step 1: Generate and validate intent
 
-**What your AI will do:**
+Prerequisites:
 
-1. **Analyze** the JSON output from discovery
-2. **Ask questions** if scope is unclear (e.g., "What's this service for?")
-3. **Generate** `repo.sruja` with your architecture
-4. **Validate** it with `sruja lint`
-5. **Fix** any errors automatically
+- **AI editor** – Cursor, Copilot, Claude, Continue.dev, etc.
+- **AI skill** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (see [Install as a Skill](../../docs/INSTALL_AS_SKILL.md))
 
----
-
-## What repo.sruja Looks Like
-
-```sruja
-import { * } from 'sruja.ai/stdlib'
-
-// External actors
-MobileApp = person "Mobile App" {
-  description "Customer-facing mobile application"
-}
-
-// Main system
-MyApp = system "My Application" {
-  description "Handles user requests and processing"
-
-  // Containers (deployable units)
-  API = container "API Service" {
-    technology "Node.js + Express"
-    description "RESTful API for mobile and web clients"
-  }
-
-  Worker = container "Background Worker" {
-    technology "Node.js + Bull"
-    description "Processes async jobs (emails, reports)"
-  }
-
-  // Datastores
-  Database = database "Primary DB" {
-    technology "PostgreSQL"
-    description "Stores user data and transactions"
-  }
-
-  Cache = database "Redis Cache" {
-    technology "Redis"
-    description "Caches frequently accessed data"
-  }
-}
-
-// Relationships (how things connect)
-MobileApp -> MyApp.API "HTTPS requests"
-MyApp.API -> MyApp.Database "SQL queries"
-MyApp.API -> MyApp.Cache "Redis get/set"
-MyApp.Worker -> MyApp.Database "SQL queries"
-```
-
-**Key concepts:**
-
-- **person** – External actors (users, systems calling you)
-- **system** – Major boundary (your entire application)
-- **container** – Deployable unit (API, worker, web frontend)
-- **database** – Data storage or cache
-- **->** – Relationship with protocol description
-
----
-
-## Step 3: Validate
-
-After the AI generates `repo.sruja`, validate it:
+The skill uses repo evidence (Tree-sitter graph + summaries) to propose `repo.sruja`. When you have a draft:
 
 ```bash
 sruja lint repo.sruja
 ```
 
-**What this checks:**
-
-- **Syntax errors** – Invalid structure or keywords
-- **Circular dependencies** – A depends on B, B depends on A
-- **Orphan elements** – Something with no connections
-- **Missing fields** – Required information not provided
-
-**Fix errors:** Paste the lint output to your AI and say: "Fix these errors."
-
----
-
-## Step 4: Export for Documentation
-
-### Export Markdown
+### Step 2: Refresh evidence and check drift
 
 ```bash
-sruja export markdown repo.sruja > ARCHITECTURE.md
+sruja sync -r .
+sruja drift -r . -a repo.sruja
 ```
 
-Creates a readable document you can share with your team.
+### Step 3: CI drift gate (recommended)
 
-### Export Mermaid Diagram
+One-time baseline:
 
 ```bash
-sruja export mermaid repo.sruja > ARCHITECTURE.mmd
+sruja baseline -r . -o .sruja/violations.baseline.json
 ```
 
-Creates a diagram you can:
-- Open in [Mermaid Live Editor](https://mermaid.live)
-- Import into VS Code with the extension
-- Add to documentation
-
-### Export JSON
+CI check that fails only on new problems:
 
 ```bash
-sruja export json repo.sruja > ARCHITECTURE.json
+sruja drift --ci -r . --baseline .sruja/violations.baseline.json -f github-actions
 ```
 
-Machine-readable format for tools and automation.
+---
+
+## About architecture files (optional)
+
+You can use Sruja purely as a harness (Tier 1) and never commit an architecture file.
+
+If you do want reviewed intent in Git (Tier 2), today that intent is stored as an **architecture file** (`repo.sruja`). The exact authoring format is **not the product center** and may evolve; the stable value is the workflow around it:
+
+- evidence from code → task-scoped context → deterministic gates → drift checks in CI
 
 ---
 
-## Understanding C4 Levels
+## Quick reference
 
-Sruja uses the C4 Model, which organizes architecture into levels:
-
-| Level | What It Is | Example |
-|--------|--------------|----------|
-| **Person** | External actors | Users, external systems, third-party APIs |
-| **System** | High-level boundary | "Order System", "User Management System" |
-| **Container** | Deployable unit | "API Service", "Web App", "Worker" |
-| **Component** | Internal part | "Payment Module", "Auth Controller" |
-
-**Recommended:** Start with Person + System + Container levels. Add components only when you need more detail.
-
----
-
-## Common Questions
-
-**"When should I use stdlib imports?"**
-
-Always. It saves time by providing standard types (person, system, container, etc.) so you don't define them manually.
-
-**"What if discovery doesn't find my code?"**
-
-1. Check your language is supported (JavaScript, Python, Go, Rust, Java)
-2. Make sure you're in the correct directory
-3. Try `sruja quickstart -r .` to see what's detected
-
-**"How detailed should repo.sruja be?"**
-
-**Start minimal.** Only model what you actually need:
-- External actors calling your system
-- Major containers (services, apps)
-- Key datastores
-
-Add more detail only when it provides value.
-
-**"Can I edit repo.sruja manually?"**
-
-Yes, but it's easier to let AI do it. If you do edit manually:
-- Run `sruja lint` before committing
-- Validate syntax with the extension
-
----
-
-## Next Steps
-
-- **Beginner Path:** [Beginner Path](./beginner-path.md) – 7 steps to go deeper
-- **Examples:** [Examples Gallery](../examples/index.md) – Real-world architectures
-- **Language Reference:** [Language Specification](../reference/language-spec.md) – Complete DSL guide
-
----
-
-## Quick Reference
-
-| Want to | Command |
-|----------|----------|
-| **Analyze code** | `sruja discover --context -r . --format json` |
-| **Structural draft** | `sruja quickstart -r . --generate-baseline` (writes `repo.sruja.draft`) |
-| **Validate** | `sruja lint repo.sruja` |
-| **Refresh evidence** | `sruja sync -r .` |
-| **Repo health** | `sruja status -r .` |
-| **Export Markdown** | `sruja export markdown repo.sruja > doc.md` |
-| **Export Mermaid** | `sruja export mermaid repo.sruja > diagram.mmd` |
-| **Export JSON** | `sruja export json repo.sruja > arch.json` |
-| **Check drift** | `sruja drift -r . -a repo.sruja --format json` |
+| Goal | Command |
+|------|---------|
+| Structural scan (no files required) | `sruja start -r .` |
+| Structural drift (advisory) | `sruja drift -r . --structural-only --advisory` |
+| Brief an agent before edits | `sruja focus -r . --file <path>` |
+| Post-edit gates | `sruja verify-task --profile coding -r .` |
+| Refresh evidence | `sruja sync -r .` |
+| Lint reviewed intent | `sruja lint repo.sruja` |
+| Drift vs reviewed intent | `sruja drift -r . -a repo.sruja` |
+| Start MCP server | `sruja mcp -r .` |

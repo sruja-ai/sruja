@@ -47,40 +47,7 @@ pub enum Commands {
         #[arg(long, default_value = "sruja.graph.json")]
         output: String,
     },
-    /// Adversarial architectural critique of proposed changes (review-oriented, not context-oriented)
-    #[command(hide = true)]
-    Critique {
-        /// Path to repository root
-        #[arg(long, short = 'r', alias = "path", default_value = ".")]
-        repo: String,
-        /// Changed file paths to critique
-        #[arg(long, short = 'f')]
-        files: Vec<String>,
-        /// Description of what the change does (helps pattern matching)
-        #[arg(long, short = 'd')]
-        description: Option<String>,
-        /// Proposal ID if this is an approved proposal
-        #[arg(long, short = 'p')]
-        proposal: Option<String>,
-        /// Git base ref for diff-based critique
-        #[arg(long)]
-        base: Option<String>,
-        /// Git head ref for diff-based critique
-        #[arg(long)]
-        head: Option<String>,
-        /// Critique staged git changes
-        #[arg(long)]
-        staged: bool,
-        /// Output format (text, json, for-ai)
-        #[arg(long, default_value = "text")]
-        format: String,
-        /// Optional LLM enrichment to add a narrative review grounded in the critique report.
-        #[command(flatten)]
-        enrich: EnrichmentArgs,
-        /// Fail the command (exit 1) if findings of this level or higher are found
-        #[arg(long)]
-        fail_on: Option<String>,
-    },
+
     /// Impact analysis: blast radius (upstream dependents + downstream dependencies)
     #[command(hide = true)]
     Impact {
@@ -131,96 +98,9 @@ pub enum Commands {
         #[arg(long)]
         write_baseline: Option<String>,
     },
-    /// Export a Sruja file to various formats
-    #[command(hide = true)]
-    Export {
-        /// Export format (json, mermaid, markdown, context, dsl, d2)
-        format: String,
-        /// Path to .sruja file
-        file: String,
-        /// Include pre-computed views in JSON output
-        #[arg(long)]
-        extended: bool,
-        /// Mermaid view level (1=context, 2=container, 3=component)
-        #[arg(long, default_value_t = 1)]
-        view_level: u8,
-        /// Mermaid focus node ID for view levels 2/3
-        #[arg(long)]
-        target: Option<String>,
-        /// Named view to export (for markdown format - uses view-driven export)
-        #[arg(long)]
-        view: Option<String>,
-        /// Export all defined custom views in markdown (adds Custom views section)
-        #[arg(long)]
-        all_views: bool,
-        /// Inject the exported content into a file between `<!-- sruja:start -->` and `<!-- sruja:end -->` markers
-        #[arg(long)]
-        inject: Option<String>,
-        /// Hydrate architecture elements with source code content (JSON only)
-        #[arg(long)]
-        hydrate: bool,
-        /// Export from scan graph instead of .sruja file (for graphml, neo4j, obsidian)
-        #[arg(long)]
-        from_scan: bool,
-        /// Repository path for scan-based export (requires --from-scan)
-        #[arg(long, short = 'r')]
-        repo: Option<String>,
-        /// Output directory for file-based exports (obsidian)
-        #[arg(long)]
-        output_dir: Option<String>,
-    },
-    /// Format a Sruja file
-    #[command(hide = true)]
-    Fmt {
-        /// Path to .sruja file
-        file: String,
-        /// Check if file would be reformatted (CI mode, exits with error if changes needed)
-        #[arg(long)]
-        check: bool,
-    },
-    /// List elements from a file
-    #[command(hide = true)]
-    List {
-        /// Path to .sruja file
-        file: String,
-    },
-    /// Print architecture tree
-    #[command(hide = true)]
-    Tree {
-        /// Path to .sruja file
-        file: String,
-    },
-    /// Show differences between two architecture files
-    #[command(hide = true)]
-    Diff {
-        /// First file
-        file1: String,
-        /// Second file
-        file2: String,
-        /// Output format (text or json)
-        #[arg(long, default_value = "text")]
-        format: String,
-    },
-    /// Explain an element
-    #[command(hide = true)]
-    Explain {
-        /// Element ID to explain
-        element_id: String,
-        /// Path to .sruja file
-        #[arg(long)]
-        file: Option<String>,
-        /// Output as JSON
-        #[arg(long)]
-        json: bool,
-    },
-    /// Import from external format
-    #[command(hide = true)]
-    Import {
-        /// Format (json)
-        format: String,
-        /// File to import
-        file: String,
-    },
+    /// Start LSP server (stdio)
+
+
     /// Start LSP server (stdio)
     #[command(hide = true)]
     Lsp {
@@ -239,27 +119,7 @@ pub enum Commands {
         #[arg(long, short = 'r', default_value = ".")]
         root: String,
     },
-    /// Compile a Sruja file
-    #[command(hide = true)]
-    Compile {
-        /// Path to .sruja file
-        file: String,
-    },
-    /// Validate architecture against rules
-    #[command(hide = true)]
-    Validate {
-        /// Path to .sruja file or directory
-        file: String,
-        /// External constraint files
-        #[arg(long, short = 'c')]
-        constraints: Vec<String>,
-        /// Fail on violations
-        #[arg(long)]
-        fail_on_violations: bool,
-        /// Output as JSON
-        #[arg(long)]
-        format_json: bool,
-    },
+
 
     /// Check for architectural drift, violations, and compliance
     ///
@@ -414,19 +274,7 @@ pub enum Commands {
         #[arg(long = "evolution", short = 'e')]
         evolution: bool,
     },
-    /// Keep architecture feedback live while you code
-    #[command(hide = true)]
-    Watch {
-        /// Repository root (defaults to current directory)
-        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
-        path: String,
-        /// Clear screen between runs
-        #[arg(long)]
-        clear: bool,
-        /// Only watch specific paths (comma separated)
-        #[arg(long)]
-        focus: Option<String>,
-    },
+
     /// Refresh evidence (write .sruja/context.json) and run drift
     Sync {
         /// Repository root (defaults to current directory)
@@ -494,30 +342,7 @@ pub enum Commands {
         #[arg(long)]
         critique: bool,
     },
-    /// Build scan evidence and learned-fact hypotheses under `.sruja/` (never edits `repo.sruja`)
-    ///
-    /// Output is evidence-backed inference for review — not the same as reviewed architecture.
-    #[command(hide = true)]
-    Learn {
-        /// Repository root (defaults to current directory)
-        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
-        path: String,
-        /// Only include facts referencing this file (relative to repo root)
-        #[arg(long)]
-        file: Option<String>,
-        /// Only include facts touching paths changed since this git ref (e.g. main)
-        #[arg(long)]
-        since: Option<String>,
-        /// Do not write `.sruja/proposals/learn-*.json` bundles from proposed facts
-        #[arg(long)]
-        skip_proposals: bool,
-        /// When set to `false`, do not write learn proposal files (design-doc alias of `--skip-proposals`)
-        #[arg(long = "apply-proposals", default_value_t = true, action = clap::ArgAction::Set)]
-        apply_proposals: bool,
-        /// Output format (text or json)
-        #[arg(long, short = 'f', default_value = "text")]
-        format: String,
-    },
+
 
     /// Baseline: snapshot current violations to ignore them in CI (use with `sruja drift --ci --baseline`)
     #[command(hide = true)]
@@ -529,30 +354,6 @@ pub enum Commands {
         #[arg(long, short = 'o', default_value = ".sruja/violations.baseline.json")]
         output: String,
     },
-    /// Publish repo truth + evidence to repo.bundle.json (multi-repo federation)
-    #[command(hide = true)]
-    Publish {
-        /// Path to repository root
-        #[arg(long, short = 'r', alias = "path", default_value = ".")]
-        repo: String,
-        #[arg(long)]
-        repo_id: Option<String>,
-        /// Output path for bundle (default: repo.bundle.json)
-        #[arg(long, short = 'o', default_value = "repo.bundle.json")]
-        output: String,
-    },
-    /// Compose one or more repo bundles into system.index.json
-    #[command(hide = true)]
-    Compose {
-        #[arg(long, short = 'i', action = clap::ArgAction::Append)]
-        input: Vec<String>,
-        #[arg(long)]
-        recursive: bool,
-        /// Output path for system index (default: system.index.json)
-        #[arg(long, short = 'o', default_value = "system.index.json")]
-        output: String,
-    },
-
     /// Compare declared architectural intent vs actual implementation
     Intent {
         #[command(subcommand)]
@@ -846,21 +647,7 @@ pub enum Commands {
         cache_friendly: bool,
     },
 
-    /// Ingest external context (ADRs, design docs, API contracts) into .sruja/context/
-    #[command(hide = true)]
-    Ingest {
-        /// Files or directories to ingest
-        sources: Vec<String>,
-        /// Path to repository root
-        #[arg(long, short = 'r', alias = "path", default_value = ".")]
-        repo: String,
-        /// Category tag (adr, design-doc, api-contract, runbook, note)
-        #[arg(long, short = 'c')]
-        category: Option<String>,
-        /// Comma-separated architecture element IDs to link (e.g. Auth.Handler,Database.Users)
-        #[arg(long, short = 'e')]
-        elements: Option<String>,
-    },
+
     /// Append-only context lineage (intent, drift, proposals, decision traces)
     Event {
         #[command(subcommand)]

@@ -2,7 +2,7 @@
 
 <img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
 
-**Stop AI from breaking your repo structure.** Sruja scans code, reports structural drift, and plugs into Cursor and other agents via MCP — `focus` before edits, `verify-task` after. Optional `repo.sruja` is for reviewed CI intent and exports (Mermaid/Markdown), not day one.
+**Stop AI from breaking your repo structure.** Sruja scans code, builds a context graph, reports structural drift, and plugs into Cursor and other agents via MCP — `focus` before edits, `verify-task` after. Optional `repo.sruja` is reviewed CI intent, not the primary product.
 
 ## Why Sruja?
 
@@ -22,8 +22,10 @@ Sruja gives AI assistants and humans evidence-backed architecture context:
 | ----------------------- | ---------------------------------------------------------------- |
 | **Structural scan**     | Cycles, layer violations, god modules — file-level evidence      |
 | **Agent harness**       | MCP + `focus` + `verify-task`; host keeps the LLM loop           |
-| **Optional `repo.sruja`** | Reviewed intent in Git when teams want strict CI               |
-| **Built-in validation** | Lint, drift, intent — gates after AI edits                       |
+| **Context graph**       | Repo-derived dependency/context graph for targeted retrieval      |
+| **AI context export**   | `ai-context` outputs for host tools and prompt caching            |
+| **Built-in gates**      | Drift, verification, CI-friendly outputs                          |
+| **Optional reviewed intent** | `repo.sruja` when teams want strict CI gates                 |
 | **Tier-2 exports**      | Markdown, Mermaid — derived views, not the product center          |
 
 ### Who It's For
@@ -46,9 +48,9 @@ We're **ultra simple** – minimal surface area, no unnecessary apps or framewor
 ## Stack
 
 - **Rust** – CLI, engine, LSP, WASM (single language for core)
-- **VS Code extension** – Edit `.sruja` files with syntax highlighting and diagnostics
+- **VS Code extension** – Editor integration (briefing, validation, diagnostics)
 - **Docs** – This book (mdBook, Rust-based; no TypeScript/Node)
 
-> **New here?** [Quick start](getting-started.md): install CLI, run structural drift, wire MCP, install `sruja-harness`, run `verify-task` after agent edits. Add `sruja-architecture` only when you want `repo.sruja` in Git. For **docs**, **tutorials**, and **courses**, use [Navigate](navigate.md); press **`/`** or **`S`** to search.
+> **New here?** [Quick start](getting-started.md): install CLI, run structural drift, wire MCP, install `sruja-harness`, run `verify-task` after agent edits. Add `sruja-architecture` only when you want `repo.sruja` in Git. For **docs** and **tutorials** (and optional learning), use [Navigate](navigate.md); press **`/`** or **`S`** to search.
 
 > **Sruja "Show diagram" in code blocks:** Run `just wasm` (or `make wasm`) from the repo root once, then run `just book-serve` (or `make book-serve`, or `./serve.sh` from the book directory) so the WASM files are copied into the book output.

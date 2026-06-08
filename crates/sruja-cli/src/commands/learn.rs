@@ -34,6 +34,7 @@ pub enum FactStatus {
 }
 
 impl FactStatus {
+    #[allow(dead_code)]
     fn as_str(self) -> &'static str {
         match self {
             FactStatus::Observed => "observed",
@@ -166,6 +167,7 @@ pub fn rejected_fact_ids(repo: &Path) -> HashSet<String> {
 }
 
 /// Append a human decision on a learned fact (approve/reject) for future runs.
+#[allow(dead_code)]
 pub fn append_learn_feedback(
     repo: &Path,
     fact_id: &str,
@@ -187,6 +189,7 @@ pub fn append_learn_feedback(
 }
 
 /// Read up to `limit` facts from `.sruja/learned_facts.jsonl` (newest last; returns last `limit` lines that parse).
+#[allow(dead_code)]
 pub fn read_learned_facts(
     repo: &Path,
     limit: usize,
@@ -220,6 +223,7 @@ pub fn read_learned_facts(
 }
 
 /// Return one fact by id, or `None` if missing (single pass over the JSONL file).
+#[allow(dead_code)]
 pub fn get_learned_fact_by_id(repo: &Path, fact_id: &str) -> Result<Option<LearnedFact>, CliError> {
     let path = learned_facts_path(repo);
     let Ok(file) = File::open(&path) else {

@@ -17,170 +17,30 @@ The platform consists of several key components working together:
 4.  **VS Code extension**: Editor integration powered by the WASM build (extension/ + sruja-wasm).
 5.  **Docs**: This site—built with mdBook from the `book/` directory.
 
-## Architecture Diagram
+## How the pieces work together
 
-Explore the Sruja architecture itself using the interactive viewer below. This diagram is defined in Sruja DSL!
+Sruja’s core loop is **evidence → briefing → edit → gates**:
 
-```sruja
-<!-- partial -->
-import { * } from 'sruja.ai/stdlib'
+1.  The CLI scans real code into a dependency/evidence model (Tree-sitter–backed).
+2.  `focus` turns that evidence into a task-scoped briefing (MCP or CLI output).
+3.  The host agent edits code with boundaries in mind.
+4.  `verify-task` runs deterministic checks so drift doesn’t silently accumulate.
 
+When teams want strict enforcement, `repo.sruja` becomes reviewed intent in Git and `drift -a repo.sruja` becomes the CI gate.
 
-RootSystem = system "The Sruja Platform" {
-  tags ["root"]
-}
+## Context graph and AI context
 
-User = person "Architect/Developer" {
-	description "Uses Sruja to design and document systems"
-}
+Sruja is primarily a **context engineering** system. The core artifact is a **context graph** derived from the repo, not a hand-authored diagram.
 
-Sruja = system "Sruja Platform" {
-	description "Context engineering platform that helps AI-assisted teams generate, validate, and maintain architecture as code from repo evidence"
+Typical outputs:
 
-	CLI = container "Sruja CLI" {
-		technology "Rust"
-		description "Command-line interface (crates/sruja-cli)"
-	}
+- `.sruja/graph.json`: full dependency graph (evidence)
+- `.sruja/context.json`: smaller, cache-friendly summary for agents
+- `sruja ai-context -r .`: structured AI context export for host tools
 
-	Engine = container "Core Engine" {
-		technology "Rust"
-		description "Validation and export (crates/sruja-engine, sruja-export)"
+MCP tools expose the same evidence and briefings in a tool-friendly form so the host agent can fetch exactly what it needs without dumping the whole repo into a prompt.
 
-		Validation = component "Validation Engine" {
-			technology "Rust"
-			description "Validates AST against rules (crates/sruja-core/src/engine/rules)"
-		}
-
-		Scorer = component "Scoring Engine" {
-			technology "Rust"
-			description "Calculates architecture health score (crates/sruja-core/src/engine/scorer)"
-		}
-
-		Policy = component "Policy Engine" {
-			technology "Rust"
-			description "Enforces custom policies (future: OPA/Rego)"
-		}
-
-		Scorer -> Validation "uses results from"
-		Validation -> Policy "checks against"
-	}
-
-	Language = container "Language Service" {
-		technology "Rust"
-		description "Parser and AST (crates/sruja-language)"
-	}
-
-	WASM = container "WASM Module" {
-		technology "Rust/WASM"
-		description "WebAssembly build (crates/sruja-wasm)"
-	}
-
-	VSCode = container "VS Code Extension" {
-		technology "TypeScript"
-		description "Editor extension (extension/)"
-	}
-
-	Book = container "Documentation" {
-		technology "mdBook"
-		description "This site (book/)"
-	}
-
-	// Internal Dependencies
-	CLI -> Language "parses DSL using"
-	CLI -> Engine "validates using"
-	CLI -> WASM "builds"
-
-	WASM -> Language "embeds"
-	WASM -> Engine "embeds"
-
-	VSCode -> Language "parses/validates via WASM"
-	VSCode -> WASM "uses for preview"
-
-	Book -> WASM "uses for diagram blocks"
-}
-
-User -> Sruja.CLI "runs commands"
-User -> Sruja.VSCode "writes DSL"
-User -> Sruja.Book "reads docs"
-
-BrowserSystem = system "Web Browser" {
-	description "User's web browser environment"
-  tags ["external"]
-	LocalStore = database "Local Storage"
-}
-
-// ADRs
-ADR001 = adr "Use WASM for Client-Side Execution" {
-	status "Accepted"
-	context "We need to run validation and parsing in the browser and VS Code without a backend server."
-	decision "Compile the Rust core engine to WebAssembly."
-	consequences "Ensures consistent logic across all platforms but increases build complexity."
-}
-
-// Deployment
-deployment Production "Production Environment" {
-  node GitHubPages "GitHub Pages" {
-    containerInstance RootSystem
-  }
-}
-
-GitHubSystem = system "GitHub Platform" {
-  description "Source control, CI/CD, and hosting"
-  Actions = container "GitHub Actions" {
-    technology "YAML/Node"
-    description "CI/CD workflows"
-  }
-  Pages = container "GitHub Pages" {
-    technology "Static Hosting"
-    description "Hosts documentation site"
-  }
-  Releases = container "GitHub Releases" {
-    technology "File Hosting"
-    description "Hosts CLI binaries"
-  }
-  Actions -> Pages "deploys to"
-  Actions -> Releases "publishes to"
-}
-
-
-User -> GitHubSystem "pushes code to"
-
-
-// Component Stories
-CLIStory = story "Using the CLI" {
-  User -> Sruja.CLI "runs validate"
-  Sruja.CLI -> Sruja.Language "parses DSL"
-  Sruja.CLI -> Sruja.Engine "validates"
-  Sruja.CLI -> User "reports diagnostics"
-}
-
-VSCodeStory = story "Using VS Code" {
-  User -> Sruja.VSCode "edits .sruja file"
-  Sruja.VSCode -> Sruja.WASM "LSP and preview"
-  Sruja.WASM -> Sruja.VSCode "diagnostics and diagram"
-  Sruja.VSCode -> User "shows errors and preview"
-}
-
-CIDev = scenario "Continuous Integration (Dev)" {
-  User -> GitHubSystem "pushes to main"
-  GitHubSystem -> GitHubSystem.Actions "triggers CI"
-  GitHubSystem.Actions -> Sruja "builds & tests"
-  GitHubSystem.Actions -> GitHubSystem.Pages "deploys dev site"
-}
-
-ReleaseProd = scenario "Production Release" {
-  User -> GitHubSystem "merges PR to prod"
-  GitHubSystem -> GitHubSystem.Actions "triggers release"
-  GitHubSystem.Actions -> GitHubSystem.Pages "deploys prod site"
-  GitHubSystem.Actions -> Sruja.VSCode "publishes extension"
-  GitHubSystem.Actions -> GitHubSystem.Releases "publishes CLI binaries"
-}
-
-view index {
-  title "Complete System View"
-  include *
-}
-```
+Architecture files (`repo.sruja`) are optional; they exist only if you want reviewed intent in Git and strict drift enforcement in CI.
 
 ## Key Components
 

@@ -1,13 +1,14 @@
 # Using Sruja in Your Project
 
-This guide is for **teams and organizations** that want to use Sruja in their own repositories to enhance their code: architecture-as-code, validation in CI, and AI-assisted generation with consistent rules.
+This guide is for **teams and organizations** that want Sruja as an **AI coding harness**: task briefings, drift detection, and deterministic gates around AI edits. Architecture-as-code (`repo.sruja`) is optional and comes later.
 
 ## What you get
 
-- **Architecture as code** – `.sruja` files in Git; no separate diagram tool to keep in sync.
-- **Validation** – `sruja lint` catches undefined refs, circular dependencies, missing fields, orphans.
-- **AI-friendly** – Rules and skills so Cursor, Copilot, etc. generate valid Sruja and better architecture.
-- **CI** – Fail PRs when architecture is invalid; optional export to Markdown/JSON/Mermaid for docs.
+- **Harness loop** – `focus` before edits, `verify-task` after edits.
+- **Structural drift detection** – repo evidence from real code (no files required to start).
+- **Optional reviewed intent** – `repo.sruja` in Git when you want strict CI enforcement.
+- **Validation & exports** – `lint` and derived outputs (Markdown/Mermaid/JSON) when you choose to model.
+- **MCP integration** – tool-based editor/agent workflows (Cursor, Claude Desktop, etc.).
 
 ## 1. Install (your machine and/or CI)
 
@@ -48,37 +49,60 @@ Install **Sruja Language Support** from the [VS Code Marketplace](https://market
 
 ## 2. Add Sruja to your repo (5 minutes)
 
-### Step 1: Create or add architecture
+### Step 1: Start with the harness (Tier 1)
 
 ```bash
-# From your repo root (recommended pilot path)
-sruja quickstart -r . --generate-baseline   # repo.sruja.draft (structural evidence)
-# Author repo.sruja with the sruja-architecture skill, then:
-sruja lint repo.sruja
-sruja sync -r .
+# From your repo root
+sruja start -r .
+sruja drift -r . --structural-only --advisory
 ```
 
-`--generate-baseline` writes a workspace map draft—not reviewed architecture. Promote to `repo.sruja` via the skill, lint, then refresh evidence under `.sruja/` for drift workflows.
+This gives you immediate value: a structural snapshot and drift-style findings without committing any new architecture files.
 
-### Step 2: AI editor integration (so AI-generated code follows rules)
+### Step 2: AI editor integration (focus → edit → verify)
 
-Install the skill in your AI editor:
+If you use an AI editor/agent, use Sruja as the guardrail:
+
+```bash
+sruja focus -r . --file path/to/file.rs
+sruja verify-task --profile coding -r .
+```
+
+To enable tool-based integration, start MCP:
+
+```bash
+sruja mcp -r .
+```
+
+See [Host agent integration](https://github.com/sruja-ai/sruja/blob/main/docs/HOST_AGENT_INTEGRATION.md) for editor setup.
+
+### Step 3 (optional): Reviewed intent in Git (Tier 2)
+
+When the team is ready to review architecture intent like code, generate `repo.sruja` using the architecture skill:
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 ```
 
-Optional: if you want helper files for Cursor/Copilot prompts, generate them once and commit:
+Then validate and compare intent to reality:
+
+```bash
+sruja lint repo.sruja
+sruja sync -r .
+sruja drift -r . -a repo.sruja
+```
+
+Optional: generate prompt/helper files for Cursor/Copilot once and commit:
 
 ```bash
 sruja start -r . --prompt
 ```
 
-See [AI editor integration](https://github.com/sruja-ai/sruja/blob/main/docs/AI_EDITOR_INTEGRATION.md) in the repo for details.
+See [AI editor integration](https://github.com/sruja-ai/sruja/blob/main/docs/AI_EDITOR_INTEGRATION.md) for details.
 
-### Step 3: Validate in CI
+### Step 4: Validate in CI
 
-In CI, keep it simple: lint the baseline and check for drift against `repo.sruja`.
+In CI, keep it simple: lint reviewed intent and check drift. For incremental adoption, use a baseline so existing issues don’t block you.
 
 **GitHub Actions example:**
 

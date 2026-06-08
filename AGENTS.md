@@ -103,7 +103,7 @@ Before any significant code change:
 
 ### Code Quality Gates
 
-- Run `sruja drift -r .` before merging
+- Run `sruja check -r .` before merging
 - Track code churn with `./scripts/code-churn.sh`
 - For Dependabot majors and MSRV-sensitive upgrades, follow [docs/MSRV_AND_DEPENDENCIES.md](docs/MSRV_AND_DEPENDENCIES.md)
 - Review security with `./target/release/sruja lint` (if applicable)
@@ -455,7 +455,7 @@ For multi-step agent work, follow **AI agent workflow (multi-step tasks)** above
 When working on Sruja:
 1. **First Time Setup**: Run `just setup` (or `make setup`) to ensure all dependencies and git hooks are correctly installed.
 2. **Grounded architecture authoring**: For `repo.sruja` work, prefer `.sruja/author_evidence.json` (from `sruja sync` or `sruja author evidence`) or MCP `sruja_get_author_evidence`. Treat `.sruja/graph.json` as debug/export only—not default agent context. Synthesize proposals under `.sruja/proposals/` or `repo.sruja.working`; promote to `repo.sruja` only after human review. See [docs/plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md](docs/plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md).
-3. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja doctor -r .`, `sruja daily -r .`, or `sruja drift -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
+3. **Dogfooding the Architecture**: Before proposing significant PRs, always respect `docs/architecture/*.sruja` as the "reviewed truth". If changing architecture, update those files. Also run `sruja status -r .`, `sruja review -r .`, or `sruja check -r . -a repo.sruja` to validate the baseline (`repo.sruja`).
 4. Run `just check` (or `make check`) before committing to ensure consistent formatting, linting, and passing tests.
 5. For .sruja files, run `sruja lint file.sruja` after changes.
 6. Use `cargo clippy -- -D warnings` for strict linting.
@@ -552,7 +552,7 @@ Sruja generates architecture data files. Tool-specific instructions are hand-wri
 
 - **"Command Not Found"**: Ensure you've run `just build` (or `make build`) and the `target/release` directory is populated.
 - **"Invalid DSL"**: Run `sruja lint <file>` and paste the JSON error output to the assistant.
-- **"Drift Detected"**: Run `sruja drift -r . --fix` (if available) or manually align `.sruja` with code.
+- **"Drift Detected"**: Run `sruja check -r . --fix` (if available) or manually align `.sruja` with code.
 - **"WASM Mismatch"**: If logic changed in `sruja-language` but extension behavior is old, run `just wasm-nodejs` (or `make wasm-nodejs`).
 
 ## graphify

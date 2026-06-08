@@ -310,6 +310,7 @@ pub async fn drift(req: DriftRequest<'_>) -> Result<(), CliError> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn drift_json_string(
     repo_root: &str,
     architecture_path: Option<&str>,

@@ -1,5 +1,4 @@
 use serde_json::{json, Value};
-use sruja_agent::AgenticMemory;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -16,7 +15,7 @@ pub(crate) async fn try_run(
     repo: &str,
     graph_cache: &Arc<Mutex<HashMap<String, sruja_scan::Graph>>>,
 ) -> Result<Option<String>, CliError> {
-    let run_id = arguments.get("run_id").and_then(|v| v.as_str());
+    let _run_id = arguments.get("run_id").and_then(|v| v.as_str());
     match name {
         "sruja_get_context_events" => {
             let limit = arguments

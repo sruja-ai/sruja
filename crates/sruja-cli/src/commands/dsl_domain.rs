@@ -2,7 +2,7 @@
 
 pub(crate) use super::sync_cmd;
 pub(crate) use super::violation_shared;
-pub(crate) use super::{parse_sruja_file, scan_repo_cached, CliError};
+pub(crate) use super::{parse_sruja_file, CliError};
 
 #[path = "check.rs"]
 pub mod check;

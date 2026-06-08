@@ -10,4 +10,4 @@ This workspace has 14 crates, 1 databases.
 1. **Respect layers**: Layers found: Core Engine, Extraction, Delivery, Secondary
 
 ## Before Committing
-Run: `sruja drift -r .` to check for architectural violations.
+Run: `sruja check -r .` to check for architectural violations.

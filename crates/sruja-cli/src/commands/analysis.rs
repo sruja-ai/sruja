@@ -20,10 +20,6 @@ use crate::utils::architecture_path;
 pub struct AnalysisResult {
     /// The scanned code graph.
     pub graph: sruja_scan::Graph,
-    /// Resolved architecture file path (None if structural-only or not found).
-    pub baseline_path: Option<PathBuf>,
-    /// Parsed architecture program (None if structural-only or not found).
-    pub program: Option<sruja_language::ast::Program>,
     /// Truth status from comparing scan vs architecture.
     pub truth_status: String,
     /// Health score (0–100) from violations.
@@ -77,7 +73,7 @@ pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<Analysis
     };
 
     // Step 3 & 4: Compare or detect drift
-    let (truth_status, raw_violations, health_score, program) =
+    let (truth_status, raw_violations, health_score) =
         if let Some(ref arch_path) = baseline_path {
             let content = std::fs::read_to_string(arch_path)?;
             let parser =
@@ -99,7 +95,6 @@ pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<Analysis
                 truth.to_string(),
                 diff.violations,
                 diff.summary.health_score,
-                Some(program),
             )
         } else {
             let drift = sruja_diff::detect_architectural_drift(&graph);
@@ -112,7 +107,6 @@ pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<Analysis
                 truth.to_string(),
                 drift.violations,
                 drift.health_score,
-                None,
             )
         };
 
@@ -164,8 +158,6 @@ pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<Analysis
 
     Ok(AnalysisResult {
         graph,
-        baseline_path,
-        program,
         truth_status,
         health_score,
         active_violations,

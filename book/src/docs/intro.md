@@ -30,10 +30,11 @@ Sound familiar? You're not alone. Most teams struggle with this.
 With Sruja (Tier 1):
 
 - Structural scan and drift — no `.sruja` required
-- `focus` / MCP briefings before the host agent edits
-- `verify-task` after edits (lint, tests, drift when applicable)
-- Optional: `sruja-architecture` skill → reviewed `repo.sruja` in Git
-- Diagrams and docs are Tier-2 exports, not the source of truth
+- `focus` briefings before the host agent edits
+- `verify-task` gates after edits (lint/tests/drift based on repo profile)
+- MCP integration so the host agent can query Sruja deterministically
+- Context graph + AI context exports for host agents and CI
+- Optional: reviewed intent in Git (`repo.sruja`) when teams want strict CI gates
 
 Sruja is **not** a replacement for Cursor or Copilot — it is the guardrail layer beside them.
 
@@ -45,27 +46,26 @@ Sruja is **not** a replacement for Cursor or Copilot — it is the guardrail lay
 | Architecture lives in stale diagrams | Architecture lives in versioned `repo.sruja` |
 | Hard to catch generated mistakes | Validation catches syntax, drift, and structural issues |
 | Hard to brief agents consistently | Task-scoped context is reusable |
-| Diagrams become the truth | Diagrams are exported from reviewed truth |
+| Diagrams become the truth | Diagrams are exports (when you choose to generate them) |
 
 ---
 
-## Key Concepts
+## Start Here
 
-**Architecture as Code:** Instead of drawing boxes, you define structure in code. AI writes it, you validate it, and everyone uses the same source.
+- [Quick start](../getting-started.md): harness-first workflow
+- [Getting started (full)](getting-started.md): Tier 1 + Tier 2 in one page
+- [CLI guide](cli.md): daily commands, CI-friendly outputs, and workflows
+- [VS Code extension](vscode-extension.md): editor commands, diagnostics, diagram preview
 
-**Validation:** Like `lint` for code, `sruja lint` checks for:
-- Circular dependencies
-- Orphaned components
-- Missing connections
-- Rule violations
+---
 
-**C4 Model:** Sruja uses the C4 approach, which organizes architecture into levels:
-- **Person:** Users, external systems
-- **System:** Major boundaries (e.g., "Order System")
-- **Container:** Deployable units (e.g., "API Service")
-- **Component:** Internal parts (e.g., "Payment Module")
+## What Sruja Optimizes For
 
-This hierarchy makes architecture clear and understandable.
+- **Evidence over guesses**: the harness starts from what exists in code today
+- **Small surface area**: a few commands used consistently (`focus`, `verify-task`, drift)
+- **Explicit trade-offs**: optional reviewed intent when the team is ready
+- **Host-owned LLM loop**: Sruja never replaces your editor/agent
+- **Context engineering**: context graphs + MCP tools, not "learn a DSL"
 
 ## Who is Sruja For?
 
@@ -78,9 +78,9 @@ This hierarchy makes architecture clear and understandable.
 ### Software Architects
 
 - **Review architecture changes** against evidence and intent
-- **Prevent architectural drift** through automated validation
+- **Prevent architectural drift** through automated gates
 - **Scale guardrails** across multiple teams without turning every review into archaeology
-- **Document decisions** with [ADRs (Architecture Decision Records)](docs/concepts/adr.md)
+- **Document decisions** with [ADRs (Architecture Decision Records)](concepts/adr.md)
 
 ### Product Teams
 
@@ -96,39 +96,8 @@ This hierarchy makes architecture clear and understandable.
 - **Model deployments** - Blue/Green, Canary, multi-region strategies
 - **Refresh evidence** so AI assistants and reviewers see current repo context
 
-## Example
-
-Here's a simple example to get you started:
-
-```sruja
-// partial
-import { * } from 'sruja.ai/stdlib'
-
-App = system "My App" {
-    Web = container "Web Server"
-    DB = database "Database"
-}
-
-User = person "User"
-
-User -> App.Web "Visits"
-App.Web -> App.DB "Reads/Writes"
-
-view index {
-    include *
-}
-```
-
-For **production-ready examples** with real-world patterns, see our [Examples](docs/examples.md) page featuring:
-
-- Banking systems (fintech)
-- E-commerce platforms
-- Healthcare platforms (HIPAA-compliant)
-- Multi-tenant SaaS platforms
-
 ## Next Steps
 
-- **New to Sruja?** Start with [Getting Started](docs/getting-started.md)
-- **Use AI:** Install the skill in your editor and let AI generate architecture from your codebase
-- **Need examples?** Check out [Real-World Examples](docs/examples.md)
-- **Ready to build?** Use the [VS Code extension](../vscode.md) for diagram preview
+- **New to Sruja?** Start with [Quick start](../getting-started.md)
+- **Need workflows?** Read the [CLI guide](cli.md) and [How Sruja works](how-sruja-works.md)
+- **Ready for reviewed intent?** Follow [Using Sruja in your project](using-sruja-in-your-project.md)

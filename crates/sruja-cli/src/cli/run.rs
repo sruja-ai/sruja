@@ -243,87 +243,10 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
-        Commands::Export {
-            format,
-            file,
-            extended,
-            view_level,
-            target,
-            view,
-            all_views,
-            inject,
-            hydrate,
-            from_scan,
-            repo,
-            output_dir,
-        } => {
-            commands::export(
-                &format,
-                &file,
-                commands::ExportOptions {
-                    extended,
-                    view_level,
-                    target,
-                    view_name: view,
-                    all_views,
-                    inject,
-                    hydrate,
-                    from_scan,
-                    repo,
-                    output_dir,
-                },
-            )
-            .await
-        }
-        Commands::Fmt { file, check } => commands::fmt(&file, check).await,
+
         Commands::Lsp { .. } => commands::lsp().await,
         Commands::Mcp { root } => commands::mcp(&root).await,
-        Commands::Critique {
-            repo,
-            files,
-            description,
-            proposal,
-            base,
-            head,
-            staged,
-            format,
-            ref enrich,
-            fail_on,
-        } => {
-            commands::critique(
-                &repo,
-                files,
-                description,
-                proposal,
-                base,
-                head,
-                staged,
-                &format,
-                &enrich.as_ref(),
-                fail_on.as_deref(),
-            )
-            .await
-        }
-        Commands::Compile { file } => commands::compile(&file).await,
-        Commands::Validate {
-            file,
-            constraints,
-            fail_on_violations,
-            format_json,
-        } => commands::validate(&file, constraints, fail_on_violations, format_json).await,
-        Commands::List { file } => commands::list_elements(&file).await,
-        Commands::Tree { file } => commands::tree(&file).await,
-        Commands::Diff {
-            file1,
-            file2,
-            format,
-        } => commands::diff(&file1, &file2, &format).await,
-        Commands::Explain {
-            element_id,
-            file,
-            json,
-        } => commands::explain(&element_id, file.as_deref(), json).await,
-        Commands::Import { format, file } => commands::import(&format, &file).await,
+
         Commands::Check {
             repo,
             architecture,
@@ -418,7 +341,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             format,
             evolution,
         } => commands::status(&path, &format, evolution).await,
-        Commands::Watch { path, clear, focus } => commands::watch(&path, clear, focus).await,
+
         Commands::Sync { path, format } => commands::sync(&path, &format).await,
         Commands::Review {
             path,
@@ -426,28 +349,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             show_all,
             critique,
         } => commands::review(&path, &format, show_all, critique).await,
-        Commands::Learn {
-            path,
-            file,
-            since,
-            skip_proposals,
-            apply_proposals,
-            format,
-        } => {
-            let skip = skip_proposals || !apply_proposals;
-            commands::learn(&path, file.as_deref(), since.as_deref(), skip, &format).await
-        }
+
         Commands::Baseline { repo, output } => commands::baseline(&repo, &output).await,
-        Commands::Publish {
-            repo,
-            repo_id,
-            output,
-        } => commands::publish(&repo, repo_id.as_deref(), &output).await,
-        Commands::Compose {
-            input,
-            recursive,
-            output,
-        } => commands::compose(&input, recursive, &output).await,
+
         Commands::Intent { cmd } => match cmd {
             IntentCommand::Check {
                 repo,
@@ -749,12 +653,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        Commands::Ingest {
-            sources,
-            repo,
-            category,
-            elements,
-        } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
+
         Commands::Memory { cmd } => match cmd {
             MemoryCommand::Reindex { repo } => commands::memory_reindex(&repo),
             MemoryCommand::Search {

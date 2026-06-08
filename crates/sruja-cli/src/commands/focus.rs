@@ -731,6 +731,13 @@ pub fn build_focus_briefing(
         Err(_) => (Vec::new(), Vec::new(), false, Vec::new(), Vec::new()),
     };
 
+    if memory_truncated {
+        ai_instructions.push(format!(
+            "More agentic learnings exist but were truncated for token budget. Use `sruja agent history -r . -e {}` to view full history.",
+            target_id
+        ));
+    }
+
     let decision_trace_events = if compact {
         Vec::new()
     } else {
@@ -1430,6 +1437,9 @@ fn print_focus_briefing(b: &FocusBriefing) {
         colors::style(&b.target.id).bold(),
         width = width - 17
     );
+    if let Some(run_id) = &b.run_id {
+        println!("│  🧾 Run ID:    {:width$}│", run_id, width = width - 17);
+    }
     if let Some(ref sys) = b.target.system {
         println!("│  🏗  System:    {:width$}│", sys, width = width - 17);
     }

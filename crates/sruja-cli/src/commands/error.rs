@@ -89,13 +89,6 @@ impl CliError {
         }
     }
 
-    pub fn scan_with_help(message: impl Into<String>, help: impl Into<String>) -> Self {
-        CliError::Scan {
-            message: message.into(),
-            help: Some(help.into()),
-        }
-    }
-
     #[must_use]
     pub fn exit_code(&self) -> i32 {
         match self {

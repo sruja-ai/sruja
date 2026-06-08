@@ -938,28 +938,6 @@ fn build_discover_explanation(
     })
 }
 
-pub fn discover_explanation_string(repo: &str) -> Result<String, CliError> {
-    let repo_path = Path::new(repo);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo),
-        )));
-    }
-
-    let graph = scan_repo_cached(repo_path)?;
-    discover_explanation_string_from_graph(repo, repo_path, &graph)
-}
-
-pub fn discover_explanation_string_from_graph(
-    repo: &str,
-    repo_path: &Path,
-    graph: &Graph,
-) -> Result<String, CliError> {
-    let explanation = build_discover_explanation(repo, repo_path, graph)?;
-    Ok(format_discovery_explanation(&explanation))
-}
-
 /// Build discovery explanation as JSON from a pre-scanned graph (avoids rescanning).
 #[expect(dead_code)]
 pub fn discover_explanation_json_from_graph(
@@ -979,20 +957,6 @@ pub fn discover_explanation_value_from_graph(
 ) -> Result<serde_json::Value, CliError> {
     let explanation = build_discover_explanation(repo, repo_path, graph)?;
     serde_json::to_value(&explanation).map_err(|e| CliError::validation(e.to_string()))
-}
-
-pub fn discover_explanation_json(repo: &str) -> Result<String, CliError> {
-    let repo_path = Path::new(repo);
-    if !repo_path.exists() {
-        return Err(CliError::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Repository not found: {}", repo),
-        )));
-    }
-
-    let graph = scan_repo_cached(repo_path)?;
-    let explanation = build_discover_explanation(repo, repo_path, &graph)?;
-    serde_json::to_string_pretty(&explanation).map_err(|e| CliError::validation(e.to_string()))
 }
 
 fn format_discovery_explanation(explanation: &DiscoverExplanationJson) -> String {
