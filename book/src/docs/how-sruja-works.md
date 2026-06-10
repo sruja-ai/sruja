@@ -5,32 +5,32 @@ weight: 3
 
 # How Sruja Works
 
-Sruja is built for **context engineering in the AI SDLC**: architecture as code backed by repo evidence, validation, drift checks, and editor/CI workflows. We are not a diagramming product; diagrams are exported from reviewed architecture truth.
+Sruja is built for context engineering during software changes. The center is simple: gather repo evidence, retrieve the right context before editing, and verify the result after editing. Reviewed intent in Git is optional.
 
 ## The Sruja Platform
 
 The platform consists of several key components working together:
 
-1.  **Parser & engine**: Rust crates for parsing, validation, and export (sruja-language, sruja-engine, sruja-export).
-2.  **CLI**: Command-line interface for local development and CI/CD (sruja-cli).
-3.  **WASM**: Rust core compiled to WebAssembly for the docs book and VS Code (sruja-wasm).
-4.  **VS Code extension**: Editor integration powered by the WASM build (extension/ + sruja-wasm).
-5.  **Docs**: This site—built with mdBook from the `book/` directory.
+1.  **Scan and evidence**: Rust crates gather structure and context from code.
+2.  **CLI**: Local and CI workflows for retrieve and verify steps.
+3.  **WASM**: Shared core for the docs book and VS Code.
+4.  **VS Code extension**: Editor support for validation and previews.
+5.  **Docs**: This site, built from the `book/` directory.
 
 ## How the pieces work together
 
-Sruja’s core loop is **evidence → briefing → edit → gates**:
+Sruja’s core loop is **evidence → context → edit → verify**:
 
-1.  The CLI scans real code into a dependency/evidence model (Tree-sitter–backed).
-2.  `focus` turns that evidence into a task-scoped briefing (MCP or CLI output).
-3.  The host agent edits code with boundaries in mind.
-4.  `verify-task` runs deterministic checks so drift doesn’t silently accumulate.
+1.  The CLI scans real code into an evidence model.
+2.  `focus`, `ai`, or MCP turns that evidence into task-scoped context.
+3.  The host agent or developer edits code with that context in mind.
+4.  `verify-task`, drift, and intent checks keep regressions from silently accumulating.
 
-When teams want strict enforcement, `repo.sruja` becomes reviewed intent in Git and `drift -a repo.sruja` becomes the CI gate.
+When teams want stricter governance, `repo.sruja` becomes reviewed intent in Git and `drift -a repo.sruja` becomes part of the CI gate.
 
 ## Context graph and AI context
 
-Sruja is primarily a **context engineering** system. The core artifact is a **context graph** derived from the repo, not a hand-authored diagram.
+Sruja is primarily a context engineering system. The core artifact is a repo-derived context graph, not a hand-authored diagram.
 
 Typical outputs:
 
@@ -40,7 +40,7 @@ Typical outputs:
 
 MCP tools expose the same evidence and briefings in a tool-friendly form so the host agent can fetch exactly what it needs without dumping the whole repo into a prompt.
 
-Architecture files (`repo.sruja`) are optional; they exist only if you want reviewed intent in Git and strict drift enforcement in CI.
+Architecture files (`repo.sruja`) are optional; they exist only if you want reviewed intent in Git and stricter drift enforcement in CI.
 
 ## Key Components
 
@@ -57,15 +57,15 @@ The Rust core is compiled to WebAssembly ([`sruja-wasm`](https://github.com/sruj
 
 ### CLI & CI/CD
 
-The `sruja` CLI ([`sruja-cli`](https://github.com/sruja-ai/sruja/tree/main/crates/sruja-cli)) is a static binary that wraps the core engine. It supports:
+The `sruja` CLI wraps the core engine. The most important public workflows are:
 
-- **Local development**: `sruja fmt`, `sruja lint`, `sruja export`.
-- **CI/CD**: Validate and export architecture in pipelines.
-- **Export**: `sruja export json`, `sruja export mermaid`, `sruja export markdown`, `sruja export context`, `sruja export dsl`.
+- **Retrieve**: `focus`, `ai`, `mcp`
+- **Verify**: `drift`, `intent check`, `verify-task`
+- **Optional reviewed intent**: `lint`, `sync`, `drift -a repo.sruja`
 
 ## Context Engineering
 
-Sruja provides **context engineering** across four progressive layers:
+Sruja provides context engineering across four progressive layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -94,18 +94,18 @@ Each layer builds on the previous:
 - **Semantic**: What patterns and relationships mean? (analyze)
 - **Intent**: Does reality match declared architecture? (drift, intent check)
 
-### AI Skill Multiplies Context
+### Optional Reviewed-Intent Layer
 
-The **sruja-architecture skill** enhances all four layers:
+The `sruja-architecture` skill is an optional accelerator for teams that want reviewed intent in Git:
 
-| Layer | CLI Only | CLI + Skill |
-|-------|----------|-------------|
-| Syntactic | `sruja lint` | Pattern-aware DSL generation |
-| Structural | `sruja scan` | Evidence-based discovery |
-| Semantic | `sruja analyze` | Patterns and trade-offs |
-| Intent | `sruja drift` | Multi-perspective review |
+| Layer | Core path | Optional reviewed-intent path |
+|-------|-----------|-------------------------------|
+| Syntactic | no file required | `sruja lint` |
+| Structural | `sruja start`, `sruja drift` | evidence-backed modeling |
+| Semantic | `focus`, `ai`, MCP retrieval | richer architecture interpretation |
+| Intent | `verify-task`, `intent check` | `sruja drift -a repo.sruja` |
 
-Install the skill to unlock AI-powered context engineering:
+Install the skill only when you want that reviewed-intent workflow:
 
 ```bash
 npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture

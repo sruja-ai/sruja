@@ -11,13 +11,15 @@
 # Documentation
 
 - [What is Sruja?](docs/intro.md)
-- [Getting started (Tier 1 + Tier 2)](docs/getting-started.md)
+- [Getting started (core + reviewed intent)](docs/getting-started.md)
 - [CLI guide](docs/cli.md)
 - [How Sruja works](docs/how-sruja-works.md)
-- [Using Sruja in your project](docs/using-sruja-in-your-project.md)
+
+# Extensions And Rollout
+- [Core vs extensions](docs/using-sruja-in-your-project.md)
 - [VS Code extension](docs/vscode-extension.md)
 - [Examples](docs/examples.md)
-- [Beginner path](docs/beginner-path.md)
+- [Advanced modeling path](docs/beginner-path.md)
 - [FAQ](docs/faq.md)
 - [Design philosophy](docs/design-philosophy.md)
 - [Adoption guide](docs/adoption-guide.md)
@@ -25,16 +27,10 @@
 - [Community](docs/community.md)
 - [Glossary](docs/glossary.md)
 - [Style guide](docs/style-guide.md)
-- [Architecture files (legacy, optional)](docs/concepts/overview.md)
-
-# Learning (optional)
-
-- [Learning](courses/overview.md)
 
 # Tutorials
 
 - [Tutorials](tutorials/overview.md)
-- [CLI basics](tutorials/basic/cli-basics.md)
 - [Architecture file basics (legacy)](tutorials/basic/dsl-basics.md)
 - [Validation & linting](tutorials/basic/validation-linting.md)
 - [Export diagrams](tutorials/basic/export-diagrams.md)
@@ -45,6 +41,10 @@
 - [CI/CD integration](tutorials/advanced/cicd-integration.md)
 - [Agentic AI modeling](tutorials/advanced/agentic-ai-modeling.md)
 - [Extending the CLI (Rust)](tutorials/advanced/extending-cli-rust.md)
+
+# Optional Learning
+
+- [Optional learning](courses/overview.md)
 
 # Challenges
 

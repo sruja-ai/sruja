@@ -7,6 +7,15 @@ use super::super::helpers::*;
 use super::finish;
 use crate::commands::CliError;
 
+fn matches_query(node: &sruja_scan::graph::Node, tokens: &[&str]) -> bool {
+    let id = node.id.to_lowercase();
+    let label = node.label.to_lowercase();
+    let path = node.path.as_deref().unwrap_or("").to_lowercase();
+    tokens.iter().all(|t| {
+        id.contains(t) || label.contains(t) || (!path.is_empty() && path.contains(t))
+    })
+}
+
 pub(crate) async fn try_run(
     name: &str,
     arguments: &Value,
@@ -153,6 +162,242 @@ pub(crate) async fn try_run(
             });
 
             finish(Ok(serde_json::to_string_pretty(&summary)?))
+        }
+
+        "sruja_get_evidence_graph" => {
+            let max_nodes = arguments
+                .get("max_nodes")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(50) as usize;
+            let max_edges = arguments
+                .get("max_edges")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(100) as usize;
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+
+            let nodes = graph
+                .nodes
+                .iter()
+                .take(max_nodes)
+                .map(|n| {
+                    json!({
+                        "id": n.id,
+                        "kind": n.kind.as_str(),
+                        "label": n.label,
+                        "path": n.path,
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            let edges = graph
+                .edges
+                .iter()
+                .take(max_edges)
+                .map(|e| {
+                    json!({
+                        "source": e.source,
+                        "target": e.target,
+                        "kind": format!("{:?}", e.kind),
+                        "confidence": format!("{:?}", e.confidence),
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            let out = json!({
+                "schema_version": "evidence_graph/v1",
+                "repo": repo,
+                "node_count": graph.nodes.len(),
+                "edge_count": graph.edges.len(),
+                "nodes": nodes,
+                "edges": edges,
+                "truncated": graph.nodes.len() > max_nodes || graph.edges.len() > max_edges,
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
+        }
+
+        "sruja_query_graph" => {
+            let query = arguments
+                .get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing query"))?;
+            let q = query.to_lowercase();
+            let tokens: Vec<&str> = q.split_whitespace().filter(|t| !t.is_empty()).collect();
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+
+            let mut matched = Vec::new();
+            for n in &graph.nodes {
+                if tokens.is_empty() {
+                    break;
+                }
+                if matches_query(n, &tokens) {
+                    matched.push(json!({
+                        "id": n.id,
+                        "label": n.label,
+                        "kind": n.kind.as_str(),
+                        "path": n.path,
+                    }));
+                    if matched.len() >= 25 {
+                        break;
+                    }
+                }
+            }
+
+            let mut ids = std::collections::HashSet::new();
+            for m in &matched {
+                if let Some(id) = m.get("id").and_then(|v| v.as_str()) {
+                    ids.insert(id.to_string());
+                }
+            }
+
+            let mut relationships = Vec::new();
+            for e in &graph.edges {
+                if ids.contains(&e.source) && ids.contains(&e.target) {
+                    relationships.push(json!({
+                        "source": e.source,
+                        "target": e.target,
+                        "kind": format!("{:?}", e.kind),
+                        "confidence": format!("{:?}", e.confidence),
+                    }));
+                    if relationships.len() >= 50 {
+                        break;
+                    }
+                }
+            }
+
+            let out = json!({
+                "schema_version": "query_graph/v1",
+                "query": query,
+                "matched_nodes": matched,
+                "relationships": relationships,
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
+        }
+
+        "sruja_explain_element" => {
+            let id = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing id"))?;
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+            let node = graph
+                .nodes
+                .iter()
+                .find(|n| n.id == id)
+                .ok_or_else(|| CliError::validation(format!("Element not found: {}", id)))?;
+
+            let mut upstream = Vec::new();
+            let mut downstream = Vec::new();
+            for e in &graph.edges {
+                if e.target == id {
+                    upstream.push(json!({
+                        "id": e.source,
+                        "kind": format!("{:?}", e.kind),
+                        "confidence": format!("{:?}", e.confidence),
+                    }));
+                } else if e.source == id {
+                    downstream.push(json!({
+                        "id": e.target,
+                        "kind": format!("{:?}", e.kind),
+                        "confidence": format!("{:?}", e.confidence),
+                    }));
+                }
+            }
+
+            let notes = json!([
+                format!("incoming: {}", upstream.len()),
+                format!("outgoing: {}", downstream.len()),
+            ]);
+
+            let out = json!({
+                "schema_version": "explain_element/v1",
+                "element": {
+                    "id": node.id,
+                    "label": node.label,
+                    "kind": node.kind.as_str(),
+                    "path": node.path,
+                },
+                "neighbors": {
+                    "upstream": upstream,
+                    "downstream": downstream,
+                },
+                "notes": notes,
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
+        }
+
+        "sruja_find_path" => {
+            let source = arguments
+                .get("source")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing source"))?;
+            let target = arguments
+                .get("target")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing target"))?;
+            let max_depth = arguments
+                .get("max_depth")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(8) as usize;
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+
+            let mut adjacency: HashMap<String, Vec<String>> = HashMap::new();
+            for e in &graph.edges {
+                adjacency
+                    .entry(e.source.clone())
+                    .or_default()
+                    .push(e.target.clone());
+            }
+
+            use std::collections::{HashSet, VecDeque};
+            let mut visited: HashSet<String> = HashSet::new();
+            let mut prev: HashMap<String, String> = HashMap::new();
+            let mut depth_map: HashMap<String, usize> = HashMap::new();
+            let mut q: VecDeque<String> = VecDeque::new();
+
+            visited.insert(source.to_string());
+            depth_map.insert(source.to_string(), 0);
+            q.push_back(source.to_string());
+
+            while let Some(cur) = q.pop_front() {
+                let depth = *depth_map.get(&cur).unwrap_or(&0);
+                if cur == target || depth >= max_depth {
+                    continue;
+                }
+                if let Some(nexts) = adjacency.get(&cur) {
+                    for next in nexts {
+                        if visited.insert(next.clone()) {
+                            prev.insert(next.clone(), cur.clone());
+                            depth_map.insert(next.clone(), depth + 1);
+                            q.push_back(next.clone());
+                        }
+                    }
+                }
+            }
+
+            let mut path = Vec::new();
+            if !visited.contains(target) {
+                let md = format!(
+                    "# Path from {source} to {target}\n\nNo path found (max_depth={max_depth}).\n"
+                );
+                return finish(Ok(md));
+            }
+
+            let mut cur = target.to_string();
+            path.push(cur.clone());
+            while let Some(p) = prev.get(&cur).cloned() {
+                cur = p;
+                path.push(cur.clone());
+                if cur == source {
+                    break;
+                }
+            }
+            path.reverse();
+
+            let md = format!(
+                "# Path from {source} to {target}\n\n{}\n",
+                path.join(" -> ")
+            );
+            finish(Ok(md))
         }
         _ => Ok(None),
     }

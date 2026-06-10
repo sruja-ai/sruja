@@ -5,11 +5,11 @@ weight: 0
 
 # Introduction
 
-**AI coding harness for repo structure.**
+**Context engineering for knowledge and decisions.**
 
-Sruja scans your codebase, reports structural problems AI edits tend to introduce, and gives agents bounded context via MCP (`focus`, drift state, `verify-task`). Optional `repo.sruja` is reviewed CI intent — not required on day one.
+Sruja helps teams capture important engineering knowledge, retrieve the right task context for developers and AI agents, and verify that changes still align with those decisions. Optional `repo.sruja` is reviewed intent in Git, not the day-one requirement.
 
-> **New here?** Install the CLI, register MCP, install `sruja-harness` — [Quick start](../getting-started.md) (~5 min). Add `sruja-architecture` only when you want versioned architecture in Git.
+> **New here?** Start with [Quick start](../getting-started.md) to learn the core loop: capture, retrieve, verify. Add `repo.sruja` only when you want reviewed intent in Git.
 
 ## The Problem
 
@@ -25,16 +25,14 @@ Sound familiar? You're not alone. Most teams struggle with this.
 
 ## The Solution
 
-**Deterministic harness plus optional architecture-as-code.**
+**A small context loop with optional reviewed intent.**
 
-With Sruja (Tier 1):
+With Sruja:
 
-- Structural scan and drift — no `.sruja` required
-- `focus` briefings before the host agent edits
-- `verify-task` gates after edits (lint/tests/drift based on repo profile)
-- MCP integration so the host agent can query Sruja deterministically
-- Context graph + AI context exports for host agents and CI
-- Optional: reviewed intent in Git (`repo.sruja`) when teams want strict CI gates
+- Capture knowledge and decisions with docs, decision records, and optional reviewed intent
+- Retrieve grounded context with `focus`, `ai`, and MCP before the host agent edits
+- Verify the result with drift, intent, and `verify-task`
+- Add reviewed intent in Git (`repo.sruja`) only when the team wants stricter governance
 
 Sruja is **not** a replacement for Cursor or Copilot — it is the guardrail layer beside them.
 
@@ -42,59 +40,53 @@ Sruja is **not** a replacement for Cursor or Copilot — it is the guardrail lay
 
 | Before Sruja | With Sruja |
 |----------------|-------------|
-| AI guesses from partial context | AI works from repo evidence |
-| Architecture lives in stale diagrams | Architecture lives in versioned `repo.sruja` |
-| Hard to catch generated mistakes | Validation catches syntax, drift, and structural issues |
+| AI guesses from partial context | AI works from repo evidence and linked decisions |
+| Knowledge lives in stale docs or chat history | Important context is captured and retrievable |
+| Hard to catch generated mistakes | Drift, intent, and verification gates catch regressions |
 | Hard to brief agents consistently | Task-scoped context is reusable |
-| Diagrams become the truth | Diagrams are exports (when you choose to generate them) |
+| Diagrams become the truth | Diagrams are optional outputs, not the product center |
 
 ---
 
 ## Start Here
 
-- [Quick start](../getting-started.md): harness-first workflow
-- [Getting started (full)](getting-started.md): Tier 1 + Tier 2 in one page
+- [Quick start](../getting-started.md): core capture, retrieve, verify loop
+- [Getting started](getting-started.md): core workflow plus optional reviewed intent
 - [CLI guide](cli.md): daily commands, CI-friendly outputs, and workflows
-- [VS Code extension](vscode-extension.md): editor commands, diagnostics, diagram preview
+- [VS Code extension](vscode-extension.md): editor commands, diagnostics, and previews
 
 ---
 
 ## What Sruja Optimizes For
 
-- **Evidence over guesses**: the harness starts from what exists in code today
-- **Small surface area**: a few commands used consistently (`focus`, `verify-task`, drift)
-- **Explicit trade-offs**: optional reviewed intent when the team is ready
-- **Host-owned LLM loop**: Sruja never replaces your editor/agent
-- **Context engineering**: context graphs + MCP tools, not "learn a DSL"
+- **Evidence over guesses**: context starts from what exists in code and linked docs today
+- **Small surface area**: a few core workflows used consistently
+- **Explicit trade-offs**: reviewed intent is optional until the team needs it
+- **Host-owned LLM loop**: Sruja never replaces your editor or agent
+- **Knowledge and decisions**: context engineering, not a feature catalog
 
 ## Who is Sruja For?
 
-### Students & Learners
-
-- **Understand system design** through production-ready examples from fintech, healthcare, and e-commerce
-- **Use AI skills** to generate architecture and explore patterns without manual DSL writing
-- **Real-world scenarios** that prepare you for interviews and real projects
-
 ### Software Architects
 
-- **Review architecture changes** against evidence and intent
-- **Prevent architectural drift** through automated gates
-- **Scale guardrails** across multiple teams without turning every review into archaeology
+- **Review changes** against evidence and intent
+- **Prevent drift** through automated gates
 - **Document decisions** with [ADRs (Architecture Decision Records)](concepts/adr.md)
+- **Keep reviewed truth** in Git when needed
 
-### Product Teams
+### Developers Using AI
 
-- **Link requirements to architecture** - see how features map to technical components
-- **Track SLOs and metrics** alongside your architecture
-- **Align technical decisions** with business goals and user needs
-- **Communicate architecture** to stakeholders (export to Markdown/Mermaid when needed)
+- **Brief agents before edits** with the right task context
+- **Reduce risky guesses** from incomplete repo understanding
+- **Verify generated changes** before calling work done
+- **Keep prior decisions visible** at change time
 
-### DevOps Engineers
+### Teams Maintaining Shared Knowledge
 
-- **Integrate into CI/CD** - validate architecture on every commit
-- **Automate documentation** generation from architecture files
-- **Model deployments** - Blue/Green, Canary, multi-region strategies
-- **Refresh evidence** so AI assistants and reviewers see current repo context
+- **Capture docs and decisions** in a durable, reviewable way
+- **Integrate into CI/CD** so alignment is checked continuously
+- **Preserve reasoning** so future maintainers and agents do not start cold
+- **Export artifacts** only when communication requires them
 
 ## Next Steps
 

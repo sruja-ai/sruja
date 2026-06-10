@@ -18,6 +18,35 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let command = cli.command;
     let result = match command {
         Commands::Version => commands::version(),
+        Commands::Fmt { check, file } => commands::fmt(&file, check).await,
+        Commands::Export {
+            format,
+            file,
+            from_scan,
+            repo,
+            output_dir,
+        } => {
+            commands::export(
+                &format,
+                &file,
+                from_scan,
+                Some(&repo),
+                output_dir.as_deref(),
+            )
+            .await
+        }
+        Commands::List { file } => commands::list_elements(&file).await,
+        Commands::Tree { file } => commands::tree(&file).await,
+        Commands::Diff {
+            file1,
+            file2,
+            format,
+        } => commands::diff(&file1, &file2, &format).await,
+        Commands::Explain {
+            element_id,
+            file,
+            json,
+        } => commands::explain(&element_id, file.as_deref(), json).await,
         Commands::Workflow { cmd } => match cmd {
             WorkflowCommand::Init {
                 repo,
@@ -592,67 +621,84 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             base_ref,
             head_ref,
             compact,
+            staged: _,
+            max_tokens: _,
+            output: _,
+            cache_friendly: _,
+        } => {
+            if task.is_some() || query.is_some() {
+                let enrich_ref = enrich.as_ref();
+                commands::ai_brief(commands::AiBriefOptions {
+                    repo: &repo,
+                    task: task.as_deref(),
+                    file: file.as_deref(),
+                    element_id: element_id.as_deref(),
+                    query: query.as_deref(),
+                    base_ref: base_ref.as_deref(),
+                    head_ref: head_ref.as_deref(),
+                    staged: false,
+                    max_tokens: 8000,
+                    output: None,
+                    enrich: &enrich_ref,
+                })
+                .await
+            } else {
+                commands::focus(
+                    &repo,
+                    file.as_deref(),
+                    element_id.as_deref(),
+                    &format,
+                    run_id.as_deref(),
+                    &enrich.as_ref(),
+                    base_ref.as_deref(),
+                    head_ref.as_deref(),
+                    compact,
+                )
+                .await
+            }
+        }
+        Commands::Ai {
+            repo,
+            task,
+            file,
+            element_id,
+            query,
+            base_ref,
+            head_ref,
             staged,
             max_tokens,
             output,
-            cache_friendly,
+            ref enrich,
         } => {
-            // Route based on format and flags
-            match format.as_str() {
-                "json" | "for-ai" if task.is_some() || file.is_some() || element_id.is_some() => {
-                    let repos = vec![repo.clone()];
-                    commands::context_export(
-                        &repos,
-                        &format,
-                        output.as_deref(),
-                        commands::ContextRequest {
-                            run_id: run_id.as_deref(),
-                            file: file.as_deref(),
-                            element_id: element_id.as_deref(),
-                            query: query.as_deref(),
-                            base_ref: base_ref.as_deref(),
-                            head_ref: head_ref.as_deref(),
-                            intent: None,
-                            depth: 2,
-                            max_tokens,
-                            cache_friendly,
-                        },
-                    )
-                    .await
-                }
-                "markdown" | "json" => {
-                    let enrich_ref = enrich.as_ref();
-                    commands::ai_brief(commands::AiBriefOptions {
-                        repo: &repo,
-                        task: task.as_deref(),
-                        file: file.as_deref(),
-                        element_id: element_id.as_deref(),
-                        query: query.as_deref(),
-                        base_ref: base_ref.as_deref(),
-                        head_ref: head_ref.as_deref(),
-                        staged,
-                        max_tokens,
-                        output: output.as_deref(),
-                        enrich: &enrich_ref,
-                    })
-                    .await
-                }
-                _ => {
-                    commands::focus(
-                        &repo,
-                        file.as_deref(),
-                        element_id.as_deref(),
-                        &format,
-                        run_id.as_deref(),
-                        &enrich.as_ref(),
-                        base_ref.as_deref(),
-                        head_ref.as_deref(),
-                        compact,
-                    )
-                    .await
-                }
-            }
+            let enrich_ref = enrich.as_ref();
+            commands::ai_brief(commands::AiBriefOptions {
+                repo: &repo,
+                task: task.as_deref(),
+                file: file.as_deref(),
+                element_id: element_id.as_deref(),
+                query: query.as_deref(),
+                base_ref: base_ref.as_deref(),
+                head_ref: head_ref.as_deref(),
+                staged,
+                max_tokens,
+                output: output.as_deref(),
+                enrich: &enrich_ref,
+            })
+            .await
         }
+
+        Commands::Ingest {
+            sources,
+            repo,
+            category,
+            elements,
+        } => commands::ingest(
+            &repo,
+            &sources,
+            category.as_deref(),
+            elements.as_deref(),
+        )
+        .await,
 
         Commands::Memory { cmd } => match cmd {
             MemoryCommand::Reindex { repo } => commands::memory_reindex(&repo),
@@ -1158,6 +1204,18 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 elements,
             } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
         },
+        Commands::Watch { path, clear, focus } => commands::watch(&path, clear, focus).await,
+        Commands::Learn {
+            path,
+            file,
+            since,
+            skip_proposals,
+            apply_proposals,
+            format,
+        } => {
+            let skip = skip_proposals || !apply_proposals;
+            commands::learn(&path, file.as_deref(), since.as_deref(), skip, &format).await
+        },
         Commands::Guard { cmd } => match cmd {
             GuardCommand::Critique {
                 repo,
@@ -1209,6 +1267,32 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 format,
             } => commands::drift_pr(&repo, base.as_deref(), head.as_deref(), &format).await,
         },
+        Commands::Critique {
+            repo,
+            files,
+            description,
+            proposal,
+            base,
+            head,
+            staged,
+            format,
+            ref enrich,
+            fail_on,
+        } => {
+            commands::critique(
+                &repo,
+                files,
+                description,
+                proposal,
+                base,
+                head,
+                staged,
+                &format,
+                &enrich.as_ref(),
+                fail_on.as_deref(),
+            )
+            .await
+        },
         Commands::Federation { cmd } => match cmd {
             FederationCommand::Publish {
                 repo,
@@ -1221,6 +1305,16 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 output,
             } => commands::compose(&input, recursive, &output).await,
         },
+        Commands::Publish {
+            repo,
+            repo_id,
+            output,
+        } => commands::publish(&repo, repo_id.as_deref(), &output).await,
+        Commands::Compose {
+            input,
+            recursive,
+            output,
+        } => commands::compose(&input, recursive, &output).await,
         Commands::Human { cmd } => match cmd {
             HumanCommand::Trace {
                 query,

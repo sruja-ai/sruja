@@ -1,6 +1,6 @@
-# Learning (optional)
+# Optional Learning
 
-Long-form learning material. This is optional and not required to use Sruja as an AI coding harness (MCP + context graph + focus/verify gates).
+Long-form learning material for people who want extra background or structured study time. This is optional and not required to adopt Sruja's core workflow.
 
 | Course                                                                | Description                                                                     |
 | --------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -12,4 +12,4 @@ Long-form learning material. This is optional and not required to use Sruja as a
 | [Agentic AI](agentic-ai/course-overview.md)                           | Fundamentals, patterns, modeling for AI systems                                 |
 | [Advanced Architects](advanced-architects/course-overview.md)         | Policy as code and advanced topics                                              |
 
-Start with **Systems Thinking 101** or **System Design 101** if you're new. For Sruja product usage, use [Quick start](../getting-started.md) and the core docs.
+If you're evaluating or adopting Sruja, start with [Quick start](../getting-started.md) and the core docs first. Come back here only when you want deeper study material.

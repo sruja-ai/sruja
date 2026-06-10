@@ -6,7 +6,7 @@ summary: "The sruja command-line interface is your primary tool for interacting 
 
 # CLI Guide
 
-The `sruja` command-line interface is your primary tool for interacting with Sruja projects.
+The `sruja` command-line interface is your primary tool for interacting with Sruja. Start with the core loop first, then use the rest as supporting or advanced workflows.
 
 <!--more-->
 
@@ -15,6 +15,19 @@ The `sruja` command-line interface is your primary tool for interacting with Sru
 Most repo-scoped commands take **`-r`** with **`--repo`** as the long form (recommended). **`--path`** is accepted as an alias on many commands for older scripts. Positional paths (e.g. `sruja scan .`) remain valid where documented.
 
 ## Commands
+
+## Start Here
+
+If you are new, start with these commands:
+
+```bash
+sruja start -r .
+sruja drift -r . --structural-only --advisory
+sruja focus -r . --file path/to/file.rs
+sruja verify-task --profile coding -r .
+```
+
+Use `sruja ai -r . --task "..."` or `sruja mcp -r .` when you want richer task context retrieval.
 
 ### `export`
 
@@ -98,30 +111,23 @@ sruja discover --context -r . --format json   # Machine-readable (components, ar
 sruja discover                          # Question bank only
 ```
 
-### Commands that back the AI skill (and CI)
+### Optional reviewed-intent and advanced commands
 
-The **sruja-architecture skill** is the primary way to get value; it runs discovery and drift under the hood. These CLI commands power the skill and are also useful to run directly (CI, automation, power users).
+These commands are useful when you want reviewed intent in Git, richer automation, or advanced team workflows.
 
 | Command | Purpose |
 |---------|---------|
-| **`sruja discover --context -r <path> --format json`** | Evidence for the skill: repo structure, technologies, modules (skill runs this) |
-| **`sruja sync -r <path>`** | Refresh `.sruja/context.json` (summary) and `.sruja/graph.json` (full graph); skill uses these for evidence |
-| **`sruja drift -r <path> -a repo.sruja`** | Declared vs actual; skill uses for refinement; CI for gates |
-| **`sruja ai-context -r <path>`** | Export architecture context for AI tools |
-| **`sruja quickstart -r <path>`** | First look: structural overview and baseline generation (recommended for evaluation) |
-| **`sruja onboard -r <path>`** | One-shot onboarding brief for humans and agents (deterministic; optional enrichment) |
-| **`sruja status -r <path>`** | Show baseline + health + truth status (reviewed / drifted / unknown) |
-| **`sruja review -r <path>`** | Review workflow: refresh evidence, detect drift, propose updates/open questions |
-| **`sruja impact <target> -r <path>`** | Blast radius analysis (upstream dependents + downstream dependencies) |
-| **`sruja why "question" -r <path>`** | Ask architecture questions with deterministic evidence from the knowledge graph |
+| **`sruja sync -r <path>`** | Refresh evidence files |
+| **`sruja drift -r <path> -a repo.sruja`** | Compare reviewed intent to actual code |
+| **`sruja ai-context -r <path>`** | Export structured context for host tools |
+| **`sruja why "question" -r <path>`** | Investigate architecture questions with deterministic evidence |
 | **`sruja drift --ci -r <path> -f github-actions`** | CI-focused drift check output |
-| **`sruja baseline -r <path>`** | Snapshot current violations to ignore them in CI (`sruja drift --baseline ...`) |
-| **`sruja intent check -r <path> -i <intent_dir>`** | Compare declared architectural intent vs actual implementation |
-| **`sruja compliance -r <path> -a repo.sruja -i <intent_dir>`** | Structural drift + intent + policy violations (exit 1 if non-compliant) |
+| **`sruja baseline -r <path>`** | Snapshot current violations to ignore them in CI |
+| **`sruja compliance -r <path> -a repo.sruja -i <intent_dir>`** | Structural drift + intent + policy violations |
 | **`sruja publish -r <path> -o repo.bundle.json`** | Export repo truth + evidence for federation |
 | **`sruja compose -i <bundle.json> -o system.index.json`** | Compose repo bundles into a system index |
-| **`sruja mcp`** | Start MCP stdio server (for tool-based clients) |
-| **`sruja scan <path> --output graph.json`** | Raw graph JSON (scripting / advanced) |
+| **`sruja mcp`** | Start MCP stdio server |
+| **`sruja scan <path> --output graph.json`** | Raw graph JSON for scripting and advanced use |
 
 **Examples (skill workflow / CI):**
 
@@ -133,9 +139,9 @@ sruja why "why did we choose PostgreSQL?" -r .
 sruja ai-context -r . -f markdown -o .cursor/rules/architecture.md
 ```
 
-### Repo workflow (recommended)
+### Older or supporting workflow aliases
 
-Use these when you want “architecture health” and “keep it in sync” workflows in a repo.
+These still exist, but they are not the main path to teach first.
 
 ```bash
 # First-time setup

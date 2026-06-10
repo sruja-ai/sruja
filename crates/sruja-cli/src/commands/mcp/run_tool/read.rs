@@ -22,6 +22,174 @@ pub(crate) async fn try_run(
             finish(Ok(repomap))
         }
 
+        "sruja_explain_discovery" => {
+            let md = crate::commands::discover::discover_explanation_markdown(repo)?;
+            finish(Ok(md))
+        }
+
+        "sruja_get_architecture_context" => {
+            let file = arguments.get("file").and_then(|v| v.as_str());
+            let intent = arguments.get("intent").and_then(|v| v.as_str());
+            let depth = arguments
+                .get("depth")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(2)
+                .clamp(0, 4) as usize;
+            let max_tokens = arguments
+                .get("max_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(10_000)
+                .max(500) as usize;
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+            let ctx = crate::commands::context::build_architecture_context(
+                &graph,
+                repo,
+                file,
+                intent,
+                depth,
+                max_tokens,
+            )?;
+            finish(Ok(serde_json::to_string_pretty(&ctx)?))
+        }
+
+        "sruja_check_drift" => {
+            let architecture = arguments
+                .get("architecture")
+                .or_else(|| arguments.get("architecture_path"))
+                .and_then(|v| v.as_str());
+            let violations_only = arguments
+                .get("violations_only")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let out = crate::commands::scan::drift::drift_json_string(
+                repo,
+                architecture,
+                violations_only,
+            )
+            .await?;
+            finish(Ok(out))
+        }
+
+        "sruja_get_context_score" => {
+            let repo_path = Path::new(&repo);
+            let format = arguments
+                .get("format")
+                .and_then(|v| v.as_str())
+                .unwrap_or("json");
+            let scan_graph = get_or_scan_graph(graph_cache, repo).await?;
+            let kg = crate::graph_store::load_or_build_graph(repo_path)?;
+            let age_hours = crate::utils::context::context_age_hours(repo_path);
+            let score = sruja_graph::compute_context_score(
+                &kg,
+                scan_graph.nodes.len(),
+                repo_path,
+                age_hours,
+            );
+            let out = serde_json::json!({
+                "schema_version": "context_score/v1",
+                "repo": repo,
+                "score": score,
+            });
+            if format == "json" {
+                finish(Ok(serde_json::to_string_pretty(&out)?))
+            } else {
+                finish(Ok(serde_json::to_string_pretty(&out)?))
+            }
+        }
+
+        "sruja_get_entrypoints" => {
+            let max_items = arguments
+                .get("max_items")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(10) as usize;
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+            let mut incoming: HashMap<&str, usize> = HashMap::new();
+            for e in &graph.edges {
+                *incoming.entry(e.target.as_str()).or_default() += 1;
+            }
+            let mut items = graph
+                .nodes
+                .iter()
+                .filter(|n| !n.id.contains('#'))
+                .filter(|n| incoming.get(n.id.as_str()).copied().unwrap_or(0) == 0)
+                .map(|n| {
+                    serde_json::json!({
+                        "id": n.id,
+                        "kind": n.kind.as_str(),
+                        "path": n.path,
+                    })
+                })
+                .collect::<Vec<_>>();
+            items.sort_by(|a, b| {
+                a.get("id")
+                    .and_then(|v| v.as_str())
+                    .cmp(&b.get("id").and_then(|v| v.as_str()))
+            });
+            items.truncate(max_items);
+            let out = serde_json::json!({
+                "schema_version": "entrypoints/v1",
+                "repo": repo,
+                "entrypoints": items,
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
+        }
+
+        "sruja_get_data_stores" => {
+            let max_items = arguments
+                .get("max_items")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(10) as usize;
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+            let mut items = graph
+                .nodes
+                .iter()
+                .filter(|n| matches!(n.kind.as_str(), "database" | "queue"))
+                .map(|n| {
+                    serde_json::json!({
+                        "id": n.id,
+                        "kind": n.kind.as_str(),
+                        "technology": n.technology,
+                        "path": n.path,
+                    })
+                })
+                .collect::<Vec<_>>();
+            items.sort_by(|a, b| {
+                a.get("id")
+                    .and_then(|v| v.as_str())
+                    .cmp(&b.get("id").and_then(|v| v.as_str()))
+            });
+            items.truncate(max_items);
+            let out = serde_json::json!({
+                "schema_version": "data_stores/v1",
+                "repo": repo,
+                "data_stores": items,
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
+        }
+
+        "sruja_get_focus_briefing" => {
+            let file = arguments.get("file").and_then(|v| v.as_str());
+            let element_id = arguments.get("element_id").and_then(|v| v.as_str());
+            let compact = arguments
+                .get("compact")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let repo_path = Path::new(&repo);
+            let scan_graph = get_or_scan_graph(graph_cache, repo).await?;
+            let kg = crate::graph_store::load_or_build_graph(repo_path)?;
+            let target_id = crate::commands::focus::resolve_target(&kg, repo_path, file, element_id)?;
+            let briefing = crate::commands::focus::build_focus_briefing(
+                &kg,
+                &target_id,
+                repo_path,
+                scan_graph.nodes.len(),
+                None,
+                false,
+                compact,
+            );
+            finish(Ok(serde_json::to_string_pretty(&briefing)?))
+        }
+
         "sruja_list_architecture_index" => {
             let max_tokens = arguments
                 .get("max_tokens")

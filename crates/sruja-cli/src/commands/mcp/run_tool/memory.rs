@@ -52,7 +52,45 @@ pub(crate) async fn try_run(
             finish(Ok(serde_json::to_string_pretty(&items)?))
         }
 
+        "sruja_get_learned_facts" => {
+            let path = Path::new(&repo)
+                .join(".sruja")
+                .join("agent_memory.json");
+            if !path.exists() {
+                let out = json!({
+                    "schema_version": "learned_facts/v1",
+                    "repo": repo,
+                    "path": path.display().to_string(),
+                    "agent_memory": Value::Null,
+                });
+                return finish(Ok(serde_json::to_string_pretty(&out)?));
+            }
+            let content = std::fs::read_to_string(&path)?;
+            let val: Value =
+                serde_json::from_str(&content).map_err(|e| CliError::validation(e.to_string()))?;
+            let out = json!({
+                "schema_version": "learned_facts/v1",
+                "repo": repo,
+                "path": path.display().to_string(),
+                "agent_memory": val,
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
+        }
+
         "sruja_record_context_event" => {
+            let ev = arguments
+                .get("event")
+                .ok_or_else(|| CliError::validation("missing event object".to_string()))?;
+            let line = serde_json::to_string(ev)?;
+            crate::commands::context_events::append_context_event_from_json_line(
+                Path::new(&repo),
+                &line,
+            )
+            .map_err(CliError::validation)?;
+            finish(Ok(r#"{"ok":true}"#.to_string()))
+        }
+
+        "sruja_record_decision_event" => {
             let ev = arguments
                 .get("event")
                 .ok_or_else(|| CliError::validation("missing event object".to_string()))?;
@@ -148,6 +186,38 @@ pub(crate) async fn try_run(
             });
 
             finish(Ok(sruja_intent::format_critique_json(&report)))
+        }
+
+        "sruja_search_memory" => {
+            let query = arguments
+                .get("query")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing query"))?;
+            let cfg_default = crate::integrations::load_repo_config(Path::new(&repo))
+                .and_then(|c| c.context_engineering.bm25_max_results_mcp)
+                .unwrap_or(5);
+            let max_results = arguments
+                .get("max_results")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(cfg_default as u64) as usize;
+
+            let index = sruja_graph::SparseIndex::build(Path::new(&repo));
+            let hits = index.search(query, max_results);
+
+            let out = json!({
+                "query": query,
+                "doc_count": index.doc_count(),
+                "results": hits.iter().map(|h| json!({
+                    "path": h.path,
+                    "title": h.title,
+                    "category": h.category,
+                    "score": h.score,
+                    "matched_terms": h.matched_terms,
+                    "excerpt": h.excerpt,
+                    "linked_elements": h.linked_elements,
+                })).collect::<Vec<_>>(),
+            });
+            finish(Ok(serde_json::to_string_pretty(&out)?))
         }
 
         "sruja_bm25_search" => {

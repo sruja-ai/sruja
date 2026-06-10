@@ -2,33 +2,49 @@
 
 **Policy:** This directory contains only **implemented** features and implementation-aligned documentation.
 
-Sruja is documented here as an **AI coding harness** (structural scan, drift, MCP, `verify-task`) with optional **architecture-as-code** (`repo.sruja`) for teams that want reviewed CI intent. Tier 1 needs no `.sruja` file; see [FEATURE_TIERS.md](FEATURE_TIERS.md) and [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md).
+Sruja is documented here as a context engineering product with a small default loop:
+
+- capture knowledge and decisions
+- retrieve task-scoped context
+- verify changes against structure and intent
+
+Optional reviewed intent (`repo.sruja`) and richer workflows build on that core. See [FEATURE_TIERS.md](FEATURE_TIERS.md) and [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md).
 
 ---
 
 ## Start Here
 
 ```bash
-# 1. Install the skill
-npx skills add sruja-ai/sruja --skill sruja-architecture
+# 1. Detect current structure
+sruja start -r .
+sruja drift -r . --structural-only --advisory
 
-# 2. Refresh repo context when you want fresh evidence
-sruja sync -r .
+# 2. Retrieve task context
+sruja focus -r . --file path/to/file.rs
+sruja ai -r . --task "Refactor auth boundary"
 
-# 3. In your AI editor:
-# "Use sruja-architecture. Gather evidence (prefer .sruja/context.json when present),
-# generate or update repo.sruja, then run sruja lint and fix."
+# 3. Verify after edits
+sruja verify-task --profile coding -r .
 ```
 
-**Full guide:** [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md)
+**Core guides:** [FEATURE_TIERS.md](FEATURE_TIERS.md), [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md), [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md)
 
 ---
 
-## Docs
+## Core Docs
 
 | Doc | Purpose |
 |-----|---------|
-| [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | **Primary entry** – Install, use, and operate the architecture/context-engineering workflow |
+| [FEATURE_TIERS.md](FEATURE_TIERS.md) | Core foundations vs extensions |
+| [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) | Product framing around knowledge, decisions, and retrieval |
+| [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md) | How Sruja fits beside an editor-hosted agent loop |
+| [mcp_tools_reference.md](mcp_tools_reference.md) | MCP tool catalog and profiles |
+| [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) | Optional reviewed-intent authoring flow |
+
+## Extensions And Advanced Docs
+
+| Doc | Purpose |
+|-----|---------|
 | [ENTERPRISE_ADOPTION.md](ENTERPRISE_ADOPTION.md) | Enterprise adoption tiers: evaluation → CI gates → AI-DLC workflows |
 | [ENTERPRISE_POLICY.md](ENTERPRISE_POLICY.md) | Baselines/exceptions: advisory → baseline → enforce |
 | [EVIDENCE_PACK.md](EVIDENCE_PACK.md) | Evidence packs for audits: verify-task + drift/intent outputs |
@@ -63,6 +79,6 @@ sruja sync -r .
 
 | You Are | Start With |
 |---------|------------|
-| **User** | [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) |
+| **User** | [FEATURE_TIERS.md](FEATURE_TIERS.md) |
 | **Contributor** | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | **Architecture reviewer** | [architecture/README.md](architecture/README.md) |

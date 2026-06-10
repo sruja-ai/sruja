@@ -1,23 +1,23 @@
 ---
-title: "Beginner Path"
+title: "Advanced Modeling Path"
 weight: 2
-summary: "7 steps to use AI skills for architecture."
-difficulty: "beginner"
+summary: "Optional deeper path for teams that want reviewed intent and architecture modeling."
+difficulty: "intermediate"
 estimatedTime: "~2–3 hours total"
 ---
 
-# Beginner Path: Use AI Skills for Architecture
+# Advanced Modeling Path
 
-**Don't learn a language—use AI to generate and maintain architecture.**
+**Optional path for teams that want reviewed intent in Git.**
 
-If you just did [Quick Start](../getting-started.md), you have the CLI and skill installed. These 7 steps show how to use AI to maintain your architecture effectively.
+If you just did [Quick start](../getting-started.md), you already have the core workflow. This page is for the next step: using Sruja to maintain reviewed intent with `repo.sruja` and the `sruja-architecture` skill.
 
 > [!TIP]
-> **Track your progress:** Check off each step as you complete it. Takes ~2–3 hours total.
+> **Use this later:** This is not required for default adoption. Come here only when you want explicit, reviewable architecture modeling.
 
 ---
 
-## Step 1: Generate Your First Architecture ⏱️ 20–30 min
+## Step 1: Generate Reviewed Intent ⏱️ 20–30 min
 
 **What you'll do:** Let AI analyze your code and create `repo.sruja`
 
@@ -71,7 +71,7 @@ Read repo.sruja and explain:
 **Success check:** You can explain your architecture in plain English
 
 **What you learned:**
-- C4 structure (person → system → container)
+- How reviewed intent is expressed
 - How to read relationships
 - What each component does
 
@@ -142,7 +142,7 @@ Then run sruja lint and fix any errors.
 
 ## Step 5: Export for Your Team ⏱️ 10–15 min
 
-**What you'll do:** Share architecture with stakeholders
+**What you'll do:** Share reviewed intent with stakeholders when needed
 
 **Instructions:**
 
@@ -165,7 +165,7 @@ sruja export mermaid repo.sruja > ARCHITECTURE.mmd
 
 **What you learned:**
 - Different export formats
-- How to share architecture
+- How to share reviewed intent
 - That diagrams are output, not the source
 
 ---
@@ -257,6 +257,17 @@ with Kafka, producers, and consumers. Explain trade-offs.
 | **Iterate** | First attempt won't be perfect—refine with feedback |
 
 ---
+
+## Before You Spend Time Here
+
+Make sure the core path is already useful for your team:
+
+- `sruja start -r .`
+- `sruja drift -r . --structural-only --advisory`
+- `sruja focus -r . --file <path>`
+- `sruja verify-task --profile coding -r .`
+
+If that loop is not already helping, do not invest in advanced modeling yet.
 
 ## Common Mistakes to Avoid
 

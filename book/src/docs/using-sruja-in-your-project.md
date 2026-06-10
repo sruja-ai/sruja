@@ -1,14 +1,35 @@
-# Using Sruja in Your Project
+# Core And Extensions In Your Project
 
-This guide is for **teams and organizations** that want Sruja as an **AI coding harness**: task briefings, drift detection, and deterministic gates around AI edits. Architecture-as-code (`repo.sruja`) is optional and comes later.
+This guide is for teams that want to adopt Sruja without letting advanced features take over the product story. Start with the core loop, then add extensions only when they clearly help.
 
-## What you get
+## Start with the core
 
-- **Harness loop** – `focus` before edits, `verify-task` after edits.
-- **Structural drift detection** – repo evidence from real code (no files required to start).
-- **Optional reviewed intent** – `repo.sruja` in Git when you want strict CI enforcement.
-- **Validation & exports** – `lint` and derived outputs (Markdown/Mermaid/JSON) when you choose to model.
-- **MCP integration** – tool-based editor/agent workflows (Cursor, Claude Desktop, etc.).
+These are the defaults to adopt first:
+
+- **Capture** – ingest docs and record decisions you want future humans and AI to reuse.
+- **Retrieve** – `focus`, `ai`, and MCP before editing.
+- **Verify** – `drift`, `intent check`, and `verify-task` after editing.
+- **Optional reviewed intent** – `repo.sruja` only when you want durable, reviewable intent in Git.
+
+## Then add extensions deliberately
+
+Only add these after the core loop is working:
+
+- **Reviewed intent workflows** – richer `repo.sruja` authoring and stricter CI gates
+- **Visualization** – Markdown, Mermaid, and other exports
+- **Team review flows** – critique, PR drift checks, policy-oriented enforcement
+- **Federation and multi-repo** – cross-repo packaging and retrieval
+- **Advanced agent ops** – plans, learnings, and memory workflows
+
+---
+
+## What you get from the core path
+
+- **Small default workflow** – easier to explain and adopt
+- **Repo-grounded context** – no need to start with modeling everything
+- **Deterministic verification** – changes get checked after editing
+- **Safer expansion** – extensions stay available without cluttering onboarding
+- **MCP integration** – tool-based editor and agent workflows when needed
 
 ## 1. Install (your machine and/or CI)
 
@@ -49,7 +70,7 @@ Install **Sruja Language Support** from the [VS Code Marketplace](https://market
 
 ## 2. Add Sruja to your repo (5 minutes)
 
-### Step 1: Start with the harness (Tier 1)
+### Step 1: Start with the core loop
 
 ```bash
 # From your repo root
@@ -57,14 +78,15 @@ sruja start -r .
 sruja drift -r . --structural-only --advisory
 ```
 
-This gives you immediate value: a structural snapshot and drift-style findings without committing any new architecture files.
+This gives you immediate value without committing any new architecture files.
 
-### Step 2: AI editor integration (focus → edit → verify)
+### Step 2: Retrieve context before editing
 
 If you use an AI editor/agent, use Sruja as the guardrail:
 
 ```bash
 sruja focus -r . --file path/to/file.rs
+sruja ai -r . --task "Refactor auth boundary"
 sruja verify-task --profile coding -r .
 ```
 
@@ -76,7 +98,7 @@ sruja mcp -r .
 
 See [Host agent integration](https://github.com/sruja-ai/sruja/blob/main/docs/HOST_AGENT_INTEGRATION.md) for editor setup.
 
-### Step 3 (optional): Reviewed intent in Git (Tier 2)
+### Step 3 (optional): Add reviewed intent in Git
 
 When the team is ready to review architecture intent like code, generate `repo.sruja` using the architecture skill:
 
@@ -153,7 +175,21 @@ If you prefer PR annotations, use the `sruja-check` action (see the main README)
 
 ---
 
-## 3. How this enhances your code
+## 3. Where extensions fit
+
+Once the core path works, add extensions based on a real need:
+
+| Need | Add |
+|------|-----|
+| Reviewable intent in Git | `repo.sruja`, `lint`, `sync`, `drift -a repo.sruja` |
+| Better documentation outputs | `export` commands |
+| Stricter review flows | CI drift checks, critique, policy-oriented docs |
+| Cross-repo understanding | federation docs and tooling |
+| Advanced agent workflows | plans, learnings, memory, and other advanced surfaces |
+
+---
+
+## 4. How this enhances your code
 
 | Practice | How Sruja helps |
 |----------|------------------|
@@ -165,7 +201,7 @@ If you prefer PR annotations, use the `sruja-check` action (see the main README)
 
 ---
 
-## 4. Using Sruja across multiple repos
+## 5. Using Sruja across multiple repos
 
 - **Per-repo** – Each repository that owns a service or app can have its own `.sruja` file(s). Add the same CI job and the same AI setup (e.g. copy `.cursorrules` and `.copilot-instructions.md` from a template, install the skill, or run `sruja start -r . --prompt` once and commit).
 - **Central docs repo** – Some teams keep a single "docs" or "architecture" repo with one or more `.sruja` files and run Sruja CI there; link to exported Markdown/JSON from other repos. Other repos don't need the CLI unless they also own architecture files.
@@ -173,8 +209,9 @@ If you prefer PR annotations, use the `sruja-check` action (see the main README)
 
 ---
 
-## 5. Where to go next
+## 6. Where to go next
 
+- **Core workflow** – [Getting started](getting-started.md)
 - **Language specification** – [Language specification](../reference/language-spec.md) (full DSL reference in this book)
 - **AI editors and catching bugs** – [AI editor integration](https://github.com/sruja-ai/sruja/blob/main/docs/AI_EDITOR_INTEGRATION.md) in the repo
 - **Reviewing AI-generated code** – [Reviewing AI-generated code](https://github.com/sruja-ai/sruja/blob/main/docs/REVIEWING_AI_GENERATED_CODE.md) in the repo

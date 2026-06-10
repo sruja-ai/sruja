@@ -1,30 +1,29 @@
 # CLI & MCP Consolidation Summary
 
-## CLI Consolidation (Complete)
+This document is a running summary of how the CLI and MCP surfaces are consolidated around a smaller public path.
 
-### Phase 1: Remove Deprecated Commands
-- Removed `Commands::Check`, `Commands::Evaluate`, `Commands::Evolution` enum variants
-- Removed `EvolutionCommand` subcommand
-- Removed `alias = "context"` from `AiContext`
-- Removed `was_invoked_as()` helper
-- Removed deprecated dispatch arms in `run.rs`
+## CLI Consolidation
 
-### Phase 2: Update Documentation
-- Updated `init`/`start` doc comments to point to `sruja inspect quickstart` and `sruja inspect onboard`
-- Updated CI workflow (`.github/workflows/sruja-check.yml`) from `sruja check` to `sruja drift --ci`
-- Updated all test files to use new command names
-- Updated handler references across 20+ files
+### Core-first public surface
 
-### Phase 3: Update Help Text
-- Updated `status.rs`, `health.rs`, `context_score.rs` help text to say "Use `sruja status` for a unified view"
-- Updated `Status` doc comment to "Unified repo status: truth freshness, structural health, AI readiness, density, agent memory"
+The default CLI help is intentionally minimal and centered on:
 
-### Phase 4: Add Format Flags to AI Command
-- Added `--format markdown|json|for-ai` and `--cache-friendly` flags to `ai` command
-- `json`/`for-ai` delegate to `context_export` with `Vec<String>` repo wrapping
+- `start` (alias: `init`)
+- `drift` (alias: `check`)
+- `focus` (alias: `ai`)
+- `verify-task`
+- `mcp`
+- `ingest`
+- `decision`
+- `intent`
+- `lint` (when reviewed intent exists)
 
-### Phase 5: Un-hide Grouped Commands
-- Un-hid `propose`, `intent`, `event`, `memory`, `decision` in `commands.rs`
+Most other subcommands remain implemented but are hidden from the default `--help` so they do not compete with the core workflow.
+
+### Naming consolidation
+
+- `drift` is the primary structural verification command; `check` remains as a compatibility alias.
+- `start` is the primary setup command; `init` remains as a compatibility alias.
 
 ## MCP Tool Consolidation (Complete)
 
@@ -71,11 +70,9 @@ Updated tool counts in:
 
 ## Key Decisions
 
-1. **`ai` absorbs `ai-context` formats**: `--format json|for-ai` delegates to `context_export`; `ai-context` stays hidden for IDE formats
-2. **`status` is the unified health command**: Already showed health + context scores; fixed misleading text
-3. **`quickstart`/`onboard` not merged into `start`**: Too different (read-only analysis vs file-creating setup)
-4. **Handler code preserved**: `check.rs` (shared with `drift --ci`), `evolution.rs` (shared with `intent history`)
-5. **`drift --ci -f text` overrides to `github-actions`**: Existing behavior in `run.rs`
+1. **Core path stays small**: advanced capabilities should not crowd first-run UX.
+2. **Aliases preserve compatibility**: `check` and `init` remain available but are not the names to teach.
+3. **MCP `coding` profile is the default**: host tools own the LLM loop; Sruja provides retrieval and verification.
 
 ## Verification
 
@@ -86,7 +83,5 @@ Updated tool counts in:
 
 ## Status
 
-- **VS Code extension commands**: Already well-organized with context menu groups (`1_harness`, `2_export`, `3_diagram`, `9_advanced`) and Command Center as unified entry point
-- **Init command flags**: Already clean - no duplicate flags exist. Documentation points to `sruja inspect quickstart` and `sruja inspect onboard`
-- **CLI tests**: 190 tests passing
-- **Pre-existing issues**: `sruja-graph` and `sruja-intent` have missing `auto_context` field errors (unrelated to consolidation)
+- **Core CLI help**: core-first with extensions hidden from default help.
+- **MCP profiles**: aligned with `minimal` and `coding` as defaults.

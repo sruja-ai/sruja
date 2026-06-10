@@ -1,46 +1,116 @@
-# Feature tiers (OSS traction)
+# Core Foundations And Extensions
 
-Public story references **Tier 1 only**. Tier 2 is documented under Advanced; Tier 3 is merged away or removed after deprecation (see [CHANGELOG](../CHANGELOG.md)).
+Sruja now treats a small set of workflows as the product center. Everything else should either strengthen those workflows or live as an extension.
 
-## Tier 1 — OSS public (three workflows)
+## Core Foundations
 
-| Workflow | Commands | MCP (`coding` profile) |
-|----------|----------|------------------------|
-| **Scan + drift** | `start` (`init`), `drift --structural-only`, `sync` | `sruja_check_drift`, `sruja_get_drift_state` |
-| **Brief agent** | `focus`, `ai` | Ladder + `sruja_get_focus_briefing`, `sruja_get_task_context`, `sruja_hybrid_query` |
-| **Verify** | `verify-task`, `lint` (when `repo.sruja` exists) | `sruja_verify_task` |
+These are the workflows Sruja should lead with in the README, docs, demos, and editor templates.
 
-**Also Tier 1:** `mcp` (stdio server; default `SRUJA_MCP_TOOL_PROFILE=coding`, 15 tools).
+| Foundation | Job | Commands | MCP / integration |
+|------------|-----|----------|-------------------|
+| **Capture** | Bring durable knowledge and decisions into the repo | `ingest`, `decision`, optional `lint repo.sruja` | `sruja_get_author_evidence` when authoring reviewed intent |
+| **Retrieve** | Brief a human or AI before a change | `focus`, `ai`, `why`, `mcp` | `sruja_get_focus_briefing`, `sruja_get_task_context`, `sruja_hybrid_query` |
+| **Verify** | Check that code still matches reality and intent | `drift`, `intent check`, `verify-task`, `sync` | `sruja_check_drift`, `sruja_get_drift_state`, `sruja_verify_task` |
 
-**Tier 1b (optional):** `sruja-architecture` skill — promotes scan evidence to reviewed `repo.sruja`. Not required day one.
+### Core Story
 
-### Not in default MCP coding profile
+Public messaging should teach this loop:
 
-- `sruja_agent_run` — use host editor loop + `verify-task`
-- `get_hydrated_context` / `get_architecture_context` — use ladder + `hybrid_query`
+1. capture knowledge and decisions
+2. retrieve task-scoped context before editing
+3. verify the result after editing
 
-## Tier 2 — Power user / team
+### Default MCP Position
 
-`propose`, `intent`, `impact`, `critique`, `ingest`, `author`, `publish`/`compose`, `review`/`daily`, `workflow`, `agent plan`, `agent record`, `export`, `fmt`, `tree`, `drift-pr`, federation.
+- Public templates use `SRUJA_MCP_TOOL_PROFILE=coding`
+- Host editors own the LLM loop
+- Sruja provides context, evidence, and verification
 
-Diagram preview (extension) is Tier 2 — derived views, not the product center.
+### Optional Reviewed Intent
 
-## Tier 3 — Removal backlog (merge → deprecate → delete)
+`repo.sruja` stays optional. It is reviewed truth for teams that want durable intent in Git, not a day-one requirement.
 
-| Fold into | Sources |
-|-----------|---------|
-| `drift --ci` | `check` |
-| `ai` | `ai-context`, `context` |
-| `start` | `quickstart`, `overview`, `onboard` |
-| `status` | `doctor`, `health` (metrics) |
-| `review` | `daily` |
-| `intent evaluate` | top-level `evaluate` |
-| Host verify | `agent run` (hidden; plan-only via `agent plan`) |
+## Extensions
 
-**Deferred (after core three are excellent):**
+These features remain valuable, but they should be documented as extensions built on the core foundations above.
 
-- **discovery-primary** — document scan IR as default overlay path (not OSS hero yet).
-- **community-rehab** — one honest technical post after dogfood output is repeatable ([OSS_METRICS.md](./OSS_METRICS.md)).
-- Registry dashboards, new MCP category tools.
+### Architecture Authoring Extension
 
-See [FEATURE_CONSOLIDATION.md](./FEATURE_CONSOLIDATION.md) for the full merge matrix.
+- `author`
+- `propose`
+- advanced `.sruja` authoring and proposal workflows
+- `sruja-architecture` skill
+
+### Visualization Extension
+
+- `export`
+- diagram preview
+- context graph and dashboards
+- Mermaid, D2, GraphML, Neo4j, Obsidian outputs
+
+### Team Review Extension
+
+- `critique`
+- `review` / `daily`
+- `drift-pr`
+- `compliance`
+- CI reporting and policy-oriented workflows
+
+### Federation Extension
+
+- `publish`
+- `compose`
+- multi-repo packaging and retrieval
+
+### Agent Ops Extension
+
+- `agent plan`
+- `agent apply`
+- `agent record`
+- learnings, memory curation, run snapshots
+
+### Workflow Extension
+
+- `workflow`
+- `aidlc`
+- lifecycle scaffolding and gated process support
+
+### Analytics And Inspection Extension
+
+- `context-score`
+- registry/index tooling
+- graph history
+- deeper health and intelligence surfaces
+
+## Move Out Of The Core Story
+
+These should not be taught as first-run product surfaces:
+
+- diagram-first positioning
+- generic “AI platform” or “agent orchestration” framing
+- large DSL feature checklists
+- overlapping onboarding paths that compete with `focus`, `ai`, and `verify-task`
+
+## Fold Or Hide
+
+These should be folded into clearer canonical paths or kept out of primary docs:
+
+| Canonical path | Fold or hide |
+|----------------|--------------|
+| `focus` / `ai` | `ai-context`, old `context` naming |
+| `start` | `quickstart`, `overview`, `onboard` as primary entry points |
+| `verify-task` / host verify | `agent run` as a public surface |
+| `status` or a future single status page | `doctor`, `health` overlap |
+| `review` | `daily` as a separate headline feature |
+
+## Removal Backlog
+
+Features that do not clearly strengthen capture, retrieve, or verify should be candidates for deprecation or migration into advanced docs only.
+
+Examples:
+
+- hidden legacy aliases
+- duplicate health and onboarding concepts
+- inspection surfaces without a strong user moment
+
+See [FEATURE_CONSOLIDATION.md](./FEATURE_CONSOLIDATION.md) for the wider consolidation matrix.

@@ -24,51 +24,35 @@ impl ContextIntent {
 #[derive(Parser)]
 #[command(name = "sruja")]
 #[command(
-    about = "Architecture-aware AI coding: define architecture, keep code aligned, guide AI editors",
-    long_about = "Sruja gives AI editors and CI pipelines architecture context.\n\n\
-        Define your architecture once (repo.sruja or inferred from code),\n\
-        keep code aligned (drift detection), and guide AI coding (MCP/focus).\n\n\
-        Deterministic scan-first workflow: check without .sruja, then focus/MCP\n\
-        for editors, verify-task for gates. Optional repo.sruja is for viz + strict CI.",
+    about = "Capture knowledge, retrieve context, verify changes",
+    long_about = "Sruja is a context engineering tool for software changes.\n\n\
+        Core loop:\n\
+        1) capture knowledge and decisions\n\
+        2) retrieve task-scoped context before editing\n\
+        3) verify the result after editing\n\n\
+        Reviewed intent in Git (repo.sruja) is optional and used only when you want strict enforcement.",
     after_help = r#"Quick start:
-  sruja init -r .               Set up .sruja/ and scan
-  sruja check -r .              Detect drift (structural or vs repo.sruja)
-  sruja status -r .             Unified dashboard (health, density, AI readiness)
-  sruja focus -r . --file <f>   Architecture briefing for AI coding
+  sruja start -r .                            Set up .sruja/
+  sruja drift -r . --structural-only --advisory  Detect structural drift from code
+  sruja focus -r . --file <path>              Retrieve task context before editing
+  sruja verify-task --profile coding -r .     Verify after editing
 
-Daily workflow:
-  sruja sync -r .               Refresh evidence + sync IDE rules
-  sruja check -r . --pr         Check only new violations in a PR
-  sruja watch -r .              Live feedback while coding
+Capture:
+  sruja ingest docs/adr/ --category adr       Bring external context into the repo
+  sruja decision new -t "..." --typ product   Record a decision
 
 Editor integration:
-  sruja mcp -r .                MCP server for Cursor, Claude Code, etc.
-  sruja focus -r . --format for-ai  Paste-ready AI brief
+  sruja mcp -r .                              MCP server for Cursor, Claude Code, etc.
 
-CI / gates:
-  sruja check -r . --ci         GitHub Actions format
-  sruja check baseline -r .     Snapshot violations for suppression
-  sruja verify-task -r .        Run verification steps
+Optional reviewed intent:
+  sruja lint repo.sruja
+  sruja sync -r .
+  sruja drift -r . -a repo.sruja
 
-DSL authoring:
-  sruja lint <file>             Validate .sruja file
-  sruja dsl list|tree|diff|explain|import|compile|generate|fmt|export
+Extensions (available, but hidden from the default help):
+  sruja dsl --help | sruja inspect --help | sruja workflow --help
 
-Knowledge & decisions:
-  sruja decision new|list|show|trace|link|accept|supersede
-  sruja memory search|timeline|reindex
-  sruja agent history|record|curate|plan|apply
-  sruja event append|list
-
-Workflow & review:
-  sruja workflow init|status|approve|advance|summary|next-steps
-  sruja propose create|list|approve
-  sruja intent check|propose|evaluate|history
-
-Multi-repo:
-  sruja federation publish|compose
-
-Docs: https://sruja.dev | Repo: https://github.com/sruja/sruja"#
+Docs: https://sruja.ai | Repo: https://github.com/sruja-ai/sruja"#
 )]
 pub struct Cli {
     #[command(subcommand)]

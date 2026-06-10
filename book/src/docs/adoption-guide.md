@@ -8,31 +8,30 @@ summary: "Complete guide to evaluating and adopting Sruja for your organization.
 
 ## Using Sruja in your repo
 
-For a short, practical guide (install CLI, add to your project, CI, AI, multi-repo), see **[Using Sruja in your project](using-sruja-in-your-project.md)**. The rest of this adoption guide helps you evaluate fit and plan rollout.
+For a short, practical guide to the new product shape, see **[Core vs extensions](using-sruja-in-your-project.md)**. The rest of this adoption guide helps you evaluate fit and plan rollout.
 
 ## Canonical pilot path (recommended)
 
-Use a single, repeatable workflow to evaluate Sruja. Start with the skill when your editor supports it:
-
-```bash
-npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
-```
-
-Then ask your AI editor to gather evidence, generate or update `repo.sruja`, and run `sruja lint`.
-
-For deterministic CLI-only evaluation:
+Use a single, repeatable workflow to evaluate Sruja. Start with the core loop first:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
-sruja quickstart -r . --generate-baseline   # repo.sruja.draft (structural evidence)
-# Author repo.sruja with the sruja-architecture skill, then:
+sruja start -r .
+sruja drift -r . --structural-only --advisory
+sruja focus -r . --file path/to/file.rs
+sruja verify-task --profile coding -r .
+```
+
+Only after that should you decide whether to add reviewed intent in Git:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
 sruja lint repo.sruja
 sruja sync -r .
-sruja status -r .
 sruja drift -r . -a repo.sruja
 ```
 
-Both paths are designed to minimize ambiguity: one reviewed truth file (`repo.sruja`), one validation gate (`lint`), and one drift signal (`drift`) backed by refreshed evidence (`sync`).
+This keeps evaluation honest: prove the core loop first, then layer on richer authoring and governance only when needed.
 
 ## Is Sruja Right for Your Organization?
 
@@ -161,10 +160,10 @@ Total Value = Time Savings + Onboarding + Risk Reduction
 
 1. Review Sruja documentation
 2. Install CLI: `curl -fsSL https://sruja.ai/install.sh | bash`
-3. Generate structural evidence: `sruja quickstart -r . --generate-baseline` (writes `repo.sruja.draft`)
-4. Author reviewed `repo.sruja` (skill), then validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
-5. Capture the first health signal: `sruja status -r .` and `sruja drift -r . -a repo.sruja`
-6. Install VS Code extension for syntax highlighting and diagnostics (optional)
+3. Run the core loop: `sruja start -r .`, `sruja drift -r . --structural-only --advisory`, `sruja focus -r . --file <path>`, `sruja verify-task --profile coding -r .`
+4. If the team needs reviewed intent, author `repo.sruja` with the skill, then validate and refresh evidence: `sruja lint repo.sruja` then `sruja sync -r .`
+5. Capture the first alignment signal: `sruja drift -r . -a repo.sruja` when reviewed intent exists
+6. Install VS Code extension for syntax highlighting and diagnostics if the team will edit `.sruja` files
 
 **Deliverable**: Understanding of Sruja capabilities
 

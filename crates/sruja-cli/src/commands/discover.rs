@@ -1157,6 +1157,19 @@ fn format_discovery_explanation(explanation: &DiscoverExplanationJson) -> String
     out
 }
 
+pub fn discover_explanation_markdown(repo: &str) -> Result<String, CliError> {
+    let repo_path = Path::new(repo);
+    if !repo_path.exists() {
+        return Err(CliError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Repository not found: {}", repo),
+        )));
+    }
+    let graph = scan_repo_cached(repo_path)?;
+    let explanation = build_discover_explanation(repo, repo_path, &graph)?;
+    Ok(format_discovery_explanation(&explanation))
+}
+
 /// Build repo context as JSON from a pre-scanned graph (avoids rescanning).
 pub fn discover_context_json_from_graph(
     repo: &str,

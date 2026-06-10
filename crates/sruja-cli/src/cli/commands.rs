@@ -12,7 +12,69 @@ use crate::enrichment::EnrichmentArgs;
 pub enum Commands {
     /// Print version information
     Version,
+    /// Format a Sruja file in-place
+    #[command(hide = true, name = "fmt")]
+    Fmt {
+        /// Check if file is already formatted (exit non-zero if changes needed)
+        #[arg(long)]
+        check: bool,
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Export a Sruja file to another format
+    #[command(hide = true, name = "export")]
+    Export {
+        /// Export format (json, mermaid)
+        format: String,
+        /// Path to .sruja file
+        file: String,
+        /// Export from a repository scan graph instead of a DSL file
+        #[arg(long)]
+        from_scan: bool,
+        /// Path to repository root (used with --from-scan)
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output directory (used by some formats like obsidian; used with --from-scan)
+        #[arg(long = "output-dir")]
+        output_dir: Option<String>,
+    },
+    /// List elements from a Sruja file
+    #[command(hide = true, name = "list")]
+    List {
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Print an architecture tree from a Sruja file
+    #[command(hide = true, name = "tree")]
+    Tree {
+        /// Path to .sruja file
+        file: String,
+    },
+    /// Show differences between two Sruja files
+    #[command(hide = true, name = "diff")]
+    Diff {
+        /// First file
+        file1: String,
+        /// Second file
+        file2: String,
+        /// Output format (text or json)
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
+    /// Explain an element from a Sruja file
+    #[command(hide = true, name = "explain")]
+    Explain {
+        /// Element ID to explain
+        element_id: String,
+        /// Path to .sruja file
+        #[arg(long)]
+        file: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Workflow manifest + phase gates (Inception → Construction → Operations)
+    #[command(hide = true)]
     Workflow {
         #[command(subcommand)]
         cmd: WorkflowCommand,
@@ -28,11 +90,13 @@ pub enum Commands {
         cmd: AidlcCommand,
     },
     /// Propose architectural changes for review
+    #[command(hide = true)]
     Propose {
         #[command(subcommand)]
         cmd: ProposeCommand,
     },
     /// Grounded architecture authoring helpers (evidence bundle + proposal synthesis)
+    #[command(hide = true)]
     Author {
         #[command(subcommand)]
         cmd: AuthorCommand,
@@ -63,10 +127,9 @@ pub enum Commands {
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
     },
-    /// Investigate architecture decisions with deterministic evidence
+    /// Investigate a question with deterministic evidence
     ///
-    /// Use this when asking "Why is this like this?" — finds rationale from the knowledge graph.
-    /// For task briefing, use `focus`. For AI paste-ready brief, use `ai`.
+    /// Use this for deep investigation. For the core workflow, prefer `focus` and `verify-task`.
     #[command(hide = true)]
     Why {
         /// Question to ask (e.g. "why did we choose PostgreSQL?")
@@ -85,6 +148,7 @@ pub enum Commands {
         llmguided: bool,
     },
     /// Lint a Sruja file
+    #[command(alias = "validate")]
     Lint {
         /// Path to .sruja file
         file: String,
@@ -121,17 +185,16 @@ pub enum Commands {
     },
 
 
-    /// Check for architectural drift, violations, and compliance
+    /// Drift and structural checks (from code, optional baseline)
     ///
-    /// Unified validation command. Compares code against declared architecture
-    /// (repo.sruja) or runs structural-only analysis. Reports violations,
-    /// generates baselines, and supports CI/PR/compliance modes.
+    /// Compares the repo's current structure against itself (structural-only) or against reviewed intent (`repo.sruja`).
+    /// Use this as the primary structural verification step in the core loop.
     ///
-    /// Use `sruja check -r .` for daily drift detection.
-    /// Use `sruja check -r . --ci` for CI pipelines.
-    /// Use `sruja check -r . --pr` for PR-scoped checks.
-    /// Use `sruja check -r . --compliance` for full compliance gate.
-    #[command(visible_alias = "drift")]
+    /// Examples:
+    /// - `sruja drift -r . --structural-only --advisory`
+    /// - `sruja drift -r . -a repo.sruja`
+    /// - `sruja drift --ci -r . --baseline .sruja/violations.baseline.json -f github-actions`
+    #[command(name = "drift", alias = "check")]
     Check {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
@@ -151,7 +214,7 @@ pub enum Commands {
         /// CI mode: defaults format to github-actions
         #[arg(long)]
         ci: bool,
-        /// Optional JSON baseline of pre-existing violations (for --ci mode; generated by `sruja check baseline`)
+        /// Optional JSON baseline of pre-existing violations (for --ci mode; generated by `sruja baseline`)
         #[arg(long = "baseline", short = 'b')]
         violations_baseline: Option<String>,
         /// Baseline mode for scan vs DSL comparison (auto|overview|exhaustive)
@@ -206,13 +269,10 @@ pub enum Commands {
         #[arg(long)]
         advisory: bool,
     },
-    /// Set up Sruja in a repo: create .sruja/, .srujaignore, and optional repo.sruja.draft
+    /// Set up Sruja in a repo (.sruja/ and initial evidence)
     ///
-    /// OSS hero: `sruja start -r .` then `sruja drift -r . --structural-only --advisory`.
-    /// For structural overview: `sruja inspect quickstart -r .`
-    /// For full-repo brief: `sruja inspect onboard -r .`
-    /// For task briefs: `sruja focus` or `sruja ai`.
-    #[command(visible_alias = "start")]
+    /// Recommended: `sruja start -r .` then `sruja drift -r . --structural-only --advisory`.
+    #[command(name = "start", alias = "init")]
     Init {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -223,7 +283,7 @@ pub enum Commands {
         /// Scan workspace and write repo.sruja.draft (structural evidence; author repo.sruja separately)
         #[arg(long, short = 'a', group = "init_mode")]
         auto: bool,
-        /// Full scan: generate repo.sruja, show architecture visualization, health score, and sync IDE rules
+        /// Full scan: generate repo.sruja, show outputs, and sync IDE rules
         #[arg(long, short = 's', group = "init_mode")]
         scan: bool,
         /// Overwrite repo.sruja if it already exists (only meaningful with --auto or --scan)
@@ -262,7 +322,7 @@ pub enum Commands {
     /// Single entry point for all repo health metrics. Includes health score, context score,
     /// density tier, and agent memory status. Use `status --health` or `status --ai-score`
     /// for focused metric views.
-    #[command(visible_alias = "doctor")]
+    #[command(visible_alias = "doctor", hide = true)]
     Status {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -275,7 +335,8 @@ pub enum Commands {
         evolution: bool,
     },
 
-    /// Refresh evidence (write .sruja/context.json) and run drift
+    /// Refresh evidence files for context retrieval and reviewed intent workflows
+    #[command(hide = true)]
     Sync {
         /// Repository root (defaults to current directory)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -288,6 +349,7 @@ pub enum Commands {
     ///
     /// In `--check` mode, exits non-zero if on-disk IDE files differ from architecture-derived outputs.
     #[command(name = "sync-ide-rules")]
+    #[command(hide = true)]
     SyncIdeRules {
         /// Path to repository root (single repo only)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -305,6 +367,7 @@ pub enum Commands {
     /// the logical layers, boundaries, and forbidden patterns.
     /// Edit the generated file to customize, then run `sruja sync-ide-rules` to update IDE context.
     #[command(name = "classify")]
+    #[command(hide = true)]
     Classify {
         /// Path to repository root (single repo only)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -318,6 +381,7 @@ pub enum Commands {
     /// Collects sruja evidence (classification, context, graph) and formats it into a prompt
     /// that AI agents can use to extract procedural knowledge and generate a project-specific skill.
     #[command(name = "generate-skill")]
+    #[command(hide = true)]
     GenerateSkill {
         /// Path to repository root (single repo only)
         #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
@@ -354,7 +418,7 @@ pub enum Commands {
         #[arg(long, short = 'o', default_value = ".sruja/violations.baseline.json")]
         output: String,
     },
-    /// Compare declared architectural intent vs actual implementation
+    /// Compare declared intent (decisions, ADRs) vs actual implementation
     Intent {
         #[command(subcommand)]
         cmd: IntentCommand,
@@ -570,6 +634,7 @@ pub enum Commands {
     },
     /// Generate the Architecture Explorer model (JSON) for the VS Code webview
     #[command(name = "explore")]
+    #[command(hide = true)]
     Explore {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -590,15 +655,14 @@ pub enum Commands {
         open: bool,
     },
 
-    /// Architecture context briefing for AI coding
+    /// Retrieve task context before editing
     ///
-    /// Generates task-scoped or file-scoped architecture context for AI editors and coding assistants.
-    /// Combines blast radius, decisions, boundaries, and agent memory into a single briefing.
+    /// Generates task-scoped or file-scoped context for AI editors and developers.
+    /// Combines impact, linked decisions, constraints, and relevant evidence into a single briefing.
     ///
     /// Use `sruja focus -r . --file <path>` before editing a file.
     /// Use `sruja focus -r . --task "description"` for paste-ready AI briefs.
     /// Use `sruja focus -r . --format for-ai` for prompt-cache-friendly payloads.
-    #[command(visible_alias = "ai")]
     Focus {
         /// Optional run ID for tracing (defaults to auto-generated)
         #[arg(long)]
@@ -646,14 +710,70 @@ pub enum Commands {
         #[arg(long)]
         cache_friendly: bool,
     },
+    /// Paste-ready AI coding brief (includes task context section)
+    #[command(name = "ai")]
+    Ai {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Natural-language task or intent for the AI assistant
+        #[arg(long, short = 't')]
+        task: Option<String>,
+        /// File path focus (relative to repo root)
+        #[arg(long)]
+        file: Option<String>,
+        /// Architecture element ID focus
+        #[arg(long)]
+        element_id: Option<String>,
+        /// Natural-language query for context retrieval
+        #[arg(long)]
+        query: Option<String>,
+        /// Git base ref for optional temporal context (use with --head-ref)
+        #[arg(long)]
+        base_ref: Option<String>,
+        /// Git head ref for optional temporal context (requires --base-ref)
+        #[arg(long)]
+        head_ref: Option<String>,
+        /// Use staged changes instead of all changes against HEAD for changed-file detection
+        #[arg(long)]
+        staged: bool,
+        /// Max tokens for the embedded task context
+        #[arg(long, default_value_t = 8000)]
+        max_tokens: usize,
+        /// Output file (defaults to stdout)
+        #[arg(long, short = 'o')]
+        output: Option<String>,
+        /// Optional LLM enrichment to add a narrative plan grounded in the task context JSON.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
+    },
 
+
+    /// Ingest external context into `.sruja/context/`
+    ///
+    /// Supports files or directories; ingested docs are surfaced by `focus` and improve context retrieval.
+    Ingest {
+        /// Files or directories to ingest
+        sources: Vec<String>,
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Category tag
+        #[arg(long, short = 'c')]
+        category: Option<String>,
+        /// Comma-separated architecture element IDs
+        #[arg(long, short = 'e')]
+        elements: Option<String>,
+    },
 
     /// Append-only context lineage (intent, drift, proposals, decision traces)
+    #[command(hide = true)]
     Event {
         #[command(subcommand)]
         cmd: EventCommand,
     },
     /// Indexed cross-session memory (SQLite + FTS5 under `.sruja/memory.sqlite`)
+    #[command(hide = true)]
     Memory {
         #[command(subcommand)]
         cmd: MemoryCommand,
@@ -664,11 +784,13 @@ pub enum Commands {
         cmd: DecisionCommand,
     },
     /// Graph temporal queries (history, velocity, etc.)
+    #[command(hide = true)]
     Graph {
         #[command(subcommand)]
         cmd: GraphCommand,
     },
     /// List and filter requirements from .sruja files
+    #[command(hide = true)]
     Requirements {
         /// Path to repository root
         #[arg(long, short = 'r', alias = "path", default_value = ".")]
@@ -684,6 +806,7 @@ pub enum Commands {
         status: Option<String>,
     },
     /// Agentic memory: learnings, guardrails, failed hypotheses (bounded to architecture work)
+    #[command(hide = true)]
     Agent {
         #[command(subcommand)]
         cmd: AgentCommand,
@@ -718,6 +841,7 @@ pub enum Commands {
     ///
     /// Advisory by default — exits successfully even if the report contains blockers.
     /// Only exits non-zero for fatal execution/input errors.
+    #[command(hide = true)]
     Confidence {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
@@ -748,26 +872,123 @@ pub enum Commands {
         cmd: RunCommand,
     },
     /// DSL authoring tools: list, tree, explain, diff, import, compile, validate, generate
+    #[command(hide = true)]
     Dsl {
         #[command(subcommand)]
         cmd: DslCommand,
     },
     /// Analysis & scores: health, impact, why, query, scores, onboard, watch, learn
+    #[command(hide = true)]
     Inspect {
         #[command(subcommand)]
         cmd: InspectCommand,
     },
+    /// Keep architecture feedback live while you code
+    #[command(hide = true, name = "watch")]
+    Watch {
+        /// Repository root
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        path: String,
+        /// Clear screen between runs
+        #[arg(long)]
+        clear: bool,
+        /// Only watch specific paths
+        #[arg(long)]
+        focus: Option<String>,
+    },
+    /// Build scan evidence and learned-fact hypotheses
+    #[command(hide = true, name = "learn")]
+    Learn {
+        /// Repository root
+        #[arg(long = "repo", short = 'r', alias = "path", default_value = ".")]
+        path: String,
+        /// Only include facts referencing this file
+        #[arg(long)]
+        file: Option<String>,
+        /// Only include facts since git ref
+        #[arg(long)]
+        since: Option<String>,
+        /// Do not write proposals
+        #[arg(long)]
+        skip_proposals: bool,
+        /// Apply proposals
+        #[arg(long = "apply-proposals", default_value_t = true, action = clap::ArgAction::Set)]
+        apply_proposals: bool,
+        /// Output format
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Review & compliance gates: critique, compliance, baseline, drift-pr
+    #[command(hide = true)]
     Guard {
         #[command(subcommand)]
         cmd: GuardCommand,
     },
+    /// Adversarial architectural critique of proposed changes
+    #[command(hide = true, name = "critique")]
+    Critique {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Changed file paths to critique
+        #[arg(long, short = 'f')]
+        files: Vec<String>,
+        /// Description of change
+        #[arg(long, short = 'd')]
+        description: Option<String>,
+        /// Proposal ID
+        #[arg(long, short = 'p')]
+        proposal: Option<String>,
+        /// Git base ref
+        #[arg(long)]
+        base: Option<String>,
+        /// Git head ref
+        #[arg(long)]
+        head: Option<String>,
+        /// Critique staged changes
+        #[arg(long)]
+        staged: bool,
+        /// Output format
+        #[arg(long, default_value = "text")]
+        format: String,
+        /// Optional LLM enrichment to add a narrative critique.
+        #[command(flatten)]
+        enrich: EnrichmentArgs,
+        /// Fail the command on findings level
+        #[arg(long)]
+        fail_on: Option<String>,
+    },
     /// Multi-repo federation: publish, compose
+    #[command(hide = true)]
     Federation {
         #[command(subcommand)]
         cmd: FederationCommand,
     },
+    /// Publish repo truth + evidence to repo.bundle.json
+    #[command(hide = true, name = "publish")]
+    Publish {
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        #[arg(long)]
+        repo_id: Option<String>,
+        /// Output path for bundle
+        #[arg(long, short = 'o', default_value = "repo.bundle.json")]
+        output: String,
+    },
+    /// Compose one or more repo bundles into system.index.json
+    #[command(hide = true, name = "compose")]
+    Compose {
+        #[arg(long, short = 'i', action = clap::ArgAction::Append)]
+        input: Vec<String>,
+        #[arg(long)]
+        recursive: bool,
+        /// Output path for system index
+        #[arg(long, short = 'o', default_value = "system.index.json")]
+        output: String,
+    },
     /// Human-centric system intelligence: trace, explain, map, before, daily, what-if
+    #[command(hide = true)]
     Human {
         #[command(subcommand)]
         cmd: HumanCommand,

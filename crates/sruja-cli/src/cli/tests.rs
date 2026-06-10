@@ -281,6 +281,80 @@ fn parses_check_ci_flag() {
 }
 
 #[test]
+fn parses_start_and_init_alias() {
+    std::thread::Builder::new()
+        .name("clap_parse_large_stack".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from(["sruja", "start"]).expect("parse");
+            match cli.command {
+                Commands::Init { path, .. } => assert_eq!(path, "."),
+                _ => panic!("expected Init command via start"),
+            }
+
+            let cli2 = Cli::try_parse_from(["sruja", "init"]).expect("parse");
+            match cli2.command {
+                Commands::Init { path, .. } => assert_eq!(path, "."),
+                _ => panic!("expected Init command via init alias"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}
+
+#[test]
+fn parses_ingest_command() {
+    std::thread::Builder::new()
+        .name("clap_parse_large_stack".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from(["sruja", "ingest"]).expect("parse");
+            match cli.command {
+                Commands::Ingest {
+                    sources,
+                    repo,
+                    category,
+                    elements,
+                } => {
+                    assert!(sources.is_empty());
+                    assert_eq!(repo, ".");
+                    assert!(category.is_none());
+                    assert!(elements.is_none());
+                }
+                _ => panic!("expected Ingest command"),
+            }
+
+            let cli2 = Cli::try_parse_from([
+                "sruja",
+                "ingest",
+                "docs/adr/",
+                "--category",
+                "adr",
+                "--elements",
+                "Sruja.CLI",
+            ])
+            .expect("parse");
+            match cli2.command {
+                Commands::Ingest {
+                    sources,
+                    category,
+                    elements,
+                    ..
+                } => {
+                    assert_eq!(sources, vec!["docs/adr/".to_string()]);
+                    assert_eq!(category.as_deref(), Some("adr"));
+                    assert_eq!(elements.as_deref(), Some("Sruja.CLI"));
+                }
+                _ => panic!("expected Ingest command"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}
+
+#[test]
 fn parses_intent_evaluate_and_history() {
     std::thread::Builder::new()
         .name("clap_parse_large_stack".to_string())
@@ -315,7 +389,7 @@ fn parses_ai_as_focus_alias() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "ai"]).expect("parse");
             match cli.command {
-                Commands::Focus {
+                Commands::Ai {
                     repo,
                     task,
                     file,
@@ -326,10 +400,7 @@ fn parses_ai_as_focus_alias() {
                     staged,
                     max_tokens,
                     output,
-                    format,
-                    cache_friendly,
                     enrich,
-                    ..
                 } => {
                     assert_eq!(repo, ".");
                     assert!(task.is_none());
@@ -341,11 +412,9 @@ fn parses_ai_as_focus_alias() {
                     assert!(!staged);
                     assert_eq!(max_tokens, 8000);
                     assert!(output.is_none());
-                    assert_eq!(format, "text");
-                    assert!(!cache_friendly);
                     assert!(!enrich.enrich);
                 }
-                _ => panic!("expected Focus command (ai alias)"),
+                _ => panic!("expected Ai command"),
             }
 
             let cli2 = Cli::try_parse_from(["sruja", "focus"]).expect("parse focus");
@@ -390,7 +459,7 @@ fn parses_ai_brief_focus_options() {
             ])
             .expect("parse");
             match cli.command {
-                Commands::Focus {
+                Commands::Ai {
                     task,
                     file,
                     element_id,
@@ -415,7 +484,7 @@ fn parses_ai_brief_focus_options() {
                     assert_eq!(max_tokens, 12000);
                     assert_eq!(output.as_deref(), Some("brief.md"));
                 }
-                _ => panic!("expected Focus command (ai alias)"),
+                _ => panic!("expected Ai command"),
             }
         })
         .expect("spawn")

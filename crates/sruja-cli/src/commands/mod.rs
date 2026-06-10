@@ -28,7 +28,7 @@ pub use intent_domain::propose::*;
 
 pub use dsl_domain::check::{baseline, check};
 pub use dsl_domain::dsl::{
-    compile, diff, explain, import, lint, list_elements, lsp, tree, validate,
+    compile, diff, explain, export, fmt, import, lint, list_elements, lsp, tree, validate,
 };
 pub use intent_domain::focus::focus;
 pub use intent_domain::ingest::ingest;

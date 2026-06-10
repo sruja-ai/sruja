@@ -14,6 +14,189 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_get_architecture_context",
+            "title": "Sruja Architecture Context",
+            "description": "Build an architecture context snapshot from the scanned graph and optional classification (used for editor/agent context).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "file": { "type": "string", "description": "Optional file path focus" },
+                    "intent": { "type": "string", "description": "Optional intent hint (e.g. refactor, fix-bug)" },
+                    "depth": { "type": "integer", "description": "Neighbor expansion depth (default: 2)", "minimum": 0, "maximum": 4 },
+                    "max_tokens": { "type": "integer", "description": "Max tokens budget (default: 10000)", "minimum": 500 }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_check_drift",
+            "title": "Sruja Check Drift",
+            "description": "Run drift detection (structural drift and optional architecture comparison) and return JSON output.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "architecture": { "type": "string", "description": "Optional path to a baseline architecture file (repo.sruja)" },
+                    "violations_only": { "type": "boolean", "description": "If true, return violations-only view" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_explain_discovery",
+            "title": "Sruja Explain Discovery",
+            "description": "Explain why Sruja inferred the repository structure the way it did (markdown).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_query_graph",
+            "title": "Sruja Query Graph",
+            "description": "Search the scanned graph by free-text query and return a grounded JSON subset (nodes + relationships).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "query": { "type": "string", "description": "Query string (free text)" },
+                    "enrich": { "type": "boolean", "description": "Reserved for future enrichment (default: false)" }
+                },
+                "required": ["query"]
+            }
+        }),
+        json!({
+            "name": "sruja_find_path",
+            "title": "Sruja Find Path",
+            "description": "Find a directed path between two node IDs in the scanned graph (markdown).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "source": { "type": "string", "description": "Source node id" },
+                    "target": { "type": "string", "description": "Target node id" },
+                    "max_depth": { "type": "integer", "description": "Max BFS depth (default: 8)", "minimum": 1, "maximum": 32 }
+                },
+                "required": ["source", "target"]
+            }
+        }),
+        json!({
+            "name": "sruja_explain_element",
+            "title": "Sruja Explain Element",
+            "description": "Explain a scanned element (node) with immediate neighbors (JSON).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "id": { "type": "string", "description": "Node id to explain" },
+                    "enrich": { "type": "boolean", "description": "Reserved for future enrichment (default: false)" }
+                },
+                "required": ["id"]
+            }
+        }),
+        json!({
+            "name": "sruja_search_memory",
+            "title": "Sruja Search Memory",
+            "description": "Search indexed memory/context documents (BM25) and return top hits.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "query": { "type": "string", "description": "Search query" },
+                    "max_results": { "type": "integer", "description": "Maximum results (default: 5)", "minimum": 1, "maximum": 50 }
+                },
+                "required": ["query"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_context_score",
+            "title": "Sruja Context Score",
+            "description": "Compute the context score (0-100) and dimension breakdown for AI readiness.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "format": { "type": "string", "description": "Output format (json)", "default": "json" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_entrypoints",
+            "title": "Sruja Entrypoints",
+            "description": "List likely entrypoints (nodes with no incoming edges) from the scanned graph.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "max_items": { "type": "integer", "description": "Max entrypoints to return (default: 10)", "minimum": 1, "maximum": 100 }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_data_stores",
+            "title": "Sruja Data Stores",
+            "description": "List data stores (database/queue nodes) from the scanned graph.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "max_items": { "type": "integer", "description": "Max data stores to return (default: 10)", "minimum": 1, "maximum": 100 }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_focus_briefing",
+            "title": "Sruja Focus Briefing",
+            "description": "Build a focused pre-edit briefing for a file or element (grounded, JSON).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "file": { "type": "string", "description": "Optional repo-relative file path" },
+                    "element_id": { "type": "string", "description": "Optional architecture element id" },
+                    "compact": { "type": "boolean", "description": "If true, produce compact output (default: false)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_record_decision_event",
+            "title": "Sruja Record Decision Event",
+            "description": "Append a decision/workflow lineage event (context_event/v2) to .sruja/context_events.jsonl.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "event": { "type": "object", "description": "ContextEventRecord JSON object" }
+                },
+                "required": ["event"]
+            }
+        }),
+        json!({
+            "name": "sruja_get_learned_facts",
+            "title": "Sruja Learned Facts",
+            "description": "Return curated learnings and guardrails from .sruja/agent_memory.json (if present).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" }
+                }
+            }
+        }),
+        json!({
+            "name": "sruja_get_evidence_graph",
+            "title": "Sruja Evidence Graph",
+            "description": "Return a compact evidence graph subset (nodes + edges) for grounding.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "max_nodes": { "type": "integer", "description": "Max nodes to include (default: 50)", "minimum": 1, "maximum": 500 },
+                    "max_edges": { "type": "integer", "description": "Max edges to include (default: 100)", "minimum": 1, "maximum": 2000 }
+                }
+            }
+        }),
+        json!({
             "name": "sruja_list_architecture_index",
             "title": "Sruja Architecture Index",
             "description": "Progressive disclosure: list architecture element IDs with minimal metadata (Index layer). Prefers declared architecture (repo.sruja) and falls back to scanned graph nodes.",

@@ -74,37 +74,33 @@ Run context engineering on the repo itself:
 
 ```bash
 # If you used Option B or C:
-sruja quickstart -r .
+sruja start -r .
+sruja drift -r . --structural-only --advisory
 
 # Or with the built binary:
-./target/release/sruja quickstart -r .
+./target/release/sruja start -r .
+./target/release/sruja drift -r . --structural-only --advisory
 ```
 
-You should see: component inventory, health score, top findings, and next steps. No `.sruja` file or API keys required.
+You should see structural findings with file-level evidence. No `.sruja` file or API keys required.
 
 Other useful commands:
 
 ```bash
-sruja drift -r .                    # Drift (cycles, orphans, layer violations)
-sruja quickstart -r .               # Quick architecture overview (inventory, health score, findings)
-sruja ai -r . --task "Fix auth bug" # Paste-ready AI coding brief from repo + worktree context
-# Canonical pilot path (draft → reviewed truth → drift):
-#   sruja quickstart -r . --generate-baseline   # repo.sruja.draft
-#   # author repo.sruja (skill or manual), then:
-#   sruja lint repo.sruja
-#   sruja sync -r .
-#   sruja drift -r . -a repo.sruja
-sruja lint book/valid-examples/*.sruja # Validate canonical book examples
-sruja export markdown file.sruja    # Export to Markdown
-sruja focus --file src/main.rs      # Task-scoped briefing for a file
-sruja context-score -r .            # Context readiness score (0-100) for AI agents
-sruja context-graph -r .            # Generate interactive HTML/D3 visualization
-sruja critique --staged             # Adversarial review of staged changes
-sruja propose create                # Create an architectural change proposal
-sruja agent history                 # Show agentic learning history
-sruja health -r .                   # Architecture health report
-sruja compliance -r .               # Structural + intent + policy compliance check
-sruja ingest docs/adr/              # Import external docs into .sruja/context/
+sruja focus -r . --file crates/sruja-cli/src/main.rs
+sruja ai -r . --task "Fix auth bug"
+sruja verify-task --profile coding -r .
+sruja mcp -r .
+sruja ingest docs/adr/ --category adr
+```
+
+Optional reviewed intent in Git:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+sruja lint repo.sruja
+sruja sync -r .
+sruja drift -r . -a repo.sruja
 ```
 
 ---
