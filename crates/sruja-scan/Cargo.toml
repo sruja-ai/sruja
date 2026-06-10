@@ -15,7 +15,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 ignore = "0.4"
-regex = "1.10"
+regex = "1.12"
 rayon = "1.10"
 serde_yaml = "0.9"
 scip = { workspace = true }
