@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use sruja_scan::{BlastRadiusResult, NodeKind};
 
+fn is_zero(value: &usize) -> bool {
+    *value == 0
+}
+
 #[derive(Debug)]
 pub struct TokenBudget {
     pub max_tokens: usize,
@@ -68,6 +72,14 @@ pub struct SystemContext {
     pub cross_repo_elements: Vec<CrossRepoElement>,
     pub cross_repo_edges: Vec<CrossRepoEdge>,
     pub conflicts: Vec<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_elements: usize,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_edges: usize,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_conflicts: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -108,6 +120,16 @@ pub struct MultiRepoArchitectureContext {
     pub cross_repo_rules: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiRepoCacheFriendlyTaskContextExport {
+    pub schema_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
+    pub combined_summary: ContextSummary,
+    pub cross_repo_rules: Vec<String>,
+    pub exports: Vec<CacheFriendlyTaskContextExport>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FocusContext {
     pub file: String,
@@ -116,6 +138,16 @@ pub struct FocusContext {
     pub matched_nodes: Vec<FocusNode>,
     pub blast_radius: Option<BlastRadiusResult>,
     pub suggested_checks: Vec<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub truncated: bool,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_matched_nodes: usize,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_suggested_checks: usize,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_blast_upstream: usize,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub omitted_blast_downstream: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

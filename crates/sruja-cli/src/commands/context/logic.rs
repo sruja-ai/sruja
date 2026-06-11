@@ -287,7 +287,7 @@ pub fn build_architecture_context(
         .map(|f| build_focus_context(graph, repo, f, intent, depth, max_tokens, &centrality))
         .transpose()?;
 
-    let system_context = build_system_context(repo);
+    let system_context = build_system_context(repo, max_tokens);
 
     let mut active_decisions = Vec::new();
     let adr_dir = Path::new(repo)
@@ -475,45 +475,77 @@ pub fn infer_boundaries_from_deps(repo_root: &str) -> Vec<BoundaryRule> {
     boundaries
 }
 
-pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
+pub fn build_system_context(repo_root: &str, max_tokens: usize) -> Option<SystemContext> {
     let root = Path::new(repo_root);
     let current_repo_id = infer_repo_id(root);
     let index_path = find_system_index(root)?;
     let index = load_system_index(&index_path).ok()?;
-    let mut cross_repo_elements = Vec::new();
-    let mut cross_repo_edges = Vec::new();
-    let mut conflicts = Vec::new();
 
     let current_repo_prefix = format!("{}::", current_repo_id);
-    let mut seen_canonical_ids = HashSet::new();
-    let mut relevant_canonical_ids = HashSet::new();
+    let max_edges = if max_tokens < 3000 {
+        10
+    } else if max_tokens < 8000 {
+        30
+    } else {
+        80
+    };
+    let max_elements = if max_tokens < 3000 {
+        10
+    } else if max_tokens < 8000 {
+        30
+    } else {
+        80
+    };
+    let max_conflicts = if max_tokens < 3000 { 5 } else { 20 };
 
-    for edge in &index.edges {
-        let is_source_current = edge.source.starts_with(&current_repo_prefix);
-        let is_target_current = edge.target.starts_with(&current_repo_prefix);
-
-        if is_source_current || is_target_current {
-            cross_repo_edges.push(CrossRepoEdge {
+    let mut candidate_edges: Vec<CrossRepoEdge> = index
+        .edges
+        .iter()
+        .filter_map(|edge| {
+            let is_source_current = edge.source.starts_with(&current_repo_prefix);
+            let is_target_current = edge.target.starts_with(&current_repo_prefix);
+            if !(is_source_current || is_target_current) {
+                return None;
+            }
+            Some(CrossRepoEdge {
                 source: edge.source.clone(),
                 target: edge.target.clone(),
                 label: edge.label.clone(),
                 repo_id: edge.repo_id.clone(),
-            });
+            })
+        })
+        .collect();
 
-            if !is_source_current {
-                relevant_canonical_ids.insert(edge.source.clone());
-            }
-            if !is_target_current {
-                relevant_canonical_ids.insert(edge.target.clone());
-            }
+    candidate_edges.sort_by(|a, b| {
+        a.source
+            .cmp(&b.source)
+            .then_with(|| a.target.cmp(&b.target))
+            .then_with(|| a.repo_id.cmp(&b.repo_id))
+    });
+    let omitted_edges = candidate_edges.len().saturating_sub(max_edges);
+    candidate_edges.truncate(max_edges);
+    let cross_repo_edges = candidate_edges;
+
+    let mut relevant_canonical_ids = HashSet::new();
+    for edge in &cross_repo_edges {
+        if !edge.source.starts_with(&current_repo_prefix) {
+            relevant_canonical_ids.insert(edge.source.clone());
+        }
+        if !edge.target.starts_with(&current_repo_prefix) {
+            relevant_canonical_ids.insert(edge.target.clone());
         }
     }
 
-    for node in &index.nodes {
-        if relevant_canonical_ids.contains(&node.canonical_id)
-            && seen_canonical_ids.insert(node.canonical_id.clone())
-        {
-            cross_repo_elements.push(CrossRepoElement {
+    let mut seen_canonical_ids = HashSet::new();
+    let mut candidate_elements: Vec<CrossRepoElement> = index
+        .nodes
+        .iter()
+        .filter(|node| relevant_canonical_ids.contains(&node.canonical_id))
+        .filter_map(|node| {
+            if !seen_canonical_ids.insert(node.canonical_id.clone()) {
+                return None;
+            }
+            Some(CrossRepoElement {
                 canonical_id: node.canonical_id.clone(),
                 kind: node.kind.clone(),
                 label: node.label.clone(),
@@ -524,15 +556,24 @@ pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
                 criticality: node.criticality,
                 logical_id: node.logical_id.clone(),
                 aliases: node.aliases.clone(),
-            });
-        }
-    }
+            })
+        })
+        .collect();
+    candidate_elements.sort_by(|a, b| a.canonical_id.cmp(&b.canonical_id));
+    let omitted_elements = candidate_elements.len().saturating_sub(max_elements);
+    candidate_elements.truncate(max_elements);
+    let cross_repo_elements = candidate_elements;
 
-    for conflict in &index.conflicts {
-        if conflict.repos.contains(&current_repo_id) {
-            conflicts.push(format!("{}: {}", conflict.key, conflict.message));
-        }
-    }
+    let mut candidate_conflicts: Vec<String> = index
+        .conflicts
+        .iter()
+        .filter(|conflict| conflict.repos.contains(&current_repo_id))
+        .map(|conflict| format!("{}: {}", conflict.key, conflict.message))
+        .collect();
+    candidate_conflicts.sort();
+    let omitted_conflicts = candidate_conflicts.len().saturating_sub(max_conflicts);
+    candidate_conflicts.truncate(max_conflicts);
+    let conflicts = candidate_conflicts;
 
     Some(SystemContext {
         index_path: index_path.to_string_lossy().to_string(),
@@ -543,6 +584,10 @@ pub fn build_system_context(repo_root: &str) -> Option<SystemContext> {
         cross_repo_elements,
         cross_repo_edges,
         conflicts,
+        truncated: omitted_edges > 0 || omitted_elements > 0 || omitted_conflicts > 0,
+        omitted_elements,
+        omitted_edges,
+        omitted_conflicts,
     })
 }
 
@@ -552,7 +597,7 @@ pub fn build_focus_context(
     file: &str,
     intent: Option<&str>,
     depth: usize,
-    _max_tokens: usize,
+    max_tokens: usize,
     centrality: &HashMap<String, ComponentImportance>,
 ) -> Result<FocusContext, CliError> {
     let repo_path = Path::new(repo_root);
@@ -613,9 +658,17 @@ pub fn build_focus_context(
             .then_with(|| a.id.cmp(&b.id))
     });
 
-    let matched_nodes: Vec<FocusNode> = matched
+    let max_matched = if max_tokens < 3000 {
+        6
+    } else if max_tokens < 8000 {
+        12
+    } else {
+        20
+    };
+    let probe_matched = (max_matched + 20).min(60);
+    let mut matched_nodes: Vec<FocusNode> = matched
         .iter()
-        .take(10)
+        .take(probe_matched)
         .map(|n| FocusNode {
             id: n.id.clone(),
             kind: n.kind.clone(),
@@ -630,6 +683,9 @@ pub fn build_focus_context(
         })
         .collect();
 
+    let omitted_matched_nodes = matched_nodes.len().saturating_sub(max_matched);
+    matched_nodes.truncate(max_matched);
+
     let blast_target = matched
         .iter()
         .find(|n| !n.id.contains('#'))
@@ -640,7 +696,16 @@ pub fn build_focus_context(
         .filter(|_| depth > 0)
         .map(|id| graph.blast_radius(id, depth));
 
+    let mut omitted_blast_upstream = 0usize;
+    let mut omitted_blast_downstream = 0usize;
     if let Some(ref mut br) = blast_radius {
+        let max_blast = if max_tokens < 3000 {
+            8
+        } else if max_tokens < 8000 {
+            15
+        } else {
+            30
+        };
         let sort_blast = |nodes: &mut Vec<sruja_scan::BlastRadiusNode>| {
             nodes.sort_by(|a, b| {
                 let a_c = centrality.get(&a.id).map(|s| s.pagerank).unwrap_or(0.0);
@@ -650,13 +715,18 @@ pub fn build_focus_context(
                     .then_with(|| b_c.partial_cmp(&a_c).unwrap_or(std::cmp::Ordering::Equal))
                     .then_with(|| a.id.cmp(&b.id))
             });
-            nodes.truncate(20);
+            nodes.truncate(max_blast);
         };
+        omitted_blast_upstream = br.upstream.len().saturating_sub(max_blast);
         sort_blast(&mut br.upstream);
+        omitted_blast_downstream = br.downstream.len().saturating_sub(max_blast);
         sort_blast(&mut br.downstream);
     }
 
-    let suggested_checks = suggested_checks(intent);
+    let mut suggested_checks = suggested_checks(intent);
+    let max_checks = if max_tokens < 3000 { 6 } else { 12 };
+    let omitted_suggested_checks = suggested_checks.len().saturating_sub(max_checks);
+    suggested_checks.truncate(max_checks);
 
     Ok(FocusContext {
         file: file.to_string(),
@@ -665,6 +735,14 @@ pub fn build_focus_context(
         matched_nodes,
         blast_radius,
         suggested_checks,
+        truncated: omitted_matched_nodes > 0
+            || omitted_suggested_checks > 0
+            || omitted_blast_upstream > 0
+            || omitted_blast_downstream > 0,
+        omitted_matched_nodes,
+        omitted_suggested_checks,
+        omitted_blast_upstream,
+        omitted_blast_downstream,
     })
 }
 

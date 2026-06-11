@@ -138,7 +138,15 @@ pub async fn review(
     let context_score = (|| {
         let kg = crate::graph_store::load_or_build_graph(repo_path).ok()?;
         let age_hours = crate::utils::context::context_age_hours(repo_path);
-        Some(sruja_graph::compute_context_score(&kg, analysis.graph.nodes.len(), repo_path, age_hours).score)
+        Some(
+            sruja_graph::compute_context_score(
+                &kg,
+                analysis.graph.nodes.len(),
+                repo_path,
+                age_hours,
+            )
+            .score,
+        )
     })();
 
     let elapsed = start_time.elapsed();
@@ -149,7 +157,10 @@ pub async fn review(
         violations_count: filtered_violations.len(),
         health_score: Some(analysis.health_score),
         suppressed_count: analysis.suppressed_violations.len(),
-        violations: filtered_violations.iter().map(summarize_violation).collect(),
+        violations: filtered_violations
+            .iter()
+            .map(summarize_violation)
+            .collect(),
         suppressed_violations: analysis
             .suppressed_violations
             .iter()

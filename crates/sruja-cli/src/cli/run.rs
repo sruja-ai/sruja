@@ -621,10 +621,10 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             base_ref,
             head_ref,
             compact,
-            staged: _,
-            max_tokens: _,
-            output: _,
-            cache_friendly: _,
+            staged,
+            max_tokens,
+            output,
+            cache_friendly,
         } => {
             if task.is_some() || query.is_some() {
                 let enrich_ref = enrich.as_ref();
@@ -636,9 +636,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     query: query.as_deref(),
                     base_ref: base_ref.as_deref(),
                     head_ref: head_ref.as_deref(),
-                    staged: false,
-                    max_tokens: 8000,
-                    output: None,
+                    staged,
+                    max_tokens,
+                    output: output.as_deref(),
                     enrich: &enrich_ref,
                 })
                 .await
@@ -653,6 +653,8 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     base_ref.as_deref(),
                     head_ref.as_deref(),
                     compact,
+                    cache_friendly,
+                    output.as_deref(),
                 )
                 .await
             }
@@ -692,13 +694,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             repo,
             category,
             elements,
-        } => commands::ingest(
-            &repo,
-            &sources,
-            category.as_deref(),
-            elements.as_deref(),
-        )
-        .await,
+        } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
 
         Commands::Memory { cmd } => match cmd {
             MemoryCommand::Reindex { repo } => commands::memory_reindex(&repo),
@@ -1215,7 +1211,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         } => {
             let skip = skip_proposals || !apply_proposals;
             commands::learn(&path, file.as_deref(), since.as_deref(), skip, &format).await
-        },
+        }
         Commands::Guard { cmd } => match cmd {
             GuardCommand::Critique {
                 repo,
@@ -1292,7 +1288,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 fail_on.as_deref(),
             )
             .await
-        },
+        }
         Commands::Federation { cmd } => match cmd {
             FederationCommand::Publish {
                 repo,

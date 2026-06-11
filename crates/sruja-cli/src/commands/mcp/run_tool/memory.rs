@@ -53,9 +53,7 @@ pub(crate) async fn try_run(
         }
 
         "sruja_get_learned_facts" => {
-            let path = Path::new(&repo)
-                .join(".sruja")
-                .join("agent_memory.json");
+            let path = Path::new(&repo).join(".sruja").join("agent_memory.json");
             if !path.exists() {
                 let out = json!({
                     "schema_version": "learned_facts/v1",

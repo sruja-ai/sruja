@@ -73,42 +73,33 @@ pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<Analysis
     };
 
     // Step 3 & 4: Compare or detect drift
-    let (truth_status, raw_violations, health_score) =
-        if let Some(ref arch_path) = baseline_path {
-            let content = std::fs::read_to_string(arch_path)?;
-            let parser =
-                sruja_language::Parser::new(arch_path.to_string_lossy().as_ref());
-            let program = parser.parse(&content).map_err(|diags| {
-                CliError::parse_with_diagnostics(
-                    arch_path.to_string_lossy().to_string(),
-                    diags,
-                )
-            })?;
-            let proposed_graph = sruja_diff::program_to_graph(&program);
-            let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
-            let truth = match diff.truth_status {
-                sruja_diff::TruthStatus::Reviewed => "reviewed",
-                sruja_diff::TruthStatus::Drifted => "drifted",
-                sruja_diff::TruthStatus::Unknown => "unknown",
-            };
-            (
-                truth.to_string(),
-                diff.violations,
-                diff.summary.health_score,
-            )
-        } else {
-            let drift = sruja_diff::detect_architectural_drift(&graph);
-            let truth = match drift.truth_status {
-                sruja_diff::TruthStatus::Reviewed => "reviewed",
-                sruja_diff::TruthStatus::Drifted => "drifted",
-                sruja_diff::TruthStatus::Unknown => "unknown",
-            };
-            (
-                truth.to_string(),
-                drift.violations,
-                drift.health_score,
-            )
+    let (truth_status, raw_violations, health_score) = if let Some(ref arch_path) = baseline_path {
+        let content = std::fs::read_to_string(arch_path)?;
+        let parser = sruja_language::Parser::new(arch_path.to_string_lossy().as_ref());
+        let program = parser.parse(&content).map_err(|diags| {
+            CliError::parse_with_diagnostics(arch_path.to_string_lossy().to_string(), diags)
+        })?;
+        let proposed_graph = sruja_diff::program_to_graph(&program);
+        let diff = sruja_diff::compare_graphs(&graph, &proposed_graph);
+        let truth = match diff.truth_status {
+            sruja_diff::TruthStatus::Reviewed => "reviewed",
+            sruja_diff::TruthStatus::Drifted => "drifted",
+            sruja_diff::TruthStatus::Unknown => "unknown",
         };
+        (
+            truth.to_string(),
+            diff.violations,
+            diff.summary.health_score,
+        )
+    } else {
+        let drift = sruja_diff::detect_architectural_drift(&graph);
+        let truth = match drift.truth_status {
+            sruja_diff::TruthStatus::Reviewed => "reviewed",
+            sruja_diff::TruthStatus::Drifted => "drifted",
+            sruja_diff::TruthStatus::Unknown => "unknown",
+        };
+        (truth.to_string(), drift.violations, drift.health_score)
+    };
 
     // Step 5: Filter violations
     let violations: Vec<sruja_diff::Violation> = if opts.advisory {
@@ -147,8 +138,7 @@ pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<Analysis
             .map(|mut v| {
                 let suppressed = set.contains(&fingerprint_violation(&v));
                 v.suppressed = Some(suppressed);
-                v.baseline_delta =
-                    Some(if suppressed { "baseline" } else { "new" }.to_string());
+                v.baseline_delta = Some(if suppressed { "baseline" } else { "new" }.to_string());
                 v
             })
             .partition(|v| v.suppressed != Some(true))

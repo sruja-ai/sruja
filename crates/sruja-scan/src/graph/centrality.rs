@@ -133,7 +133,8 @@ mod tests {
                 "PageRank should be normalized"
             );
             assert!(
-                importance.eigenvector_centrality >= 0.0 && importance.eigenvector_centrality <= 1.0,
+                importance.eigenvector_centrality >= 0.0
+                    && importance.eigenvector_centrality <= 1.0,
                 "Eigenvector should be normalized"
             );
         }

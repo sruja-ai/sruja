@@ -41,9 +41,7 @@ pub use hybrid_retrieval::{
     classify_query, execute_graph_only, execute_hybrid, select_strategy, HybridResult,
     QueryComplexity, RetrievalStrategy, SemanticCandidate,
 };
-pub use learning::{
-    ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, MemoryError,
-};
+pub use learning::{ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, MemoryError};
 pub use query::{
     LlmGuidedWhyResult, LlmGuidedWhyStep, PolicyViolation, QueryError, QueryResult,
     ReasonedWhyResult, ReasonedWhyStep,

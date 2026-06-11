@@ -164,7 +164,6 @@ pub enum Commands {
     },
     /// Start LSP server (stdio)
 
-
     /// Start LSP server (stdio)
     #[command(hide = true)]
     Lsp {
@@ -183,7 +182,6 @@ pub enum Commands {
         #[arg(long, short = 'r', default_value = ".")]
         root: String,
     },
-
 
     /// Drift and structural checks (from code, optional baseline)
     ///
@@ -406,7 +404,6 @@ pub enum Commands {
         #[arg(long)]
         critique: bool,
     },
-
 
     /// Baseline: snapshot current violations to ignore them in CI (use with `sruja drift --ci --baseline`)
     #[command(hide = true)]
@@ -662,7 +659,7 @@ pub enum Commands {
     ///
     /// Use `sruja focus -r . --file <path>` before editing a file.
     /// Use `sruja focus -r . --task "description"` for paste-ready AI briefs.
-    /// Use `sruja focus -r . --format for-ai` for prompt-cache-friendly payloads.
+    /// Use `sruja ai-context -r . --format for-ai --cache-friendly` for prompt-cache-friendly payloads.
     Focus {
         /// Optional run ID for tracing (defaults to auto-generated)
         #[arg(long)]
@@ -706,7 +703,7 @@ pub enum Commands {
         /// Output file (defaults to stdout)
         #[arg(long, short = 'o')]
         output: Option<String>,
-        /// For --format for-ai: emit invariant/tools/volatile blocks for prompt-cache-friendly payloads
+        /// Reserved for future focus exports; currently unsupported. Use `ai-context --format for-ai --cache-friendly`.
         #[arg(long)]
         cache_friendly: bool,
     },
@@ -747,7 +744,6 @@ pub enum Commands {
         #[command(flatten)]
         enrich: EnrichmentArgs,
     },
-
 
     /// Ingest external context into `.sruja/context/`
     ///

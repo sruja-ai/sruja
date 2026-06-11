@@ -377,9 +377,7 @@ impl SystemGraph {
 
         // 5. Substring match on label or local_id
         for node in self.nodes.values() {
-            if node.label.to_lowercase().contains(&q)
-                || node.local_id.to_lowercase().contains(&q)
-            {
+            if node.label.to_lowercase().contains(&q) || node.local_id.to_lowercase().contains(&q) {
                 return Some(node.canonical_id.clone());
             }
         }

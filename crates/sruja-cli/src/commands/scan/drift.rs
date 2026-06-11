@@ -2,8 +2,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::commands::violation_shared::{
+    apply_baseline_filter, resolve_repo_relative, validate_repo_exists,
+};
 use crate::commands::CliError;
-use crate::commands::violation_shared::{apply_baseline_filter, resolve_repo_relative, validate_repo_exists};
 use crate::integrations::load_repo_config;
 use crate::utils::architecture_path;
 use sruja_scan::scan_repo;

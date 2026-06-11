@@ -7,6 +7,7 @@
 use colored::Colorize;
 use serde::Serialize;
 use std::collections::HashSet;
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -1317,6 +1318,8 @@ pub async fn focus(
     base_ref: Option<&str>,
     head_ref: Option<&str>,
     compact: bool,
+    cache_friendly: bool,
+    output: Option<&str>,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo);
     if !repo_path.exists() {
@@ -1324,6 +1327,12 @@ pub async fn focus(
             std::io::ErrorKind::NotFound,
             format!("Repository not found: {}", repo),
         )));
+    }
+
+    if cache_friendly {
+        return Err(CliError::validation(
+            "--cache-friendly is not supported by `focus`; use `ai-context -f for-ai --cache-friendly` instead.".to_string(),
+        ));
     }
 
     // Load or build the knowledge graph
@@ -1390,10 +1399,25 @@ pub async fn focus(
         briefing.enrichment = build_focus_enrichment(repo_path, &briefing, enrich);
     }
 
+    let density_hint = crate::commands::density::density_hint(repo_path);
+
+    if let Some(path) = output {
+        let rendered = match format {
+            "json" => serde_json::to_string_pretty(&briefing)?,
+            "for-ai" => {
+                let out =
+                    build_focus_for_ai_output(repo_path, file, element_id, Some(&run_id), briefing);
+                serde_json::to_string_pretty(&out)?
+            }
+            _ => render_focus_briefing_text(&briefing, density_hint.as_deref()),
+        };
+        fs::write(path, rendered)?;
+        eprintln!("Written focus output to {}", path);
+        return Ok(());
+    }
+
     match format {
-        "json" => {
-            println!("{}", serde_json::to_string_pretty(&briefing)?);
-        }
+        "json" => println!("{}", serde_json::to_string_pretty(&briefing)?),
         "for-ai" => {
             let out =
                 build_focus_for_ai_output(repo_path, file, element_id, Some(&run_id), briefing);
@@ -1407,15 +1431,76 @@ pub async fn focus(
                     println!("{}", md);
                 }
             }
-            // Add density hint
-            if let Some(hint) = crate::commands::density::density_hint(repo_path) {
+            if let Some(hint) = density_hint.as_deref() {
                 println!();
-                println!("  {}", colors::dim(&hint));
+                println!("  {}", colors::dim(hint));
             }
         }
-    }
+    };
 
     Ok(())
+}
+
+fn render_focus_briefing_text(b: &FocusBriefing, density_hint: Option<&str>) -> String {
+    let mut out = String::new();
+    out.push_str("Context Focus\n");
+    out.push_str(&format!("Target: {} ({})\n", b.target.label, b.target.id));
+    if let Some(run_id) = &b.run_id {
+        out.push_str(&format!("Run ID: {}\n", run_id));
+    }
+    out.push_str(&format!("Kind: {}\n", b.target.kind));
+    if let Some(ref tech) = b.target.technology {
+        out.push_str(&format!("Technology: {}\n", tech));
+    }
+    if let Some(ref sys) = b.target.system {
+        out.push_str(&format!("System: {}\n", sys));
+    }
+    out.push('\n');
+
+    out.push_str(&format!(
+        "Blast radius: {} affected ({} upstream, {} downstream)\n",
+        b.blast_radius.total_affected,
+        b.blast_radius.upstream.len(),
+        b.blast_radius.downstream.len()
+    ));
+    if !b.boundaries.is_empty() {
+        out.push('\n');
+        out.push_str("Boundaries\n");
+        for boundary in &b.boundaries {
+            out.push_str(&format!(
+                "- {} -> {} allowed={} ({})\n",
+                boundary.from, boundary.to, boundary.allowed, boundary.reason
+            ));
+        }
+    }
+    if !b.decisions.is_empty() {
+        out.push('\n');
+        out.push_str("Decisions\n");
+        for d in &b.decisions {
+            out.push_str(&format!("- {} [{}]: {}\n", d.id, d.status, d.title));
+        }
+    }
+    if !b.active_drift_violations.is_empty() {
+        out.push('\n');
+        out.push_str("Active Drift\n");
+        out.push_str(&format!(
+            "- Violations: {}\n",
+            b.active_drift_violations.len()
+        ));
+    }
+    if let Some(enrichment) = &b.enrichment {
+        if let Some(md) = enrichment.narrative_markdown.as_deref() {
+            out.push('\n');
+            out.push_str(md);
+            out.push('\n');
+        }
+    }
+    if let Some(hint) = density_hint {
+        out.push('\n');
+        out.push_str(hint);
+        out.push('\n');
+    }
+    out
 }
 
 fn print_focus_briefing(b: &FocusBriefing) {
@@ -1700,4 +1785,66 @@ fn print_focus_briefing(b: &FocusBriefing) {
 
     println!("╰{}╯", border);
     println!();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_focus_briefing_text_includes_enrichment_and_density_hint() {
+        let briefing = FocusBriefing {
+            run_id: Some("run-1".to_string()),
+            active_drift_violations: Vec::new(),
+            anti_patterns: Vec::new(),
+            boundaries: Vec::new(),
+            ai_instructions: Vec::new(),
+            target: FocusTarget {
+                id: "Sruja.CLI".to_string(),
+                kind: "component".to_string(),
+                label: "CLI".to_string(),
+                technology: Some("Rust".to_string()),
+                system: Some("Sruja".to_string()),
+                gotchas: Vec::new(),
+                operational_constraints: Vec::new(),
+                runbooks: Vec::new(),
+            },
+            blast_radius: BlastRadius {
+                total_affected: 2,
+                upstream: Vec::new(),
+                downstream: Vec::new(),
+            },
+            reasoned_traces: Vec::new(),
+            decisions: Vec::new(),
+            external_context: Vec::new(),
+            hotspot_status: HotspotStatus {
+                is_hotspot: false,
+                role: "Regular".to_string(),
+                in_degree: 0,
+                out_degree: 0,
+            },
+            pointer_traces: Vec::new(),
+            memory_hits: Vec::new(),
+            memory_truncated: false,
+            context_score: 90,
+            temporal: None,
+            enrichment: Some(EnrichmentResult {
+                status: "ok".to_string(),
+                provider: "test".to_string(),
+                model: None,
+                error: None,
+                narrative_markdown: Some("## Narrative".to_string()),
+            }),
+            decision_trace_events: Vec::new(),
+            decision_records: Vec::new(),
+            linked_requirements: Vec::new(),
+            surfaced_learning_ids: Vec::new(),
+            last_session: None,
+        };
+
+        let rendered = render_focus_briefing_text(&briefing, Some("Density hint"));
+
+        assert!(rendered.contains("## Narrative"));
+        assert!(rendered.contains("Density hint"));
+    }
 }

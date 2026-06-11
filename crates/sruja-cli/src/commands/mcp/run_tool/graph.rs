@@ -11,9 +11,9 @@ fn matches_query(node: &sruja_scan::graph::Node, tokens: &[&str]) -> bool {
     let id = node.id.to_lowercase();
     let label = node.label.to_lowercase();
     let path = node.path.as_deref().unwrap_or("").to_lowercase();
-    tokens.iter().all(|t| {
-        id.contains(t) || label.contains(t) || (!path.is_empty() && path.contains(t))
-    })
+    tokens
+        .iter()
+        .all(|t| id.contains(t) || label.contains(t) || (!path.is_empty() && path.contains(t)))
 }
 
 pub(crate) async fn try_run(

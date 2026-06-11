@@ -32,6 +32,12 @@ pub async fn context_string(
     format: &str,
     req: ContextRequest<'_>,
 ) -> Result<String, CliError> {
+    if req.cache_friendly && format != "for-ai" {
+        return Err(CliError::validation(
+            "--cache-friendly is only supported with --format for-ai".to_string(),
+        ));
+    }
+
     let repo_path = Path::new(repo_root);
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
@@ -129,6 +135,12 @@ pub async fn context_string_multi(
     format: &str,
     req: ContextRequest<'_>,
 ) -> Result<String, CliError> {
+    if req.cache_friendly && format != "for-ai" {
+        return Err(CliError::validation(
+            "--cache-friendly is only supported with --format for-ai".to_string(),
+        ));
+    }
+
     let repos: Vec<String> = if repo_roots.is_empty() {
         vec![".".to_string()]
     } else {
@@ -139,10 +151,85 @@ pub async fn context_string_multi(
         return context_string(&repos[0], format, req).await;
     }
 
-    if req.cache_friendly && (format == "for-ai" || format == "json") {
-        return Err(CliError::validation(
-            "--cache-friendly is only supported for a single repository (-r .); use one -r per export",
-        ));
+    if req.cache_friendly && format == "for-ai" {
+        let run_id = req
+            .run_id
+            .map(|s| s.to_string())
+            .unwrap_or_else(generate_run_id);
+
+        let mut exports: Vec<CacheFriendlyTaskContextExport> = Vec::with_capacity(repos.len());
+        let mut summaries: Vec<ContextSummary> = Vec::with_capacity(repos.len());
+
+        for (idx, repo_root) in repos.iter().enumerate() {
+            let repo_path = Path::new(repo_root);
+            if !repo_path.exists() {
+                return Err(CliError::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("Repository not found: {}", repo_root),
+                )));
+            }
+
+            let graph = scan_repo_cached(repo_path)?;
+
+            let selectors = TaskSelectors {
+                file: req.file,
+                element_id: req.element_id,
+                query: req.query,
+                base_ref: req.base_ref,
+                head_ref: req.head_ref,
+                depth: Some(req.depth),
+            };
+
+            let mut volatile = build_task_context(&graph, repo_root, selectors, req.max_tokens)?;
+            volatile.run_id = Some(format!("{}-{}", run_id, idx + 1));
+
+            let arch = build_architecture_context(
+                &graph,
+                repo_root,
+                req.file,
+                req.intent,
+                req.depth,
+                req.max_tokens,
+            )?;
+            summaries.push(arch.summary.clone());
+
+            exports.push(build_cache_friendly_task_export(repo_root, &arch, volatile));
+        }
+
+        let combined_crates: Option<usize> = {
+            let all_crates: Vec<usize> = summaries.iter().filter_map(|c| c.total_crates).collect();
+            if all_crates.len() == summaries.len() {
+                Some(all_crates.into_iter().sum())
+            } else {
+                None
+            }
+        };
+        let combined_summary = ContextSummary {
+            total_crates: combined_crates,
+            total_modules: summaries.iter().map(|c| c.total_modules).sum(),
+            total_services: summaries.iter().map(|c| c.total_services).sum(),
+            total_databases: summaries.iter().map(|c| c.total_databases).sum(),
+            total_external_apis: summaries.iter().map(|c| c.total_external_apis).sum(),
+        };
+
+        let cross_repo_rules = vec![
+            "Treat each repo as a hard boundary: avoid cross-repo imports; integrate via API/events"
+                .to_string(),
+            "If a change spans repos, update contracts (OpenAPI/SDK) and bump versions together"
+                .to_string(),
+            "Run checks in every touched repo (format, lint/typecheck, unit tests, integration tests)"
+                .to_string(),
+        ];
+
+        let multi = MultiRepoCacheFriendlyTaskContextExport {
+            schema_version: "multi_repo_task_context_cache_friendly/v1".to_string(),
+            run_id: Some(run_id),
+            combined_summary,
+            cross_repo_rules,
+            exports,
+        };
+
+        return Ok(serde_json::to_string_pretty(&multi)?);
     }
 
     let mut contexts: Vec<ArchitectureContext> = Vec::with_capacity(repos.len());
@@ -257,3 +344,46 @@ pub use format::{
     format_invariant_markdown, format_llms_architecture,
 };
 pub use logic::build_architecture_context;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn base_request(cache_friendly: bool) -> ContextRequest<'static> {
+        ContextRequest {
+            run_id: None,
+            file: None,
+            element_id: None,
+            query: None,
+            base_ref: None,
+            head_ref: None,
+            intent: None,
+            depth: 2,
+            max_tokens: 1000,
+            cache_friendly,
+        }
+    }
+
+    #[tokio::test]
+    async fn context_string_rejects_cache_friendly_without_for_ai() {
+        let err = context_string(".", "json", base_request(true))
+            .await
+            .expect_err("json + cache_friendly should be rejected");
+
+        assert!(err
+            .to_string()
+            .contains("--cache-friendly is only supported with --format for-ai"));
+    }
+
+    #[tokio::test]
+    async fn context_string_multi_rejects_cache_friendly_without_for_ai() {
+        let repos = vec![".".to_string(), "..".to_string()];
+        let err = context_string_multi(&repos, "json", base_request(true))
+            .await
+            .expect_err("json + cache_friendly should be rejected");
+
+        assert!(err
+            .to_string()
+            .contains("--cache-friendly is only supported with --format for-ai"));
+    }
+}
