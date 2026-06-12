@@ -68,14 +68,7 @@ Grounded assessment of what exists today, what's in progress, and what's genuine
 
 | Item | Phase | Effort |
 |------|-------|--------|
-| `sruja verify-task` CLI command | 1.2 | 3–5 days (extract from `agent_run.rs`) |
-| `sruja_verify_task` MCP tool | 1.2 | Trivial (once CLI exists) |
-| `docs/HOST_AGENT_INTEGRATION.md` | 1.1 | 1–2 days (consolidate from existing docs) |
-| `docs/COMMUNITY_SKILLS_STACK.md` | 2.3 | 1 day |
 | `docs/SRUJA_SKILL_IMPROVEMENTS.md` | 2.3 | Half day (broken link in `skills/README.md:139`) |
-| `skills/sruja-harness/SKILL.md` | 2.1 | Half day |
-| `.cursor/commands/sruja-bugfix-triage.md` | 2.2 | Half day |
-| `.cursor/commands/sruja-pre-merge-review.md` | 2.2 | Half day |
 | `[verify]` config profiles in `.sruja/config.toml` | 1.2 | 1 day (new config section) |
 | `facts_bundle/v2` (host, skills_used[], verify_profile) | 3.1 | 1 day (additive schema bump) |
 | Full workflow lifecycle integration test | 0.2 | Half day |
@@ -83,7 +76,7 @@ Grounded assessment of what exists today, what's in progress, and what's genuine
 
 ### Key realization
 
-The codebase is further along than the plan implies. Most Phase 0–1 work is **extraction or documentation**, not greenfield engineering. The only genuinely new runtime code is `verify-task` (Phase 1.2).
+The codebase is further along than the plan implies. Most Phase 0–1 work is **documentation, consolidation, and hardening**, not greenfield engineering. The biggest remaining gaps are end-to-end lifecycle tests, practical config templates, and run artifact evolution (facts bundles + learnings).
 
 ---
 
