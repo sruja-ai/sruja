@@ -1,6 +1,6 @@
 # Grounded harness and continual learning (host-owned)
 
-Sruja is a **deterministic harness** for architecture-as-code: it validates `.sruja`, compares models to the codebase, and exposes grounded context to AI editors. It is **not** a full agent runtime. The editor or CI host (Cursor, Claude Code, your runner) owns the LLM loop—planning, reflection, and open-ended reasoning—while Sruja supplies evidence, gates, memory, and MCP tools.
+Sruja is an **AI coding agent** that provides intelligent assistance for software development. It validates `.sruja`, compares models to the codebase, and exposes grounded context to AI editors. The editor or CI host (Cursor, Claude Code, your runner) owns the LLM loop—planning, reflection, and open-ended reasoning—while Sruja supplies evidence, gates, memory, and MCP tools.
 
 This guide explains how to combine both layers for **continual learning in token space**: the system improves through recorded outcomes and curated memory without retraining model weights.
 
@@ -18,7 +18,7 @@ A **grounded harness** shifts correctness from neural weights to a compiler: eve
 
 | Layer | Owner | Responsibility |
 |-------|--------|----------------|
-| **Harness** | Sruja CLI + MCP | `sync`, `lint`, `drift`, `intent check`, proposals, agent memory, focus/ai briefings |
+| **AI Coding Agent** | Sruja CLI + MCP | `sync`, `lint`, `drift`, `intent check`, proposals, agent memory, focus/ai briefings |
 | **Agent host** | Your editor / CI / script | Act (generate), optional Reflect/Learn (narrative), tool orchestration beyond Sruja |
 | **Reviewed truth** | Humans + promotion flow | `repo.sruja`, Decision Records, approved proposals |
 
@@ -267,9 +267,43 @@ The CLI is a Rust workspace (`sruja-cli`). Teams may add validation subcommands 
 
 ## Further reading
 
-- [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) — MCP vs in-product runtime
 - [context-graph-for-agents.md](context-graph-for-agents.md) — Decision Records and trace events
 - [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) — Context pipeline principles
 - [plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md](plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md) — Authoring lanes
 - [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) — Install `sruja-architecture` skill
 - Book: [Agentic AI course](../book/src/courses/agentic-ai/course-overview.md) — Module 4, Lesson 4 (grounded harness)
+
+---
+
+## Agentic Orchestration Patterns and Sruja
+
+Industry writing on multi-agent systems often discusses **reflection**, **tool use**, **planning**, **multi-agent collaboration**, and topologies such as sequential pipelines, parallel fan-out, hierarchical coordinators, and evaluator–optimizer loops. This section maps those ideas to **what Sruja is today** (AI coding agent, architecture-as-code, graph queries, MCP, drift and context engineering) so teams know where Sruja fits and what would be **out of scope** unless the product explicitly grows into an agent runtime.
+
+### MCP: tools and grounding, not peer-to-peer agents
+
+Sruja exposes a **Model Context Protocol (MCP)** server so AI editors can call structured tools (summaries, neighbors, paths, focus briefings, context score, and related capabilities depending on version). That aligns with the common split:
+
+- **MCP** answers: *What tools and grounded facts can this session use?*
+- The **host** (Cursor, Claude Desktop, CI, or your own stack) remains the orchestrator for multi-step reasoning, routing, and sub-agents.
+
+Sruja does **not** need to embed a LangGraph-style in-process agent loop to deliver strong value: it supplies **deterministic, schema-driven** architecture evidence on demand. Setup: [mcp_setup.md](mcp_setup.md).
+
+### Shared state instead of stuffing the chat window
+
+Patterns such as **tiered memory** and **context engineering** stress moving stable facts out of the model's volatile window. In Sruja terms:
+
+- **Architecture graph** and `repo.sruja` (and federation artifacts where used) act as **semantic memory**: reviewed structure and relationships.
+- **Drift** commands and linting align with **governance**: whether the model's picture matches enforced truth.
+- **Ingested docs** under `.sruja/context/` (with links to elements) ground policy and decisions without pasting entire wikis into every prompt.
+
+### Modeling orchestration in `.sruja` (not executing it)
+
+You can **document** how *your* system orchestrates agents—supervisor, hierarchy, mesh, pipelines—using the DSL and relationships. That is **architecture description and communication**, not Sruja executing those agents at runtime.
+
+### The 80 / 20 split in practice
+
+A practical industry heuristic is **~80% deterministic orchestration**, **~20%** genuinely open-ended model judgment. Sruja intentionally leans **deterministic**: parse, validate, scan, query, score, and lint. The **agentic** slice stays in the editor or your automation layer, which calls Sruja when it needs grounded architecture answers.
+
+### Observability as you add automation
+
+If you add more **autonomous** steps (headless runs, hooks, or multi-bot flows), invest in **traceability**: which MCP tools ran, with what arguments, what graph version or git SHA was in scope, and what changed in `.sruja` or policy files. For the MCP server specifically, set **`SRUJA_MCP_LOG=1`** so each `tools/call` emits one JSON line on stderr (`tool`, `repo`, `ms`, `ok`, optional error), and use **`SRUJA_MCP_READONLY=1`** when the host must only call read/query tools (see [mcp_tools_reference.md](mcp_tools_reference.md)).

@@ -1,6 +1,6 @@
 # Product scope
 
-Sruja is an **architecture-as-code and context engineering platform for AI-assisted SDLC**—not a diagramming product. We ship:
+Sruja is an **AI coding agent and context engineering platform for AI-assisted SDLC**—not a diagramming product. We ship:
 
 1. **Rust parser** (`sruja-language`) – core DSL parsing with pluggable schemas
 2. **CLI** (`sruja-cli`) – validate, export, scan, quickstart, why, drift, critique, propose, context, focus, agent, and more

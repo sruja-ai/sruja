@@ -3,7 +3,7 @@
 **Status:** Active  
 **Last updated:** 2026-05-20
 
-Single source for integrating Sruja with any AI agent host (Cursor, Claude Code, CI, OpenHands, etc.). Sruja is a **deterministic harness** — the host owns the LLM loop.
+Single source for integrating Sruja with any AI agent host (Cursor, Claude Code, CI, OpenHands, etc.). Sruja is an **AI coding agent** that provides intelligent assistance for software development.
 
 ## One blessed loop
 
@@ -58,7 +58,7 @@ Hosts should avoid “debate transcripts”. The escalation payload must be shor
 
 | Layer | Owner | Responsibility |
 |-------|-------|----------------|
-| **Harness** | Sruja CLI + MCP | `sync`, `lint`, `drift`, `intent check`, `verify-task`, focus briefings, agent memory, MCP tools |
+| **AI Coding Agent** | Sruja CLI + MCP | `sync`, `lint`, `drift`, `intent check`, `verify-task`, focus briefings, agent memory, MCP tools |
 | **Agent host** | Your editor / CI / script | Act (generate code/DSL), optional Reflect/Learn, tool orchestration beyond Sruja |
 | **Reviewed truth** | Humans + promotion flow | `repo.sruja`, Decision Records, approved proposals |
 
@@ -150,6 +150,37 @@ sruja verify-task --profile coding -r . -f json
 | `arch` | `lint repo.sruja` + `drift` + `intent check` + `review -f json` |
 
 **MCP equivalent:** `sruja_verify_task`
+
+### Evidence Packs
+
+Evidence packs make Sruja outputs easy to archive as CI artifacts and attach to change records.
+
+When enabled, `verify-task` writes a folder containing:
+
+- `verify-task.json` — `verify_task/v2` output (includes provenance)
+- `drift.json` — from the `drift_check` step (when present)
+- `intent.json` — from the `intent_check` step (when present)
+- `review.json` — from the `review` step (when present)
+
+**How to generate:**
+
+Default location (recommended for local runs):
+
+```bash
+sruja verify-task --profile review -r . --evidence-pack -f json
+```
+
+Override output directory (recommended for CI):
+
+```bash
+sruja verify-task --profile review -r . --evidence-pack-dir "$RUNNER_TEMP/sruja-evidence" -f json
+```
+
+Evidence packs also work with the `confidence` command:
+
+```bash
+sruja confidence -r . --evidence-pack -f json
+```
 
 ### Optional: Verifier/Adversary gates (host-owned)
 

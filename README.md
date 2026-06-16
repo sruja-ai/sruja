@@ -2,19 +2,15 @@
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-Sruja is a context engineering tool for software teams. It helps you:
+Sruja is an AI coding agent that helps software teams build better code. It:
 
-- capture important knowledge and decisions
-- retrieve the right task context for developers and AI agents
-- verify that code changes still align with those decisions
+- captures important knowledge and decisions
+- retrieves the right task context for developers
+- verifies that code changes align with architectural intent
 
-The product center is not diagrams or generic agent orchestration. The product center is a small loop:
+Sruja works as an intelligent coding partner that understands your codebase architecture and helps you make changes that respect your design decisions.
 
-1. capture knowledge and reviewed intent
-2. brief the next change with grounded context
-3. verify the result with deterministic checks
-
-## Core Foundations
+## Core Capabilities
 
 ### 1. Capture
 
@@ -43,7 +39,7 @@ Check that implementation still matches reality and intent:
 
 ## Quick Start
 
-Install the CLI and run the core loop:
+Install the CLI and start using Sruja as your AI coding agent:
 
 ```bash
 curl -fsSL https://sruja.ai/install.sh | bash
@@ -75,7 +71,7 @@ Treat `repo.sruja` as reviewed truth, not as the day-one requirement.
 
 ## Editor Integration
 
-Sruja works best when your editor can ask for context directly through MCP.
+Sruja integrates with your editor through MCP, providing AI coding agent capabilities directly in your development environment.
 
 Cursor template: [.cursor/mcp.json](.cursor/mcp.json)
 
@@ -94,7 +90,7 @@ Cursor template: [.cursor/mcp.json](.cursor/mcp.json)
 }
 ```
 
-Use the default `coding` profile. Host editors own the LLM loop; Sruja supplies grounded context and verification.
+Use the default `coding` profile. Sruja provides grounded context and verification as your AI coding agent.
 
 ## Extensions
 
@@ -124,6 +120,22 @@ Every public feature should strengthen one of these jobs:
 - `verify alignment with intent`
 
 If a feature does none of those, it belongs in an extension or should be hidden.
+
+## How Sruja Compares
+
+| | Structurizr / LikeC4 | Sruja |
+|---|---------------------|-------|
+| **Primary user** | Humans documenting architecture | Agents and CI enforcing topology from code |
+| **Source of truth** | Authoritative DSL/workspace views | Scan-derived graph; optional `repo.sruja` overlay |
+| **Day-one value** | Draw and share C4 views | `sruja drift -r . --structural-only` — violations with file paths |
+| **Editor story** | Diagrams and workspace UX | MCP `coding` profile + `focus` / `verify-task` |
+| **Exports** | Core product | Tier 2 — Mermaid/Markdown from snapshot |
+
+**One line:** Structurizr documents architecture for humans; Sruja extracts topology from code and gates agents (MCP + CI) before and after generation.
+
+**Not the same as SonarQube:** Sruja reports **structural** topology (cycles, layers, god modules), not style or security rule packs.
+
+**Honest limits:** See [KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) — dynamic imports, reflection/DI, heuristic layers, orphan false positives on greenfield (use `drift --advisory`).
 
 ## Docs
 

@@ -161,15 +161,15 @@ Filling the context window “because we can” still hurts quality.
 
 Sruja is the **deterministic harness** (lint, drift, evidence, MCP, agent memory); the **editor or CI host** owns the LLM loop (Act / optional Reflect). There is no `--autonomous` CLI mode. Full guide: [docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 
-### CLI `agent` loop boundaries (Sruja as Plugin, Not Agent)
+### CLI `agent` loop boundaries (Sruja as AI Coding Agent)
 
-Sruja is a passive **developer plugin/harness**, NOT an orchestrator agent. The host environment (Cursor, Claude Code, Cline, Windsurf, etc.) owns the developer orchestrator runtime, transcript analysis, screenshot/video capture, and code-generation loops. 
+Sruja is an **AI coding agent** that provides intelligent assistance for software development. The host environment (Cursor, Claude Code, Cline, Windsurf, etc.) can leverage Sruja's capabilities for architecture-aware code generation, context retrieval, and verification.
 
-`sruja agent run`, `agent plan`, and `agent apply` exist solely as **optional headless/CI convenience helpers** for architecture-bounded validation. They are not a general-purpose coding agent, web search, or a substitute for your editor’s orchestrator.
+`sruja agent run`, `agent plan`, and `agent apply` provide **headless/CI convenience helpers** for architecture-bounded validation. They work alongside your editor's orchestrator to provide grounded context and verification.
 
 - **Do**: Use Sruja's passive gates (`lint`, `drift`, `intent check`, `focus`) and MCP tools within your host agent.
 - **Do**: Use CLI `agent` commands for headless or CI-driven verification step pipelines.
-- **Do not**: Build orchestration state machines or active reflection loops inside Sruja.
+- **Do**: Leverage Sruja's architecture understanding for intelligent code suggestions.
 - **Do not**: Treat Sruja apply outputs as reviewed truth—always merge proposals into `repo.sruja` through manual review.
 - **Kill rule**: if a workflow cannot name [define intent / understand context / detect drift / review change](docs/PRODUCT_FEATURE_ALIGNMENT_REPORT.md#canonical-workflows), keep it out of primary docs and automation until it can.
 

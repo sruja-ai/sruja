@@ -63,3 +63,94 @@ The extension in `extension/` provides syntax highlighting and language features
 
 - **Skills:** `skills/` — `sruja-architecture` is the single supported skill.
 - **Comparison (Mermaid vs Sruja):** `scripts/run_comparison_test.sh [project] [url]`; results in `evaluation/results/comparison_*`.
+
+---
+
+## Testing Features
+
+### Testing `sruja drift --ci` (CI drift check)
+
+#### Automated tests
+
+Run the e2e tests (uses a temp repo, runs `sruja drift --ci` in JSON, text, and github-actions formats):
+
+```bash
+cargo test -p sruja-cli --test check_e2e
+```
+
+Or with output:
+
+```bash
+cargo test -p sruja-cli --test check_e2e -- --nocapture
+```
+
+#### Manual testing
+
+From the repo root (or any path with a baseline and optional code):
+
+```bash
+# Build the CLI first if needed
+cargo build --release -p sruja-cli
+
+# Default: github-actions format (for CI)
+sruja drift --ci -r .
+
+# Text summary
+sruja drift --ci -r . -f text
+
+# JSON (for tooling)
+sruja drift --ci -r . -f json
+```
+
+**What to verify:** Exit code is always 0. Output shows truth status, violation count, and (for `-f github-actions`) `::notice`/`::warning` annotations.
+
+### Testing `sruja review` (evidence + drift + suggestions)
+
+No automated e2e tests yet. Test manually.
+
+```bash
+# From repo root (uses . or -r path)
+sruja review -r .
+
+# JSON output
+sruja review -r . -f json
+```
+
+**What to verify:** Output includes `truth_status`, `violations_count`, categorized lists (`new_components`, `missing_components`, `drifted_dependencies`), `open_questions`, and `suggestions`.
+
+### Testing Federation: `sruja publish` and `sruja compose`
+
+No dedicated e2e tests. Use manual runs and schema checks (see [FEDERATION.md](FEDERATION.md)).
+
+#### Manual: publish (repo → bundle)
+
+```bash
+# Publish current repo to repo.bundle.json
+sruja publish -r . -o repo.bundle.json
+
+# Publish a subdirectory
+sruja publish -r ./services/api -o /tmp/api.repo.bundle.json
+```
+
+**Verify:** `repo.bundle.json` exists and contains `schema_version`, `repo_id`, `context`, `truth_status`, and (if a baseline exists) `baseline_path` / `baseline_dsl`.
+
+#### Manual: compose (bundles → system index)
+
+```bash
+# One bundle
+sruja compose -i repo.bundle.json -o system.index.json
+
+# Directory of bundles
+sruja compose -i ./bundles -o system.index.json
+```
+
+**Verify:** `system.index.json` contains `schema_version`, `repos`, `nodes`, `edges`, and `conflicts` (may be empty).
+
+### Quick Reference
+
+| Feature   | Automated tests              | Manual test                          | CI |
+|----------|------------------------------|--------------------------------------|----|
+| **check**  | `cargo test -p sruja-cli --test check_e2e` | `sruja drift --ci -r . -f text` / `json` / `github-actions` | Sruja Check workflow on PR |
+| **review** | —                            | `sruja review -r .` / `-f json`      | — |
+| **publish**| —                            | `sruja publish -r . -o repo.bundle.json` | — |
+| **compose**| —                            | `sruja compose -i repo.bundle.json -o system.index.json` | — |

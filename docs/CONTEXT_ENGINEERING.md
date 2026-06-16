@@ -1,8 +1,6 @@
 # Sruja Context Engineering Platform
 
-Sruja is more than an architecture-as-code tool; it is a **Context Engineering** platform designed to provide high-fidelity, task-scoped context for AI coding agents.
-
-By quantifying and surfacing architectural evidence, Sruja reduces the "context gap" that leads to AI hallucinations and architectural drift.
+Sruja is an AI coding agent that provides high-fidelity, task-scoped context for software development. By quantifying and surfacing architectural evidence, Sruja reduces the "context gap" that leads to AI hallucinations and architectural drift.
 
 ## Context graphs: Sruja vs industry usage
 
@@ -95,3 +93,116 @@ You can use the context score as a gate in CI. If a PR significantly drops the c
 1. **Sync Daily**: Run `sruja daily` every morning to refresh evidence.
 2. **Link Everything**: Use the `elements:` field in your markdown docs to link them to the architecture.
 3. **Fix Quick Wins**: `sruja context-score` provides a list of "Quick Wins"—tasks that provide the highest ROI for your context health.
+
+---
+
+## Context Graph for Agents
+
+Sruja is the **portable governed context layer** for any agent host (Cursor, Claude Code, CI, Slack bots, internal runners). The host orchestrates steps; Sruja holds **reviewed structure**, **decision lineage**, **append-only traces**, and **hypotheses** that are not promoted to truth without human review.
+
+### Product boundary
+
+**Core promise**
+
+- Reviewed truth in `repo.sruja` (and optional domain schemas).
+- **Decision Records** (generalized ADRs): reviewed "why" with stable IDs, status, and links to graph elements.
+- **Evidence and lineage** via scans, `.sruja/context_events.jsonl`, run snapshots, and agent memory.
+- Task-scoped retrieval through `sruja focus`, `sruja ai`, and MCP tools.
+- Validation before risky action: drift, intent, compliance, and explicit trace events.
+
+**Non-goals**
+
+- Sruja is **not** the full agent runtime or a general business workflow engine (no Slack/Jira/Salesforce automation product).
+- **Model-extracted or ingested text is never reviewed truth** until it passes human review and proposal flows.
+
+### Decision Record (DR) — generalized ADR
+
+An **ADR** is a **profile** of a Decision Record: typically `type: architecture`, linked elements, and `category: adr` when ingested through `sruja ingest`.
+
+Decision Records also cover product, operational, governance, and agent decisions. Store human-reviewed records as Markdown with YAML front matter under **`.sruja/decisions/`** (gitignored by default in some setups—copy to `docs/decisions/` if you want them in version control).
+
+#### Front matter template
+
+```yaml
+---
+id: DR-2026-001
+type: architecture   # architecture | product | operational | security | agent | exception
+status: proposed     # proposed | accepted | superseded | rejected | expired
+scope: repo          # repo | workflow | system | organization
+elements:
+  - Sruja.Context
+actors:
+  - human
+sources:
+  - docs/adr/001-example.md
+  - .sruja/runs/run-123/facts_bundle.json
+trace_id: trace-abc
+supersedes: []
+---
+# Decision title
+
+## Context
+
+## Decision
+
+## Alternatives Considered
+
+## Evidence
+
+## Consequences
+
+## Follow-up Checks
+```
+
+### Append-only traces (context events)
+
+All lineage events live in **`.sruja/context_events.jsonl`** (single append-only log). Built-in kinds include `intent_check`, `drift`, and `proposal_merge`. **Decision and agent workflow** events use `schema_version: context_event/v2` and optional fields (`trace_id`, `decision_id`, `run_id`, `actor`, `source`, `tool`, `elements`, `evidence_refs`, `summary`, …) so agents can answer "how did we get here?"
+
+#### Suggested `kind` values for decision workflow
+
+| `kind` | Meaning |
+|--------|---------|
+| `decision_opened` | Work on a decision or hypothesis started |
+| `context_retrieved` | Governed context pulled (focus, graph, bundle) |
+| `evidence_cited` | Explicit evidence attachment |
+| `alternative_considered` | Option recorded |
+| `human_handoff` | Escalation to human |
+| `override_recorded` | Human overrode agent/tool |
+| `decision_accepted` | DR moved to accepted |
+| `decision_superseded` | DR replaced by another |
+| `decision_applied` | Outcome linked to graph or code |
+| `validation_passed` | Gate succeeded |
+| `validation_failed` | Gate failed |
+
+### Hypothesis pipeline (learned ≠ reviewed)
+
+```text
+unstructured source (Slack, PR, email, call notes)
+  → sruja ingest  →  .sruja/context/
+  → extraction / sruja learn  →  .sruja/learned_facts.jsonl  (hypotheses)
+  → human review  →  proposal / accept
+  →  accepted Decision Record and/or repo.sruja update
+  →  graph + context_events linkage
+```
+
+**Rule:** anything in `learned_facts.jsonl` or model-labeled output is a **decision hypothesis** until a human accepts it into a DR or the architecture graph.
+
+### HITL taxonomy (human-in-the-loop)
+
+When a human intervenes, classify outcomes so future agents retrieve the right **trust level**:
+
+| Tag | Meaning |
+|-----|---------|
+| `precedent` | Reusable guidance for similar tasks |
+| `exception` | Allowed once or narrowly—do not generalize |
+| `correction` | Prior agent/model/tool behavior was wrong |
+| `guardrail` | Standing instruction for future agents |
+
+### Lifecycle rule (all workflows)
+
+Every supported workflow must declare:
+
+1. **Retrieve** governed context (focus, decisions, precedents, exceptions).
+2. **Record** lineage (context events / decision traces).
+3. **Validate** against architecture and policy where applicable.
+4. **Link** outcomes back to decisions or graph elements.

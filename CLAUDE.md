@@ -1,6 +1,6 @@
 # Sruja - Claude Code Context
 
-Sruja is an architecture-as-code tool: declare architecture, enforce it in CI, feed it to AI tools.
+Sruja is an AI coding agent that helps you build better software by understanding your codebase architecture and verifying that changes align with design decisions.
 
 ## Quick Start
 

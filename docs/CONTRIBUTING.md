@@ -293,3 +293,57 @@ When reporting bugs or requesting features:
 - **Architecture**: See [architecture/README.md](architecture/README.md) for architecture overview and [crates/sruja-engine/ARCHITECTURE.md](../crates/sruja-engine/ARCHITECTURE.md) for engine internals
 - **Design Philosophy**: See [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md) for language design principles
 - **Language Spec**: See [LANGUAGE_SPECIFICATION.md](LANGUAGE_SPECIFICATION.md) for complete DSL reference
+
+---
+
+## Related GitHub Repositories
+
+The [sruja-ai](https://github.com/sruja-ai) organization on GitHub hosts the product, generated documentation sites, and (optionally) additional private or downstream repositories used in a composed `system.index.json`. This section summarizes the **public** repos most contributors interact with.
+
+### Public repositories
+
+- **[sruja-ai/sruja](https://github.com/sruja-ai/sruja)** — Source of truth: Rust workspace, VS Code extension, mdBook sources (`book/`), CLI, WASM, skills, and CI. Issues and [Discussions](https://github.com/sruja-ai/sruja/discussions) live here.
+- **[sruja-ai/staging-website](https://github.com/sruja-ai/staging-website)** — GitHub Pages deploy target for **staging** documentation: deploy runs when selected paths change on `main` (path-filtered push) or via manual `workflow_dispatch`. Issues may be disabled; use the main repo for bug reports.
+- **[sruja-ai/prod-website](https://github.com/sruja-ai/prod-website)** — GitHub Pages deploy target for **production** documentation. Updated only via a **manual** promote workflow after staging is validated.
+
+### How documentation is deployed
+
+Workflows in **this** repository (`sruja-ai/sruja`) build the mdBook site (including WASM for diagrams), then push static output to the Pages repos using a GitHub App:
+
+- **Staging** — [.github/workflows/deploy-staging.yml](../.github/workflows/deploy-staging.yml): push to `main` when changed paths include `book/`, selected crates, `scripts/`, or the workflow itself; also `workflow_dispatch`.
+- **Production** — [.github/workflows/deploy-production.yml](../.github/workflows/deploy-production.yml): `workflow_dispatch` only (promote after validating staging).
+
+### Where to file issues
+
+Use **[sruja-ai/sruja/issues](https://github.com/sruja-ai/sruja/issues)** (or Discussions) for documentation site bugs, CLI, extension, and book content—even if you first noticed the problem on the staging or production URL. That keeps triage and fixes next to the source and deploy definitions.
+
+---
+
+## OSS Traction Metrics (Weekly)
+
+Track **substance**, not extension installs or diagram exports.
+
+### Weekly checklist
+
+| Signal | What to record |
+|--------|----------------|
+| GitHub stars | Count + note any post/demo link that drove it |
+| Issues / PRs | New contributors; drift/MCP questions vs "how to draw" |
+| Drift screenshots | External posts or issues with **terminal/JSON drift output** |
+| False positives | Issues labeled or tagged `false-positive` with **technical** repro (rule, file, why wrong) |
+| Repeat scans | Same repo/user runs `drift` more than once (retention) |
+| CI pilots | Teams that keep `drift --ci` or `verify-task` after trial |
+
+### Do not optimize for
+
+- VS Code marketplace install count alone
+- Mermaid/diagram preview usage as primary KPI
+- "Architecture intelligence" buzzword mentions without drift evidence
+
+### Internal dogfood
+
+Run on this repo:
+
+```bash
+sruja drift -r . --structural-only --advisory
+```

@@ -1,8 +1,90 @@
 # Multi-Repo Federation
 
-**⚡ Quick start:** For a complete step-by-step setup guide, see [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md).
-
 This document describes the federation artifacts and commands for multi-repo architecture truth, and how editors and skills use them for retrieval.
+
+## Quick Start
+
+Federation lets you:
+- Keep separate `repo.sruja` files in each repository
+- Export each repo's architecture as a `repo.bundle.json`
+- Combine all bundles into a single `system.index.json` with canonical IDs
+- Detect conflicts (same logical element in multiple repos)
+
+**Use when:** You have architecture spread across multiple repos and want a system-wide view.
+
+### Prerequisites
+
+1. **Sruja CLI installed**
+   ```bash
+   curl -fsSL https://sruja.ai/install.sh | bash
+   sruja --version  # Verify: should show version
+   ```
+
+2. **Two or more repositories to test with**
+   - Use existing repos OR create test repos
+   - Can be any language (TypeScript, Python, Go, Rust, Java, etc.)
+
+3. **Git initialized in each repo**
+   ```bash
+   cd /path/to/each/repo
+   git init  # If not already a git repo
+   ```
+
+### Step 1: Generate Architecture in Each Repo
+
+For **each repository**, use the AI skill to generate `repo.sruja`:
+
+```bash
+# Install the AI skill (once)
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+In your AI editor (Cursor, Copilot, Claude, etc.), run this prompt in **each repo**:
+
+```
+Use sruja-architecture. Generate repo.sruja for this repository.
+Run sruja lint and fix any errors.
+```
+
+### Step 2: Publish Each Repo as a Bundle
+
+In **each repository**, run the publish command to create a bundle:
+
+```bash
+sruja publish -r . -o repo.bundle.json
+```
+
+### Step 3: Compose System Index
+
+Now combine all bundles into a single system index:
+
+```bash
+# Create a bundles directory
+mkdir bundles
+
+# Copy all bundles (rename to avoid collisions)
+cp api-service/repo.bundle.json bundles/api-service.repo.bundle.json
+cp payment-service/repo.bundle.json bundles/payment-service.repo.bundle.json
+cp frontend/repo.bundle.json bundles/frontend.repo.bundle.json
+
+# Compose into a single system index
+sruja compose -i bundles -o system.index.json
+```
+
+### Step 4: Verify Results
+
+```bash
+# Check system index structure
+cat system.index.json | jq 'keys'
+
+# List all repos
+cat system.index.json | jq '.repos[] | {repo_id, repo_path, truth_status, git_commit}'
+
+# Check for conflicts
+cat system.index.json | jq '.conflicts'
+```
+
+---
 
 ## Artifacts
 

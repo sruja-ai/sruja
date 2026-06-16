@@ -354,3 +354,446 @@ Many repos (e.g. one repo per microservice or app). Each repo is independent.
 - **Prompt patterns:** [Prompt Library](../skills/sruja-architecture/PROMPTS.md)
 - **Complete guide:** [Skill Workflow Reference](../skills/sruja-architecture/REFERENCE.md)
 - **Adoption:** [Adoption Guide](../book/src/docs/adoption-guide.md) (evaluate fit, plan rollout)
+
+---
+
+## Recommended Skill Stack
+
+| Order | Skill | Purpose |
+|-------|-------|---------|
+| 1 | `sruja-harness` | Run `verify-task` before marking any task done |
+| 2 | `sruja-architecture` | Optional: promote scan evidence to reviewed `repo.sruja` |
+| 3 | Community skills | Your coding/debug/review skill (Addy, skills.sh, etc.) |
+
+```bash
+# Harness first (works without repo.sruja)
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-harness
+
+# Optional: reviewed architecture in Git
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+```
+
+Install the **CLI** when skills need it: `curl -fsSL https://sruja.ai/install.sh | bash`. Register MCP in Cursor via [.cursor/mcp.json](../.cursor/mcp.json) or **Sruja: Register MCP Server**.
+
+See [COMMUNITY_SKILLS_STACK.md](COMMUNITY_SKILLS_STACK.md) and [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md).
+
+---
+
+## What Architecture Skill Does
+
+| Without Skill | With Skill |
+|---------------|-------------|
+| You write `.sruja` by hand | AI generates it from code |
+| You must learn the language | You just know what to ask for |
+| Easy to make syntax errors | Validation catches mistakes |
+| Manual updates | AI keeps it in sync |
+
+---
+
+## Why Install the Skill?
+
+**Faster generation:** AI writes `.sruja` files in seconds vs manual work.
+
+**Fewer errors:** AI knows the syntax and best practices.
+
+**Better patterns:** The skill includes architecture patterns and trade-offs.
+
+**Continuous updates:** As code changes, AI can update architecture automatically.
+
+---
+
+## Harness Loop (Any Skill)
+
+```text
+1. sruja focus -r . --file <path>     # before edit
+2. Host agent edits code
+3. sruja verify-task --profile coding -r .
+4. sruja agent record …               # optional, on failure
+```
+
+Do **not** use `sruja agent run` as the primary loop — the host owns Act; Sruja owns Verify.
+
+---
+
+## AI-Assisted Development Playbook
+
+This section turns common "AI assisted development" advice into an **enforceable, repeatable workflow** using Sruja's deterministic harness: architecture evidence, explicit boundaries, and local verification gates.
+
+### Goal
+
+Enable fast iteration with AI coding assistants **without** accumulating silent structural debt (layer violations, circular dependencies, "god modules", diagram drift).
+
+**In scope**
+- Bounded code generation and refactors inside known architectural constraints
+- Local "verify-task" loop before commit / PR
+- Shared skills + editor rules for consistent outcomes across a team
+- Architecture diagrams as exported artifacts (not hand-maintained drawings)
+
+**Out of scope**
+- Autonomous "AI engineer" workflows (Sruja is a harness; the editor/host owns the agent loop)
+- Replacing code review (the harness reduces risk; humans still review intent and product correctness)
+
+### Daily workflow (recommended)
+
+#### 1) Put a harness on the assistant (grounded context)
+
+**What you want:** The assistant should *pull* bounded, machine-readable evidence instead of you pasting architecture rules into chat.
+
+- **MCP setup**: follow `docs/mcp_setup.md`
+- **Tool profile**: keep `SRUJA_MCP_TOOL_PROFILE=coding` for day-to-day tasks
+- **Read-only mode (recommended)**: `SRUJA_MCP_READONLY=1` so an assistant can't mutate proposals or write scratchpads unintentionally
+
+**Editor rules as a stable "floor"**
+
+Run this whenever architecture or dependency rules change:
+
+```bash
+sruja sync-ide-rules -r .
+```
+
+This keeps files like `.cursorrules`, `CLAUDE.md`, `.gemini/AGENTS.md`, and `llms-architecture.txt` aligned with the repo's current architecture context.
+
+#### 2) Shift validation left (verify locally)
+
+Treat this as the "adult supervision" loop: generate → verify → iterate → only then commit.
+
+```bash
+# Features / refactors
+sruja verify-task --profile coding -r .
+
+# Bug fixes (tight scope; include a target file)
+sruja verify-task --profile bugfix --file <path> -r .
+
+# Pre-merge hardening
+sruja verify-task --profile review -r .
+```
+
+The goal is to catch architecture drift, broken boundaries, and intent mismatches **before** a reviewer sees the diff.
+
+#### 3) Prefer architecture-as-code over "prompted rules"
+
+Instead of repeating "don't import X from Y" in every conversation:
+
+- Maintain a reviewed baseline: `repo.sruja`
+- Use deterministic enforcement:
+  - `sruja lint repo.sruja`
+  - `sruja drift -r . -a repo.sruja`
+
+This makes structural constraints **versioned and reviewable**, and lets tools enforce them consistently across humans and assistants.
+
+#### 4) Standardize skills across the team
+
+Use skills to make the assistant behave consistently across developers.
+
+Recommended baseline for teams:
+- A "task prime" skill (how to use `sruja focus`, the MCP ladder, and how to keep diffs small)
+- A "verify-task before done" skill (always end with `sruja verify-task`)
+- A "no drive-by refactors" skill (explicitly defer incidental cleanup)
+
+### CI envelope (minimal)
+
+Add a PR gate that runs the same checks you run locally:
+- `sruja verify-task` in CI
+
+Examples/templates:
+- `.github/workflows/sruja-verify-task.yml`
+- `templates/github-actions/sruja-verify-task-pr.yml`
+- `docs/examples/host-gates/verify-task-pr.yml`
+
+### Practical guardrails (what breaks first)
+
+- **Large diffs**: AI is most dangerous when it changes too much at once. Keep PRs small; validate after each slice.
+- **Boundary erosion**: the harness can block forbidden dependencies, but it won't invent missing architectural intent—write/maintain `repo.sruja` as reviewed truth.
+- **"Looks right" bugs**: structural checks don't prove product behavior; continue to require tests + review.
+
+### Multi-agent verification (high-stakes)
+
+Single-agent outputs are best treated as **untrusted drafts**: they can be articulate, confident, and still wrong. For higher-stakes domains (security, compliance, finance, medical-ish, production safety), upgrade your workflow from "one agent + verify-task" to **multi-agent + go/no-go**.
+
+**Roles (split incentives):**
+- **Draft agent (generator)**: produce a fast first-pass answer/change, plus explicit claims.
+- **Verifier agent (fact-checker)**: confirm claims against evidence (code, docs, tests, `sruja` outputs). It should try to falsify, not "polish".
+- **Adversary agent (red team)**: look for edge cases, unsafe assumptions, boundary violations, and ways the change could mislead users or regress behavior.
+
+**Go / No-go protocol (earned confidence):**
+1. **Evidence**: every critical claim must be backed by a source of truth.
+2. **Verifier "GO"**: `sruja verify-task` passes and claims are cross-checked.
+3. **Adversary "GO"**: explicit list of failure modes considered.
+4. **Any single "NO-GO" pauses the ship**: gather more evidence or escalate to human reviewer.
+
+---
+
+## Building from Source
+
+### Prerequisites
+
+- **Rust ≥ 1.70** – [rustup.rs](https://rustup.rs/)
+- **Node.js ≥ 18** – Only needed for the VS Code extension and (optionally) npm-based tooling
+
+Verify:
+
+```bash
+rustc --version   # e.g. 1.70+
+node --version    # optional; only for extension
+```
+
+### Step 1: Clone and enter the repo
+
+```bash
+git clone https://github.com/sruja-ai/sruja.git
+cd sruja
+```
+
+### Step 2: Install dependencies and build
+
+```bash
+# Fetch Rust dependencies
+just install
+# or: cargo fetch
+
+# Build release binary (CLI)
+just build
+# or: cargo build --release
+```
+
+The CLI binary is at **`target/release/sruja`**.
+
+### Step 3: Put the CLI on your PATH (optional but recommended)
+
+**Option A – Use the built binary directly**
+
+```bash
+./target/release/sruja --version
+```
+
+**Option B – Install into Cargo's bin (so `sruja` works anywhere)**
+
+```bash
+cargo install --path crates/sruja-cli
+# Then: sruja --version
+# Binary is in ~/.cargo/bin (ensure that's on your PATH)
+```
+
+**Option C – Symlink**
+
+```bash
+sudo ln -sf "$(pwd)/target/release/sruja" /usr/local/bin/sruja
+# or: ln -sf "$(pwd)/target/release/sruja" ~/.local/bin/sruja
+```
+
+### Step 4: First value (no config, no API keys)
+
+Run context engineering on the repo itself:
+
+```bash
+# If you used Option B or C:
+sruja start -r .
+sruja drift -r . --structural-only --advisory
+
+# Or with the built binary:
+./target/release/sruja start -r .
+./target/release/sruja drift -r . --structural-only --advisory
+```
+
+You should see structural findings with file-level evidence. No `.sruja` file or API keys required.
+
+Other useful commands:
+
+```bash
+sruja focus -r . --file crates/sruja-cli/src/main.rs
+sruja ai -r . --task "Fix auth bug"
+sruja verify-task --profile coding -r .
+sruja mcp -r .
+sruja ingest docs/adr/ --category adr
+```
+
+Optional reviewed intent in Git:
+
+```bash
+npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture
+sruja lint repo.sruja
+sruja sync -r .
+sruja drift -r . -a repo.sruja
+```
+
+---
+
+## Running the E2E Demo (Optional, ~2 min)
+
+The demo clones Express.js (if needed), runs quickstart + drift, and optionally baseline/LLM eval.
+
+```bash
+cd evaluation/real-world-test
+./run_demo.sh
+```
+
+- **No flags** – Fast path only (quickstart + drift). No config.
+- **`--baseline`** – Also compare to an example architecture.
+- **`--llm`** – Add LLM evaluation (requires an API key in `.env`; see Step 7).
+- **`--all`** – Baseline + LLM.
+
+If the script says "sruja CLI not found", ensure `sruja` is on PATH or build from repo root first (`just build`) and add `target/release` to PATH.
+
+### Optional: Context Engineering microservices demo (~2 min)
+
+This demo walks through the full flow: **intent (rulebook) → scan → drift → analyze → AI ask**, using the small Python microservices in `demo/`.
+
+```bash
+just demo-intel
+# or: cd demo && ./run_demo.sh
+```
+
+- **No API key** – Steps 1–4 run; step 5 (AI ask) is skipped with a hint, and `sruja why` is run as a deterministic fallback when possible.
+- **With API key** – Set `OPENROUTER_API_KEY` or `OPENAI_API_KEY` in repo root `.env` to enable the full AI ask step.
+
+See `demo/README.md` for details.
+
+---
+
+## LLM / API Keys (Optional)
+
+Only needed for:
+
+- `sruja eval <path>`
+- `./run_demo.sh --llm` or `./evaluate_architecture.sh <repo> --llm`
+
+**Quick setup for evaluation/demo:**
+
+```bash
+cd evaluation/real-world-test
+cp .env.example .env
+# Edit .env and set one key, e.g.:
+#   OPENROUTER_API_KEY=sk-or-v1-...
+#   OPENAI_API_KEY=sk-...
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   GEMINI_API_KEY=...
+# Or local: SRUJA_LLM_PROVIDER=ollama
+```
+
+Then:
+
+```bash
+./run_demo.sh --llm
+```
+
+---
+
+## VS Code Extension (Optional)
+
+For syntax highlighting and LSP (e.g. validation, autocomplete) for `.sruja` files:
+
+```bash
+cd extension
+npm install
+npm run compile
+```
+
+Then in VS Code/Cursor: **Run → Start Debugging** (F5) with "Extension" launch config to open a new window with the extension loaded.  
+Or build a VSIX and install it: `npm run package` then install the generated `.vsix` from the Extensions view.
+
+---
+
+## Running Tests
+
+```bash
+just test
+# or: cargo test --workspace
+```
+
+Other targets:
+
+```bash
+just fmt          # Format Rust code
+just lint         # Clippy
+cargo test -p sruja-cli --test why_e2e   # Why command E2E (optional)
+```
+
+**Coverage (optional):** Host Rust coverage excludes the WASM crate (it is tested with `wasm-pack`). Run:
+
+```bash
+just test-coverage        # llvm-cov for workspace (excludes sruja-wasm)
+just test-coverage-wasm   # wasm-bindgen tests for sruja-wasm
+```
+
+See [WASM_TESTING.md](WASM_TESTING.md) for rationale and CI alignment.
+
+---
+
+## Book (mdBook Docs, Optional)
+
+```bash
+just book-deps    # Install mdbook, mdbook-mermaid (one-time)
+just wasm         # Needed for in-book WASM diagrams
+just book         # Build book
+just book-serve   # Serve at http://localhost:3000 (live reload)
+```
+
+---
+
+## Summary: Minimal Path to "Running" Sruja
+
+| Step | Command | Purpose |
+|------|---------|--------|
+| 1 | `git clone ... && cd sruja` | Get repo |
+| 2 | `just install && just build` | Dependencies + CLI binary |
+| 3 | `./target/release/sruja --version` | Verify CLI |
+| 4 | `./target/release/sruja quickstart -r .` | First value (no config) |
+| 5a | `cd evaluation/real-world-test && ./run_demo.sh` | Optional: E2E demo (quickstart + drift) |
+| 5b | `just demo-intel` | Optional: Context Engineering demo (intent → scan → drift → analyze → AI) |
+
+**Troubleshooting**
+
+- **"sruja: command not found"** – Use full path `./target/release/sruja` or add it to PATH (Step 3).
+- **"Cargo not found"** – Install Rust: https://rustup.rs/
+- **Demo fails** – Ensure CLI is built and on PATH; for `--llm`, set one LLM key in `evaluation/real-world-test/.env`.
+
+For contribution workflow (hooks, lint, test), see [CONTRIBUTING.md](CONTRIBUTING.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
+
+---
+
+## Installation Options
+
+### CLI
+
+**Option A – install script (downloads from [GitHub Releases](https://github.com/sruja-ai/sruja/releases)):**
+
+```bash
+curl -fsSL https://sruja.ai/install.sh | bash
+```
+
+**Option B – from Git (requires Rust):**
+
+```bash
+cargo install sruja-cli --git https://github.com/sruja-ai/sruja
+```
+
+**Option C – build from source:**
+
+```bash
+git clone https://github.com/sruja-ai/sruja.git && cd sruja && just build
+```
+
+Ensure the install directory is on your `PATH` (install script uses `~/.local/bin` by default; Option B uses `~/.cargo/bin`; Option C uses `target/release`).
+
+**Check:**
+
+```bash
+sruja --help
+sruja quickstart --help
+```
+
+### VS Code extension
+
+Install **Sruja Language Support** from the [VS Code Marketplace](https://marketplace.visualstudio.com/) (or [Open VSX](https://open-vsx.org/)). You get syntax highlighting, LSP diagnostics, and optional diagram preview for `.sruja` files.
+
+---
+
+## How Sruja Enhances Your Code
+
+| Practice | How Sruja helps |
+|----------|------------------|
+| **PR reviews** | CI fails if `.sruja` is invalid; reviewers see architecture changes in the diff. |
+| **Onboarding** | New devs read `.sruja` and exported docs instead of hunting for "the" diagram. |
+| **AI-assisted work** | The skill and editor integrations feed AI current repo evidence; `sruja lint` catches mistakes. |
+| **Policy guardrails** | Policies and constraints in the DSL; lint enforces structure; export for auditors when needed. |
+| **Multi-repo** | Each repo can have its own `repo.sruja` (or one per service; `architecture.sruja` is also supported); same CLI and CI pattern. |
