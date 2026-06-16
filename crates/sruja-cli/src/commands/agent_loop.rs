@@ -41,8 +41,10 @@ use std::sync::Arc;
 
 use sruja_agent::llm::{OpenAiClient, TieredClient};
 use sruja_agent::tool::ToolRegistry;
-use sruja_agent::verify::{all_passed, run_verification_steps, VerifyOptions};
-use sruja_agent::{AgentConfig, AgentError, GoalSpec, LoopConfig, LoopManifest, ModelMapping};
+use sruja_agent::verify::VerifyOptions;
+use sruja_agent::{
+    AgentConfig, AgentError, GoalSpec, LoopConfig, LoopManifest, ModelMapping, VerifierConfig,
+};
 
 use super::CliError;
 use crate::config;
@@ -145,8 +147,26 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     let goal_prompt = goal_spec.to_prompt();
 
     // ── Build tools + agent ───────────────────────────────────────────────
+    // Built-in filesystem/shell tools + the sruja-native "eyes" (focus, explain,
+    // drift, compliance, query). The latter ground the agent in the architecture
+    // knowledge graph so comprehension/critique cite element IDs, not guesses.
     let tools =
-        ToolRegistry::with_builtin(repo_path.to_path_buf(), manifest.shell_allowlist.clone());
+        ToolRegistry::with_builtin(repo_path.to_path_buf(), manifest.shell_allowlist.clone())
+            .with(Box::new(sruja_agent::tool::sruja::SrujaFocusTool::new(
+                repo_path.to_path_buf(),
+            )))
+            .with(Box::new(sruja_agent::tool::sruja::SrujaExplainTool::new(
+                repo_path.to_path_buf(),
+            )))
+            .with(Box::new(sruja_agent::tool::sruja::SrujaDriftTool::new(
+                repo_path.to_path_buf(),
+            )))
+            .with(Box::new(
+                sruja_agent::tool::sruja::SrujaComplianceTool::new(repo_path.to_path_buf()),
+            ))
+            .with(Box::new(sruja_agent::tool::sruja::SrujaQueryTool::new(
+                repo_path.to_path_buf(),
+            )));
 
     let config = AgentConfig {
         models,
@@ -172,10 +192,28 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         manifest.detect_oscillation
     };
 
+    // The manifest's [[verify]] steps become the loop's *in-loop* independent
+    // grader: each iteration runs them after execute, and a failure vetoes
+    // convergence (and feeds into the next replan). They also still run as a
+    // final summary below for backward-compatible reporting.
+    let verifier = if manifest.verify_steps.is_empty() {
+        None
+    } else {
+        Some(VerifierConfig {
+            steps: manifest.verify_steps.clone(),
+            options: VerifyOptions {
+                allowed_executables: manifest.shell_allowlist.clone(),
+                ..Default::default()
+            },
+            workdir: repo_path.to_path_buf(),
+        })
+    };
+
     let loop_config = LoopConfig {
         max_iterations,
         spend_cap_usd,
         detect_oscillation,
+        verifier,
         ..Default::default()
     };
 
@@ -184,37 +222,28 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         .await
         .map_err(agent_err_to_cli)?;
 
-    // ── Deterministic verification (independent grader) ───────────────────
-    // If the manifest defines [[verify]] steps, run them after the loop.
-    // These are the agent-independent check — the loop cannot fake a passing
-    // `cargo test`. Verification failure is reported but does not discard
-    // the loop result.
-    let verify_passed = if !manifest.verify_steps.is_empty() {
-        let verify_opts = VerifyOptions {
-            allowed_executables: manifest.shell_allowlist.clone(),
-            ..Default::default()
-        };
-        let verify_results =
-            run_verification_steps(&manifest.verify_steps, &verify_opts, repo_path).await;
-        let passed = all_passed(&verify_results);
-        if !passed {
-            eprintln!("⚠  Verification FAILED:");
-            for r in &verify_results {
-                if !r.status.is_pass() {
-                    eprintln!(
-                        "  ✗ {}: exit={:?} stderr={}",
-                        r.step_id,
-                        r.exit_code,
-                        r.stderr.trim()
-                    );
+    // ── Deterministic verification verdict ───────────────────────────────
+    // The verifier already ran in-loop on every iteration (when configured),
+    // so we derive the final verdict from the loop result rather than
+    // re-running expensive steps like `cargo test` a second time.
+    let verify_passed = if manifest.verify_steps.is_empty() {
+        None
+    } else {
+        // The verifier vetoed convergence iff the final iteration recorded
+        // verify failures.
+        let last = result.iterations.last();
+        let passed = last.map(|i| i.verify_failed.is_empty()).unwrap_or(true);
+        if passed {
+            println!("✓  Verification passed (in-loop grader)");
+        } else {
+            eprintln!("⚠  Verification FAILED (in-loop grader vetoed convergence):");
+            if let Some(i) = last {
+                for f in &i.verify_failed {
+                    eprintln!("  ✗ {f}");
                 }
             }
-        } else {
-            println!("✓  All {} verification steps passed", verify_results.len());
         }
         Some(passed)
-    } else {
-        None
     };
 
     // ── Report ────────────────────────────────────────────────────────────

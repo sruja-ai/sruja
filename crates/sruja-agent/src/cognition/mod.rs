@@ -30,13 +30,11 @@ use crate::llm::{
 pub use crate::llm::TaskTier;
 use crate::memory::{AgenticMemory, Memory};
 use crate::tool::{FileGuard, Phase, ToolError, ToolRegistry};
+use crate::verify::{all_passed, run_verification_steps, VerifyOptions, VerifyResult, VerifyStep};
 use crate::LearningEntry;
 
 pub use decision::{DecisionRecord, DecisionStatus};
-pub use hook::{
-    AutoDocsHook, AutoLearningHook, Hook, HookAction, HookRegistry, Hooks, LoggingHook,
-    TokenSavingHook,
-};
+pub use hook::{Hook, HookAction, HookRegistry, Hooks, LoggingHook};
 pub use runbook::{Runbook, RunbookSeverity};
 
 // ---------------------------------------------------------------------------
@@ -210,6 +208,20 @@ pub struct AgentRunResult {
 // Outer ReAct loop: critique -> replan until approved or budget exhausted
 // ---------------------------------------------------------------------------
 
+/// Configuration for the deterministic verifier that runs inside the loop.
+///
+/// The verifier is the **independent grader**: it runs after `execute` in every
+/// iteration, and a failing step vetoes convergence regardless of the LLM
+/// critic's verdict. Failures are injected into the next replan so the loop
+/// addresses them. The workdir is supplied here (not assumed from the agent)
+/// because the agent crate is intentionally repo-agnostic.
+#[derive(Debug, Clone)]
+pub struct VerifierConfig {
+    pub steps: Vec<VerifyStep>,
+    pub options: VerifyOptions,
+    pub workdir: std::path::PathBuf,
+}
+
 /// Configuration for the outer loop (`Agent::run_loop`).
 ///
 /// `AgentConfig.max_tool_iterations` caps tool calls *within* one LLM step;
@@ -230,6 +242,18 @@ pub struct LoopConfig {
     /// Detect repeated critique patterns and terminate with
     /// [`LoopTermination::Oscillation`] to avoid flailing (default: true).
     pub detect_oscillation: bool,
+    /// Optional deterministic verifier — the independent grader. When set, its
+    /// steps run after `execute` in every iteration. Any failure vetoes
+    /// convergence (overrides the LLM critic) and feeds failures into the next
+    /// replan. `None` = no deterministic gate (critic-only convergence).
+    ///
+    /// Note: verify failures are appended to the critique issues, so a
+    /// *persistent* failure produces a stable issue signature. With the default
+    /// `detect_oscillation: true` this can terminate the loop as
+    /// [`LoopTermination::Oscillation`] rather than exhausting `max_iterations`
+    /// — usually desirable (no point retrying a stuck failure), but set
+    /// `detect_oscillation: false` if you want full retries.
+    pub verifier: Option<VerifierConfig>,
 }
 
 impl Default for LoopConfig {
@@ -240,6 +264,7 @@ impl Default for LoopConfig {
             replan_on_failure: true,
             spend_cap_usd: None,
             detect_oscillation: true,
+            verifier: None,
         }
     }
 }
@@ -279,6 +304,11 @@ pub struct LoopIteration {
     /// Critic issues carried forward into the next iteration's re-plan.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub critique_issues: Vec<String>,
+    /// Deterministic-verify failures recorded this iteration (independent
+    /// grader). Non-empty means convergence was vetoed even if the LLM critic
+    /// approved.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub verify_failed: Vec<String>,
     pub usage: Usage,
 }
 
@@ -951,7 +981,7 @@ impl Agent {
             }
 
             // --- CRITIQUE ---
-            let critique = if self.config.review_every_change {
+            let mut critique = if self.config.review_every_change {
                 match self.critique(&plan, &step_results).await {
                     Ok(c) => c,
                     Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
@@ -971,6 +1001,23 @@ impl Agent {
                 }
             };
             total_usage.accumulate(&critique.usage);
+
+            // --- DETERMINISTIC GRADER (independent of the LLM critic) ---
+            // Runs the verifier, if configured. A failing step vetoes
+            // convergence even when the critic approved, and the failures are
+            // injected into the critique so the next replan addresses them.
+            let verify_failed = if let Some(vconf) = &loop_config.verifier {
+                let results =
+                    run_verification_steps(&vconf.steps, &vconf.options, &vconf.workdir).await;
+                let failed = summarize_verify_failures(&results);
+                if !all_passed(&results) {
+                    critique.approved = false;
+                    critique.issues.extend(failed.clone());
+                }
+                failed
+            } else {
+                Vec::new()
+            };
 
             let approved = critique.approved;
             let issue_sig = critique_signature(&critique.issues);
@@ -995,6 +1042,7 @@ impl Agent {
                 critique_approved: approved,
                 critique_score: critique.score,
                 critique_issues: critique.issues.clone(),
+                verify_failed: verify_failed.clone(),
                 usage: critique.usage.clone(),
             });
 
@@ -1388,6 +1436,29 @@ impl Agent {
 
 fn comprehension_cited_elements(plan: &Plan) -> Vec<String> {
     plan.subtasks.iter().flat_map(|s| s.files.clone()).collect()
+}
+
+/// Summarize failing verification steps into human-readable critique issues.
+///
+/// Used by [`Agent::run_loop`] to (a) veto convergence and (b) feed the
+/// failures into the next replan so the loop addresses them.
+fn summarize_verify_failures(results: &[VerifyResult]) -> Vec<String> {
+    results
+        .iter()
+        .filter(|r| !r.status.is_pass())
+        .map(|r| {
+            let detail = if r.stderr.trim().is_empty() {
+                r.stdout.trim()
+            } else {
+                r.stderr.trim()
+            };
+            let exit = r
+                .exit_code
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "none".to_string());
+            format!("verify '{}' failed (exit={}): {}", r.step_id, exit, detail)
+        })
+        .collect()
 }
 
 /// Build a normalised signature from critique issues to detect oscillation.
@@ -1970,6 +2041,7 @@ mod tests {
                     critique_approved: false,
                     critique_score: 0.2,
                     critique_issues: vec!["x".into()],
+                    verify_failed: Vec::new(),
                     usage: Usage::default(),
                 },
                 LoopIteration {
@@ -1982,6 +2054,7 @@ mod tests {
                     critique_approved: true,
                     critique_score: 0.9,
                     critique_issues: vec![],
+                    verify_failed: Vec::new(),
                     usage: Usage::default(),
                 },
             ],
@@ -2113,6 +2186,47 @@ mod tests {
         // The ACT phase mutated the filesystem — the file exists on disk.
         let written = std::fs::read_to_string(root.join("src/hello.rs")).expect("file was written");
         assert!(written.contains("hello from the loop"));
+    }
+
+    #[tokio::test]
+    async fn run_loop_convergence_vetoed_by_deterministic_verifier() {
+        // Critic approves immediately, but a deterministic verify step fails.
+        // The independent grader must veto convergence regardless of the LLM.
+        let llm = ScriptedLlm::approve_after(0);
+        let agent = loop_test_agent(llm);
+        let failing_step = VerifyStep {
+            id: "must_fail".into(),
+            command: "git".into(),
+            args: vec!["not-a-real-git-subcommand".into()],
+            expected: None,
+        };
+        let cfg = LoopConfig {
+            // Oscillation detection off so a repeated verify-failure signature
+            // doesn't terminate the loop before we observe the veto.
+            detect_oscillation: false,
+            verifier: Some(VerifierConfig {
+                steps: vec![failing_step],
+                options: VerifyOptions::default(),
+                workdir: std::env::temp_dir(),
+            }),
+            ..Default::default()
+        };
+        let result = agent
+            .run_loop("ship the feature", &cfg)
+            .await
+            .expect("loop runs");
+
+        assert!(!result.converged, "verifier failure must veto convergence");
+        assert_ne!(
+            result.termination,
+            LoopTermination::Approved,
+            "must not terminate as Approved when verify fails"
+        );
+        // Every iteration ran the grader and recorded the failure.
+        assert!(result
+            .iterations
+            .iter()
+            .all(|i| !i.verify_failed.is_empty()));
     }
 
     // --- Guardrail tests ---

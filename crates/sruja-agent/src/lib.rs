@@ -52,7 +52,7 @@ pub mod verify;
 
 pub use cognition::{
     Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult, Comprehension, Critique,
-    LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan,
+    LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan, VerifierConfig,
 };
 pub use dlc::DlcPipeline;
 pub use executor::TrajectoryExecutor;
