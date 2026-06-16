@@ -129,10 +129,7 @@ impl ToolRegistry {
     ///
     /// Pass an empty `Vec` for `shell_allowlist` to disable shell execution
     /// entirely.
-    pub fn with_builtin(
-        root: impl Into<std::path::PathBuf>,
-        shell_allowlist: Vec<String>,
-    ) -> Self {
+    pub fn with_builtin(root: impl Into<std::path::PathBuf>, shell_allowlist: Vec<String>) -> Self {
         let root = root.into();
         Self::new()
             .with(Box::new(builtin::FileRead::with_root(root.clone())))

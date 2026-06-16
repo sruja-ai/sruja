@@ -31,15 +31,15 @@ pub const PRESETS: &[ProviderPreset] = &[
     ProviderPreset {
         id: "zai",
         name: "Zhipu AI (z.ai)",
-        base_url: "https://open.bigmodel.cn/api/paas/v4",
-        default_model: "glm-4-flash",
+        base_url: "https://api.z.ai/api/coding/paas/v4",
+        default_model: "GLM-4.7",
         key_env: "ZAI_API_KEY",
         key_hint: "From open.bigmodel.cn",
     },
     ProviderPreset {
         id: "ximimo",
         name: "Ximimo",
-        base_url: "https://api.ximimo.com/v1",
+        base_url: "https://token-plan-sgp.xiaomimimo.com/v1",
         default_model: "mimo-v2.5-pro",
         key_env: "XIMIMO_API_KEY",
         key_hint: "From ximimo.com",

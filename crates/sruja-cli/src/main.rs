@@ -8,6 +8,7 @@
 mod cli;
 #[allow(missing_docs)]
 mod commands;
+pub mod config;
 #[allow(missing_docs)]
 mod context_detection;
 pub mod enrichment;

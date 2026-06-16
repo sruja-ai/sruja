@@ -1,8 +1,9 @@
 //! LLM client abstraction — the agent's brain.
 //!
 //! Any provider implements [`LlmClient`]. The framework ships an
-//! OpenAI-compatible client ([`OpenAiClient`]) and a cost-aware
-//! [`ModelRouter`] that tiers requests by task complexity.
+//! OpenAI-compatible client ([`OpenAiClient`]), an Anthropic Messages API
+//! client ([`AnthropicClient`]), and a cost-aware [`ModelRouter`] that tiers
+//! requests by task complexity.
 //!
 //! ## Custom provider
 //!
@@ -27,11 +28,19 @@ pub mod router;
 #[cfg(feature = "llm-openai")]
 pub mod openai;
 
+#[cfg(feature = "llm-anthropic")]
+pub mod anthropic;
+
+pub mod tiered;
+
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "llm-anthropic")]
+pub use anthropic::AnthropicClient;
 #[cfg(feature = "llm-openai")]
 pub use openai::OpenAiClient;
 pub use router::{ModelRouter, TaskTier};
+pub use tiered::TieredClient;
 
 /// Error from an LLM provider call.
 #[derive(Debug, thiserror::Error)]

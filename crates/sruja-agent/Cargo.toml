@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["llm-openai", "tools-fs"]
+default = ["llm-openai", "llm-anthropic", "tools-fs"]
 # LLM provider backends.
 llm-openai = ["dep:reqwest"]
 llm-anthropic = ["dep:reqwest"]
@@ -24,6 +24,7 @@ chrono.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 async-trait.workspace = true
+toml.workspace = true
 sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-graph = { path = "../sruja-graph" }
 sruja-language = { path = "../sruja-language" }

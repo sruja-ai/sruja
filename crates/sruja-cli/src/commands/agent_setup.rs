@@ -98,40 +98,50 @@ pub fn agent_setup(
     };
 
     // Step 4: Write config.toml.
+    // Industry best practice: Store non-secret config only.
+    // API keys stay in environment variables.
+    // Merges with existing config to preserve [agent.models] and other sections.
     let config_path = sruja_dir.join("config.toml");
-    let mut config = if config_path.exists() {
-        std::fs::read_to_string(&config_path).unwrap_or_default()
+
+    // Load existing config or create new one.
+    let mut config: toml::Value = if config_path.exists() {
+        let content = std::fs::read_to_string(&config_path)?;
+        toml::from_str(&content).unwrap_or_else(|_| toml::Value::Table(toml::map::Map::new()))
     } else {
-        String::new()
+        toml::Value::Table(toml::map::Map::new())
     };
 
-    // Remove existing [integrations] section if present to avoid duplicates.
-    if let Some(start) = config.find("\n[integrations]") {
-        let rest = &config[start + 1..];
-        let end = rest
-            .find("\n[")
-            .map(|e| start + 1 + e)
-            .unwrap_or(config.len());
-        config = format!("{}{}", &config[..start], &config[end..]);
-    }
+    // Update the [integrations] section.
+    let integrations = config
+        .as_table_mut()
+        .unwrap()
+        .entry("integrations")
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+        .as_table_mut()
+        .unwrap();
 
-    // Build the new [integrations] section.
-    let mut section = format!(
-        "[integrations]\ndefault_provider = \"openai\"\nmodel = \"{}\"\nbase_url = \"{}\"\n",
-        model, preset.base_url
+    integrations.insert(
+        "default_provider".to_string(),
+        toml::Value::String(preset.id.to_string()),
     );
-    if !api_key.is_empty() {
-        // We don't write the key to config.toml — it stays in env vars.
-        // But we tell the user to set it.
-    }
+    integrations.insert("model".to_string(), toml::Value::String(model.clone()));
+    integrations.insert(
+        "base_url".to_string(),
+        toml::Value::String(preset.base_url.to_string()),
+    );
 
-    // Prepend the section.
-    if !config.is_empty() && !config.starts_with('\n') {
-        section.push('\n');
-    }
-    config = format!("{section}{config}");
+    // Write config with header comment.
+    let config_string = toml::to_string_pretty(&config)
+        .map_err(|e| CliError::validation(format!("Failed to serialize config: {e}")))?;
+    let config_content = format!(
+        "# Sruja agent configuration\n\
+         # API keys are stored in environment variables, not here.\n\
+         # See: sruja agent setup --help\n\
+         \n{}",
+        config_string
+    );
 
-    std::fs::write(&config_path, config.trim())?;
+    std::fs::write(&config_path, &config_content)?;
 
     // Step 5: Print summary.
     println!("\n{}", "=".repeat(50));
@@ -142,18 +152,16 @@ pub fn agent_setup(
     println!("  Base URL:  {}", preset.base_url);
     println!("  Model:     {}", model);
 
-    if !api_key.is_empty() {
-        println!("\nAdd to your shell profile (~/.bashrc or ~/.zshrc):");
-        println!(
-            "  export OPENAI_API_KEY=\"{}\"",
-            &api_key[..8.min(api_key.len())]
-        );
-        println!("  export OPENAI_BASE_URL=\"{}\"", preset.base_url);
-        println!("  export OPENAI_MODEL=\"{}\"", model);
-        println!("\nThe CLI also reads from .sruja/config.toml automatically.");
+    if !api_key.is_empty() && !preset.key_env.is_empty() {
+        println!("\n{}", "-".repeat(50));
+        println!("IMPORTANT: API keys are stored in environment variables.");
+        println!("Add this to your shell profile (~/.bashrc or ~/.zshrc):\n");
+        println!("  export {}=\"your-api-key-here\"", preset.key_env);
+        println!("\nThe CLI will automatically read from {}.", preset.key_env);
     }
 
-    println!("\nTest with:");
+    println!("\n{}", "-".repeat(50));
+    println!("Test with:");
     println!("  sruja agent run --goal \"Summarize this repo\"");
 
     Ok(())

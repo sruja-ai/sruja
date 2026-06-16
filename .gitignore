@@ -109,6 +109,8 @@ test-results/
 # Allow committed component knowledge (doc feature)
 !.sruja/knowledge/
 !.sruja/knowledge/*
+# Allow config.toml template (no secrets)
+!.sruja/config.toml.example
 
 # Demo generated outputs
 demo/intent_report.md
@@ -127,6 +129,7 @@ demo/traces.json
 /architecture.sruja
 
 # Session / planning docs (local or one-off)
+/docs/plans/
 /AGENT_SKILL_TESTING_PLAN.md
 /AI_CODING_EDITOR_WORKFLOW.md
 /AUTOMATED_TESTING.md

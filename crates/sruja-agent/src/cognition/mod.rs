@@ -667,8 +667,7 @@ impl Agent {
                 phase,
             );
 
-            let mut req = CompletionRequest::prompt(system, user)
-                .with_tools(self.tools.schemas());
+            let mut req = CompletionRequest::prompt(system, user).with_tools(self.tools.schemas());
             req.model = Some(self.model_for_tier(tier).to_string());
 
             let (response, tool_usage) = self.run_tool_loop(req).await?;
@@ -962,9 +961,7 @@ impl Agent {
                     Err(e) => return Err(e),
                 }
             } else {
-                let all_ok = step_results
-                    .iter()
-                    .all(|r| r.status != StepStatus::Failed);
+                let all_ok = step_results.iter().all(|r| r.status != StepStatus::Failed);
                 Critique {
                     approved: all_ok,
                     score: if all_ok { 1.0 } else { 0.0 },
@@ -1015,10 +1012,7 @@ impl Agent {
             }
 
             // --- GUARDRAIL: oscillation detection ---
-            if loop_config.detect_oscillation
-                && !approved
-                && !seen_signatures.insert(issue_sig)
-            {
+            if loop_config.detect_oscillation && !approved && !seen_signatures.insert(issue_sig) {
                 termination = LoopTermination::Oscillation;
                 break;
             }
@@ -2187,7 +2181,10 @@ mod tests {
         };
         // gpt-4o-mini: 1M * $0.15/1M + 0.5M * $0.60/1M = $0.15 + $0.30 = $0.45
         let cost = usage.estimated_cost_usd();
-        assert!((cost - 0.45).abs() < 0.001, "expected ~$0.45, got ${cost:.4}");
+        assert!(
+            (cost - 0.45).abs() < 0.001,
+            "expected ~$0.45, got ${cost:.4}"
+        );
     }
 
     #[test]

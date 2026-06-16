@@ -78,6 +78,20 @@ impl Default for RouterConfig {
                 output_per_1m: 10.00,
             },
         );
+        pricing.insert(
+            "claude-sonnet-4-5-20250929".to_string(),
+            Pricing {
+                input_per_1m: 3.00,
+                output_per_1m: 15.00,
+            },
+        );
+        pricing.insert(
+            "claude-opus-4-1-20250805".to_string(),
+            Pricing {
+                input_per_1m: 15.00,
+                output_per_1m: 75.00,
+            },
+        );
 
         Self {
             tiers,

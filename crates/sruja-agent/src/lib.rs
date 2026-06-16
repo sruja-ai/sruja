@@ -39,7 +39,9 @@
 pub mod cognition;
 pub mod dlc;
 pub mod executor;
+pub mod goal;
 pub mod llm;
+pub mod manifest;
 pub mod matts;
 pub mod memory;
 pub mod multi;
@@ -54,6 +56,8 @@ pub use cognition::{
 };
 pub use dlc::DlcPipeline;
 pub use executor::TrajectoryExecutor;
+pub use goal::GoalSpec;
+pub use manifest::LoopManifest;
 pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryStatus};
 pub use memory::{AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry};
 pub use multi::BrainstormSession;
