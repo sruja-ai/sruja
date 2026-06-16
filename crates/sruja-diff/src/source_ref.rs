@@ -170,8 +170,7 @@ mod tests {
                     detail: Some("import".to_string()),
                 }],
             )],
-            incidents: Vec::new(),
-            confidence: None,
+            ..Default::default()
         };
 
         let refs = collect_edge_sources(&graph, "A", "B");
@@ -187,8 +186,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![node("A", None), node("B", None)],
             edges: vec![],
-            incidents: Vec::new(),
-            confidence: None,
+            ..Default::default()
         };
 
         let refs = collect_edge_sources(&graph, "A", "B");
@@ -201,8 +199,7 @@ mod tests {
             metadata: HashMap::new(),
             nodes: vec![node("A", Some("src/a.ts"))],
             edges: vec![],
-            incidents: Vec::new(),
-            confidence: None,
+            ..Default::default()
         };
 
         let refs = collect_node_path_source(&graph, "A");
@@ -253,8 +250,7 @@ mod tests {
                     }],
                 ),
             ],
-            incidents: Vec::new(),
-            confidence: None,
+            ..Default::default()
         };
 
         let cycle = vec!["A".to_string(), "B".to_string(), "C".to_string()];
