@@ -491,7 +491,7 @@ impl Agent {
                 phase,
             );
 
-            let req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
+            let req = CompletionRequest::prompt(system, user).with_tools(self.tools.schemas());
 
             let response = self.complete_tiered(tier, req).await?;
             let (response, tool_usage) = self
@@ -1053,7 +1053,7 @@ fn extract_element_ids(text: &str) -> Vec<String> {
             let parts: Vec<&str> = cleaned.split('.').collect();
             if parts
                 .iter()
-                .all(|p| !p.is_empty() && p.chars().next().map_or(false, |c| c.is_uppercase()))
+                .all(|p| !p.is_empty() && p.chars().next().is_some_and(|c| c.is_uppercase()))
             {
                 ids.push(cleaned.to_string());
             }
@@ -1387,8 +1387,10 @@ impl AgentBuilder {
 
         // Wrap in ModelRouter if a spend cap is configured.
         let llm: Arc<dyn LlmClient> = if let Some(cap) = self.config.spend_cap_usd {
-            let mut rc = crate::llm::router::RouterConfig::default();
-            rc.spend_cap_usd = Some(cap);
+            let rc = crate::llm::router::RouterConfig {
+                spend_cap_usd: Some(cap),
+                ..Default::default()
+            };
             Arc::new(ModelRouter::with_config(llm_arc, rc))
         } else {
             llm_arc

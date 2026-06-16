@@ -67,10 +67,6 @@ pub(crate) async fn try_run(
 
         "sruja_get_context_score" => {
             let repo_path = Path::new(&repo);
-            let format = arguments
-                .get("format")
-                .and_then(|v| v.as_str())
-                .unwrap_or("json");
             let scan_graph = get_or_scan_graph(graph_cache, repo).await?;
             let kg = crate::graph_store::load_or_build_graph(repo_path)?;
             let age_hours = crate::utils::context::context_age_hours(repo_path);
@@ -85,11 +81,7 @@ pub(crate) async fn try_run(
                 "repo": repo,
                 "score": score,
             });
-            if format == "json" {
-                finish(Ok(serde_json::to_string_pretty(&out)?))
-            } else {
-                finish(Ok(serde_json::to_string_pretty(&out)?))
-            }
+            finish(Ok(serde_json::to_string_pretty(&out)?))
         }
 
         "sruja_get_entrypoints" => {

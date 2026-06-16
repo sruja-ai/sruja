@@ -89,6 +89,12 @@ pub struct PairSession {
     config: PairConfig,
 }
 
+impl Default for PairSessionBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PairSessionBuilder {
     pub fn new() -> Self {
         Self {

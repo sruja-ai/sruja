@@ -24,20 +24,15 @@ use crate::LearningEntry;
 use super::{AgentError, Comprehension, Critique, Plan, StepResult, Subtask};
 
 /// What a hook decides after observing a lifecycle point.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum HookAction {
     /// Proceed normally.
+    #[default]
     Continue,
     /// Skip the current step (plan continues with the next subtask).
     Skip,
     /// Abort the entire run with a reason.
     Abort(String),
-}
-
-impl Default for HookAction {
-    fn default() -> Self {
-        Self::Continue
-    }
 }
 
 /// A lifecycle hook. Override only what you need.
@@ -259,7 +254,7 @@ impl Hook for AutoLearningHook {
             super::SubtaskKind::TestAuthor => LearningEntry::playbook(
                 format!("Wrote test: {}", step.description),
                 "Test-first approach validates requirements before implementation",
-                &format!(
+                format!(
                     "Always write tests before implementation for: {}",
                     step.description
                 ),
@@ -267,12 +262,12 @@ impl Hook for AutoLearningHook {
             super::SubtaskKind::Implement => LearningEntry::playbook(
                 format!("Implemented: {}", step.description),
                 "Code written to pass frozen tests",
-                &format!("Implementation approach for: {}", step.description),
+                format!("Implementation approach for: {}", step.description),
             ),
             super::SubtaskKind::Review => LearningEntry::invariant(
                 format!("Reviewed: {}", step.description),
                 "Critic approved the change",
-                &format!("Review criteria satisfied for: {}", step.description),
+                format!("Review criteria satisfied for: {}", step.description),
             ),
             _ => return,
         };

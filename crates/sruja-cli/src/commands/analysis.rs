@@ -31,6 +31,7 @@ pub struct AnalysisResult {
 }
 
 /// Options for the analysis pipeline.
+#[derive(Default)]
 pub struct AnalysisOptions {
     /// If true, skip architecture comparison (structural-only analysis).
     pub structural_only: bool,
@@ -38,16 +39,6 @@ pub struct AnalysisOptions {
     pub advisory: bool,
     /// Path to violations baseline file for suppression.
     pub violations_baseline_path: Option<PathBuf>,
-}
-
-impl Default for AnalysisOptions {
-    fn default() -> Self {
-        Self {
-            structural_only: false,
-            advisory: false,
-            violations_baseline_path: None,
-        }
-    }
 }
 
 /// Run the full analysis pipeline: scan → compare → filter violations.

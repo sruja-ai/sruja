@@ -104,11 +104,14 @@ impl Channel {
 
     /// Check if any review rejected a change.
     pub fn has_rejections(&self) -> bool {
-        self.peek().iter().any(|msg| match msg {
-            ChannelMessage::Review {
-                approved: false, ..
-            } => true,
-            _ => false,
+        self.peek().iter().any(|msg| {
+            matches!(
+                msg,
+                ChannelMessage::Review {
+                    approved: false,
+                    ..
+                }
+            )
         })
     }
 }

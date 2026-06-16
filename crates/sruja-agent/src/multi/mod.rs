@@ -140,6 +140,12 @@ pub struct BrainstormSession {
     config: BrainstormConfig,
 }
 
+impl Default for BrainstormSessionBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BrainstormSessionBuilder {
     pub fn new() -> Self {
         Self {

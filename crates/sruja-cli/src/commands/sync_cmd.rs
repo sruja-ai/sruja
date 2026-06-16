@@ -299,7 +299,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         repo_root,
         repo_path,
         &graph,
-        &truth_status,
+        truth_status,
         git_commit,
     )?;
     let author_evidence_json = serde_json::to_string_pretty(&author_evidence)

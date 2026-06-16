@@ -72,8 +72,7 @@ impl OpenAiClient {
     fn build_body(&self, req: &CompletionRequest) -> serde_json::Value {
         let model = req.model.as_deref().unwrap_or(&self.default_model);
 
-        let messages: Vec<serde_json::Value> =
-            req.messages.iter().map(|m| message_to_json(m)).collect();
+        let messages: Vec<serde_json::Value> = req.messages.iter().map(message_to_json).collect();
 
         let mut body = serde_json::json!({
             "model": model,

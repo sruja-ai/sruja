@@ -143,16 +143,12 @@ pub struct ToolCall {
 /// How the model should format its response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ResponseFormat {
+    #[default]
     Text,
     JsonObject,
     JsonSchema(serde_json::Value),
-}
-
-impl Default for ResponseFormat {
-    fn default() -> Self {
-        Self::Text
-    }
 }
 
 /// Token usage for a completion.

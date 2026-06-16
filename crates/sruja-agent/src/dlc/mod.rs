@@ -207,6 +207,12 @@ pub struct DlcPipeline {
     config: DlcConfig,
 }
 
+impl Default for DlcPipelineBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DlcPipelineBuilder {
     pub fn new() -> Self {
         Self {

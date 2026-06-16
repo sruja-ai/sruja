@@ -23,9 +23,10 @@
 use std::sync::{Arc, Mutex};
 
 /// The current phase of the TDD pipeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Phase {
     /// Read-only comprehension (no writes).
+    #[default]
     Comprehend,
     /// Write tests based on the spec. Only test files are writable.
     TestAuthor,
@@ -51,12 +52,6 @@ impl Phase {
     /// Whether code (non-test) files are writable in this phase.
     pub fn allows_code_writes(self) -> bool {
         self == Phase::Implement
-    }
-}
-
-impl Default for Phase {
-    fn default() -> Self {
-        Phase::Comprehend
     }
 }
 

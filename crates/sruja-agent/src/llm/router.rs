@@ -13,22 +13,18 @@ use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError};
 /// Complexity tier for routing a subtask to the right model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum TaskTier {
     /// Classification, summarisation, simple extraction.
     /// e.g. Haiku, GPT-4o-mini, Flash, local Ollama.
     Cheap,
     /// Standard coding and analysis.
     /// e.g. Sonnet, GPT-4.1-mini.
+    #[default]
     Mid,
     /// Hard architectural reasoning.
     /// e.g. Opus, o3, GPT-4.1.
     Premium,
-}
-
-impl Default for TaskTier {
-    fn default() -> Self {
-        Self::Mid
-    }
 }
 
 /// USD pricing per 1M tokens for a model.
