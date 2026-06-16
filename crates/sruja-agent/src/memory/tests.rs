@@ -36,9 +36,11 @@ fn test_utility_tracking() {
     let id = entry.id.clone();
     memory.add_learning(entry);
 
-    memory.record_retrievals(&[id.as_str()]);
-    memory.record_task_outcomes(&[id.as_str()], true);
-    memory.record_task_outcomes(&[id.as_str()], false);
+    assert_eq!(memory.learnings.len(), 1);
+    assert_eq!(memory.learnings[0].id, id);
+    AgenticMemory::record_retrievals(&mut memory, &[id.as_str()]);
+    AgenticMemory::record_task_outcomes(&mut memory, &[id.as_str()], true);
+    AgenticMemory::record_task_outcomes(&mut memory, &[id.as_str()], false);
 
     let e = &memory.learnings[0];
     assert_eq!(e.retrieval_count, 1);

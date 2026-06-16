@@ -1,0 +1,264 @@
+//! LLM client abstraction — the agent's brain.
+//!
+//! Any provider implements [`LlmClient`]. The framework ships an
+//! OpenAI-compatible client ([`OpenAiClient`]) and a cost-aware
+//! [`ModelRouter`] that tiers requests by task complexity.
+//!
+//! ## Custom provider
+//!
+//! ```no_run
+//! use async_trait::async_trait;
+//! use sruja_agent::llm::*;
+//!
+//! struct MyClient;
+//!
+//! #[async_trait]
+//! impl LlmClient for MyClient {
+//!     async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+//!         // call your backend...
+//!         Ok(CompletionResponse::text("hello"))
+//!     }
+//!     fn default_model(&self) -> &str { "my-model" }
+//! }
+//! ```
+
+pub mod router;
+
+#[cfg(feature = "llm-openai")]
+pub mod openai;
+
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "llm-openai")]
+pub use openai::OpenAiClient;
+pub use router::{ModelRouter, TaskTier};
+
+/// Error from an LLM provider call.
+#[derive(Debug, thiserror::Error)]
+pub enum LlmError {
+    #[error("network error: {0}")]
+    Network(String),
+    #[error("API error ({status}): {body}")]
+    Api { status: u16, body: String },
+    #[error("authentication missing or invalid")]
+    Auth,
+    #[error("rate limited; retry after {retry_after_ms:?}ms")]
+    RateLimited { retry_after_ms: Option<u64> },
+    #[error("deserialization error: {0}")]
+    Deserialize(String),
+    #[error("budget exceeded: spent ${spent:.4} of ${cap:.4} cap")]
+    BudgetExceeded { spent: f64, cap: f64 },
+    #[error("{0}")]
+    Other(String),
+}
+
+/// Role of a chat message.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum MessageRole {
+    System,
+    User,
+    Assistant,
+    Tool,
+}
+
+impl std::fmt::Display for MessageRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::System => write!(f, "system"),
+            Self::User => write!(f, "user"),
+            Self::Assistant => write!(f, "assistant"),
+            Self::Tool => write!(f, "tool"),
+        }
+    }
+}
+
+/// A single chat message.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Message {
+    pub role: MessageRole,
+    pub content: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_calls: Vec<ToolCall>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+}
+
+impl Message {
+    pub fn system(content: impl Into<String>) -> Self {
+        Self {
+            role: MessageRole::System,
+            content: content.into(),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }
+    }
+
+    pub fn user(content: impl Into<String>) -> Self {
+        Self {
+            role: MessageRole::User,
+            content: content.into(),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }
+    }
+
+    pub fn assistant(content: impl Into<String>) -> Self {
+        Self {
+            role: MessageRole::Assistant,
+            content: content.into(),
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+        }
+    }
+
+    pub fn tool_result(tool_call_id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: MessageRole::Tool,
+            content: content.into(),
+            tool_calls: Vec::new(),
+            tool_call_id: Some(tool_call_id.into()),
+        }
+    }
+}
+
+/// A function/tool the model may invoke.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FunctionSchema {
+    pub name: String,
+    pub description: String,
+    /// JSON Schema describing the parameters.
+    pub parameters: serde_json::Value,
+}
+
+/// A tool call requested by the model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCall {
+    pub id: String,
+    pub name: String,
+    /// Parsed JSON arguments.
+    pub arguments: serde_json::Value,
+}
+
+/// How the model should format its response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResponseFormat {
+    Text,
+    JsonObject,
+    JsonSchema(serde_json::Value),
+}
+
+impl Default for ResponseFormat {
+    fn default() -> Self {
+        Self::Text
+    }
+}
+
+/// Token usage for a completion.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Usage {
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+    pub total_tokens: u64,
+}
+
+/// Why the model stopped generating.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FinishReason {
+    Stop,
+    Length,
+    ToolCalls,
+    ContentFilter,
+    Other(String),
+}
+
+/// A request to an LLM provider.
+#[derive(Debug, Clone)]
+pub struct CompletionRequest {
+    pub messages: Vec<Message>,
+    pub model: Option<String>,
+    pub temperature: Option<f32>,
+    pub max_tokens: Option<usize>,
+    pub tools: Vec<FunctionSchema>,
+    pub response_format: ResponseFormat,
+}
+
+impl CompletionRequest {
+    /// Build a request from a message list.
+    pub fn new(messages: Vec<Message>) -> Self {
+        Self {
+            messages,
+            model: None,
+            temperature: None,
+            max_tokens: None,
+            tools: Vec::new(),
+            response_format: ResponseFormat::Text,
+        }
+    }
+
+    /// Single-turn convenience: system prompt + user message.
+    pub fn prompt(system: &str, user: impl Into<String>) -> Self {
+        Self::new(vec![Message::system(system), Message::user(user)])
+    }
+
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.model = Some(model.into());
+        self
+    }
+
+    pub fn with_temperature(mut self, temp: f32) -> Self {
+        self.temperature = Some(temp);
+        self
+    }
+
+    pub fn with_tools(mut self, tools: Vec<FunctionSchema>) -> Self {
+        self.tools = tools;
+        self
+    }
+
+    pub fn with_json(mut self) -> Self {
+        self.response_format = ResponseFormat::JsonObject;
+        self
+    }
+}
+
+/// A response from an LLM provider.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompletionResponse {
+    pub content: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_calls: Vec<ToolCall>,
+    pub usage: Usage,
+    pub model: String,
+    pub finish_reason: FinishReason,
+}
+
+impl CompletionResponse {
+    /// Convenience: plain-text response with zero usage.
+    pub fn text(content: impl Into<String>) -> Self {
+        Self {
+            content: content.into(),
+            tool_calls: Vec::new(),
+            usage: Usage::default(),
+            model: String::new(),
+            finish_reason: FinishReason::Stop,
+        }
+    }
+
+    /// Did the model request tool calls?
+    pub fn wants_tools(&self) -> bool {
+        !self.tool_calls.is_empty()
+    }
+}
+
+/// The core trait every LLM provider implements.
+#[async_trait::async_trait]
+pub trait LlmClient: Send + Sync {
+    /// Perform a completion.
+    async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, LlmError>;
+
+    /// The default model this client uses.
+    fn default_model(&self) -> &str;
+}

@@ -216,4 +216,144 @@ impl LearningEntry {
         // 2. Check context for keywords
         self.context.to_lowercase().contains(&element_id_lower)
     }
+
+    /// Create a new learning entry with all bookkeeping fields defaulted.
+    ///
+    /// Prefer the specific constructors ([`playbook`](Self::playbook),
+    /// [`guardrail`](Self::guardrail), [`invariant`](Self::invariant)) which
+    /// also set the correct `kind` and `outcome`.
+    pub fn new(
+        context: impl Into<String>,
+        hypothesis: impl Into<String>,
+        guardrail_advice: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: generate_entry_id(),
+            kind: None,
+            timestamp: Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
+            context: context.into(),
+            hypothesis: hypothesis.into(),
+            outcome: ExperimentOutcome::default(),
+            reason: None,
+            guardrail_advice: guardrail_advice.into(),
+            affected_elements: Vec::new(),
+            evidence_refs: Vec::new(),
+            confidence: None,
+            tags: Vec::new(),
+            hitl_kind: None,
+            related_ids: Vec::new(),
+            retrieval_count: 0,
+            task_success_after: 0,
+            task_total_after: 0,
+        }
+    }
+
+    /// A successful playbook: "what worked, do this again".
+    pub fn playbook(
+        context: impl Into<String>,
+        hypothesis: impl Into<String>,
+        guardrail_advice: impl Into<String>,
+    ) -> Self {
+        Self::new(context, hypothesis, guardrail_advice)
+            .with_kind(LearningKind::Playbook)
+            .with_outcome(ExperimentOutcome::Success)
+    }
+
+    /// A guardrail: "what not to try again".
+    pub fn guardrail(
+        context: impl Into<String>,
+        hypothesis: impl Into<String>,
+        guardrail_advice: impl Into<String>,
+    ) -> Self {
+        Self::new(context, hypothesis, guardrail_advice)
+            .with_kind(LearningKind::Guardrail)
+            .with_outcome(ExperimentOutcome::Failed)
+    }
+
+    /// An invariant: "must always hold".
+    pub fn invariant(
+        context: impl Into<String>,
+        hypothesis: impl Into<String>,
+        guardrail_advice: impl Into<String>,
+    ) -> Self {
+        Self::new(context, hypothesis, guardrail_advice).with_kind(LearningKind::Invariant)
+    }
+
+    /// Builder-style: set the learning kind.
+    pub fn with_kind(mut self, kind: LearningKind) -> Self {
+        self.kind = Some(kind);
+        self
+    }
+
+    /// Builder-style: set the experiment outcome.
+    pub fn with_outcome(mut self, outcome: ExperimentOutcome) -> Self {
+        self.outcome = outcome;
+        self
+    }
+
+    /// Builder-style: attach affected element ids.
+    pub fn with_elements(mut self, elements: Vec<String>) -> Self {
+        self.affected_elements = elements;
+        self
+    }
+
+    /// Builder-style: attach evidence references.
+    pub fn with_evidence(mut self, refs: Vec<String>) -> Self {
+        self.evidence_refs = refs;
+        self
+    }
+
+    /// Builder-style: set tags.
+    pub fn with_tags(mut self, tags: Vec<String>) -> Self {
+        self.tags = tags;
+        self
+    }
+
+    /// Builder-style: set the run id.
+    pub fn with_run_id(mut self, run_id: impl Into<String>) -> Self {
+        self.run_id = Some(run_id.into());
+        self
+    }
+
+    /// Builder-style: set the repo path.
+    pub fn with_repo(mut self, repo: impl Into<String>) -> Self {
+        self.repo = Some(repo.into());
+        self
+    }
+
+    /// Builder-style: set the selector.
+    pub fn with_selector(mut self, selector: impl Into<String>) -> Self {
+        self.selector = Some(selector.into());
+        self
+    }
+
+    /// Builder-style: set the HITL kind, validated via [`parse_hitl_kind`].
+    pub fn with_hitl_kind(mut self, kind: &str) -> Result<Self, MemoryError> {
+        self.hitl_kind = parse_hitl_kind(kind)?;
+        Ok(self)
+    }
+
+    /// Builder-style: set confidence label.
+    pub fn with_confidence(mut self, confidence: impl Into<String>) -> Self {
+        self.confidence = Some(confidence.into());
+        self
+    }
+}
+
+/// Parse a human-in-the-loop kind string into a normalized value.
+///
+/// Accepts: `precedent`, `exception`, `correction`, `guardrail` (case-insensitive).
+/// Empty string yields `None`. Anything else is an error.
+pub fn parse_hitl_kind(s: &str) -> Result<Option<String>, MemoryError> {
+    let trimmed = s.trim().to_lowercase();
+    match trimmed.as_str() {
+        "" => Ok(None),
+        "precedent" | "exception" | "correction" | "guardrail" => Ok(Some(trimmed)),
+        other => Err(MemoryError::InvalidIds(format!(
+            "invalid hitl_kind '{other}': expected precedent|exception|correction|guardrail"
+        ))),
+    }
 }

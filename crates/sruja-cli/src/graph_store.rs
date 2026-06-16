@@ -168,7 +168,7 @@ fn merge_learnings_from_memory(repo: &Path, graph: &mut KnowledgeGraph) {
         return;
     };
 
-    let Some(entries) = memory.get("entries").and_then(|e| e.as_array()) else {
+    let Some(entries) = memory.get("learnings").and_then(|e| e.as_array()) else {
         return;
     };
 

@@ -254,3 +254,77 @@ impl AgenticMemory {
         search::find_by_tag(self, tag)
     }
 }
+
+// ---------------------------------------------------------------------------
+// Memory trait — pluggable backend abstraction
+// ---------------------------------------------------------------------------
+
+/// Trait abstracting long-term memory for the agent.
+///
+/// Implemented by [`AgenticMemory`] (JSON file) and optionally by SQLite/FTS5
+/// backends. The cognition loop uses this trait — not the concrete type.
+pub trait Memory: Send + Sync {
+    /// Search for learnings relevant to a query, returning at most `limit` results.
+    fn search(&self, query: &str, limit: usize) -> Vec<LearningEntry>;
+
+    /// Record a new learning.
+    fn record(&self, entry: LearningEntry) -> Result<(), MemoryError>;
+
+    /// Record that specific learnings were retrieved for a task.
+    fn record_retrievals(&self, ids: &[&str]);
+
+    /// Record task outcomes for learnings retrieved during the task.
+    fn record_outcomes(&self, ids: &[&str], success: bool);
+
+    /// Total number of learnings stored.
+    fn count(&self) -> usize;
+}
+
+impl Memory for std::sync::Mutex<AgenticMemory> {
+    fn search(&self, query: &str, limit: usize) -> Vec<LearningEntry> {
+        let mem = self.lock().unwrap();
+        // Search by element ID, tag, and text relevance.
+        let mut results: Vec<LearningEntry> = mem
+            .learnings
+            .iter()
+            .filter(|e| {
+                e.context.to_lowercase().contains(&query.to_lowercase())
+                    || e.hypothesis.to_lowercase().contains(&query.to_lowercase())
+                    || e.guardrail_advice.to_lowercase().contains(&query.to_lowercase())
+                    || e.tags.iter().any(|t| t.to_lowercase().contains(&query.to_lowercase()))
+                    || e.affected_elements.iter().any(|el| el.contains(query))
+            })
+            .cloned()
+            .collect();
+
+        // Sort by utility (decay_score * utility_ratio) — best first.
+        results.sort_by(|a, b| {
+            let sa = a.decay_score() * a.utility_ratio().unwrap_or(0.5);
+            let sb = b.decay_score() * b.utility_ratio().unwrap_or(0.5);
+            sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        results.truncate(limit);
+        results
+    }
+
+    fn record(&self, entry: LearningEntry) -> Result<(), MemoryError> {
+        let mut mem = self.lock().unwrap();
+        mem.add_learning(entry);
+        Ok(())
+    }
+
+    fn record_retrievals(&self, ids: &[&str]) {
+        let mut mem = self.lock().unwrap();
+        mem.record_retrievals(ids);
+    }
+
+    fn record_outcomes(&self, ids: &[&str], success: bool) {
+        let mut mem = self.lock().unwrap();
+        mem.record_task_outcomes(ids, success);
+    }
+
+    fn count(&self) -> usize {
+        self.lock().unwrap().learnings.len()
+    }
+}

@@ -6,15 +6,29 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["llm-openai", "tools-fs"]
+# LLM provider backends.
+llm-openai = ["dep:reqwest"]
+llm-anthropic = ["dep:reqwest"]
+# Built-in filesystem / shell tools.
+tools-fs = []
+# SQLite memory search backend.
+memory-sqlite = []
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 chrono.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
 sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-graph = { path = "../sruja-graph" }
 sruja-language = { path = "../sruja-language" }
 fs2 = "0.4.3"
+reqwest = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3.10"
