@@ -26,20 +26,15 @@ pub enum MemoryError {
 }
 
 /// The outcome of an architectural experiment.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExperimentOutcome {
     /// The experiment was successful (e.g., the change improved the architecture).
     #[serde(rename = "success")]
+    #[default]
     Success,
     /// The experiment failed (e.g., the change caused a regression or drift).
     #[serde(rename = "failed")]
     Failed,
-}
-
-impl Default for ExperimentOutcome {
-    fn default() -> Self {
-        Self::Success
-    }
 }
 
 impl std::fmt::Display for ExperimentOutcome {
