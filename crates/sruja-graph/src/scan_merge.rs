@@ -245,7 +245,7 @@ pub fn merge_program_into_graph(
 mod tests {
     use super::*;
     use crate::{EdgeKind, NodeKind};
-    use sruja_scan::{Edge, EdgeEvidence, Graph, Node};
+    use sruja_scan::{AutoContext, Edge, EdgeEvidence, Graph, Node};
     use std::collections::HashMap;
 
     fn create_test_scan_graph() -> Graph {
@@ -369,6 +369,7 @@ mod tests {
                 edges: vec![],
                 incidents: vec![],
                 confidence: None,
+                auto_context: AutoContext::default(),
             };
 
             let count = merge_scan_into_graph(&mut kg, &scan_graph, ".");

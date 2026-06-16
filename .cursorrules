@@ -37,4 +37,4 @@ Compact brief: `llms-architecture.txt`. Full DSL only via MCP `sruja://architect
 1. Respect layer boundaries - check imports before suggesting
 2. Use existing patterns in the codebase
 3. If adding a new dependency, verify it does not violate boundaries
-4. Run `sruja check -r .` after changes to verify architecture health
+4. Run `sruja drift -r .` after changes to verify architecture health
