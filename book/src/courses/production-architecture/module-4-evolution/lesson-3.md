@@ -69,9 +69,9 @@ sruja drift -r . --fix
 sruja impact <component> -r . --depth 3
 ```
 
-## Agentic memory and bounded agent loop
+## Agentic memory and closed-loop agent
 
-Sruja records **architecture-bounded learnings** in `.sruja/agent_memory.json` and supports a **review-before-apply** agent loop. Sruja is a harness—not a full autonomous coding agent; your editor or CI hosts the LLM.
+Sruja records **architecture-bounded learnings** in `.sruja/agent_memory.json` and supports a **closed-loop agent** via `sruja agent loop`. The deterministic layer (verify-task, drift, lint) grades each iteration — the actor never grades itself.
 
 ```bash
 # Emit a reviewable plan grounded in repo evidence

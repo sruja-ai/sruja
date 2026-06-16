@@ -2,7 +2,10 @@
 
 This guide is for teams adopting Sruja under enterprise constraints: **repeatability**, **low-noise CI**, **offline-ready operation**, and **auditability**.
 
-Sruja is a **deterministic harness** (lint/drift/intent/focus/verify-task/workflow gates). Your editor or CI runner is the **agent host** (it runs the LLM loop). See [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md).
+Sruja is a **CLI-first autonomous coding agent** that owns the full
+observe → act → verify → critique → replan loop (`sruja agent loop`). It also
+works as a **deterministic grader** (lint/drift/intent/focus/verify-task/workflow
+gates) from any editor or CI host. See [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md).
 
 ## One blessed loop (canonical)
 
@@ -64,6 +67,4 @@ Exit criteria:
 - [AIDLC_INTEGRATION.md](AIDLC_INTEGRATION.md) (AI-DLC workflow usage)
 - [HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md) (host vs harness boundary)
 - [ENTERPRISE_POLICY.md](ENTERPRISE_POLICY.md) (advisory → baseline → enforce)
-- [EVIDENCE_PACK.md](EVIDENCE_PACK.md) (audit-friendly evidence packs)
-- [EnterprisePlan.md](EnterprisePlan.md) (90-day rollout framing)
 

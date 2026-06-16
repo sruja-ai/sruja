@@ -1,8 +1,8 @@
 # Loop Agent Plan — Sruja as a CLI-first autonomous coding agent
 
-> **Status:** Proposed. **Supersedes** the "Sruja is a passive harness, NOT an
-> orchestrator agent" stance in `AGENTS.md`, `PRINCIPLES.md`, and ~6 docs.
-> That reversal is **Phase 5** of this plan and must land before/with any release.
+> **Status:** In progress (Phases 0–2, 5 shipped). **Supersedes** the "Sruja is a
+> passive harness, NOT an orchestrator agent" stance in `AGENTS.md` and ~12 docs.
+> The docs reversal (Phase 5) is complete.
 
 ## 1. Decision
 
@@ -125,21 +125,58 @@ Diff-based editing (`SEARCH/REPLACE` / git-patch tool), typed shell returns
 LSP/AST (go-to-definition, find-refs), explicit scratchpad artifact updated
 per iteration.
 
-### Phase 4 — Guardrails & convergence
-Per-iteration evidence compared across runs (the existing
-`verification_hash`/`content_hash` at `agent_run.rs:1244-1254` finally gets a
-reader). Convergence/oscillation detection → auto-terminate flailing loops.
-Team-guidelines auto-injection into worker system prompt. Spend-cap + iteration
-cap as hard kills. Mandatory sandbox (worktree today; Docker/cloud later).
+### Phase 4 — Guardrails & convergence ✅
+**Spend cap:** `LoopConfig.spend_cap_usd` checked after each iteration via
+`Usage::estimated_cost_usd()`. Also catches `LlmError::BudgetExceeded` from the
+`ModelRouter` and terminates gracefully with `LoopTermination::SpendCapExceeded`
+instead of propagating the error.
 
-### Phase 5 — Docs reversal
-- **Docs:** rewrite the "harness, not agent" / "no `--autonomous` mode" stance
-  across `AGENTS.md`, `PRINCIPLES.md`, `ENTERPRISE_ADOPTION.md`,
-  `MESSAGING.md`, `HOST_AGENT_INTEGRATION.md`, `GROUNDED_HARNESS_*.md`. Replace
-  with the loop-agent stance. Keep the *independent grader* principle (Sruja
-  still grades its own actor deterministically).
-- **CLI:** the runner is `sruja agent loop` (Phase 2, already shipped). Phase 5
-  adds `focus` grounding integration and wires `verify-task` as the exit gate.
+**Oscillation detection:** `LoopConfig.detect_oscillation` (default: true)
+hashes critique-issue signatures per iteration. If the same signature repeats,
+the loop terminates with `LoopTermination::Oscillation` — preventing flailing.
+
+**CLI flags:** `--spend-cap <USD>` and `--no-oscillation-detection` wired into
+`sruja agent loop`. Both overridable in `.sruja/loop.toml`.
+
+**Tests:** `run_loop_terminates_on_spend_cap`, `run_loop_detects_oscillation`,
+`usage_estimated_cost_is_nonzero`, `critique_signature_normalises_order`.
+
+Remaining Phase 4 work: team-guidelines auto-injection, mandatory sandbox
+(worktree today; Docker/cloud later), per-iteration evidence comparison across
+runs (`verification_hash`/`content_hash` reader).
+
+### Phase 5 — Docs reversal ✅
+Rewrote the "harness, not agent" / "no `--autonomous` mode" stance across all
+docs. The loop-agent stance is now the primary narrative. What is **preserved**:
+the *independent grader* principle (Sruja's deterministic layer still grades
+its own actor deterministically).
+
+**Files updated (18):**
+- `AGENTS.md` — section headers, body, Do/Do-not list
+- `docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md` — title, intro, boundary
+  table, correction table, "what Sruja does not do", orchestration section
+- `docs/HOST_AGENT_INTEGRATION.md` — intro, trust model, boundary table, ACT
+  step, references
+- `docs/ENTERPRISE_ADOPTION.md` — opening paragraph
+- `docs/FEATURE_TIERS.md` — MCP position, agent ops, fold table, loop section
+- `docs/GETTING_STARTED_SKILL.md` — subtitle, prerequisites, playbook scope
+- `docs/PRIVACY_AND_RETENTION.md` — opening paragraph
+- `docs/mcp_setup.md` — intro paragraph
+- `docs/CONTEXT_ENGINEERING.md` — MCP section
+- `docs/architecture/domain-schema.md` — see-also link
+- `docs/architecture/README.md` — domain-schema reference
+- `docs/README.md` — table entry
+- `docs/examples/host-gates/README.md` — intro
+- `docs/plans/AGENT_DELIVERY_PLAN.md` — north star, non-goals, acceptance
+- `docs/plans/AI_DLC_ACE_SYNTHESIS_PLAN.md` — intro, will-not-ship list
+- `book/src/getting-started.md` — FAQ
+- `book/src/docs/intro.md` — design principles
+- `book/src/courses/agentic-ai/` — course-overview, module-overview, lesson-4
+- `book/src/courses/production-architecture/module-4-evolution/lesson-3.md`
+- `.cursor/commands/sruja-reflect-on-run.md` — title, intro
+
+Remaining Phase 5 work: wire `focus` grounding into `agent loop` and integrate
+`verify-task` as the exit gate (deferred to Phase 3/4).
 
 ### Phase 6 (later) — GitHub integration
 Issue intake ("agent-ready" task detection), PR creation, scheduled/unattended

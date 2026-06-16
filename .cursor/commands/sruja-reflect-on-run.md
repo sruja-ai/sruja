@@ -1,6 +1,6 @@
-# Sruja: Reflect on agent run (host-owned)
+# Sruja: Reflect on agent run
 
-Use this after an **`sruja agent apply`** or **`sruja agent run --mode apply`** completes. Sruja does not ship an in-repo `reflect_and_learn()`—this command guides **your editor agent** to distill lessons into agent memory.
+Use this after an **`sruja agent loop`**, **`sruja agent apply`**, or **`sruja agent run --mode apply`** completes. This command guides **your editor agent** to distill lessons into agent memory.
 
 ## Prerequisites
 
@@ -49,5 +49,5 @@ Use this after an **`sruja agent apply`** or **`sruja agent run --mode apply`** 
 ## References
 
 - [docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md)
-- [docs/context-graph-for-agents.md](../../docs/context-graph-for-agents.md)
+- [docs/CONTEXT_ENGINEERING.md](../../docs/CONTEXT_ENGINEERING.md)
 - [AGENTS.md](../../AGENTS.md#agentic-memory-utility-srujaagent_memoryjson)

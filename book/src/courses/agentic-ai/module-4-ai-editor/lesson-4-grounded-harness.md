@@ -1,21 +1,28 @@
 ---
-title: "Lesson 4: Grounded harness and continual learning (host-owned)"
+title: "Lesson 4: Grounded harness and continual learning"
 weight: 4
-summary: "Use Sruja as a deterministic harness while your editor owns the LLM loop."
+summary: "Sruja as a CLI-first autonomous agent with an independent deterministic grader."
 ---
 
-# Lesson 4: Grounded harness and continual learning (host-owned)
+# Lesson 4: Grounded harness and continual learning
 
-## Harness vs runtime
+## Agent loop vs passive harness
 
-| | Sruja (harness) | Editor / CI (host) |
+Sruja operates in two modes:
+
+| Mode | How | Who owns the loop |
+|------|-----|-------------------|
+| **Autonomous** (`sruja agent loop`) | CLI drives comprehend → plan → execute → critique → replan | Sruja |
+| **Passive harness** (MCP) | Editor host calls Sruja gates on demand | Editor host |
+
+| | Sruja (grader) | Editor / CI (host) |
 |---|-----------------|---------------------|
 | Validates `.sruja` | `sruja lint`, `sruja fmt` | Proposes DSL edits |
 | Compares model to code | `sruja drift`, `sruja intent check` | Interprets violations |
 | Stores learnings | `.sruja/agent_memory.json` | Reflects on runs (optional) |
 | Open-source LLM | `--enrich-cmd`, `config.toml` | Runs Ollama, vLLM, etc. |
 
-Sruja does **not** ship `ContinualLearningAgent`, `--autonomous`, or automatic skill generation. Those are **patterns you implement in the host**, using Sruja JSON as ground truth.
+The **deterministic layer** (verify-task, drift, lint, intent) is always the independent grader — the actor never grades itself, whether the actor is `agent loop` or your editor.
 
 Full reference: [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 
@@ -86,9 +93,9 @@ sruja agent merge -r . --ids id1,id2 -c "Merged context" -H "..." -g "Combined g
 
 Setup: [mcp_setup.md](../../../../docs/mcp_setup.md).
 
-## Reflect / learn (host-owned)
+## Reflect / learn
 
-After `agent apply`, optionally:
+After `agent loop` or `agent apply`, optionally:
 
 1. Read `facts_bundle.json` and recent `agent_memory.json` entries.
 2. Use your editor agent or `--enrich-cmd` to draft narrative lessons (markdown only).
@@ -101,6 +108,6 @@ Cursor users: run the project command **Sruja: Reflect on agent run** (see `.cur
 
 - Sruja constrains probabilistic output with deterministic gates.
 - Continual learning lives in **artifacts and memory**, not weight updates.
-- The host owns Act/Reflect; Sruja owns Record/Learn storage and enforcement.
+- `sruja agent loop` owns the full closed loop; in editor mode, Sruja owns Record/Learn storage and enforcement while the host does Act.
 
-**Next:** [Agentic orchestration patterns and Sruja](../../../../docs/AGENTIC_ORCHESTRATION_AND_SRUJA.md) for industry pattern mapping.
+**Next:** [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) for the full reference.

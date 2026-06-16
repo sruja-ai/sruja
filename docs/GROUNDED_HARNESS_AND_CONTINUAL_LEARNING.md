@@ -1,6 +1,10 @@
-# Grounded harness and continual learning (host-owned)
+# Grounded harness and continual learning
 
-Sruja is an **AI coding agent** that provides intelligent assistance for software development. It validates `.sruja`, compares models to the codebase, and exposes grounded context to AI editors. The editor or CI host (Cursor, Claude Code, your runner) owns the LLM loop—planning, reflection, and open-ended reasoning—while Sruja supplies evidence, gates, memory, and MCP tools.
+Sruja is a **CLI-first autonomous coding agent**. It owns the full
+observe → act → verify → critique → replan loop (`sruja agent loop`), and
+also works as a passive harness (lint, drift, evidence, MCP) from any editor
+host. In both modes the **deterministic layer** (verify-task, drift, lint,
+intent) is the **independent grader** — the actor never grades itself.
 
 This guide explains how to combine both layers for **continual learning in token space**: the system improves through recorded outcomes and curated memory without retraining model weights.
 
@@ -16,13 +20,14 @@ A **grounded harness** shifts correctness from neural weights to a compiler: eve
 
 ## Product boundary
 
-| Layer | Owner | Responsibility |
-|-------|--------|----------------|
-| **AI Coding Agent** | Sruja CLI + MCP | `sync`, `lint`, `drift`, `intent check`, proposals, agent memory, focus/ai briefings |
-| **Agent host** | Your editor / CI / script | Act (generate), optional Reflect/Learn (narrative), tool orchestration beyond Sruja |
-| **Reviewed truth** | Humans + promotion flow | `repo.sruja`, Decision Records, approved proposals |
+See the [boundary table in HOST_AGENT_INTEGRATION.md](HOST_AGENT_INTEGRATION.md#boundary-table) for the full layer breakdown. In summary:
 
-See also [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) and [context-graph-for-agents.md](context-graph-for-agents.md).
+- **Sruja CLI (`agent loop`)** owns the autonomous loop (comprehend → plan → execute → critique → replan).
+- **Sruja CLI + MCP** owns the deterministic grader (sync, lint, drift, intent, verify-task, focus, agent memory).
+- **Your editor / CI** (optional) owns the interactive host loop using Sruja's passive gates and MCP tools.
+- **Humans** own reviewed truth (repo.sruja, Decision Records, approved proposals).
+
+See also [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) and [plans/LOOP_AGENT_PLAN.md](plans/LOOP_AGENT_PLAN.md).
 
 ---
 
@@ -35,8 +40,8 @@ Some articles describe a monolithic `ContinualLearningAgent` with `facts`, `user
 | `ContinualLearningAgent` / `TrajectoryTracker` / `reflect_and_learn()` | **Host workflow** (e.g. Cursor agent + `sruja-architecture` skill) consuming Sruja JSON |
 | Memory buckets: facts, preferences, patterns | **`.sruja/agent_memory.json`** with `LearningEntry` objects (`context`, `hypothesis`, `outcome`, `guardrail_advice`, optional `hitl_kind`) |
 | LLM supervisor rewrites system prompt | **Not shipped** — optional host step via `--enrich-cmd` on run artifacts |
-| Auto-created skill `.md` files | **Not shipped** — install or author skills manually ([INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md)) |
-| `sruja agent run --autonomous` | **Does not exist** — use `agent plan` → review → `agent apply` (or `agent run --mode apply`) |
+| Auto-created skill `.md` files | **Not shipped** — install or author skills manually ([skills/README.md](../skills/README.md)) |
+| `sruja agent run --autonomous` | **Shipped as `sruja agent loop`** — drives the full closed loop: comprehend → plan → execute → critique → replan |
 | `sruja onboard` only | Prefer **`sruja inspect onboard`** for markdown briefings; see [README.md](../README.md) |
 
 Team preferences and stable domain facts belong in **Decision Records** (`.sruja/decisions/`), **editor rules**, or **skills**—not in a separate memory schema inside `agent_memory.json`.
@@ -128,10 +133,29 @@ sruja agent curate -r .
 
 Utility signals (`retrieval_count`, `task_success_after`) are documented in [AGENTS.md](../AGENTS.md#agentic-memory-utility-srujaagent_memoryjson).
 
-### Bounded agent loop (Headless/CI Convenience Wrappers)
+### Closed-loop agent (`sruja agent loop`)
 
-> [!IMPORTANT]
-> The primary integration path for active development is the host coding agent (Cursor, Claude Code, Cline, Windsurf) querying Sruja's passive MCP tools and executing Sruja check gates. The CLI commands below (`agent run`, `agent plan`, `agent apply`) are **optional headless/CI convenience wrappers** to run verification steps in non-interactive environments — they are NOT replacements for the host's orchestrator.
+The primary autonomous path: Sruja owns the full cognition loop and runs until
+a verifiable condition is met or a budget is exhausted.
+
+```bash
+# Autonomous loop: comprehend -> plan -> execute -> critique -> replan
+sruja agent loop -r . --goal "Add a health check endpoint"
+
+# With a loop manifest for defaults
+cat > .sruja/loop.toml <<EOF
+max_iterations = 3
+tdd = true
+review_every_change = true
+shell_allowlist = ["cargo", "just", "npm"]
+EOF
+sruja agent loop -r . --goal "Fix the flaky test in auth.rs"
+```
+
+For interactive work, any editor host (Cursor, Claude Code, Cline, Windsurf)
+can use Sruja's MCP tools and deterministic gates as a passive harness.
+`agent run`, `agent plan`, and `agent apply` remain as headless/CI convenience
+helpers for architecture-bounded validation and evidence authoring.
 
 ```bash
 # 1. Plan (reviewable JSON)
@@ -250,12 +274,11 @@ Host-side reflect playbook: [.cursor/commands/sruja-reflect-on-run.md](../.curso
 
 ## What Sruja does not do
 
-- Run a 24/7 autonomous coding agent (`--autonomous` is not a CLI flag).
+- Run indefinitely without bounds — `agent loop` is bounded by `max_iterations`, spend caps, and workspace-scoped file guards.
 - Automatically rewrite its own system prompts or mint new skills from trajectories.
-- Replace your editor’s agent for general refactors, web search, or unbounded file edits.
 - Treat `learned_facts.jsonl` or LLM synthesis as reviewed architecture without promotion + lint + drift.
 
-**Kill rule:** If a workflow cannot name define intent → understand context → detect drift → review change, keep it out of primary automation ([feature_tightening_spec.md](feature_tightening_spec.md)).
+**Kill rule:** If a workflow cannot define intent → understand context → detect drift → review change, keep it out of primary automation.
 
 ---
 
@@ -267,8 +290,7 @@ The CLI is a Rust workspace (`sruja-cli`). Teams may add validation subcommands 
 
 ## Further reading
 
-- [context-graph-for-agents.md](context-graph-for-agents.md) — Decision Records and trace events
-- [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) — Context pipeline principles
+- [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) — Context pipeline principles, Decision Records, and trace events
 - [plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md](plans/GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md) — Authoring lanes
 - [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) — Install `sruja-architecture` skill
 - Book: [Agentic AI course](../book/src/courses/agentic-ai/course-overview.md) — Module 4, Lesson 4 (grounded harness)
@@ -277,16 +299,14 @@ The CLI is a Rust workspace (`sruja-cli`). Teams may add validation subcommands 
 
 ## Agentic Orchestration Patterns and Sruja
 
-Industry writing on multi-agent systems often discusses **reflection**, **tool use**, **planning**, **multi-agent collaboration**, and topologies such as sequential pipelines, parallel fan-out, hierarchical coordinators, and evaluator–optimizer loops. This section maps those ideas to **what Sruja is today** (AI coding agent, architecture-as-code, graph queries, MCP, drift and context engineering) so teams know where Sruja fits and what would be **out of scope** unless the product explicitly grows into an agent runtime.
+Industry writing on multi-agent systems often discusses **reflection**, **tool use**, **planning**, **multi-agent collaboration**, and topologies such as sequential pipelines, parallel fan-out, hierarchical coordinators, and evaluator–optimizer loops. This section maps those ideas to **what Sruja is today** (CLI-first autonomous agent, architecture-as-code, graph queries, MCP, drift and context engineering).
 
 ### MCP: tools and grounding, not peer-to-peer agents
 
 Sruja exposes a **Model Context Protocol (MCP)** server so AI editors can call structured tools (summaries, neighbors, paths, focus briefings, context score, and related capabilities depending on version). That aligns with the common split:
 
 - **MCP** answers: *What tools and grounded facts can this session use?*
-- The **host** (Cursor, Claude Desktop, CI, or your own stack) remains the orchestrator for multi-step reasoning, routing, and sub-agents.
-
-Sruja does **not** need to embed a LangGraph-style in-process agent loop to deliver strong value: it supplies **deterministic, schema-driven** architecture evidence on demand. Setup: [mcp_setup.md](mcp_setup.md).
+- The **host** (Cursor, Claude Desktop, CI, or your own stack) can orchestrate multi-step reasoning via MCP, or use `sruja agent loop` to let Sruja own the loop directly.
 
 ### Shared state instead of stuffing the chat window
 
@@ -298,11 +318,11 @@ Patterns such as **tiered memory** and **context engineering** stress moving sta
 
 ### Modeling orchestration in `.sruja` (not executing it)
 
-You can **document** how *your* system orchestrates agents—supervisor, hierarchy, mesh, pipelines—using the DSL and relationships. That is **architecture description and communication**, not Sruja executing those agents at runtime.
+You can **document** how *your* system orchestrates agents—supervisor, hierarchy, mesh, pipelines—using the DSL and relationships. You can also **execute** coding tasks via `sruja agent loop`, which drives the cognition loop against the real workspace.
 
 ### The 80 / 20 split in practice
 
-A practical industry heuristic is **~80% deterministic orchestration**, **~20%** genuinely open-ended model judgment. Sruja intentionally leans **deterministic**: parse, validate, scan, query, score, and lint. The **agentic** slice stays in the editor or your automation layer, which calls Sruja when it needs grounded architecture answers.
+A practical industry heuristic is **~80% deterministic orchestration**, **~20%** genuinely open-ended model judgment. Sruja's `agent loop` combines both: the **deterministic** layer (parse, validate, scan, query, score, lint) grades each iteration, while the **model** layer (comprehend, plan, execute, critique) does the open-ended work. The deterministic layer is the independent grader — the actor never grades itself.
 
 ### Observability as you add automation
 

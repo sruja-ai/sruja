@@ -23,8 +23,8 @@ Public messaging should teach this loop:
 ### Default MCP Position
 
 - Public templates use `SRUJA_MCP_TOOL_PROFILE=coding`
-- Host editors own the LLM loop
-- Sruja provides context, evidence, and verification
+- `sruja agent loop` owns the full closed loop for autonomous coding
+- Sruja's deterministic layer provides context, evidence, and verification in either mode
 
 ### Optional Reviewed Intent
 
@@ -64,6 +64,7 @@ These features remain valuable, but they should be documented as extensions buil
 
 ### Agent Ops Extension
 
+- `agent loop` (autonomous closed-loop coding agent)
 - `agent plan`
 - `agent apply`
 - `agent record`
@@ -99,7 +100,7 @@ These should be folded into clearer canonical paths or kept out of primary docs:
 |----------------|--------------|
 | `focus` / `ai` | `ai-context`, old `context` naming |
 | `start` | `quickstart`, `overview`, `onboard` as primary entry points |
-| `verify-task` / host verify | `agent run` as a public surface |
+| `verify-task` / `agent loop` | `agent run` as a public surface |
 | `status` or a future single status page | `doctor`, `health` overlap |
 | `review` | `daily` as a separate headline feature |
 
@@ -169,11 +170,22 @@ The skill runs Tier-1 commands (sync, drift, lint) — it is an accelerator, not
 - **`coding`** (default, 15 tools): ladder, focus, drift, verify, memory search, hybrid query, critique, prune.
 - **`minimal`**, **`arch`**, **`full`** (compat only — not in public templates).
 
-Set `SRUJA_MCP_TOOL_PROFILE=coding`. **Not** in coding profile: `sruja_agent_run` — hosts run the LLM loop; Sruja supplies `verify-task` and evidence.
+Set `SRUJA_MCP_TOOL_PROFILE=coding`. **Not** in coding profile: `sruja_agent_run` (legacy) — use `sruja agent loop` for autonomous coding, or MCP tools for editor-host integration.
 
 ---
 
-## Host loop (not `agent run`)
+## Agent loop vs editor loop
+
+### Autonomous loop (`sruja agent loop`)
+
+```text
+1. Sruja: focus / drift state / boundary context
+2. Sruja LLM edits code (via built-in file/shell tools)
+3. Sruja: critique + verify (deterministic grader)
+4. Sruja: replan or approve
+```
+
+### Editor loop (MCP)
 
 ```text
 1. MCP: focus / drift state / boundary context
@@ -184,8 +196,6 @@ Set `SRUJA_MCP_TOOL_PROFILE=coding`. **Not** in coding profile: `sruja_agent_run
 
 The **confidence report** composes verify-task, intent check, drift, and review into a single human-readable artifact: what changed, what evidence was checked, what risks remain, and what to inspect at 3AM.
 
-`sruja agent run` is internal/deprecated — use `agent plan` + host apply + `confidence`.
-
 ---
 
 ## Three pillars (technical docs)
@@ -195,5 +205,3 @@ The **confidence report** composes verify-task, intent check, drift, and review 
 - **Persistence** — optional reviewed `repo.sruja`
 
 **Pitch line:** Sruja gives the model your real topology and validates what it produces.
-
-See [OSS_METRICS.md](./OSS_METRICS.md).

@@ -1,6 +1,6 @@
 // docs/architecture/agent-context-graph.sruja
 // Example: agent + workflow + lineage mapped to default Sruja kinds (person at top level).
-// See docs/context-graph-for-agents.md for Decision Records, traces, and HITL taxonomy.
+// See docs/CONTEXT_ENGINEERING.md for Decision Records, traces, and HITL taxonomy.
 
 HumanReviewer = person "Human reviewer" {
   description "Approves Decision Records; classifies HITL outcomes as precedent, exception, correction, or guardrail"

@@ -74,7 +74,7 @@ RAG.Generator -> AgentSystem.Executor "Produce answer"
 
 ## Grounded harness (operational loop)
 
-DSL models describe **what** you build; Sruja’s CLI enforces **whether** architecture matches code. For lint/drift loops, local `--enrich-cmd` inference, and host-owned continual learning, see [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
+DSL models describe **what** you build; Sruja's CLI enforces **whether** architecture matches code. For the closed-loop agent, lint/drift gates, and continual learning, see [Grounded harness and continual learning](../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 
 ## Next Steps
 

@@ -99,7 +99,9 @@ No for CLI-only workflows. MCP is the best experience inside Cursor/Claude Deskt
 
 **"Is Sruja a coding agent?"**
 
-No. Cursor/Copilot own the LLM loop. Sruja is the **harness** (drift, focus, verify-task).
+Yes. `sruja agent loop` drives the full closed-loop agent (comprehend → plan →
+execute → critique → replan). Sruja also works as a passive harness from any
+editor (Cursor, Copilot) via MCP.
 
 **"What's the difference between `quickstart` and `discover`?"**
 
@@ -117,6 +119,6 @@ Install **Sruja Language Support** for `.sruja` syntax, validation, harness comm
 ## Learn more
 
 - [Beginner path](docs/beginner-path.md)
-- [Install as skill (full)](https://github.com/sruja-ai/sruja/blob/main/docs/INSTALL_AS_SKILL.md)
+- [Install as skill (full)](https://github.com/sruja-ai/sruja/blob/main/skills/README.md)
 - [Host gate examples](https://github.com/sruja-ai/sruja/tree/main/docs/examples/host-gates)
 - [Getting started (full DSL walkthrough)](docs/getting-started.md)

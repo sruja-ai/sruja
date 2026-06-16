@@ -157,21 +157,37 @@ Do **not** paste full `repo.sruja` or entire `sruja ai` briefs into chat when th
 
 Filling the context window “because we can” still hurts quality.
 
-### Grounded harness and continual learning (host-owned)
+### Grounded harness and continual learning
 
-Sruja is the **deterministic harness** (lint, drift, evidence, MCP, agent memory); the **editor or CI host** owns the LLM loop (Act / optional Reflect). There is no `--autonomous` CLI mode. Full guide: [docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
+Sruja is a **CLI-first autonomous coding agent**. It owns the full
+observe → act → verify → critique → replan loop via `sruja agent loop`.
+The **deterministic layer** (verify-task, drift, lint, intent) remains the
+**independent grader** — the actor never grades itself. This is the *loop
+engineering* thesis: the agent that writes code is not the one that evaluates it.
 
-### CLI `agent` loop boundaries (Sruja as AI Coding Agent)
+Sruja can also be used as a **passive harness** (lint, drift, evidence, MCP, agent
+memory) from any editor host (Cursor, Claude Code, Cline, Windsurf). Both paths
+coexist. Full guide: [docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 
-Sruja is an **AI coding agent** that provides intelligent assistance for software development. The host environment (Cursor, Claude Code, Cline, Windsurf, etc.) can leverage Sruja's capabilities for architecture-aware code generation, context retrieval, and verification.
+### CLI `agent` loop
 
-`sruja agent run`, `agent plan`, and `agent apply` provide **headless/CI convenience helpers** for architecture-bounded validation. They work alongside your editor's orchestrator to provide grounded context and verification.
+`sruja agent loop --goal "<goal>"` drives the full closed-loop agent:
+comprehend → plan → execute via tools → critique → replan until approved.
+Configuration via CLI flags or `.sruja/loop.toml` manifest. Bounded by
+`max_iterations`, spend caps, and workspace-scoped file guards.
 
-- **Do**: Use Sruja's passive gates (`lint`, `drift`, `intent check`, `focus`) and MCP tools within your host agent.
-- **Do**: Use CLI `agent` commands for headless or CI-driven verification step pipelines.
-- **Do**: Leverage Sruja's architecture understanding for intelligent code suggestions.
-- **Do not**: Treat Sruja apply outputs as reviewed truth—always merge proposals into `repo.sruja` through manual review.
-- **Kill rule**: if a workflow cannot name [define intent / understand context / detect drift / review change](docs/PRODUCT_FEATURE_ALIGNMENT_REPORT.md#canonical-workflows), keep it out of primary docs and automation until it can.
+`sruja agent run`, `agent plan`, and `agent apply` remain as headless/CI
+convenience helpers for architecture-bounded validation and evidence authoring.
+
+- **Do**: Use `sruja agent loop` for autonomous coding tasks against a workspace.
+- **Do**: Use Sruja's deterministic gates (`lint`, `drift`, `intent check`,
+  `focus`) and MCP tools within your editor host for interactive work.
+- **Do**: Leverage Sruja's architecture understanding for intelligent code
+  suggestions in either mode.
+- **Do not**: Treat `agent apply` outputs as reviewed truth — always merge
+  proposals into `repo.sruja` through manual review.
+- **Do not**: Run `agent loop` against a production branch without a loop
+  manifest bounding scope and budget.
 
 ### Agentic memory utility (`.sruja/agent_memory.json`)
 

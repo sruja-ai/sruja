@@ -20,7 +20,7 @@ cargo build --release -p sruja-cli
 ./target/release/sruja quickstart -r .
 ```
 
-See `docs/RUN_GUIDE.md` and `demo/README.md` for the end-to-end demo flow.
+See `demo/README.md` for the end-to-end demo flow.
 
 ## Validate .sruja files
 

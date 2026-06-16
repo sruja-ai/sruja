@@ -159,7 +159,7 @@ For how this relates to “context graph” terminology in industry writing vers
 | `sruja_memory_clusters` | Thematic clusters/tags from agentic memory (read). Complements **`sruja_get_agent_learnings`**, which filters by **element id**. |
 | `sruja_ai_scratchpad` | Read/append legacy scratchpad markdown (**mutating** on append). |
 | `sruja_sandbox` | Git worktree sandbox lifecycle (**mutating**). |
-| `sruja_record_learning` | Structured agentic memory entry (**mutating**). Optional **`hitl_kind`**: `precedent` \| `exception` \| `correction` \| `guardrail` (see [context-graph-for-agents.md](context-graph-for-agents.md)). |
+| `sruja_record_learning` | Structured agentic memory entry (**mutating**). Optional **`hitl_kind`**: `precedent` \| `exception` \| `correction` \| `guardrail` (see [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md)). |
 
 CLI lifecycle (not MCP yet): `sruja agent curate`, `agent update`, `agent merge`, `agent delete` — see **Agentic memory utility** in [AGENTS.md](../AGENTS.md).
 

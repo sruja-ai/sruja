@@ -1,6 +1,6 @@
 # Host gate examples
 
-Copy-paste patterns for wiring Sruja as an **AI coding harness** (not a second agent). The host owns Act; Sruja owns START (focus/drift) and VERIFY (`verify-task`).
+Copy-paste patterns for wiring Sruja's deterministic gates. Use `sruja agent loop` for autonomous coding, or these patterns for editor-hosted workflows where Sruja owns START (focus/drift) and VERIFY (`verify-task`).
 
 See [HOST_AGENT_INTEGRATION.md](../../HOST_AGENT_INTEGRATION.md) and [COMMUNITY_SKILLS_STACK.md](../../COMMUNITY_SKILLS_STACK.md).
 

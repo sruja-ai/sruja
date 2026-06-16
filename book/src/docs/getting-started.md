@@ -95,7 +95,7 @@ Add `repo.sruja` only when you want **reviewed intent** in Git and stricter CI e
 Prerequisites:
 
 - **AI editor** – Cursor, Copilot, Claude, Continue.dev, etc.
-- **AI skill** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (see [Install as a Skill](../../docs/INSTALL_AS_SKILL.md))
+- **AI skill** – `npx skills add https://github.com/sruja-ai/sruja --skill sruja-architecture` (see [Install as a Skill](../../../skills/README.md))
 
 The skill uses repo evidence to propose `repo.sruja`. When you have a draft:
 

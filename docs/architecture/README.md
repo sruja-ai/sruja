@@ -39,7 +39,7 @@ Current contributor and release workflow, including:
 
 ### `domain-schema.md`
 
-Explanation of the Domain Schema DSL and the transition to generalized Context Graphs. For how AI sessions and hosts relate to this layer versus in-product agent runtimes, see [Agentic orchestration patterns and Sruja](../AGENTIC_ORCHESTRATION_AND_SRUJA.md).
+Explanation of the Domain Schema DSL and the transition to generalized Context Graphs. For how `sruja agent loop` uses this layer, see [Grounded harness and continual learning](../GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 
 ## Usage
 

@@ -4,7 +4,7 @@ Sruja has evolved from a C4-specific architecture-as-code tool into a generalize
 
 ## See also
 
-For how multi-step **orchestration** stays in the host (editor, CI, or your own stack) while this graph remains **description and governance**—not a live agent scheduler—see [Agentic orchestration patterns and Sruja](../AGENTIC_ORCHESTRATION_AND_SRUJA.md).
+For how Sruja combines autonomous coding (`agent loop`) with architecture governance, see [Grounded harness and continual learning](../GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md).
 
 ## What is a Context Graph?
 

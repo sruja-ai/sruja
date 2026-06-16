@@ -62,7 +62,7 @@ Sruja is **not** a replacement for Cursor or Copilot — it is the guardrail lay
 - **Evidence over guesses**: context starts from what exists in code and linked docs today
 - **Small surface area**: a few core workflows used consistently
 - **Explicit trade-offs**: reviewed intent is optional until the team needs it
-- **Host-owned LLM loop**: Sruja never replaces your editor or agent
+- **CLI-first agent**: `sruja agent loop` owns the full closed loop, or use MCP from any editor
 - **Knowledge and decisions**: context engineering, not a feature catalog
 
 ## Who is Sruja For?

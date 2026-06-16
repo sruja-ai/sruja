@@ -3,7 +3,7 @@
 **Status:** Active  
 **Last updated:** 2026-05-20
 
-Single source for integrating Sruja with any AI agent host (Cursor, Claude Code, CI, OpenHands, etc.). Sruja is an **AI coding agent** that provides intelligent assistance for software development.
+Single source for integrating Sruja with any AI agent host (Cursor, Claude Code, CI, OpenHands, etc.). Sruja is a **CLI-first autonomous coding agent** that also works as a passive harness from any editor host.
 
 ## One blessed loop
 
@@ -19,7 +19,7 @@ Adoption tiers and rollout guidance: [ENTERPRISE_ADOPTION.md](ENTERPRISE_ADOPTIO
 
 ## Trust model: “earned confidence” (multi-agent, go/no-go)
 
-Sruja’s harness can make checks deterministic, but it cannot prevent an LLM host from producing a confident, wrong narrative. For high-stakes usage, hosts should implement a **role-separated multi-pass review** (even if it’s the same model invoked multiple times).
+Sruja’s deterministic layer can make checks deterministic, but it cannot prevent an LLM (in `agent loop` or an editor host) from producing a confident, wrong narrative. For high-stakes usage, implement a **role-separated multi-pass review** (even if it’s the same model invoked multiple times).
 
 ### Normative requirement (when enabled)
 
@@ -58,17 +58,18 @@ Hosts should avoid “debate transcripts”. The escalation payload must be shor
 
 | Layer | Owner | Responsibility |
 |-------|-------|----------------|
-| **AI Coding Agent** | Sruja CLI + MCP | `sync`, `lint`, `drift`, `intent check`, `verify-task`, focus briefings, agent memory, MCP tools |
-| **Agent host** | Your editor / CI / script | Act (generate code/DSL), optional Reflect/Learn, tool orchestration beyond Sruja |
+| **Autonomous loop** | Sruja CLI (`agent loop`) | comprehend → plan → execute → critique → replan, bounded by iterations/spend/file guards |
+| **Deterministic grader** | Sruja CLI + MCP | `sync`, `lint`, `drift`, `intent check`, `verify-task`, focus briefings, agent memory, MCP tools |
+| **Agent host** (optional) | Your editor / CI / script | Interactive loop using Sruja's passive gates and MCP tools |
 | **Reviewed truth** | Humans + promotion flow | `repo.sruja`, Decision Records, approved proposals |
 
-**Sruja does NOT ship:**
-- `agent run --autonomous` mode
-- In-process LLM orchestration
-- Skill router for N skills
-- Auto-generated skill packs from trajectories
+**Sruja ships:**
+- `sruja agent loop` — closed-loop autonomous coding agent
+- `sruja agent run/plan/apply` — headless/CI convenience helpers
+- MCP server for editor-host integration
+- Agent memory with retrieval/outcome tracking
 
-See [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) and [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) for details.
+See [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) and [docs/plans/LOOP_AGENT_PLAN.md](plans/LOOP_AGENT_PLAN.md) for details.
 
 **Copy-paste examples:** [examples/host-gates/](examples/host-gates/) (CI workflow, shell hook, dogfood checklist).
 
@@ -96,9 +97,12 @@ sruja focus --file src/auth.rs -r . -f for-ai
 
 **MCP equivalent:** `sruja_get_focus_briefing`, `sruja_check_drift`
 
-#### 2. ACT — Host/skill does the work
+#### 2. ACT — Execute the work
 
-The host (Cursor agent, Claude Code, CI script) performs the code or DSL changes. Sruja is not involved during this step.
+**Autonomous mode:** `sruja agent loop` performs the code or DSL changes via
+its own tool registry (file_read, file_write, file_edit, glob, grep, shell).
+
+**Host mode:** the editor agent (Cursor, Claude Code) or CI script performs the changes.
 
 #### 3. VERIFY — Run verification bundle
 
@@ -182,9 +186,9 @@ Evidence packs also work with the `confidence` command:
 sruja confidence -r . --evidence-pack -f json
 ```
 
-### Optional: Verifier/Adversary gates (host-owned)
+### Optional: Verifier/Adversary gates
 
-Sruja intentionally does not orchestrate multiple LLM passes; the host does. A common pattern is:
+For high-stakes changes, add role-separated multi-pass review on top of Sruja's deterministic grader. `sruja agent loop` already runs an internal critique phase; this is for an additional independent adversarial check.
 
 ```text
 ACT (generator) → VERIFY (sruja) → VERIFIER PASS (GO/NO-GO) → ADVERSARY PASS (GO/NO-GO) → SHIP/ESCALATE
@@ -380,9 +384,9 @@ See `.github/workflows/sruja-aidlc-gate.yml` for the label-triggered AIDLC gate.
 
 ## References
 
-- [AI_ASSISTED_DEVELOPMENT_PLAYBOOK.md](AI_ASSISTED_DEVELOPMENT_PLAYBOOK.md) — Practical “harnessed AI coding” workflow (MCP + verify-task + skills + diagrams)
-- [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) — Harness vs host boundary, continual learning
-- [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md) — What Sruja does not ship
+- [GETTING_STARTED_SKILL.md](GETTING_STARTED_SKILL.md) — Practical “harnessed AI coding” workflow (MCP + verify-task + skills + diagrams)
+- [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) — Closed-loop agent, harness boundary, continual learning
+- [docs/plans/LOOP_AGENT_PLAN.md](plans/LOOP_AGENT_PLAN.md) — Loop engineering thesis and phased plan
 - [AIDLC_INTEGRATION.md](AIDLC_INTEGRATION.md) — AI-DLC workflow integration
 - [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md) — MCP ladder, focus, pruning
 - [docs/plans/AGENT_DELIVERY_PLAN.md](plans/AGENT_DELIVERY_PLAN.md) — Delivery roadmap

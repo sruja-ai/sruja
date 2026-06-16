@@ -17,7 +17,7 @@ Sruja still approximates parts of the decision-trace idea for **software archite
 
 **Context events** (`context_events.jsonl`) and **MCP** tools `sruja_get_context_events` / `sruja_get_agent_learnings` expose that lineage to agents without conflating it with the declared architecture graph itself. Decision and workflow traces use **`context_event/v2`** rows (optional `trace_id`, `decision_id`, `actor`, `source`, and related fields); use `sruja event append` / `sruja decision trace` to record and inspect them.
 
-For the portable **governed context + decision lineage** model—Decision Records (generalized ADRs), hypothesis vs reviewed truth, reference *code-to-production* workflow, HITL taxonomy (`precedent`, `exception`, `correction`, `guardrail`), and federation notes—see **[context-graph-for-agents.md](context-graph-for-agents.md)**.
+For the portable **governed context + decision lineage** model—Decision Records (generalized ADRs), hypothesis vs reviewed truth, HITL taxonomy, and lifecycle rules—see the **Context Graph for Agents** section below.
 
 ## Core Pillars
 
@@ -65,7 +65,7 @@ category: adr
 ### MCP (Model Context Protocol)
 Sruja provides an MCP server that exposes these context engineering capabilities directly to AI editors (Cursor, Trae, Windsurf, etc.).
 
-MCP is the **structured tooling** interface: it answers what grounded architecture data the session can retrieve, while the host application handles multi-step reasoning and any multi-agent routing. For a concise map from common agentic-orchestration literature (sequential pipelines, hierarchical coordinators, A2A, and so on) to Sruja’s role, see [AGENTIC_ORCHESTRATION_AND_SRUJA.md](AGENTIC_ORCHESTRATION_AND_SRUJA.md).
+MCP is the **structured tooling** interface: it answers what grounded architecture data the session can retrieve. `sruja agent loop` uses the same capabilities internally for autonomous coding; in editor mode, the host handles multi-step reasoning via MCP.
 
 **Tools:** dozens of read/query tools plus a smaller set of mutating tools (proposals, scratchpad, sandbox, agent run). See the full table in **[mcp_tools_reference.md](mcp_tools_reference.md)**. For locked-down hosts, set `SRUJA_MCP_READONLY=1` so only read/query tools are listed and callable; set `SRUJA_MCP_LOG=1` for one JSON line per invocation on stderr.
 

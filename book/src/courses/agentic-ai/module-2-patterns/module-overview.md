@@ -25,5 +25,5 @@ Single-loop agents are powerful, but complex tasks often require structured patt
 
 ## See also
 
-- [Agentic orchestration patterns and Sruja](../../../../../docs/AGENTIC_ORCHESTRATION_AND_SRUJA.md) (repo doc): how industry patterns such as MCP grounding, shared state, and topology modeling relate to Sruja versus an in-product agent runtime.
+- [Grounded harness and continual learning](../../../../../docs/GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) (repo doc): how `sruja agent loop` combines autonomous coding with an independent deterministic grader.
 - [Domain schema and context graphs](../../../../../docs/architecture/domain-schema.md) (repo doc): `schema` blocks, default architecture kinds, nesting, and how `sruja lint` enforces the graph.

@@ -4,7 +4,7 @@
 **Owner:** Product + CLI/MCP (`sruja-cli`, `sruja-diff`, `sruja-agent`, `sruja-engine`, `sruja-scan`).  
 **Last updated:** 2026-05-26.
 
-This plan adapts **AWS AI-DLC** (adaptive lifecycle scaffolding, hierarchical steering, human-in-the-loop gates) and **Stanford ACE** (Generator–Reflector–Curator, delta updates to playbooks) into Sruja **without** turning Sruja into a general-purpose coding agent runtime.
+This plan adapts **AWS AI-DLC** (adaptive lifecycle scaffolding, hierarchical steering, human-in-the-loop gates) and **Stanford ACE** (Generator–Reflector–Curator, delta updates to playbooks) into Sruja. Sruja is now a **CLI-first autonomous coding agent** (`sruja agent loop`) — see [LOOP_AGENT_PLAN.md](LOOP_AGENT_PLAN.md) for the loop engineering thesis.
 
 **Related docs (current truth):**
 
@@ -13,8 +13,9 @@ This plan adapts **AWS AI-DLC** (adaptive lifecycle scaffolding, hierarchical st
 | [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](../GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) | Harness vs host boundary |
 | [GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md](GROUNDED_ARCHITECTURE_AUTHORING_PLAN.md) | Facts / synthesis / enforcement lanes |
 | [CONTEXT_ENGINEERING.md](../CONTEXT_ENGINEERING.md) | MCP ladder, focus, pruning |
-| [context-graph-for-agents.md](../context-graph-for-agents.md) | DRs, `context_event/v2`, lifecycle rule |
-| [AGENTIC_ORCHESTRATION_AND_SRUJA.md](../AGENTIC_ORCHESTRATION_AND_SRUJA.md) | What Sruja does *not* ship |
+| [CONTEXT_ENGINEERING.md](../CONTEXT_ENGINEERING.md) | DRs, `context_event/v2`, lifecycle rule |
+| [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](../GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) | Closed-loop agent, grader boundary |
+| [LOOP_AGENT_PLAN.md](LOOP_AGENT_PLAN.md) | Loop engineering thesis and phased plan |
 
 ---
 
@@ -45,7 +46,7 @@ Industry adoption of AI coding assistants correlates with **architectural drift*
 **Will not ship in this plan:**
 
 - In-process multi-agent Bedrock orchestration.
-- `sruja agent run --autonomous` or replacement of the editor agent.
+- ~~`sruja agent run --autonomous`~~ — shipped as `sruja agent loop` (see [LOOP_AGENT_PLAN.md](LOOP_AGENT_PLAN.md)).
 - Cryptographic signing inside the Sruja binary (org may add via CI; see §8).
 - Mid-token blocking of LLM output without host cooperation.
 

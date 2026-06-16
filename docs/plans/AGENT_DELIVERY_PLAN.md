@@ -9,8 +9,8 @@
 | Doc | Role |
 |-----|------|
 | [AI_DLC_ACE_SYNTHESIS_PLAN.md](AI_DLC_ACE_SYNTHESIS_PLAN.md) | AI-DLC + ACE integration plan |
-| [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](../GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) | Harness vs host boundary |
-| [AGENTIC_ORCHESTRATION_AND_SRUJA.md](../AGENTIC_ORCHESTRATION_AND_SRUJA.md) | What Sruja does *not* ship |
+| [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](../GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md) | Closed-loop agent, grader boundary |
+| [LOOP_AGENT_PLAN.md](LOOP_AGENT_PLAN.md) | Loop engineering thesis and phased plan |
 | [AIDLC_INTEGRATION.md](../AIDLC_INTEGRATION.md) | AIDLC CLI/MCP/CI docs |
 | [CONTEXT_ENGINEERING.md](../CONTEXT_ENGINEERING.md) | MCP ladder, focus, pruning |
 
@@ -18,14 +18,20 @@
 
 ## North star
 
-Sruja = portable harness + governed memory (any host, any number of skills).
-Hosts + community skills = Act / Reflect (coding, debug, review).
-Self-improvement = repo artifacts (memory, events, DRs, rules) — not an in-repo autonomous runtime or auto-minted skills.
+Sruja = CLI-first autonomous agent + portable harness + governed memory.
+`agent loop` owns the full closed loop; MCP/gates work from any editor host.
+Self-improvement = repo artifacts (memory, events, DRs, rules).
 
-## Non-goals (hold the line)
+> **Updated:** the autonomous loop (`sruja agent loop`) shipped in [LOOP_AGENT_PLAN.md](LOOP_AGENT_PLAN.md).
+> The non-goals below that referenced "no autonomous mode" are superseded.
 
-- `agent run --autonomous`
-- In-process LLM orchestration
+## Superseded non-goals (shipped)
+
+- ~~`agent run --autonomous`~~ → shipped as `sruja agent loop`
+- ~~In-process LLM orchestration~~ → shipped in `sruja-agent` crate
+
+## Remaining non-goals
+
 - Sruja skill router for N skills
 - Auto-generated skill packs from trajectories
 
@@ -68,15 +74,15 @@ Grounded assessment of what exists today, what's in progress, and what's genuine
 
 | Item | Phase | Effort |
 |------|-------|--------|
-| `sruja verify-task` CLI command | 1.2 | 3–5 days (extract from `agent_run.rs`) |
-| `sruja_verify_task` MCP tool | 1.2 | Trivial (once CLI exists) |
-| `docs/HOST_AGENT_INTEGRATION.md` | 1.1 | 1–2 days (consolidate from existing docs) |
-| `docs/COMMUNITY_SKILLS_STACK.md` | 2.3 | 1 day |
+| `sruja verify-task` CLI command | 1.2 | **Shipped** |
+| `sruja_verify_task` MCP tool | 1.2 | **Shipped** |
+| `docs/HOST_AGENT_INTEGRATION.md` | 1.1 | **Shipped** |
+| `docs/COMMUNITY_SKILLS_STACK.md` | 2.3 | **Shipped** |
 | `docs/SRUJA_SKILL_IMPROVEMENTS.md` | 2.3 | Half day (broken link in `skills/README.md:139`) |
-| `skills/sruja-harness/SKILL.md` | 2.1 | Half day |
+| `skills/sruja-harness/SKILL.md` | 2.1 | **Shipped** |
 | `.cursor/commands/sruja-bugfix-triage.md` | 2.2 | Half day |
 | `.cursor/commands/sruja-pre-merge-review.md` | 2.2 | Half day |
-| `[verify]` config profiles in `.sruja/config.toml` | 1.2 | 1 day (new config section) |
+| `[verify]` config profiles in `.sruja/config.toml` | 1.2 | **Shipped** (documented in HOST_AGENT_INTEGRATION.md) |
 | `facts_bundle/v2` (host, skills_used[], verify_profile) | 3.1 | 1 day (additive schema bump) |
 | Full workflow lifecycle integration test | 0.2 | Half day |
 | One dogfood PR through AIDLC workflow | 0.4 | 1–2 days |
@@ -145,8 +151,8 @@ Makes Sruja usable with N skills in Cursor, Claude Code, CI, etc., without Sruja
 #### 1.1.1 `docs/HOST_AGENT_INTEGRATION.md`
 
 Consolidate from existing docs. Much of this content already lives in:
-- `GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md` (272 lines) — harness vs host boundary
-- `AGENTIC_ORCHESTRATION_AND_SRUJA.md` — what Sruja does not ship
+- `GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md` — closed-loop agent, grader boundary
+- `LOOP_AGENT_PLAN.md` — loop engineering thesis
 - `.cursor/rules/sruja-context-host.mdc` (38 lines) — session wiring
 
 New doc should be the single source for:
@@ -274,7 +280,7 @@ Maps Addy commands (`/build`, `/review`) → Sruja verify profiles; links Cursor
 
 Under `sruja-architecture`: impact before edit; proposal not direct repo.sruja; post-change intent+drift.
 
-#### 2.1.4 Update `docs/INSTALL_AS_SKILL.md`
+#### 2.1.4 Update `skills/README.md`
 
 Recommended stack: `sruja-architecture` + `sruja-harness` + optional Addy skills + post-steps table. No false "community replaces Sruja" framing.
 
@@ -406,7 +412,7 @@ Headless bot can advance phases when artifacts + verify bundle pass; humans only
 |------|-------|------------------|
 | 1 | Phase 0.4 + 1.1.1–1.1.4 | Dogfood PR + `HOST_AGENT_INTEGRATION.md` + host-gates examples |
 | 2 | 1.2.1–1.2.3 + 1.3.1–1.3.3 | `verify-task` CLI/MCP + Cursor commands |
-| 3 | 2.1.1–2.2.3 + 2.3.1 | `sruja-harness` skill + `INSTALL_AS_SKILL` stack |
+| 3 | 2.1.1–2.2.3 + 2.3.1 | `sruja-harness` skill + skills stack |
 | 4 | 3.1–3.3 + start 4.1 | `reflect`/`facts_bundle` + learning config + dogfood PR metrics |
 
 ---
@@ -416,7 +422,7 @@ Headless bot can advance phases when artifacts + verify bundle pass; humans only
 1. Any host with MCP or CLI can run verify + `record_learning` without Cursor-specific APIs.
 2. User with 5+ community skills + `sruja-harness` still gets drift/intent/review gates.
 3. Coding / bugfix / review each have a Cursor command + verify profile + doc section.
-4. No new autonomous mode; CI can block merge on verify + workflow.
+4. `sruja agent loop` ships as the closed-loop runner; CI can block merge on verify + workflow.
 5. One dogfood PR per phase proves the loop on the Sruja repo itself.
 
 ## What to defer

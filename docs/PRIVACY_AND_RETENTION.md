@@ -1,6 +1,6 @@
 # Privacy and retention
 
-Sruja is a local-first **deterministic harness**. It does not transmit repository content to external services unless you explicitly configure an enrichment provider.
+Sruja is a local-first **coding agent and deterministic grader**. It does not transmit repository content to external services unless you explicitly configure an enrichment provider or run `agent loop` with an API-keyed LLM provider.
 
 ## Data emitted by default
 

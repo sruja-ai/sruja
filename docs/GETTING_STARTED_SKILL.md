@@ -1,18 +1,18 @@
 # Getting Started with Sruja Skills
 
-**AI coding harness + optional architecture authoring.**
+**CLI-first autonomous agent + optional architecture authoring.**
 
-Sruja is not a second coding agent. Install the **harness** skill so any agent runs `verify-task` before done; add **sruja-architecture** when you want reviewed `repo.sruja` in Git.
+Sruja ships `sruja agent loop` for autonomous coding and the **harness** skill for editor-hosted gates. Install the skill so any agent runs `verify-task` before done; add **sruja-architecture** when you want reviewed `repo.sruja` in Git.
 
-See [INSTALL_AS_SKILL.md](INSTALL_AS_SKILL.md) and [COMMUNITY_SKILLS_STACK.md](COMMUNITY_SKILLS_STACK.md).
+See [skills/README.md](../skills/README.md) and [COMMUNITY_SKILLS_STACK.md](COMMUNITY_SKILLS_STACK.md).
 
 ---
 
 ## What You'll Need
 
-1. **Sruja CLI** – Scan, drift, focus, verify-task
-2. **AI editor** – Cursor, Copilot, Claude, etc. (owns the LLM loop)
-3. **Skills** – `sruja-harness` (required for gates); `sruja-architecture` (optional)
+1. **Sruja CLI** – Scan, drift, focus, verify-task, `agent loop`
+2. **AI editor** (optional) – Cursor, Copilot, Claude, etc. (for interactive MCP mode)
+3. **Skills** – `sruja-harness` (required for editor gates); `sruja-architecture` (optional)
 
 ---
 
@@ -284,7 +284,7 @@ Same skill-first workflow for every setup. Pick the one that matches you.
 One codebase, one architecture. This is the default.
 
 1. **Install the skill** (see [Quick Start](#quick-start-copy-these-steps) above). Use your AI to generate `repo.sruja` at the repo root.
-2. **Commit** `repo.sruja` and your skill setup (e.g. `.cursorrules` or `npx skills add ...`) so the team shares the same rules. See [Install as a Skill](INSTALL_AS_SKILL.md).
+2. **Commit** `repo.sruja` and your skill setup (e.g. `.cursorrules` or `npx skills add ...`) so the team shares the same rules. See [skills/README.md](../skills/README.md).
 3. **Add CI** to lint `.sruja` on every PR. Example (GitHub Actions):
 
 ```yaml
@@ -330,7 +330,7 @@ No extra tooling. Same skill and CLI as single repo.
 Many repos (e.g. one repo per microservice or app). Each repo is independent.
 
 1. **In each repo:** Same as single repo — install the skill, generate and commit `repo.sruja`, add the same CI job. Use the same [sruja-architecture skill](https://github.com/sruja-ai/sruja/tree/main/skills/sruja-architecture) everywhere so AI and humans share rules.
-2. **Optional – system-wide view:** To compose architecture across repos (one graph, canonical IDs, conflict reporting), use **federation**: each repo runs `sruja publish -r . -o repo.bundle.json`; a central job or script runs `sruja compose -i <bundles-dir> -o system.index.json`. See [FEDERATION_SETUP_GUIDE.md](FEDERATION_SETUP_GUIDE.md) for step-by-step setup or [FEDERATION.md](FEDERATION.md) for technical reference.
+2. **Optional – system-wide view:** To compose architecture across repos (one graph, canonical IDs, conflict reporting), use **federation**: each repo runs `sruja publish -r . -o repo.bundle.json`; a central job or script runs `sruja compose -i <bundles-dir> -o system.index.json`. See [FEDERATION.md](FEDERATION.md) for [FEDERATION.md](FEDERATION.md) for technical reference.
 
 **Patterns:** Per-repo ownership (each repo owns its `.sruja`); or a central “docs” / “architecture” repo that holds `.sruja` files and Sruja CI while other repos use the skill locally.
 
@@ -411,13 +411,13 @@ See [COMMUNITY_SKILLS_STACK.md](COMMUNITY_SKILLS_STACK.md) and [HOST_AGENT_INTEG
 4. sruja agent record …               # optional, on failure
 ```
 
-Do **not** use `sruja agent run` as the primary loop — the host owns Act; Sruja owns Verify.
+For autonomous coding, use `sruja agent loop` — Sruja owns the full closed loop (comprehend → plan → execute → critique → replan). For interactive editor workflows, use the harness skill with MCP gates.
 
 ---
 
 ## AI-Assisted Development Playbook
 
-This section turns common "AI assisted development" advice into an **enforceable, repeatable workflow** using Sruja's deterministic harness: architecture evidence, explicit boundaries, and local verification gates.
+This section turns common "AI assisted development" advice into an **enforceable, repeatable workflow** using Sruja's deterministic grader: architecture evidence, explicit boundaries, and local verification gates.
 
 ### Goal
 
@@ -430,8 +430,8 @@ Enable fast iteration with AI coding assistants **without** accumulating silent 
 - Architecture diagrams as exported artifacts (not hand-maintained drawings)
 
 **Out of scope**
-- Autonomous "AI engineer" workflows (Sruja is a harness; the editor/host owns the agent loop)
-- Replacing code review (the harness reduces risk; humans still review intent and product correctness)
+- Unbounded autonomous runs without a loop manifest (use `agent loop` with scoped budget)
+- Replacing code review (the grader reduces risk; humans still review intent and product correctness)
 
 ### Daily workflow (recommended)
 
