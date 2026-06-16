@@ -479,7 +479,11 @@ impl CentralityAnalyzer {
             }
         }
 
-        let max_c = centrality.values().cloned().fold(0.0f64, f64::max).max(1e-10);
+        let max_c = centrality
+            .values()
+            .cloned()
+            .fold(0.0f64, f64::max)
+            .max(1e-10);
         for value in centrality.values_mut() {
             *value /= max_c;
         }
@@ -749,7 +753,10 @@ mod tests {
 
         assert_eq!(result.pagerank.len(), 3);
         for value in result.pagerank.values() {
-            assert!(*value >= 0.0 && *value <= 1.0, "PageRank should be normalized");
+            assert!(
+                *value >= 0.0 && *value <= 1.0,
+                "PageRank should be normalized"
+            );
         }
     }
 
@@ -765,7 +772,10 @@ mod tests {
 
         assert_eq!(result.eigenvector.len(), 3);
         for value in result.eigenvector.values() {
-            assert!(*value >= 0.0 && *value <= 1.0, "Eigenvector should be normalized");
+            assert!(
+                *value >= 0.0 && *value <= 1.0,
+                "Eigenvector should be normalized"
+            );
         }
     }
 

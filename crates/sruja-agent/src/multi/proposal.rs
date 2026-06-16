@@ -1,7 +1,7 @@
 //! Proposal: a single agent's independent solution to a brainstorming problem.
 
-use crate::cognition::{Plan, TaskTier};
 use super::AgentRole;
+use crate::cognition::{Plan, TaskTier};
 
 /// A proposal from one brainstorming agent.
 #[derive(Debug, Clone)]
@@ -37,11 +37,15 @@ impl Proposal {
 
     /// Estimated total complexity (sum of subtask tiers).
     pub fn complexity_score(&self) -> u32 {
-        self.plan.subtasks.iter().map(|s| match s.tier {
-            TaskTier::Cheap => 1,
-            TaskTier::Mid => 3,
-            TaskTier::Premium => 10,
-        }).sum()
+        self.plan
+            .subtasks
+            .iter()
+            .map(|s| match s.tier {
+                TaskTier::Cheap => 1,
+                TaskTier::Mid => 3,
+                TaskTier::Premium => 10,
+            })
+            .sum()
     }
 }
 

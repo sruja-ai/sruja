@@ -24,17 +24,19 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::llm::{
-    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter,
-    Usage,
+    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter, Usage,
 };
 
 pub use crate::llm::TaskTier;
-use crate::tool::{FileGuard, Phase, ToolError, ToolRegistry};
 use crate::memory::{AgenticMemory, Memory};
+use crate::tool::{FileGuard, Phase, ToolError, ToolRegistry};
 use crate::LearningEntry;
 
-pub use hook::{Hook, HookAction, HookRegistry, Hooks, LoggingHook, AutoLearningHook, AutoDocsHook, TokenSavingHook};
 pub use decision::{DecisionRecord, DecisionStatus};
+pub use hook::{
+    AutoDocsHook, AutoLearningHook, Hook, HookAction, HookRegistry, Hooks, LoggingHook,
+    TokenSavingHook,
+};
 pub use runbook::{Runbook, RunbookSeverity};
 
 // ---------------------------------------------------------------------------
@@ -275,7 +277,10 @@ impl Agent {
                     .iter()
                     .map(|l| {
                         let kind = l.kind.map(|k| format!("{k:?}")).unwrap_or_default();
-                        let utility = l.utility_ratio().map(|u| format!("{:.0}%", u * 100.0)).unwrap_or_default();
+                        let utility = l
+                            .utility_ratio()
+                            .map(|u| format!("{:.0}%", u * 100.0))
+                            .unwrap_or_default();
                         format!(
                             "- [{kind}] {} (utility: {utility}, retrieved {} times)\n  Advice: {}",
                             l.context, l.retrieval_count, l.guardrail_advice
@@ -302,8 +307,7 @@ impl Agent {
              Produce a concise, grounded understanding."
         );
 
-        let req = CompletionRequest::prompt(&system, user)
-            .with_tools(self.tools.schemas());
+        let req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
 
         let (response, usage) = self.run_tool_loop(req).await?;
 
@@ -349,7 +353,11 @@ impl Agent {
 
             // Execute each requested tool and feed results back.
             for call in &response.tool_calls {
-                let result = match self.tools.dispatch(&call.name, call.arguments.clone()).await {
+                let result = match self
+                    .tools
+                    .dispatch(&call.name, call.arguments.clone())
+                    .await
+                {
                     Ok(out) => out,
                     Err(e) => format!("ERROR: {e}"),
                 };
@@ -416,12 +424,11 @@ impl Agent {
              - `acceptance_criteria`: how to verify completion\n\n\
              Output a JSON object with `subtasks` array and `risks` array.\n\
              {tdd_note}",
-            comprehension.summary,
-            comprehension.cited_elements,
+            comprehension.summary, comprehension.cited_elements,
         );
 
-        let req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user)
-            .with_tools(self.tools.schemas());
+        let req =
+            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
 
         let (response, _usage) = self.run_tool_loop(req).await?;
 
@@ -484,15 +491,15 @@ impl Agent {
                 phase,
             );
 
-        let req = CompletionRequest::prompt(&system, user)
-                .with_tools(self.tools.schemas());
+            let req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
 
             let response = self.complete_tiered(tier, req).await?;
-            let (response, tool_usage) = self.run_tool_loop(
-                CompletionRequest::prompt(system, &response.content)
-                    .with_tools(self.tools.schemas()),
-            )
-            .await?;
+            let (response, tool_usage) = self
+                .run_tool_loop(
+                    CompletionRequest::prompt(system, &response.content)
+                        .with_tools(self.tools.schemas()),
+                )
+                .await?;
 
             let mut total_usage = response.usage.clone();
             total_usage.prompt_tokens += tool_usage.prompt_tokens;
@@ -540,7 +547,14 @@ impl Agent {
 
         let step_summary: Vec<String> = results
             .iter()
-            .map(|r| format!("- [{}] {:?}: {}", r.subtask_id, r.status, truncate(&r.output, 200)))
+            .map(|r| {
+                format!(
+                    "- [{}] {:?}: {}",
+                    r.subtask_id,
+                    r.status,
+                    truncate(&r.output, 200)
+                )
+            })
             .collect();
 
         let user = format!(
@@ -590,8 +604,14 @@ impl Agent {
         results: &[StepResult],
         critique: Option<&Critique>,
     ) -> Result<Vec<LearningEntry>, AgentError> {
-        let successes = results.iter().filter(|r| r.status == StepStatus::Ok).count();
-        let failures = results.iter().filter(|r| r.status == StepStatus::Failed).count();
+        let successes = results
+            .iter()
+            .filter(|r| r.status == StepStatus::Ok)
+            .count();
+        let failures = results
+            .iter()
+            .filter(|r| r.status == StepStatus::Failed)
+            .count();
 
         let user = format!(
             "## Goal\n{}\n\n\
@@ -668,7 +688,9 @@ impl Agent {
             .await?;
 
         // Generate decision record and runbook.
-        let decision = self.generate_decision(&plan, &step_results, critique.as_ref()).await;
+        let decision = self
+            .generate_decision(&plan, &step_results, critique.as_ref())
+            .await;
         let runbook = self.generate_runbook(&plan, &step_results).await;
 
         // Write artifacts to disk if a repo root is available.
@@ -700,8 +722,14 @@ impl Agent {
         results: &[StepResult],
         critique: Option<&Critique>,
     ) -> Option<DecisionRecord> {
-        let successes = results.iter().filter(|r| r.status == StepStatus::Ok).count();
-        let failures = results.iter().filter(|r| r.status == StepStatus::Failed).count();
+        let successes = results
+            .iter()
+            .filter(|r| r.status == StepStatus::Ok)
+            .count();
+        let failures = results
+            .iter()
+            .filter(|r| r.status == StepStatus::Failed)
+            .count();
 
         let user = format!(
             "## Goal\n{}\n\n\
@@ -717,7 +745,9 @@ impl Agent {
             plan.goal,
             successes,
             failures,
-            critique.map(|c| format!("approved={}", c.approved)).unwrap_or_else(|| "skipped".into()),
+            critique
+                .map(|c| format!("approved={}", c.approved))
+                .unwrap_or_else(|| "skipped".into()),
         );
 
         let req = CompletionRequest::prompt(DECISION_SYSTEM_PROMPT, &user)
@@ -759,11 +789,7 @@ impl Agent {
     }
 
     /// Generate a runbook for handling failures related to this change.
-    async fn generate_runbook(
-        &self,
-        plan: &Plan,
-        _results: &[StepResult],
-    ) -> Option<Runbook> {
+    async fn generate_runbook(&self, plan: &Plan, _results: &[StepResult]) -> Option<Runbook> {
         let user = format!(
             "## Goal\n{}\n\n\
              ## Subtasks\n{}\n\n\
@@ -889,15 +915,15 @@ impl Agent {
             phase,
         );
 
-        let req = CompletionRequest::prompt(system, user)
-            .with_tools(self.tools.schemas());
+        let req = CompletionRequest::prompt(system, user).with_tools(self.tools.schemas());
 
         let response = self.complete_tiered(subtask.tier, req).await?;
-        let (response, _tool_usage) = self.run_tool_loop(
-            CompletionRequest::prompt(EXECUTION_SYSTEM_PROMPT, &response.content)
-                .with_tools(self.tools.schemas()),
-        )
-        .await?;
+        let (response, _tool_usage) = self
+            .run_tool_loop(
+                CompletionRequest::prompt(EXECUTION_SYSTEM_PROMPT, &response.content)
+                    .with_tools(self.tools.schemas()),
+            )
+            .await?;
 
         Ok(crate::pair::StepResult {
             output: response.content,
@@ -918,10 +944,9 @@ impl Agent {
             description, output
         );
 
-        let req = CompletionRequest::prompt(
-            "You are a code reviewer. Be concise and practical.",
-            &user,
-        ).with_model(&self.config.models.cheap);
+        let req =
+            CompletionRequest::prompt("You are a code reviewer. Be concise and practical.", &user)
+                .with_model(&self.config.models.cheap);
 
         let (response, _usage) = self.run_tool_loop(req).await?;
         let json_str = extract_json(&response.content);
@@ -929,8 +954,12 @@ impl Agent {
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
         Ok(crate::pair::ReviewResult {
-            approved: value.get("approved").and_then(|a| a.as_bool()).unwrap_or(true),
-            feedback: value.get("feedback")
+            approved: value
+                .get("approved")
+                .and_then(|a| a.as_bool())
+                .unwrap_or(true),
+            feedback: value
+                .get("feedback")
                 .and_then(|f| f.as_str())
                 .unwrap_or("No feedback")
                 .to_string(),
@@ -951,7 +980,8 @@ impl Agent {
         let req = CompletionRequest::prompt(
             "You are suggesting a code fix. Be specific and actionable.",
             &user,
-        ).with_model(&self.config.models.cheap);
+        )
+        .with_model(&self.config.models.cheap);
 
         let (response, _usage) = self.run_tool_loop(req).await?;
         Ok(response.content)
@@ -962,11 +992,22 @@ impl Agent {
         &self,
         results: &[crate::pair::StepResult],
     ) -> Result<Vec<String>, AgentError> {
-        let summaries: Vec<String> = results.iter()
+        let summaries: Vec<String> = results
+            .iter()
             .enumerate()
             .map(|(i, r)| {
-                let end = r.output.char_indices().nth(100).map(|(i, _)| i).unwrap_or(r.output.len());
-                format!("{}. {} (files: {:?})", i + 1, &r.output[..end], r.files_affected)
+                let end = r
+                    .output
+                    .char_indices()
+                    .nth(100)
+                    .map(|(i, _)| i)
+                    .unwrap_or(r.output.len());
+                format!(
+                    "{}. {} (files: {:?})",
+                    i + 1,
+                    &r.output[..end],
+                    r.files_affected
+                )
             })
             .collect();
 
@@ -979,12 +1020,13 @@ impl Agent {
         let req = CompletionRequest::prompt(
             "You are suggesting cleanup improvements. Be practical.",
             &user,
-        ).with_model(&self.config.models.cheap);
+        )
+        .with_model(&self.config.models.cheap);
 
         let (response, _usage) = self.run_tool_loop(req).await?;
         let json_str = extract_json(&response.content);
-        let suggestions: Vec<String> = serde_json::from_str::<Vec<String>>(&json_str)
-            .unwrap_or_default();
+        let suggestions: Vec<String> =
+            serde_json::from_str::<Vec<String>>(&json_str).unwrap_or_default();
 
         Ok(suggestions)
     }
@@ -1009,7 +1051,9 @@ fn extract_element_ids(text: &str) -> Vec<String> {
         let cleaned = word.trim_matches(|c: char| !c.is_alphanumeric() && c != '.');
         if cleaned.contains('.') && cleaned.chars().filter(|c| *c == '.').count() >= 1 {
             let parts: Vec<&str> = cleaned.split('.').collect();
-            if parts.iter().all(|p| !p.is_empty() && p.chars().next().map_or(false, |c| c.is_uppercase()))
+            if parts
+                .iter()
+                .all(|p| !p.is_empty() && p.chars().next().map_or(false, |c| c.is_uppercase()))
             {
                 ids.push(cleaned.to_string());
             }
@@ -1110,12 +1154,20 @@ pub fn parse_plan_from_response(content: &str, goal: &str, tdd: bool) -> Plan {
                             files: st
                                 .get("files")
                                 .and_then(|f| f.as_array())
-                                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                                .map(|a| {
+                                    a.iter()
+                                        .filter_map(|v| v.as_str().map(String::from))
+                                        .collect()
+                                })
                                 .unwrap_or_default(),
                             acceptance_criteria: st
                                 .get("acceptance_criteria")
                                 .and_then(|a| a.as_array())
-                                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                                .map(|a| {
+                                    a.iter()
+                                        .filter_map(|v| v.as_str().map(String::from))
+                                        .collect()
+                                })
                                 .unwrap_or_default(),
                         })
                     })
@@ -1126,7 +1178,11 @@ pub fn parse_plan_from_response(content: &str, goal: &str, tdd: bool) -> Plan {
         let risks: Vec<String> = value
             .get("risks")
             .and_then(|r| r.as_array())
-            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
         return Plan {
@@ -1158,17 +1214,28 @@ fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
 
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
         return Critique {
-            approved: value.get("approved").and_then(|a| a.as_bool()).unwrap_or(false),
+            approved: value
+                .get("approved")
+                .and_then(|a| a.as_bool())
+                .unwrap_or(false),
             score: value.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0),
             issues: value
                 .get("issues")
                 .and_then(|i| i.as_array())
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default(),
             suggestions: value
                 .get("suggestions")
                 .and_then(|s| s.as_array())
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default(),
             usage,
         };

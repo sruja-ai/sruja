@@ -413,8 +413,6 @@ fn write_lint_baseline(
     Ok(())
 }
 
-
-
 pub async fn list_elements(file: &str) -> Result<(), CliError> {
     let (_, program) = super::parse_sruja_file(file)?;
 
@@ -1130,7 +1128,8 @@ pub async fn export(
 ) -> Result<(), CliError> {
     if from_scan {
         let repo_root = repo.unwrap_or(".");
-        let graph = sruja_scan::scan_repo(Path::new(repo_root)).map_err(|e| CliError::scan(e.to_string()))?;
+        let graph = sruja_scan::scan_repo(Path::new(repo_root))
+            .map_err(|e| CliError::scan(e.to_string()))?;
         match format {
             "graphml" => {
                 println!("{}", GraphMLExporter::export(&graph));

@@ -256,27 +256,24 @@ impl Hook for AutoLearningHook {
             return;
         }
         let entry = match step.kind {
-            super::SubtaskKind::TestAuthor => {
-                LearningEntry::playbook(
-                    format!("Wrote test: {}", step.description),
-                    "Test-first approach validates requirements before implementation",
-                    &format!("Always write tests before implementation for: {}", step.description),
-                )
-            }
-            super::SubtaskKind::Implement => {
-                LearningEntry::playbook(
-                    format!("Implemented: {}", step.description),
-                    "Code written to pass frozen tests",
-                    &format!("Implementation approach for: {}", step.description),
-                )
-            }
-            super::SubtaskKind::Review => {
-                LearningEntry::invariant(
-                    format!("Reviewed: {}", step.description),
-                    "Critic approved the change",
-                    &format!("Review criteria satisfied for: {}", step.description),
-                )
-            }
+            super::SubtaskKind::TestAuthor => LearningEntry::playbook(
+                format!("Wrote test: {}", step.description),
+                "Test-first approach validates requirements before implementation",
+                &format!(
+                    "Always write tests before implementation for: {}",
+                    step.description
+                ),
+            ),
+            super::SubtaskKind::Implement => LearningEntry::playbook(
+                format!("Implemented: {}", step.description),
+                "Code written to pass frozen tests",
+                &format!("Implementation approach for: {}", step.description),
+            ),
+            super::SubtaskKind::Review => LearningEntry::invariant(
+                format!("Reviewed: {}", step.description),
+                "Critic approved the change",
+                &format!("Review criteria satisfied for: {}", step.description),
+            ),
             _ => return,
         };
         tracing::info!(subtask = %step.id, "learning:recorded");
@@ -318,9 +315,7 @@ pub struct TokenSavingHook {
 
 impl Default for TokenSavingHook {
     fn default() -> Self {
-        Self {
-            threshold: 8_000,
-        }
+        Self { threshold: 8_000 }
     }
 }
 

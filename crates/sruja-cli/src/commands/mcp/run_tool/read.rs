@@ -42,12 +42,7 @@ pub(crate) async fn try_run(
                 .max(500) as usize;
             let graph = get_or_scan_graph(graph_cache, repo).await?;
             let ctx = crate::commands::context::build_architecture_context(
-                &graph,
-                repo,
-                file,
-                intent,
-                depth,
-                max_tokens,
+                &graph, repo, file, intent, depth, max_tokens,
             )?;
             finish(Ok(serde_json::to_string_pretty(&ctx)?))
         }
@@ -177,7 +172,8 @@ pub(crate) async fn try_run(
             let repo_path = Path::new(&repo);
             let scan_graph = get_or_scan_graph(graph_cache, repo).await?;
             let kg = crate::graph_store::load_or_build_graph(repo_path)?;
-            let target_id = crate::commands::focus::resolve_target(&kg, repo_path, file, element_id)?;
+            let target_id =
+                crate::commands::focus::resolve_target(&kg, repo_path, file, element_id)?;
             let briefing = crate::commands::focus::build_focus_briefing(
                 &kg,
                 &target_id,

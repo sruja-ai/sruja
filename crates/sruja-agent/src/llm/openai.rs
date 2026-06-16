@@ -70,16 +70,10 @@ impl OpenAiClient {
     }
 
     fn build_body(&self, req: &CompletionRequest) -> serde_json::Value {
-        let model = req
-            .model
-            .as_deref()
-            .unwrap_or(&self.default_model);
+        let model = req.model.as_deref().unwrap_or(&self.default_model);
 
-        let messages: Vec<serde_json::Value> = req
-            .messages
-            .iter()
-            .map(|m| message_to_json(m))
-            .collect();
+        let messages: Vec<serde_json::Value> =
+            req.messages.iter().map(|m| message_to_json(m)).collect();
 
         let mut body = serde_json::json!({
             "model": model,
@@ -93,12 +87,8 @@ impl OpenAiClient {
             body["max_tokens"] = serde_json::json!(max);
         }
         if !req.tools.is_empty() {
-            body["tools"] = serde_json::json!(
-                req.tools
-                    .iter()
-                    .map(schema_to_tool)
-                    .collect::<Vec<_>>()
-            );
+            body["tools"] =
+                serde_json::json!(req.tools.iter().map(schema_to_tool).collect::<Vec<_>>());
         }
 
         body["response_format"] = match &req.response_format {
@@ -149,13 +139,12 @@ impl LlmClient for OpenAiClient {
         }
 
         let json: serde_json::Value = if (200..300).contains(&status) {
-            resp.json().await.map_err(|e| LlmError::Deserialize(e.to_string()))?
+            resp.json()
+                .await
+                .map_err(|e| LlmError::Deserialize(e.to_string()))?
         } else {
             let text = resp.text().await.unwrap_or_default();
-            return Err(LlmError::Api {
-                status,
-                body: text,
-            });
+            return Err(LlmError::Api { status, body: text });
         };
 
         parse_completion(&json, &model)
@@ -237,7 +226,10 @@ fn parse_completion(json: &serde_json::Value, model: &str) -> Result<CompletionR
                     let id = tc.get("id")?.as_str()?.to_string();
                     let func = tc.get("function")?;
                     let name = func.get("name")?.as_str()?.to_string();
-                    let args_str = func.get("arguments").and_then(|a| a.as_str()).unwrap_or("{}");
+                    let args_str = func
+                        .get("arguments")
+                        .and_then(|a| a.as_str())
+                        .unwrap_or("{}");
                     let arguments = serde_json::from_str(args_str).unwrap_or(serde_json::json!({}));
                     Some(ToolCall {
                         id,
@@ -265,7 +257,10 @@ fn parse_completion(json: &serde_json::Value, model: &str) -> Result<CompletionR
         .get("usage")
         .map(|u| Usage {
             prompt_tokens: u.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
-            completion_tokens: u.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+            completion_tokens: u
+                .get("completion_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0),
             total_tokens: u.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
         })
         .unwrap_or_default();

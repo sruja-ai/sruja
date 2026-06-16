@@ -94,9 +94,9 @@ impl Channel {
         self.peek()
             .into_iter()
             .filter_map(|msg| match msg {
-                ChannelMessage::Review { approved, feedback, .. } => {
-                    Some((approved, feedback))
-                }
+                ChannelMessage::Review {
+                    approved, feedback, ..
+                } => Some((approved, feedback)),
                 _ => None,
             })
             .collect()
@@ -105,7 +105,9 @@ impl Channel {
     /// Check if any review rejected a change.
     pub fn has_rejections(&self) -> bool {
         self.peek().iter().any(|msg| match msg {
-            ChannelMessage::Review { approved: false, .. } => true,
+            ChannelMessage::Review {
+                approved: false, ..
+            } => true,
             _ => false,
         })
     }
@@ -119,8 +121,8 @@ impl Default for Channel {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::PairRole;
+    use super::*;
 
     #[test]
     fn channel_send_receive() {

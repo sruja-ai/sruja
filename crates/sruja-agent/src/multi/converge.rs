@@ -6,8 +6,8 @@
 //! - **Merge**: synthesize a hybrid from all proposals.
 //! - **Debate**: agents critique each other's proposals, then re-propose.
 
-use crate::cognition::Plan;
 use super::proposal::Proposal;
+use crate::cognition::Plan;
 
 /// Strategy for converging on a final plan from multiple proposals.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,32 +54,45 @@ pub async fn run_convergence(
 }
 
 /// Consensus: pick the proposal that overlaps most with others.
-async fn consensus(proposals: &[Proposal]) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
-    let mut scores: Vec<(usize, f64)> = proposals.iter().map(|p| {
-        let overlap = proposals.iter()
-            .filter(|other| other.agent_id != p.agent_id)
-            .map(|other| {
-                // Count shared keywords in approach descriptions.
-                let keywords: Vec<&str> = p.approach.iter()
-                    .flat_map(|step| step.split_whitespace())
-                    .collect();
-                let other_keywords: Vec<&str> = other.approach.iter()
-                    .flat_map(|step| step.split_whitespace())
-                    .collect();
-                let shared = keywords.iter()
-                    .filter(|k| other_keywords.iter().any(|ok| ok.eq_ignore_ascii_case(k)))
-                    .count() as f64;
-                shared / (keywords.len().max(1) as f64)
-            })
-            .sum::<f64>() / (proposals.len().max(1) as f64 - 1.0);
+async fn consensus(
+    proposals: &[Proposal],
+) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+    let mut scores: Vec<(usize, f64)> = proposals
+        .iter()
+        .map(|p| {
+            let overlap = proposals
+                .iter()
+                .filter(|other| other.agent_id != p.agent_id)
+                .map(|other| {
+                    // Count shared keywords in approach descriptions.
+                    let keywords: Vec<&str> = p
+                        .approach
+                        .iter()
+                        .flat_map(|step| step.split_whitespace())
+                        .collect();
+                    let other_keywords: Vec<&str> = other
+                        .approach
+                        .iter()
+                        .flat_map(|step| step.split_whitespace())
+                        .collect();
+                    let shared = keywords
+                        .iter()
+                        .filter(|k| other_keywords.iter().any(|ok| ok.eq_ignore_ascii_case(k)))
+                        .count() as f64;
+                    shared / (keywords.len().max(1) as f64)
+                })
+                .sum::<f64>()
+                / (proposals.len().max(1) as f64 - 1.0);
 
-        (p.agent_id, overlap + p.confidence * 0.3)
-    }).collect();
+            (p.agent_id, overlap + p.confidence * 0.3)
+        })
+        .collect();
 
     scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let winner_id = scores[0].0;
-    let winner = proposals.iter()
+    let winner = proposals
+        .iter()
         .find(|p| p.agent_id == winner_id)
         .unwrap()
         .clone();
@@ -88,18 +101,25 @@ async fn consensus(proposals: &[Proposal]) -> Result<ConvergenceResult, Box<dyn 
         winner,
         strategy: ConvergenceStrategy::Consensus,
         scores,
-        synthesis: "Selected proposal with highest overlap with other agents' approaches".to_string(),
+        synthesis: "Selected proposal with highest overlap with other agents' approaches"
+            .to_string(),
     })
 }
 
 /// BestOf: pick the single highest-confidence proposal.
 async fn best_of(proposals: &[Proposal]) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
-    let scores: Vec<(usize, f64)> = proposals.iter()
+    let scores: Vec<(usize, f64)> = proposals
+        .iter()
         .map(|p| (p.agent_id, p.confidence))
         .collect();
 
-    let winner = proposals.iter()
-        .max_by(|a, b| a.confidence.partial_cmp(&b.confidence).unwrap_or(std::cmp::Ordering::Equal))
+    let winner = proposals
+        .iter()
+        .max_by(|a, b| {
+            a.confidence
+                .partial_cmp(&b.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
         .unwrap()
         .clone();
 
@@ -112,7 +132,10 @@ async fn best_of(proposals: &[Proposal]) -> Result<ConvergenceResult, Box<dyn st
 }
 
 /// Merge: synthesize a hybrid from all proposals.
-async fn merge(proposals: &[Proposal], problem: &str) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+async fn merge(
+    proposals: &[Proposal],
+    problem: &str,
+) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
     // Collect all unique steps, preserving order.
     let mut all_steps = Vec::new();
     let mut seen = std::collections::HashSet::new();
@@ -146,10 +169,11 @@ async fn merge(proposals: &[Proposal], problem: &str) -> Result<ConvergenceResul
         }
     }
 
-    let avg_confidence: f64 = proposals.iter().map(|p| p.confidence).sum::<f64>()
-        / proposals.len() as f64;
+    let avg_confidence: f64 =
+        proposals.iter().map(|p| p.confidence).sum::<f64>() / proposals.len() as f64;
 
-    let scores: Vec<(usize, f64)> = proposals.iter()
+    let scores: Vec<(usize, f64)> = proposals
+        .iter()
         .map(|p| (p.agent_id, p.confidence))
         .collect();
 
@@ -159,17 +183,19 @@ async fn merge(proposals: &[Proposal], problem: &str) -> Result<ConvergenceResul
         title: format!("Merged solution for: {}", problem),
         summary: format!(
             "Hybrid of {} proposals. Combined {} steps and {} risks.",
-            proposals.len(), all_steps.len(), all_risks.len()
+            proposals.len(),
+            all_steps.len(),
+            all_risks.len()
         ),
         approach: all_steps,
         risks: all_risks,
         confidence: avg_confidence,
-            plan: Plan {
-                goal: problem.to_string(),
-                subtasks: all_subtasks,
-                tdd: false,
-                risks: Vec::new(),
-            },
+        plan: Plan {
+            goal: problem.to_string(),
+            subtasks: all_subtasks,
+            tdd: false,
+            risks: Vec::new(),
+        },
     };
 
     Ok(ConvergenceResult {
@@ -184,21 +210,32 @@ async fn merge(proposals: &[Proposal], problem: &str) -> Result<ConvergenceResul
 }
 
 /// Debate: agents critique each other, then we pick the most resilient.
-async fn debate(proposals: &[Proposal], _problem: &str) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+async fn debate(
+    proposals: &[Proposal],
+    _problem: &str,
+) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
     // Score each proposal by how many risks it identifies (more = more thoughtful).
-    let scores: Vec<(usize, f64)> = proposals.iter().map(|p| {
-        let risk_score = p.risks.len() as f64 * 0.2;
-        let complexity_penalty = p.complexity_score() as f64 * 0.01;
-        let confidence_bonus = p.confidence * 0.5;
-        (p.agent_id, confidence_bonus + risk_score - complexity_penalty)
-    }).collect();
+    let scores: Vec<(usize, f64)> = proposals
+        .iter()
+        .map(|p| {
+            let risk_score = p.risks.len() as f64 * 0.2;
+            let complexity_penalty = p.complexity_score() as f64 * 0.01;
+            let confidence_bonus = p.confidence * 0.5;
+            (
+                p.agent_id,
+                confidence_bonus + risk_score - complexity_penalty,
+            )
+        })
+        .collect();
 
-    let winner_id = scores.iter()
+    let winner_id = scores
+        .iter()
         .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap()
         .0;
 
-    let winner = proposals.iter()
+    let winner = proposals
+        .iter()
         .find(|p| p.agent_id == winner_id)
         .unwrap()
         .clone();
@@ -207,7 +244,8 @@ async fn debate(proposals: &[Proposal], _problem: &str) -> Result<ConvergenceRes
         winner,
         strategy: ConvergenceStrategy::Debate,
         scores,
-        synthesis: "Debate scoring: confidence + risk awareness - unnecessary complexity".to_string(),
+        synthesis: "Debate scoring: confidence + risk awareness - unnecessary complexity"
+            .to_string(),
     })
 }
 
@@ -219,14 +257,18 @@ mod tests {
 
     fn make_proposal(id: usize, confidence: f64, steps: Vec<&str>, risks: Vec<&str>) -> Proposal {
         let approach: Vec<String> = steps.iter().map(|s| s.to_string()).collect();
-        let subtasks: Vec<Subtask> = steps.into_iter().enumerate().map(|(i, s)| Subtask {
-            id: format!("{}.{}", id, i),
-            description: s.to_string(),
-            tier: TaskTier::Cheap,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }).collect();
+        let subtasks: Vec<Subtask> = steps
+            .into_iter()
+            .enumerate()
+            .map(|(i, s)| Subtask {
+                id: format!("{}.{}", id, i),
+                description: s.to_string(),
+                tier: TaskTier::Cheap,
+                kind: SubtaskKind::Implement,
+                files: Vec::new(),
+                acceptance_criteria: Vec::new(),
+            })
+            .collect();
 
         Proposal {
             agent_id: id,

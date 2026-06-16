@@ -176,7 +176,10 @@ impl ToolRegistry {
 
     /// Schemas for all tools, ready to pass to an LLM.
     pub fn schemas(&self) -> Vec<FunctionSchema> {
-        self.tools.values().map(|t| tool_schema(t.as_ref())).collect()
+        self.tools
+            .values()
+            .map(|t| tool_schema(t.as_ref()))
+            .collect()
     }
 
     /// Dispatch a tool call by name.
@@ -223,8 +226,12 @@ mod tests {
     struct Echo;
     #[async_trait::async_trait]
     impl Tool for Echo {
-        fn name(&self) -> &str { "echo" }
-        fn description(&self) -> &str { "Echoes input" }
+        fn name(&self) -> &str {
+            "echo"
+        }
+        fn description(&self) -> &str {
+            "Echoes input"
+        }
         fn parameters(&self) -> serde_json::Value {
             serde_json::json!({ "type": "object", "properties": {} })
         }
@@ -236,23 +243,39 @@ mod tests {
     struct Write;
     #[async_trait::async_trait]
     impl Tool for Write {
-        fn name(&self) -> &str { "write" }
-        fn description(&self) -> &str { "Writes" }
-        fn parameters(&self) -> serde_json::Value { serde_json::json!({}) }
-        async fn call(&self, _p: serde_json::Value) -> Result<String, ToolError> { Ok("ok".into()) }
-        fn is_mutating(&self) -> bool { true }
+        fn name(&self) -> &str {
+            "write"
+        }
+        fn description(&self) -> &str {
+            "Writes"
+        }
+        fn parameters(&self) -> serde_json::Value {
+            serde_json::json!({})
+        }
+        async fn call(&self, _p: serde_json::Value) -> Result<String, ToolError> {
+            Ok("ok".into())
+        }
+        fn is_mutating(&self) -> bool {
+            true
+        }
     }
 
     #[tokio::test]
     async fn dispatch_works() {
         let reg = ToolRegistry::new().with(Box::new(Echo));
-        assert_eq!(reg.dispatch("echo", serde_json::json!({})).await.unwrap(), "echo");
+        assert_eq!(
+            reg.dispatch("echo", serde_json::json!({})).await.unwrap(),
+            "echo"
+        );
     }
 
     #[tokio::test]
     async fn dry_run_blocks_mutating() {
         let reg = ToolRegistry::new().dry_run().with(Box::new(Write));
-        let err = reg.dispatch("write", serde_json::json!({})).await.unwrap_err();
+        let err = reg
+            .dispatch("write", serde_json::json!({}))
+            .await
+            .unwrap_err();
         assert!(matches!(err, ToolError::BlockedByDryRun(_)));
     }
 }

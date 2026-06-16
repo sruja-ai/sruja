@@ -64,7 +64,9 @@ pub struct FileRead {
 
 impl FileRead {
     pub fn new() -> Self {
-        Self { root: PathBuf::from(".") }
+        Self {
+            root: PathBuf::from("."),
+        }
     }
 
     pub fn with_root(root: impl Into<PathBuf>) -> Self {
@@ -80,7 +82,9 @@ impl Default for FileRead {
 
 #[async_trait]
 impl Tool for FileRead {
-    fn name(&self) -> &str { "file_read" }
+    fn name(&self) -> &str {
+        "file_read"
+    }
 
     fn description(&self) -> &str {
         "Read the contents of a file. Returns text with line numbers. \
@@ -137,17 +141,27 @@ pub struct FileWrite {
 }
 
 impl FileWrite {
-    pub fn new() -> Self { Self { root: PathBuf::from(".") } }
-    pub fn with_root(root: impl Into<PathBuf>) -> Self { Self { root: root.into() } }
+    pub fn new() -> Self {
+        Self {
+            root: PathBuf::from("."),
+        }
+    }
+    pub fn with_root(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
 }
 
 impl Default for FileWrite {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[async_trait]
 impl Tool for FileWrite {
-    fn name(&self) -> &str { "file_write" }
+    fn name(&self) -> &str {
+        "file_write"
+    }
 
     fn description(&self) -> &str {
         "Create or overwrite a file with the given content."
@@ -164,10 +178,16 @@ impl Tool for FileWrite {
         })
     }
 
-    fn is_mutating(&self) -> bool { true }
+    fn is_mutating(&self) -> bool {
+        true
+    }
 
     fn affected_paths(&self, params: &Value) -> Vec<String> {
-        params.get("path").and_then(|v| v.as_str()).map(|s| vec![s.to_string()]).unwrap_or_default()
+        params
+            .get("path")
+            .and_then(|v| v.as_str())
+            .map(|s| vec![s.to_string()])
+            .unwrap_or_default()
     }
 
     async fn call(&self, params: Value) -> Result<String, ToolError> {
@@ -197,17 +217,27 @@ pub struct FileEdit {
 }
 
 impl FileEdit {
-    pub fn new() -> Self { Self { root: PathBuf::from(".") } }
-    pub fn with_root(root: impl Into<PathBuf>) -> Self { Self { root: root.into() } }
+    pub fn new() -> Self {
+        Self {
+            root: PathBuf::from("."),
+        }
+    }
+    pub fn with_root(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
 }
 
 impl Default for FileEdit {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[async_trait]
 impl Tool for FileEdit {
-    fn name(&self) -> &str { "file_edit" }
+    fn name(&self) -> &str {
+        "file_edit"
+    }
 
     fn description(&self) -> &str {
         "Replace exact text in a file. Fails if old_string is not found or appears multiple times \
@@ -227,17 +257,26 @@ impl Tool for FileEdit {
         })
     }
 
-    fn is_mutating(&self) -> bool { true }
+    fn is_mutating(&self) -> bool {
+        true
+    }
 
     fn affected_paths(&self, params: &Value) -> Vec<String> {
-        params.get("path").and_then(|v| v.as_str()).map(|s| vec![s.to_string()]).unwrap_or_default()
+        params
+            .get("path")
+            .and_then(|v| v.as_str())
+            .map(|s| vec![s.to_string()])
+            .unwrap_or_default()
     }
 
     async fn call(&self, params: Value) -> Result<String, ToolError> {
         let path_str = str_param(&params, "path")?;
         let old = str_param(&params, "old_string")?;
         let new = str_param(&params, "new_string")?;
-        let replace_all = params.get("replace_all").and_then(|v| v.as_bool()).unwrap_or(false);
+        let replace_all = params
+            .get("replace_all")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         let path = resolve_path(&self.root, &path_str)?;
 
         let content = tokio::fs::read_to_string(&path)
@@ -278,12 +317,20 @@ pub struct Glob {
 }
 
 impl Glob {
-    pub fn new() -> Self { Self { root: PathBuf::from(".") } }
-    pub fn with_root(root: impl Into<PathBuf>) -> Self { Self { root: root.into() } }
+    pub fn new() -> Self {
+        Self {
+            root: PathBuf::from("."),
+        }
+    }
+    pub fn with_root(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
 }
 
 impl Default for Glob {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 pub(crate) fn glob_match(pattern: &str, text: &str) -> bool {
@@ -299,7 +346,11 @@ fn glob_recursive(pat: &[char], txt: &[char]) -> bool {
     if pat[0] == '*' {
         // Handle **
         if pat.len() > 1 && pat[1] == '*' {
-            let rest = if pat.len() > 2 && pat[2] == '/' { &pat[3..] } else { &pat[2..] };
+            let rest = if pat.len() > 2 && pat[2] == '/' {
+                &pat[3..]
+            } else {
+                &pat[2..]
+            };
             return (0..=txt.len()).any(|i| glob_recursive(rest, &txt[i..]));
         }
         // Single * matches everything except /
@@ -321,7 +372,9 @@ fn glob_recursive(pat: &[char], txt: &[char]) -> bool {
 
 #[async_trait]
 impl Tool for Glob {
-    fn name(&self) -> &str { "glob" }
+    fn name(&self) -> &str {
+        "glob"
+    }
 
     fn description(&self) -> &str {
         "Find files matching a glob pattern (e.g. '**/*.rs', 'src/**/*.ts'). \
@@ -368,7 +421,12 @@ fn walk_dir(root: &Path, dir: &Path, pattern: &str, out: &mut Vec<PathBuf>) {
         let name_str = name.to_string_lossy();
 
         // Skip hidden and common ignored dirs
-        if name_str.starts_with('.') || matches!(name_str.as_ref(), "node_modules" | "target" | "dist" | "build") {
+        if name_str.starts_with('.')
+            || matches!(
+                name_str.as_ref(),
+                "node_modules" | "target" | "dist" | "build"
+            )
+        {
             continue;
         }
 
@@ -393,17 +451,27 @@ pub struct Grep {
 }
 
 impl Grep {
-    pub fn new() -> Self { Self { root: PathBuf::from(".") } }
-    pub fn with_root(root: impl Into<PathBuf>) -> Self { Self { root: root.into() } }
+    pub fn new() -> Self {
+        Self {
+            root: PathBuf::from("."),
+        }
+    }
+    pub fn with_root(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
 }
 
 impl Default for Grep {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[async_trait]
 impl Tool for Grep {
-    fn name(&self) -> &str { "grep" }
+    fn name(&self) -> &str {
+        "grep"
+    }
 
     fn description(&self) -> &str {
         "Search file contents for a substring. Returns file:line: matched lines. \
@@ -425,8 +493,15 @@ impl Tool for Grep {
     async fn call(&self, params: Value) -> Result<String, ToolError> {
         let query = str_param(&params, "query")?;
         let file_pattern = params.get("file_pattern").and_then(|v| v.as_str());
-        let case_insensitive = params.get("case_insensitive").and_then(|v| v.as_bool()).unwrap_or(false);
-        let query_cmp = if case_insensitive { query.to_lowercase() } else { query.clone() };
+        let case_insensitive = params
+            .get("case_insensitive")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let query_cmp = if case_insensitive {
+            query.to_lowercase()
+        } else {
+            query.clone()
+        };
 
         let mut results = Vec::new();
         let mut files = Vec::new();
@@ -439,9 +514,15 @@ impl Tool for Grep {
                 }
             }
             let full = self.root.join(rel);
-            let Ok(content) = std::fs::read_to_string(&full) else { continue };
+            let Ok(content) = std::fs::read_to_string(&full) else {
+                continue;
+            };
             for (i, line) in content.lines().enumerate() {
-                let line_cmp = if case_insensitive { line.to_lowercase() } else { line.to_string() };
+                let line_cmp = if case_insensitive {
+                    line.to_lowercase()
+                } else {
+                    line.to_string()
+                };
                 if line_cmp.contains(&query_cmp) {
                     results.push(format!("{}:{}: {line}", rel.display(), i + 1));
                 }
@@ -469,7 +550,10 @@ pub struct Shell {
 impl Shell {
     /// Create with a custom executable allowlist.
     pub fn with_allowlist(root: impl Into<PathBuf>, allowed: Vec<String>) -> Self {
-        Self { root: root.into(), allowed }
+        Self {
+            root: root.into(),
+            allowed,
+        }
     }
 
     fn is_allowed(&self, exe: &str) -> bool {
@@ -479,7 +563,9 @@ impl Shell {
 
 #[async_trait]
 impl Tool for Shell {
-    fn name(&self) -> &str { "shell" }
+    fn name(&self) -> &str {
+        "shell"
+    }
 
     fn description(&self) -> &str {
         "Run an allowlisted command (e.g. cargo, npm, git, just). \
@@ -498,7 +584,9 @@ impl Tool for Shell {
         })
     }
 
-    fn is_mutating(&self) -> bool { true }
+    fn is_mutating(&self) -> bool {
+        true
+    }
 
     async fn call(&self, params: Value) -> Result<String, ToolError> {
         let command = str_param(&params, "command")?;
@@ -512,7 +600,11 @@ impl Tool for Shell {
         let args: Vec<String> = params
             .get("args")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|a| a.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|a| a.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let timeout_ms = opt_usize(&params, "timeout_ms").unwrap_or(60_000);
@@ -531,7 +623,9 @@ impl Tool for Shell {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let code = output.status.code().unwrap_or(-1);
 
-        Ok(format!("exit: {code}\n--- stdout ---\n{stdout}\n--- stderr ---\n{stderr}"))
+        Ok(format!(
+            "exit: {code}\n--- stdout ---\n{stdout}\n--- stderr ---\n{stderr}"
+        ))
     }
 }
 
@@ -586,8 +680,13 @@ mod tests {
         let write = FileWrite::with_root(root);
         let edit = FileEdit::with_root(root);
 
-        write.call(json!({"path": "a.txt", "content": "foo bar foo"})).await.unwrap();
-        edit.call(json!({"path": "a.txt", "old_string": "bar", "new_string": "baz"})).await.unwrap();
+        write
+            .call(json!({"path": "a.txt", "content": "foo bar foo"}))
+            .await
+            .unwrap();
+        edit.call(json!({"path": "a.txt", "old_string": "bar", "new_string": "baz"}))
+            .await
+            .unwrap();
 
         let content = std::fs::read_to_string(root.join("a.txt")).unwrap();
         assert_eq!(content, "foo baz foo");

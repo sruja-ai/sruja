@@ -82,7 +82,11 @@ pub struct DecisionRecord {
 
 impl DecisionRecord {
     /// Create a new decision record with defaults.
-    pub fn new(title: impl Into<String>, context: impl Into<String>, decision: impl Into<String>) -> Self {
+    pub fn new(
+        title: impl Into<String>,
+        context: impl Into<String>,
+        decision: impl Into<String>,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id: format!("dec_{}", now.timestamp_millis()),
@@ -177,7 +181,11 @@ impl DecisionRecord {
 
 /// Render a list of decision records as a single markdown document.
 pub fn render_decisions(records: &[DecisionRecord]) -> String {
-    records.iter().map(|r| r.to_markdown()).collect::<Vec<_>>().join("\n---\n\n")
+    records
+        .iter()
+        .map(|r| r.to_markdown())
+        .collect::<Vec<_>>()
+        .join("\n---\n\n")
 }
 
 fn slugify(s: &str) -> String {

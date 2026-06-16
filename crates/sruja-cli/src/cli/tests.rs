@@ -62,9 +62,8 @@ fn parses_check_drift_state_format() {
         .name("clap_parse_drift_state".to_string())
         .stack_size(16 * 1024 * 1024)
         .spawn(|| {
-            let cli =
-                Cli::try_parse_from(["sruja", "check", "-r", ".", "--format", "drift-state"])
-                    .expect("parse");
+            let cli = Cli::try_parse_from(["sruja", "check", "-r", ".", "--format", "drift-state"])
+                .expect("parse");
             match cli.command {
                 Commands::Check { repo, format, .. } => {
                     assert_eq!(repo, ".");

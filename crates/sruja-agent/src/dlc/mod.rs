@@ -34,8 +34,7 @@
 //! ```
 
 use crate::cognition::{
-    Agent, AgentConfig, Comprehension, Plan, TaskTier,
-    StepStatus, StepResult, Critique,
+    Agent, AgentConfig, Comprehension, Critique, Plan, StepResult, StepStatus, TaskTier,
 };
 use crate::llm::{CompletionRequest, LlmClient};
 use crate::tool::ToolRegistry;
@@ -258,10 +257,7 @@ impl DlcPipeline {
     }
 
     /// Run the full DLC pipeline for a given task.
-    pub async fn run(
-        &self,
-        task: &str,
-    ) -> Result<DlcResult, Box<dyn std::error::Error>> {
+    pub async fn run(&self, task: &str) -> Result<DlcResult, Box<dyn std::error::Error>> {
         let mut stages = Vec::new();
         let mut context = DlcContext::new(task);
 
@@ -339,35 +335,57 @@ impl DlcPipeline {
              Produce JSON with: decisions (array of {title, context, decision, consequences}), \
              interfaces (array of strings), constraints (array of strings).",
             &_ctx.task,
-        ).with_model("gpt-4o");
+        )
+        .with_model("gpt-4o");
 
-        let (response, _usage) = agent.run_tool_loop(req).await
+        let (response, _usage) = agent
+            .run_tool_loop(req)
+            .await
             .map_err(|e| format!("Design failed: {}", e))?;
 
         let value: serde_json::Value = serde_json::from_str(&response.content)
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
-        let decisions = value.get("decisions")
+        let decisions = value
+            .get("decisions")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|d| {
-                Some(ArchitectureDecision {
-                    title: d.get("title")?.as_str()?.to_string(),
-                    context: d.get("context")?.as_str()?.to_string(),
-                    decision: d.get("decision")?.as_str()?.to_string(),
-                    consequences: d.get("consequences")?.as_array()?
-                        .iter().filter_map(|c| c.as_str().map(String::from)).collect(),
-                })
-            }).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|d| {
+                        Some(ArchitectureDecision {
+                            title: d.get("title")?.as_str()?.to_string(),
+                            context: d.get("context")?.as_str()?.to_string(),
+                            decision: d.get("decision")?.as_str()?.to_string(),
+                            consequences: d
+                                .get("consequences")?
+                                .as_array()?
+                                .iter()
+                                .filter_map(|c| c.as_str().map(String::from))
+                                .collect(),
+                        })
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
 
-        let interfaces = value.get("interfaces")
+        let interfaces = value
+            .get("interfaces")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|i| i.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|i| i.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
-        let constraints = value.get("constraints")
+        let constraints = value
+            .get("constraints")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|c| c.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|c| c.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
         Ok(DlcArtifact::Design(DesignArtifact {
@@ -411,15 +429,19 @@ impl DlcPipeline {
         let agent = self.create_agent().await?;
 
         // Use the Agent's run method for a quick review pass.
-        let result = agent.run(&format!("Review the implementation of: {}", ctx.task)).await?;
+        let result = agent
+            .run(&format!("Review the implementation of: {}", ctx.task))
+            .await?;
 
-        Ok(DlcArtifact::Review(result.critique.unwrap_or(crate::cognition::Critique {
-            approved: true,
-            score: 0.5,
-            issues: Vec::new(),
-            suggestions: Vec::new(),
-            usage: crate::llm::Usage::default(),
-        })))
+        Ok(DlcArtifact::Review(result.critique.unwrap_or(
+            crate::cognition::Critique {
+                approved: true,
+                score: 0.5,
+                issues: Vec::new(),
+                suggestions: Vec::new(),
+                usage: crate::llm::Usage::default(),
+            },
+        )))
     }
 
     async fn phase_test(
@@ -428,14 +450,18 @@ impl DlcPipeline {
     ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
         // Test phase: run the verification steps.
         let plan = ctx.plan.as_ref().ok_or("No plan")?;
-        let results: Vec<StepResult> = plan.subtasks.iter().map(|st| {
-            StepResult {
-                subtask_id: st.id.clone(),
-                status: StepStatus::Ok, // placeholder — real impl runs tests
-                output: "Tests passed".to_string(),
-                usage: crate::llm::Usage::default(),
-            }
-        }).collect();
+        let results: Vec<StepResult> = plan
+            .subtasks
+            .iter()
+            .map(|st| {
+                StepResult {
+                    subtask_id: st.id.clone(),
+                    status: StepStatus::Ok, // placeholder — real impl runs tests
+                    output: "Tests passed".to_string(),
+                    usage: crate::llm::Usage::default(),
+                }
+            })
+            .collect();
 
         Ok(DlcArtifact::Test(results))
     }
@@ -469,7 +495,9 @@ impl DlcPipeline {
         // Learn phase: extract learnings from the completed work.
         // The Agent's reflect method handles this internally.
         let agent = self.create_agent().await?;
-        let _result = agent.run(&format!("Extract learnings from: {}", ctx.task)).await?;
+        let _result = agent
+            .run(&format!("Extract learnings from: {}", ctx.task))
+            .await?;
 
         // Learnings are persisted by the Agent internally.
         Ok(DlcArtifact::Learn(Vec::new()))
@@ -487,9 +515,7 @@ impl DlcPipeline {
         }))
     }
 
-    async fn create_agent(
-        &self,
-    ) -> Result<Agent, Box<dyn std::error::Error>> {
+    async fn create_agent(&self) -> Result<Agent, Box<dyn std::error::Error>> {
         let config = AgentConfig {
             models: crate::cognition::ModelMapping::default(),
             review_every_change: true,
@@ -523,7 +549,9 @@ impl DlcContext {
     }
 
     fn comprehension_ref(&self) -> Result<&Comprehension, Box<dyn std::error::Error>> {
-        self.comprehension.as_ref().ok_or("No comprehension available".into())
+        self.comprehension
+            .as_ref()
+            .ok_or("No comprehension available".into())
     }
 
     fn task_slug(&self) -> String {

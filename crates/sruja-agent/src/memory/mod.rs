@@ -290,8 +290,12 @@ impl Memory for std::sync::Mutex<AgenticMemory> {
             .filter(|e| {
                 e.context.to_lowercase().contains(&query.to_lowercase())
                     || e.hypothesis.to_lowercase().contains(&query.to_lowercase())
-                    || e.guardrail_advice.to_lowercase().contains(&query.to_lowercase())
-                    || e.tags.iter().any(|t| t.to_lowercase().contains(&query.to_lowercase()))
+                    || e.guardrail_advice
+                        .to_lowercase()
+                        .contains(&query.to_lowercase())
+                    || e.tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&query.to_lowercase()))
                     || e.affected_elements.iter().any(|el| el.contains(query))
             })
             .cloned()

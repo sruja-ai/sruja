@@ -112,11 +112,7 @@ pub async fn run_verification_steps(
     results
 }
 
-async fn run_one(
-    step: &VerifyStep,
-    timeout_ms: u64,
-    workdir: &std::path::Path,
-) -> VerifyResult {
+async fn run_one(step: &VerifyStep, timeout_ms: u64, workdir: &std::path::Path) -> VerifyResult {
     let start = std::time::Instant::now();
     let mut cmd = tokio::process::Command::new(&step.command);
     cmd.args(&step.args).current_dir(workdir);
@@ -162,7 +158,11 @@ async fn run_one(
 
     VerifyResult {
         step_id: step.id.clone(),
-        status: if passed { VerifyStatus::Ok } else { VerifyStatus::Failed },
+        status: if passed {
+            VerifyStatus::Ok
+        } else {
+            VerifyStatus::Failed
+        },
         exit_code,
         stdout,
         stderr,

@@ -164,7 +164,6 @@ pub enum Commands {
     },
     /// Start LSP server (stdio)
 
-
     /// Start LSP server (stdio)
     #[command(hide = true)]
     Lsp {
@@ -183,7 +182,6 @@ pub enum Commands {
         #[arg(long, short = 'r', default_value = ".")]
         root: String,
     },
-
 
     /// Drift and structural checks (from code, optional baseline)
     ///
@@ -406,7 +404,6 @@ pub enum Commands {
         #[arg(long)]
         critique: bool,
     },
-
 
     /// Baseline: snapshot current violations to ignore them in CI (use with `sruja drift --ci --baseline`)
     #[command(hide = true)]
@@ -747,7 +744,6 @@ pub enum Commands {
         #[command(flatten)]
         enrich: EnrichmentArgs,
     },
-
 
     /// Ingest external context into `.sruja/context/`
     ///

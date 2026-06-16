@@ -692,13 +692,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             repo,
             category,
             elements,
-        } => commands::ingest(
-            &repo,
-            &sources,
-            category.as_deref(),
-            elements.as_deref(),
-        )
-        .await,
+        } => commands::ingest(&repo, &sources, category.as_deref(), elements.as_deref()).await,
 
         Commands::Memory { cmd } => match cmd {
             MemoryCommand::Reindex { repo } => commands::memory_reindex(&repo),
@@ -948,14 +942,12 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 provider,
                 api_key,
                 model,
-            } => {
-                commands::agent_setup::agent_setup(
-                    &repo,
-                    provider.as_deref(),
-                    api_key.as_deref(),
-                    model.as_deref(),
-                )
-            }
+            } => commands::agent_setup::agent_setup(
+                &repo,
+                provider.as_deref(),
+                api_key.as_deref(),
+                model.as_deref(),
+            ),
             AgentCommand::Run {
                 run_id,
                 repo,
@@ -1228,7 +1220,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         } => {
             let skip = skip_proposals || !apply_proposals;
             commands::learn(&path, file.as_deref(), since.as_deref(), skip, &format).await
-        },
+        }
         Commands::Guard { cmd } => match cmd {
             GuardCommand::Critique {
                 repo,
@@ -1305,7 +1297,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 fail_on.as_deref(),
             )
             .await
-        },
+        }
         Commands::Federation { cmd } => match cmd {
             FederationCommand::Publish {
                 repo,

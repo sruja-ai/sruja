@@ -68,8 +68,20 @@ impl Default for RouterConfig {
         tiers.insert(TaskTier::Premium, "gpt-4o".to_string());
 
         let mut pricing = HashMap::new();
-        pricing.insert("gpt-4o-mini".to_string(), Pricing { input_per_1m: 0.15, output_per_1m: 0.60 });
-        pricing.insert("gpt-4o".to_string(), Pricing { input_per_1m: 2.50, output_per_1m: 10.00 });
+        pricing.insert(
+            "gpt-4o-mini".to_string(),
+            Pricing {
+                input_per_1m: 0.15,
+                output_per_1m: 0.60,
+            },
+        );
+        pricing.insert(
+            "gpt-4o".to_string(),
+            Pricing {
+                input_per_1m: 2.50,
+                output_per_1m: 10.00,
+            },
+        );
 
         Self {
             tiers,
@@ -191,7 +203,9 @@ mod tests {
                 finish_reason: super::super::FinishReason::Stop,
             })
         }
-        fn default_model(&self) -> &str { "gpt-4o-mini" }
+        fn default_model(&self) -> &str {
+            "gpt-4o-mini"
+        }
     }
 
     #[tokio::test]

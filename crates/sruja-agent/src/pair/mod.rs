@@ -147,10 +147,7 @@ impl PairSession {
     }
 
     /// Run the pair programming session.
-    pub async fn work(
-        &self,
-        task: &str,
-    ) -> Result<PairResult, Box<dyn std::error::Error>> {
+    pub async fn work(&self, task: &str) -> Result<PairResult, Box<dyn std::error::Error>> {
         let channel = Channel::new();
         let mut round = 0;
         let mut current_role = PairRole::Driver;
@@ -221,10 +218,9 @@ impl PairSession {
                         });
 
                         // Navigator reviews the change.
-                        let review = navigator_agent.review_change(
-                            &subtask.description,
-                            &result.output,
-                        ).await?;
+                        let review = navigator_agent
+                            .review_change(&subtask.description, &result.output)
+                            .await?;
 
                         channel.send(ChannelMessage::Review {
                             agent: PairRole::Navigator,

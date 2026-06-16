@@ -144,7 +144,10 @@ pub fn agent_setup(
 
     if !api_key.is_empty() {
         println!("\nAdd to your shell profile (~/.bashrc or ~/.zshrc):");
-        println!("  export OPENAI_API_KEY=\"{}\"", &api_key[..8.min(api_key.len())]);
+        println!(
+            "  export OPENAI_API_KEY=\"{}\"",
+            &api_key[..8.min(api_key.len())]
+        );
         println!("  export OPENAI_BASE_URL=\"{}\"", preset.base_url);
         println!("  export OPENAI_MODEL=\"{}\"", model);
         println!("\nThe CLI also reads from .sruja/config.toml automatically.");

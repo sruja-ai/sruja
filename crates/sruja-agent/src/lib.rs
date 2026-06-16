@@ -52,9 +52,7 @@ pub use cognition::{Agent, AgentBuilder, AgentConfig, Comprehension};
 pub use dlc::DlcPipeline;
 pub use executor::TrajectoryExecutor;
 pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryStatus};
-pub use memory::{
-    AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry,
-};
+pub use memory::{AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry};
 pub use multi::BrainstormSession;
 pub use pair::PairSession;
 

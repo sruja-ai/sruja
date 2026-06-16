@@ -42,7 +42,7 @@ pub mod proposal;
 use crate::cognition::{Agent, AgentConfig, Comprehension, Plan, TaskTier};
 use crate::llm::{CompletionRequest, LlmClient};
 use crate::tool::ToolRegistry;
-use converge::{ConvergenceStrategy, ConvergenceResult};
+use converge::{ConvergenceResult, ConvergenceStrategy};
 use proposal::Proposal;
 use std::sync::Arc;
 
@@ -115,7 +115,11 @@ impl Default for BrainstormConfig {
     fn default() -> Self {
         Self {
             agent_count: 3,
-            roles: vec![AgentRole::Architect, AgentRole::Implementer, AgentRole::Reviewer],
+            roles: vec![
+                AgentRole::Architect,
+                AgentRole::Implementer,
+                AgentRole::Reviewer,
+            ],
             convergence: ConvergenceStrategy::Consensus,
             max_total_tokens: None,
             tier: TaskTier::Mid,
@@ -204,7 +208,10 @@ impl BrainstormSession {
 
         // Phase 1: Independent brainstorming — each agent works alone.
         for i in 0..self.config.agent_count {
-            let role = self.config.roles.get(i % self.config.roles.len())
+            let role = self
+                .config
+                .roles
+                .get(i % self.config.roles.len())
                 .cloned()
                 .unwrap_or(AgentRole::Custom("General".to_string()));
 
@@ -213,11 +220,8 @@ impl BrainstormSession {
         }
 
         // Phase 2: Convergence — merge, review, and pick the best.
-        let convergence = converge::run_convergence(
-            &self.config.convergence,
-            problem,
-            &proposals,
-        ).await?;
+        let convergence =
+            converge::run_convergence(&self.config.convergence, problem, &proposals).await?;
 
         Ok(BrainstormResult {
             proposals,
@@ -252,10 +256,14 @@ impl BrainstormSession {
             agent_id
         );
 
-        let comprehension = agent.comprehend_with_context(problem, &system_prompt).await?;
+        let comprehension = agent
+            .comprehend_with_context(problem, &system_prompt)
+            .await?;
 
         // Plan from this agent's perspective.
-        let plan = agent.plan_from_comprehension(problem, &comprehension).await?;
+        let plan = agent
+            .plan_from_comprehension(problem, &comprehension)
+            .await?;
 
         // Build the proposal.
         Ok(Proposal {
@@ -263,8 +271,14 @@ impl BrainstormSession {
             role: role.clone(),
             title: plan.goal.clone(),
             summary: comprehension.summary.clone(),
-            approach: plan.subtasks.iter().map(|s| s.description.clone()).collect(),
-            risks: plan.subtasks.iter()
+            approach: plan
+                .subtasks
+                .iter()
+                .map(|s| s.description.clone())
+                .collect(),
+            risks: plan
+                .subtasks
+                .iter()
                 .filter(|s| matches!(s.tier, TaskTier::Premium))
                 .map(|s| s.description.clone())
                 .collect(),
@@ -305,10 +319,11 @@ impl Brainstormable for Agent {
         system_context: &str,
     ) -> Result<Comprehension, Box<dyn std::error::Error>> {
         // Use the agent's LLM with custom system prompt.
-        let req = CompletionRequest::prompt(system_context, query)
-            .with_model("gpt-4o");
+        let req = CompletionRequest::prompt(system_context, query).with_model("gpt-4o");
 
-        let (response, _usage) = self.run_tool_loop(req).await
+        let (response, _usage) = self
+            .run_tool_loop(req)
+            .await
             .map_err(|e| format!("Comprehension failed: {}", e))?;
 
         Ok(Comprehension {
@@ -335,7 +350,9 @@ impl Brainstormable for Agent {
         let req = CompletionRequest::prompt(crate::cognition::PLAN_SYSTEM_PROMPT, &user)
             .with_model("gpt-4o");
 
-        let (response, _usage) = self.run_tool_loop(req).await
+        let (response, _usage) = self
+            .run_tool_loop(req)
+            .await
             .map_err(|e| format!("Planning failed: {}", e))?;
 
         let plan = crate::cognition::parse_plan_from_response(&response.content, goal, false);
@@ -349,10 +366,16 @@ mod tests {
 
     #[test]
     fn agent_role_prompts() {
-        assert!(AgentRole::Architect.perspective_prompt().contains("boundaries"));
-        assert!(AgentRole::Implementer.perspective_prompt().contains("pragmatism"));
+        assert!(AgentRole::Architect
+            .perspective_prompt()
+            .contains("boundaries"));
+        assert!(AgentRole::Implementer
+            .perspective_prompt()
+            .contains("pragmatism"));
         assert!(AgentRole::Reviewer.perspective_prompt().contains("risks"));
-        assert!(AgentRole::Product.perspective_prompt().contains("user value"));
+        assert!(AgentRole::Product
+            .perspective_prompt()
+            .contains("user value"));
         assert!(AgentRole::SRE.perspective_prompt().contains("operational"));
     }
 

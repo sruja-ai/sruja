@@ -165,7 +165,11 @@ impl FileGuard {
 
     /// Freeze specific paths explicitly (e.g. the agreed test files after review).
     pub fn freeze(&self, paths: &[String]) {
-        self.inner.lock().unwrap().frozen.extend(paths.iter().cloned());
+        self.inner
+            .lock()
+            .unwrap()
+            .frozen
+            .extend(paths.iter().cloned());
     }
 
     /// Check whether a write to `path` is permitted under the current phase.
@@ -191,14 +195,16 @@ impl FileGuard {
         let is_test = inner.classifier.is_test_path(path);
         match inner.phase {
             Phase::Comprehend => Some("in Comprehend phase (read-only)".into()),
-            Phase::TestReview => Some("in TestReview phase (read-only, awaiting human approval)".into()),
+            Phase::TestReview => {
+                Some("in TestReview phase (read-only, awaiting human approval)".into())
+            }
             Phase::Review => Some("in Review phase (read-only)".into()),
-            Phase::TestAuthor if !is_test => {
-                Some(format!("'{path}' is not a test file; TestAuthor phase allows test writes only"))
-            }
-            Phase::Implement if is_test => {
-                Some(format!("'{path}' is a test file; tests are FROZEN during Implement phase"))
-            }
+            Phase::TestAuthor if !is_test => Some(format!(
+                "'{path}' is not a test file; TestAuthor phase allows test writes only"
+            )),
+            Phase::Implement if is_test => Some(format!(
+                "'{path}' is a test file; tests are FROZEN during Implement phase"
+            )),
             _ => None,
         }
     }

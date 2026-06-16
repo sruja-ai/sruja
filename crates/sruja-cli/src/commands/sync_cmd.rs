@@ -248,8 +248,16 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .unwrap_or(serde_json::Value::Null);
 
     // Use violations from shared analysis pipeline.
-    let active_summ: Vec<ViolationSummary> = analysis.active_violations.iter().map(summarize_violation).collect();
-    let suppressed_summ: Vec<ViolationSummary> = analysis.suppressed_violations.iter().map(summarize_violation).collect();
+    let active_summ: Vec<ViolationSummary> = analysis
+        .active_violations
+        .iter()
+        .map(summarize_violation)
+        .collect();
+    let suppressed_summ: Vec<ViolationSummary> = analysis
+        .suppressed_violations
+        .iter()
+        .map(summarize_violation)
+        .collect();
 
     value["violations"] =
         serde_json::to_value(&active_summ).map_err(|e| CliError::validation(e.to_string()))?;

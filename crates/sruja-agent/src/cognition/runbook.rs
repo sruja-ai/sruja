@@ -201,7 +201,11 @@ impl Runbook {
 
 /// Render a list of runbooks as a single markdown document.
 pub fn render_runbooks(runbooks: &[Runbook]) -> String {
-    runbooks.iter().map(|r| r.to_markdown()).collect::<Vec<_>>().join("\n---\n\n")
+    runbooks
+        .iter()
+        .map(|r| r.to_markdown())
+        .collect::<Vec<_>>()
+        .join("\n---\n\n")
 }
 
 fn slugify(s: &str) -> String {

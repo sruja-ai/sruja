@@ -344,7 +344,11 @@ fn truncate_json(s: &str, max_chars: usize) -> String {
     if s.len() <= max_chars {
         s.to_string()
     } else {
-        format!("{}\n... (truncated, {} total chars)", &s[..max_chars], s.len())
+        format!(
+            "{}\n... (truncated, {} total chars)",
+            &s[..max_chars],
+            s.len()
+        )
     }
 }
 
