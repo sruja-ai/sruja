@@ -119,6 +119,7 @@ pub use utility_domain::compliance::compliance;
 pub use utility_domain::federation::{compose, publish};
 
 pub mod agent_reflect;
+pub mod agent_setup;
 pub mod extensions_config;
 pub mod learn;
 pub use learn::learn;

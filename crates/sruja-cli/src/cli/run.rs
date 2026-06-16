@@ -943,6 +943,19 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .await
             }
+            AgentCommand::Setup {
+                repo,
+                provider,
+                api_key,
+                model,
+            } => {
+                commands::agent_setup::agent_setup(
+                    &repo,
+                    provider.as_deref(),
+                    api_key.as_deref(),
+                    model.as_deref(),
+                )
+            }
             AgentCommand::Run {
                 run_id,
                 repo,

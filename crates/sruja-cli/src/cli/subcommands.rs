@@ -263,6 +263,21 @@ pub enum AgentCommand {
         #[arg(long)]
         evidence: Option<String>,
     },
+    /// Interactive setup for LLM provider (configures .sruja/config.toml)
+    Setup {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Provider id (skip interactive selection): openrouter, openai, zai, ximimo, groq, ollama
+        #[arg(long, short = 'p')]
+        provider: Option<String>,
+        /// API key (skip interactive prompt; not needed for ollama)
+        #[arg(long, short = 'k')]
+        api_key: Option<String>,
+        /// Model override (uses provider default if omitted)
+        #[arg(long, short = 'm')]
+        model: Option<String>,
+    },
     /// Architecture-bounded agent loop: observe → plan → (optional) apply → verify → record learnings
     ///
     /// Requires Sruja evidence and a reviewable plan; not a general-purpose coding agent.

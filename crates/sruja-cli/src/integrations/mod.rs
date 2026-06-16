@@ -1,3 +1,5 @@
+pub mod providers;
+
 use std::io::{Read as _, Write as _};
 use std::path::Path;
 use std::process::{Command, Stdio};
