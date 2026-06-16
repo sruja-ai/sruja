@@ -382,6 +382,39 @@ pub enum AgentCommand {
         #[arg(long, short = 'f', default_value = "json")]
         format: String,
     },
+    /// Autonomous coding loop: comprehend -> plan -> execute via tools -> critique -> replan until approved
+    Loop {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Natural language goal (e.g. "Add a health check endpoint")
+        #[arg(long)]
+        goal: String,
+        /// Maximum plan->execute->critique iterations (default: 3, or from .sruja/loop.toml)
+        #[arg(long)]
+        max_iterations: Option<usize>,
+        /// Disable TDD mode (plans write tests before implementation by default)
+        #[arg(long)]
+        no_tdd: bool,
+        /// Dry-run mode: block all file mutations, still run the loop
+        #[arg(long)]
+        dry_run: bool,
+        /// Override the model name (default: from OPENAI_MODEL env or gpt-4o-mini)
+        #[arg(long)]
+        model: Option<String>,
+        /// Override the API base URL (default: https://api.openai.com/v1)
+        #[arg(long)]
+        base_url: Option<String>,
+        /// USD spend cap — abort the loop if estimated cost exceeds this
+        #[arg(long)]
+        spend_cap: Option<f64>,
+        /// Disable oscillation detection (auto-terminate on repeated critique patterns)
+        #[arg(long)]
+        no_oscillation_detection: bool,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
 }
 
 #[derive(Subcommand)]

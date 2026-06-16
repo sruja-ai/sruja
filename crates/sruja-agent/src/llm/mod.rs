@@ -159,6 +159,24 @@ pub struct Usage {
     pub total_tokens: u64,
 }
 
+impl Usage {
+    /// Add another usage record into this one in place.
+    pub fn accumulate(&mut self, other: &Usage) {
+        self.prompt_tokens += other.prompt_tokens;
+        self.completion_tokens += other.completion_tokens;
+        self.total_tokens += other.total_tokens;
+    }
+
+    /// Rough cost estimate in USD using conservative default rates
+    /// (gpt-4o-mini pricing: $0.15/1M input, $0.60/1M output).
+    ///
+    /// For accurate per-model attribution, use [`crate::llm::ModelRouter`] instead.
+    pub fn estimated_cost_usd(&self) -> f64 {
+        self.prompt_tokens as f64 * 0.15 / 1_000_000.0
+            + self.completion_tokens as f64 * 0.60 / 1_000_000.0
+    }
+}
+
 /// Why the model stopped generating.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

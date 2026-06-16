@@ -121,6 +121,31 @@ impl ToolRegistry {
         }
     }
 
+    /// Create a registry pre-loaded with the standard built-in tools
+    /// ([`builtin::tools::FileRead`], [`FileWrite`], [`FileEdit`], [`Glob`],
+    /// [`Grep`], [`Shell`]) rooted at `root`, with the given shell executable
+    /// allowlist. This is what a standalone agent needs to actually read,
+    /// write, search, and run commands in a workspace.
+    ///
+    /// Pass an empty `Vec` for `shell_allowlist` to disable shell execution
+    /// entirely.
+    pub fn with_builtin(
+        root: impl Into<std::path::PathBuf>,
+        shell_allowlist: Vec<String>,
+    ) -> Self {
+        let root = root.into();
+        Self::new()
+            .with(Box::new(builtin::FileRead::with_root(root.clone())))
+            .with(Box::new(builtin::FileWrite::with_root(root.clone())))
+            .with(Box::new(builtin::FileEdit::with_root(root.clone())))
+            .with(Box::new(builtin::Glob::with_root(root.clone())))
+            .with(Box::new(builtin::Grep::with_root(root.clone())))
+            .with(Box::new(builtin::Shell::with_allowlist(
+                root,
+                shell_allowlist,
+            )))
+    }
+
     /// Enable dry-run mode: mutating tools will be blocked.
     pub fn dry_run(mut self) -> Self {
         self.dry_run = true;
@@ -277,5 +302,23 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, ToolError::BlockedByDryRun(_)));
+    }
+
+    #[test]
+    fn with_builtin_registers_all_tools() {
+        let reg = ToolRegistry::with_builtin(".", vec!["echo".into()]);
+        let mut names = reg.names();
+        names.sort();
+        assert_eq!(
+            names,
+            vec![
+                "file_edit",
+                "file_read",
+                "file_write",
+                "glob",
+                "grep",
+                "shell"
+            ]
+        );
     }
 }

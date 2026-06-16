@@ -207,6 +207,104 @@ pub struct AgentRunResult {
 }
 
 // ---------------------------------------------------------------------------
+// Outer ReAct loop: critique -> replan until approved or budget exhausted
+// ---------------------------------------------------------------------------
+
+/// Configuration for the outer loop (`Agent::run_loop`).
+///
+/// `AgentConfig.max_tool_iterations` caps tool calls *within* one LLM step;
+/// this caps whole plan->execute->critique *iterations* of the actor/reviewer
+/// loop — the "loop engineering" spine.
+#[derive(Debug, Clone)]
+pub struct LoopConfig {
+    /// Maximum plan->execute->critique iterations (default: 3).
+    pub max_iterations: usize,
+    /// Stop as soon as the critic approves (default: true).
+    pub stop_on_approval: bool,
+    /// Re-plan using critique feedback when the critic rejects (default: true).
+    /// If false, the loop terminates after the first non-approving critique.
+    pub replan_on_failure: bool,
+    /// USD spend cap. The loop terminates with [`LoopTermination::SpendCapExceeded`]
+    /// if the estimated cost exceeds this amount (default: None = unlimited).
+    pub spend_cap_usd: Option<f64>,
+    /// Detect repeated critique patterns and terminate with
+    /// [`LoopTermination::Oscillation`] to avoid flailing (default: true).
+    pub detect_oscillation: bool,
+}
+
+impl Default for LoopConfig {
+    fn default() -> Self {
+        Self {
+            max_iterations: 3,
+            stop_on_approval: true,
+            replan_on_failure: true,
+            spend_cap_usd: None,
+            detect_oscillation: true,
+        }
+    }
+}
+
+/// Why the outer loop terminated.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum LoopTermination {
+    /// The independent critic (and optional verify gate) approved.
+    Approved,
+    /// The iteration budget was exhausted without approval.
+    MaxIterations,
+    /// `replan_on_failure` was false and the critic did not approve.
+    NoReplan,
+    /// Spend cap exceeded — the estimated cost at termination.
+    SpendCapExceeded(f64),
+    /// Detected repeated critique patterns (the loop is oscillating).
+    Oscillation,
+    /// A hard error aborted the loop.
+    Aborted(String),
+}
+
+/// Per-iteration evidence — the telemetry a host needs to detect convergence,
+/// oscillation, and flailing loops.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoopIteration {
+    /// 1-based iteration index.
+    pub iteration: usize,
+    /// True if this iteration re-planned from prior critique feedback.
+    pub replanned: bool,
+    pub plan_goal: String,
+    pub subtask_count: usize,
+    pub succeeded: usize,
+    pub failed: usize,
+    pub critique_approved: bool,
+    pub critique_score: f64,
+    /// Critic issues carried forward into the next iteration's re-plan.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub critique_issues: Vec<String>,
+    pub usage: Usage,
+}
+
+/// Result of `Agent::run_loop`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoopResult {
+    pub goal: String,
+    pub iterations: Vec<LoopIteration>,
+    /// True iff the critic approved before the budget ran out.
+    pub converged: bool,
+    pub termination: LoopTermination,
+    pub total_usage: Usage,
+    /// The final, most-developed single-pass result (comprehension, last plan,
+    /// last step results, last critique, decision, runbook). Present even when
+    /// the loop did not converge so the caller can inspect partial progress.
+    pub final_result: AgentRunResult,
+}
+
+impl LoopResult {
+    /// Number of iterations actually executed.
+    pub fn iteration_count(&self) -> usize {
+        self.iterations.len()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
@@ -369,19 +467,24 @@ impl Agent {
         Err(AgentError::MaxIterations(self.config.max_tool_iterations))
     }
 
+    /// Resolve the model name configured for a complexity tier.
+    fn model_for_tier(&self, tier: TaskTier) -> &str {
+        match tier {
+            TaskTier::Cheap => &self.config.models.cheap,
+            TaskTier::Mid => &self.config.models.mid,
+            TaskTier::Premium => &self.config.models.premium,
+        }
+    }
+
     /// Route a request to the model configured for a specific tier.
     pub async fn complete_tiered(
         &self,
         tier: TaskTier,
         req: CompletionRequest,
     ) -> Result<CompletionResponse, AgentError> {
-        let model = match tier {
-            TaskTier::Cheap => &self.config.models.cheap,
-            TaskTier::Mid => &self.config.models.mid,
-            TaskTier::Premium => &self.config.models.premium,
-        };
+        let model = self.model_for_tier(tier);
         let req = CompletionRequest {
-            model: Some(model.clone()),
+            model: Some(model.to_string()),
             ..req
         };
         Ok(self.llm.complete(&req).await?)
@@ -443,6 +546,77 @@ impl Agent {
         Ok(plan)
     }
 
+    /// Re-plan using the prior critique as feedback.
+    ///
+    /// This is the feedback edge that closes the outer ReAct loop: when the
+    /// independent critic rejects a change, its `issues` and `suggestions`
+    /// are injected into a new plan rather than discarded.
+    pub async fn replan(
+        &self,
+        goal: &str,
+        comprehension: &Comprehension,
+        critique: &Critique,
+    ) -> Result<Plan, AgentError> {
+        if let HookAction::Abort(reason) = self.hooks.before_plan(goal).await {
+            return Err(AgentError::HookAborted(reason));
+        }
+
+        let issues = if critique.issues.is_empty() {
+            "(none reported)".to_string()
+        } else {
+            critique
+                .issues
+                .iter()
+                .map(|i| format!("- {i}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let suggestions = if critique.suggestions.is_empty() {
+            "(none reported)".to_string()
+        } else {
+            critique
+                .suggestions
+                .iter()
+                .map(|s| format!("- {s}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+
+        let tdd_note = if self.config.tdd {
+            "\n\nTDD MODE IS ON: keep test_author subtasks BEFORE implement subtasks."
+        } else {
+            ""
+        };
+
+        let user = format!(
+            "## Goal\n{goal}\n\n\
+             ## Comprehension\n{}\n\n\
+             ## Prior review outcome\n\
+             The independent critic REJECTED the previous attempt (score: {:.0}%).\n\
+             You must produce a revised plan that addresses the feedback.\n\n\
+             ### Critic issues\n{issues}\n\n\
+             ### Critic suggestions\n{suggestions}\n\n\
+             ## Instructions\n\
+             Output a REVISED plan as a JSON object with `subtasks` and `risks` arrays. \
+             Each subtask needs `description`, `tier` (cheap|mid|premium), \
+             `kind` (test_author|implement|verify|review), `files`, and \
+             `acceptance_criteria`. Do not repeat failed approaches.{tdd_note}",
+            comprehension.summary,
+            critique.score * 100.0,
+        );
+
+        let req =
+            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
+
+        let (response, _usage) = self.run_tool_loop(req).await?;
+        let mut plan = parse_plan_from_response(&response.content, goal, self.config.tdd);
+
+        if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
+            return Err(AgentError::HookAborted(reason));
+        }
+        Ok(plan)
+    }
+
     // --- Execute: run subtasks with phase enforcement ---
 
     /// Execute a plan, enforcing the TDD phase pipeline.
@@ -475,7 +649,9 @@ impl Agent {
                 HookAction::Continue => {}
             }
 
-            // Route to the appropriate model tier.
+            // Route to the appropriate model tier. The tool loop runs on the
+            // tiered model so mutations respect the configured complexity
+            // routing — no separate one-shot call beforehand.
             let tier = step.tier;
             let system = EXECUTION_SYSTEM_PROMPT;
             let user = format!(
@@ -491,20 +667,11 @@ impl Agent {
                 phase,
             );
 
-            let req = CompletionRequest::prompt(system, user).with_tools(self.tools.schemas());
+            let mut req = CompletionRequest::prompt(system, user)
+                .with_tools(self.tools.schemas());
+            req.model = Some(self.model_for_tier(tier).to_string());
 
-            let response = self.complete_tiered(tier, req).await?;
-            let (response, tool_usage) = self
-                .run_tool_loop(
-                    CompletionRequest::prompt(system, &response.content)
-                        .with_tools(self.tools.schemas()),
-                )
-                .await?;
-
-            let mut total_usage = response.usage.clone();
-            total_usage.prompt_tokens += tool_usage.prompt_tokens;
-            total_usage.completion_tokens += tool_usage.completion_tokens;
-            total_usage.total_tokens += tool_usage.total_tokens;
+            let (response, tool_usage) = self.run_tool_loop(req).await?;
 
             let status = if response.content.contains("ERROR") {
                 StepStatus::Failed
@@ -516,7 +683,7 @@ impl Agent {
                 subtask_id: step.id.clone(),
                 status,
                 output: response.content,
-                usage: total_usage,
+                usage: tool_usage,
             };
 
             self.hooks.after_step(step, &result).await;
@@ -712,6 +879,199 @@ impl Agent {
             decision,
             runbook,
             total_usage: Usage::default(),
+        })
+    }
+
+    /// Run the outer ReAct loop: comprehend once, then iterate
+    /// (re)plan -> execute -> critique until the independent critic approves
+    /// or the iteration budget is exhausted.
+    ///
+    /// This closes the loop that `run` leaves open: a rejected critique feeds
+    /// back into a re-plan via [`Agent::replan`], embodying "loop engineering"
+    /// — the actor iterates against an independent grader until a verifiable
+    /// condition is met.
+    ///
+    /// Per-iteration evidence is captured in [`LoopResult::iterations`] so a
+    /// host can detect convergence, oscillation, and flailing.
+    pub async fn run_loop(
+        &self,
+        goal: &str,
+        loop_config: &LoopConfig,
+    ) -> Result<LoopResult, AgentError> {
+        let max_iterations = loop_config.max_iterations.max(1);
+        let comprehension = self.comprehend(goal).await?;
+
+        let mut iterations: Vec<LoopIteration> = Vec::new();
+        let mut total_usage = Usage::default();
+        let mut last_plan: Option<Plan> = None;
+        let mut last_steps: Vec<StepResult> = Vec::new();
+        let mut last_critique: Option<Critique> = None;
+        let mut converged = false;
+        let mut termination = LoopTermination::MaxIterations;
+        let mut seen_signatures: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
+
+        for iteration in 1..=max_iterations {
+            let replanned = iteration > 1 && last_critique.is_some();
+
+            // --- PLAN (or re-plan from critique feedback) ---
+            let plan = if replanned {
+                match self
+                    .replan(goal, &comprehension, last_critique.as_ref().unwrap())
+                    .await
+                {
+                    Ok(p) => p,
+                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                        termination = LoopTermination::SpendCapExceeded(spent);
+                        break;
+                    }
+                    Err(e) => return Err(e),
+                }
+            } else {
+                match self.plan(goal, &comprehension).await {
+                    Ok(p) => p,
+                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                        termination = LoopTermination::SpendCapExceeded(spent);
+                        break;
+                    }
+                    Err(e) => return Err(e),
+                }
+            };
+
+            // --- EXECUTE ---
+            let step_results = match self.execute(&plan).await {
+                Ok(r) => r,
+                Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                    termination = LoopTermination::SpendCapExceeded(spent);
+                    break;
+                }
+                Err(e) => return Err(e),
+            };
+            for r in &step_results {
+                total_usage.accumulate(&r.usage);
+            }
+
+            // --- CRITIQUE ---
+            let critique = if self.config.review_every_change {
+                match self.critique(&plan, &step_results).await {
+                    Ok(c) => c,
+                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                        termination = LoopTermination::SpendCapExceeded(spent);
+                        break;
+                    }
+                    Err(e) => return Err(e),
+                }
+            } else {
+                let all_ok = step_results
+                    .iter()
+                    .all(|r| r.status != StepStatus::Failed);
+                Critique {
+                    approved: all_ok,
+                    score: if all_ok { 1.0 } else { 0.0 },
+                    issues: Vec::new(),
+                    suggestions: Vec::new(),
+                    usage: Usage::default(),
+                }
+            };
+            total_usage.accumulate(&critique.usage);
+
+            let approved = critique.approved;
+            let issue_sig = critique_signature(&critique.issues);
+            let succeeded = step_results
+                .iter()
+                .filter(|r| r.status == StepStatus::Ok)
+                .count();
+            let failed = step_results
+                .iter()
+                .filter(|r| r.status == StepStatus::Failed)
+                .count();
+
+            // Record the iteration evidence BEFORE guardrail checks so the
+            // caller always sees what happened, even on the triggering iteration.
+            iterations.push(LoopIteration {
+                iteration,
+                replanned,
+                plan_goal: plan.goal.clone(),
+                subtask_count: plan.subtasks.len(),
+                succeeded,
+                failed,
+                critique_approved: approved,
+                critique_score: critique.score,
+                critique_issues: critique.issues.clone(),
+                usage: critique.usage.clone(),
+            });
+
+            last_plan = Some(plan);
+            last_steps = step_results.clone();
+            last_critique = Some(critique);
+
+            // --- GUARDRAIL: spend cap (loop-level estimate) ---
+            if let Some(cap) = loop_config.spend_cap_usd {
+                let cost = total_usage.estimated_cost_usd();
+                if cost >= cap {
+                    termination = LoopTermination::SpendCapExceeded(cost);
+                    break;
+                }
+            }
+
+            // --- GUARDRAIL: oscillation detection ---
+            if loop_config.detect_oscillation
+                && !approved
+                && !seen_signatures.insert(issue_sig)
+            {
+                termination = LoopTermination::Oscillation;
+                break;
+            }
+
+            if approved && loop_config.stop_on_approval {
+                converged = true;
+                termination = LoopTermination::Approved;
+                break;
+            }
+            if !approved && !loop_config.replan_on_failure {
+                termination = LoopTermination::NoReplan;
+                break;
+            }
+        }
+
+        let plan = last_plan.ok_or(AgentError::Other("loop produced no plan".into()))?;
+        let critique = last_critique;
+
+        // Reflect + generate decision/runbook once, on the final state.
+        let _learnings = self
+            .reflect(&comprehension, &plan, &last_steps, critique.as_ref())
+            .await?;
+        let decision = self
+            .generate_decision(&plan, &last_steps, critique.as_ref())
+            .await;
+        let runbook = self.generate_runbook(&plan, &last_steps).await;
+        if let Some((ref repo, _)) = self.memory {
+            if let Some(ref d) = decision {
+                self.write_decision(repo, d).await;
+            }
+            if let Some(ref r) = runbook {
+                self.write_runbook(repo, r).await;
+            }
+        }
+
+        let final_result = AgentRunResult {
+            goal: goal.to_string(),
+            comprehension,
+            plan,
+            step_results: last_steps,
+            critique,
+            decision,
+            runbook,
+            total_usage: total_usage.clone(),
+        };
+
+        Ok(LoopResult {
+            goal: goal.to_string(),
+            iterations,
+            converged,
+            termination,
+            total_usage,
+            final_result,
         })
     }
 
@@ -1034,6 +1394,14 @@ impl Agent {
 
 fn comprehension_cited_elements(plan: &Plan) -> Vec<String> {
     plan.subtasks.iter().flat_map(|s| s.files.clone()).collect()
+}
+
+/// Build a normalised signature from critique issues to detect oscillation.
+/// Sorts and joins the issues so re-ordering doesn't produce a false negative.
+fn critique_signature(issues: &[String]) -> String {
+    let mut sorted: Vec<&str> = issues.iter().map(|s| s.as_str()).collect();
+    sorted.sort();
+    sorted.join("\x00")
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -1436,5 +1804,396 @@ mod tests {
         let ids = extract_element_ids("See Sruja.CLI and Sruja.Graph.KnowledgeGraph for details.");
         assert!(ids.contains(&"Sruja.CLI".to_string()));
         assert!(ids.contains(&"Sruja.Graph.KnowledgeGraph".to_string()));
+    }
+
+    // --- Loop spine tests (critique -> replan closure) ---
+
+    use async_trait::async_trait;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    /// A scripted LLM that routes by system-prompt content so the outer loop
+    /// can be driven without a real provider. The critic flips to `approved`
+    /// after `reject_first` rejections.
+    struct ScriptedLlm {
+        critique_calls: AtomicUsize,
+        reject_first: usize,
+    }
+
+    impl ScriptedLlm {
+        fn approve_after(reject_first: usize) -> Arc<Self> {
+            Arc::new(Self {
+                critique_calls: AtomicUsize::new(0),
+                reject_first,
+            })
+        }
+    }
+
+    #[async_trait]
+    impl LlmClient for ScriptedLlm {
+        async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+            let sys = req
+                .messages
+                .first()
+                .map(|m| m.content.as_str())
+                .unwrap_or("");
+            let content = if sys.contains("senior architect reviewing a change") {
+                let n = self.critique_calls.fetch_add(1, Ordering::SeqCst);
+                let approved = n >= self.reject_first;
+                if approved {
+                    r#"{"approved":true,"score":0.9,"issues":[],"suggestions":[]}"#.to_string()
+                } else {
+                    r#"{"approved":false,"score":0.2,"issues":["tests missing"],"suggestions":["add tests"]}"#
+                        .to_string()
+                }
+            } else if sys.contains("decomposing work into concrete subtasks") {
+                r#"{"subtasks":[{"id":"s1","description":"implement feature","tier":"mid","kind":"implement","files":[],"acceptance_criteria":["it works"]}],"risks":[]}"#
+                    .to_string()
+            } else if sys.contains("executing a specific subtask") {
+                "done".to_string()
+            } else if sys.contains("understand codebases thoroughly") {
+                "Understood the goal.".to_string()
+            } else {
+                "{}".to_string()
+            };
+
+            Ok(CompletionResponse {
+                content,
+                tool_calls: Vec::new(),
+                usage: Usage {
+                    prompt_tokens: 10,
+                    completion_tokens: 5,
+                    total_tokens: 15,
+                },
+                model: "scripted".into(),
+                finish_reason: crate::llm::FinishReason::Stop,
+            })
+        }
+
+        fn default_model(&self) -> &str {
+            "scripted"
+        }
+    }
+
+    fn loop_test_agent(llm: Arc<dyn LlmClient>) -> Agent {
+        let config = AgentConfig {
+            tdd: false, // keep execution single-phase for the loop test
+            ..Default::default()
+        };
+        Agent::builder()
+            .llm(llm)
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds")
+    }
+
+    #[tokio::test]
+    async fn run_loop_converges_on_second_critique() {
+        // Critic rejects once, then approves -> converge in 2 iterations.
+        let llm = ScriptedLlm::approve_after(1);
+        let agent = loop_test_agent(llm);
+        let result = agent
+            .run_loop("ship the feature", &LoopConfig::default())
+            .await
+            .expect("loop runs");
+
+        assert!(result.converged);
+        assert_eq!(result.termination, LoopTermination::Approved);
+        assert_eq!(result.iteration_count(), 2);
+        // Iteration 1 rejected, iteration 2 approved.
+        assert!(!result.iterations[0].critique_approved);
+        assert!(result.iterations[1].critique_approved);
+        // The feedback edge fired: iteration 2 was a re-plan.
+        assert!(result.iterations[1].replanned);
+        assert!(!result.iterations[0].replanned);
+    }
+
+    #[tokio::test]
+    async fn run_loop_exhausts_budget_without_convergence() {
+        // Critic never approves, and oscillation detection is off so we
+        // actually exhaust the iteration budget.
+        let llm = ScriptedLlm::approve_after(usize::MAX);
+        let agent = loop_test_agent(llm);
+        let cfg = LoopConfig {
+            max_iterations: 2,
+            detect_oscillation: false,
+            ..Default::default()
+        };
+        let result = agent
+            .run_loop("ship the feature", &cfg)
+            .await
+            .expect("loop runs");
+
+        assert!(!result.converged);
+        assert_eq!(result.termination, LoopTermination::MaxIterations);
+        assert_eq!(result.iteration_count(), 2);
+        // Last iteration's critique issues carried forward.
+        assert!(!result.iterations[1].critique_issues.is_empty());
+    }
+
+    #[tokio::test]
+    async fn run_loop_no_replan_terminates_after_first_rejection() {
+        let llm = ScriptedLlm::approve_after(usize::MAX);
+        let agent = loop_test_agent(llm);
+        let cfg = LoopConfig {
+            max_iterations: 5,
+            replan_on_failure: false,
+            ..Default::default()
+        };
+        let result = agent
+            .run_loop("ship the feature", &cfg)
+            .await
+            .expect("loop runs");
+
+        assert!(!result.converged);
+        assert_eq!(result.termination, LoopTermination::NoReplan);
+        assert_eq!(result.iteration_count(), 1);
+    }
+
+    #[test]
+    fn loop_config_defaults_are_sane() {
+        let c = LoopConfig::default();
+        assert!(c.stop_on_approval);
+        assert!(c.replan_on_failure);
+        assert!(c.max_iterations >= 1);
+        assert!(c.detect_oscillation);
+        assert!(c.spend_cap_usd.is_none());
+    }
+
+    #[test]
+    fn loop_result_iteration_count_counts_records() {
+        let result = LoopResult {
+            goal: "g".into(),
+            iterations: vec![
+                LoopIteration {
+                    iteration: 1,
+                    replanned: false,
+                    plan_goal: "g".into(),
+                    subtask_count: 1,
+                    succeeded: 1,
+                    failed: 0,
+                    critique_approved: false,
+                    critique_score: 0.2,
+                    critique_issues: vec!["x".into()],
+                    usage: Usage::default(),
+                },
+                LoopIteration {
+                    iteration: 2,
+                    replanned: true,
+                    plan_goal: "g".into(),
+                    subtask_count: 1,
+                    succeeded: 1,
+                    failed: 0,
+                    critique_approved: true,
+                    critique_score: 0.9,
+                    critique_issues: vec![],
+                    usage: Usage::default(),
+                },
+            ],
+            converged: true,
+            termination: LoopTermination::Approved,
+            total_usage: Usage::default(),
+            final_result: AgentRunResult {
+                goal: "g".into(),
+                comprehension: Comprehension {
+                    goal: "g".into(),
+                    summary: String::new(),
+                    cited_elements: Vec::new(),
+                    key_findings: Vec::new(),
+                    risks: Vec::new(),
+                    usage: Usage::default(),
+                },
+                plan: Plan {
+                    goal: "g".into(),
+                    subtasks: Vec::new(),
+                    tdd: false,
+                    risks: Vec::new(),
+                },
+                step_results: Vec::new(),
+                critique: None,
+                decision: None,
+                runbook: None,
+                total_usage: Usage::default(),
+            },
+        };
+        assert_eq!(result.iteration_count(), 2);
+    }
+
+    // --- ACT phase test: the loop mutates files via tools ---
+
+    /// A scripted LLM that issues a `file_write` tool call the first time it
+    /// is asked to execute, then terminates the tool loop with plain text.
+    /// Critic approves immediately so the loop converges in one iteration.
+    struct ActingLlm {
+        execute_calls: AtomicUsize,
+    }
+
+    #[async_trait]
+    impl LlmClient for ActingLlm {
+        async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+            let sys = req
+                .messages
+                .first()
+                .map(|m| m.content.as_str())
+                .unwrap_or("");
+            let usage = Usage {
+                prompt_tokens: 10,
+                completion_tokens: 5,
+                total_tokens: 15,
+            };
+            let content = if sys.contains("senior architect reviewing a change") {
+                r#"{"approved":true,"score":0.9,"issues":[],"suggestions":[]}"#.to_string()
+            } else if sys.contains("executing a specific subtask") {
+                let n = self.execute_calls.fetch_add(1, Ordering::SeqCst);
+                if n == 0 {
+                    return Ok(CompletionResponse {
+                        content: "Writing the file.".into(),
+                        tool_calls: vec![crate::llm::ToolCall {
+                            id: "call_1".into(),
+                            name: "file_write".into(),
+                            arguments: serde_json::json!({
+                                "path": "src/hello.rs",
+                                "content": "fn main() { println!(\"hello from the loop\"); }\n"
+                            }),
+                        }],
+                        usage: usage.clone(),
+                        model: "acting".into(),
+                        finish_reason: crate::llm::FinishReason::ToolCalls,
+                    });
+                }
+                "done".to_string()
+            } else if sys.contains("decomposing work into concrete subtasks") {
+                r#"{"subtasks":[{"id":"s1","description":"write hello module","tier":"mid","kind":"implement","files":["src/hello.rs"],"acceptance_criteria":["file exists"]}],"risks":[]}"#
+                    .to_string()
+            } else if sys.contains("understand codebases thoroughly") {
+                "Understood.".to_string()
+            } else {
+                "{}".to_string()
+            };
+
+            Ok(CompletionResponse {
+                content,
+                tool_calls: Vec::new(),
+                usage,
+                model: "acting".into(),
+                finish_reason: crate::llm::FinishReason::Stop,
+            })
+        }
+
+        fn default_model(&self) -> &str {
+            "acting"
+        }
+    }
+
+    #[tokio::test]
+    async fn run_loop_actually_mutates_files_via_tools() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().to_path_buf();
+
+        let llm = Arc::new(ActingLlm {
+            execute_calls: AtomicUsize::new(0),
+        });
+        let tools = ToolRegistry::with_builtin(root.clone(), Vec::new());
+        let config = AgentConfig {
+            tdd: false,
+            review_every_change: true,
+            ..Default::default()
+        };
+        let agent = Agent::builder()
+            .llm(llm)
+            .tools(tools)
+            .config(config)
+            .build()
+            .expect("agent builds");
+
+        let result = agent
+            .run_loop("create hello module", &LoopConfig::default())
+            .await
+            .expect("loop runs");
+
+        // The loop converged on iteration 1.
+        assert!(result.converged, "expected convergence");
+        assert_eq!(result.iteration_count(), 1);
+
+        // The ACT phase mutated the filesystem — the file exists on disk.
+        let written = std::fs::read_to_string(root.join("src/hello.rs")).expect("file was written");
+        assert!(written.contains("hello from the loop"));
+    }
+
+    // --- Guardrail tests ---
+
+    #[tokio::test]
+    async fn run_loop_terminates_on_spend_cap() {
+        // ScriptedLlm returns small but non-zero usage per call.
+        // After one iteration (execute + critique), the estimated cost
+        // exceeds a tiny cap → SpendCapExceeded.
+        let llm = ScriptedLlm::approve_after(usize::MAX);
+        let agent = loop_test_agent(llm);
+        let cfg = LoopConfig {
+            max_iterations: 5,
+            spend_cap_usd: Some(0.00001),
+            detect_oscillation: false,
+            ..Default::default()
+        };
+        let result = agent
+            .run_loop("ship the feature", &cfg)
+            .await
+            .expect("loop runs");
+
+        assert!(!result.converged);
+        assert!(
+            matches!(result.termination, LoopTermination::SpendCapExceeded(cost) if cost > 0.0),
+            "expected SpendCapExceeded, got {:?}",
+            result.termination
+        );
+        // Should have terminated before exhausting all 5 iterations.
+        assert!(result.iteration_count() < 5);
+    }
+
+    #[tokio::test]
+    async fn run_loop_detects_oscillation() {
+        // ScriptedLlm always rejects with the same issues ("tests missing").
+        // After iteration 2, the same critique signature repeats → Oscillation.
+        let llm = ScriptedLlm::approve_after(usize::MAX);
+        let agent = loop_test_agent(llm);
+        let cfg = LoopConfig {
+            max_iterations: 5,
+            detect_oscillation: true,
+            ..Default::default()
+        };
+        let result = agent
+            .run_loop("ship the feature", &cfg)
+            .await
+            .expect("loop runs");
+
+        assert!(!result.converged);
+        assert_eq!(result.termination, LoopTermination::Oscillation);
+        // Oscillation is detected at iteration 2 (the first repeat).
+        assert_eq!(result.iteration_count(), 2);
+        // Both iterations had the same critique issues.
+        assert_eq!(
+            result.iterations[0].critique_issues,
+            result.iterations[1].critique_issues
+        );
+    }
+
+    #[test]
+    fn usage_estimated_cost_is_nonzero() {
+        let usage = Usage {
+            prompt_tokens: 1_000_000,
+            completion_tokens: 500_000,
+            total_tokens: 1_500_000,
+        };
+        // gpt-4o-mini: 1M * $0.15/1M + 0.5M * $0.60/1M = $0.15 + $0.30 = $0.45
+        let cost = usage.estimated_cost_usd();
+        assert!((cost - 0.45).abs() < 0.001, "expected ~$0.45, got ${cost:.4}");
+    }
+
+    #[test]
+    fn critique_signature_normalises_order() {
+        let a = critique_signature(&["x".into(), "y".into()]);
+        let b = critique_signature(&["y".into(), "x".into()]);
+        assert_eq!(a, b);
     }
 }

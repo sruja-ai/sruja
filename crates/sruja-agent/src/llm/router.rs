@@ -215,8 +215,10 @@ mod tests {
 
     #[tokio::test]
     async fn enforces_cap() {
-        let mut config = RouterConfig::default();
-        config.spend_cap_usd = Some(0.10);
+        let config = RouterConfig {
+            spend_cap_usd: Some(0.10),
+            ..Default::default()
+        };
         let router = ModelRouter::with_config(Arc::new(FakeClient), config);
         let req = CompletionRequest::new(vec![]);
         // First call succeeds (spent=0 < cap=0.10), but records $0.45.

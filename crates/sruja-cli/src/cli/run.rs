@@ -1028,6 +1028,32 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             AgentCommand::Apply { repo, plan, format } => {
                 commands::agent_apply(std::path::Path::new(&plan), &repo, &format).await
             }
+            AgentCommand::Loop {
+                repo,
+                goal,
+                max_iterations,
+                no_tdd,
+                dry_run,
+                model,
+                base_url,
+                spend_cap,
+                no_oscillation_detection,
+                format,
+            } => {
+                commands::agent_loop(&commands::AgentLoopOptions {
+                    repo: &repo,
+                    goal: &goal,
+                    max_iterations,
+                    no_tdd,
+                    dry_run,
+                    model: model.as_deref(),
+                    base_url: base_url.as_deref(),
+                    spend_cap_usd: spend_cap,
+                    no_oscillation_detection,
+                    format: &format,
+                })
+                .await
+            }
         },
         Commands::VerifyTask {
             repo,

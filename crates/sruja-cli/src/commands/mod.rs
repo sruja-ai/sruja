@@ -15,6 +15,7 @@ pub(crate) mod workflow_aidlc;
 
 pub use intent_domain::remediation;
 
+pub use agent_loop::{agent_loop, AgentLoopOptions};
 pub use agent_reflect::agent_reflect;
 pub use intent_domain::agent::{
     agent_clear, agent_clusters, agent_curate, agent_delete, agent_distill, agent_history,
@@ -118,6 +119,7 @@ pub use intent_domain::critique::critique;
 pub use utility_domain::compliance::compliance;
 pub use utility_domain::federation::{compose, publish};
 
+pub mod agent_loop;
 pub mod agent_reflect;
 pub mod agent_setup;
 pub mod extensions_config;

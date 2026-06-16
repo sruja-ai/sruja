@@ -48,7 +48,10 @@ pub mod program;
 pub mod tool;
 pub mod verify;
 
-pub use cognition::{Agent, AgentBuilder, AgentConfig, Comprehension};
+pub use cognition::{
+    Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult, Comprehension, Critique,
+    LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan,
+};
 pub use dlc::DlcPipeline;
 pub use executor::TrajectoryExecutor;
 pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryStatus};
