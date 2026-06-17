@@ -18,7 +18,7 @@ use crate::commands::CliError;
 use crate::integrations::{load_repo_config, VerifyProfileConfig};
 
 use super::agent_run::{
-    load_allowlists, run_allowlisted_process, run_sruja_cmd, AgentStep, StepObservation,
+    load_allowlists, run_verification_steps_in_repo, AgentStep, StepObservation,
 };
 
 /// Schema version for verify-task output.
@@ -623,37 +623,15 @@ async fn run_verify_steps(
     allowed_sruja: &[String],
     allowed_execs: &[String],
 ) -> Result<Vec<StepObservation>, CliError> {
-    let mut results = Vec::new();
-
-    for step in steps {
-        let obs = match step.kind.as_str() {
-            "sruja_cmd" => {
-                run_sruja_cmd(repo_path, &step.argv, max_runtime_ms, allowed_sruja).await?
-            }
-            "verify_cmd" => {
-                run_allowlisted_process(repo_path, &step.argv, max_runtime_ms, allowed_execs)
-                    .await?
-            }
-            _ => StepObservation {
-                step_id: step.id.clone(),
-                status: "skipped".to_string(),
-                exit_code: None,
-                stdout: "".to_string(),
-                stderr: format!("Unknown verification kind: {}", step.kind),
-                elapsed_ms: 0,
-                content_hash: None,
-            },
-        };
-
-        results.push(obs);
-
-        // Fail-fast: stop on first error
-        if results.last().unwrap().status == "error" {
-            break;
-        }
-    }
-
-    Ok(results)
+    run_verification_steps_in_repo(
+        repo_path,
+        steps,
+        max_runtime_ms,
+        allowed_sruja,
+        allowed_execs,
+        false, // fail-fast: stop on first error
+    )
+    .await
 }
 
 /// Run verification and return structured output.

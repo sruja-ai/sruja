@@ -33,6 +33,7 @@ pub use cli::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenvy::dotenv().ok();
     let cli = Cli::parse();
 
     let log_level = match cli.verbose {

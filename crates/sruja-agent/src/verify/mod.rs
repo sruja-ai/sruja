@@ -1,10 +1,15 @@
-//! Consolidated verification step runner.
+//! Generic allowlisted verification step runner.
 //!
-//! This is the **single canonical** implementation that replaces the 4×
-//! copy-pasted verify loops found in `sruja-cli` (agent_run.rs, agent_plan.rs,
-//! verify_task.rs). Each site now delegates here.
+//! This module provides the execution engine used by the agent loop's
+//! independent grader (cognition). It runs a sequence of allowlisted
+//! commands and returns structured results. The caller controls fail-fast
+//! behavior via `VerifyOptions.continue_on_error`.
 //!
-//! (Stub — full migration from sruja-cli happens when the CLI is rewired.)
+//! The CLI has its own kind-dispatching layer (`run_verification_steps_in_repo`
+//! in `agent_run.rs`) that maps `AgentStep { kind: "sruja_cmd" | "verify_cmd" }`
+//! to the appropriate runner. That CLI layer handles the dual-allowlist security
+//! boundary (sruja subcommands vs. general executables) and delegates actual
+//! process execution here or to `sruja_cmd` respectively.
 
 use serde::{Deserialize, Serialize};
 

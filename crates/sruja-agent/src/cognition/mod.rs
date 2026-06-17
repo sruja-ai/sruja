@@ -74,7 +74,7 @@ pub struct AgentConfig {
     pub spend_cap_usd: Option<f64>,
     /// Block all mutations (default: false).
     pub dry_run: bool,
-    /// Max tool-call iterations before giving up (default: 25).
+    /// Max tool-call iterations before giving up (default: 8).
     pub max_tool_iterations: usize,
 }
 
@@ -86,7 +86,7 @@ impl Default for AgentConfig {
             review_every_change: true,
             spend_cap_usd: None,
             dry_run: false,
-            max_tool_iterations: 25,
+            max_tool_iterations: 8,
         }
     }
 }
@@ -460,16 +460,51 @@ impl Agent {
         mut req: CompletionRequest,
     ) -> Result<(CompletionResponse, Usage), AgentError> {
         let mut total_usage = Usage::default();
+        let mut last_response: Option<CompletionResponse> = None;
+        let mut soft_sent = false;
+        let mut hard_sent = false;
 
-        for _iteration in 0..self.config.max_tool_iterations {
+        for iteration in 0..self.config.max_tool_iterations {
             let response = self.llm.complete(&req).await?;
             total_usage.prompt_tokens += response.usage.prompt_tokens;
             total_usage.completion_tokens += response.usage.completion_tokens;
             total_usage.total_tokens += response.usage.total_tokens;
 
-            if !response.wants_tools() {
+            let tool_names: Vec<&str> = response
+                .tool_calls
+                .iter()
+                .map(|c| c.name.as_str())
+                .collect();
+            let content_preview: String = response.content.chars().take(120).collect();
+            tracing::info!(
+                iteration,
+                finish_reason = ?response.finish_reason,
+                tool_calls = tool_names.len(),
+                tool_names = ?tool_names,
+                content_preview = %content_preview,
+                "tool_loop: LLM response"
+            );
+            // Termination: stop when the model stops requesting tools.
+            // Also stop when finish_reason is Stop — some OpenAI-compatible
+            // servers emit tool_calls alongside a "stop" finish_reason.
+            if !response.wants_tools() || response.finish_reason == crate::llm::FinishReason::Stop {
+                if response.wants_tools() {
+                    tracing::warn!(
+                        iteration,
+                        tool_names = ?tool_names,
+                        "tool_loop: finish_reason=Stop but tool_calls present — \
+                         treating content as final answer (server quirk)"
+                    );
+                    // Clear tool_calls so callers don't dispatch "final answer"
+                    // tool calls that the loop intentionally chose not to run.
+                    let mut response = response;
+                    response.tool_calls.clear();
+                    return Ok((response, total_usage));
+                }
                 return Ok((response, total_usage));
             }
+
+            last_response = Some(response.clone());
 
             // Push the assistant's tool-call message.
             req.messages.push(Message {
@@ -481,6 +516,11 @@ impl Agent {
 
             // Execute each requested tool and feed results back.
             for call in &response.tool_calls {
+                tracing::debug!(
+                    tool = %call.name,
+                    args_preview = %call.arguments.to_string().chars().take(200).collect::<String>(),
+                    "tool_loop: dispatching tool"
+                );
                 let result = match self
                     .tools
                     .dispatch(&call.name, call.arguments.clone())
@@ -490,11 +530,68 @@ impl Agent {
                     Err(e) => format!("ERROR: {e}"),
                 };
                 let truncated = truncate(&result, 8_000);
+                tracing::debug!(
+                    tool = %call.name,
+                    result_len = truncated.len(),
+                    result_preview = %truncated.chars().take(120).collect::<String>(),
+                    "tool_loop: tool result"
+                );
                 req.messages.push(Message::tool_result(&call.id, truncated));
+            }
+
+            // ── Convergence pressure ─────────────────────────────────────
+            // Some models (especially smaller OpenAI-compatible ones) never
+            // stop calling tools on their own — they explore indefinitely.
+            // When the tool-call budget is running low, inject a user message
+            // that forces the model to produce a final answer. Each tier is
+            // injected at most once to avoid flooding the context.
+            let remaining = self.config.max_tool_iterations - iteration - 1;
+            let quarter = (self.config.max_tool_iterations / 4).max(1);
+            let half = self.config.max_tool_iterations / 2;
+            if remaining > 0 && remaining <= quarter && !hard_sent {
+                hard_sent = true;
+                tracing::warn!(
+                    iteration,
+                    remaining,
+                    "tool_loop: injecting hard convergence message"
+                );
+                req.messages.push(Message::user(
+                    "CRITICAL: You have very few tool calls remaining. \
+                     You MUST produce your final answer now as plain text. \
+                     Do NOT call any more tools. Synthesize what you have \
+                     learned and write your answer.",
+                ));
+            } else if remaining > 0 && remaining <= half && !soft_sent {
+                soft_sent = true;
+                tracing::info!(
+                    iteration,
+                    remaining,
+                    "tool_loop: injecting soft convergence reminder"
+                );
+                req.messages.push(Message::user(
+                    "REMINDER: You have used more than half your tool budget. \
+                     Wrap up exploration and produce your final answer soon.",
+                ));
             }
         }
 
-        Err(AgentError::MaxIterations(self.config.max_tool_iterations))
+        // Graceful degradation: the model didn't self-terminate, but it may
+        // have produced useful content in its last response. Return that
+        // content (with tool_calls cleared) rather than crashing the entire
+        // agent. Downstream phases may still fail to parse it, but at least
+        // the error message will be meaningful instead of "max iterations".
+        tracing::warn!(
+            max_iterations = self.config.max_tool_iterations,
+            "tool_loop: model did not converge — returning last response as fallback"
+        );
+        let mut fallback = last_response.unwrap_or_else(|| {
+            CompletionResponse::text(
+                "ERROR: tool loop exhausted without any response from the model.",
+            )
+        });
+        fallback.tool_calls.clear();
+        fallback.finish_reason = crate::llm::FinishReason::Stop;
+        Ok((fallback, total_usage))
     }
 
     /// Resolve the model name configured for a complexity tier.
@@ -549,6 +646,7 @@ impl Agent {
              ## Architecture Elements Cited\n{:?}\n\n\
              ## Instructions\n\
              Break this goal into concrete subtasks. Each subtask must specify:\n\
+             - `id`: a short unique identifier (e.g. \"s1\", \"s2\")\n\
              - `description`: what to do (concise, actionable)\n\
              - `tier`: cheap (classification/extraction), mid (standard coding), \
                or premium (hard architecture reasoning)\n\
@@ -560,13 +658,26 @@ impl Agent {
             comprehension.summary, comprehension.cited_elements,
         );
 
-        let req =
-            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
+        let req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user)
+            .with_tools(self.tools.schemas());
 
         let (response, _usage) = self.run_tool_loop(req).await?;
 
         // Parse the plan from the LLM response.
         let plan = parse_plan_from_response(&response.content, goal, self.config.tdd);
+
+        tracing::warn!(
+            response_len = response.content.len(),
+            subtask_count = plan.subtasks.len(),
+            risks = plan.risks.len(),
+            "plan:parsed"
+        );
+        if plan.subtasks.is_empty() {
+            tracing::warn!(
+                raw_response = %response.content.chars().take(2000).collect::<String>(),
+                "plan:empty — model returned 0 subtasks"
+            );
+        }
 
         let mut plan = plan;
         if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
@@ -628,18 +739,30 @@ impl Agent {
              ### Critic suggestions\n{suggestions}\n\n\
              ## Instructions\n\
              Output a REVISED plan as a JSON object with `subtasks` and `risks` arrays. \
-             Each subtask needs `description`, `tier` (cheap|mid|premium), \
+             Each subtask needs `id` (short unique string like \"s1\"), `description`, `tier` (cheap|mid|premium), \
              `kind` (test_author|implement|verify|review), `files`, and \
              `acceptance_criteria`. Do not repeat failed approaches.{tdd_note}",
             comprehension.summary,
             critique.score * 100.0,
         );
 
-        let req =
-            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
+        let req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user)
+            .with_tools(self.tools.schemas());
 
         let (response, _usage) = self.run_tool_loop(req).await?;
         let mut plan = parse_plan_from_response(&response.content, goal, self.config.tdd);
+
+        tracing::warn!(
+            response_len = response.content.len(),
+            subtask_count = plan.subtasks.len(),
+            "replan:parsed"
+        );
+        if plan.subtasks.is_empty() {
+            tracing::warn!(
+                raw_response = %response.content.chars().take(2000).collect::<String>(),
+                "replan:empty — model returned 0 subtasks"
+            );
+        }
 
         if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
             return Err(AgentError::HookAborted(reason));
@@ -1501,15 +1624,20 @@ const COMPREHENSION_SYSTEM_PROMPT: &str = "\
 You are a Principal Engineer with deep architectural expertise. \
 Your job is to understand codebases thoroughly before recommending changes.\n\n\
 Rules:\n\
-1. ALWAYS use tools to ground your understanding — never guess.\n\
+1. Use tools to ground your understanding — never guess. \
+   BUT limit yourself to 3-5 tool calls. After that, STOP calling tools and \
+   produce your understanding as plain text.\n\
 2. Cite architecture element IDs (e.g. Sruja.CLI, Sruja.Graph) in your findings.\n\
 3. Assess blast radius and risks.\n\
-4. Be concise. Cite evidence, not speculation.";
+4. Be concise. Cite evidence, not speculation.\n\n\
+IMPORTANT: Once you have enough context (usually after 2-4 tool calls), you MUST \
+stop calling tools and write your final answer as plain text in your response. \
+Do NOT keep calling tools indefinitely.";
 
 pub(crate) const PLAN_SYSTEM_PROMPT: &str = "\
 You are a Principal Engineer decomposing work into concrete subtasks.\n\n\
 Rules:\n\
-1. Each subtask must have: description, tier (cheap/mid/premium), kind (test_author/implement/verify/review), files, acceptance_criteria.\n\
+1. Each subtask must have: id (short unique string like \"s1\"), description, tier (cheap/mid/premium), kind (test_author/implement/verify/review), files, acceptance_criteria.\n\
 2. If TDD mode: test_author subtasks MUST come before implement subtasks.\n\
 3. Tag complexity accurately: classification/extraction = cheap, standard coding = mid, hard architecture = premium.\n\
 4. Identify risks and edge cases.\n\
@@ -1518,11 +1646,15 @@ Rules:\n\
 const EXECUTION_SYSTEM_PROMPT: &str = "\
 You are a Principal Engineer executing a specific subtask.\n\n\
 Rules:\n\
-1. Use tools to accomplish the task — never guess file contents.\n\
+1. Use tools to accomplish the task — never guess file contents. \
+   Read the target file(s) first, then make your edits, then STOP.\n\
 2. Be precise and minimal — make the smallest change that satisfies acceptance criteria.\n\
 3. If in TestAuthor phase: write tests only, do not touch implementation.\n\
 4. If in Implement phase: write code to pass the frozen tests, do not modify tests.\n\
-5. Cite evidence for every decision.";
+5. Cite evidence for every decision.\n\n\
+IMPORTANT: After making your edits, you MUST stop calling tools and write a \
+summary of what you changed as plain text. Do NOT keep calling tools after \
+your edits are complete.";
 
 const CRITIQUE_SYSTEM_PROMPT: &str = "\
 You are a senior architect reviewing a change. Be adversarial but fair.\n\n\
@@ -1578,12 +1710,53 @@ pub fn parse_plan_from_response(content: &str, goal: &str, tdd: bool) -> Plan {
             .and_then(|s| s.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|st| {
+                    .enumerate()
+                    .filter_map(|(idx, st)| {
+                        // `id` is optional — synthesize if the model omits it.
+                        let id = st
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .map(String::from)
+                            .unwrap_or_else(|| format!("s{}", idx + 1));
+
+                        // `description`, `tier`, `kind` are required — drop with a
+                        // diagnostic log if missing so failures are traceable.
+                        let description = match st.get("description").and_then(|v| v.as_str()) {
+                            Some(d) => d.to_string(),
+                            None => {
+                                tracing::warn!(
+                                    index = idx,
+                                    "plan subtask dropped: missing or invalid 'description'"
+                                );
+                                return None;
+                            }
+                        };
+                        let tier_str = match st.get("tier").and_then(|v| v.as_str()) {
+                            Some(t) => t,
+                            None => {
+                                tracing::warn!(
+                                    index = idx,
+                                    "plan subtask dropped: missing or invalid 'tier'"
+                                );
+                                return None;
+                            }
+                        };
+                        let kind_str = match st.get("kind").and_then(|v| v.as_str()) {
+                            Some(k) => k,
+                            None => {
+                                tracing::warn!(
+                                    index = idx,
+                                    "plan subtask dropped: missing or invalid 'kind'"
+                                );
+                                return None;
+                            }
+                        };
+
                         Some(Subtask {
-                            id: st.get("id")?.as_str()?.to_string(),
-                            description: st.get("description")?.as_str()?.to_string(),
-                            tier: parse_tier(st.get("tier")?.as_str()?),
-                            kind: parse_kind(st.get("kind")?.as_str()?),
+                            id,
+                            description,
+                            tier: parse_tier(tier_str),
+                            kind: parse_kind(kind_str),
                             files: st
                                 .get("files")
                                 .and_then(|f| f.as_array())
@@ -1618,6 +1791,28 @@ pub fn parse_plan_from_response(content: &str, goal: &str, tdd: bool) -> Plan {
             })
             .unwrap_or_default();
 
+        // If no subtasks survived parsing, fall back to a single subtask
+        // so the agent still attempts the goal rather than silently doing nothing.
+        if subtasks.is_empty() {
+            tracing::warn!(
+                "plan parsed successfully but contained 0 subtasks — \
+                 falling back to single-subtask plan"
+            );
+            return Plan {
+                goal: goal.to_string(),
+                subtasks: vec![Subtask {
+                    id: "s1".into(),
+                    description: goal.to_string(),
+                    tier: TaskTier::Mid,
+                    kind: SubtaskKind::Implement,
+                    files: Vec::new(),
+                    acceptance_criteria: Vec::new(),
+                }],
+                tdd,
+                risks,
+            };
+        }
+
         return Plan {
             goal: goal.to_string(),
             subtasks,
@@ -1630,7 +1825,7 @@ pub fn parse_plan_from_response(content: &str, goal: &str, tdd: bool) -> Plan {
     Plan {
         goal: goal.to_string(),
         subtasks: vec![Subtask {
-            id: "1".into(),
+            id: "s1".into(),
             description: goal.to_string(),
             tier: TaskTier::Mid,
             kind: SubtaskKind::Implement,
@@ -1869,6 +2064,57 @@ mod tests {
         let ids = extract_element_ids("See Sruja.CLI and Sruja.Graph.KnowledgeGraph for details.");
         assert!(ids.contains(&"Sruja.CLI".to_string()));
         assert!(ids.contains(&"Sruja.Graph.KnowledgeGraph".to_string()));
+    }
+
+    #[test]
+    fn parse_plan_synthesizes_id_when_missing() {
+        // Simulate a real LLM that follows the prompt but omits `id`
+        // (the prompt didn't ask for it before the fix).
+        let raw = r#"{"subtasks":[
+            {"description":"write add()","tier":"mid","kind":"implement","files":["src/main.rs"]},
+            {"description":"test add()","tier":"cheap","kind":"test_author","files":["src/main.rs"]}
+        ],"risks":[]}"#;
+        let plan = parse_plan_from_response(raw, "add function", false);
+        assert_eq!(plan.subtasks.len(), 2, "both subtasks should survive");
+        assert_eq!(plan.subtasks[0].id, "s1", "first id synthesized");
+        assert_eq!(plan.subtasks[1].id, "s2", "second id synthesized");
+        assert_eq!(plan.subtasks[0].description, "write add()");
+    }
+
+    #[test]
+    fn parse_plan_drops_subtask_missing_required_field() {
+        // A subtask missing `tier` should be dropped (not crash), while
+        // valid siblings survive.
+        let raw = r#"{"subtasks":[
+            {"description":"ok","tier":"mid","kind":"implement"},
+            {"description":"no tier here","kind":"verify"}
+        ],"risks":[]}"#;
+        let plan = parse_plan_from_response(raw, "test", false);
+        assert_eq!(plan.subtasks.len(), 1, "malformed subtask dropped");
+        assert_eq!(plan.subtasks[0].description, "ok");
+    }
+
+    #[test]
+    fn parse_plan_preserves_explicit_ids() {
+        let raw = r#"{"subtasks":[
+            {"id":"custom-id","description":"task","tier":"premium","kind":"review"}
+        ],"risks":[]}"#;
+        let plan = parse_plan_from_response(raw, "test", false);
+        assert_eq!(plan.subtasks.len(), 1);
+        assert_eq!(plan.subtasks[0].id, "custom-id");
+    }
+
+    #[test]
+    fn parse_plan_empty_array_falls_back_to_single_subtask() {
+        // Model returned valid JSON but with an empty subtasks array
+        // (e.g. it hallucinated the work was already done).
+        let raw = r#"{"subtasks":[],"risks":["nothing to do"]}"#;
+        let plan = parse_plan_from_response(raw, "add the function", false);
+        assert_eq!(plan.subtasks.len(), 1, "fallback produces single subtask");
+        assert_eq!(plan.subtasks[0].id, "s1");
+        assert_eq!(plan.subtasks[0].description, "add the function");
+        assert_eq!(plan.subtasks[0].kind, SubtaskKind::Implement);
+        assert_eq!(plan.risks, vec!["nothing to do"]);
     }
 
     // --- Loop spine tests (critique -> replan closure) ---

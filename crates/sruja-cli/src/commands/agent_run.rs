@@ -1460,12 +1460,13 @@ fn is_git_worktree(repo_root: &Path, path: &Path) -> bool {
         .is_some_and(|s| s.contains(path.to_string_lossy().as_ref()))
 }
 
-async fn run_verification_steps_in_repo(
+pub(crate) async fn run_verification_steps_in_repo(
     repo_path: &Path,
     verification: &[AgentStep],
     max_runtime_ms_per_step: u64,
     allowed_sruja_subcommands: &[String],
     allowed_verify_execs: &[String],
+    continue_on_error: bool,
 ) -> Result<Vec<StepObservation>, CliError> {
     let mut out = Vec::new();
     for v in verification {
@@ -1499,6 +1500,9 @@ async fn run_verification_steps_in_repo(
             },
         };
         out.push(obs);
+        if !continue_on_error && out.last().is_some_and(|o| o.status == "error") {
+            break;
+        }
     }
     Ok(out)
 }
@@ -1549,6 +1553,7 @@ impl<'a> sruja_agent::TrajectoryExecutor for WorktreeVerificationExecutor<'a> {
                 self.max_runtime_ms_per_step,
                 self.allowed_sruja_subcommands,
                 self.allowed_verify_execs,
+                true, // run all steps even if one fails (worktree verification)
             )
             .await?;
             let outcome = build_trajectory_outcome(

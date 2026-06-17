@@ -11,14 +11,22 @@ use serde_json::{json, Value};
 use super::{Tool, ToolError};
 
 /// Resolve a user-supplied path relative to `root`, rejecting escapes.
+///
+/// The root is canonicalized to an absolute path so that `starts_with` works
+/// correctly. Without canonicalization, a root like `.` (whose only component
+/// is `CurDir`) would never match a normalized path (whose first component is
+/// `Normal`), causing every file operation to fail.
 pub fn resolve_path(root: &Path, requested: &str) -> Result<PathBuf, ToolError> {
     let p = Path::new(requested);
     if p.is_absolute() {
         return Err(ToolError::PathEscape(requested.into()));
     }
-    let joined = root.join(p);
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|e| ToolError::Execution(format!("invalid workspace root '{root:?}': {e}")))?;
+    let joined = canonical_root.join(p);
     let normalized = normalize_path(&joined);
-    if !normalized.starts_with(root) {
+    if !normalized.starts_with(&canonical_root) {
         return Err(ToolError::PathEscape(requested.into()));
     }
     Ok(normalized)
@@ -640,11 +648,24 @@ mod tests {
 
     #[test]
     fn path_resolution_rejects_escape() {
-        let root = Path::new("/workspace");
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
         assert!(resolve_path(root, "src/main.rs").is_ok());
         assert!(resolve_path(root, "../etc/passwd").is_err());
         assert!(resolve_path(root, "/etc/passwd").is_err());
         assert!(resolve_path(root, "src/../../etc/passwd").is_err());
+    }
+
+    #[test]
+    fn path_resolution_works_with_relative_root() {
+        // Regression: resolve_path must work when root is "." (relative).
+        // Path::starts_with is component-based, so "." (CurDir) never matches
+        // normalized paths (Normal components). Canonicalizing the root fixes this.
+        let root = Path::new(".");
+        assert!(resolve_path(root, "Cargo.toml").is_ok());
+        assert!(resolve_path(root, "crates/sruja-cli/Cargo.toml").is_ok());
+        // Escape still rejected
+        assert!(resolve_path(root, "../../../etc/passwd").is_err());
     }
 
     #[test]

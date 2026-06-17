@@ -146,6 +146,32 @@ impl LlmClient for OpenAiClient {
             return Err(LlmError::Api { status, body: text });
         };
 
+        // Observatory: log the raw response shape so we can diagnose
+        // OpenAI-compatible servers that deviate from the standard format
+        // (e.g. tool_calls without id, arguments as object not string).
+        if let Some(choices) = json.get("choices").and_then(|c| c.as_array()) {
+            for (i, choice) in choices.iter().enumerate() {
+                let fr = choice.get("finish_reason").and_then(|v| v.as_str());
+                let has_tc = choice
+                    .get("message")
+                    .and_then(|m| m.get("tool_calls"))
+                    .is_some();
+                let tc_count = choice
+                    .get("message")
+                    .and_then(|m| m.get("tool_calls"))
+                    .and_then(|c| c.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+                tracing::debug!(
+                    choice = i,
+                    finish_reason = ?fr,
+                    has_tool_calls = has_tc,
+                    tool_call_count = tc_count,
+                    "openai_client: raw response choice"
+                );
+            }
+        }
+
         parse_completion(&json, &model)
     }
 
