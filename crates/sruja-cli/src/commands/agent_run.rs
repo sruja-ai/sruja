@@ -108,6 +108,15 @@ pub(crate) struct AgentPlanOutput {
     pub(crate) target: AgentTarget,
     pub(crate) facts_refs: Vec<String>,
     pub(crate) facts: Value,
+    /// Path to a `.sruja` proposal (e.g. `repo.sruja.working` or
+    /// `.sruja/proposals/<id>.sruja`) describing the architecture delta this
+    /// plan intends. When populated, architecture-grade verify steps
+    /// (`sruja lint`, `sruja check_violations`, `sruja check_drift`) — already
+    /// in the sruja-subcommand allowlist — can grade the actor against its own
+    /// architecture-as-code. None when the plan does not move boundaries or
+    /// when no proposal has been authored yet.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) proposal_sruja: Option<String>,
     pub(crate) steps: Vec<AgentStep>,
     pub(crate) verification: Vec<AgentStep>,
     pub(crate) risks: Vec<String>,
@@ -975,6 +984,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             "agent_history".to_string(),
         ],
         facts: facts_payload.clone(),
+        proposal_sruja: None,
         steps,
         verification,
         risks,
