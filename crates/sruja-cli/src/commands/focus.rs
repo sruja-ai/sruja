@@ -17,7 +17,10 @@ use crate::integrations::EnrichmentResult;
 use crate::utils::colors;
 use crate::utils::run_id::generate_run_id;
 use crate::utils::run_snapshots::write_json_snapshot;
-use sruja_agent::{AgenticMemory, ExperimentOutcome, MemoryError};
+use sruja_agent::{
+    calibration, AgenticMemory, AskInput, AskPlan, ExperimentOutcome, MemoryError, TargetHints,
+    Thresholds,
+};
 use sruja_graph::{compute_context_score, KnowledgeGraph, ReasonedWhyStep};
 
 const FOCUS_FOR_AI_SCHEMA_VERSION: &str = "focus_for_ai/v1";
@@ -90,6 +93,10 @@ pub struct FocusBriefing {
     /// Summary of the last agent session (session handoff context).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_session: Option<serde_json::Value>,
+    /// Ask/proceed calibration verdict for this target (governance-owned, not
+    /// negotiable by the actor). None only if computation is intentionally skipped.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ask_plan: Option<AskPlan>,
 }
 
 /// Learnings surfaced for a focus target (token-budget capped), with optional retrieval accounting.
@@ -523,6 +530,53 @@ pub fn surface_agent_learnings(
     })
 }
 
+/// Load ask/proceed thresholds from `.sruja/config.toml` `[ask]`, falling back to defaults.
+pub fn load_ask_thresholds(repo_path: &Path) -> Thresholds {
+    let mut t = Thresholds::default();
+    if let Some(cfg) = crate::integrations::load_repo_config(repo_path) {
+        if let Some(ask) = cfg.ask {
+            if let Some(v) = ask.blast_ask {
+                t.blast_ask = v;
+            }
+            if let Some(v) = ask.confidence_floor {
+                t.confidence_floor = v;
+            }
+            if let Some(v) = ask.confidence_flag {
+                t.confidence_flag = v;
+            }
+            if let Some(v) = ask.trust_default {
+                t.trust_default = v;
+            }
+        }
+    }
+    t
+}
+
+/// Pure ask/proceed computation from briefing-level signals. Extracted so it
+/// can be unit-tested without constructing a full knowledge graph.
+pub fn compute_ask_plan(
+    kind: &str,
+    label: &str,
+    blast_total: usize,
+    confidence: Option<u8>,
+    memory_hits: &[MemoryHit],
+    thresholds: &Thresholds,
+) -> AskPlan {
+    let has_precedent = memory_hits
+        .iter()
+        .any(|h| h.hitl_kind.as_deref() == Some("precedent"));
+    let reversibility = calibration::infer_reversibility(TargetHints { kind, label });
+    let input = AskInput {
+        reversibility,
+        blast_radius: blast_total.min(u16::MAX as usize) as u16,
+        confidence,
+        trust_level: None,
+        has_precedent,
+        policy_says_ask: false,
+    };
+    calibration::decide(&input, thresholds)
+}
+
 /// Build the focus briefing.
 pub fn build_focus_briefing(
     graph: &KnowledgeGraph,
@@ -853,6 +907,25 @@ pub fn build_focus_briefing(
     // -- Context Score --
     let score = compute_context_score(graph, scan_node_count, repo_path, 0);
 
+    // -- Ask/Proceed Calibration --
+    // Confidence is unmeasured at the deterministic focus layer (no LLM/grader
+    // signal here); only blast radius, reversibility, and precedent drive the
+    // verdict. In compact mode blast radius is intentionally zeroed, so the
+    // verdict would be misleading — skip it.
+    let ask_plan = if compact {
+        None
+    } else {
+        let thresholds = load_ask_thresholds(repo_path);
+        Some(compute_ask_plan(
+            &target.kind,
+            &target.label,
+            blast_radius.total_affected,
+            None,
+            &memory_hits,
+            &thresholds,
+        ))
+    };
+
     // -- Last Session Summary (session handoff) --
     let last_session = load_last_session_summary(repo_path);
 
@@ -907,6 +980,7 @@ pub fn build_focus_briefing(
         linked_requirements,
         surfaced_learning_ids,
         last_session: if compact { None } else { last_session },
+        ask_plan,
     }
 }
 
@@ -1698,6 +1772,199 @@ fn print_focus_briefing(b: &FocusBriefing) {
         width = width.saturating_sub(45)
     );
 
+    // Ask / Proceed Calibration
+    if let Some(plan) = &b.ask_plan {
+        let (tag, tag_color) = match plan.verdict {
+            sruja_agent::Verdict::Ask => ("ASK", colored::Color::Red),
+            sruja_agent::Verdict::ProceedAndFlag => ("PROCEED*", colored::Color::Yellow),
+            sruja_agent::Verdict::ProceedCitingPrecedent => {
+                ("PROCEED (precedent)", colored::Color::Green)
+            }
+            sruja_agent::Verdict::ProceedSilent => ("PROCEED", colored::Color::Green),
+        };
+        let door = match plan.reversibility {
+            sruja_agent::Reversibility::OneWay => "one-way",
+            sruja_agent::Reversibility::TwoWay => "two-way",
+        };
+        let blast_s = plan.blast_radius.to_string();
+        let conf_s = match plan.confidence {
+            Some(c) => c.to_string(),
+            None => "?".to_string(),
+        };
+        println!("│{:width$}│", "", width = width);
+        let fixed = 40;
+        let used = fixed + tag.len() + door.len() + blast_s.len() + conf_s.len();
+        println!(
+            "│  Ask/Proceed: {}  [{} door, blast {}, conf {}]{:width$}│",
+            tag.color(tag_color),
+            door,
+            blast_s,
+            conf_s,
+            "",
+            width = width.saturating_sub(used)
+        );
+        let reason = truncate(&plan.reason, width.saturating_sub(6));
+        println!(
+            "│    {}{:width$}│",
+            reason,
+            "",
+            width = width.saturating_sub(6 + reason.len())
+        );
+    }
+
     println!("╰{}╯", border);
     println!();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn hit(kind: Option<&str>) -> MemoryHit {
+        MemoryHit {
+            id: "x".into(),
+            kind: Some("learning".into()),
+            hitl_kind: kind.map(str::to_string),
+            outcome: "success".into(),
+            match_reason: "test".into(),
+            timestamp: "now".into(),
+            hypothesis: "h".into(),
+            guardrail_advice: "g".into(),
+        }
+    }
+
+    #[test]
+    fn compute_ask_plan_asks_on_one_way_door() {
+        let plan = compute_ask_plan(
+            "Database",
+            "Orders DB",
+            0,
+            Some(100),
+            &[],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::Ask);
+        assert_eq!(plan.reversibility, sruja_agent::Reversibility::OneWay);
+    }
+
+    #[test]
+    fn compute_ask_plan_proceeds_silent_on_simple_two_way_target() {
+        let plan = compute_ask_plan(
+            "container",
+            "Web Server",
+            1,
+            Some(90),
+            &[],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::ProceedSilent);
+    }
+
+    #[test]
+    fn compute_ask_plan_unmeasured_confidence_proceeds_silent_on_two_way_low_blast() {
+        let plan = compute_ask_plan(
+            "component",
+            "API handler",
+            1,
+            None,
+            &[],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::ProceedSilent);
+        assert_eq!(plan.confidence, None);
+    }
+
+    #[test]
+    fn compute_ask_plan_unmeasured_confidence_still_asks_on_one_way_door() {
+        let plan = compute_ask_plan(
+            "Database",
+            "Orders DB",
+            0,
+            None,
+            &[],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::Ask);
+    }
+
+    #[test]
+    fn compute_ask_plan_flags_at_mid_confidence() {
+        let plan = compute_ask_plan(
+            "component",
+            "API handler",
+            1,
+            Some(60),
+            &[],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::ProceedAndFlag);
+    }
+
+    #[test]
+    fn compute_ask_plan_asks_on_high_blast_radius() {
+        let plan = compute_ask_plan(
+            "component",
+            "API handler",
+            50,
+            Some(95),
+            &[],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::Ask);
+    }
+
+    #[test]
+    fn compute_ask_plan_cites_precedent_from_memory_hit() {
+        let plan = compute_ask_plan(
+            "Database",
+            "Orders DB",
+            50,
+            Some(10),
+            &[hit(Some("precedent"))],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::ProceedCitingPrecedent);
+    }
+
+    #[test]
+    fn compute_ask_plan_ignores_non_precedent_memory_hits() {
+        let plan = compute_ask_plan(
+            "Database",
+            "Orders DB",
+            0,
+            Some(100),
+            &[hit(Some("correction")), hit(Some("guardrail"))],
+            &Thresholds::default(),
+        );
+        assert_eq!(plan.verdict, sruja_agent::Verdict::Ask);
+    }
+
+    #[test]
+    fn load_ask_thresholds_falls_back_to_defaults_without_config() {
+        let dir = tempfile::tempdir().unwrap();
+        let t = load_ask_thresholds(dir.path());
+        assert_eq!(t, Thresholds::default());
+    }
+
+    #[test]
+    fn load_ask_thresholds_reads_config_overrides() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg_dir = dir.path().join(".sruja");
+        fs::create_dir_all(&cfg_dir).unwrap();
+        fs::write(
+            cfg_dir.join("config.toml"),
+            "[ask]\nblast_ask = 2\nconfidence_floor = 80\n",
+        )
+        .unwrap();
+
+        let t = load_ask_thresholds(dir.path());
+        assert_eq!(t.blast_ask, 2);
+        assert_eq!(t.confidence_floor, 80);
+        assert_eq!(t.confidence_flag, Thresholds::default().confidence_flag);
+        assert_eq!(t.trust_default, Thresholds::default().trust_default);
+
+        let plan = compute_ask_plan("component", "API", 3, Some(85), &[], &t);
+        assert_eq!(plan.verdict, sruja_agent::Verdict::Ask);
+    }
 }

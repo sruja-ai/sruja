@@ -19,6 +19,8 @@ pub struct SrujaConfigFile {
     pub context_engineering: ContextEngineeringConfig,
     #[serde(default)]
     pub verify: VerifyConfig,
+    #[serde(default)]
+    pub ask: Option<AskConfig>,
 }
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
@@ -128,6 +130,16 @@ pub struct VerifyProfileConfig {
     /// Timeout per step in milliseconds.
     #[allow(dead_code)]
     pub timeout_ms: Option<u64>,
+}
+
+/// Ask/proceed calibration thresholds, loaded from `[ask]` in `.sruja/config.toml`.
+/// All fields optional; omitted fields fall back to [`sruja_agent::Thresholds::default`].
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct AskConfig {
+    pub blast_ask: Option<u16>,
+    pub confidence_floor: Option<u8>,
+    pub confidence_flag: Option<u8>,
+    pub trust_default: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy)]

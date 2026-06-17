@@ -36,6 +36,7 @@
 //! # }
 //! ```
 
+pub mod calibration;
 pub mod cognition;
 pub mod dlc;
 pub mod executor;
@@ -50,6 +51,10 @@ pub mod program;
 pub mod tool;
 pub mod verify;
 
+pub use calibration::{
+    decide, infer_reversibility, proceed_decision_record, AskInput, AskPlan, Reversibility,
+    TargetHints, Thresholds, Verdict,
+};
 pub use cognition::{
     Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult, Comprehension, Critique,
     LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan, VerifierConfig,

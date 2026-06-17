@@ -1039,6 +1039,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 spend_cap,
                 no_oscillation_detection,
                 format,
+                yes,
             } => {
                 commands::agent_loop(&commands::AgentLoopOptions {
                     repo: &repo,
@@ -1051,6 +1052,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     spend_cap_usd: spend_cap,
                     no_oscillation_detection,
                     format: &format,
+                    force_proceed: yes,
                 })
                 .await
             }

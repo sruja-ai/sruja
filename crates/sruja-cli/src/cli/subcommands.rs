@@ -414,6 +414,9 @@ pub enum AgentCommand {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Force proceed past the calibration gate (override Ask verdict; no calibration DR written)
+        #[arg(long, alias = "force-proceed")]
+        yes: bool,
     },
 }
 

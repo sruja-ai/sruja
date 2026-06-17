@@ -658,8 +658,8 @@ impl Agent {
             comprehension.summary, comprehension.cited_elements,
         );
 
-        let req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user)
-            .with_tools(self.tools.schemas());
+        let req =
+            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
 
         let (response, _usage) = self.run_tool_loop(req).await?;
 
@@ -746,8 +746,8 @@ impl Agent {
             critique.score * 100.0,
         );
 
-        let req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user)
-            .with_tools(self.tools.schemas());
+        let req =
+            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
 
         let (response, _usage) = self.run_tool_loop(req).await?;
         let mut plan = parse_plan_from_response(&response.content, goal, self.config.tdd);
