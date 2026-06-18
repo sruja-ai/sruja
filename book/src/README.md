@@ -1,54 +1,59 @@
-# Sruja — context engineering for software changes
+# Sruja — autonomous coding agent with deterministic gates
 
 <img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
 
-**Capture knowledge, retrieve context, verify changes.** Sruja scans code, links decision context, reports structural drift, and plugs into Cursor and other agents via MCP. Optional `repo.sruja` is reviewed intent in Git, not the primary product.
+**Sruja is a CLI-first autonomous coding agent.** It scans your repo, grounds every edit in real topology, and verifies the result before you ship. Also works as a passive harness inside any editor (Cursor, Copilot, Claude, Windsurf) via MCP.
 
-## Why Sruja?
+## The Problem
 
-### The Problem
+AI coding agents are fast, but they don't know your repo. They invent dependencies, break layer boundaries, and repeat mistakes. There's no built-in check between "generate" and "ship."
 
-Most architecture tools make you choose:
+## The Solution
 
-- **Visual-only tools** (Draw.io) – no code, no version control, hard to maintain
-- **Code-only tools** (Mermaid, PlantUML) – no validation, manual diagram updates
-- **Stale diagrams** – architecture drifts from reality, documentation gets outdated
+Sruja closes that gap with a **grounded agent loop**:
 
-### Our Solution
+```text
+focus / drift  →  agent edits code  →  verify-task  →  (critique or approve)
+```
 
-Sruja gives AI assistants and humans evidence-backed context for software changes:
+| Capability | What you get |
+|------------|-------------|
+| **Structural scan** | Cycles, layer violations, god modules — file-level evidence |
+| **Autonomous agent** | `sruja agent loop` — plans, edits, verifies, critiques, replans |
+| **Editor integration** | MCP `coding` profile — grounded context + post-edit verification |
+| **Deterministic gates** | `verify-task`, `drift`, `intent check` — the actor never grades itself |
+| **Optional reviewed intent** | `repo.sruja` when teams want durable boundaries in Git |
 
-| Feature                 | What you get                                                     |
-| ----------------------- | ---------------------------------------------------------------- |
-| **Structural scan**     | Cycles, layer violations, god modules — file-level evidence      |
-| **Task context**        | `focus`, `ai`, and MCP for targeted retrieval                    |
-| **Built-in gates**      | Drift, verification, CI-friendly outputs                         |
-| **Optional reviewed intent** | `repo.sruja` when teams want durable intent in Git         |
-| **Derived outputs**     | Markdown, Mermaid, and other exports when communication needs them |
+## Quick Start
 
-### Who It's For
+```bash
+# 1. Install
+curl -fsSL https://sruja.ai/install.sh | bash
 
-- **Engineering teams** who want shared knowledge and safer AI-assisted changes
-- **Tech leads** who want decisions to stay visible at change time
-- **Platform engineers** building guardrails for distributed teams
-- **AI agents** that need grounded repo context before editing
+# 2. Scan your repo
+sruja start -r .
+sruja drift -r . --structural-only --advisory
 
-## The Core Loop
+# 3. Brief a change (paste into your agent)
+sruja focus -r . --file path/to/file.rs
 
-1. **Install CLI** — `curl -fsSL https://sruja.ai/install.sh | bash`
-2. **Scan** — `sruja start -r .` then `sruja drift -r . --structural-only --advisory`
-3. **Retrieve context** — `focus`, `ai`, or MCP before edits
-4. **Verify** — `verify-task` after edits
-5. **Optional** — reviewed intent in Git with `repo.sruja`
+# 4. Verify after edits
+sruja verify-task --profile coding -r .
+```
 
-We're **ultra simple** – minimal surface area, no unnecessary apps or frameworks – and **highly functional** – what we ship works reliably for its scope.
+No `repo.sruja` required on day one.
+
+## Who It's For
+
+- **Developers using AI agents** — verify generated changes before calling work done
+- **Engineering teams** — shared knowledge and safer AI-assisted changes
+- **Tech leads** — decisions stay visible at change time
+- **Platform engineers** — guardrails for distributed teams using AI
 
 ## Stack
 
-- **Rust** – CLI, engine, LSP, WASM (single language for core)
-- **VS Code extension** – Editor integration (briefing, validation, diagnostics)
-- **Docs** – This book (mdBook, Rust-based; no TypeScript/Node)
+- **Rust** — CLI, engine, LSP, WASM
+- **VS Code extension** — editor integration (briefing, validation, diagnostics)
+- **Docs** — this book (mdBook)
 
-> **New here?** [Quick start](getting-started.md): install CLI, scan current structure, retrieve context, and verify changes. Add reviewed intent only when you want `repo.sruja` in Git. Optional learning lives separately under [Navigate](navigate.md); press **`/`** or **`S`** to search.
-
-> **Sruja "Show diagram" in code blocks:** Run `just wasm` (or `make wasm`) from the repo root once, then run `just book-serve` (or `make book-serve`, or `./serve.sh` from the book directory) so the WASM files are copied into the book output.
+> **New here?** [Quick start](getting-started.md): install, scan, focus, verify. Add reviewed intent only when you want `repo.sruja` in Git.

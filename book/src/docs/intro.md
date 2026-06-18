@@ -3,93 +3,86 @@ title: "Introduction"
 weight: 0
 ---
 
-# Introduction
+# What is Sruja?
 
-**Context engineering for knowledge and decisions.**
+**Sruja is a CLI-first autonomous coding agent with deterministic gates.**
 
-Sruja helps teams capture important engineering knowledge, retrieve the right task context for developers and AI agents, and verify that changes still align with those decisions. Optional `repo.sruja` is reviewed intent in Git, not the day-one requirement.
-
-> **New here?** Start with [Quick start](../getting-started.md) to learn the core loop: capture, retrieve, verify. Add `repo.sruja` only when you want reviewed intent in Git.
+It scans your repo, grounds every edit in real topology, and verifies the result before you ship. Sruja also works as a passive harness inside any editor (Cursor, Copilot, Claude, Windsurf) via MCP.
 
 ## The Problem
 
-How does your AI know the real architecture today?
+AI coding agents are fast, but they don't know your repo. They invent dependencies, break layer boundaries, and repeat mistakes. There's no built-in check between "generate" and "ship."
 
 | Your approach | Problems |
-|--------------|------------|
+|--------------|----------|
 | **Raw model context** | Easy to miss boundaries, invent dependencies, or forget prior decisions |
-| **Drawings in Miro/LucidChart** | Manual updates, easy to forget, drifts from code |
-| **Wiki pages** | Inconsistent, hard to maintain, no validation |
-
-Sound familiar? You're not alone. Most teams struggle with this.
+| **Manual review** | Slow, inconsistent, doesn't scale with AI-generated volume |
+| **CI-only checks** | Catches issues after merge, not before |
 
 ## The Solution
 
-**A small context loop with optional reviewed intent.**
+**A grounded agent loop with an independent grader.**
 
-With Sruja:
+```text
+focus / drift  →  agent edits code  →  verify-task  →  (critique or approve)
+```
 
-- Capture knowledge and decisions with docs, decision records, and optional reviewed intent
-- Retrieve grounded context with `focus`, `ai`, and MCP before the host agent edits
-- Verify the result with drift, intent, and `verify-task`
-- Add reviewed intent in Git (`repo.sruja`) only when the team wants stricter governance
+Sruja has two modes:
 
-Sruja is **not** a replacement for Cursor or Copilot — it is the guardrail layer beside them.
+### Autonomous mode
 
-## How This Helps
+```bash
+sruja agent loop --goal "Refactor auth boundary without breaking tests"
+```
+
+Sruja owns the full observe → act → verify → critique → replan cycle. The deterministic layer (drift, lint, verify-task, intent check) is the **independent grader** — the actor never grades itself.
+
+### Editor-hosted mode (MCP)
+
+When your editor drives the LLM, Sruja provides the grounding and verification gates:
+
+1. MCP: focus / drift state / boundary context
+2. Host LLM edits code
+3. `sruja verify-task --profile coding -r .`
+4. (optional) `sruja agent record -c "..."` on failure
+
+## How Sruja helps
 
 | Before Sruja | With Sruja |
-|----------------|-------------|
+|--------------|-----------|
 | AI guesses from partial context | AI works from repo evidence and linked decisions |
-| Knowledge lives in stale docs or chat history | Important context is captured and retrievable |
-| Hard to catch generated mistakes | Drift, intent, and verification gates catch regressions |
-| Hard to brief agents consistently | Task-scoped context is reusable |
-| Diagrams become the truth | Diagrams are optional outputs, not the product center |
+| No check between generate and ship | Deterministic gates verify every change |
+| Mistakes found in code review | Structural issues caught before review |
+| Decisions forgotten or scattered | Captured and retrievable at change time |
+| Diagrams become stale truth | Diagrams are optional exports, not the product |
 
 ---
 
 ## Start Here
 
-- [Quick start](../getting-started.md): core capture, retrieve, verify loop
-- [Getting started](getting-started.md): core workflow plus optional reviewed intent
+- [Quick start](../getting-started.md): install, scan, focus, verify
 - [CLI guide](cli.md): daily commands, CI-friendly outputs, and workflows
+- [How Sruja works](how-sruja-works.md): the agent loop in detail
 - [VS Code extension](vscode-extension.md): editor commands, diagnostics, and previews
 
 ---
 
-## What Sruja Optimizes For
-
-- **Evidence over guesses**: context starts from what exists in code and linked docs today
-- **Small surface area**: a few core workflows used consistently
-- **Explicit trade-offs**: reviewed intent is optional until the team needs it
-- **CLI-first agent**: `sruja agent loop` owns the full closed loop, or use MCP from any editor
-- **Knowledge and decisions**: context engineering, not a feature catalog
-
 ## Who is Sruja For?
 
-### Software Architects
+### Developers using AI agents
 
-- **Review changes** against evidence and intent
-- **Prevent drift** through automated gates
-- **Document decisions** with [ADRs (Architecture Decision Records)](concepts/adr.md)
-- **Keep reviewed truth** in Git when needed
-
-### Developers Using AI
-
+- **Verify generated changes** before calling work done
 - **Brief agents before edits** with the right task context
 - **Reduce risky guesses** from incomplete repo understanding
-- **Verify generated changes** before calling work done
-- **Keep prior decisions visible** at change time
 
-### Teams Maintaining Shared Knowledge
+### Engineering teams
 
-- **Capture docs and decisions** in a durable, reviewable way
-- **Integrate into CI/CD** so alignment is checked continuously
-- **Preserve reasoning** so future maintainers and agents do not start cold
-- **Export artifacts** only when communication requires them
+- **Shared knowledge** — capture docs and decisions in a durable, reviewable way
+- **CI guardrails** — alignment checked continuously
+- **Preserved reasoning** — future maintainers and agents do not start cold
 
-## Next Steps
+### Platform engineers
 
-- **New to Sruja?** Start with [Quick start](../getting-started.md)
-- **Need workflows?** Read the [CLI guide](cli.md) and [How Sruja works](how-sruja-works.md)
-- **Ready for reviewed intent?** Follow [Using Sruja in your project](using-sruja-in-your-project.md)
+- **Guardrails for AI** — structural gates that scale across teams
+- **MCP integration** — grounded context for any AI editor
+- **Optional reviewed intent** — `repo.sruja` when teams want durable boundaries in Git
