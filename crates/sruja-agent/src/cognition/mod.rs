@@ -30,7 +30,9 @@ use crate::llm::{
 pub use crate::llm::TaskTier;
 use crate::memory::{AgenticMemory, Memory};
 use crate::tool::{FileGuard, Phase, ToolError, ToolRegistry};
-use crate::verify::{all_passed, run_verification_steps, VerifyOptions, VerifyResult, VerifyStep};
+use crate::verify::{
+    all_passed, run_verification_steps, VerifyOptions, VerifyResult, VerifyStatus, VerifyStep,
+};
 use crate::LearningEntry;
 
 pub use decision::{DecisionRecord, DecisionStatus};
@@ -1191,7 +1193,9 @@ impl Agent {
             last_steps = step_results.clone();
             last_critique = Some(critique);
 
-            self.hooks.after_iteration(iteration, max_iterations, iterations.last().unwrap()).await;
+            self.hooks
+                .after_iteration(iteration, max_iterations, iterations.last().unwrap())
+                .await;
 
             // --- GUARDRAIL: spend cap (loop-level estimate) ---
             if let Some(cap) = loop_config.spend_cap_usd {
@@ -1588,7 +1592,7 @@ fn comprehension_cited_elements(plan: &Plan) -> Vec<String> {
 fn summarize_verify_failures(results: &[VerifyResult]) -> Vec<String> {
     results
         .iter()
-        .filter(|r| !r.status.is_pass())
+        .filter(|r| !matches!(r.status, VerifyStatus::Ok))
         .map(|r| {
             let detail = if r.stderr.trim().is_empty() {
                 r.stdout.trim()
@@ -1599,7 +1603,15 @@ fn summarize_verify_failures(results: &[VerifyResult]) -> Vec<String> {
                 .exit_code
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "none".to_string());
-            format!("verify '{}' failed (exit={}): {}", r.step_id, exit, detail)
+            let status_str = match r.status {
+                VerifyStatus::Failed => "failed",
+                VerifyStatus::Skipped => "skipped",
+                VerifyStatus::Ok => unreachable!(),
+            };
+            format!(
+                "verify '{}' {} (exit={}): {}",
+                r.step_id, status_str, exit, detail
+            )
         })
         .collect()
 }
@@ -1891,9 +1903,11 @@ fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
 
     // Fallback: check for approve/reject keywords.
     let lower = content.to_lowercase();
+    let is_approved = lower.contains("\napproved") || lower.starts_with("approved");
+
     Critique {
-        approved: lower.contains("approved") || lower.contains("approve"),
-        score: if lower.contains("approved") { 0.8 } else { 0.3 },
+        approved: is_approved,
+        score: if is_approved { 0.8 } else { 0.3 },
         issues: vec!["could not parse structured critique".into()],
         suggestions: Vec::new(),
         usage,
@@ -2135,6 +2149,72 @@ mod tests {
         assert_eq!(plan.subtasks[0].description, "add the function");
         assert_eq!(plan.subtasks[0].kind, SubtaskKind::Implement);
         assert_eq!(plan.risks, vec!["nothing to do"]);
+    }
+
+    #[test]
+    fn parse_critique_i_do_not_approve_does_not_flip_to_approved() {
+        let raw = "I do not approve this plan; it's missing tests.";
+        let critique = parse_critique_from_response(raw, Usage::default());
+        assert!(!critique.approved, "'I do not approve' should be rejected");
+        assert_eq!(critique.score, 0.3);
+        assert!(critique
+            .issues
+            .contains(&"could not parse structured critique".to_string()));
+    }
+
+    #[test]
+    fn parse_critique_approved_keyword_at_line_start_passes() {
+        let raw = "Approved - the plan looks solid.";
+        let critique = parse_critique_from_response(raw, Usage::default());
+        assert!(critique.approved, "'Approved' at start should pass");
+        assert_eq!(critique.score, 0.8);
+    }
+
+    #[test]
+    fn parse_critique_approved_keyword_on_new_line_passes() {
+        let raw = "I reviewed this.\nApproved - all good.";
+        let critique = parse_critique_from_response(raw, Usage::default());
+        assert!(critique.approved, "'\\nApproved' should pass");
+        assert_eq!(critique.score, 0.8);
+    }
+
+    #[test]
+    fn parse_critique_do_not_approve_fails() {
+        let raw = "do not approve - tests are missing.";
+        let critique = parse_critique_from_response(raw, Usage::default());
+        assert!(!critique.approved, "'do not approve' should fail");
+        assert_eq!(critique.score, 0.3);
+    }
+
+    #[tokio::test]
+    async fn verify_veto_when_critic_approves_but_fails_allowlisted_command() {
+        use crate::verify;
+        use verify::{VerifyOptions, VerifyStatus, VerifyStep};
+
+        let temp = tempfile::tempdir().unwrap();
+        let repo = temp.path();
+
+        let steps = vec![VerifyStep {
+            id: "test1".into(),
+            command: "cargo".into(),
+            args: vec!["test".into(), "--nonexistent-flag-xyz123".into()],
+            expected: None,
+        }];
+
+        let opts = VerifyOptions {
+            allowed_executables: vec!["cargo".into()],
+            continue_on_error: false,
+            timeout_ms: 5000,
+        };
+
+        let results = verify::run_verification_steps(&steps, &opts, repo).await;
+
+        assert!(
+            !verify::all_passed(&results),
+            "failing cargo test should not pass"
+        );
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].status, VerifyStatus::Failed);
     }
 
     // --- Loop spine tests (critique -> replan closure) ---

@@ -175,9 +175,14 @@ async fn run_one(step: &VerifyStep, timeout_ms: u64, workdir: &std::path::Path) 
     }
 }
 
-/// Whether all results passed (ok or skipped).
+/// Whether all results passed (ok only, not skipped).
+///
+/// Skipped steps are NOT considered passing — if every step is Skipped
+/// (e.g., allowlist mismatch), this returns false. This is a security
+/// boundary: the agent cannot bypass verification by misconfiguring
+/// the allowlist.
 pub fn all_passed(results: &[VerifyResult]) -> bool {
-    !results.is_empty() && results.iter().all(|r| r.status.is_pass())
+    !results.is_empty() && results.iter().all(|r| matches!(r.status, VerifyStatus::Ok))
 }
 
 #[cfg(test)]
@@ -215,5 +220,57 @@ mod tests {
             },
         ];
         assert!(!all_passed(&mixed));
+    }
+
+    #[test]
+    fn verify_skipped_is_not_pass_when_allowlist_empty() {
+        let all_skipped = vec![
+            VerifyResult {
+                step_id: "a".into(),
+                status: VerifyStatus::Skipped,
+                exit_code: None,
+                stdout: String::new(),
+                stderr: "'unknown_cmd' not in allowlist".into(),
+                elapsed_ms: 0,
+            },
+            VerifyResult {
+                step_id: "b".into(),
+                status: VerifyStatus::Skipped,
+                exit_code: None,
+                stdout: String::new(),
+                stderr: "'also_unknown' not in allowlist".into(),
+                elapsed_ms: 0,
+            },
+        ];
+        assert!(
+            !all_passed(&all_skipped),
+            "all_skipped should fail, not pass"
+        );
+    }
+
+    #[test]
+    fn verify_skipped_with_ok_does_not_pass() {
+        let mixed = vec![
+            VerifyResult {
+                step_id: "a".into(),
+                status: VerifyStatus::Skipped,
+                exit_code: None,
+                stdout: String::new(),
+                stderr: "'optional_cmd' not in allowlist".into(),
+                elapsed_ms: 0,
+            },
+            VerifyResult {
+                step_id: "b".into(),
+                status: VerifyStatus::Ok,
+                exit_code: Some(0),
+                stdout: String::new(),
+                stderr: String::new(),
+                elapsed_ms: 1,
+            },
+        ];
+        assert!(
+            !all_passed(&mixed),
+            "mixed skipped+ok should NOT pass - only pure Ok passes"
+        );
     }
 }
