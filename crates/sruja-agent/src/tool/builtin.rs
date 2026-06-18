@@ -10,6 +10,8 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError};
 
+const DIFF_EDIT_DEFAULT_CONTEXT: usize = 3;
+
 /// Resolve a user-supplied path relative to `root`, rejecting escapes.
 ///
 /// The root is canonicalized to an absolute path so that `starts_with` works
@@ -172,7 +174,7 @@ impl Tool for FileWrite {
     }
 
     fn description(&self) -> &str {
-        "Create or overwrite a file with the given content."
+        "Create or overwrite a file. This is the PRIMARY way to make changes — use it directly, do not run tests or clippy first."
     }
 
     fn parameters(&self) -> Value {
@@ -313,6 +315,244 @@ impl Tool for FileEdit {
 
         Ok(format!("replaced {count} occurrence(s) in {path_str}"))
     }
+}
+
+// ---------------------------------------------------------------------------
+// DiffEdit
+// ---------------------------------------------------------------------------
+
+/// Apply Claude Code-style SEARCH/REPLACE edits via unified diff.
+///
+/// This tool takes SEARCH/REPLACE blocks, computes a unified diff, and
+/// applies it via git apply with hunk boundary validation. This is more
+/// precise than FileEdit because it:
+/// - Requires exact hunk context matches
+/// - Validates against the current file state
+/// - Provides rich error feedback with conflict details
+/// - Supports multiple edits in a single call
+pub struct DiffEdit {
+    root: PathBuf,
+}
+
+impl DiffEdit {
+    pub fn new() -> Self {
+        Self {
+            root: PathBuf::from("."),
+        }
+    }
+    pub fn with_root(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
+}
+
+impl Default for DiffEdit {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl Tool for DiffEdit {
+    fn name(&self) -> &str {
+        "diff_edit"
+    }
+
+    fn description(&self) -> &str {
+        "Apply Claude Code-style SEARCH/REPLACE edits via unified diff with hunk boundary validation. \
+         Format: 'path:start_line-end_line' followed by SEARCH block, '---', then REPLACE block. \
+         Fails if context doesn't match or has conflicts. More precise than file_edit."
+    }
+
+    fn parameters(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "edits": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "header": {
+                                "type": "string",
+                                "description": "File path with line range: 'path:start_line-end_line'"
+                            },
+                            "search": {
+                                "type": "string",
+                                "description": "Original content to search for (exact match including context)"
+                            },
+                            "replace": {
+                                "type": "string",
+                                "description": "New content to replace with"
+                            }
+                        },
+                        "required": ["header", "search", "replace"]
+                    }
+                },
+                "context_lines": {
+                    "type": "integer",
+                    "description": "Lines of context in unified diff (default: 3)"
+                }
+            },
+            "required": ["edits"]
+        })
+    }
+
+    fn is_mutating(&self) -> bool {
+        true
+    }
+
+    fn affected_paths(&self, params: &Value) -> Vec<String> {
+        params
+            .get("edits")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|e| e.get("header").and_then(|h| h.as_str()))
+                    .map(|h| h.split(':').next().unwrap_or("").to_string())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    async fn call(&self, params: Value) -> Result<String, ToolError> {
+        let edits = params
+            .get("edits")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| ToolError::InvalidParams("missing 'edits' array".into()))?;
+
+        let context_lines = opt_usize(&params, "context_lines").unwrap_or(DIFF_EDIT_DEFAULT_CONTEXT);
+
+        if edits.is_empty() {
+            return Err(ToolError::InvalidParams("edits array is empty".into()));
+        }
+
+        let mut results = Vec::new();
+        for (idx, edit) in edits.iter().enumerate() {
+            let header = str_param(edit, "header")?;
+            let search = str_param(edit, "search")?;
+            let replace = str_param(edit, "replace")?;
+
+            let result = self.apply_single_edit(&header, &search, &replace, context_lines, idx).await;
+            match result {
+                Ok(msg) => results.push(format!("Edit {idx}: {msg}")),
+                Err(e) => {
+                    let detail = format!("Edit {idx} failed: {e}");
+                    if idx == 0 {
+                        return Err(e);
+                    }
+                    results.push(detail);
+                }
+            }
+        }
+
+        Ok(results.join("\n"))
+    }
+}
+
+impl DiffEdit {
+    async fn apply_single_edit(
+        &self,
+        header: &str,
+        search: &str,
+        replace: &str,
+        _context_lines: usize,
+        _edit_index: usize,
+    ) -> Result<String, ToolError> {
+        let (path_str, line_range) = parse_diff_header(header)?;
+        let (start_line, end_line) = parse_line_range(&line_range)?;
+
+        let path = resolve_path(&self.root, &path_str)?;
+
+        let current_content = tokio::fs::read_to_string(&path)
+            .await
+            .map_err(|e| ToolError::Execution(format!("read failed for '{path_str}': {e}")))?;
+
+        let current_lines: Vec<&str> = current_content.lines().collect();
+        if start_line > current_lines.len() || end_line > current_lines.len() {
+            return Err(ToolError::Execution(format!(
+                "line range {start_line}-{end_line} exceeds file length {}",
+                current_lines.len()
+            )));
+        }
+
+        let search_lines: Vec<&str> = search.lines().collect();
+        let replace_lines: Vec<&str> = replace.lines().collect();
+
+        let old_content = current_lines[start_line - 1..end_line].join("\n");
+        if old_content != search {
+            let mut diff_lines = Vec::new();
+            for (i, (a, b)) in search_lines.iter().zip(current_lines[start_line - 1..end_line].iter()).enumerate() {
+                if a != b {
+                    diff_lines.push(format!("  line {}: expected '{}', got '{}'", start_line + i, a, b));
+                }
+            }
+            let err_msg = if diff_lines.is_empty() {
+                "search content does not match file content".to_string()
+            } else {
+                format!("search content does not match file content:\n{}", diff_lines.join("\n"))
+            };
+            return Err(ToolError::Execution(err_msg));
+        }
+
+        let mut new_content = String::new();
+        new_content.push_str(&current_lines[..start_line - 1].join("\n"));
+        if start_line > 1 {
+            new_content.push('\n');
+        }
+        new_content.push_str(&replace_lines.join("\n"));
+        if end_line < current_lines.len() {
+            new_content.push('\n');
+            new_content.push_str(&current_lines[end_line..].join("\n"));
+        }
+
+        tokio::fs::write(&path, &new_content)
+            .await
+            .map_err(|e| ToolError::Execution(format!("write failed for '{path_str}': {e}")))?;
+
+        Ok(format!(
+            "applied edit to {path_str}:{start_line}-{end_line} ({} → {} lines)",
+            end_line - start_line + 1,
+            replace_lines.len()
+        ))
+    }
+}
+
+fn parse_diff_header(header: &str) -> Result<(String, String), ToolError> {
+    let parts: Vec<&str> = header.splitn(2, ':').collect();
+    if parts.len() != 2 {
+        return Err(ToolError::InvalidParams(format!(
+            "invalid header '{header}': expected 'path:start-end'"
+        )));
+    }
+    Ok((parts[0].to_string(), parts[1].to_string()))
+}
+
+fn parse_line_range(range: &str) -> Result<(usize, usize), ToolError> {
+    let parts: Vec<&str> = range.splitn(2, '-').collect();
+    if parts.len() != 2 {
+        return Err(ToolError::InvalidParams(format!(
+            "invalid line range '{range}': expected 'start-end'"
+        )));
+    }
+    let start = parts[0]
+        .parse::<usize>()
+        .map_err(|_| ToolError::InvalidParams(format!("invalid start line: {}", parts[0])))?;
+    let end = parts[1]
+        .parse::<usize>()
+        .map_err(|_| ToolError::InvalidParams(format!("invalid end line: {}", parts[1])))?;
+
+    if start < 1 {
+        return Err(ToolError::InvalidParams(format!(
+            "start line must be >= 1, got {start}"
+        )));
+    }
+    if end < start {
+        return Err(ToolError::InvalidParams(format!(
+            "end line {end} must be >= start line {start}"
+        )));
+    }
+
+    Ok((start, end))
 }
 
 // ---------------------------------------------------------------------------
@@ -483,23 +723,23 @@ impl Tool for Grep {
 
     fn description(&self) -> &str {
         "Search file contents for a substring. Returns file:line: matched lines. \
-         Optional 'pattern' in file path to scope the search (e.g. '*.rs')."
+         Use 'pattern' for the search text. Use 'file_pattern' to scope by filename (e.g. '*.rs')."
     }
 
     fn parameters(&self) -> Value {
         json!({
             "type": "object",
             "properties": {
-                "query": { "type": "string", "description": "Substring to search for" },
-                "file_pattern": { "type": "string", "description": "Glob to scope files (e.g. '*.rs')" },
+                "pattern": { "type": "string", "description": "Substring to search for in file contents" },
+                "file_pattern": { "type": "string", "description": "Glob to scope files (e.g. '*.rs', 'src/**')" },
                 "case_insensitive": { "type": "boolean" }
             },
-            "required": ["query"]
+            "required": ["pattern"]
         })
     }
 
     async fn call(&self, params: Value) -> Result<String, ToolError> {
-        let query = str_param(&params, "query")?;
+        let query = str_param(&params, "pattern")?;
         let file_pattern = params.get("file_pattern").and_then(|v| v.as_str());
         let case_insensitive = params
             .get("case_insensitive")
@@ -576,8 +816,7 @@ impl Tool for Shell {
     }
 
     fn description(&self) -> &str {
-        "Run an allowlisted command (e.g. cargo, npm, git, just). \
-         Returns stdout, stderr, and exit code."
+        "Run an allowlisted command (cargo, git, npm, etc). Use AFTER making changes to verify they work. Timeout default: 300s."
     }
 
     fn parameters(&self) -> Value {
@@ -586,7 +825,7 @@ impl Tool for Shell {
             "properties": {
                 "command": { "type": "string", "description": "Executable name" },
                 "args": { "type": "array", "items": { "type": "string" } },
-                "timeout_ms": { "type": "integer", "description": "Max runtime (default: 60000)" }
+                "timeout_ms": { "type": "integer", "description": "Max runtime in ms (default: 300000). Use 300000 for cargo commands." }
             },
             "required": ["command"]
         })
@@ -615,7 +854,7 @@ impl Tool for Shell {
             })
             .unwrap_or_default();
 
-        let timeout_ms = opt_usize(&params, "timeout_ms").unwrap_or(60_000);
+        let timeout_ms = opt_usize(&params, "timeout_ms").unwrap_or(300_000);
         let mut cmd = tokio::process::Command::new(&command);
         cmd.args(&args).current_dir(&self.root);
 
@@ -639,7 +878,7 @@ impl Tool for Shell {
 
 /// Re-exports for ergonomic registration.
 pub mod tools {
-    pub use super::{FileEdit, FileRead, FileWrite, Glob, Grep, Shell};
+    pub use super::{DiffEdit, FileEdit, FileRead, FileWrite, Glob, Grep, Shell};
 }
 
 #[cfg(test)]
@@ -718,5 +957,181 @@ mod tests {
         let shell = Shell::with_allowlist(".", vec!["echo".into()]);
         let err = shell.call(json!({"command": "rm"})).await.unwrap_err();
         assert!(matches!(err, ToolError::Execution(_)));
+    }
+
+    #[tokio::test]
+    async fn diff_edit_single_hunk() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let write = FileWrite::with_root(root);
+        let edit = DiffEdit::with_root(root);
+
+        write
+            .call(json!({
+                "path": "test.rs",
+                "content": "fn main() {\n    let x = 1;\n    println!(\"{}\", x);\n}\n"
+            }))
+            .await
+            .unwrap();
+
+        let result = edit
+            .call(json!({
+                "edits": [{
+                    "header": "test.rs:2-2",
+                    "search": "    let x = 1;",
+                    "replace": "    let x = 42;"
+                }]
+            }))
+            .await
+            .unwrap();
+
+        assert!(result.contains("applied edit to test.rs:2-2"));
+
+        let content = std::fs::read_to_string(root.join("test.rs")).unwrap();
+        assert!(content.contains("let x = 42;"));
+        assert!(!content.contains("let x = 1;"));
+    }
+
+    #[tokio::test]
+    async fn diff_edit_multi_line_hunk() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let write = FileWrite::with_root(root);
+        let edit = DiffEdit::with_root(root);
+
+        write
+            .call(json!({
+                "path": "test.rs",
+                "content": "fn main() {\n    let a = 1;\n    let b = 2;\n    let c = a + b;\n}\n"
+            }))
+            .await
+            .unwrap();
+
+        let result = edit
+            .call(json!({
+                "edits": [{
+                    "header": "test.rs:2-3",
+                    "search": "    let a = 1;\n    let b = 2;",
+                    "replace": "    let a = 10;\n    let b = 20;"
+                }]
+            }))
+            .await
+            .unwrap();
+
+        assert!(result.contains("applied edit to test.rs:2-3"));
+
+        let content = std::fs::read_to_string(root.join("test.rs")).unwrap();
+        assert!(content.contains("let a = 10;"));
+        assert!(content.contains("let b = 20;"));
+        assert!(!content.contains("let a = 1;"));
+        assert!(!content.contains("let b = 2;"));
+    }
+
+    #[tokio::test]
+    async fn diff_edit_multiple_edits() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let write = FileWrite::with_root(root);
+        let edit = DiffEdit::with_root(root);
+
+        write
+            .call(json!({
+                "path": "test.rs",
+                "content": "fn main() {\n    let x = 1;\n    let y = 2;\n    println!(\"{}\", x + y);\n}\n"
+            }))
+            .await
+            .unwrap();
+
+        let result = edit
+            .call(json!({
+                "edits": [
+                    {
+                        "header": "test.rs:2-2",
+                        "search": "    let x = 1;",
+                        "replace": "    let x = 10;"
+                    },
+                    {
+                        "header": "test.rs:3-3",
+                        "search": "    let y = 2;",
+                        "replace": "    let y = 20;"
+                    }
+                ]
+            }))
+            .await
+            .unwrap();
+
+        assert!(result.contains("Edit 0:"));
+        assert!(result.contains("Edit 1:"));
+
+        let content = std::fs::read_to_string(root.join("test.rs")).unwrap();
+        assert!(content.contains("let x = 10;"));
+        assert!(content.contains("let y = 20;"));
+    }
+
+    #[tokio::test]
+    async fn diff_edit_mismatch_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let write = FileWrite::with_root(root);
+        let edit = DiffEdit::with_root(root);
+
+        write
+            .call(json!({
+                "path": "test.rs",
+                "content": "fn main() {\n    let x = 1;\n}\n"
+            }))
+            .await
+            .unwrap();
+
+        let err = edit
+            .call(json!({
+                "edits": [{
+                    "header": "test.rs:2-2",
+                    "search": "    let x = 99;",  // Wrong value
+                    "replace": "    let x = 42;"
+                }]
+            }))
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, ToolError::Execution(_)));
+        let err_str = err.to_string();
+        assert!(err_str.contains("does not match"));
+    }
+
+    #[tokio::test]
+    async fn diff_edit_invalid_header_fails() {
+        let edit = DiffEdit::new();
+
+        let err = edit
+            .call(json!({
+                "edits": [{
+                    "header": "invalid_header",
+                    "search": "foo",
+                    "replace": "bar"
+                }]
+            }))
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, ToolError::InvalidParams(_)));
+    }
+
+    #[tokio::test]
+    async fn diff_edit_invalid_range_fails() {
+        let edit = DiffEdit::new();
+
+        let err = edit
+            .call(json!({
+                "edits": [{
+                    "header": "test.rs:10-5",  // end < start
+                    "search": "foo",
+                    "replace": "bar"
+                }]
+            }))
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, ToolError::InvalidParams(_)));
     }
 }

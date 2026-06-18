@@ -164,7 +164,7 @@ impl Tool for SrujaExplainTool {
         let output = run_sruja(
             &self.sruja_path,
             &self.repo_root,
-            &["explain", &element_id, "--format", "json"],
+            &["explain", &element_id, "--json"],
         )
         .await?;
         Ok(truncate_json(&output, 8_000))

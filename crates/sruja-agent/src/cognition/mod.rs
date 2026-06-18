@@ -89,7 +89,7 @@ impl Default for AgentConfig {
             review_every_change: true,
             spend_cap_usd: None,
             dry_run: false,
-            max_tool_iterations: 8,
+            max_tool_iterations: 15,
             system_hints: Vec::new(),
         }
     }

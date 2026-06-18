@@ -135,6 +135,7 @@ impl ToolRegistry {
             .with(Box::new(builtin::FileRead::with_root(root.clone())))
             .with(Box::new(builtin::FileWrite::with_root(root.clone())))
             .with(Box::new(builtin::FileEdit::with_root(root.clone())))
+            .with(Box::new(builtin::DiffEdit::with_root(root.clone())))
             .with(Box::new(builtin::Glob::with_root(root.clone())))
             .with(Box::new(builtin::Grep::with_root(root.clone())))
             .with(Box::new(builtin::Shell::with_allowlist(
@@ -309,6 +310,7 @@ mod tests {
         assert_eq!(
             names,
             vec![
+                "diff_edit",
                 "file_edit",
                 "file_read",
                 "file_write",
