@@ -5,6 +5,29 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.61.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.60.0...sruja-v0.61.0) (2026-06-18)
+
+
+### Features
+
+* **agent:** add Anthropic provider, goal spec, loop manifest, multi-provider routing ([079b412](https://github.com/sruja-ai/sruja/commit/079b41225ed635cb14a6a9f904e9c4bf0f0f054e))
+* **agent:** add proposal_sruja slot to plan output ([755f004](https://github.com/sruja-ai/sruja/commit/755f004a87db82fa6e4dc6a064c31aa9a1e208e0))
+* **agent:** implement closed-loop agent (Phase 0-2) ([cbe2ecc](https://github.com/sruja-ai/sruja/commit/cbe2ecc4c499eb5fd33d40f3734300bdaced3ee2))
+* **agent:** improve loop UX — progress hooks, allowlist, interactive prompt, trajectory, focus grounding ([eeb031a](https://github.com/sruja-ai/sruja/commit/eeb031ad863e4a64159fd812345e4d3455879595))
+* **agent:** wire calibration verdict into agent loop as pre-flight gate ([9824d0d](https://github.com/sruja-ai/sruja/commit/9824d0db94bb6ae3fb5f6f35e93baa4c85923dd9))
+* provider presets and interactive setup for LLM onboarding ([d540547](https://github.com/sruja-ai/sruja/commit/d5405477bb240fe3268cd99d4d88b80c9e82cf3f))
+
+
+### Bug Fixes
+
+* add auto_context to Graph inits in sruja-diff tests ([0defe45](https://github.com/sruja-ai/sruja/commit/0defe45c5899c0769836066100549ddcb0b991c5))
+* add missing auto_context field and sync IDE rules ([e60423a](https://github.com/sruja-ai/sruja/commit/e60423a38df84b9f79fc8cfe4f074f17bfcb0a22))
+* **agent:** plan parser robustness, tool-loop convergence, verify consolidation ([e95bfc1](https://github.com/sruja-ai/sruja/commit/e95bfc11774a21dcc17261bfa49d28a6c62a62c9))
+* **agent:** wire sruja tools + deterministic grader into the loop ([48c25ed](https://github.com/sruja-ai/sruja/commit/48c25ed791c109ab08c4c3dacb6536bf5991d260))
+* Memory trait impl, duplicate condition, UTF-8 boundary panic ([e295e5e](https://github.com/sruja-ai/sruja/commit/e295e5e923926d25f067cb0fe6c3bb3d06cbd830))
+* resolve all clippy warnings across workspace ([0b2822e](https://github.com/sruja-ai/sruja/commit/0b2822e0d8383ae37118bd98e4d14a7dbdc7ff57))
+* use derive(Default) for ExperimentOutcome to satisfy clippy ([b4e50bf](https://github.com/sruja-ai/sruja/commit/b4e50bfeda18fbcc278de9ab471df1eae73e2139))
+
 ## [0.60.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.59.0...sruja-v0.60.0) (2026-06-08)
 
 
