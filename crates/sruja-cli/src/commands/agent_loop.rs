@@ -36,10 +36,12 @@
 //!
 //! See `config::resolve_multi_provider_config` for details.
 
+use std::io::{self, IsTerminal, Write};
 use std::path::Path;
 use std::sync::Arc;
 
 use sruja_agent::calibration::{self, AskInput, Thresholds};
+use sruja_agent::cognition::{Hook, LoopIteration};
 use sruja_agent::llm::{OpenAiClient, TieredClient};
 use sruja_agent::tool::ToolRegistry;
 use sruja_agent::verify::VerifyOptions;
@@ -49,6 +51,36 @@ use sruja_agent::{
 
 use super::CliError;
 use crate::config;
+use crate::utils::run_id::generate_run_id;
+use crate::utils::run_snapshots::write_json_snapshot;
+
+/// Default shell commands the agent is allowed to execute when the user hasn't
+/// configured an explicit `shell_allowlist` in `.sruja/loop.toml`. These are
+/// the most common safe, non-destructive tools for a coding agent.
+const DEFAULT_SHELL_ALLOWLIST: &[&str] = &["cargo", "git"];
+
+/// A hook that prints per-iteration progress to stderr during `sruja agent loop`.
+/// Only active when stdin is a TTY (interactive mode).
+struct ProgressHook;
+
+#[async_trait::async_trait]
+impl Hook for ProgressHook {
+    async fn before_iteration(&self, iteration: usize, max_iterations: usize) {
+        eprintln!("  [{iteration}/{max_iterations}] planning...");
+    }
+
+    async fn after_iteration(&self, iteration: usize, max_iterations: usize, result: &LoopIteration) {
+        let mark = if result.critique_approved { "PASS" } else { "FAIL" };
+        let cost = result.usage.estimated_cost_usd();
+        eprintln!(
+            "  [{iteration}/{max_iterations}] {mark} | {} subtasks, {} ok, {} failed | score {:.1} | ~${cost:.4}",
+            result.subtask_count, result.succeeded, result.failed, result.critique_score,
+        );
+        for issue in &result.critique_issues {
+            eprintln!("         issue: {issue}");
+        }
+    }
+}
 
 /// Outcome of the pre-flight calibration gate.
 #[derive(Debug)]
@@ -244,8 +276,13 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     // Built-in filesystem/shell tools + the sruja-native "eyes" (focus, explain,
     // drift, compliance, query). The latter ground the agent in the architecture
     // knowledge graph so comprehension/critique cite element IDs, not guesses.
+    let shell_allowlist = if manifest.shell_allowlist.is_empty() {
+        DEFAULT_SHELL_ALLOWLIST.iter().map(|s| s.to_string()).collect()
+    } else {
+        manifest.shell_allowlist.clone()
+    };
     let tools =
-        ToolRegistry::with_builtin(repo_path.to_path_buf(), manifest.shell_allowlist.clone())
+        ToolRegistry::with_builtin(repo_path.to_path_buf(), shell_allowlist.clone())
             .with(Box::new(sruja_agent::tool::sruja::SrujaFocusTool::new(
                 repo_path.to_path_buf(),
             )))
@@ -262,23 +299,48 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                 repo_path.to_path_buf(),
             )));
 
+    let mut system_hints = Vec::new();
+    if repo_path.join("repo.sruja").exists() {
+        system_hints.push(
+            "Before planning, call the sruja_focus tool to ground your understanding \
+             in the architecture graph. This gives you element IDs, blast radius, \
+             and dependencies — plan from evidence, not guesses."
+                .to_string(),
+        );
+    }
+
     let config = AgentConfig {
         models,
         tdd,
         review_every_change: manifest.review_every_change,
         dry_run,
+        system_hints,
         ..Default::default()
     };
 
-    let agent = sruja_agent::Agent::builder()
-        .llm(Arc::new(tiered))
-        .tools(tools)
-        .config(config)
-        .memory(repo_path)
-        .build()
-        .map_err(agent_err_to_cli)?;
+    let agent = {
+        let mut builder = sruja_agent::Agent::builder()
+            .llm(Arc::new(tiered))
+            .tools(tools)
+            .config(config)
+            .memory(repo_path);
+        if io::stdin().is_terminal() {
+            builder = builder.hook(Box::new(ProgressHook));
+        }
+        builder.build().map_err(agent_err_to_cli)?
+    };
 
     // ── Run the loop ──────────────────────────────────────────────────────
+    let run_id = generate_run_id();
+
+    if io::stdin().is_terminal() {
+        eprintln!();
+        eprintln!("Goal: {}", options.goal);
+        eprintln!("Model: {model}");
+        eprintln!("Max iterations: {max_iterations}");
+        eprintln!();
+    }
+
     let spend_cap_usd = options.spend_cap_usd.or(manifest.spend_cap_usd);
     let detect_oscillation = if options.no_oscillation_detection {
         false
@@ -296,7 +358,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         Some(VerifierConfig {
             steps: manifest.verify_steps.clone(),
             options: VerifyOptions {
-                allowed_executables: manifest.shell_allowlist.clone(),
+                allowed_executables: shell_allowlist.clone(),
                 ..Default::default()
             },
             workdir: repo_path.to_path_buf(),
@@ -332,8 +394,24 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         GateOutcome::Halt { reason } => {
             eprintln!("⛔  Calibration gate: HALT");
             eprintln!("   {reason}");
-            eprintln!("   Use --yes to override (no calibration DR will be written).");
-            return Ok(());
+
+            // Interactive prompt when stdin is a TTY (not piped/redirected).
+            if io::stdin().is_terminal() {
+                eprintln!("   Proceed anyway? [y/N]: ");
+                eprint!("   ");
+                io::stderr().flush().ok();
+                let mut input = String::new();
+                io::stdin().read_line(&mut input).ok();
+                let choice = input.trim().to_lowercase();
+                if choice != "y" && choice != "yes" {
+                    eprintln!("   Aborted. Use --yes to force (no calibration DR).");
+                    return Ok(());
+                }
+                eprintln!("   Proceeding despite calibration Ask (forced by user).");
+            } else {
+                eprintln!("   Use --yes to override (no calibration DR will be written).");
+                return Ok(());
+            }
         }
         GateOutcome::Proceed { plan, record } => {
             println!("✓  Calibration gate: PROCEED ({:?})", plan.verdict);
@@ -358,6 +436,22 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         .run_loop(&goal_prompt, &loop_config)
         .await
         .map_err(agent_err_to_cli)?;
+
+    // ── Persist loop trajectory to disk ─────────────────────────────────
+    // Write the full LoopResult to .sruja/runs/<run_id>/loop.json so
+    // `sruja run show` and `sruja run export` can inspect it post-hoc.
+    let trajectory_json = match serde_json::to_value(&result) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("  Warning: could not serialize trajectory: {e}");
+            serde_json::Value::Null
+        }
+    };
+    let trajectory_path = write_json_snapshot(repo_path, &run_id, "loop.json", &trajectory_json);
+    match trajectory_path {
+        Ok(path) => println!("  Trajectory: {}", path.display()),
+        Err(e) => eprintln!("  Warning: could not write trajectory: {e}"),
+    }
 
     // ── Deterministic verification verdict ───────────────────────────────
     // The verifier already ran in-loop on every iteration (when configured),
@@ -556,5 +650,11 @@ mod tests {
 
     fn expected_proceed() {
         panic!("expected Proceed but got Halt");
+    }
+
+    #[test]
+    fn default_shell_allowlist_has_cargo_and_git() {
+        assert!(DEFAULT_SHELL_ALLOWLIST.contains(&"cargo"));
+        assert!(DEFAULT_SHELL_ALLOWLIST.contains(&"git"));
     }
 }

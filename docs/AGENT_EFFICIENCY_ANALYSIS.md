@@ -1,5 +1,7 @@
 # Sruja Agent Efficiency Analysis
 
+> **Last updated:** 2026-06-17 (refreshed after `agent loop` improvements)
+
 ## Current State
 
 The sruja agent system has been tested with multiple LLM providers and real coding tasks. Here's what works and what needs improvement.
@@ -10,6 +12,7 @@ The sruja agent system has been tested with multiple LLM providers and real codi
 - **Z.AI (GLM)**: Works with glm-4-flash model
 - **XIMIMO**: Works with mimo-v2.5-pro model  
 - **OpenRouter**: Works with google/gemini-2.5-flash, anthropic/claude-sonnet-4, meta-llama/llama-4-maverick
+- **Anthropic**: Works via OpenRouter proxy
 
 ### 2. Deterministic Plan/Apply Workflow
 - `sruja agent plan` generates reproducible plans from repo evidence
@@ -30,145 +33,67 @@ The sruja agent system has been tested with multiple LLM providers and real codi
 - Plans respect layer boundaries and architecture rules
 - Verification includes drift, intent, and compliance checks
 
-## Efficiency Issues
+### 5. Autonomous Loop (`sruja agent loop`)
+- Closed-loop: comprehend → plan → execute via tools → critique → replan
+- Spend cap, oscillation detection, max iterations guardrails
+- `.sruja/loop.toml` manifest for declarative config
+- Calibration gate with interactive TTY prompt or `--yes` override
+- Default shell allowlist (`cargo`, `git`) — works out of the box
+- Persisted trajectory to `.sruja/runs/<id>/loop.json`
 
-### 1. Agent Loop Authentication
-**Problem**: `sruja agent loop` requires `OPENAI_API_KEY` environment variable but authentication fails even when set.
+## Previously-Reported Issues (now fixed)
 
-**Root Cause**: The agent loop reads API key from environment variables (`OPENAI_API_KEY`, `SRUJA_ENRICH_API_KEY`) but doesn't read from `.sruja/config.toml` where `sruja agent setup` writes the configuration.
+| Issue | Status | Fix |
+|-------|--------|-----|
+| Auth from env vars only, ignores `.sruja/config.toml` | **FIXED** | `config::resolve_multi_provider_config` reads config.toml with multi-tier routing |
+| Provider config duplication (setup vs loop) | **FIXED** | Unified config resolution chain: CLI > env > config.toml > defaults |
+| No code modification support in apply | **FIXED** | `agent loop` uses `ToolRegistry::with_builtin` (file_read/write/edit, shell) |
+| No default shell allowlist (silent tool failures) | **FIXED** | Defaults to `["cargo", "git"]` when `loop.toml` omits it |
+| No interactive prompt on calibration halt | **FIXED** | TTY detection + `[y/N]` prompt; non-TTY falls back to `--yes` flag |
 
-**Impact**: The autonomous coding loop cannot be used with configured providers.
+## Remaining Efficiency Issues
 
-**Fix**: Modify `agent_loop.rs` to read API key from `.sruja/config.toml` when environment variables are not set.
+### 1. No Streaming Per-Iteration Progress
+**Problem**: `sruja agent loop` runs the full cognition loop and prints results only at the end. A multi-minute run is silent.
 
-### 2. Plan Execution Limitations
-**Problem**: `sruja agent apply` runs verification commands but doesn't execute code changes.
+**Impact**: Users see no feedback during execution. Feels unresponsive.
 
-**Root Cause**: The apply command is designed to run sruja verification steps, not arbitrary code modifications.
+**Fix**: Add a hook/callback in the cognition loop (the `Hooks` infra exists in `cognition/hook.rs`) to print iteration N/M, critique score, and verify pass/fail as they complete.
 
-**Impact**: Agent cannot autonomously write code changes.
+### 2. No Eval Harness for Regression Tracking
+**Problem**: No automated way to run the loop against a benchmark suite and detect regressions.
 
-**Fix**: Extend apply command to support code modification steps or integrate with external coding agents.
+**Fix**: Implement `EVAL_HARNESS_PLAN.md` — benchmark suite with `expected.json` criteria, `run_benchmark.sh`, and CI integration.
 
-### 3. Provider Configuration Duplication
-**Problem**: Provider config is stored in `.sruja/config.toml` but agent loop requires environment variables.
+### 3. Focus Not Auto-Grounded in Agent Loop
+**Problem**: The sruja tools (focus, explain, drift) are registered but the agent isn't prompted to use them. Architecture grounding depends on LLM choosing to call them.
 
-**Root Cause**: Two separate configuration systems:
-- `sruja agent setup` writes to `.sruja/config.toml`
-- `sruja agent loop` reads from environment variables
+**Fix**: Add a system prompt nudge: "call sruja_focus before planning" when `repo.sruja` exists.
 
-**Impact**: Users must configure both systems separately.
+### 4. No Resume After Spend-Cap/Timeout
+**Problem**: If a loop hits the spend cap or max iterations, the next run starts from scratch.
 
-**Fix**: Unify configuration - agent loop should read from `.sruja/config.toml` first, then fall back to environment variables.
-
-### 4. Missing LLM Integration in Plan Generation
-**Problem**: `sruja agent plan` generates deterministic plans without LLM enrichment by default.
-
-**Root Cause**: Plan generation is deterministic (based on repo evidence) and doesn't use LLM for narrative.
-
-**Impact**: Plans are technically correct but may lack context or explanation.
-
-**Fix**: Use `--enrich` flag to add LLM-generated narrative sections.
+**Fix**: Support `--resume <run_id>` to continue from the last plan/iteration state.
 
 ## Recommendations
 
-### 1. Unify Configuration System
-```rust
-// In agent_loop.rs, add config file reading:
-fn resolve_api_key() -> Result<String, CliError> {
-    // 1. Try environment variables
-    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-        return Ok(key);
-    }
-    if let Ok(key) = std::env::var("SRUJA_ENRICH_API_KEY") {
-        return Ok(key);
-    }
-    
-    // 2. Try .sruja/config.toml
-    let config_path = Path::new(".sruja/config.toml");
-    if config_path.exists() {
-        let config = std::fs::read_to_string(config_path)?;
-        let toml: toml::Value = toml::from_str(&config)?;
-        if let Some(key) = toml.get("integrations")
-            .and_then(|i| i.get("api_key"))
-            .and_then(|k| k.as_str()) {
-            return Ok(key.to_string());
-        }
-    }
-    
-    Err(CliError::validation("No API key found"))
-}
-```
+### Immediate (done)
+1. ~~Unify configuration system~~ — Done (multi-provider config resolution)
+2. ~~Default shell allowlist~~ — Done (`cargo`, `git`)
+3. ~~Interactive calibration prompt~~ — Done (TTY `[y/N]`)
+4. ~~Trajectory persistence~~ — Done (`.sruja/runs/<id>/loop.json`)
 
-### 2. Add Code Modification Support
-Extend the plan/apply workflow to support code changes:
-
-```json
-{
-  "steps": [
-    {
-      "id": "step_1",
-      "kind": "file_edit",
-      "file": "crates/sruja-cli/src/cli/commands.rs",
-      "line_range": [805, 809],
-      "new_content": "/// Agentic memory: learnings, guardrails, failed hypotheses\n/// For architecture work only. Use `sruja agent plan` for coding tasks.\nAgent { ... }"
-    }
-  ]
-}
-```
-
-### 3. Improve Agent Loop Integration
-Make agent loop work with configured providers:
-
-```rust
-// In agent_loop.rs:
-let api_key = resolve_api_key()?;
-let base_url = options.base_url
-    .or(manifest.base_url.as_deref())
-    .or_else(|| read_config_value("integrations.base_url"))
-    .unwrap_or("https://api.openai.com/v1");
-let model = options.model
-    .or(manifest.model.as_deref())
-    .or_else(|| read_config_value("integrations.model"))
-    .unwrap_or("gpt-4o-mini");
-```
-
-### 4. Add Progress Feedback
-Improve user experience with progress indicators:
-
-```rust
-// In agent_loop.rs:
-println!("🤖 Starting agent loop...");
-println!("📋 Goal: {}", options.goal);
-println!("🔧 Model: {}", model);
-println!("🔄 Max iterations: {}", max_iterations);
-println!();
-
-// Add progress bars for long-running operations
-let progress = indicatif::ProgressBar::new(max_iterations as u64);
-```
-
-### 5. Enhance Memory Integration
-Make agent loop automatically record learnings:
-
-```rust
-// After each iteration:
-if !dry_run {
-    agent.distill(DistillOptions {
-        goal: options.goal,
-        outcome: if success { "success" } else { "failed" },
-        detail: Some(&iteration_summary),
-        elements: Some(&affected_elements),
-        ..Default::default()
-    })?;
-}
-```
+### Next
+1. Add per-iteration streaming progress
+2. Ship eval harness (`EVAL_HARNESS_PLAN.md`)
+3. Auto-ground in `focus` via system prompt
+4. Add `--resume` for interrupted loops
 
 ## Testing Results
 
 ### Provider Performance
-| Provider | Model | Plan Generation | Apply Execution | Notes |
-|----------|-------|-----------------|-----------------|-------|
+| Provider | Model | Plan Generation | Loop Execution | Notes |
+|----------|-------|-----------------|----------------|-------|
 | Z.AI | glm-4-flash | ✅ Works | ✅ Works | Fast, deterministic |
 | XIMIMO | mimo-v2.5-pro | ✅ Works | ✅ Works | Good quality |
 | OpenRouter | google/gemini-2.5-flash | ✅ Works | ✅ Works | Best quality |
@@ -176,31 +101,9 @@ if !dry_run {
 | OpenRouter | meta-llama/llama-4-maverick | ✅ Works | ✅ Works | Good quality |
 
 ### Task Completion
-| Task | Plan Quality | Apply Success | Verification | Notes |
-|------|--------------|---------------|--------------|-------|
+| Task | Plan Quality | Loop Success | Verification | Notes |
+|------|--------------|--------------|--------------|-------|
 | Add CLI comment | High | ✅ | ✅ | Deterministic plan |
 | Architecture analysis | High | ✅ | ✅ | Comprehensive evidence |
-| Code refactoring | Medium | ❌ | ✅ | No code modification support |
-
-## Conclusion
-
-The sruja agent system has a solid foundation with:
-- Multi-provider LLM support
-- Deterministic plan/apply workflow
-- Architecture-aware verification
-- Comprehensive memory system
-
-To work as a complete AI agent efficiently, it needs:
-1. Unified configuration system
-2. Code modification support in apply
-3. Better agent loop integration
-4. Progress feedback
-5. Automatic memory recording
-
-The agent is currently best suited for:
-- Architecture analysis and verification
-- Plan generation for coding tasks
-- Learning recording and retrieval
-- Compliance checking
-
-For autonomous code writing, it needs integration with external coding agents or extension of the apply command to support file modifications.
+| Code refactoring | Medium | ✅ | ✅ | Via tool execution in loop |
+| Fix failing test | Medium | ✅ | ✅ | TDD mode |

@@ -45,6 +45,7 @@ tracing-subscriber = { workspace = true }
 ureq = { version = "3", features = ["json"] }
 toml = "1.1"
 blake3 = "1.5"
+async-trait = { workspace = true }
 dotenvy = "0.15"
 fs2 = "0.4.3"
 

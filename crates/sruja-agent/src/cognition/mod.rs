@@ -76,6 +76,9 @@ pub struct AgentConfig {
     pub dry_run: bool,
     /// Max tool-call iterations before giving up (default: 8).
     pub max_tool_iterations: usize,
+    /// Additional instructions appended to the comprehension system prompt.
+    /// Use for context-specific nudges (e.g., "call sruja_focus first").
+    pub system_hints: Vec<String>,
 }
 
 impl Default for AgentConfig {
@@ -87,6 +90,7 @@ impl Default for AgentConfig {
             spend_cap_usd: None,
             dry_run: false,
             max_tool_iterations: 8,
+            system_hints: Vec::new(),
         }
     }
 }
@@ -426,7 +430,20 @@ impl Agent {
             String::new()
         };
 
-        let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}");
+        let hints = if self.config.system_hints.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "\n\n## Additional Instructions\n{}",
+                self.config
+                    .system_hints
+                    .iter()
+                    .map(|h| format!("- {h}"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        };
+        let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}{hints}");
         let user = format!(
             "## Goal\n{goal}\n\n\
              ## Instructions\n\
@@ -1064,6 +1081,7 @@ impl Agent {
             std::collections::HashSet::new();
 
         for iteration in 1..=max_iterations {
+            self.hooks.before_iteration(iteration, max_iterations).await;
             let replanned = iteration > 1 && last_critique.is_some();
 
             // --- PLAN (or re-plan from critique feedback) ---
@@ -1172,6 +1190,8 @@ impl Agent {
             last_plan = Some(plan);
             last_steps = step_results.clone();
             last_critique = Some(critique);
+
+            self.hooks.after_iteration(iteration, max_iterations, iterations.last().unwrap()).await;
 
             // --- GUARDRAIL: spend cap (loop-level estimate) ---
             if let Some(cap) = loop_config.spend_cap_usd {
