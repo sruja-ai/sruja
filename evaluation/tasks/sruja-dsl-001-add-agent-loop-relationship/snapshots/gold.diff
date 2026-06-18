@@ -1,0 +1,23 @@
+diff --git a/repo.sruja b/repo.sruja
+index a1b2c3d4..e5f6a7b8 100644
+--- a/repo.sruja
++++ b/repo.sruja
+@@ -28,8 +28,8 @@ Sruja = system "Sruja Platform" {
+ 
+   Agent = container "Agent & Memory" {
+     technology "Rust"
+-    description "Agentic memory, MaTTS trajectories, learning loop, and cognitive architecture for AI-assisted development"
+-    tags ["agent", "memory", "cognitive"]
++    description "CLI-first autonomous agent with the full observe-act-verify-critique-replan loop, agentic memory, MaTTS trajectories, and cognitive architecture for AI-assisted development"
++    tags ["agent", "memory", "cognitive", "autonomous", "loop"]
+   }
+ 
+   Export = container "Export System" {
+@@ -53,6 +53,7 @@ Sruja = system "Sruja Platform" {
+   CLI -> Core "Parses and validates"
+   CLI -> Context "Scans repos and checks drift"
+   CLI -> Agent "Manages memory and learning"
++  CLI -> Agent "Drives autonomous loop"
+   CLI -> Export "Exports outputs"
+   CLI -> Book "Builds and validates examples"
+ 

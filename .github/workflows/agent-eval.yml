@@ -1,0 +1,96 @@
+name: Agent Eval
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Weekly on Monday at 6am UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run mode (no file mutations)"
+        required: false
+        default: "true"
+        type: boolean
+      instance:
+        description: "Specific task instance to run (empty = all)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: agent-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: Run agent eval tasks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: agent-eval-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build sruja
+        run: cargo build --release -p sruja-cli
+
+      - name: List eval tasks
+        run: |
+          ./target/release/sruja eval list --tasks-dir evaluation/tasks
+
+      - name: Run eval tasks (dry-run)
+        if: inputs.dry_run == 'true' || github.event_name == 'schedule'
+        run: |
+          # Get list of task instances
+          INSTANCES=$(ls evaluation/tasks/ | grep -v '^$' || true)
+          
+          if [ -n "${{ inputs.instance }}" ]; then
+            INSTANCES="${{ inputs.instance }}"
+          fi
+          
+          echo "Running eval tasks (dry-run):"
+          for instance in $INSTANCES; do
+            echo "  Running: $instance"
+            ./target/release/sruja eval run \
+              --instance "$instance" \
+              --repo . \
+              --max-iterations 3 \
+              --dry-run \
+              --format json || echo "WARN: Task $instance failed"
+          done
+
+      - name: Run eval tasks (live)
+        if: inputs.dry_run == 'false' && github.event_name == 'workflow_dispatch'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          INSTANCES=$(ls evaluation/tasks/ | grep -v '^$' || true)
+          
+          if [ -n "${{ inputs.instance }}" ]; then
+            INSTANCES="${{ inputs.instance }}"
+          fi
+          
+          echo "Running eval tasks (live):"
+          for instance in $INSTANCES; do
+            echo "  Running: $instance"
+            ./target/release/sruja eval run \
+              --instance "$instance" \
+              --repo . \
+              --max-iterations 3 \
+              --format json || echo "WARN: Task $instance failed"
+          done

@@ -3,8 +3,9 @@ use clap::Subcommand;
 use super::app::ContextIntent;
 use super::subcommands::{
     AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
-    EventCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand, IndexCommand,
-    InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    EvalCommand, EventCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand,
+    IndexCommand, InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand,
+    WorkflowCommand,
 };
 use crate::enrichment::EnrichmentArgs;
 
@@ -988,5 +989,11 @@ pub enum Commands {
     Human {
         #[command(subcommand)]
         cmd: HumanCommand,
+    },
+    /// Agent capability eval harness: run SWE-bench-flavored tasks against the agent
+    #[command(hide = true)]
+    Eval {
+        #[command(subcommand)]
+        cmd: EvalCommand,
     },
 }

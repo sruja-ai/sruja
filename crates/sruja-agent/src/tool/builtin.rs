@@ -420,7 +420,8 @@ impl Tool for DiffEdit {
             .and_then(|v| v.as_array())
             .ok_or_else(|| ToolError::InvalidParams("missing 'edits' array".into()))?;
 
-        let context_lines = opt_usize(&params, "context_lines").unwrap_or(DIFF_EDIT_DEFAULT_CONTEXT);
+        let context_lines =
+            opt_usize(&params, "context_lines").unwrap_or(DIFF_EDIT_DEFAULT_CONTEXT);
 
         if edits.is_empty() {
             return Err(ToolError::InvalidParams("edits array is empty".into()));
@@ -432,7 +433,9 @@ impl Tool for DiffEdit {
             let search = str_param(edit, "search")?;
             let replace = str_param(edit, "replace")?;
 
-            let result = self.apply_single_edit(&header, &search, &replace, context_lines, idx).await;
+            let result = self
+                .apply_single_edit(&header, &search, &replace, context_lines, idx)
+                .await;
             match result {
                 Ok(msg) => results.push(format!("Edit {idx}: {msg}")),
                 Err(e) => {
@@ -481,15 +484,27 @@ impl DiffEdit {
         let old_content = current_lines[start_line - 1..end_line].join("\n");
         if old_content != search {
             let mut diff_lines = Vec::new();
-            for (i, (a, b)) in search_lines.iter().zip(current_lines[start_line - 1..end_line].iter()).enumerate() {
+            for (i, (a, b)) in search_lines
+                .iter()
+                .zip(current_lines[start_line - 1..end_line].iter())
+                .enumerate()
+            {
                 if a != b {
-                    diff_lines.push(format!("  line {}: expected '{}', got '{}'", start_line + i, a, b));
+                    diff_lines.push(format!(
+                        "  line {}: expected '{}', got '{}'",
+                        start_line + i,
+                        a,
+                        b
+                    ));
                 }
             }
             let err_msg = if diff_lines.is_empty() {
                 "search content does not match file content".to_string()
             } else {
-                format!("search content does not match file content:\n{}", diff_lines.join("\n"))
+                format!(
+                    "search content does not match file content:\n{}",
+                    diff_lines.join("\n")
+                )
             };
             return Err(ToolError::Execution(err_msg));
         }

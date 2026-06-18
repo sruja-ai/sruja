@@ -1,0 +1,15 @@
+instance_id = "sruja-debug-001-lock-unwrap-panic"
+category = "debug_from_stacktrace"
+difficulty = 3
+profile = "bugfix"
+base_commit = "6113e364"
+gold_patch = "snapshots/gold.diff"
+test_patch = "snapshots/test.diff"
+problem_statement = "problem_statement.md"
+fail_to_pass = ["mutex_poisoning_does_not_panic"]
+pass_to_pass = ["existing_mutex_tests"]
+
+[metadata]
+crate = "sruja-agent"
+files = ["crates/sruja-agent/src/cognition/mod.rs", "crates/sruja-agent/src/llm/router.rs"]
+severity = "reliability"

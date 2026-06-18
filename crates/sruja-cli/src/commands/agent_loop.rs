@@ -69,8 +69,17 @@ impl Hook for ProgressHook {
         eprintln!("  [{iteration}/{max_iterations}] planning...");
     }
 
-    async fn after_iteration(&self, iteration: usize, max_iterations: usize, result: &LoopIteration) {
-        let mark = if result.critique_approved { "PASS" } else { "FAIL" };
+    async fn after_iteration(
+        &self,
+        iteration: usize,
+        max_iterations: usize,
+        result: &LoopIteration,
+    ) {
+        let mark = if result.critique_approved {
+            "PASS"
+        } else {
+            "FAIL"
+        };
         let cost = result.usage.estimated_cost_usd();
         eprintln!(
             "  [{iteration}/{max_iterations}] {mark} | {} subtasks, {} ok, {} failed | score {:.1} | ~${cost:.4}",
@@ -277,27 +286,29 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     // drift, compliance, query). The latter ground the agent in the architecture
     // knowledge graph so comprehension/critique cite element IDs, not guesses.
     let shell_allowlist = if manifest.shell_allowlist.is_empty() {
-        DEFAULT_SHELL_ALLOWLIST.iter().map(|s| s.to_string()).collect()
+        DEFAULT_SHELL_ALLOWLIST
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
     } else {
         manifest.shell_allowlist.clone()
     };
-    let tools =
-        ToolRegistry::with_builtin(repo_path.to_path_buf(), shell_allowlist.clone())
-            .with(Box::new(sruja_agent::tool::sruja::SrujaFocusTool::new(
-                repo_path.to_path_buf(),
-            )))
-            .with(Box::new(sruja_agent::tool::sruja::SrujaExplainTool::new(
-                repo_path.to_path_buf(),
-            )))
-            .with(Box::new(sruja_agent::tool::sruja::SrujaDriftTool::new(
-                repo_path.to_path_buf(),
-            )))
-            .with(Box::new(
-                sruja_agent::tool::sruja::SrujaComplianceTool::new(repo_path.to_path_buf()),
-            ))
-            .with(Box::new(sruja_agent::tool::sruja::SrujaQueryTool::new(
-                repo_path.to_path_buf(),
-            )));
+    let tools = ToolRegistry::with_builtin(repo_path.to_path_buf(), shell_allowlist.clone())
+        .with(Box::new(sruja_agent::tool::sruja::SrujaFocusTool::new(
+            repo_path.to_path_buf(),
+        )))
+        .with(Box::new(sruja_agent::tool::sruja::SrujaExplainTool::new(
+            repo_path.to_path_buf(),
+        )))
+        .with(Box::new(sruja_agent::tool::sruja::SrujaDriftTool::new(
+            repo_path.to_path_buf(),
+        )))
+        .with(Box::new(
+            sruja_agent::tool::sruja::SrujaComplianceTool::new(repo_path.to_path_buf()),
+        ))
+        .with(Box::new(sruja_agent::tool::sruja::SrujaQueryTool::new(
+            repo_path.to_path_buf(),
+        )));
 
     let mut system_hints = Vec::new();
     if repo_path.join("repo.sruja").exists() {

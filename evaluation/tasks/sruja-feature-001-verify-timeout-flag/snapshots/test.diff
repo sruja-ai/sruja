@@ -1,0 +1,25 @@
+diff --git a/crates/sruja-cli/src/commands/verify_task.rs b/crates/sruja-cli/src/commands/verify_task.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-cli/src/commands/verify_task.rs
++++ b/crates/sruja-cli/src/commands/verify_task.rs
+@@ -816,4 +816,20 @@ mod tests {
+         assert!(!steps.is_empty());
+         assert!(steps.len() >= 3);
+     }
++
++    #[test]
++    fn verify_timeout_flag_respected() {
++        let options = VerifyTaskOptions {
++            repo: ".",
++            profile: "coding",
++            file: None,
++            max_runtime_ms: None,
++            timeout_ms: Some(120_000),
++            evidence_pack: false,
++            evidence_pack_dir: None,
++        };
++        // The timeout_ms should be used when creating VerifyOptions
++        // This test will fail until the timeout field is added
++        assert!(options.timeout_ms.is_some());
++    }
+ }

@@ -1,0 +1,31 @@
+diff --git a/crates/sruja-cli/src/commands/federation.rs b/crates/sruja-cli/src/commands/federation.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-cli/src/commands/federation.rs
++++ b/crates/sruja-cli/src/commands/federation.rs
+@@ -1058,4 +1058,25 @@ mod tests {
+         assert_eq!(bundle.schema_version, 1);
+     }
++
++    #[test]
++    fn infer_repo_id_tests() {
++        // Test that infer_repo_id handles various edge cases
++        let dir = tempdir().unwrap();
++
++        // Test with directory containing special characters
++        let special_dir = dir.path().join("my project (test)");
++        fs::create_dir(&special_dir).unwrap();
++        let repo_id = infer_repo_id(&special_dir);
++        assert_eq!(repo_id, "my project (test)");
++
++        // Test with directory containing dots
++        let dots_dir = dir.path().join("project.v2.0");
++        fs::create_dir(&dots_dir).unwrap();
++        let repo_id = infer_repo_id(&dots_dir);
++        assert_eq!(repo_id, "project.v2.0");
++
++        // Test with empty directory name (should not happen in practice)
++        let empty_dir = dir.path().join("");
++        // This should not panic
++        let _repo_id = infer_repo_id(&empty_dir);
++    }
+ }

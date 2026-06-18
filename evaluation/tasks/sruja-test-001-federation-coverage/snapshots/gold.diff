@@ -1,0 +1,87 @@
+diff --git a/crates/sruja-cli/src/commands/federation.rs b/crates/sruja-cli/src/commands/federation.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-cli/src/commands/federation.rs
++++ b/crates/sruja-cli/src/commands/federation.rs
+@@ -980,3 +980,82 @@ pub async fn compose_system_index(
+ 
+     Ok(())
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use std::fs;
++    use tempfile::tempdir;
++
++    #[test]
++    fn infer_repo_id_from_directory_name() {
++        let dir = tempdir().unwrap();
++        let repo_path = dir.path().join("my-project");
++        fs::create_dir(&repo_path).unwrap();
++
++        let repo_id = infer_repo_id(&repo_path);
++        assert_eq!(repo_id, "my-project");
++    }
++
++    #[test]
++    fn infer_repo_id_falls_back_to_unknown() {
++        let dir = tempdir().unwrap();
++        // Empty directory without .git
++        let repo_id = infer_repo_id(dir.path());
++        assert_eq!(repo_id, "unknown");
++    }
++
++    #[test]
++    fn git_commit_short_returns_some_in_git_repo() {
++        let dir = tempdir().unwrap();
++        // Initialize a git repo
++        std::process::Command::new("git")
++            .args(["init"])
++            .current_dir(&dir)
++            .output()
++            .unwrap();
++
++        // Create an initial commit
++        fs::write(dir.path().join("file.txt"), "content").unwrap();
++        std::process::Command::new("git")
++            .args(["add", "."])
++            .current_dir(&dir)
++            .output()
++            .unwrap();
++        std::process::Command::new("git")
++            .args(["commit", "-m", "initial"])
++            .current_dir(&dir)
++            .output()
++            .unwrap();
++
++        let commit = git_commit_short(dir.path());
++        assert!(commit.is_some());
++        assert!(commit.unwrap().len() <= 7);
++    }
++
++    #[test]
++    fn git_commit_short_returns_none_outside_git_repo() {
++        let dir = tempdir().unwrap();
++        let commit = git_commit_short(dir.path());
++        assert!(commit.is_none());
++    }
++
++    #[test]
++    fn repo_bundle_schema_version() {
++        let bundle = RepoBundle {
++            schema_version: REPO_BUNDLE_SCHEMA_VERSION,
++            repo_id: "test".to_string(),
++            repo_path: ".".to_string(),
++            git_commit: None,
++            baseline_path: None,
++            baseline_dsl: None,
++            context: serde_json::json!({}),
++            truth_status: "unknown".to_string(),
++            intent_refs: vec![],
++            contracts: None,
++            owners: None,
++        };
++
++        assert_eq!(bundle.schema_version, 1);
++    }
++}

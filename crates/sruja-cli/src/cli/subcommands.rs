@@ -1475,3 +1475,31 @@ pub enum GraphCommand {
         format: String,
     },
 }
+
+#[derive(Subcommand)]
+pub enum EvalCommand {
+    /// Run an eval task instance against the agent
+    Run {
+        /// Task instance ID (directory name under evaluation/tasks/)
+        #[arg(long)]
+        instance: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Maximum iterations for the agent loop
+        #[arg(long, default_value_t = 3)]
+        max_iterations: usize,
+        /// Dry-run mode: block all file mutations
+        #[arg(long)]
+        dry_run: bool,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// List available eval task instances
+    List {
+        /// Path to evaluation/tasks/ directory
+        #[arg(long, default_value = "evaluation/tasks")]
+        tasks_dir: String,
+    },
+}

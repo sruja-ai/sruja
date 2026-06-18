@@ -77,7 +77,13 @@ pub trait Hook: Send + Sync {
     /// Before an iteration of the outer loop begins.
     async fn before_iteration(&self, _iteration: usize, _max_iterations: usize) {}
     /// After an iteration of the outer loop completes.
-    async fn after_iteration(&self, _iteration: usize, _max_iterations: usize, _result: &LoopIteration) {}
+    async fn after_iteration(
+        &self,
+        _iteration: usize,
+        _max_iterations: usize,
+        _result: &LoopIteration,
+    ) {
+    }
 }
 
 /// Runs a collection of hooks in registration order.
@@ -194,7 +200,12 @@ impl HookRegistry {
         }
     }
 
-    pub async fn after_iteration(&self, iteration: usize, max_iterations: usize, result: &LoopIteration) {
+    pub async fn after_iteration(
+        &self,
+        iteration: usize,
+        max_iterations: usize,
+        result: &LoopIteration,
+    ) {
         for h in &self.hooks {
             h.after_iteration(iteration, max_iterations, result).await;
         }

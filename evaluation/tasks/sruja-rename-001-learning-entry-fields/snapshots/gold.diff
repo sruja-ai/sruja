@@ -1,0 +1,141 @@
+diff --git a/crates/sruja-graph/src/learning.rs b/crates/sruja-graph/src/learning.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-graph/src/learning.rs
++++ b/crates/sruja-graph/src/learning.rs
+@@ -79,14 +79,17 @@ pub struct LearningEntry {
+     pub selector: Option<String>,
+     /// The context in which the experiment was performed (e.g., "Refactoring API layer").
+-    pub context: String,
++    #[serde(alias = "context")]
++    pub situation: String,
+     /// The hypothesis being tested (e.g., "Moving logic to sruja-engine will reduce CLI bloat").
+     pub hypothesis: String,
+     /// Whether the experiment succeeded or failed.
+     #[serde(default)]
+     pub outcome: ExperimentOutcome,
+     /// The reason for the outcome (optional).
+-    pub reason: Option<String>,
++    #[serde(alias = "reason")]
++    pub failure_reason: Option<String>,
+     /// Actionable advice for future agents to avoid repeating mistakes or to replicate success.
+-    pub guardrail_advice: String,
++    #[serde(alias = "guardrail_advice")]
++    pub suggested_behavior: String,
+ }
+ 
+ #[derive(Debug, Clone, Serialize, Deserialize)]
+@@ -110,17 +113,17 @@ impl LearningEntry {
+     }
+ 
+     /// Create a playbook learning.
+-    pub fn playbook(context: &str, hypothesis: &str, advice: &str) -> Self {
++    pub fn playbook(situation: &str, hypothesis: &str, advice: &str) -> Self {
+         Self {
+             id: generate_entry_id(),
+             kind: Some(LearningKind::Playbook),
+             timestamp: Utc::now(),
+             run_id: None,
+             repo: None,
+             selector: None,
+-            context: context.to_string(),
++            situation: situation.to_string(),
+             hypothesis: hypothesis.to_string(),
+             outcome: ExperimentOutcome::default(),
+-            reason: None,
+-            guardrail_advice: advice.to_string(),
++            failure_reason: None,
++            suggested_behavior: advice.to_string(),
+         }
+     }
+ 
+@@ -128,17 +131,17 @@ impl LearningEntry {
+     /// Create a guardrail learning.
+-    pub fn guardrail(context: &str, hypothesis: &str, advice: &str) -> Self {
++    pub fn guardrail(situation: &str, hypothesis: &str, advice: &str) -> Self {
+         Self {
+             id: generate_entry_id(),
+             kind: Some(LearningKind::Guardrail),
+             timestamp: Utc::now(),
+             run_id: None,
+             repo: None,
+             selector: None,
+-            context: context.to_string(),
++            situation: situation.to_string(),
+             hypothesis: hypothesis.to_string(),
+             outcome: ExperimentOutcome::default(),
+-            reason: None,
+-            guardrail_advice: advice.to_string(),
++            failure_reason: None,
++            suggested_behavior: advice.to_string(),
+         }
+     }
+ }
+diff --git a/crates/sruja-agent/src/memory/mod.rs b/crates/sruja-agent/src/memory/mod.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/memory/mod.rs
++++ b/crates/sruja-agent/src/memory/mod.rs
+@@ -67,7 +67,7 @@ impl AgenticMemory {
+     pub fn add_learning(&mut self, mut learning: LearningEntry) {
+         // Auto-generate tags from the learning content
+         let tags = [
+-            learning.context.clone(),
++            learning.situation.clone(),
+             learning.hypothesis.clone(),
+         ];
+         learning.tags = tags.iter().flat_map(|t| extract_tags(t)).collect();
+@@ -92,7 +92,7 @@ impl AgenticMemory {
+     pub fn add_learning_raw(&mut self, learning: LearningEntry) {
+         self.learnings.push(learning);
+     }
+ 
+     pub fn find_relevant(&self, element_id: &str) -> Vec<&LearningEntry> {
+         search::find_relevant(self, element_id)
+diff --git a/crates/sruja-agent/src/cognition/mod.rs b/crates/sruja-agent/src/cognition/mod.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/cognition/mod.rs
++++ b/crates/sruja-agent/src/cognition/mod.rs
+@@ -1906,8 +1906,8 @@ fn parse_learnings_from_response(content: &str) -> Vec<LearningEntry> {
+                     "guardrail" => LearningEntry::guardrail(context, hypothesis, advice),
+                     _ => LearningEntry::playbook(context, hypothesis, advice),
+                 };
+-                entry.reason = reason;
+-                entry.guardrail_advice = advice.to_string();
++                entry.failure_reason = reason;
++                entry.suggested_behavior = advice.to_string();
+                 entries.push(entry);
+             }
+         }
+diff --git a/crates/sruja-agent/src/matts.rs b/crates/sruja-agent/src/matts.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/matts.rs
++++ b/crates/sruja-agent/src/matts.rs
+@@ -102,7 +102,7 @@ impl MatTsDistiller {
+             distilled.push(LearningEntry {
+                 id: entry.id.clone(),
+                 kind: Some(LearningKind::Playbook),
+-                context: entry.context.clone(),
++                situation: entry.context.clone(),
+                 hypothesis: entry.hypothesis.clone(),
+                 outcome: entry.outcome.clone(),
+-                reason: entry.reason.clone(),
+-                guardrail_advice: entry.guardrail_advice.clone(),
++                failure_reason: entry.failure_reason.clone(),
++                suggested_behavior: entry.suggested_behavior.clone(),
+                 timestamp: entry.timestamp,
+                 tags: entry.tags.clone(),
+                 links: entry.links.clone(),
+@@ -148,7 +148,7 @@ impl MatTsDistiller {
+             distilled.push(LearningEntry {
+                 id: entry.id.clone(),
+                 kind: Some(LearningKind::Guardrail),
+-                context: entry.context.clone(),
++                situation: entry.context.clone(),
+                 hypothesis: entry.hypothesis.clone(),
+                 outcome: entry.outcome.clone(),
+-                reason: entry.reason.clone(),
+-                guardrail_advice: entry.guardrail_advice.clone(),
++                failure_reason: entry.failure_reason.clone(),
++                suggested_behavior: entry.suggested_behavior.clone(),
+                 timestamp: entry.timestamp,
+                 tags: entry.tags.clone(),
+                 links: entry.links.clone(),

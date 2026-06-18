@@ -1,0 +1,108 @@
+diff --git a/crates/sruja-agent/src/lib.rs b/crates/sruja-agent/src/lib.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/lib.rs
++++ b/crates/sruja-agent/src/lib.rs
+@@ -70,6 +70,7 @@ pub use memory::{
+ pub use matts::MatTsDistiller;
+ pub use cognition::Agent;
+ pub use error::AgentError;
++pub use utils::slugify;
+ 
+ mod error;
+ mod llm;
+@@ -77,6 +78,7 @@ mod matts;
+ mod cognition;
+ mod tool;
+ mod memory;
++mod utils;
+ 
+ #[cfg(test)]
+ mod tests;
+diff --git a/crates/sruja-agent/src/utils.rs b/crates/sruja-agent/src/utils.rs
+new file mode 100644
+index 0000000..abcdefg
+--- /dev/null
++++ b/crates/sruja-agent/src/utils.rs
+@@ -0,0 +1,20 @@
++//! Shared utility functions.
++
++/// Convert a string to a URL-friendly slug.
++///
++/// - Lowercases the input
++/// - Removes non-alphanumeric characters (except spaces, hyphens, underscores, dots)
++/// - Converts spaces/underscores/dots to hyphens
++/// - Deduplicates consecutive hyphens
++/// - Trims leading/trailing hyphens
++/// - Truncates to 50 characters
++pub fn slugify(s: &str) -> String {
++    let mut out = String::new();
++    for ch in s.chars() {
++        if ch.is_ascii_alphanumeric() {
++            out.push(ch.to_ascii_lowercase());
++        } else if (ch.is_whitespace() || ch == '-' || ch == '_' || ch == '.') && !out.ends_with('-')
++        {
++            out.push('-');
++        }
++    }
++    out.trim_matches('-').chars().take(50).collect()
++}
+diff --git a/crates/sruja-agent/src/cognition/decision.rs b/crates/sruja-agent/src/cognition/decision.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/cognition/decision.rs
++++ b/crates/sruja-agent/src/cognition/decision.rs
+@@ -188,16 +188,6 @@ impl DecisionEngine {
+     }
+ }
+ 
+-fn slugify(s: &str) -> String {
+-    s.to_lowercase()
+-        .replace(|c: char| !c.is_alphanumeric() && c != ' ', "")
+-        .replace(' ', "-")
+-        .chars()
+-        .take(50)
+-        .collect()
+-}
+-
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+diff --git a/crates/sruja-agent/src/cognition/runbook.rs b/crates/sruja-agent/src/cognition/runbook.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/cognition/runbook.rs
++++ b/crates/sruja-agent/src/cognition/runbook.rs
+@@ -208,17 +208,6 @@ impl RunbookEngine {
+     }
+ }
+ 
+-fn slugify(s: &str) -> String {
+-    s.to_lowercase()
+-        .replace(|c: char| !c.is_alphanumeric() && c != ' ', "")
+-        .replace(' ', "-")
+-        .chars()
+-        .take(50)
+-        .collect()
+-}
+-
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+diff --git a/crates/sruja-cli/src/commands/agent_plan.rs b/crates/sruja-cli/src/commands/agent_plan.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-cli/src/commands/agent_plan.rs
++++ b/crates/sruja-cli/src/commands/agent_plan.rs
+@@ -19,17 +19,6 @@ fn default_plan_path(repo_root: &Path, run_id: &str, goal: &str) -> PathBuf {
+         .join(format!("{}-{}.json", run_id, slugify(goal)))
+ }
+ 
+-fn slugify(s: &str) -> String {
+-    let mut out = String::new();
+-    for ch in s.chars() {
+-        if ch.is_ascii_alphanumeric() {
+-            out.push(ch.to_ascii_lowercase());
+-        } else if (ch.is_whitespace() || ch == '-' || ch == '_' || ch == '.') && !out.ends_with('-')
+-        {
+-            out.push('-');
+-        }
+-    }
+-    out.trim_matches('-').chars().take(40).collect()
+-}

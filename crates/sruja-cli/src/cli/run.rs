@@ -5,8 +5,9 @@ use super::app::ContextIntent;
 use super::commands::Commands;
 use super::subcommands::{
     AgentCommand, AidlcCommand, AuthorCommand, DecisionCommand, DiscoverCommand, DslCommand,
-    EventCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand, IndexCommand,
-    InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand, WorkflowCommand,
+    EvalCommand, EventCommand, FederationCommand, GraphCommand, GuardCommand, HumanCommand,
+    IndexCommand, InspectCommand, IntentCommand, MemoryCommand, ProposeCommand, RunCommand,
+    WorkflowCommand,
 };
 use super::Cli;
 
@@ -1398,6 +1399,25 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 ci,
                 threshold,
             } => commands::what_if::what_if(&query, &repo, &format, ci, threshold).await,
+        },
+        Commands::Eval { cmd } => match cmd {
+            EvalCommand::Run {
+                instance,
+                repo,
+                max_iterations,
+                dry_run,
+                format,
+            } => commands::eval::run_eval_instance(
+                &instance,
+                &repo,
+                max_iterations,
+                dry_run,
+                &format,
+            )
+            .await
+            .map_err(|e| CliError::validation(e.to_string())),
+            EvalCommand::List { tasks_dir } => commands::eval::list_eval_instances(&tasks_dir)
+                .map_err(|e| CliError::validation(e.to_string())),
         },
     };
 

@@ -1,0 +1,15 @@
+instance_id = "sruja-refactor-001-extract-slugify"
+category = "refactor"
+difficulty = 2
+profile = "coding"
+base_commit = "6113e364"
+gold_patch = "snapshots/gold.diff"
+test_patch = "snapshots/test.diff"
+problem_statement = "problem_statement.md"
+fail_to_pass = ["slugify_unified_behavior"]
+pass_to_pass = ["slugify_existing_tests"]
+
+[metadata]
+crate = "sruja-agent"
+files = ["crates/sruja-agent/src/cognition/decision.rs", "crates/sruja-agent/src/cognition/runbook.rs", "crates/sruja-cli/src/commands/agent_plan.rs"]
+scope = "cognition-slugify"

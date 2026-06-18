@@ -1,0 +1,64 @@
+diff --git a/crates/sruja-agent/src/utils.rs b/crates/sruja-agent/src/utils.rs
+index 0000000..abcdefg 100644
+--- /dev/null
++++ b/crates/sruja-agent/src/utils.rs
+@@ -0,0 +1,45 @@
++//! Shared utility functions.
++
++/// Convert a string to a URL-friendly slug.
++pub fn slugify(s: &str) -> String {
++    let mut out = String::new();
++    for ch in s.chars() {
++        if ch.is_ascii_alphanumeric() {
++            out.push(ch.to_ascii_lowercase());
++        } else if (ch.is_whitespace() || ch == '-' || ch == '_' || ch == '.') && !out.ends_with('-')
++        {
++            out.push('-');
++        }
++    }
++    out.trim_matches('-').chars().take(50).collect()
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn slugify_basic() {
++        assert_eq!(slugify("Hello World"), "hello-world");
++    }
++
++    #[test]
++    fn slugify_special_chars() {
++        assert_eq!(slugify("Hello, World!"), "hello-world");
++    }
++
++    #[test]
++    fn slugify_underscores() {
++        assert_eq!(slugify("hello_world"), "hello-world");
++    }
++
++    #[test]
++    fn slugify_dots() {
++        assert_eq!(slugify("hello.world"), "hello-world");
++    }
++
++    #[test]
++    fn slugify_consecutive_hyphens() {
++        assert_eq!(slugify("hello--world"), "hello-world");
++    }
++
++    #[test]
++    fn slugify_truncation() {
++        let long = "a".repeat(60);
++        assert_eq!(slugify(&long).len(), 50);
++    }
++
++    #[test]
++    fn slugify_unified_behavior() {
++        // The unified slugify should handle all edge cases from both variants
++        assert_eq!(slugify("Test_Case.Name"), "test-case-name");
++        assert_eq!(slugify("  hello  "), "hello");
++        assert_eq!(slugify(""), "");
++    }
++}

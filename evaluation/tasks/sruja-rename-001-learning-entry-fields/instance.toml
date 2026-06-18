@@ -1,0 +1,15 @@
+instance_id = "sruja-rename-001-learning-entry-fields"
+category = "multi_file_rename"
+difficulty = 4
+profile = "coding"
+base_commit = "6113e364"
+gold_patch = "snapshots/gold.diff"
+test_patch = "snapshots/test.diff"
+problem_statement = "problem_statement.md"
+fail_to_pass = ["learning_entry_field_rename_compiles"]
+pass_to_pass = ["learning_entry_existing_tests"]
+
+[metadata]
+crate = "sruja-graph"
+files = ["crates/sruja-graph/src/learning.rs", "crates/sruja-agent/src/memory/mod.rs", "crates/sruja-agent/src/cognition/mod.rs"]
+scope = "learning-entry-types"

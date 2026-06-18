@@ -1,0 +1,70 @@
+diff --git a/crates/sruja-agent/src/cognition/mod.rs b/crates/sruja-agent/src/cognition/mod.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/cognition/mod.rs
++++ b/crates/sruja-agent/src/cognition/mod.rs
+@@ -983,14 +983,16 @@ impl Agent {
+ 
+         // Persist learnings to memory.
+         if let Some((ref repo, ref mem)) = self.memory {
+-            {
+-                let mut mem = mem.lock().unwrap();
+-                for entry in &learnings {
+-                    mem.add_learning(entry.clone());
+-                }
+-            }
+-            // Save to disk.
+-            let mem = mem.lock().unwrap();
+-            if let Err(e) = mem.save(repo) {
+-                tracing::warn!(error = %e, "failed to save learnings to memory");
++            // Use unwrap_or_else to recover from poisoned mutex gracefully
++            let mut mem = mem.lock().unwrap_or_else(|e| e.into_inner());
++            for entry in &learnings {
++                mem.add_learning(entry.clone());
+             }
++            if let Err(e) = mem.save(repo) {
++                tracing::warn!(error = %e, "failed to save learnings to memory");
++            }
+         }
+ 
+         Ok(learnings)
+diff --git a/crates/sruja-agent/src/llm/router.rs b/crates/sruja-agent/src/llm/router.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-agent/src/llm/router.rs
++++ b/crates/sruja-agent/src/llm/router.rs
+@@ -147,14 +147,14 @@ impl ModelRouter {
+ 
+     /// Total USD spent so far.
+     pub fn spent_usd(&self) -> f64 {
+-        *self.spent.lock().unwrap()
++        *self.spent.lock().unwrap_or_else(|e| e.into_inner())
+     }
+ 
+     /// Remaining budget before the cap is hit (`None` if no cap).
+     pub fn remaining_usd(&self) -> Option<f64> {
+         self.config.spend_cap_usd.map(|cap| {
+-            let spent = *self.spent.lock().unwrap();
++            let spent = *self.spent.lock().unwrap_or_else(|e| e.into_inner());
+             (cap - spent).max(0.0)
+         })
+     }
+@@ -162,7 +162,7 @@ impl ModelRouter {
+ 
+     fn check_budget(&self) -> Result<(), LlmError> {
+         if let Some(cap) = self.config.spend_cap_usd {
+-            let spent = *self.spent.lock().unwrap();
++            let spent = *self.spent.lock().unwrap_or_else(|e| e.into_inner());
+             if spent >= cap {
+                 return Err(LlmError::BudgetExceeded { spent, cap });
+             }
+@@ -175,7 +175,7 @@ impl ModelRouter {
+     fn record_cost(&self, model: &str, usage: &super::Usage) {
+         let cost = self
+             .config
+             .pricing
+             .get(model)
+             .map(|p| p.cost(usage.prompt_tokens, usage.completion_tokens))
+             .unwrap_or(0.0);
+-        *self.spent.lock().unwrap() += cost;
++        *self.spent.lock().unwrap_or_else(|e| e.into_inner()) += cost;
+     }
+ }

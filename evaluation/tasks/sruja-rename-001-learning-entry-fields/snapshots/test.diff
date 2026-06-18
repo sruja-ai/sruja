@@ -1,0 +1,36 @@
+diff --git a/crates/sruja-graph/src/learning.rs b/crates/sruja-graph/src/learning.rs
+index 1234567..abcdefg 100644
+--- a/crates/sruja-graph/src/learning.rs
++++ b/crates/sruja-graph/src/learning.rs
+@@ -350,4 +350,30 @@ mod tests {
+         let entry = LearningEntry::playbook("context", "hypothesis", "advice");
+         assert_eq!(entry.kind, Some(LearningKind::Playbook));
+     }
++
++    #[test]
++    fn learning_entry_field_rename_compiles() {
++        // Test that the renamed fields compile correctly
++        let entry = LearningEntry {
++            id: "test".to_string(),
++            kind: Some(LearningKind::Playbook),
++            timestamp: Utc::now(),
++            run_id: None,
++            repo: None,
++            selector: None,
++            situation: "test situation".to_string(),
++            hypothesis: "test hypothesis".to_string(),
++            outcome: ExperimentOutcome::default(),
++            failure_reason: Some("test reason".to_string()),
++            suggested_behavior: "test advice".to_string(),
++        };
++
++        assert_eq!(entry.situation, "test situation");
++        assert_eq!(entry.failure_reason, Some("test reason".to_string()));
++        assert_eq!(entry.suggested_behavior, "test advice");
++
++        // Test backward-compatible deserialization with old field names
++        let json = r#"{"situation":"test","hypothesis":"test","guardrail_advice":"test"}"#;
++        let entry: LearningEntry = serde_json::from_str(json).unwrap();
++        assert_eq!(entry.situation, "test");
++    }
+ }

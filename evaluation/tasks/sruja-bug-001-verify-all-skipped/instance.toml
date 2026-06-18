@@ -1,0 +1,15 @@
+instance_id = "sruja-bug-001-verify-all-skipped"
+category = "bug_repro_fix"
+difficulty = 3
+profile = "coding"
+base_commit = "6113e364"
+gold_patch = "snapshots/gold.diff"
+test_patch = "snapshots/test.diff"
+problem_statement = "problem_statement.md"
+fail_to_pass = ["verify_skipped_is_not_pass_when_allowlist_empty"]
+pass_to_pass = ["all_passed_logic"]
+
+[metadata]
+crate = "sruja-agent"
+file = "crates/sruja-agent/src/verify/mod.rs"
+severity = "security"
