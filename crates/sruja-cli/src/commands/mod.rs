@@ -7,6 +7,7 @@ pub mod analysis;
 pub mod author;
 pub mod density;
 pub mod dsl_domain;
+pub mod eval;
 pub mod intent_domain;
 pub mod scan_domain;
 pub mod utility_domain;
