@@ -1,0 +1,520 @@
+{
+  "learnings": [
+    {
+      "id": "learn_arch_001",
+      "kind": "guardrail",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "architecture: layer boundary enforcement",
+      "hypothesis": "Lower-tier crates must never depend on higher-tier crates. The layer order is: Core Engine → Extraction → Delivery → Secondary.",
+      "outcome": "success",
+      "reason": "DR-2024-007, classification.json. This prevents circular dependencies and keeps the dependency graph acyclic.",
+      "guardrail_advice": "Before adding a dependency, check the layer of both crates. Use `sruja drift -r .` to verify.",
+      "affected_elements": [
+        "Sruja.Core",
+        "Sruja.Export",
+        "Sruja.CLI",
+        "Sruja.Agent"
+      ],
+      "tags": [
+        "architecture",
+        "boundary",
+        "dependency",
+        "layer"
+      ],
+      "related_ids": [
+        "DR-2024-007",
+        "learn_1781610464698_0",
+        "learn_1781612498450_0",
+        "learn_1781612549216_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_arch_002",
+      "kind": "guardrail",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "architecture: WASM-only constraints",
+      "hypothesis": "WASM-only crates (sruja-wasm) must not use native-only APIs: std::fs, std::net, std::process, threads, tree-sitter, fastembed.",
+      "outcome": "success",
+      "reason": "DR-2024-003, classification.json forbidden_patterns. WASM runs in browser/Node where these APIs don't exist.",
+      "guardrail_advice": "If modifying sruja-wasm, verify no native-only imports. Run `just test-wasm` after changes.",
+      "affected_elements": [
+        "Sruja.IDE"
+      ],
+      "tags": [
+        "wasm",
+        "constraint",
+        "browser",
+        "node"
+      ],
+      "related_ids": [
+        "DR-2024-003"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_arch_003",
+      "kind": "playbook",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "error handling: use Result with thiserror",
+      "hypothesis": "Use Result<T, E> with thiserror for all error types in Rust crates. Never use anyhow in library crates (CLI only).",
+      "outcome": "success",
+      "reason": "DR-2024-001. Rust crates use Result natively. Anyhow is acceptable only in sruja-cli for error propagation.",
+      "guardrail_advice": "Define error enums with #[derive(Error, thiserror)]. Use ? operator for propagation. Never unwrap() in production.",
+      "affected_elements": [
+        "Sruja.Core",
+        "Sruja.Export",
+        "Sruja.Agent"
+      ],
+      "tags": [
+        "error-handling",
+        "rust",
+        "thiserror",
+        "result"
+      ],
+      "related_ids": [
+        "DR-2024-001",
+        "learn_1781610464698_0",
+        "learn_1781612498450_0",
+        "learn_1781612549216_0",
+        "learn_1781622499180_0",
+        "learn_1781622703886_1"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_arch_004",
+      "kind": "playbook",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "architecture: JSON as primary export format",
+      "hypothesis": "JSON is the canonical machine-readable export format. All DSL information is serialized to structured JSON.",
+      "outcome": "success",
+      "reason": "DR-2024-006. MCP tools, CI, and AI agents consume JSON. YAML/XML were considered but rejected.",
+      "guardrail_advice": "Export paths should produce valid JSON. Use serde_json for serialization. Support --format json|text|github-actions.",
+      "affected_elements": [
+        "Sruja.Export",
+        "Sruja.CLI"
+      ],
+      "tags": [
+        "export",
+        "json",
+        "format",
+        "serialization"
+      ],
+      "related_ids": [
+        "DR-2024-006"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_arch_005",
+      "kind": "guardrail",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "architecture: sruja-cli is top-level aggregator",
+      "hypothesis": "No other crate should depend on sruja-cli. It is the top-level entry point that composes all other crates.",
+      "outcome": "success",
+      "reason": "classification.json forbidden_patterns. CLI is the delivery mechanism, not a library.",
+      "guardrail_advice": "If another crate needs CLI functionality, extract it into a shared crate instead.",
+      "affected_elements": [
+        "Sruja.CLI"
+      ],
+      "tags": [
+        "cli",
+        "dependency",
+        "aggregator"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_arch_006",
+      "kind": "playbook",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "architecture: C4 is one profile among many",
+      "hypothesis": "C4 is demoted from universal model to one profile. Libraries, data pipelines, and governance use different profiles.",
+      "outcome": "success",
+      "reason": "DR-2025-005. View-driven export controls what appears in markdown. Backwards compatible (no views = auto-C4).",
+      "guardrail_advice": "When modeling non-C4 domains, define a profile with custom element kinds and diagram styles.",
+      "affected_elements": [
+        "Sruja.Core",
+        "Sruja.Export"
+      ],
+      "tags": [
+        "modeling",
+        "profile",
+        "c4",
+        "views"
+      ],
+      "related_ids": [
+        "DR-2025-005"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_workflow_001",
+      "kind": "guardrail",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "workflow: shared understanding before coding",
+      "hypothesis": "AI produces garbage without shared understanding. Reach consensus first, write spec, then code.",
+      "outcome": "success",
+      "reason": "AGENTS.md 'Before Coding' section. Re-running the compiler to fix AI errors just produces more garbage.",
+      "guardrail_advice": "Use 'grill me' skill or equivalent questioning before non-trivial changes. Write the spec first.",
+      "affected_elements": [],
+      "tags": [
+        "workflow",
+        "shared-understanding",
+        "spec",
+        "ai"
+      ],
+      "related_ids": [
+        "learn_1781610464698_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_workflow_002",
+      "kind": "guardrail",
+      "timestamp": "2026-06-18T00:00:00Z",
+      "repo": ".",
+      "context": "workflow: sruja is a CLI-first autonomous agent with a deterministic independent grader",
+      "hypothesis": "Sruja owns the full observe → act → verify → critique → replan loop as a CLI-first autonomous agent. The deterministic layer (lint, drift, verify-task, intent check) is the independent grader; it never grades itself. The LLM critic is advisory; only the deterministic verifier can veto convergence.",
+      "outcome": "success",
+      "reason": "LOOP_AGENT_PLAN.md §1 (loop-engineering thesis). Supersedes the passive-harness stance. `sruja agent loop` is the canonical autonomous path; legacy `agent run/plan/apply` remain as headless/CI helpers.",
+      "guardrail_advice": "The actor (sruja-agent) writes code; the deterministic grader (verify-task) approves. Never treat the LLM critique score as authoritative. Fail-to-pass + pass-to-pass tests are ground truth.",
+      "affected_elements": [
+        "Sruja.Agent",
+        "Sruja.CLI"
+      ],
+      "tags": [
+        "workflow",
+        "agent",
+        "autonomous",
+        "deterministic-grader",
+        "loop",
+        "independent-grader"
+      ],
+      "related_ids": [],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_workflow_003",
+      "kind": "playbook",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "workflow: mandatory gates before marking done",
+      "hypothesis": "Before marking a task done: run sruja verify-task. Before non-trivial edits: run sruja focus. After .sruja changes: run sruja drift.",
+      "outcome": "success",
+      "reason": ".cursor/rules/sruja-dev.mdc mandatory gates. These gates catch architecture violations before they ship.",
+      "guardrail_advice": "Follow the gate sequence: focus → implement → verify-task → drift (if .sruja changed).",
+      "affected_elements": [],
+      "tags": [
+        "workflow",
+        "gates",
+        "verification",
+        "drift"
+      ],
+      "related_ids": [
+        "learn_1781610464698_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_convention_001",
+      "kind": "playbook",
+      "timestamp": "2026-06-06T00:00:00Z",
+      "repo": ".",
+      "context": "convention: naming patterns",
+      "hypothesis": "Rust: PascalCase types, snake_case functions, SCREAMING_SNAKE constants. TypeScript: PascalCase classes, camelCase functions.",
+      "outcome": "success",
+      "reason": "AGENTS.md Code Style Guidelines section.",
+      "guardrail_advice": "Follow existing patterns in the codebase. Run cargo fmt for Rust, npm run compile for TypeScript.",
+      "affected_elements": [],
+      "tags": [
+        "convention",
+        "naming",
+        "style",
+        "rust",
+        "typescript"
+      ],
+      "related_ids": [
+        "learn_1781622499180_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_1781610464698_0",
+      "kind": "playbook",
+      "timestamp": "2026-06-16T11:47:44.698386Z",
+      "repo": ".",
+      "context": "Testing agent memory features",
+      "hypothesis": "Agent plan and apply workflow works with Z_AI provider",
+      "outcome": "success",
+      "reason": "Successfully generated plan with enrichment",
+      "guardrail_advice": "Use Z_AI provider for agent enrichment tasks",
+      "affected_elements": [
+        "Sruja.Agent"
+      ],
+      "tags": [
+        "testing",
+        "agent",
+        "memory",
+        "features",
+        "plan",
+        "apply",
+        "workflow",
+        "works",
+        "z_ai",
+        "provider",
+        "enrichment",
+        "tasks"
+      ],
+      "related_ids": [
+        "learn_1781610464698_0",
+        "learn_1781612498450_0",
+        "learn_1781612549216_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_1781612498450_0",
+      "kind": "playbook",
+      "timestamp": "2026-06-16T12:21:38.450022Z",
+      "repo": ".",
+      "context": "Testing agent with multiple models",
+      "hypothesis": "Agent works with Z.AI, XIMIMO, and OpenRouter providers",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "Use agent plan and apply commands for automated coding tasks",
+      "affected_elements": [
+        "Sruja.Agent"
+      ],
+      "tags": [
+        "testing",
+        "agent",
+        "multiple",
+        "models",
+        "works",
+        "ximimo",
+        "openrouter",
+        "providers",
+        "plan",
+        "apply",
+        "commands",
+        "automated"
+      ],
+      "related_ids": [
+        "learn_1781610464698_0",
+        "learn_arch_003",
+        "learn_arch_001",
+        "learn_1781612549216_0",
+        "learn_1781622499180_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_1781612549216_0",
+      "kind": "playbook",
+      "timestamp": "2026-06-16T12:22:29.216766Z",
+      "repo": ".",
+      "context": "agent task: Test sruja agent with multiple models",
+      "hypothesis": "Task succeeded: Successfully tested with Z.AI, XIMIMO, and OpenRouter providers",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "This approach worked; reuse as a playbook for similar tasks.",
+      "affected_elements": [
+        "Sruja.Agent"
+      ],
+      "tags": [
+        "agent",
+        "task",
+        "test",
+        "sruja",
+        "multiple",
+        "models",
+        "succeeded",
+        "successfully",
+        "tested",
+        "ximimo",
+        "openrouter",
+        "providers"
+      ],
+      "related_ids": [
+        "learn_1781612498450_0",
+        "learn_1781610464698_0",
+        "learn_arch_003",
+        "learn_arch_001",
+        "learn_1781622499180_0",
+        "learn_1781622703886_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_1781622499180_0",
+      "kind": "playbook",
+      "timestamp": "2026-06-16T15:08:19.180398Z",
+      "context": "The task successfully listed files in crates/sruja-cli/src/commands/ with a perfect score.",
+      "hypothesis": "Using the full, specific Rust crate path allowed the system to accurately ground the request and retrieve the correct files.",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "Always include the full crate structure (e.g., crates/) in file paths when querying Rust project structures to ensure precise identification.",
+      "affected_elements": [],
+      "tags": [
+        "task",
+        "successfully",
+        "listed",
+        "files",
+        "crates",
+        "sruja-cli",
+        "commands",
+        "perfect",
+        "score",
+        "full",
+        "specific",
+        "rust"
+      ],
+      "related_ids": [
+        "learn_1781612549216_0",
+        "learn_arch_003",
+        "learn_1781612498450_0",
+        "learn_convention_001",
+        "learn_1781622499180_1",
+        "learn_1781622703886_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_1781622499180_1",
+      "kind": "playbook",
+      "timestamp": "2026-06-16T15:08:19.180403Z",
+      "context": "The task completed with 0 subtasks succeeded/failed but achieved a score of 1.",
+      "hypothesis": "The operation was simple and atomic, suggesting that complex planning or subtask decomposition was unnecessary.",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "Avoid decomposing trivial filesystem queries (like 'list files') into subtasks; execute them directly to maintain efficiency.",
+      "affected_elements": [],
+      "tags": [
+        "task",
+        "completed",
+        "subtasks",
+        "succeeded",
+        "failed",
+        "achieved",
+        "score",
+        "operation",
+        "simple",
+        "atomic",
+        "suggesting",
+        "complex"
+      ],
+      "related_ids": [
+        "learn_1781622499180_0",
+        "learn_1781612549216_0",
+        "learn_1781622703886_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_1781622703886_0",
+      "kind": "playbook",
+      "timestamp": "2026-06-16T15:11:43.886934Z",
+      "context": "The task 'Say hello' achieved a perfect score and was approved immediately without any subtasks being executed.",
+      "hypothesis": "Atomic, single-step tasks do not benefit from decomposition and succeed best when executed directly.",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "Avoid breaking down trivial or direct instructions into complex subtask workflows.",
+      "affected_elements": [],
+      "tags": [
+        "task",
+        "hello",
+        "achieved",
+        "perfect",
+        "score",
+        "approved",
+        "immediately",
+        "without",
+        "subtasks",
+        "executed",
+        "atomic",
+        "single-step"
+      ],
+      "related_ids": [
+        "learn_1781622499180_1",
+        "learn_1781622499180_0",
+        "learn_1781612549216_0",
+        "learn_1781622703886_1"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    },
+    {
+      "id": "learn_1781622703886_1",
+      "kind": "playbook",
+      "timestamp": "2026-06-16T15:11:43.886935Z",
+      "context": "No comprehension cited elements were provided, yet the result was approved.",
+      "hypothesis": "Tasks relying solely on internal knowledge do not require external context retrieval or citation.",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "Do not force citations or search steps when the task can be answered using existing training data.",
+      "affected_elements": [],
+      "tags": [
+        "comprehension",
+        "cited",
+        "elements",
+        "provided",
+        "result",
+        "approved",
+        "tasks",
+        "relying",
+        "solely",
+        "internal",
+        "knowledge",
+        "require"
+      ],
+      "related_ids": [
+        "learn_arch_003",
+        "learn_1781610464698_0",
+        "learn_1781622703886_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 0
+    }
+  ]
+}
