@@ -6,26 +6,30 @@
 #[cfg(feature = "mcp-client")]
 use std::collections::HashMap;
 #[cfg(feature = "mcp-client")]
+use std::sync::Arc;
+#[cfg(feature = "mcp-client")]
 use std::time::Duration;
 
+#[cfg(feature = "mcp-client")]
+use async_trait::async_trait;
 #[cfg(feature = "mcp-client")]
 use tokio::process::Command;
 #[cfg(feature = "mcp-client")]
 use rmcp::{
-    model::{CallToolRequestParams, Tool},
+    model::{CallToolRequestParams, Tool as McpTool},
     ServiceExt,
-    service::QuitReason,
-    transport::{ConfigureCommandExt, TokioChildProcess},
+    transport::TokioChildProcess,
 };
 #[cfg(feature = "mcp-client")]
 use tracing::{debug, warn};
 #[cfg(feature = "mcp-client")]
 use crate::manifest::McpServerDecl;
+#[cfg(feature = "mcp-client")]
+use crate::tool::{Tool, ToolError};
 
 /// Lifecycle state of an MCP connection.
 #[derive(Debug, Clone, PartialEq)]
 enum ConnectionState {
-    Connecting,
     Ready,
     Dead,
 }
@@ -96,7 +100,7 @@ impl McpConnection {
 
     /// List all tools from the MCP server.
     #[allow(dead_code)]
-    pub async fn list_tools(&self) -> Result<Vec<Tool>, McpError> {
+    pub async fn list_tools(&self) -> Result<Vec<McpTool>, McpError> {
         let tools = self
             .server
             .list_all_tools()
@@ -179,6 +183,122 @@ fn build_child_env(decl: &McpServerDecl) -> HashMap<String, String> {
     }
 
     env
+}
+
+/// Bridge an MCP tool into Sruja's `Tool` registry.
+///
+/// Wraps a remote MCP tool behind the local `Tool` trait, namespacing it
+/// as `mcp__<server>__<tool>` and applying mutation classification rules.
+pub struct McpToolBridge {
+    /// Namespaced tool name: `mcp__<server>__<tool>`
+    name: String,
+    /// Description from MCP tool
+    description: String,
+    /// JSON schema for parameters (converted from MCP input_schema)
+    parameters: serde_json::Value,
+    /// Whether this tool mutates state (mutation classification)
+    is_mutating: bool,
+    /// Original MCP tool name (for dispatching to the server)
+    tool_name: String,
+    /// Shared connection to the MCP server
+    connection: Arc<McpConnection>,
+}
+
+impl McpToolBridge {
+    /// Create a tool bridge from an MCP tool descriptor.
+    ///
+    /// Applies namespace `mcp__<server>__<tool>` and mutation classification:
+    /// - If `trusted = false`: force mutating
+    /// - If `trusted = true` + `readOnlyHint = true`: non-mutating
+    /// - If `trusted = true` + `readOnlyHint = false/absent`: mutating
+    /// - If `mutating = "readonly"`: override to non-mutating
+    pub fn from_mcp_tool(
+        mcp_tool: McpTool,
+        server_name: &str,
+        decl: &McpServerDecl,
+        connection: Arc<McpConnection>,
+    ) -> Self {
+        let tool_name = mcp_tool.name.clone();
+        let name = format!("mcp__{}__{}", server_name, tool_name);
+        let description = mcp_tool.description.as_deref().unwrap_or(&tool_name).to_string();
+
+        let input_schema: serde_json::Value = mcp_tool.input_schema.as_ref().clone().into();
+
+        let is_mutating = Self::classify_mutation(decl, &mcp_tool);
+
+        Self {
+            name,
+            description,
+            parameters: input_schema,
+            is_mutating,
+            tool_name: tool_name.to_string(),
+            connection,
+        }
+    }
+
+    /// Classify whether an MCP tool is mutating based on policy.
+    ///
+    /// R8: Remote-mutating sandbox: classify like `Shell` (mutating by default,
+    /// empty `affected_paths()`).
+    ///
+    /// Rules:
+    /// - If `trusted = false`: force mutating (spec-aligned safety)
+    /// - If `trusted = true`:
+    ///   - If `readOnlyHint = Some(true)`: non-mutating
+    ///   - Otherwise: mutating
+    /// - If `mutating = "readonly"`: override to non-mutating
+    fn classify_mutation(decl: &McpServerDecl, mcp_tool: &McpTool) -> bool {
+        use crate::manifest::McpMutationPolicy;
+
+        let read_only_hint = mcp_tool.annotations.as_ref().and_then(|a| a.read_only_hint);
+
+        let is_mutating_from_hint = match (decl.trusted, read_only_hint) {
+            (false, _) => true,
+            (true, Some(true)) => false,
+            (true, Some(false) | None) => true,
+        };
+
+        match decl.mutation {
+            McpMutationPolicy::Auto => is_mutating_from_hint,
+            McpMutationPolicy::Readonly => false,
+            McpMutationPolicy::Mutating => true,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for McpToolBridge {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn parameters(&self) -> serde_json::Value {
+        self.parameters.clone()
+    }
+
+    async fn call(&self, params: serde_json::Value) -> Result<String, ToolError> {
+        let arguments: rmcp::model::JsonObject = params
+            .as_object()
+            .ok_or_else(|| ToolError::InvalidParams("Expected object for MCP tool arguments".to_string()))?
+            .clone();
+
+        self.connection
+            .call_tool(&self.tool_name, arguments)
+            .await
+            .map_err(|e| ToolError::Execution(e.to_string()))
+    }
+
+    fn is_mutating(&self) -> bool {
+        self.is_mutating
+    }
+
+    fn affected_paths(&self, _params: &serde_json::Value) -> Vec<String> {
+        vec![]
+    }
 }
 
 /// MCP client errors.
@@ -329,5 +449,260 @@ mod tests {
         let repo_root = std::path::Path::new(".");
         let result = McpConnection::connect_stdio(&decl, repo_root).await;
         assert!(matches!(result, Err(McpError::MissingCommand(_))));
+    }
+
+    #[test]
+    fn test_mcp_tool_bridge_namespace() {
+        use rmcp::model::{Tool, ToolAnnotations};
+
+        let mcp_tool = Tool {
+            name: "read_file".to_string(),
+            description: Some("Read a file".to_string()),
+            input_schema: Arc::new(serde_json::json!({}).try_into().unwrap()),
+            annotations: None,
+        };
+
+        let decl = McpServerDecl {
+            name: "test-server".to_string(),
+            transport: crate::manifest::McpTransport::Stdio,
+            enabled: true,
+            required: false,
+            command: Some("echo".to_string()),
+            args: vec![],
+            cwd: None,
+            url: None,
+            headers: HashMap::new(),
+            auth: None,
+            env: HashMap::new(),
+            env_allow: vec![],
+            init_timeout_secs: 10,
+            tool_timeout_secs: 60,
+            trusted: true,
+            mutation: crate::manifest::McpMutationPolicy::Auto,
+            enabled_tools: None,
+            disabled_tools: None,
+        };
+
+        let connection = Arc::new(McpConnection {
+            name: "test-server".to_string(),
+            state: ConnectionState::Connecting,
+            init_timeout: Duration::from_secs(10),
+            tool_timeout: Duration::from_secs(60),
+            server: unsafe { std::mem::zeroed() },
+        });
+
+        let bridge = McpToolBridge::from_mcp_tool(mcp_tool, "test-server", &decl, connection);
+
+        assert_eq!(bridge.name(), "mcp__test-server__read_file");
+        assert_eq!(bridge.server_name, "test-server");
+        assert_eq!(bridge.tool_name, "read_file");
+    }
+
+    #[test]
+    fn test_mcp_tool_bridge_mutation_untrusted() {
+        use rmcp::model::{Tool, ToolAnnotations};
+
+        let mcp_tool = Tool {
+            name: "safe_tool".to_string(),
+            description: Some("A safe tool".to_string()),
+            input_schema: Arc::new(serde_json::json!({}).try_into().unwrap()),
+            annotations: Some(ToolAnnotations {
+                read_only_hint: Some(true),
+                destructive_hint: None,
+                idempotent_hint: None,
+                title: None,
+                deprecated: None,
+                exceptionally_dangerous: None,
+            }),
+        };
+
+        let decl = McpServerDecl {
+            name: "untrusted-server".to_string(),
+            transport: crate::manifest::McpTransport::Stdio,
+            enabled: true,
+            required: false,
+            command: Some("echo".to_string()),
+            args: vec![],
+            cwd: None,
+            url: None,
+            headers: HashMap::new(),
+            auth: None,
+            env: HashMap::new(),
+            env_allow: vec![],
+            init_timeout_secs: 10,
+            tool_timeout_secs: 60,
+            trusted: false,
+            mutation: crate::manifest::McpMutationPolicy::Auto,
+            enabled_tools: None,
+            disabled_tools: None,
+        };
+
+        let connection = Arc::new(McpConnection {
+            name: "untrusted-server".to_string(),
+            state: ConnectionState::Connecting,
+            init_timeout: Duration::from_secs(10),
+            tool_timeout: Duration::from_secs(60),
+            server: unsafe { std::mem::zeroed() },
+        });
+
+        let bridge = McpToolBridge::from_mcp_tool(mcp_tool, "untrusted-server", &decl, connection);
+
+        assert!(bridge.is_mutating(), "Untrusted server tools should be mutating");
+    }
+
+    #[test]
+    fn test_mcp_tool_bridge_mutation_trusted_readonly_hint() {
+        use rmcp::model::{Tool, ToolAnnotations};
+
+        let mcp_tool = Tool {
+            name: "query_tool".to_string(),
+            description: Some("A query tool".to_string()),
+            input_schema: Arc::new(serde_json::json!({}).try_into().unwrap()),
+            annotations: Some(ToolAnnotations {
+                read_only_hint: Some(true),
+                destructive_hint: None,
+                idempotent_hint: None,
+                title: None,
+                deprecated: None,
+                exceptionally_dangerous: None,
+            }),
+        };
+
+        let decl = McpServerDecl {
+            name: "trusted-server".to_string(),
+            transport: crate::manifest::McpTransport::Stdio,
+            enabled: true,
+            required: false,
+            command: Some("echo".to_string()),
+            args: vec![],
+            cwd: None,
+            url: None,
+            headers: HashMap::new(),
+            auth: None,
+            env: HashMap::new(),
+            env_allow: vec![],
+            init_timeout_secs: 10,
+            tool_timeout_secs: 60,
+            trusted: true,
+            mutation: crate::manifest::McpMutationPolicy::Auto,
+            enabled_tools: None,
+            disabled_tools: None,
+        };
+
+        let connection = Arc::new(McpConnection {
+            name: "trusted-server".to_string(),
+            state: ConnectionState::Connecting,
+            init_timeout: Duration::from_secs(10),
+            tool_timeout: Duration::from_secs(60),
+            server: unsafe { std::mem::zeroed() },
+        });
+
+        let bridge = McpToolBridge::from_mcp_tool(mcp_tool, "trusted-server", &decl, connection);
+
+        assert!(!bridge.is_mutating(), "Trusted server with readOnlyHint=true should be non-mutating");
+    }
+
+    #[test]
+    fn test_mcp_tool_bridge_mutation_trusted_mutating_hint() {
+        use rmcp::model::{Tool, ToolAnnotations};
+
+        let mcp_tool = Tool {
+            name: "write_tool".to_string(),
+            description: Some("A write tool".to_string()),
+            input_schema: Arc::new(serde_json::json!({}).try_into().unwrap()),
+            annotations: Some(ToolAnnotations {
+                read_only_hint: Some(false),
+                destructive_hint: None,
+                idempotent_hint: None,
+                title: None,
+                deprecated: None,
+                exceptionally_dangerous: None,
+            }),
+        };
+
+        let decl = McpServerDecl {
+            name: "trusted-server".to_string(),
+            transport: crate::manifest::McpTransport::Stdio,
+            enabled: true,
+            required: false,
+            command: Some("echo".to_string()),
+            args: vec![],
+            cwd: None,
+            url: None,
+            headers: HashMap::new(),
+            auth: None,
+            env: HashMap::new(),
+            env_allow: vec![],
+            init_timeout_secs: 10,
+            tool_timeout_secs: 60,
+            trusted: true,
+            mutation: crate::manifest::McpMutationPolicy::Auto,
+            enabled_tools: None,
+            disabled_tools: None,
+        };
+
+        let connection = Arc::new(McpConnection {
+            name: "trusted-server".to_string(),
+            state: ConnectionState::Connecting,
+            init_timeout: Duration::from_secs(10),
+            tool_timeout: Duration::from_secs(60),
+            server: unsafe { std::mem::zeroed() },
+        });
+
+        let bridge = McpToolBridge::from_mcp_tool(mcp_tool, "trusted-server", &decl, connection);
+
+        assert!(bridge.is_mutating(), "Trusted server with readOnlyHint=false should be mutating");
+    }
+
+    #[test]
+    fn test_mcp_tool_bridge_mutation_override_readonly() {
+        use rmcp::model::{Tool, ToolAnnotations};
+
+        let mcp_tool = Tool {
+            name: "write_tool".to_string(),
+            description: Some("A write tool".to_string()),
+            input_schema: Arc::new(serde_json::json!({}).try_into().unwrap()),
+            annotations: Some(ToolAnnotations {
+                read_only_hint: Some(false),
+                destructive_hint: None,
+                idempotent_hint: None,
+                title: None,
+                deprecated: None,
+                exceptionally_dangerous: None,
+            }),
+        };
+
+        let decl = McpServerDecl {
+            name: "readonly-server".to_string(),
+            transport: crate::manifest::McpTransport::Stdio,
+            enabled: true,
+            required: false,
+            command: Some("echo".to_string()),
+            args: vec![],
+            cwd: None,
+            url: None,
+            headers: HashMap::new(),
+            auth: None,
+            env: HashMap::new(),
+            env_allow: vec![],
+            init_timeout_secs: 10,
+            tool_timeout_secs: 60,
+            trusted: true,
+            mutation: crate::manifest::McpMutationPolicy::Readonly,
+            enabled_tools: None,
+            disabled_tools: None,
+        };
+
+        let connection = Arc::new(McpConnection {
+            name: "readonly-server".to_string(),
+            state: ConnectionState::Connecting,
+            init_timeout: Duration::from_secs(10),
+            tool_timeout: Duration::from_secs(60),
+            server: unsafe { std::mem::zeroed() },
+        });
+
+        let bridge = McpToolBridge::from_mcp_tool(mcp_tool, "readonly-server", &decl, connection);
+
+        assert!(!bridge.is_mutating(), "Manifest 'readonly' policy should override to non-mutating");
     }
 }
