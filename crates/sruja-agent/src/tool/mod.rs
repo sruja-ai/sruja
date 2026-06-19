@@ -31,6 +31,9 @@ pub mod builtin;
 pub mod policy;
 pub mod sruja;
 
+#[cfg(feature = "mcp-client")]
+pub mod mcp;
+
 pub use builtin::tools;
 pub use policy::{FileGuard, Phase, TestPathClassifier};
 

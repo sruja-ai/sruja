@@ -34,21 +34,16 @@ pub enum McpTransport {
 }
 
 /// Mutation policy for MCP tools from a server.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum McpMutationPolicy {
     /// Infer from server `trusted` + tool `readOnlyHint`: trusted+readOnlyHint=false → mutating; otherwise conservatively mutating.
+    #[default]
     Auto,
     /// Treat all tools as read-only (force non-mutating).
     Readonly,
     /// Treat all tools as mutating (force mutating).
     Mutating,
-}
-
-impl Default for McpMutationPolicy {
-    fn default() -> Self {
-        Self::Auto
-    }
 }
 
 /// MCP server declaration from the manifest `[[mcp.servers]]` table.
