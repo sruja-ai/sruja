@@ -3,21 +3,29 @@
 //! Connects to external MCP servers (stdio + HTTP), discovers their tools,
 //! and exposes them as `Tool` implementations in the agent's tool registry.
 
+#[cfg(feature = "mcp-client")]
 use std::collections::HashMap;
+#[cfg(feature = "mcp-client")]
 use std::time::Duration;
 
-use serde_json::Value;
-use tokio::io::AsyncReadExt;
+#[cfg(feature = "mcp-client")]
 use tokio::process::Command;
+#[cfg(feature = "mcp-client")]
+use rmcp::{
+    model::{CallToolRequestParams, Tool},
+    ServiceExt,
+    service::QuitReason,
+    transport::{ConfigureCommandExt, TokioChildProcess},
+};
+#[cfg(feature = "mcp-client")]
 use tracing::{debug, warn};
-
 #[cfg(feature = "mcp-client")]
 use crate::manifest::McpServerDecl;
 
 /// Lifecycle state of an MCP connection.
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 enum ConnectionState {
+    Connecting,
     Ready,
     Dead,
 }
@@ -29,10 +37,12 @@ pub struct McpConnection {
     state: ConnectionState,
     init_timeout: Duration,
     tool_timeout: Duration,
+    #[allow(dead_code)]
+    server: rmcp::service::RunningService<rmcp::service::RoleClient, ()>,
 }
 
 impl McpConnection {
-    /// Connect to an MCP server via stdio.
+    /// Connect to an MCP server via stdio using rmcp.
     ///
     /// Spawns the child process with an env-scrubbed environment,
     /// performs the rmcp handshake with a timeout, and returns
@@ -59,40 +69,85 @@ impl McpConnection {
         let child_env = self::build_child_env(decl);
         cmd.envs(&child_env);
 
-        let mut child = cmd
-            .spawn()
+        let transport = TokioChildProcess::new(cmd)
             .map_err(|e| McpError::SpawnFailed(name.clone(), e))?;
 
-        let mut stdout = child.stdout.take().ok_or_else(|| McpError::StdioAccess(name.clone()))?;
-        let _stdin = child.stdin.take().ok_or_else(|| McpError::StdioAccess(name.clone()))?;
+        let server: rmcp::service::RunningService<rmcp::service::RoleClient, ()> =
+            tokio::time::timeout(init_timeout, async {
+                let server: Result<_, McpError> = ()
+                    .serve(transport)
+                    .await
+                    .map_err(|e| McpError::HandshakeFailed(name.clone(), e.to_string()));
+                server
+            })
+            .await
+            .map_err(|_| McpError::HandshakeTimeout(name.clone()))??;
 
-        let init_result = tokio::time::timeout(init_timeout, async {
-            let mut buf = [0u8; 4096];
-            let n = stdout.read(&mut buf).await.map_err(McpError::Io)?;
-            debug!(name, bytes = n, "Stdio handshake read");
-            if n == 0 {
-                return Err(McpError::HandshakeEof(name.clone()));
-            }
-            let response: Value = serde_json::from_slice(&buf[..n])
-                .map_err(|e| McpError::Parse(name.clone(), e))?;
-            Ok(response)
-        })
-        .await
-        .map_err(|_| McpError::HandshakeTimeout(name.clone()))??;
-
-        debug!(name, "Stdio handshake response: {:?}", init_result);
+        debug!(name, "MCP server connected and initialized");
 
         Ok(Self {
             name,
             state: ConnectionState::Ready,
             init_timeout,
             tool_timeout,
+            server,
         })
     }
 
-    /// Graceful shutdown: stdin-close, SIGTERM, grace, SIGKILL, reap.
+    /// List all tools from the MCP server.
+    #[allow(dead_code)]
+    pub async fn list_tools(&self) -> Result<Vec<Tool>, McpError> {
+        let tools = self
+            .server
+            .list_all_tools()
+            .await
+            .map_err(|e| McpError::ToolListFailed(self.name.clone(), e.to_string()))?;
+        debug!(name = self.name, count = tools.len(), "Listed MCP tools");
+        Ok(tools)
+    }
+
+    /// Call a tool on the MCP server.
+    #[allow(dead_code)]
+    pub async fn call_tool(&self, tool_name: &str, arguments: rmcp::model::JsonObject) -> Result<String, McpError> {
+        let tool_name_owned = tool_name.to_string();
+        let params = CallToolRequestParams::new(tool_name_owned).with_arguments(arguments);
+
+        let result = tokio::time::timeout(self.tool_timeout, async {
+            self.server
+                .call_tool(params)
+                .await
+                .map_err(|e| McpError::ToolCallFailed(self.name.clone(), tool_name.to_string(), e.to_string()))
+        })
+        .await
+        .map_err(|_| McpError::ToolCallTimeout(self.name.clone(), tool_name.to_string()))??;
+
+        if result.is_error == Some(true) {
+            let error_text = result
+                .content
+                .first()
+                .and_then(|c| c.raw.as_text())
+                .map(|t| t.text.as_str())
+                .unwrap_or("(tool error with no text)");
+            return Err(McpError::ToolError(self.name.clone(), tool_name.to_string(), error_text.to_string()));
+        }
+
+        let result_text = result
+            .content
+            .first()
+            .and_then(|c| c.raw.as_text())
+            .map(|t| t.text.as_str())
+            .unwrap_or("(tool returned no text)");
+        Ok(result_text.to_string())
+    }
+
+    /// Graceful shutdown with timeout: stdin-close → SIGTERM → grace → SIGKILL, reap.
     pub async fn shutdown(mut self) -> Result<(), McpError> {
         debug!(name = self.name, "Shutting down MCP connection");
+        let _ = self
+            .server
+            .close_with_timeout(Duration::from_secs(5))
+            .await
+            .map_err(|e| warn!(name = self.name, "Close with timeout failed: {}", e));
         self.state = ConnectionState::Dead;
         Ok(())
     }
@@ -141,14 +196,29 @@ pub enum McpError {
     #[error("Handshake with MCP server '{0}' timed out")]
     HandshakeTimeout(String),
 
+    #[error("Handshake with MCP server '{0}' failed: {1}")]
+    HandshakeFailed(String, String),
+
     #[error("Handshake with MCP server '{0}' ended unexpectedly (EOF)")]
     HandshakeEof(String),
 
-    #[error("Failed to parse MCP server '{0}' response: {1}")]
-    Parse(String, serde_json::Error),
+    #[error("Failed to list tools from MCP server '{0}': {1}")]
+    ToolListFailed(String, String),
+
+    #[error("Tool call to '{1}' on MCP server '{0}' timed out")]
+    ToolCallTimeout(String, String),
+
+    #[error("Tool call to '{1}' on MCP server '{0}' failed: {2}")]
+    ToolCallFailed(String, String, String),
+
+    #[error("Tool '{1}' on MCP server '{0}' returned an error: {2}")]
+    ToolError(String, String, String),
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Serialize/deserialize error: {0}")]
+    Serde(#[from] serde_json::Error),
 }
 
 #[cfg(test)]
@@ -205,5 +275,59 @@ mod tests {
         };
         let env = build_child_env(&decl);
         assert_eq!(env.get("FOO"), Some(&"bar".to_string()));
+    }
+
+    #[test]
+    fn test_build_child_env_allowlist_forwards() {
+        std::env::set_var("TEST_VAR_SENTINEL", "sentinel_value");
+        let decl = McpServerDecl {
+            name: "test".to_string(),
+            transport: crate::manifest::McpTransport::Stdio,
+            enabled: true,
+            required: false,
+            command: Some("echo".to_string()),
+            args: vec![],
+            cwd: None,
+            url: None,
+            headers: HashMap::new(),
+            auth: None,
+            env: HashMap::new(),
+            env_allow: vec!["TEST_VAR_SENTINEL".to_string()],
+            init_timeout_secs: 10,
+            tool_timeout_secs: 60,
+            trusted: false,
+            mutation: crate::manifest::McpMutationPolicy::Auto,
+            enabled_tools: None,
+            disabled_tools: None,
+        };
+        let env = build_child_env(&decl);
+        assert_eq!(env.get("TEST_VAR_SENTINEL"), Some(&"sentinel_value".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_connection_missing_command() {
+        let decl = McpServerDecl {
+            name: "test".to_string(),
+            transport: crate::manifest::McpTransport::Stdio,
+            enabled: true,
+            required: false,
+            command: None,
+            args: vec![],
+            cwd: None,
+            url: None,
+            headers: HashMap::new(),
+            auth: None,
+            env: HashMap::new(),
+            env_allow: vec![],
+            init_timeout_secs: 10,
+            tool_timeout_secs: 60,
+            trusted: false,
+            mutation: crate::manifest::McpMutationPolicy::Auto,
+            enabled_tools: None,
+            disabled_tools: None,
+        };
+        let repo_root = std::path::Path::new(".");
+        let result = McpConnection::connect_stdio(&decl, repo_root).await;
+        assert!(matches!(result, Err(McpError::MissingCommand(_))));
     }
 }
