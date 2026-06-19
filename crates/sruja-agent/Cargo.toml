@@ -15,6 +15,8 @@ llm-anthropic = ["dep:reqwest"]
 tools-fs = []
 # SQLite memory search backend.
 memory-sqlite = []
+# MCP client support (connects to external MCP servers).
+mcp-client = ["dep:rmcp"]
 
 [dependencies]
 serde.workspace = true
@@ -30,6 +32,8 @@ sruja-graph = { path = "../sruja-graph" }
 sruja-language = { path = "../sruja-language" }
 fs2 = "0.4.3"
 reqwest = { workspace = true, optional = true }
+rmcp = { version = "1.7", default-features = false, optional = true }
 
 [dev-dependencies]
 tempfile = "3.10"
+rmcp = { version = "1.7", features = ["server", "macros", "transport-io"] }

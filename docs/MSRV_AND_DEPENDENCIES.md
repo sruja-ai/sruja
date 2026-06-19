@@ -6,6 +6,17 @@ This document records how this repository handles **Minimum Supported Rust Versi
 
 GitHub Actions workflows use the **current stable** Rust channel (`dtolnay/rust-toolchain` pinned by commit hash in workflow files). There is **no** workspace-wide `rust-version` field in `Cargo.toml` today; compatibility is enforced by CI on stable.
 
+## Dependency decisions
+
+### rmcp (Rust MCP SDK) — 2026-06-19
+
+Adopted `rmcp` v1.7 for MCP client support (`sruja agent`) and server consolidation (`sruja mcp`).
+
+- **MSRV:** `rmcp` uses edition 2024, implying practical MSRV 1.85+. CI runs current stable, so non-blocking.
+- **Transitive deps audited:** `schemars` 1.x (compatible), `tokio-util` (aligned with workspace), `process-wrap` (acceptable range).
+- **Feature gating:** Added `mcp-client` feature to `sruja-agent` (default-features = false, optional). Enabled by default in `sruja-cli` for v1 product feature. Added server features to `sruja-cli` for server consolidation.
+- **Rationale & alternatives:** See `.sruja/decisions/2024-06-19-rmcp-adoption.md`.
+
 ## How Dependabot is configured
 
 See [.github/dependabot.yml](../.github/dependabot.yml):
