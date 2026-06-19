@@ -301,6 +301,104 @@ impl Tool for McpToolBridge {
     }
 }
 
+/// Manages MCP server connections and tool registration.
+///
+/// Holds `Arc<McpConnection>` for each server, provides tool discovery,
+/// and handles graceful shutdown. Used by `AgentBuilder` to register
+/// MCP tools before loop execution.
+pub struct McpClientManager {
+    repo_root: std::path::PathBuf,
+    connections: Vec<Arc<McpConnection>>,
+}
+
+impl McpClientManager {
+    /// Create a new manager from a loop manifest.
+    ///
+    /// Connects to all enabled MCP servers, lists their tools,
+    /// and returns tool bridges for registration.
+    ///
+    /// Degrades gracefully: optional server failures log warnings,
+    /// required server failures abort with an error.
+    pub async fn from_manifest(
+        manifest: &crate::manifest::LoopManifest,
+        repo_root: impl Into<std::path::PathBuf>,
+    ) -> Result<(Self, Vec<Box<dyn Tool>>), McpError> {
+        let repo_root = repo_root.into();
+        let mut connections = Vec::new();
+        let mut tools = Vec::new();
+
+        for decl in &manifest.mcp_servers {
+            if !decl.enabled {
+                debug!(name = decl.name, "MCP server disabled, skipping");
+                continue;
+            }
+
+            let server_name = decl.name.clone();
+            let result = McpConnection::connect_stdio(decl, &repo_root).await;
+
+            match result {
+                Ok(conn) => {
+                    let conn_arc = Arc::new(conn);
+                    connections.push(conn_arc.clone());
+
+                    let mcp_tools = conn_arc.list_tools().await.map_err(|e| {
+                        warn!(name = server_name, "Failed to list tools: {}", e);
+                        e
+                    })?;
+
+                    for mcp_tool in &mcp_tools {
+                        let bridge: Box<dyn Tool> = Box::new(McpToolBridge::from_mcp_tool(
+                            mcp_tool.clone(),
+                            &server_name,
+                            decl,
+                            conn_arc.clone(),
+                        ));
+                        tools.push(bridge);
+                    }
+
+                    debug!(
+                        name = server_name,
+                        count = mcp_tools.len(),
+                        "MCP server tools registered"
+                    );
+                }
+                Err(e) => {
+                    if decl.required {
+                        return Err(McpError::RequiredServerFailed(server_name, e.to_string()));
+                    } else {
+                        warn!(name = server_name, "MCP server connection failed (optional): {}", e);
+                    }
+                }
+            }
+        }
+
+        Ok((Self { repo_root, connections }, tools))
+    }
+
+    /// Get the repo root path.
+    pub fn repo_root(&self) -> &std::path::Path {
+        &self.repo_root
+    }
+}
+
+impl Drop for McpClientManager {
+    fn drop(&mut self) {
+        let connections = std::mem::take(&mut self.connections);
+        let repo_root = self.repo_root.clone();
+
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(async move {
+                for conn in connections {
+                    if let Ok(conn) = Arc::try_unwrap(conn) {
+                        let _ = conn.shutdown().await;
+                    }
+                }
+                debug!(repo_root = %repo_root.display(), "MCP manager shutdown complete");
+            });
+        }
+    }
+}
+
 /// MCP client errors.
 #[derive(Debug, thiserror::Error)]
 pub enum McpError {
@@ -321,6 +419,9 @@ pub enum McpError {
 
     #[error("Handshake with MCP server '{0}' ended unexpectedly (EOF)")]
     HandshakeEof(String),
+
+    #[error("Required MCP server '{0}' failed to connect: {1}")]
+    RequiredServerFailed(String, String),
 
     #[error("Failed to list tools from MCP server '{0}': {1}")]
     ToolListFailed(String, String),

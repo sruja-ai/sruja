@@ -373,6 +373,9 @@ pub struct Agent {
     hooks: HookRegistry,
     config: AgentConfig,
     memory: Option<(std::path::PathBuf, std::sync::Mutex<AgenticMemory>)>,
+    #[cfg(feature = "mcp-client")]
+    #[allow(dead_code)]
+    mcp_manager: Option<crate::tool::mcp::McpClientManager>,
 }
 
 impl Agent {
@@ -2004,6 +2007,8 @@ pub struct AgentBuilder {
     hooks: Vec<Box<dyn Hook>>,
     config: AgentConfig,
     memory_repo: Option<std::path::PathBuf>,
+    #[cfg(feature = "mcp-client")]
+    mcp_manager: Option<crate::tool::mcp::McpClientManager>,
 }
 
 impl AgentBuilder {
@@ -2043,6 +2048,33 @@ impl AgentBuilder {
         self
     }
 
+    /// Register MCP tools from a loop manifest.
+    ///
+    /// Connects to all enabled MCP servers, lists their tools,
+    /// and registers them with the tool registry. Returns a
+    /// future that resolves on successful tool registration.
+    ///
+    /// This is an async builder step; await the future before calling `build`.
+    #[cfg(feature = "mcp-client")]
+    pub async fn with_mcp(
+        mut self,
+        manifest: &crate::manifest::LoopManifest,
+        repo_root: impl Into<std::path::PathBuf>,
+    ) -> Result<Self, AgentError> {
+        use crate::tool::mcp::McpClientManager;
+
+        let repo_root = repo_root.into();
+        let (manager, mcp_tools) = McpClientManager::from_manifest(manifest, &repo_root).await
+            .map_err(|e| AgentError::Other(format!("MCP initialization failed: {}", e)))?;
+
+        for tool in mcp_tools {
+            self.tools.register(tool);
+        }
+
+        self.mcp_manager = Some(manager);
+        Ok(self)
+    }
+
     /// Build the agent.
     pub fn build(self) -> Result<Agent, AgentError> {
         let llm_arc = self.llm.ok_or(AgentError::NoLlm)?;
@@ -2071,6 +2103,9 @@ impl AgentBuilder {
             (repo, std::sync::Mutex::new(mem))
         });
 
+        #[cfg(feature = "mcp-client")]
+        let mcp_manager = self.mcp_manager;
+
         Ok(Agent {
             llm,
             tools,
@@ -2078,6 +2113,8 @@ impl AgentBuilder {
             hooks: HookRegistry::new(self.hooks),
             config: self.config,
             memory,
+            #[cfg(feature = "mcp-client")]
+            mcp_manager,
         })
     }
 }
