@@ -16,6 +16,120 @@ fn default_max_iterations() -> usize {
 fn default_true() -> bool {
     true
 }
+fn default_ten() -> u64 {
+    10
+}
+fn default_sixty() -> u64 {
+    60
+}
+
+/// Transport type for an MCP server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum McpTransport {
+    /// Child process with stdio (newline-delimited JSON-RPC).
+    Stdio,
+    /// HTTP/SSE endpoint with streamable transport.
+    Http,
+}
+
+/// Mutation policy for MCP tools from a server.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum McpMutationPolicy {
+    /// Infer from server `trusted` + tool `readOnlyHint`: trusted+readOnlyHint=false → mutating; otherwise conservatively mutating.
+    Auto,
+    /// Treat all tools as read-only (force non-mutating).
+    Readonly,
+    /// Treat all tools as mutating (force mutating).
+    Mutating,
+}
+
+impl Default for McpMutationPolicy {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+/// MCP server declaration from the manifest `[[mcp.servers]]` table.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpServerDecl {
+    /// Unique identifier for this server (used in tool namespace: `mcp__{name}__{tool}`).
+    pub name: String,
+
+    /// Transport type (stdio or HTTP).
+    pub transport: McpTransport,
+
+    /// Whether this server is enabled at startup. Default true.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
+    /// Whether server startup failure is fatal. Default false (non‑fatal degradation).
+    #[serde(default)]
+    pub required: bool,
+
+    // stdio fields
+    /// Command to spawn for stdio transport (e.g., "npx", "mcp-server-browser").
+    #[serde(default)]
+    pub command: Option<String>,
+
+    /// Arguments to pass to the stdio command.
+    #[serde(default)]
+    pub args: Vec<String>,
+
+    /// Working directory for the stdio child process. Default: repository root.
+    #[serde(default)]
+    pub cwd: Option<String>,
+
+    // HTTP fields
+    /// URL for HTTP transport (e.g., "http://localhost:3000/mcp").
+    #[serde(default)]
+    pub url: Option<String>,
+
+    /// HTTP headers to send with each request.
+    #[serde(default)]
+    pub headers: std::collections::HashMap<String, String>,
+
+    /// Authorization header (e.g., "Bearer ${TOKEN}"). Supports ${VAR} expansion.
+    #[serde(default)]
+    pub auth: Option<String>,
+
+    // security fields
+    /// Explicit environment variables to pass to the stdio child process (env vars, not shell variables).
+    #[serde(default)]
+    pub env: std::collections::HashMap<String, String>,
+
+    /// Allowlist of environment variable names to forward from the agent to the child. Default: empty (no forwarding).
+    #[serde(default)]
+    pub env_allow: Vec<String>,
+
+    // lifecycle fields
+    /// Timeout in seconds for the initialization handshake. Default 10.
+    #[serde(default = "default_ten")]
+    pub init_timeout_secs: u64,
+
+    /// Timeout in seconds per tool call. Default 60.
+    #[serde(default = "default_sixty")]
+    pub tool_timeout_secs: u64,
+
+    // mutation policy
+    /// Whether this server is trusted (affects default mutating classification when policy=auto). Default false.
+    #[serde(default)]
+    pub trusted: bool,
+
+    /// Mutation policy for tools from this server. Default Auto.
+    #[serde(default)]
+    pub mutation: McpMutationPolicy,
+
+    // tool filtering
+    /// Allowlist of tool names to enable (glob patterns). Default: all tools enabled.
+    #[serde(default)]
+    pub enabled_tools: Option<Vec<String>>,
+
+    /// Blocklist of tool names to disable (glob patterns). Default: none disabled.
+    #[serde(default)]
+    pub disabled_tools: Option<Vec<String>>,
+}
 
 /// Declarative configuration for `sruja agent loop`, loaded from `.sruja/loop.toml`.
 ///
@@ -81,6 +195,16 @@ pub struct LoopManifest {
     /// result reports verification failure regardless of LLM critique.
     #[serde(default, rename = "verify")]
     pub verify_steps: Vec<VerifyStep>,
+
+    /// MCP server declarations (stdio + HTTP). Each declared server is
+    /// connected at loop startup and its tools exposed as `mcp__{server}__{tool}`.
+    #[serde(default)]
+    pub mcp_servers: Vec<McpServerDecl>,
+
+    /// Allowlist of tool name globs to enable from all MCP servers.
+    /// If set, only matching tools are registered; others are silently skipped.
+    #[serde(default)]
+    pub mcp_allowlist: Option<Vec<String>>,
 }
 
 impl Default for LoopManifest {
@@ -95,6 +219,8 @@ impl Default for LoopManifest {
             spend_cap_usd: None,
             detect_oscillation: default_true(),
             verify_steps: Vec::new(),
+            mcp_servers: Vec::new(),
+            mcp_allowlist: None,
         }
     }
 }
@@ -181,11 +307,87 @@ args = ["clippy", "--", "-D", "warnings"]
         assert_eq!(m.max_iterations, 3);
         assert!(m.tdd);
         assert!(m.review_every_change);
+        assert!(m.mcp_servers.is_empty());
     }
 
     #[test]
     fn missing_file_gives_default() {
         let m = LoopManifest::load_from_path(std::path::Path::new("/nonexistent"));
         assert_eq!(m.max_iterations, 3);
+    }
+
+    #[test]
+    fn parse_mcp_servers_stdio() {
+        let toml_str = r#"
+[[mcp.servers]]
+name = "browser"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-browser"]
+enabled = true
+required = false
+"#;
+        let m = LoopManifest::from_toml_str(toml_str).unwrap();
+        assert_eq!(m.mcp_servers.len(), 1);
+        let s = &m.mcp_servers[0];
+        assert_eq!(s.name, "browser");
+        assert!(matches!(s.transport, McpTransport::Stdio));
+        assert_eq!(s.command.as_deref(), Some("npx"));
+        assert_eq!(s.args, vec!["-y", "@modelcontextprotocol/server-browser"]);
+        assert!(s.enabled);
+        assert!(!s.required);
+    }
+
+    #[test]
+    fn parse_mcp_servers_http() {
+        let toml_str = r#"
+[[mcp.servers]]
+name = "my-http-server"
+transport = "http"
+url = "http://localhost:3000/mcp"
+headers = { "X-Custom" = "value" }
+auth = "Bearer ${TOKEN}"
+trusted = true
+mutation = "readonly"
+init_timeout_secs = 15
+"#;
+        let m = LoopManifest::from_toml_str(toml_str).unwrap();
+        assert_eq!(m.mcp_servers.len(), 1);
+        let s = &m.mcp_servers[0];
+        assert_eq!(s.name, "my-http-server");
+        assert!(matches!(s.transport, McpTransport::Http));
+        assert_eq!(s.url.as_deref(), Some("http://localhost:3000/mcp"));
+        assert_eq!(s.headers.get("X-Custom"), Some(&"value".to_string()));
+        assert_eq!(s.auth.as_deref(), Some("Bearer ${TOKEN}"));
+        assert!(s.trusted);
+        assert!(matches!(s.mutation, McpMutationPolicy::Readonly));
+        assert_eq!(s.init_timeout_secs, 15);
+    }
+
+    #[test]
+    fn parse_mcp_allowlist() {
+        let toml_str = r#"
+mcp_allowlist = ["browser__navigate", "db__query"]
+"#;
+        let m = LoopManifest::from_toml_str(toml_str).unwrap();
+        assert_eq!(m.mcp_allowlist.as_deref(), Some(&["browser__navigate".to_string(), "db__query".to_string()][..]));
+    }
+
+    #[test]
+    fn parse_minimal_manifest_with_mcp() {
+        let toml_str = r#"
+[[mcp.servers]]
+name = "browser"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-browser"]
+"#;
+        let m = LoopManifest::from_toml_str(toml_str).unwrap();
+        assert_eq!(m.mcp_servers.len(), 1);
+        let s = &m.mcp_servers[0];
+        assert_eq!(s.name, "browser");
+        assert_eq!(s.command.as_deref(), Some("npx"));
+        assert_eq!(s.init_timeout_secs, 10);
+        assert_eq!(s.tool_timeout_secs, 60);
     }
 }
