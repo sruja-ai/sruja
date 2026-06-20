@@ -85,7 +85,7 @@ pub use scan_domain::health::health;
 pub use scan_domain::impact::impact;
 pub(crate) use scan_domain::impact::impact_compute_output;
 pub use scan_domain::index::{query_registry, registry_dashboard, registry_index, semantic_index};
-pub use scan_domain::mcp::mcp;
+pub use scan_domain::mcp::{mcp, mcp_v2};
 pub use scan_domain::review::{review, review_design};
 pub use scan_domain::scan::{drift, drift_pr, quickstart, scan};
 pub use scan_domain::status::status;

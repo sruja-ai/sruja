@@ -182,6 +182,10 @@ pub enum Commands {
         /// Default repository root used when MCP tool calls omit a path
         #[arg(long, short = 'r', default_value = ".")]
         root: String,
+
+        /// Use the new rmcp-based server implementation (v2)
+        #[arg(long, hide = true)]
+        v2: bool,
     },
 
     /// Drift and structural checks (from code, optional baseline)

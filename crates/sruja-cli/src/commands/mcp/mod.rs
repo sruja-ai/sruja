@@ -11,6 +11,7 @@ mod config;
 mod definitions;
 mod helpers;
 mod ladder;
+mod mcp_v2;
 mod server;
 mod trace;
 mod transport;
@@ -21,6 +22,7 @@ mod run_tool;
 mod tests;
 
 pub use transport::mcp;
+pub use mcp_v2::mcp_v2;
 
 #[cfg(test)]
 pub(crate) use config::{

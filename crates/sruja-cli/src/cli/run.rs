@@ -275,7 +275,13 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Lsp { .. } => commands::lsp().await,
-        Commands::Mcp { root } => commands::mcp(&root).await,
+        Commands::Mcp { root, v2 } => {
+            if v2 {
+                commands::mcp_v2(&root).await
+            } else {
+                commands::mcp(&root).await
+            }
+        }
 
         Commands::Check {
             repo,
