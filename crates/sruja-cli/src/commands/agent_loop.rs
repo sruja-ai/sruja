@@ -335,6 +335,17 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             .tools(tools)
             .config(config)
             .memory(repo_path);
+
+        // Connect to declared MCP servers (graceful degradation if none/failed)
+        if !manifest.mcp.servers.is_empty() {
+            builder = builder
+                .with_mcp(&manifest, repo_path.to_path_buf())
+                .await
+                .map_err(|e| {
+                    CliError::validation(format!("MCP initialization error: {e}"))
+                })?;
+        }
+
         if io::stdin().is_terminal() {
             builder = builder.hook(Box::new(ProgressHook));
         }

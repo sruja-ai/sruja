@@ -376,7 +376,7 @@ impl McpClientManager {
         let mut connections = Vec::new();
         let mut tools = Vec::new();
 
-        for decl in &manifest.mcp_servers {
+        for decl in &manifest.mcp.servers {
             if !decl.enabled {
                 debug!(name = decl.name, "MCP server disabled, skipping");
                 continue;

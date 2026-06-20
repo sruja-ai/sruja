@@ -126,6 +126,32 @@ pub struct McpServerDecl {
     pub disabled_tools: Option<Vec<String>>,
 }
 
+/// Wrapper for the `[mcp]` table in loop.toml.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct McpConfig {
+    /// Server declarations from `[[mcp.servers]]`.
+    #[serde(default)]
+    pub servers: Vec<McpServerDecl>,
+
+    /// Allowlist of tool name globs to enable from all MCP servers.
+    /// If set, only matching tools are registered; others are silently skipped.
+    #[serde(default)]
+    pub allowlist: Option<Vec<String>>,
+}
+
+impl McpConfig {
+    pub fn is_empty(&self) -> bool {
+        self.servers.is_empty()
+    }
+}
+
+impl std::ops::Deref for McpConfig {
+    type Target = [McpServerDecl];
+    fn deref(&self) -> &Self::Target {
+        &self.servers
+    }
+}
+
 /// Declarative configuration for `sruja agent loop`, loaded from `.sruja/loop.toml`.
 ///
 /// ## Example
@@ -194,12 +220,8 @@ pub struct LoopManifest {
     /// MCP server declarations (stdio + HTTP). Each declared server is
     /// connected at loop startup and its tools exposed as `mcp__{server}__{tool}`.
     #[serde(default)]
-    pub mcp_servers: Vec<McpServerDecl>,
+    pub mcp: McpConfig,
 
-    /// Allowlist of tool name globs to enable from all MCP servers.
-    /// If set, only matching tools are registered; others are silently skipped.
-    #[serde(default)]
-    pub mcp_allowlist: Option<Vec<String>>,
 }
 
 impl Default for LoopManifest {
@@ -214,8 +236,7 @@ impl Default for LoopManifest {
             spend_cap_usd: None,
             detect_oscillation: default_true(),
             verify_steps: Vec::new(),
-            mcp_servers: Vec::new(),
-            mcp_allowlist: None,
+            mcp: McpConfig::default(),
         }
     }
 }
@@ -302,7 +323,7 @@ args = ["clippy", "--", "-D", "warnings"]
         assert_eq!(m.max_iterations, 3);
         assert!(m.tdd);
         assert!(m.review_every_change);
-        assert!(m.mcp_servers.is_empty());
+        assert!(m.mcp.servers.is_empty());
     }
 
     #[test]
@@ -323,8 +344,8 @@ enabled = true
 required = false
 "#;
         let m = LoopManifest::from_toml_str(toml_str).unwrap();
-        assert_eq!(m.mcp_servers.len(), 1);
-        let s = &m.mcp_servers[0];
+        assert_eq!(m.mcp.servers.len(), 1);
+        let s = &m.mcp.servers[0];
         assert_eq!(s.name, "browser");
         assert!(matches!(s.transport, McpTransport::Stdio));
         assert_eq!(s.command.as_deref(), Some("npx"));
@@ -347,8 +368,8 @@ mutation = "readonly"
 init_timeout_secs = 15
 "#;
         let m = LoopManifest::from_toml_str(toml_str).unwrap();
-        assert_eq!(m.mcp_servers.len(), 1);
-        let s = &m.mcp_servers[0];
+        assert_eq!(m.mcp.servers.len(), 1);
+        let s = &m.mcp.servers[0];
         assert_eq!(s.name, "my-http-server");
         assert!(matches!(s.transport, McpTransport::Http));
         assert_eq!(s.url.as_deref(), Some("http://localhost:3000/mcp"));
@@ -362,10 +383,11 @@ init_timeout_secs = 15
     #[test]
     fn parse_mcp_allowlist() {
         let toml_str = r#"
-mcp_allowlist = ["browser__navigate", "db__query"]
+[mcp]
+allowlist = ["browser__navigate", "db__query"]
 "#;
         let m = LoopManifest::from_toml_str(toml_str).unwrap();
-        assert_eq!(m.mcp_allowlist.as_deref(), Some(&["browser__navigate".to_string(), "db__query".to_string()][..]));
+        assert_eq!(m.mcp.allowlist.as_deref(), Some(&["browser__navigate".to_string(), "db__query".to_string()][..]));
     }
 
     #[test]
@@ -378,8 +400,8 @@ command = "npx"
 args = ["-y", "@modelcontextprotocol/server-browser"]
 "#;
         let m = LoopManifest::from_toml_str(toml_str).unwrap();
-        assert_eq!(m.mcp_servers.len(), 1);
-        let s = &m.mcp_servers[0];
+        assert_eq!(m.mcp.servers.len(), 1);
+        let s = &m.mcp.servers[0];
         assert_eq!(s.name, "browser");
         assert_eq!(s.command.as_deref(), Some("npx"));
         assert_eq!(s.init_timeout_secs, 10);
