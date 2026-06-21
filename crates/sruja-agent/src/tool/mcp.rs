@@ -11,21 +11,21 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(feature = "mcp-client")]
-use async_trait::async_trait;
-#[cfg(feature = "mcp-client")]
-use tokio::process::Command;
-#[cfg(feature = "mcp-client")]
-use rmcp::{
-    model::{CallToolRequestParams, Tool as McpTool},
-    ServiceExt,
-    transport::{TokioChildProcess, StreamableHttpClientTransport},
-};
-#[cfg(feature = "mcp-client")]
-use tracing::{debug, warn};
-#[cfg(feature = "mcp-client")]
 use crate::manifest::McpServerDecl;
 #[cfg(feature = "mcp-client")]
 use crate::tool::{Tool, ToolError};
+#[cfg(feature = "mcp-client")]
+use async_trait::async_trait;
+#[cfg(feature = "mcp-client")]
+use rmcp::{
+    model::{CallToolRequestParams, Tool as McpTool},
+    transport::{StreamableHttpClientTransport, TokioChildProcess},
+    ServiceExt,
+};
+#[cfg(feature = "mcp-client")]
+use tokio::process::Command;
+#[cfg(feature = "mcp-client")]
+use tracing::{debug, warn};
 
 /// Lifecycle state of an MCP connection.
 #[derive(Debug, Clone, PartialEq)]
@@ -51,7 +51,10 @@ impl McpConnection {
     /// Spawns the child process with an env-scrubbed environment,
     /// performs the rmcp handshake with a timeout, and returns
     /// a connection if successful.
-    pub async fn connect_stdio(decl: &McpServerDecl, repo_root: &std::path::Path) -> Result<Self, McpError> {
+    pub async fn connect_stdio(
+        decl: &McpServerDecl,
+        repo_root: &std::path::Path,
+    ) -> Result<Self, McpError> {
         let name = decl.name.clone();
 
         let command = decl
@@ -64,7 +67,11 @@ impl McpConnection {
 
         debug!(name, command, "Connecting to MCP server (stdio)");
 
-        let cwd = decl.cwd.as_ref().map(|p| repo_root.join(p)).unwrap_or_else(|| repo_root.to_path_buf());
+        let cwd = decl
+            .cwd
+            .as_ref()
+            .map(|p| repo_root.join(p))
+            .unwrap_or_else(|| repo_root.to_path_buf());
 
         let mut cmd = Command::new(command);
         cmd.args(&decl.args);
@@ -73,8 +80,8 @@ impl McpConnection {
         let child_env = self::build_child_env(decl);
         cmd.envs(&child_env);
 
-        let transport = TokioChildProcess::new(cmd)
-            .map_err(|e| McpError::SpawnFailed(name.clone(), e))?;
+        let transport =
+            TokioChildProcess::new(cmd).map_err(|e| McpError::SpawnFailed(name.clone(), e))?;
 
         let server: rmcp::service::RunningService<rmcp::service::RoleClient, ()> =
             tokio::time::timeout(init_timeout, async {
@@ -139,7 +146,10 @@ impl McpConnection {
     }
 
     /// Connect to an MCP server using the transport declared in the manifest.
-    pub async fn connect(decl: &McpServerDecl, repo_root: &std::path::Path) -> Result<Self, McpError> {
+    pub async fn connect(
+        decl: &McpServerDecl,
+        repo_root: &std::path::Path,
+    ) -> Result<Self, McpError> {
         use crate::manifest::McpTransport;
         match decl.transport {
             McpTransport::Stdio => Self::connect_stdio(decl, repo_root).await,
@@ -161,15 +171,18 @@ impl McpConnection {
 
     /// Call a tool on the MCP server.
     #[allow(dead_code)]
-    pub async fn call_tool(&self, tool_name: &str, arguments: rmcp::model::JsonObject) -> Result<String, McpError> {
+    pub async fn call_tool(
+        &self,
+        tool_name: &str,
+        arguments: rmcp::model::JsonObject,
+    ) -> Result<String, McpError> {
         let tool_name_owned = tool_name.to_string();
         let params = CallToolRequestParams::new(tool_name_owned).with_arguments(arguments);
 
         let result = tokio::time::timeout(self.tool_timeout, async {
-            self.server
-                .call_tool(params)
-                .await
-                .map_err(|e| McpError::ToolCallFailed(self.name.clone(), tool_name.to_string(), e.to_string()))
+            self.server.call_tool(params).await.map_err(|e| {
+                McpError::ToolCallFailed(self.name.clone(), tool_name.to_string(), e.to_string())
+            })
         })
         .await
         .map_err(|_| McpError::ToolCallTimeout(self.name.clone(), tool_name.to_string()))??;
@@ -181,7 +194,11 @@ impl McpConnection {
                 .and_then(|c| c.raw.as_text())
                 .map(|t| t.text.as_str())
                 .unwrap_or("(tool error with no text)");
-            return Err(McpError::ToolError(self.name.clone(), tool_name.to_string(), error_text.to_string()));
+            return Err(McpError::ToolError(
+                self.name.clone(),
+                tool_name.to_string(),
+                error_text.to_string(),
+            ));
         }
 
         let result_text = result
@@ -209,7 +226,10 @@ impl McpConnection {
 impl Drop for McpConnection {
     fn drop(&mut self) {
         if self.state == ConnectionState::Ready {
-            warn!(name = self.name, "McpConnection dropped without explicit shutdown");
+            warn!(
+                name = self.name,
+                "McpConnection dropped without explicit shutdown"
+            );
         }
     }
 }
@@ -269,7 +289,11 @@ impl McpToolBridge {
     ) -> Self {
         let tool_name = mcp_tool.name.clone();
         let name = format!("mcp__{}__{}", server_name, tool_name);
-        let description = mcp_tool.description.as_deref().unwrap_or(&tool_name).to_string();
+        let description = mcp_tool
+            .description
+            .as_deref()
+            .unwrap_or(&tool_name)
+            .to_string();
 
         let input_schema: serde_json::Value = mcp_tool.input_schema.as_ref().clone().into();
 
@@ -332,7 +356,9 @@ impl Tool for McpToolBridge {
     async fn call(&self, params: serde_json::Value) -> Result<String, ToolError> {
         let arguments: rmcp::model::JsonObject = params
             .as_object()
-            .ok_or_else(|| ToolError::InvalidParams("Expected object for MCP tool arguments".to_string()))?
+            .ok_or_else(|| {
+                ToolError::InvalidParams("Expected object for MCP tool arguments".to_string())
+            })?
             .clone();
 
         self.connection
@@ -415,13 +441,22 @@ impl McpClientManager {
                     if decl.required {
                         return Err(McpError::RequiredServerFailed(server_name, e.to_string()));
                     } else {
-                        warn!(name = server_name, "MCP server connection failed (optional): {}", e);
+                        warn!(
+                            name = server_name,
+                            "MCP server connection failed (optional): {}", e
+                        );
                     }
                 }
             }
         }
 
-        Ok((Self { repo_root, connections }, tools))
+        Ok((
+            Self {
+                repo_root,
+                connections,
+            },
+            tools,
+        ))
     }
 
     /// Get the repo root path.
@@ -500,14 +535,24 @@ mod tests {
 
     #[test]
     fn test_build_child_env_empty() {
-        let decl = test_decl("test", Some("echo"), false, crate::manifest::McpMutationPolicy::Auto);
+        let decl = test_decl(
+            "test",
+            Some("echo"),
+            false,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         let env = build_child_env(&decl);
         assert!(env.is_empty());
     }
 
     #[test]
     fn test_build_child_env_explicit() {
-        let mut decl = test_decl("test", Some("echo"), false, crate::manifest::McpMutationPolicy::Auto);
+        let mut decl = test_decl(
+            "test",
+            Some("echo"),
+            false,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         decl.env.insert("FOO".to_string(), "bar".to_string());
         let env = build_child_env(&decl);
         assert_eq!(env.get("FOO"), Some(&"bar".to_string()));
@@ -516,15 +561,28 @@ mod tests {
     #[test]
     fn test_build_child_env_allowlist_forwards() {
         std::env::set_var("TEST_VAR_SENTINEL", "sentinel_value");
-        let mut decl = test_decl("test", Some("echo"), false, crate::manifest::McpMutationPolicy::Auto);
+        let mut decl = test_decl(
+            "test",
+            Some("echo"),
+            false,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         decl.env_allow.push("TEST_VAR_SENTINEL".to_string());
         let env = build_child_env(&decl);
-        assert_eq!(env.get("TEST_VAR_SENTINEL"), Some(&"sentinel_value".to_string()));
+        assert_eq!(
+            env.get("TEST_VAR_SENTINEL"),
+            Some(&"sentinel_value".to_string())
+        );
     }
 
     #[tokio::test]
     async fn test_connection_missing_command() {
-        let decl = test_decl("test", None, false, crate::manifest::McpMutationPolicy::Auto);
+        let decl = test_decl(
+            "test",
+            None,
+            false,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         let repo_root = std::path::Path::new(".");
         let result = McpConnection::connect_stdio(&decl, repo_root).await;
         assert!(matches!(result, Err(McpError::MissingCommand(_))));
@@ -532,7 +590,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection_http_missing_url() {
-        let mut decl = test_decl("test", None, false, crate::manifest::McpMutationPolicy::Auto);
+        let mut decl = test_decl(
+            "test",
+            None,
+            false,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         decl.transport = crate::manifest::McpTransport::Http;
         let result = McpConnection::connect_http(&decl).await;
         assert!(matches!(result, Err(McpError::MissingUrl(_))));
@@ -579,42 +642,84 @@ mod tests {
 
     #[test]
     fn test_classify_mutation_untrusted() {
-        let decl = test_decl("srv", Some("echo"), false, crate::manifest::McpMutationPolicy::Auto);
+        let decl = test_decl(
+            "srv",
+            Some("echo"),
+            false,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         let tool = make_tool("safe_tool", Some(true));
         assert!(classify_mutation(&decl, &tool), "untrusted → mutating");
     }
 
     #[test]
     fn test_classify_mutation_trusted_readonly_hint() {
-        let decl = test_decl("srv", Some("echo"), true, crate::manifest::McpMutationPolicy::Auto);
+        let decl = test_decl(
+            "srv",
+            Some("echo"),
+            true,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         let tool = make_tool("query", Some(true));
-        assert!(!classify_mutation(&decl, &tool), "trusted + readOnlyHint=true → non-mutating");
+        assert!(
+            !classify_mutation(&decl, &tool),
+            "trusted + readOnlyHint=true → non-mutating"
+        );
     }
 
     #[test]
     fn test_classify_mutation_trusted_mutating_hint() {
-        let decl = test_decl("srv", Some("echo"), true, crate::manifest::McpMutationPolicy::Auto);
+        let decl = test_decl(
+            "srv",
+            Some("echo"),
+            true,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         let tool = make_tool("write", Some(false));
-        assert!(classify_mutation(&decl, &tool), "trusted + readOnlyHint=false → mutating");
+        assert!(
+            classify_mutation(&decl, &tool),
+            "trusted + readOnlyHint=false → mutating"
+        );
     }
 
     #[test]
     fn test_classify_mutation_trusted_no_hint() {
-        let decl = test_decl("srv", Some("echo"), true, crate::manifest::McpMutationPolicy::Auto);
+        let decl = test_decl(
+            "srv",
+            Some("echo"),
+            true,
+            crate::manifest::McpMutationPolicy::Auto,
+        );
         let tool = make_tool("unknown", None);
-        assert!(classify_mutation(&decl, &tool), "trusted + no hint → mutating (conservative)");
+        assert!(
+            classify_mutation(&decl, &tool),
+            "trusted + no hint → mutating (conservative)"
+        );
     }
 
     #[test]
     fn test_classify_mutation_override_readonly() {
-        let decl = test_decl("srv", Some("echo"), true, crate::manifest::McpMutationPolicy::Readonly);
+        let decl = test_decl(
+            "srv",
+            Some("echo"),
+            true,
+            crate::manifest::McpMutationPolicy::Readonly,
+        );
         let tool = make_tool("write", Some(false));
-        assert!(!classify_mutation(&decl, &tool), "readonly policy overrides");
+        assert!(
+            !classify_mutation(&decl, &tool),
+            "readonly policy overrides"
+        );
     }
 
     #[test]
     fn test_classify_mutation_override_mutating() {
-        let decl = test_decl("srv", Some("echo"), true, crate::manifest::McpMutationPolicy::Mutating);
+        let decl = test_decl(
+            "srv",
+            Some("echo"),
+            true,
+            crate::manifest::McpMutationPolicy::Mutating,
+        );
         let tool = make_tool("read", Some(true));
         assert!(classify_mutation(&decl, &tool), "mutating policy overrides");
     }

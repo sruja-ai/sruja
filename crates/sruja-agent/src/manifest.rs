@@ -221,7 +221,6 @@ pub struct LoopManifest {
     /// connected at loop startup and its tools exposed as `mcp__{server}__{tool}`.
     #[serde(default)]
     pub mcp: McpConfig,
-
 }
 
 impl Default for LoopManifest {
@@ -387,7 +386,10 @@ init_timeout_secs = 15
 allowlist = ["browser__navigate", "db__query"]
 "#;
         let m = LoopManifest::from_toml_str(toml_str).unwrap();
-        assert_eq!(m.mcp.allowlist.as_deref(), Some(&["browser__navigate".to_string(), "db__query".to_string()][..]));
+        assert_eq!(
+            m.mcp.allowlist.as_deref(),
+            Some(&["browser__navigate".to_string(), "db__query".to_string()][..])
+        );
     }
 
     #[test]

@@ -341,9 +341,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             builder = builder
                 .with_mcp(&manifest, repo_path.to_path_buf())
                 .await
-                .map_err(|e| {
-                    CliError::validation(format!("MCP initialization error: {e}"))
-                })?;
+                .map_err(|e| CliError::validation(format!("MCP initialization error: {e}")))?;
         }
 
         if io::stdin().is_terminal() {

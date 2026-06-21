@@ -5,7 +5,8 @@
 
 #![cfg(feature = "mcp-client")]
 
-use rmcp::model::{CallToolResult, Content, ServerCapabilities, ServerInfo, Tool};use rmcp::service::MaybeSendFuture;
+use rmcp::model::{CallToolResult, Content, ServerCapabilities, ServerInfo, Tool};
+use rmcp::service::MaybeSendFuture;
 use rmcp::{ErrorData, ServerHandler, ServiceExt};
 
 /// A fake MCP server that exposes a simple echo tool and a read-only query tool.
@@ -34,29 +35,26 @@ impl FakeMcpServer {
 #[allow(clippy::manual_async_fn)]
 impl ServerHandler for FakeMcpServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(
-            ServerCapabilities::builder()
-                .enable_tools()
-                .build(),
-        )
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
     }
 
     fn list_tools(
         &self,
         _request: Option<rmcp::model::PaginatedRequestParams>,
         _context: rmcp::service::RequestContext<rmcp::RoleServer>,
-    ) -> impl std::future::Future<Output = Result<rmcp::model::ListToolsResult, ErrorData>> + MaybeSendFuture + '_ {
+    ) -> impl std::future::Future<Output = Result<rmcp::model::ListToolsResult, ErrorData>>
+           + MaybeSendFuture
+           + '_ {
         let tools = self.tools.clone();
-        async move {
-            Ok(rmcp::model::ListToolsResult::with_all_items(tools))
-        }
+        async move { Ok(rmcp::model::ListToolsResult::with_all_items(tools)) }
     }
 
     fn call_tool(
         &self,
         request: rmcp::model::CallToolRequestParams,
         _context: rmcp::service::RequestContext<rmcp::RoleServer>,
-    ) -> impl std::future::Future<Output = Result<CallToolResult, ErrorData>> + MaybeSendFuture + '_ {
+    ) -> impl std::future::Future<Output = Result<CallToolResult, ErrorData>> + MaybeSendFuture + '_
+    {
         async move {
             let name = &request.name;
             let text = match name.as_ref() {
@@ -70,7 +68,11 @@ impl ServerHandler for FakeMcpServer {
                     format!("echo: {msg}")
                 }
                 "query" => "query result: 42".to_string(),
-                _ => return Ok(CallToolResult::error(vec![Content::text(format!("unknown tool: {name}"))])),
+                _ => {
+                    return Ok(CallToolResult::error(vec![Content::text(format!(
+                        "unknown tool: {name}"
+                    ))]))
+                }
             };
             Ok(CallToolResult::success(vec![Content::text(text)]))
         }
@@ -84,7 +86,13 @@ async fn test_in_process_mcp_client_discovers_and_calls_tools() {
     // Start fake server on one end of the duplex
     let server = FakeMcpServer::new();
     let server_handle = tokio::spawn(async move {
-        server.serve(server_io).await.unwrap().waiting().await.unwrap();
+        server
+            .serve(server_io)
+            .await
+            .unwrap()
+            .waiting()
+            .await
+            .unwrap();
     });
 
     // Connect rmcp client on the other end
@@ -130,7 +138,13 @@ async fn test_in_process_mcp_unknown_tool_returns_error_result() {
 
     let server = FakeMcpServer::new();
     let server_handle = tokio::spawn(async move {
-        server.serve(server_io).await.unwrap().waiting().await.unwrap();
+        server
+            .serve(server_io)
+            .await
+            .unwrap()
+            .waiting()
+            .await
+            .unwrap();
     });
 
     let client = ().serve(client_io).await.expect("client init");
@@ -154,7 +168,13 @@ async fn test_read_only_hint_preserved() {
 
     let server = FakeMcpServer::new();
     let server_handle = tokio::spawn(async move {
-        server.serve(server_io).await.unwrap().waiting().await.unwrap();
+        server
+            .serve(server_io)
+            .await
+            .unwrap()
+            .waiting()
+            .await
+            .unwrap();
     });
 
     let client = ().serve(client_io).await.expect("client init");

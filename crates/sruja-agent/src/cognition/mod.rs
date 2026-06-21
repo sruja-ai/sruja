@@ -2064,7 +2064,8 @@ impl AgentBuilder {
         use crate::tool::mcp::McpClientManager;
 
         let repo_root = repo_root.into();
-        let (manager, mcp_tools) = McpClientManager::from_manifest(manifest, &repo_root).await
+        let (manager, mcp_tools) = McpClientManager::from_manifest(manifest, &repo_root)
+            .await
             .map_err(|e| AgentError::Other(format!("MCP initialization failed: {}", e)))?;
 
         for tool in mcp_tools {

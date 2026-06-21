@@ -21,8 +21,8 @@ mod run_tool;
 #[cfg(test)]
 mod tests;
 
-pub use transport::mcp;
 pub use mcp_v2::mcp_v2;
+pub use transport::mcp;
 
 #[cfg(test)]
 pub(crate) use config::{

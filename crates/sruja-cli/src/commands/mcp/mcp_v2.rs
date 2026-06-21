@@ -23,8 +23,8 @@ use super::config::{
 };
 use super::run_tool::run_tool;
 use super::trace::append_mcp_tool_call_event;
-use crate::commands::{mcp_prompts, mcp_resources};
 use crate::commands::CliError;
+use crate::commands::{mcp_prompts, mcp_resources};
 
 struct SrujaMcpServer {
     default_repo: String,
@@ -78,10 +78,7 @@ impl ServerHandler for SrujaMcpServer {
                 .enable_prompts()
                 .build(),
         )
-        .with_server_info(Implementation::new(
-            "sruja",
-            env!("CARGO_PKG_VERSION"),
-        ))
+        .with_server_info(Implementation::new("sruja", env!("CARGO_PKG_VERSION")))
     }
 
     fn list_tools(
@@ -271,19 +268,15 @@ impl ServerHandler for SrujaMcpServer {
                                 .get("description")
                                 .and_then(|v| v.as_str())
                                 .map(String::from);
-                            let arguments: Option<Vec<PromptArgument>> = p
-                                .get("arguments")
-                                .and_then(|a| a.as_array())
-                                .map(|args| {
+                            let arguments: Option<Vec<PromptArgument>> =
+                                p.get("arguments").and_then(|a| a.as_array()).map(|args| {
                                     args.iter()
                                         .filter_map(|a| {
-                                            let mut pa =
-                                                PromptArgument::new(
-                                                    a.get("name")?.as_str()?.to_string(),
-                                                );
-                                            if let Some(desc) = a
-                                                .get("description")
-                                                .and_then(|v| v.as_str())
+                                            let mut pa = PromptArgument::new(
+                                                a.get("name")?.as_str()?.to_string(),
+                                            );
+                                            if let Some(desc) =
+                                                a.get("description").and_then(|v| v.as_str())
                                             {
                                                 pa = pa.with_description(desc);
                                             }
