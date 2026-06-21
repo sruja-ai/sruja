@@ -872,7 +872,7 @@ pub(crate) async fn try_run(
                     base_ref: None,
                     head_ref: None,
                 });
-                for finding in report.findings {
+                for finding in report.violations {
                     let location = finding
                         .evidence
                         .first()
@@ -882,7 +882,7 @@ pub(crate) async fn try_run(
                         "severity": format!("{:?}", finding.severity),
                         "message": finding.detail.clone(),
                         "location": location,
-                        "rule_id": format!("{:?}", finding.category)
+                        "rule_id": finding.rule_id.clone().unwrap_or_else(|| format!("{:?}", finding.category))
                     }));
                 }
             }

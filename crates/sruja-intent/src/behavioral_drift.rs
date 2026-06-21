@@ -63,6 +63,7 @@ fn check_state_machine_impact(
             }],
             suggestion: Some("Review state transition logic against the architectural specification.".to_string()),
             confidence: 0.8,
+            rule_id: None,
         });
     }
 
@@ -98,6 +99,7 @@ fn check_contract_impact(
             }],
             suggestion: Some("Run API compatibility tests or manually verify the implementation against the contract.".to_string()),
             confidence: 0.8,
+            rule_id: None,
         });
     }
 

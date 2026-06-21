@@ -390,6 +390,19 @@ impl DriftDetector {
             .collect()
     }
 
+    /// Evaluate all architecture violations (policy + boundary) from an IntentModel against a scan graph.
+    pub fn evaluate_all_violations(intent: &IntentModel, reality: &Graph) -> Vec<Drift> {
+        let schema = DomainSchema::architecture();
+        let report = DriftDetector::new().detect(intent, reality, &schema);
+        report
+            .drifts
+            .into_iter()
+            .filter(|d| {
+                d.kind == DriftKind::PolicyViolation || d.kind == DriftKind::BoundaryViolation
+            })
+            .collect()
+    }
+
     pub(crate) fn compute_drift_score(summary: &DriftSummary, drifts: &[Drift]) -> u8 {
         if summary.total_components_declared == 0 {
             return 0;

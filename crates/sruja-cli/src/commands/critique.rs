@@ -80,16 +80,21 @@ pub async fn critique(
     // 2. Load context
     let graph = scan_repo_cached(repo_path)?;
     let baseline_path = architecture_path::resolve_architecture_path(repo_path);
-    let program = if let Some(path) = baseline_path {
+    let program = if let Some(ref path) = baseline_path {
         let content = std::fs::read_to_string(path)?;
         let parser = sruja_language::Parser::new(repo_root);
         parser.parse(&content).ok()
     } else {
         None
     };
+    let intent = if let Some(ref path) = baseline_path {
+        sruja_intent::IntentModel::from_sruja_file(path).ok()
+    } else {
+        None
+    };
 
     // 3. Run critique
-    let engine = CritiqueEngine::new(graph, program);
+    let engine = CritiqueEngine::new(graph, program).with_intent(intent);
     let request = CritiqueRequest {
         changed_files: files,
         description: description.clone(),
@@ -97,7 +102,6 @@ pub async fn critique(
         base_ref: base.clone(),
         head_ref: head.clone(),
     };
-
     let report = engine.critique(&request);
     let report_json = format_critique_json(&report);
     let report_value: serde_json::Value = serde_json::from_str(&report_json)
@@ -183,7 +187,8 @@ pub async fn critique(
             }
         };
 
-        let has_violation = report.findings.iter().any(|f| f.severity >= threshold);
+        // --fail-on considers violations only, not context
+        let has_violation = report.violations.iter().any(|f| f.severity >= threshold);
         if has_violation {
             std::process::exit(1);
         }

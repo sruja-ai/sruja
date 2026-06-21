@@ -17,6 +17,8 @@ lazy_static = "1.5"
 
 sruja-scan = { path = "../sruja-scan" }
 sruja-language = { path = "../sruja-language" }
+sruja-engine = { path = "../sruja-engine" }
+sruja-diagnostics = { path = "../sruja-diagnostics" }
 
 [dev-dependencies]
 tempfile = "3.27"

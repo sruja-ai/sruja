@@ -1,6 +1,6 @@
 //! Formatting for architectural critique reports
 
-use crate::critique::{CritiqueCategory, CritiqueReport, CritiqueSeverity};
+use crate::critique::{CritiqueCategory, CritiqueFinding, CritiqueReport, CritiqueSeverity};
 use colored::*;
 
 /// Formats a critique report for terminal output
@@ -28,7 +28,26 @@ pub fn format_critique_text(report: &CritiqueReport) -> String {
         report.blast_radius.downstream_consumers
     ));
 
-    // Group findings by severity
+    if report.violations.is_empty() && report.context.is_empty() {
+        out.push_str("─ No findings.\n");
+    } else {
+        if !report.violations.is_empty() {
+            render_findings_section(&mut out, "Violations", &report.violations);
+        }
+        if !report.context.is_empty() {
+            render_findings_section(&mut out, "Context", &report.context);
+        }
+    }
+
+    out.push_str("╚══════════════════════════════════════════════════════════════╝\n");
+    out
+}
+
+fn render_findings_section(out: &mut String, header: &str, findings: &[CritiqueFinding]) {
+    out.push_str(&format!(
+        "┌─ {} ──────────────────────────────────────────────────\n",
+        header.bold()
+    ));
     let severities = [
         CritiqueSeverity::Critical,
         CritiqueSeverity::High,
@@ -37,27 +56,23 @@ pub fn format_critique_text(report: &CritiqueReport) -> String {
     ];
 
     for sev in severities {
-        let findings: Vec<_> = report
-            .findings
-            .iter()
-            .filter(|f| f.severity == sev)
-            .collect();
-        if findings.is_empty() {
+        let items: Vec<_> = findings.iter().filter(|f| f.severity == sev).collect();
+        if items.is_empty() {
             continue;
         }
 
-        let (header, color_fn): (&str, fn(&str) -> ColoredString) = match sev {
-            CritiqueSeverity::Critical => ("Critical", |s| s.red().bold()),
-            CritiqueSeverity::High => ("High", |s| s.red()),
-            CritiqueSeverity::Medium => ("Medium", |s| s.yellow()),
-            CritiqueSeverity::Low => ("Low", |s| s.blue()),
+        let (_label_text, color) = match sev {
+            CritiqueSeverity::Critical => ("Critical", "Critical".bright_red().bold().to_string()),
+            CritiqueSeverity::High => ("High", "High".bright_red().to_string()),
+            CritiqueSeverity::Medium => ("Medium", "Medium".bright_yellow().to_string()),
+            CritiqueSeverity::Low => ("Low", "Low".bright_blue().to_string()),
         };
 
         out.push_str(&format!(
             "── {} ─────────────────────────────────────────────────\n",
-            color_fn(header)
+            color
         ));
-        for f in findings {
+        for f in items {
             let icon = match f.severity {
                 CritiqueSeverity::Critical => "🔴",
                 CritiqueSeverity::High => "🟠",
@@ -74,23 +89,19 @@ pub fn format_critique_text(report: &CritiqueReport) -> String {
                 CritiqueCategory::GotchaWarning => "Gotcha",
                 CritiqueCategory::UnproposedChange => "Unproposed Change",
             };
-
             out.push_str(&format!(
                 "  {} {}: {}\n",
                 icon,
-                color_fn(category_label),
+                category_label.bold(),
                 f.title.bold()
             ));
             out.push_str(&format!("     Detail: {}\n", f.detail));
             if let Some(s) = &f.suggestion {
-                out.push_str(&format!("     Suggestion: {}\n", s.green()));
+                out.push_str(&format!("     Suggestion: {}\n", s.bright_green()));
             }
             out.push('\n');
         }
     }
-
-    out.push_str("╚══════════════════════════════════════════════════════════════╝\n");
-    out
 }
 
 /// Formats a critique report as JSON

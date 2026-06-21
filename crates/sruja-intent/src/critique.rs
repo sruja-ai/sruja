@@ -1,8 +1,15 @@
 //! Adversarial architectural critique engine
+//!
+//! @element Sruja.Intent.CritiqueEngine
+//! @layer Secondary
+//! @boundary Critique must use the real violation engine, not metadata restatement
 
 use serde::{Deserialize, Serialize};
 use sruja_language::Program;
 use sruja_scan::{Criticality, Graph};
+
+use crate::compare::{DriftDetector, Severity as DriftSeverity};
+use crate::model::IntentModel;
 
 /// Request for architectural critique
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,11 +28,18 @@ pub struct CritiqueRequest {
 /// Result of an architectural critique
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CritiqueReport {
-    pub findings: Vec<CritiqueFinding>,
+    /// Real violations from the violation engine, scoped to the change
+    pub violations: Vec<CritiqueFinding>,
+    /// Awareness items (constraints, gotchas, incidents) — gated on accuracy.
+    /// Empty in v1; the accuracy gate opens when relationship-diff semantics are available.
+    pub context: Vec<CritiqueFinding>,
     pub risk_level: RiskLevel,
     pub summary: String,
     pub affected_elements: Vec<String>,
     pub blast_radius: BlastRadiusSummary,
+    /// Whether a baseline (.sruja architecture file) was loaded.
+    /// When false, the report is ungraded — Clear with no rules to check.
+    pub baseline_present: bool,
 }
 
 /// A single finding from the critique engine
@@ -38,6 +52,10 @@ pub struct CritiqueFinding {
     pub evidence: Vec<CritiqueEvidence>,
     pub suggestion: Option<String>,
     pub confidence: f32,
+    /// Stable rule identifier (e.g., "SRUJA-INTENT-POLICY-001").
+    /// Populated by the real violation engine; None for legacy/context items.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule_id: Option<String>,
 }
 
 /// Categories of critique findings
@@ -97,80 +115,203 @@ pub struct CritiqueEvidence {
 pub struct CritiqueEngine {
     pub graph: Graph,
     pub program: Option<Program>,
+    /// Declared architectural intent model, used by DriftDetector for policy/boundary violations.
+    pub intent: Option<IntentModel>,
 }
 
 impl CritiqueEngine {
     pub fn new(graph: Graph, program: Option<Program>) -> Self {
-        Self { graph, program }
+        Self {
+            graph,
+            program,
+            intent: None,
+        }
+    }
+
+    /// Attach an intent model for policy/boundary violation detection via DriftDetector.
+    pub fn with_intent(mut self, intent: Option<IntentModel>) -> Self {
+        self.intent = intent;
+        self
     }
 
     pub fn critique(&self, request: &CritiqueRequest) -> CritiqueReport {
         let affected = self.resolve_affected_elements(&request.changed_files);
-        let mut findings = Vec::new();
+        let baseline_present = self.program.is_some();
 
-        // Pass 1: Policy violations
-        findings.extend(self.check_policy_violations(&affected));
+        // ── Violations tier: real detector output, scoped to the change ──
+        let mut violations = self.check_policy_violations(&affected);
 
-        // Pass 2: Historical incident pattern matching
-        findings.extend(self.check_incident_patterns(&affected, &request.description));
+        // ── Context tier: constraints, gotchas, incidents (accuracy-gated) ──
+        // In v1, the gate is closed (returns false). The passes are retained
+        // for future revival when relationship-diff semantics become available.
+        // Per R5: "a pass that cannot be accurate does not fire by default."
+        let context = if self.context_gate_open() {
+            let mut ctx = Vec::new();
+            ctx.extend(self.check_incident_patterns(&affected, &request.description));
+            ctx.extend(self.check_constraint_breaches(&affected));
+            ctx.extend(self.surface_gotchas(&affected));
+            ctx
+        } else {
+            Vec::new()
+        };
 
-        // Pass 3: Constraint breaches
-        findings.extend(self.check_constraint_breaches(&affected, &request.changed_files));
+        // ── Blast radius (report metadata, not a finding) ──
+        let blast_summary = self.assess_blast_radius(&affected);
 
-        // Pass 4: Blast radius assessment
-        let (blast_summary, blast_findings) = self.assess_blast_radius(&affected);
-        findings.extend(blast_findings);
+        // Sort violations by severity (highest first)
+        violations.sort_by_key(|b| std::cmp::Reverse(b.severity));
 
-        // Pass 5: Behavioral contract drift (Heuristic)
-        if let Some(program) = &self.program {
-            findings.extend(crate::behavioral_drift::check_behavioral_drift(
-                &self.graph,
-                program,
-                &request.changed_files,
-                &affected,
-            ));
-        }
-
-        // Pass 6: Gotcha surfacing
-        findings.extend(self.surface_gotchas(&affected));
-
-        // Pass 7: Unproposed change detection
-        if request.proposal_id.is_none() {
-            findings.extend(self.check_unproposed_changes(&affected));
-        }
-
-        // Sort findings by severity
-        findings.sort_by_key(|b| std::cmp::Reverse(b.severity));
-
-        let risk_level = self.compute_risk_level(&findings);
-        let summary = self.generate_summary(&findings, &affected, &blast_summary);
+        let risk_level = self.compute_risk_level(&violations);
+        let summary = self.generate_summary(
+            &violations,
+            &context,
+            &affected,
+            &blast_summary,
+            baseline_present,
+        );
 
         CritiqueReport {
-            findings,
+            violations,
+            context,
             risk_level,
             summary,
             affected_elements: affected,
             blast_radius: blast_summary,
+            baseline_present,
         }
     }
 
+    /// v1 accuracy gate for the Context tier.
+    /// Returns false — the relevance predicate requires relationship-diff
+    /// semantics that are not yet available in this crate.
+    fn context_gate_open(&self) -> bool {
+        false
+    }
+
+    /// Resolve changed files to affected graph element IDs using exact attribution.
+    /// Replaces the old bidirectional substring matcher with precise source/path matching.
     pub fn resolve_affected_elements(&self, changed_files: &[String]) -> Vec<String> {
         let mut affected = std::collections::HashSet::new();
         for file in changed_files {
             for node in &self.graph.nodes {
-                if let Some(path) = &node.path {
-                    // Simple heuristic: if path is contained in file path or vice versa
-                    if file.contains(path) || path.contains(file) {
-                        affected.insert(node.id.clone());
-                    }
+                let matches = node.sources.iter().any(|s| s.path == *file)
+                    || node
+                        .path
+                        .as_ref()
+                        .is_some_and(|p| p == file || is_within_dir(file, p));
+
+                if matches {
+                    affected.insert(node.id.clone());
                 }
             }
         }
         affected.into_iter().collect()
     }
 
-    fn check_policy_violations(&self, _affected: &[String]) -> Vec<CritiqueFinding> {
-        Vec::new()
+    fn check_policy_violations(&self, affected: &[String]) -> Vec<CritiqueFinding> {
+        let mut findings = Vec::new();
+        let affected_set: std::collections::HashSet<&str> =
+            affected.iter().map(|s| s.as_str()).collect();
+
+        // 1. Structural validation via sruja-engine (layer, cycle, orphan, etc.)
+        if let Some(program) = &self.program {
+            let validator =
+                sruja_engine::Validator::with_profile(sruja_engine::RuleProfile::Minimal);
+            let diagnostics = validator.validate_sync(program);
+            for diag in diagnostics {
+                let involves_affected = affected_set.iter().any(|id| {
+                    diag.message.contains(id) || diag.context.iter().any(|c| c.contains(id))
+                });
+
+                if !involves_affected {
+                    continue;
+                }
+
+                let severity = match diag.severity {
+                    sruja_diagnostics::Severity::Error => CritiqueSeverity::High,
+                    sruja_diagnostics::Severity::Warning => CritiqueSeverity::Medium,
+                    sruja_diagnostics::Severity::Info | sruja_diagnostics::Severity::Hint => {
+                        CritiqueSeverity::Low
+                    }
+                };
+
+                findings.push(CritiqueFinding {
+                    category: CritiqueCategory::PolicyViolation,
+                    severity,
+                    title: diag
+                        .message
+                        .split('.')
+                        .next()
+                        .unwrap_or(&diag.message)
+                        .trim()
+                        .to_string(),
+                    detail: diag.message,
+                    evidence: diag
+                        .context
+                        .iter()
+                        .map(|c| CritiqueEvidence {
+                            source: "sruja-engine".to_string(),
+                            location: Some(format!(
+                                "{}:{}",
+                                diag.location.file, diag.location.line
+                            )),
+                            detail: c.clone(),
+                        })
+                        .collect(),
+                    suggestion: diag.suggestions.first().cloned(),
+                    confidence: 1.0,
+                    rule_id: Some(diag.code),
+                });
+            }
+        }
+
+        // 2. Policy/boundary violations via DriftDetector (intent vs scanned reality)
+        if let Some(intent) = &self.intent {
+            let drifts = DriftDetector::evaluate_all_violations(intent, &self.graph);
+            for drift in drifts {
+                let involves_affected =
+                    affected_set.iter().any(|id| drift.description.contains(id));
+
+                if !involves_affected {
+                    continue;
+                }
+
+                let severity = match drift.severity {
+                    DriftSeverity::Critical => CritiqueSeverity::Critical,
+                    DriftSeverity::High => CritiqueSeverity::High,
+                    DriftSeverity::Medium => CritiqueSeverity::Medium,
+                    DriftSeverity::Low | DriftSeverity::Info => CritiqueSeverity::Low,
+                };
+
+                let rule_id = crate::rule_ids::rule_id_for_drift_kind(drift.kind).to_string();
+                findings.push(CritiqueFinding {
+                    category: CritiqueCategory::PolicyViolation,
+                    severity,
+                    title: drift
+                        .description
+                        .split('.')
+                        .next()
+                        .unwrap_or(&drift.description)
+                        .trim()
+                        .to_string(),
+                    detail: drift.description,
+                    evidence: drift
+                        .evidence
+                        .iter()
+                        .map(|e| CritiqueEvidence {
+                            source: e.source.clone(),
+                            location: e.location.clone(),
+                            detail: e.detail.clone(),
+                        })
+                        .collect(),
+                    suggestion: drift.suggestion.clone(),
+                    confidence: 1.0,
+                    rule_id: Some(rule_id),
+                });
+            }
+        }
+
+        findings
     }
 
     fn check_incident_patterns(
@@ -211,6 +352,7 @@ impl CritiqueEngine {
                             }],
                             suggestion: incident.resolution.clone(),
                             confidence: 0.8,
+                            rule_id: None,
                         });
                     }
                 }
@@ -219,11 +361,7 @@ impl CritiqueEngine {
         findings
     }
 
-    fn check_constraint_breaches(
-        &self,
-        affected: &[String],
-        _files: &[String],
-    ) -> Vec<CritiqueFinding> {
+    fn check_constraint_breaches(&self, affected: &[String]) -> Vec<CritiqueFinding> {
         let mut findings = Vec::new();
         for id in affected {
             if let Some(node) = self.graph.nodes.iter().find(|n| &n.id == id) {
@@ -245,6 +383,7 @@ impl CritiqueEngine {
                             "Verify this change does not violate the constraint.".to_string(),
                         ),
                         confidence: 0.9,
+                        rule_id: None,
                     });
                 }
             }
@@ -252,13 +391,9 @@ impl CritiqueEngine {
         findings
     }
 
-    fn assess_blast_radius(
-        &self,
-        affected: &[String],
-    ) -> (BlastRadiusSummary, Vec<CritiqueFinding>) {
+    fn assess_blast_radius(&self, affected: &[String]) -> BlastRadiusSummary {
         let mut total_downstream = 0;
         let mut max_depth = 0;
-        let mut findings = Vec::new();
 
         for id in affected {
             let radius = self.graph.blast_radius(id, 2);
@@ -268,26 +403,11 @@ impl CritiqueEngine {
             }
         }
 
-        if total_downstream > 5 {
-            findings.push(CritiqueFinding {
-                category: CritiqueCategory::BlastRadius,
-                severity: CritiqueSeverity::Medium,
-                title: "Large Blast Radius".to_string(),
-                detail: format!("This change affects {} downstream consumers. Consider the impact on dependent systems.", total_downstream),
-                evidence: vec![],
-                suggestion: Some("Consider running integration tests for downstream consumers.".to_string()),
-                confidence: 1.0,
-            });
+        BlastRadiusSummary {
+            total_affected_elements: affected.len(),
+            downstream_consumers: total_downstream,
+            max_depth,
         }
-
-        (
-            BlastRadiusSummary {
-                total_affected_elements: affected.len(),
-                downstream_consumers: total_downstream,
-                max_depth,
-            },
-            findings,
-        )
     }
 
     fn surface_gotchas(&self, affected: &[String]) -> Vec<CritiqueFinding> {
@@ -303,6 +423,7 @@ impl CritiqueEngine {
                         evidence: vec![],
                         suggestion: None,
                         confidence: 1.0,
+                        rule_id: None,
                     });
                 }
             }
@@ -310,6 +431,9 @@ impl CritiqueEngine {
         findings
     }
 
+    /// Retained for potential future accuracy-gated revival.
+    /// Not called by the default critique pipeline in v1.
+    #[allow(dead_code)]
     fn check_unproposed_changes(&self, affected: &[String]) -> Vec<CritiqueFinding> {
         let mut findings = Vec::new();
 
@@ -318,7 +442,6 @@ impl CritiqueEngine {
                 let radius = self.graph.blast_radius(id, 2);
                 let affected_count = radius.upstream.len();
 
-                // Determine severity based on criticality and blast radius (upstream consumers)
                 let severity = match (node.criticality, affected_count) {
                     (Some(Criticality::Critical), _) => CritiqueSeverity::Critical,
                     (Some(Criticality::High), _) | (_, 5..) => CritiqueSeverity::High,
@@ -326,7 +449,6 @@ impl CritiqueEngine {
                     _ => CritiqueSeverity::Low,
                 };
 
-                // Only report Medium and above individually, or if it's the only one
                 if severity >= CritiqueSeverity::Medium || affected.len() == 1 {
                     findings.push(CritiqueFinding {
                         category: CritiqueCategory::UnproposedChange,
@@ -345,12 +467,12 @@ impl CritiqueEngine {
                         }],
                         suggestion: Some("Run 'sruja propose' to document architectural intent and get formal review.".to_string()),
                         confidence: 0.9,
+                        rule_id: None,
                     });
                 }
             }
         }
 
-        // If we didn't add any specific findings but have affected elements, add a summary one
         if findings.is_empty() && !affected.is_empty() {
             findings.push(CritiqueFinding {
                 category: CritiqueCategory::UnproposedChange,
@@ -366,15 +488,16 @@ impl CritiqueEngine {
                         .to_string(),
                 ),
                 confidence: 0.7,
+                rule_id: None,
             });
         }
 
         findings
     }
 
-    fn compute_risk_level(&self, findings: &[CritiqueFinding]) -> RiskLevel {
+    fn compute_risk_level(&self, violations: &[CritiqueFinding]) -> RiskLevel {
         let mut max_severity = CritiqueSeverity::Low;
-        for f in findings {
+        for f in violations {
             if f.severity > max_severity {
                 max_severity = f.severity;
             }
@@ -385,7 +508,7 @@ impl CritiqueEngine {
             CritiqueSeverity::High => RiskLevel::Warning,
             CritiqueSeverity::Medium => RiskLevel::Caution,
             CritiqueSeverity::Low => {
-                if findings.is_empty() {
+                if violations.is_empty() {
                     RiskLevel::Clear
                 } else {
                     RiskLevel::Caution
@@ -396,16 +519,32 @@ impl CritiqueEngine {
 
     fn generate_summary(
         &self,
-        findings: &[CritiqueFinding],
+        violations: &[CritiqueFinding],
+        context: &[CritiqueFinding],
         affected: &[String],
         blast: &BlastRadiusSummary,
+        baseline_present: bool,
     ) -> String {
-        format!("Critique found {} issues across {} affected elements. Blast radius includes {} downstream consumers.",
-            findings.len(),
+        if !baseline_present {
+            return format!(
+                "No baseline loaded; 0 violations across {} affected elements.",
+                affected.len()
+            );
+        }
+
+        format!(
+            "{} violations, {} context items across {} affected elements. Blast radius includes {} downstream consumers.",
+            violations.len(),
+            context.len(),
             affected.len(),
             blast.downstream_consumers
         )
     }
+}
+
+/// Check if `file` resides within the directory `dir_path` (any depth).
+fn is_within_dir(file: &str, dir_path: &str) -> bool {
+    file.starts_with(&format!("{}/", dir_path))
 }
 
 #[cfg(test)]
@@ -414,7 +553,59 @@ mod tests {
     use sruja_scan::{Node, NodeKind};
 
     #[test]
-    fn test_critique_unproposed_change() {
+    fn report_with_violations_and_context_serializes_correctly() {
+        let report = CritiqueReport {
+            violations: vec![CritiqueFinding {
+                category: CritiqueCategory::PolicyViolation,
+                severity: CritiqueSeverity::High,
+                title: "Layer violation".to_string(),
+                detail: "A depends on B across layers".to_string(),
+                evidence: vec![],
+                suggestion: None,
+                confidence: 1.0,
+                rule_id: Some("SRUJA-LAYER-001".to_string()),
+            }],
+            context: vec![],
+            risk_level: RiskLevel::Warning,
+            summary: "1 violations, 0 context items".to_string(),
+            affected_elements: vec!["A".to_string()],
+            blast_radius: BlastRadiusSummary {
+                total_affected_elements: 1,
+                downstream_consumers: 0,
+                max_depth: 0,
+            },
+            baseline_present: true,
+        };
+
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("\"violations\""));
+        assert!(json.contains("\"context\""));
+        assert!(json.contains("\"baseline_present\":true"));
+        assert!(json.contains("\"rule_id\":\"SRUJA-LAYER-001\""));
+    }
+
+    #[test]
+    fn report_with_baseline_present_false() {
+        let report = CritiqueReport {
+            violations: vec![],
+            context: vec![],
+            risk_level: RiskLevel::Clear,
+            summary: "No baseline loaded; 0 violations".to_string(),
+            affected_elements: vec![],
+            blast_radius: BlastRadiusSummary {
+                total_affected_elements: 0,
+                downstream_consumers: 0,
+                max_depth: 0,
+            },
+            baseline_present: false,
+        };
+
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(json.contains("\"baseline_present\":false"));
+    }
+
+    #[test]
+    fn resolve_affected_elements_exact_path_match() {
         let mut graph = Graph::default();
         graph.nodes.push(Node {
             id: "TestNode".to_string(),
@@ -425,98 +616,98 @@ mod tests {
         });
 
         let engine = CritiqueEngine::new(graph, None);
-        let report = engine.critique(&CritiqueRequest {
-            changed_files: vec!["src/test.rs".to_string()],
-            description: None,
-            proposal_id: None,
-            base_ref: None,
-            head_ref: None,
-        });
-
-        assert_eq!(report.affected_elements.len(), 1);
-        assert!(report
-            .findings
-            .iter()
-            .any(|f| f.category == CritiqueCategory::UnproposedChange));
-        assert_eq!(report.risk_level, RiskLevel::Caution);
+        let affected = engine.resolve_affected_elements(&["src/test.rs".to_string()]);
+        assert_eq!(affected.len(), 1);
+        assert!(affected.contains(&"TestNode".to_string()));
     }
 
     #[test]
-    fn test_critique_unproposed_change_escalation() {
+    fn resolve_affected_elements_no_substring_false_positive() {
         let mut graph = Graph::default();
         graph.nodes.push(Node {
-            id: "CriticalService".to_string(),
-            kind: NodeKind::new(NodeKind::SERVICE),
-            label: "Critical Service".to_string(),
-            path: Some("src/critical.rs".to_string()),
-            criticality: Some(Criticality::Critical),
+            id: "DB".to_string(),
+            kind: NodeKind::new(NodeKind::DATABASE),
+            label: "Database".to_string(),
+            path: Some("src/db".to_string()),
             ..Default::default()
         });
 
         let engine = CritiqueEngine::new(graph, None);
-        let report = engine.critique(&CritiqueRequest {
-            changed_files: vec!["src/critical.rs".to_string()],
-            description: None,
-            proposal_id: None,
-            base_ref: None,
-            head_ref: None,
-        });
-
-        assert_eq!(report.affected_elements.len(), 1);
-        let finding = report
-            .findings
-            .iter()
-            .find(|f| f.category == CritiqueCategory::UnproposedChange)
-            .expect("should have unproposed change finding");
-        assert_eq!(finding.severity, CritiqueSeverity::Critical);
-        assert_eq!(report.risk_level, RiskLevel::Danger);
+        // "src/db/migrations_v2.rs" should NOT match "src/db" as a substring
+        // (it IS a direct child though, so it WILL match via directory prefix)
+        // But "src/dashboard.rs" should NOT match
+        let affected = engine.resolve_affected_elements(&["src/dashboard.rs".to_string()]);
+        assert!(
+            affected.is_empty(),
+            "dashboard.rs should not match node path src/db"
+        );
     }
 
     #[test]
-    fn test_critique_unproposed_change_blast_radius_escalation() {
-        let mut graph = Graph::default();
-        graph.nodes.push(Node {
-            id: "CoreLib".to_string(),
-            kind: NodeKind::new(NodeKind::COMPONENT),
-            label: "Core Library".to_string(),
-            path: Some("src/core.rs".to_string()),
-            ..Default::default()
-        });
+    fn resolve_affected_elements_empty_files() {
+        let graph = Graph::default();
+        let engine = CritiqueEngine::new(graph, None);
+        let affected = engine.resolve_affected_elements(&[]);
+        assert!(affected.is_empty());
+    }
 
-        // Add 6 downstream consumers to trigger High severity
-        for i in 0..6 {
-            let consumer_id = format!("Consumer{}", i);
-            graph.nodes.push(Node {
-                id: consumer_id.clone(),
-                kind: NodeKind::new(NodeKind::COMPONENT),
-                label: consumer_id.clone(),
-                ..Default::default()
-            });
-            graph.edges.push(sruja_scan::Edge {
-                source: consumer_id,
-                target: "CoreLib".to_string(),
-                kind: sruja_scan::EdgeKind::new(sruja_scan::EdgeKind::CALLS),
+    #[test]
+    fn risk_from_violations_only() {
+        let engine = CritiqueEngine::new(Graph::default(), None);
+
+        let violations = vec![CritiqueFinding {
+            category: CritiqueCategory::PolicyViolation,
+            severity: CritiqueSeverity::High,
+            title: "test".to_string(),
+            detail: "test".to_string(),
+            evidence: vec![],
+            suggestion: None,
+            confidence: 1.0,
+            rule_id: None,
+        }];
+
+        assert_eq!(engine.compute_risk_level(&violations), RiskLevel::Warning);
+        assert_eq!(engine.compute_risk_level(&[]), RiskLevel::Clear);
+    }
+
+    #[test]
+    fn summary_distinguishes_counts() {
+        let engine = CritiqueEngine::new(Graph::default(), None);
+        let blast = BlastRadiusSummary {
+            total_affected_elements: 1,
+            downstream_consumers: 3,
+            max_depth: 1,
+        };
+        let summary = engine.generate_summary(
+            &vec![CritiqueFinding {
+                category: CritiqueCategory::PolicyViolation,
+                severity: CritiqueSeverity::Medium,
+                title: "v".to_string(),
+                detail: "v".to_string(),
                 evidence: vec![],
-                confidence: Default::default(),
-            });
-        }
+                suggestion: None,
+                confidence: 1.0,
+                rule_id: None,
+            }],
+            &[],
+            &["A".to_string()],
+            &blast,
+            true,
+        );
+        assert!(summary.contains("1 violations"));
+        assert!(summary.contains("0 context items"));
+    }
 
-        let engine = CritiqueEngine::new(graph, None);
-        let report = engine.critique(&CritiqueRequest {
-            changed_files: vec!["src/core.rs".to_string()],
-            description: None,
-            proposal_id: None,
-            base_ref: None,
-            head_ref: None,
-        });
-
-        assert_eq!(report.affected_elements.len(), 1);
-        let finding = report
-            .findings
-            .iter()
-            .find(|f| f.category == CritiqueCategory::UnproposedChange)
-            .expect("should have unproposed change finding");
-        assert_eq!(finding.severity, CritiqueSeverity::High);
-        assert_eq!(report.risk_level, RiskLevel::Warning);
+    #[test]
+    fn summary_no_baseline() {
+        let engine = CritiqueEngine::new(Graph::default(), None);
+        let blast = BlastRadiusSummary {
+            total_affected_elements: 0,
+            downstream_consumers: 0,
+            max_depth: 0,
+        };
+        let summary = engine.generate_summary(&[], &[], &[], &blast, false);
+        assert!(summary.contains("No baseline loaded"));
+        assert!(summary.contains("0 violations"));
     }
 }
