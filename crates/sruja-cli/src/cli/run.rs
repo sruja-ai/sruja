@@ -1047,6 +1047,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 no_oscillation_detection,
                 format,
                 yes,
+                no_default_grader,
             } => {
                 commands::agent_loop(&commands::AgentLoopOptions {
                     repo: &repo,
@@ -1060,6 +1061,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     no_oscillation_detection,
                     format: &format,
                     force_proceed: yes,
+                    no_default_grader,
                 })
                 .await
             }

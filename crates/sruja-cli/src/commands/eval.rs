@@ -536,6 +536,7 @@ pub async fn run_eval_instance(
         no_oscillation_detection: false,
         format,
         force_proceed: true, // eval tasks always proceed
+        no_default_grader: false,
     };
 
     super::agent_loop(&options).await?;

@@ -327,6 +327,8 @@ pub struct LoopResult {
     pub converged: bool,
     pub termination: LoopTermination,
     pub total_usage: Usage,
+    /// Provenance of the in-loop grader: "default" | "manifest" | "none".
+    pub grader_source: String,
     /// The final, most-developed single-pass result (comprehension, last plan,
     /// last step results, last critique, decision, runbook). Present even when
     /// the loop did not converge so the caller can inspect partial progress.
@@ -1263,6 +1265,7 @@ impl Agent {
             converged,
             termination,
             total_usage,
+            grader_source: "unknown".to_string(),
             final_result,
         })
     }
@@ -2445,6 +2448,7 @@ mod tests {
             converged: true,
             termination: LoopTermination::Approved,
             total_usage: Usage::default(),
+            grader_source: "test".to_string(),
             final_result: AgentRunResult {
                 goal: "g".into(),
                 comprehension: Comprehension {

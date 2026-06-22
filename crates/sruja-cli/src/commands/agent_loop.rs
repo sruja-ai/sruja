@@ -197,6 +197,7 @@ pub struct AgentLoopOptions<'a> {
     pub no_oscillation_detection: bool,
     pub format: &'a str,
     pub force_proceed: bool,
+    pub no_default_grader: bool,
 }
 
 /// Entry point for `sruja agent loop`.
@@ -368,21 +369,43 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         manifest.detect_oscillation
     };
 
-    // The manifest's [[verify]] steps become the loop's *in-loop* independent
-    // grader: each iteration runs them after execute, and a failure vetoes
-    // convergence (and feeds into the next replan). They also still run as a
-    // final summary below for backward-compatible reporting.
-    let verifier = if manifest.verify_steps.is_empty() {
-        None
-    } else {
-        Some(VerifierConfig {
+    // ── In-loop verifier configuration ───────────────────────────────────
+    // Priority chain: user manifest steps > default grader > none.
+    // The default grader makes the "never self-graded" thesis true without
+    // configuration by running sruja's own deterministic architecture checks.
+    let (verifier, grader_source) = if !manifest.verify_steps.is_empty() {
+        let verifier = VerifierConfig {
             steps: manifest.verify_steps.clone(),
             options: VerifyOptions {
                 allowed_executables: shell_allowlist.clone(),
                 ..Default::default()
             },
             workdir: repo_path.to_path_buf(),
-        })
+        };
+        (Some(verifier), "manifest".to_string())
+    } else if !options.no_default_grader {
+        let sruja_bin = super::loop_grader::resolve_sruja_binary();
+        let steps = super::loop_grader::default_grader_steps(
+            repo_path,
+            &sruja_bin,
+            &manifest.default_grader_fail_on,
+        );
+        let verifier = if steps.is_empty() {
+            None
+        } else {
+            Some(VerifierConfig {
+                steps,
+                options: VerifyOptions {
+                    allowed_executables: vec![sruja_bin.clone()],
+                    continue_on_error: true,
+                    ..Default::default()
+                },
+                workdir: repo_path.to_path_buf(),
+            })
+        };
+        (verifier, "default".to_string())
+    } else {
+        (None, "none".to_string())
     };
 
     let loop_config = LoopConfig {
@@ -452,10 +475,12 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         }
     }
 
-    let result = agent
+    let mut result = agent
         .run_loop(&goal_prompt, &loop_config)
         .await
         .map_err(agent_err_to_cli)?;
+
+    result.grader_source = grader_source;
 
     // ── Persist loop trajectory to disk ─────────────────────────────────
     // Write the full LoopResult to .sruja/runs/<run_id>/loop.json so

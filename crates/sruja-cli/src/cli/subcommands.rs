@@ -417,6 +417,9 @@ pub enum AgentCommand {
         /// Force proceed past the calibration gate (override Ask verdict; no calibration DR written)
         #[arg(long, alias = "force-proceed")]
         yes: bool,
+        /// Disable the default deterministic grader (sruja lint + drift); trust the LLM critic only
+        #[arg(long, alias = "trust-critic")]
+        no_default_grader: bool,
     },
 }
 

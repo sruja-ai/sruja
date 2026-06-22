@@ -22,6 +22,9 @@ fn default_ten() -> u64 {
 fn default_sixty() -> u64 {
     60
 }
+fn default_fail_on() -> String {
+    "cycles,layer-violations".to_string()
+}
 
 /// Transport type for an MCP server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,6 +212,13 @@ pub struct LoopManifest {
     #[serde(default = "default_true")]
     pub detect_oscillation: bool,
 
+    /// Drift --fail-on criteria for the default grader.
+    ///
+    /// Only used when `default_grader` is enabled and no user `[[verify]]`
+    /// steps are configured. Defaults to high-severity architectural violations.
+    #[serde(default = "default_fail_on")]
+    pub default_grader_fail_on: String,
+
     /// Deterministic verification steps run after the loop completes.
     ///
     /// These are the **independent grader** — the agent that writes code
@@ -234,6 +244,7 @@ impl Default for LoopManifest {
             shell_allowlist: Vec::new(),
             spend_cap_usd: None,
             detect_oscillation: default_true(),
+            default_grader_fail_on: default_fail_on(),
             verify_steps: Vec::new(),
             mcp: McpConfig::default(),
         }

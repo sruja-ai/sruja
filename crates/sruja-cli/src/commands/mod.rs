@@ -9,6 +9,7 @@ pub mod density;
 pub mod dsl_domain;
 pub mod eval;
 pub mod intent_domain;
+pub mod loop_grader;
 pub mod scan_domain;
 pub mod utility_domain;
 pub mod workflow;
