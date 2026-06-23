@@ -498,6 +498,18 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         Err(e) => eprintln!("  Warning: could not write trajectory: {e}"),
     }
 
+    // ── Post-loop auto-consolidation (U2) ──────────────────────────────
+    // Archive stale entries and prune low-utility ones. Runs after
+    // trajectory persistence so a crash during consolidation never
+    // loses the run. Gated by `auto_consolidate` (default on) and
+    // skipped in `--dry-run`.
+    if manifest.auto_consolidate && !dry_run {
+        match consolidate_memory(repo_path) {
+            Ok(msg) => println!("  {msg}"),
+            Err(e) => eprintln!("  Warning: memory consolidation failed: {e}"),
+        }
+    }
+
     // ── Deterministic verification verdict ───────────────────────────────
     // The verifier already ran in-loop on every iteration (when configured),
     // so we derive the final verdict from the loop result rather than
@@ -609,10 +621,73 @@ fn print_loop_result_human(result: &sruja_agent::LoopResult) {
             }
         }
     }
+
+    // U3: Memory retrieval observability.
+    let comp_ids = &result.final_result.comprehension.retrieved_learning_ids;
+    let crit_ids: Vec<&str> = result
+        .final_result
+        .critique
+        .as_ref()
+        .map(|c| c.injected_learning_ids.iter().map(String::as_str).collect())
+        .unwrap_or_default();
+    let total = comp_ids.len() + crit_ids.len();
+    if total > 0 {
+        let mut all_ids: Vec<&str> = comp_ids.iter().map(String::as_str).collect();
+        all_ids.extend(&crit_ids);
+        all_ids.sort_unstable();
+        all_ids.dedup();
+        println!(
+            "\nMemory: applied {} past learning{} ({})",
+            all_ids.len(),
+            if all_ids.len() == 1 { "" } else { "s" },
+            all_ids.join(", ")
+        );
+    } else if !result.converged {
+        println!("\nMemory: no relevant learnings found. Record one: sruja agent record ...");
+    }
 }
 
 fn agent_err_to_cli(e: AgentError) -> CliError {
     CliError::validation(format!("Agent error: {e}"))
+}
+
+/// Post-loop memory consolidation (U2).
+///
+/// Archives stale entries (decay < 0.15, age > 30 days) and prunes
+/// low-utility entries (retrieved ≥ 3×, success < 25%). Invariant
+/// entries are never touched. Returns a human-readable summary.
+fn consolidate_memory(repo_path: &Path) -> Result<String, CliError> {
+    use sruja_agent::AgenticMemory;
+
+    let mut memory = AgenticMemory::load(repo_path).unwrap_or_default();
+
+    // 1. Archive stale entries.
+    let archived = memory.auto_archive_stale(0.15, 30);
+    let archived_count = archived.len();
+
+    // 2. Prune low-utility entries (skip invariants).
+    let low_utility: Vec<String> = memory
+        .low_utility_entries(3, 0.25)
+        .into_iter()
+        .filter(|e| e.kind != Some(sruja_agent::LearningKind::Invariant))
+        .map(|e| e.id.clone())
+        .collect();
+    let pruned_count = low_utility.len();
+    for id in &low_utility {
+        let _ = memory.delete_learning(id);
+    }
+
+    // 3. Save if anything changed.
+    if archived_count > 0 || pruned_count > 0 {
+        memory.save(repo_path).map_err(|e| {
+            CliError::validation(format!("Failed to save consolidated memory: {e}"))
+        })?;
+    }
+
+    let remaining = memory.learnings.len();
+    Ok(format!(
+        "Memory: archived {archived_count} stale, pruned {pruned_count} low-utility ({remaining} entries remain)"
+    ))
 }
 
 #[cfg(test)]

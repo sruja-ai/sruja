@@ -231,6 +231,14 @@ pub struct LoopManifest {
     /// connected at loop startup and its tools exposed as `mcp__{server}__{tool}`.
     #[serde(default)]
     pub mcp: McpConfig,
+
+    /// Automatically consolidate memory at the end of each loop run.
+    ///
+    /// When enabled, stale entries are archived and low-utility entries
+    /// are pruned after trajectory persistence. Invariant entries are
+    /// never touched. Defaults to `true`.
+    #[serde(default = "default_true")]
+    pub auto_consolidate: bool,
 }
 
 impl Default for LoopManifest {
@@ -247,6 +255,7 @@ impl Default for LoopManifest {
             default_grader_fail_on: default_fail_on(),
             verify_steps: Vec::new(),
             mcp: McpConfig::default(),
+            auto_consolidate: default_true(),
         }
     }
 }

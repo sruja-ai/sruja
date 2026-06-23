@@ -278,6 +278,15 @@ pub trait Memory: Send + Sync {
 
     /// Total number of learnings stored.
     fn count(&self) -> usize;
+
+    /// Persist the current in-memory state to a JSON file at `path`.
+    ///
+    /// Used by callers (e.g. `reflect`) to flush learnings to disk after
+    /// recording. Default is a no-op for backends that persist on every
+    /// `record()` call.
+    fn save_to_path(&self, _path: &Path) -> Result<(), MemoryError> {
+        Ok(())
+    }
 }
 
 impl Memory for std::sync::Mutex<AgenticMemory> {
@@ -330,5 +339,10 @@ impl Memory for std::sync::Mutex<AgenticMemory> {
 
     fn count(&self) -> usize {
         self.lock().unwrap().learnings.len()
+    }
+
+    fn save_to_path(&self, path: &Path) -> Result<(), MemoryError> {
+        let mem = self.lock().unwrap();
+        mem.save(path)
     }
 }

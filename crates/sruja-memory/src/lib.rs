@@ -4,9 +4,11 @@
 //! records under `.sruja/decisions/` (reviewed truth). Never writes to `repo.sruja`.
 
 mod error;
+pub mod memory_backend;
 mod store;
 
 pub use error::MemoryStoreError;
+pub use memory_backend::IndexedMemory;
 pub use store::{
     MemorySearchHit, MemoryStore, MemoryTimelineEntry, MemoryTimelineResult, SearchMemoryOptions,
     TimelineOptions,

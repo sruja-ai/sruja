@@ -339,6 +339,7 @@ impl Brainstormable for Agent {
             key_findings: Vec::new(),
             risks: Vec::new(),
             usage: crate::llm::Usage::default(),
+            retrieved_learning_ids: Vec::new(),
         })
     }
 

@@ -13,7 +13,7 @@ llm-openai = ["dep:reqwest"]
 llm-anthropic = ["dep:reqwest"]
 # Built-in filesystem / shell tools.
 tools-fs = []
-# SQLite memory search backend.
+# SQLite memory search backend (enables FTS5+BM25 ranked retrieval via sruja-memory).
 memory-sqlite = []
 # MCP client support (connects to external MCP servers).
 mcp-client = ["dep:rmcp"]
