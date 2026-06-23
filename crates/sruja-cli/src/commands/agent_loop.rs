@@ -777,4 +777,254 @@ mod tests {
         assert!(DEFAULT_SHELL_ALLOWLIST.contains(&"cargo"));
         assert!(DEFAULT_SHELL_ALLOWLIST.contains(&"git"));
     }
+
+    // ── U2: consolidate_memory ────────────────────────────────────────────
+
+    fn make_learning_entry(
+        context: &str,
+        hypothesis: &str,
+        retrieval_count: u32,
+        success: u32,
+        total: u32,
+        age_days: i64,
+    ) -> sruja_agent::LearningEntry {
+        use chrono::{Duration, Utc};
+        sruja_agent::LearningEntry {
+            id: sruja_agent::generate_entry_id(),
+            kind: None,
+            timestamp: Utc::now() - Duration::days(age_days),
+            run_id: None,
+            repo: None,
+            selector: None,
+            context: context.to_string(),
+            hypothesis: hypothesis.to_string(),
+            outcome: sruja_agent::ExperimentOutcome::Failed,
+            reason: None,
+            guardrail_advice: String::new(),
+            affected_elements: vec![],
+            evidence_refs: vec![],
+            confidence: None,
+            tags: vec![],
+            hitl_kind: None,
+            related_ids: vec![],
+            retrieval_count,
+            task_success_after: success,
+            task_total_after: total,
+        }
+    }
+
+    fn make_invariant_entry(context: &str) -> sruja_agent::LearningEntry {
+        let mut e = make_learning_entry(context, "invariant hyp", 10, 0, 10, 60);
+        e.kind = Some(sruja_agent::LearningKind::Invariant);
+        e
+    }
+
+    #[test]
+    fn consolidate_archives_stale_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let mut mem = sruja_agent::AgenticMemory::default();
+
+        // Stale: old age + low decay score (90-day half-life, need age >> 90 days).
+        mem.add_learning(make_learning_entry(
+            "stale context",
+            "stale hypothesis",
+            1,
+            1,
+            1,
+            365, // 365 days old → decay ≈ 0.06 (well below 0.15)
+        ));
+        // Fresh: recent entry.
+        mem.add_learning(make_learning_entry(
+            "fresh context",
+            "fresh hypothesis",
+            1,
+            1,
+            1,
+            1, // 1 day old → decay ≈ 0.99
+        ));
+        mem.save(repo).unwrap();
+
+        let summary = consolidate_memory(repo).unwrap();
+        assert!(summary.contains("archived 1 stale"), "Summary: {summary}");
+        assert!(
+            summary.contains("pruned 0 low-utility"),
+            "Summary: {summary}"
+        );
+
+        let loaded = sruja_agent::AgenticMemory::load(repo).unwrap();
+        assert_eq!(loaded.learnings.len(), 1, "Only fresh entry should remain");
+        assert_eq!(loaded.learnings[0].context, "fresh context");
+    }
+
+    #[test]
+    fn consolidate_prunes_low_utility_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let mut mem = sruja_agent::AgenticMemory::default();
+
+        // Low utility: retrieved 3+ times, success < 25%.
+        mem.add_learning(make_learning_entry(
+            "low utility ctx",
+            "low utility hyp",
+            5,  // retrieval_count >= 3
+            1,  // 1 success / 4 total = 25% — need < 25%, so 1/5 = 20%
+            5,  // total = 5
+            10, // recent enough to not be stale
+        ));
+        // High utility: never retrieved.
+        mem.add_learning(make_learning_entry(
+            "high utility ctx",
+            "high utility hyp",
+            0,
+            0,
+            0,
+            10,
+        ));
+        mem.save(repo).unwrap();
+
+        let summary = consolidate_memory(repo).unwrap();
+        assert!(
+            summary.contains("pruned 1 low-utility"),
+            "Summary: {summary}"
+        );
+
+        let loaded = sruja_agent::AgenticMemory::load(repo).unwrap();
+        assert_eq!(loaded.learnings.len(), 1);
+        assert_eq!(loaded.learnings[0].context, "high utility ctx");
+    }
+
+    #[test]
+    fn consolidate_preserves_invariant_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        let mut mem = sruja_agent::AgenticMemory::default();
+
+        // Invariant that would be low utility — should be preserved.
+        mem.add_learning(make_invariant_entry("invariant must not be pruned"));
+        mem.save(repo).unwrap();
+
+        let summary = consolidate_memory(repo).unwrap();
+        assert!(
+            summary.contains("pruned 0"),
+            "Invariants must not be pruned: {summary}"
+        );
+
+        let loaded = sruja_agent::AgenticMemory::load(repo).unwrap();
+        assert_eq!(loaded.learnings.len(), 1);
+    }
+
+    #[test]
+    fn consolidate_no_op_when_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+
+        // No memory file exists.
+        let summary = consolidate_memory(repo).unwrap();
+        assert!(summary.contains("archived 0 stale"));
+        assert!(summary.contains("pruned 0 low-utility"));
+        assert!(summary.contains("0 entries remain"));
+    }
+
+    // ── U3: print_loop_result_human observability ─────────────────────────
+
+    #[test]
+    fn print_loop_result_shows_applied_learnings() {
+        use sruja_agent::llm::Usage;
+        use sruja_agent::{Comprehension, Critique, LoopResult, LoopTermination};
+
+        let result = LoopResult {
+            goal: "test goal".to_string(),
+            converged: true,
+            termination: LoopTermination::Approved,
+            iterations: vec![],
+            final_result: sruja_agent::AgentRunResult {
+                goal: "test goal".to_string(),
+                comprehension: Comprehension {
+                    goal: "test goal".to_string(),
+                    summary: "test".to_string(),
+                    cited_elements: vec![],
+                    key_findings: vec![],
+                    risks: vec![],
+                    usage: Usage::default(),
+                    retrieved_learning_ids: vec!["lrn_abc".to_string(), "lrn_def".to_string()],
+                },
+                plan: sruja_agent::Plan {
+                    goal: "test goal".to_string(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                step_results: vec![],
+                critique: Some(Critique {
+                    approved: true,
+                    score: 0.9,
+                    issues: vec![],
+                    suggestions: vec![],
+                    usage: Usage::default(),
+                    persona_breakdown: vec![],
+                    injected_learning_ids: vec!["lrn_abc".to_string()],
+                    criteria: vec![],
+                }),
+                decision: None,
+                runbook: None,
+                total_usage: Usage::default(),
+            },
+            total_usage: Usage::default(),
+            grader_source: "default".to_string(),
+        };
+
+        // Should not panic.
+        print_loop_result_human(&result);
+    }
+
+    #[test]
+    fn print_loop_result_shows_hint_when_no_learnings_on_failure() {
+        use sruja_agent::llm::Usage;
+        use sruja_agent::{Comprehension, Critique, LoopResult, LoopTermination};
+
+        let result = LoopResult {
+            goal: "test goal".to_string(),
+            converged: false,
+            termination: LoopTermination::MaxIterations,
+            iterations: vec![],
+            final_result: sruja_agent::AgentRunResult {
+                goal: "test goal".to_string(),
+                comprehension: Comprehension {
+                    goal: "test goal".to_string(),
+                    summary: "test".to_string(),
+                    cited_elements: vec![],
+                    key_findings: vec![],
+                    risks: vec![],
+                    usage: Usage::default(),
+                    retrieved_learning_ids: vec![],
+                },
+                plan: sruja_agent::Plan {
+                    goal: "test goal".to_string(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                step_results: vec![],
+                critique: Some(Critique {
+                    approved: false,
+                    score: 0.3,
+                    issues: vec!["bad".to_string()],
+                    suggestions: vec![],
+                    usage: Usage::default(),
+                    persona_breakdown: vec![],
+                    injected_learning_ids: vec![],
+                    criteria: vec![],
+                }),
+                decision: None,
+                runbook: None,
+                total_usage: Usage::default(),
+            },
+            total_usage: Usage::default(),
+            grader_source: "default".to_string(),
+        };
+
+        // Should print the hint, not panic.
+        print_loop_result_human(&result);
+    }
 }
