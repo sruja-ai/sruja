@@ -116,6 +116,10 @@ pub enum SubtaskKind {
     TestAuthor,
     Implement,
     Verify,
+    /// Adversarial test generation (U5): after implementation, generate a
+    /// failing test that exposes a flaw in the implementation. If the test
+    /// passes, the implementation is incomplete or the test is wrong.
+    AdversarialTest,
     Review,
 }
 
@@ -126,6 +130,7 @@ impl SubtaskKind {
             Self::TestAuthor => Phase::TestAuthor,
             Self::Implement => Phase::Implement,
             Self::Verify => Phase::Implement,
+            Self::AdversarialTest => Phase::TestAuthor,
             Self::Review => Phase::Review,
         }
     }
@@ -214,6 +219,11 @@ pub struct Critique {
     /// memory loop closes back into review, not just planning.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub injected_learning_ids: Vec<String>,
+    /// Per-criterion coverage matrix (U3). Each acceptance criterion gets
+    /// addressed|partial|missing; approval requires all `addressed`.
+    /// Empty when no acceptance criteria are defined.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub criteria: Vec<CriterionStatus>,
 }
 
 /// Result of a single persona critic within an ensemble.
@@ -225,6 +235,29 @@ pub struct PersonaResult {
     pub score: f64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub issues: Vec<String>,
+}
+
+/// Status of a single acceptance criterion in the coverage matrix (U3).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CriterionStatus {
+    /// 1-based index matching the numbered criterion list.
+    pub index: usize,
+    /// The criterion text for traceability.
+    pub criterion: String,
+    /// Whether the change addresses this criterion.
+    pub status: CriterionVerdict,
+    /// One-line justification from the spec_coverage persona.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub reason: String,
+}
+
+/// Verdict for a single acceptance criterion.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CriterionVerdict {
+    Addressed,
+    Partial,
+    Missing,
 }
 
 /// A specialized critic perspective. Each persona asks **one sharp probe**
@@ -291,6 +324,11 @@ impl CritiquePersona {
                 "regression",
                 "regressions of previously-working behavior",
                 REGRESSION_PERSONA_PROMPT,
+            ),
+            Self::new(
+                "adversarial_test",
+                "adversarial test generation to expose implementation flaws",
+                ADVERSARIAL_TEST_PERSONA_PROMPT,
             ),
         ]
     }
@@ -1017,6 +1055,13 @@ impl Agent {
             })
             .collect();
 
+        // --- U2: diff-grounded critic (fixes G2) ---
+        // Obtain the real git diff instead of relying solely on the actor's
+        // self-report. The diff is the ground truth; step_summary is reframed
+        // as "what the actor claims it did" — divergence between claims and
+        // diff is itself a finding.
+        let git_diff = self.get_git_diff().await;
+
         // --- U4: memory injection (compounding loop) ---
         // Retrieve past GUARDRAIL learnings and render them as blind-spot
         // probes in the critic prompt. Playbooks are excluded — they inform
@@ -1063,10 +1108,17 @@ impl Agent {
             String::new()
         };
 
+        // --- U2: assemble shared context with diff as ground truth ---
+        let diff_section = match &git_diff {
+            Some(diff) => format!("\n\n## Actual Diff (ground truth)\n```diff\n{}\n```", diff),
+            None => "\n\n## Actual Diff\n[diff-unavailable: not a git repository or diff failed]"
+                .to_string(),
+        };
+
         let shared_user = format!(
             "## Goal\n{}\n\n\
              ## Plan\n{}\n\n\
-             ## Execution Results\n{}{}",
+             ## What the actor claims it did (self-report, may be inaccurate)\n{}{}\n{}",
             plan.goal,
             plan.subtasks
                 .iter()
@@ -1074,6 +1126,7 @@ impl Agent {
                 .collect::<Vec<_>>()
                 .join("\n"),
             step_summary.join("\n"),
+            diff_section,
             blind_spots,
         );
 
@@ -1107,6 +1160,37 @@ impl Agent {
         }
 
         Ok(critique)
+    }
+
+    /// Obtain the real git diff via the shell tool (U2: diff-grounded critic).
+    ///
+    /// Returns `Some(diff_text)` on success, `None` if not a git repo or on
+    /// error (graceful degradation — the critic falls back to step_summary).
+    /// The diff is truncated to a token budget to avoid overwhelming the prompt.
+    async fn get_git_diff(&self) -> Option<String> {
+        let params = serde_json::json!({
+            "command": "git",
+            "args": ["diff", "HEAD"],
+            "timeout_ms": 10_000,
+        });
+        match self.tools.dispatch("shell", params).await {
+            Ok(output) => {
+                // Parse the shell output format: "exit: {code}\n--- stdout ---\n{stdout}\n--- stderr ---\n{stderr}"
+                let stdout = output
+                    .split("--- stdout ---\n")
+                    .nth(1)?
+                    .split("\n--- stderr ---")
+                    .next()?
+                    .trim();
+                if stdout.is_empty() {
+                    None
+                } else {
+                    // Truncate to 12k chars (matching existing token budget patterns)
+                    Some(truncate(stdout, 12_000))
+                }
+            }
+            Err(_) => None,
+        }
     }
 
     /// Fan out the persona ensemble in parallel and merge results.
@@ -1144,6 +1228,8 @@ impl Agent {
         let mut score = 1.0_f64;
         let mut issues: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut suggestions: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut all_criteria: std::collections::HashMap<usize, CriterionStatus> =
+            std::collections::HashMap::new();
         let mut usage = Usage::default();
 
         while let Some(join_res) = set.join_next().await {
@@ -1166,7 +1252,41 @@ impl Agent {
             for s in parsed.suggestions {
                 suggestions.insert(s);
             }
+            // U3: Merge coverage matrix from spec_coverage persona
+            for criterion in parsed.criteria {
+                // Use the worst verdict for each criterion (missing > partial > addressed)
+                let entry = all_criteria
+                    .entry(criterion.index)
+                    .or_insert(criterion.clone());
+                if criterion.status == CriterionVerdict::Missing
+                    || (criterion.status == CriterionVerdict::Partial
+                        && entry.status == CriterionVerdict::Addressed)
+                {
+                    *entry = criterion;
+                }
+            }
             usage.accumulate(&parsed.usage);
+        }
+
+        // U3: Check coverage matrix — any missing or partial criterion blocks approval
+        let mut criteria_vec: Vec<CriterionStatus> = all_criteria.into_values().collect();
+        criteria_vec.sort_by_key(|c| c.index);
+        for criterion in &criteria_vec {
+            if criterion.status == CriterionVerdict::Missing {
+                approved = false;
+                score = score.min(0.0);
+                issues.insert(format!(
+                    "criterion #{} '{}': missing",
+                    criterion.index, criterion.criterion
+                ));
+            } else if criterion.status == CriterionVerdict::Partial {
+                approved = false;
+                score = score.min(0.5);
+                issues.insert(format!(
+                    "criterion #{} '{}': partial",
+                    criterion.index, criterion.criterion
+                ));
+            }
         }
 
         let mut issues_vec: Vec<String> = issues.into_iter().collect();
@@ -1182,6 +1302,7 @@ impl Agent {
             usage,
             persona_breakdown: persona_results,
             injected_learning_ids: Vec::new(),
+            criteria: criteria_vec,
         })
     }
 
@@ -1399,6 +1520,7 @@ impl Agent {
                     usage: Usage::default(),
                     persona_breakdown: Vec::new(),
                     injected_learning_ids: Vec::new(),
+                    criteria: Vec::new(),
                 }
             };
             total_usage.accumulate(&critique.usage);
@@ -1960,11 +2082,13 @@ Respond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \
 
 const CORRECTNESS_PERSONA_PROMPT: &str = "You are a senior engineer reviewing a change for correctness failures. You are reviewing a change.\n\nAsk ONE question: what inputs or states break this?\nProbe specifically:\n- empty / nil / zero / max-boundary inputs\n- error and failure paths (does the change handle them or silently drop them?)\n- off-by-one, sign-flip, and partial-state cases\n- assumptions the change makes that could be false\n\nDo not give a generic verdict. For each concrete failure you can name, emit an issue. If you cannot name a specific input that breaks, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
 
-const SPEC_COVERAGE_PERSONA_PROMPT: &str = "You are a senior engineer reviewing a change against its stated acceptance criteria. You are reviewing a change.\n\nAsk ONE question: which acceptance criterion is NOT addressed by this change?\nFor each numbered criterion, decide: addressed | partial | missing, with a one-line reason.\nAny 'missing' or 'partial' criterion is a blocking issue that names the criterion.\nIf no criteria are stated, or all are addressed, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
+const SPEC_COVERAGE_PERSONA_PROMPT: &str = "You are a senior engineer reviewing a change against its stated acceptance criteria. You are reviewing a change.\n\nAsk ONE question: which acceptance criterion is NOT addressed by this change?\nFor each numbered criterion in the goal's Acceptance Criteria section, decide: addressed | partial | missing, with a one-line reason.\nAny 'missing' or 'partial' criterion is a blocking issue that names the criterion.\nIf no criteria are stated, or all are addressed, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...], \"criteria\": [{\"index\": 1, \"criterion\": \"...\", \"status\": \"addressed|partial|missing\", \"reason\": \"...\"}]}";
 
 const BOUNDARY_PERSONA_PROMPT: &str = "You are a senior architect reviewing a change for boundary and drift violations. You are reviewing a change.\n\nAsk ONE question: what architectural boundary does this change cross?\nProbe specifically:\n- layering / dependency-direction violations (lower tier depending on higher)\n- forbidden dependencies and declared policy breaches\n- scope creep beyond the stated goal\n\nDo not restate metadata. Only emit an issue for a concrete, named crossing. If none, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
 
 const REGRESSION_PERSONA_PROMPT: &str = "You are a senior engineer reviewing a change for regressions. You are reviewing a change.\n\nAsk ONE question: what previously-working behavior does this change break?\nProbe specifically:\n- callers of any modified signature\n- behavior other code depends on that is now altered\n- tests that would now fail (and whether new tests cover the new path)\n\nIf you cannot name a concrete regression path, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
+
+const ADVERSARIAL_TEST_PERSONA_PROMPT: &str = "You are a senior engineer generating adversarial tests for a code change. You are reviewing a change.\n\nYour job is to write a failing test that exposes a flaw in the implementation. The test should:\n1. Target a specific edge case or incorrect behavior\n2. Be concrete and runnable (not a description)\n3. Fail against the current implementation\n\nIf you cannot conceive of a test that would fail, approve (the implementation is solid).\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [\"test: <concrete test code or description>\"]}";
 
 const REFLECTION_SYSTEM_PROMPT: &str = "\
 You are extracting lessons from a completed task.\n\n\
@@ -2168,6 +2292,36 @@ fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
             usage,
             persona_breakdown: Vec::new(),
             injected_learning_ids: Vec::new(),
+            criteria: value
+                .get("criteria")
+                .and_then(|c| c.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| {
+                            let index = v.get("index")?.as_u64()? as usize;
+                            let criterion = v.get("criterion")?.as_str()?.to_string();
+                            let status = v.get("status")?.as_str()?;
+                            let reason = v
+                                .get("reason")
+                                .and_then(|r| r.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let verdict = match status {
+                                "addressed" => CriterionVerdict::Addressed,
+                                "partial" => CriterionVerdict::Partial,
+                                "missing" => CriterionVerdict::Missing,
+                                _ => return None,
+                            };
+                            Some(CriterionStatus {
+                                index,
+                                criterion,
+                                status: verdict,
+                                reason,
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
         };
     }
 
@@ -2183,6 +2337,7 @@ fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
         usage,
         persona_breakdown: Vec::new(),
         injected_learning_ids: Vec::new(),
+        criteria: Vec::new(),
     }
 }
 
@@ -3063,7 +3218,7 @@ mod tests {
     #[tokio::test]
     async fn ensemble_one_persona_blocks_union_issues_and_min_score() {
         // One persona blocks → ensemble ANDs = false, score = min,
-        // issues union, tagged. Three personas approve.
+        // issues union, tagged. Four personas approve.
         let llm = PersonaScriptedLlm::new(vec![
             PersonaResponse {
                 system_prompt_contains: "correctness",
@@ -3087,6 +3242,12 @@ mod tests {
                 system_prompt_contains: "regression",
                 approved: true,
                 score: 0.85,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "adversarial",
+                approved: true,
+                score: 0.95,
                 issues: vec![],
             },
         ]);
@@ -3119,8 +3280,8 @@ mod tests {
             .contains(&"buffer overflow on empty input".into()));
         // Score is min across personas (blocking 0.2 wins).
         assert!((result.score - 0.2).abs() < f64::EPSILON);
-        // persona_breakdown has all four personas.
-        assert_eq!(result.persona_breakdown.len(), 4);
+        // persona_breakdown has all five personas.
+        assert_eq!(result.persona_breakdown.len(), 5);
         let correctness_result = result
             .persona_breakdown
             .iter()
@@ -3197,6 +3358,12 @@ mod tests {
                 score: 0.85,
                 issues: vec!["tests missing".into()],
             },
+            PersonaResponse {
+                system_prompt_contains: "adversarial",
+                approved: true,
+                score: 0.95,
+                issues: vec!["tests missing".into()],
+            },
         ]);
 
         let mut config = AgentConfig::default();
@@ -3222,7 +3389,7 @@ mod tests {
 
         // Approved (all personas approve), issues deduped to one.
         assert!(result.approved);
-        // Four personas each reported "tests missing" → union has one entry.
+        // Five personas each reported "tests missing" → union has one entry.
         assert_eq!(result.issues.len(), 1);
         assert_eq!(result.issues[0], "tests missing");
     }
@@ -3255,6 +3422,12 @@ mod tests {
                 system_prompt_contains: "regression",
                 approved: true,
                 score: 0.85,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "adversarial",
+                approved: true,
+                score: 0.95,
                 issues: vec![],
             },
         ]);
@@ -3313,6 +3486,12 @@ mod tests {
                 score: 0.85,
                 issues: vec![],
             },
+            PersonaResponse {
+                system_prompt_contains: "adversarial",
+                approved: true,
+                score: 0.95,
+                issues: vec![],
+            },
         ]);
 
         let mut config = AgentConfig::default();
@@ -3340,12 +3519,12 @@ mod tests {
         assert!(result.issues.is_empty());
         // Score is min across personas (0.85 wins).
         assert!((result.score - 0.85).abs() < f64::EPSILON);
-        assert_eq!(result.persona_breakdown.len(), 4);
+        assert_eq!(result.persona_breakdown.len(), 5);
     }
 
     #[tokio::test]
     async fn ensemble_score_is_min_not_mean() {
-        // Three personas score 1.0, one scores 0.2 → merged score == 0.2 (not mean).
+        // Four personas score 1.0, one scores 0.2 → merged score == 0.2 (not mean).
         let llm = PersonaScriptedLlm::new(vec![
             PersonaResponse {
                 system_prompt_contains: "correctness",
@@ -3369,6 +3548,12 @@ mod tests {
                 system_prompt_contains: "regression",
                 approved: true,
                 score: 0.2,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "adversarial",
+                approved: true,
+                score: 1.0,
                 issues: vec![],
             },
         ]);
@@ -3473,12 +3658,38 @@ mod tests {
         let mut config = AgentConfig::default();
         config.critique_personas = CritiquePersona::default_personas();
 
-        let llm = PersonaScriptedLlm::new(vec![PersonaResponse {
-            system_prompt_contains: "correctness",
-            approved: true,
-            score: 0.9,
-            issues: vec![],
-        }]);
+        let llm = PersonaScriptedLlm::new(vec![
+            PersonaResponse {
+                system_prompt_contains: "correctness",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "acceptance criteria",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "boundary",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "regression",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "adversarial",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+        ]);
         let agent = Agent::builder()
             .llm(llm.clone())
             .tools(ToolRegistry::new())
@@ -3507,7 +3718,7 @@ mod tests {
             llm.received_user_prompt()
         );
         assert!(!all_prompts.contains("Known blind spots"));
-        assert!(all_prompts.contains("Execution Results"));
+        assert!(all_prompts.contains("What the actor claims it did"));
     }
 
     #[tokio::test]
@@ -3616,6 +3827,12 @@ mod tests {
                 score: 0.85,
                 issues: vec![],
             },
+            PersonaResponse {
+                system_prompt_contains: "adversarial",
+                approved: true,
+                score: 0.95,
+                issues: vec![],
+            },
         ]);
         let agent = Agent::builder()
             .llm(llm.clone())
@@ -3649,9 +3866,9 @@ mod tests {
         assert!(result.approved);
         // The guardrail was injected.
         assert!(result.injected_learning_ids.contains(&guardrail.id));
-        // All four personas were invoked (each sees the blind-spots section
+        // All five personas were invoked (each sees the blind-spots section
         // because it's appended to shared_user which all personas receive).
-        assert_eq!(result.persona_breakdown.len(), 4);
+        assert_eq!(result.persona_breakdown.len(), 5);
     }
 
     #[test]
