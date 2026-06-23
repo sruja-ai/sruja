@@ -446,6 +446,8 @@ impl DlcPipeline {
                 issues: Vec::new(),
                 suggestions: Vec::new(),
                 usage: crate::llm::Usage::default(),
+                persona_breakdown: Vec::new(),
+                injected_learning_ids: Vec::new(),
             },
         )))
     }

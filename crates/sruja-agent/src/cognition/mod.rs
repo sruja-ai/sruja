@@ -81,6 +81,12 @@ pub struct AgentConfig {
     /// Additional instructions appended to the comprehension system prompt.
     /// Use for context-specific nudges (e.g., "call sruja_focus first").
     pub system_hints: Vec<String>,
+    /// The critic ensemble: one probe-bound persona per perspective. When
+    /// non-empty, [`Agent::critique`] fans these out in parallel and unions
+    /// their issues (AND semantics for approval). When empty, falls back to a
+    /// single call with the legacy [`CRITIQUE_SYSTEM_PROMPT`] (backward
+    /// compatible). Default is [`CritiquePersona::default_personas`].
+    pub critique_personas: Vec<CritiquePersona>,
 }
 
 impl Default for AgentConfig {
@@ -93,6 +99,7 @@ impl Default for AgentConfig {
             dry_run: false,
             max_tool_iterations: 15,
             system_hints: Vec::new(),
+            critique_personas: CritiquePersona::default_personas(),
         }
     }
 }
@@ -182,6 +189,13 @@ pub struct Comprehension {
 }
 
 /// The Critic's assessment.
+///
+/// When produced by an ensemble ([`Agent::critique`] with a non-empty persona
+/// set), `approved` is the AND of all personas, `issues` is the union, and
+/// `score` is the MIN across personas (a blocking persona drags the score
+/// down rather than being averaged away). `persona_breakdown` carries the
+/// per-persona result for telemetry; `injected_learning_ids` records which
+/// past guardrails were injected as blind-spot probes (the compounding loop).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Critique {
     pub approved: bool,
@@ -191,6 +205,95 @@ pub struct Critique {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub suggestions: Vec<String>,
     pub usage: Usage,
+    /// Per-persona results when the critique was produced by an ensemble.
+    /// Empty for the single-critic fallback path.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub persona_breakdown: Vec<PersonaResult>,
+    /// IDs of guardrail learnings injected into the critique prompt as
+    /// blind-spot probes. Feeds the retrieval-counter accounting so the
+    /// memory loop closes back into review, not just planning.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub injected_learning_ids: Vec<String>,
+}
+
+/// Result of a single persona critic within an ensemble.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PersonaResult {
+    /// The persona's id (e.g. "correctness", "spec_coverage").
+    pub id: String,
+    pub approved: bool,
+    pub score: f64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub issues: Vec<String>,
+}
+
+/// A specialized critic perspective. Each persona asks **one sharp probe**
+/// rather than a generic "is this good?" verdict — different probes catch
+/// different issues, and the union approaches enumerable coverage.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CritiquePersona {
+    /// Short stable id, used to tag issues (`[correctness] ...`).
+    pub id: String,
+    /// Human-readable focus area.
+    pub focus: String,
+    /// The system prompt — must contain the marker "reviewing a change" so
+    /// callers can recognize critic-class requests.
+    pub system_prompt: String,
+    /// Optional model override; when `None`, routes to `models.review`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+}
+
+impl CritiquePersona {
+    /// Construct a persona. The marker "reviewing a change" is appended to the
+    /// system prompt if missing, so critic-class requests stay recognizable.
+    pub fn new(
+        id: impl Into<String>,
+        focus: impl Into<String>,
+        system_prompt: impl Into<String>,
+    ) -> Self {
+        let id = id.into();
+        let focus = focus.into();
+        let mut system_prompt = system_prompt.into();
+        if !system_prompt.contains("reviewing a change") {
+            system_prompt.push_str(" You are reviewing a change.");
+        }
+        Self {
+            id,
+            focus,
+            system_prompt,
+            model: None,
+        }
+    }
+
+    /// The default ensemble: four probe-bound perspectives. Each asks one
+    /// sharp question. The set is intentionally small (cost = N× review-model
+    /// calls per critique); extend via `AgentConfig::critique_personas` or a
+    /// loop manifest.
+    pub fn default_personas() -> Vec<Self> {
+        vec![
+            Self::new(
+                "correctness",
+                "correctness failures and edge inputs",
+                CORRECTNESS_PERSONA_PROMPT,
+            ),
+            Self::new(
+                "spec_coverage",
+                "unaddressed acceptance criteria",
+                SPEC_COVERAGE_PERSONA_PROMPT,
+            ),
+            Self::new(
+                "boundary",
+                "architectural boundary crossings and drift",
+                BOUNDARY_PERSONA_PROMPT,
+            ),
+            Self::new(
+                "regression",
+                "regressions of previously-working behavior",
+                REGRESSION_PERSONA_PROMPT,
+            ),
+        ]
+    }
 }
 
 /// Complete result of a full agent run.
@@ -315,6 +418,10 @@ pub struct LoopIteration {
     /// approved.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub verify_failed: Vec<String>,
+    /// Guardrail learning IDs injected into the critique prompt this
+    /// iteration (the compounding loop: misses → memory → future review).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub injected_learning_ids: Vec<String>,
     pub usage: Usage,
 }
 
@@ -874,11 +981,21 @@ impl Agent {
 
     // --- Critique: review every change via the review model ---
 
-    /// Review changes using the configured review model.
+    /// Review changes via the configured critic ensemble.
     ///
-    /// Every change goes through this gate when `config.review_every_change` is true.
-    /// The Critic is the quality barrier — it checks architectural compliance,
-    /// test adequacy, and blast radius.
+    /// When `config.critique_personas` is non-empty, this fans out N
+    /// probe-bound persona critics in parallel and merges them:
+    /// - `approved` = AND of all personas (one blocker vetoes).
+    /// - `issues`   = union, deduped, sorted (deterministic output).
+    /// - `score`    = MIN across personas (a blocking persona drags the score
+    ///   down, never averaged away).
+    ///
+    /// When `config.critique_personas` is empty, falls back to a single call
+    /// with the legacy [`CRITIQUE_SYSTEM_PROMPT`] (backward compatible).
+    ///
+    /// Past guardrail learnings from agentic memory are injected into every
+    /// persona's prompt as a "Known blind spots to probe for" section — the
+    /// compounding loop that turns past misses into permanent probes.
     pub async fn critique(
         &self,
         plan: &Plan,
@@ -900,18 +1017,56 @@ impl Agent {
             })
             .collect();
 
-        let user = format!(
+        // --- U4: memory injection (compounding loop) ---
+        // Retrieve past GUARDRAIL learnings and render them as blind-spot
+        // probes in the critic prompt. Playbooks are excluded — they inform
+        // planning, not review, and would bias the critic toward the actor's
+        // prior successes. Retrievals are recorded so `retrieval_count` /
+        // utility counters stay accurate for the critique path, not just
+        // comprehension.
+        let mut injected_learning_ids: Vec<String> = Vec::new();
+        let blind_spots = if let Some((_, ref mem)) = self.memory {
+            let learnings = mem.search(&plan.goal, 5);
+            let guardrails: Vec<&LearningEntry> = learnings
+                .iter()
+                .filter(|l| l.kind == Some(crate::LearningKind::Guardrail))
+                .collect();
+            if guardrails.is_empty() {
+                String::new()
+            } else {
+                injected_learning_ids = guardrails.iter().map(|g| g.id.clone()).collect();
+                let ids: Vec<&str> = guardrails.iter().map(|g| g.id.as_str()).collect();
+                mem.record_retrievals(&ids);
+                let body = guardrails
+                    .iter()
+                    .map(|g| {
+                        let util = g
+                            .utility_ratio()
+                            .map(|u| format!("{:.0}%", u * 100.0))
+                            .unwrap_or_else(|| "?".to_string());
+                        format!(
+                            "- [retrieved {}x, util {}] {}\n  Probe: {}",
+                            g.retrieval_count, util, g.context, g.guardrail_advice
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                format!(
+                    "\n\n## Known blind spots to actively probe for\n\
+                     The following guardrails were learned from earlier runs. For EACH, \
+                     state whether this change is exposed to it. If yes, that is a \
+                     blocking issue.\n{}",
+                    body
+                )
+            }
+        } else {
+            String::new()
+        };
+
+        let shared_user = format!(
             "## Goal\n{}\n\n\
              ## Plan\n{}\n\n\
-             ## Execution Results\n{}\n\n\
-             ## Instructions\n\
-             Review this change as a senior architect. Check:\n\
-             1. Does the output match the goal?\n\
-             2. Are acceptance criteria met?\n\
-             3. Any architectural violations or risks?\n\
-             4. Should this be approved or rejected?\n\n\
-             Respond with JSON: {{\"approved\": bool, \"score\": 0.0-1.0, \
-             \"issues\": [...], \"suggestions\": [...]}}",
+             ## Execution Results\n{}{}",
             plan.goal,
             plan.subtasks
                 .iter()
@@ -919,19 +1074,115 @@ impl Agent {
                 .collect::<Vec<_>>()
                 .join("\n"),
             step_summary.join("\n"),
+            blind_spots,
         );
 
-        let req = CompletionRequest::prompt(CRITIQUE_SYSTEM_PROMPT, &user)
-            .with_model(&self.config.models.review);
+        let personas = self.config.critique_personas.clone();
 
-        let response = self.llm.complete(&req).await?;
-        let critique = parse_critique_from_response(&response.content, response.usage.clone());
+        let mut critique = if personas.is_empty() {
+            // Backward-compatible single-critic fallback (KD7).
+            let user = format!(
+                "{}\n\n## Instructions\n\
+                 Review this change as a senior architect. Check:\n\
+                 1. Does the output match the goal?\n\
+                 2. Are acceptance criteria met?\n\
+                 3. Any architectural violations or risks?\n\
+                 4. Should this be approved or rejected?\n\n\
+                 Respond with JSON: {{\"approved\": bool, \"score\": 0.0-1.0, \
+                 \"issues\": [...], \"suggestions\": [...]}}",
+                shared_user,
+            );
+            let req = CompletionRequest::prompt(CRITIQUE_SYSTEM_PROMPT, &user)
+                .with_model(&self.config.models.review);
+            let response = self.llm.complete(&req).await?;
+            parse_critique_from_response(&response.content, response.usage.clone())
+        } else {
+            self.run_persona_ensemble(personas, &shared_user).await?
+        };
+
+        critique.injected_learning_ids = injected_learning_ids;
 
         if let HookAction::Abort(reason) = self.hooks.after_review(&critique).await {
             return Err(AgentError::HookAborted(reason));
         }
 
         Ok(critique)
+    }
+
+    /// Fan out the persona ensemble in parallel and merge results.
+    ///
+    /// Each persona runs as an independent task with its own prompt + the
+    /// shared context. Independence of *perspective* (separate prompts) is the
+    /// point; parallel execution is a latency win. Errors from any persona
+    /// abort the critique (a partial ensemble would silently weaken the gate).
+    async fn run_persona_ensemble(
+        &self,
+        personas: Vec<CritiquePersona>,
+        shared_user: &str,
+    ) -> Result<Critique, AgentError> {
+        let llm = self.llm.clone();
+        let review_model = self.config.models.review.clone();
+
+        let mut set = tokio::task::JoinSet::new();
+        for persona in personas {
+            let llm = llm.clone();
+            let user = shared_user.to_string();
+            let model = persona
+                .model
+                .clone()
+                .unwrap_or_else(|| review_model.clone());
+            set.spawn(async move {
+                let req = CompletionRequest::prompt(&persona.system_prompt, user).with_model(model);
+                let response = llm.complete(&req).await?;
+                let parsed = parse_critique_from_response(&response.content, response.usage);
+                Ok::<(CritiquePersona, Critique), LlmError>((persona, parsed))
+            });
+        }
+
+        let mut persona_results: Vec<PersonaResult> = Vec::new();
+        let mut approved = true;
+        let mut score = 1.0_f64;
+        let mut issues: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut suggestions: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut usage = Usage::default();
+
+        while let Some(join_res) = set.join_next().await {
+            let (persona, parsed) = match join_res {
+                Ok(Ok(pair)) => pair,
+                Ok(Err(e)) => return Err(AgentError::Llm(e)),
+                Err(e) => return Err(AgentError::Other(format!("critique task panicked: {e}"))),
+            };
+            persona_results.push(PersonaResult {
+                id: persona.id,
+                approved: parsed.approved,
+                score: parsed.score,
+                issues: parsed.issues.clone(),
+            });
+            approved &= parsed.approved;
+            score = score.min(parsed.score);
+            for issue in parsed.issues {
+                issues.insert(issue);
+            }
+            for s in parsed.suggestions {
+                suggestions.insert(s);
+            }
+            usage.accumulate(&parsed.usage);
+        }
+
+        let mut issues_vec: Vec<String> = issues.into_iter().collect();
+        issues_vec.sort();
+        let mut suggestions_vec: Vec<String> = suggestions.into_iter().collect();
+        suggestions_vec.sort();
+
+        Ok(Critique {
+            approved,
+            score,
+            issues: issues_vec,
+            suggestions: suggestions_vec,
+            usage,
+            persona_breakdown: persona_results,
+            injected_learning_ids: Vec::new(),
+        })
     }
 
     // --- Reflect: extract learnings from a completed run ---
@@ -1146,6 +1397,8 @@ impl Agent {
                     issues: Vec::new(),
                     suggestions: Vec::new(),
                     usage: Usage::default(),
+                    persona_breakdown: Vec::new(),
+                    injected_learning_ids: Vec::new(),
                 }
             };
             total_usage.accumulate(&critique.usage);
@@ -1191,6 +1444,7 @@ impl Agent {
                 critique_score: critique.score,
                 critique_issues: critique.issues.clone(),
                 verify_failed: verify_failed.clone(),
+                injected_learning_ids: critique.injected_learning_ids.clone(),
                 usage: critique.usage.clone(),
             });
 
@@ -1704,6 +1958,14 @@ Check:\n\
 5. What is the blast radius?\n\n\
 Respond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
 
+const CORRECTNESS_PERSONA_PROMPT: &str = "You are a senior engineer reviewing a change for correctness failures. You are reviewing a change.\n\nAsk ONE question: what inputs or states break this?\nProbe specifically:\n- empty / nil / zero / max-boundary inputs\n- error and failure paths (does the change handle them or silently drop them?)\n- off-by-one, sign-flip, and partial-state cases\n- assumptions the change makes that could be false\n\nDo not give a generic verdict. For each concrete failure you can name, emit an issue. If you cannot name a specific input that breaks, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
+
+const SPEC_COVERAGE_PERSONA_PROMPT: &str = "You are a senior engineer reviewing a change against its stated acceptance criteria. You are reviewing a change.\n\nAsk ONE question: which acceptance criterion is NOT addressed by this change?\nFor each numbered criterion, decide: addressed | partial | missing, with a one-line reason.\nAny 'missing' or 'partial' criterion is a blocking issue that names the criterion.\nIf no criteria are stated, or all are addressed, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
+
+const BOUNDARY_PERSONA_PROMPT: &str = "You are a senior architect reviewing a change for boundary and drift violations. You are reviewing a change.\n\nAsk ONE question: what architectural boundary does this change cross?\nProbe specifically:\n- layering / dependency-direction violations (lower tier depending on higher)\n- forbidden dependencies and declared policy breaches\n- scope creep beyond the stated goal\n\nDo not restate metadata. Only emit an issue for a concrete, named crossing. If none, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
+
+const REGRESSION_PERSONA_PROMPT: &str = "You are a senior engineer reviewing a change for regressions. You are reviewing a change.\n\nAsk ONE question: what previously-working behavior does this change break?\nProbe specifically:\n- callers of any modified signature\n- behavior other code depends on that is now altered\n- tests that would now fail (and whether new tests cover the new path)\n\nIf you cannot name a concrete regression path, approve.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
+
 const REFLECTION_SYSTEM_PROMPT: &str = "\
 You are extracting lessons from a completed task.\n\n\
 For each learning, produce JSON:\n\
@@ -1904,6 +2166,8 @@ fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
                 })
                 .unwrap_or_default(),
             usage,
+            persona_breakdown: Vec::new(),
+            injected_learning_ids: Vec::new(),
         };
     }
 
@@ -1917,6 +2181,8 @@ fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
         issues: vec!["could not parse structured critique".into()],
         suggestions: Vec::new(),
         usage,
+        persona_breakdown: Vec::new(),
+        injected_learning_ids: Vec::new(),
     }
 }
 
@@ -2126,6 +2392,124 @@ impl AgentBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
+    // --- Ensemble critic tests (U1) ---
+    /// Helper for scripted ensemble tests: a mock that returns different
+    /// responses based on which persona's system prompt substring it matches.
+
+    struct DropGuard(Arc<AtomicUsize>);
+    impl Drop for DropGuard {
+        fn drop(&mut self) {
+            self.0.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
+
+    struct PersonaScriptedLlm {
+        responses: Vec<PersonaResponse>,
+        max_concurrent: Arc<AtomicUsize>,
+        active: Arc<AtomicUsize>,
+        last_system_prompt: Arc<Mutex<String>>,
+        last_user_prompt: Arc<Mutex<String>>,
+    }
+
+    #[derive(Debug, Clone)]
+    struct PersonaResponse {
+        system_prompt_contains: &'static str,
+        approved: bool,
+        score: f64,
+        issues: Vec<String>,
+    }
+
+    impl PersonaScriptedLlm {
+        fn new(responses: Vec<PersonaResponse>) -> Arc<Self> {
+            Arc::new(Self {
+                responses,
+                max_concurrent: Arc::new(AtomicUsize::new(0)),
+                active: Arc::new(AtomicUsize::new(0)),
+                last_system_prompt: Arc::new(Mutex::new(String::new())),
+                last_user_prompt: Arc::new(Mutex::new(String::new())),
+            })
+        }
+
+        #[allow(dead_code)]
+        fn max_concurrent(&self) -> usize {
+            self.max_concurrent.load(Ordering::SeqCst)
+        }
+
+        /// Returns the last system prompt the mock received, for test assertions.
+        fn received_system_prompt(&self) -> String {
+            self.last_system_prompt.lock().unwrap().clone()
+        }
+
+        /// Returns the last user prompt the mock received, for test assertions.
+        fn received_user_prompt(&self) -> String {
+            self.last_user_prompt.lock().unwrap().clone()
+        }
+    }
+
+    #[async_trait]
+    impl LlmClient for PersonaScriptedLlm {
+        async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+            let active = self.active.fetch_add(1, Ordering::SeqCst) + 1;
+            let prev_max = self.max_concurrent.load(Ordering::SeqCst);
+            if active > prev_max {
+                self.max_concurrent.store(active, Ordering::SeqCst);
+            }
+            let _guard = DropGuard(self.active.clone());
+
+            // Yield to allow other spawned tasks to start, proving parallelism.
+            tokio::task::yield_now().await;
+
+            let sys = req
+                .messages
+                .first()
+                .map(|m| m.content.as_str())
+                .unwrap_or("");
+            *self.last_system_prompt.lock().unwrap() = sys.to_string();
+            let user = req
+                .messages
+                .get(1)
+                .map(|m| m.content.as_str())
+                .unwrap_or("");
+            *self.last_user_prompt.lock().unwrap() = user.to_string();
+            let content = sys
+                .lines()
+                .find_map(|_l| {
+                    self.responses
+                        .iter()
+                        .find(|r| sys.contains(r.system_prompt_contains))
+                        .map(|r| {
+                            format!(
+                                r#"{{"approved":{},"score":{},"issues":{:?},"suggestions":[]}}"#,
+                                r.approved, r.score, r.issues
+                            )
+                        })
+                })
+                .unwrap_or_else(|| {
+                    r#"{"approved":false,"score":0.0,"issues":[],"suggestions":[]}"#.to_string()
+                });
+
+            Ok(CompletionResponse {
+                content,
+                tool_calls: Vec::new(),
+                usage: Usage {
+                    prompt_tokens: 10,
+                    completion_tokens: 5,
+                    total_tokens: 15,
+                },
+                model: "scripted-ensemble".into(),
+                finish_reason: crate::llm::FinishReason::Stop,
+            })
+        }
+
+        fn default_model(&self) -> &str {
+            "scripted-ensemble"
+        }
+    }
 
     #[test]
     fn default_config_is_tdd_and_review() {
@@ -2261,8 +2645,6 @@ mod tests {
     // --- Loop spine tests (critique -> replan closure) ---
 
     use async_trait::async_trait;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
 
     /// A scripted LLM that routes by system-prompt content so the outer loop
     /// can be driven without a real provider. The critic flips to `approved`
@@ -2289,7 +2671,7 @@ mod tests {
                 .first()
                 .map(|m| m.content.as_str())
                 .unwrap_or("");
-            let content = if sys.contains("senior architect reviewing a change") {
+            let content = if sys.contains("reviewing a change") {
                 let n = self.critique_calls.fetch_add(1, Ordering::SeqCst);
                 let approved = n >= self.reject_first;
                 if approved {
@@ -2429,6 +2811,7 @@ mod tests {
                     critique_score: 0.2,
                     critique_issues: vec!["x".into()],
                     verify_failed: Vec::new(),
+                    injected_learning_ids: Vec::new(),
                     usage: Usage::default(),
                 },
                 LoopIteration {
@@ -2442,6 +2825,7 @@ mod tests {
                     critique_score: 0.9,
                     critique_issues: vec![],
                     verify_failed: Vec::new(),
+                    injected_learning_ids: Vec::new(),
                     usage: Usage::default(),
                 },
             ],
@@ -2497,7 +2881,7 @@ mod tests {
                 completion_tokens: 5,
                 total_tokens: 15,
             };
-            let content = if sys.contains("senior architect reviewing a change") {
+            let content = if sys.contains("reviewing a change") {
                 r#"{"approved":true,"score":0.9,"issues":[],"suggestions":[]}"#.to_string()
             } else if sys.contains("executing a specific subtask") {
                 let n = self.execute_calls.fetch_add(1, Ordering::SeqCst);
@@ -2672,6 +3056,602 @@ mod tests {
             result.iterations[0].critique_issues,
             result.iterations[1].critique_issues
         );
+    }
+
+    // --- Ensemble critic tests (U1) ---
+
+    #[tokio::test]
+    async fn ensemble_one_persona_blocks_union_issues_and_min_score() {
+        // One persona blocks → ensemble ANDs = false, score = min,
+        // issues union, tagged. Three personas approve.
+        let llm = PersonaScriptedLlm::new(vec![
+            PersonaResponse {
+                system_prompt_contains: "correctness",
+                approved: false,
+                score: 0.2,
+                issues: vec!["buffer overflow on empty input".into()],
+            },
+            PersonaResponse {
+                system_prompt_contains: "acceptance criteria",
+                approved: true,
+                score: 0.8,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "boundary",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "regression",
+                approved: true,
+                score: 0.85,
+                issues: vec![],
+            },
+        ]);
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let agent = Agent::builder()
+            .llm(llm)
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds");
+        let result = agent
+            .critique(
+                &Plan {
+                    goal: "fix bug".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        assert!(!result.approved);
+        // All personas' issues unioned. The correctness persona's issue is present.
+        assert!(result
+            .issues
+            .contains(&"buffer overflow on empty input".into()));
+        // Score is min across personas (blocking 0.2 wins).
+        assert!((result.score - 0.2).abs() < f64::EPSILON);
+        // persona_breakdown has all four personas.
+        assert_eq!(result.persona_breakdown.len(), 4);
+        let correctness_result = result
+            .persona_breakdown
+            .iter()
+            .find(|p| p.id == "correctness")
+            .expect("correctness persona recorded");
+        assert!(!correctness_result.approved);
+        assert_eq!(correctness_result.score, 0.2);
+        assert!(correctness_result.issues == vec!["buffer overflow on empty input"]);
+    }
+
+    #[test]
+    fn ensemble_empty_personas_fallback_to_single_critic() {
+        // Empty personas → single legacy call with CRITIQUE_SYSTEM_PROMPT,
+        // additive fields empty.
+        let mut config = AgentConfig::default();
+        config.critique_personas.clear();
+
+        let agent = Agent::builder()
+            .llm(ScriptedLlm::approve_after(0))
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds");
+
+        // Blocking against the empty-personas fallback requires a sync environment.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            let result = agent
+                .critique(
+                    &Plan {
+                        goal: "test".into(),
+                        subtasks: vec![],
+                        tdd: false,
+                        risks: vec![],
+                    },
+                    &vec![],
+                )
+                .await
+                .expect("critique runs");
+
+            // Approved, no persona_breakdown, no injected_learning_ids.
+            assert!(result.approved);
+            assert_eq!(result.persona_breakdown, vec![]);
+            assert_eq!(result.injected_learning_ids, Vec::<String>::new());
+        });
+    }
+
+    #[tokio::test]
+    async fn ensemble_union_dedup_issues() {
+        // Multiple personas report the same semantic issue → union with
+        // dedup. Sorted order for determinism.
+        let llm = PersonaScriptedLlm::new(vec![
+            PersonaResponse {
+                system_prompt_contains: "correctness",
+                approved: true,
+                score: 0.9,
+                issues: vec!["tests missing".into()],
+            },
+            PersonaResponse {
+                system_prompt_contains: "acceptance criteria",
+                approved: true,
+                score: 0.8,
+                issues: vec!["tests missing".into()],
+            },
+            PersonaResponse {
+                system_prompt_contains: "boundary",
+                approved: true,
+                score: 0.9,
+                issues: vec!["tests missing".into()],
+            },
+            PersonaResponse {
+                system_prompt_contains: "regression",
+                approved: true,
+                score: 0.85,
+                issues: vec!["tests missing".into()],
+            },
+        ]);
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let agent = Agent::builder()
+            .llm(llm)
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds");
+        let result = agent
+            .critique(
+                &Plan {
+                    goal: "test".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        // Approved (all personas approve), issues deduped to one.
+        assert!(result.approved);
+        // Four personas each reported "tests missing" → union has one entry.
+        assert_eq!(result.issues.len(), 1);
+        assert_eq!(result.issues[0], "tests missing");
+    }
+
+    #[tokio::test]
+    async fn ensemble_parallel_dispatch_is_concurrent() {
+        // Parallel dispatch: the ensemble uses tokio::JoinSet and all
+        // personas run concurrently. Deterministic check: record active
+        // concurrency high-water mark.
+        let llm = PersonaScriptedLlm::new(vec![
+            PersonaResponse {
+                system_prompt_contains: "correctness",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "acceptance criteria",
+                approved: true,
+                score: 0.8,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "boundary",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "regression",
+                approved: true,
+                score: 0.85,
+                issues: vec![],
+            },
+        ]);
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let agent = Agent::builder()
+            .llm(llm.clone())
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds");
+        let result = agent
+            .critique(
+                &Plan {
+                    goal: "concurrency check".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        assert!(result.approved);
+        // High-water mark >= 2 (both personas ran simultaneously at some point).
+        assert!(llm.max_concurrent.load(Ordering::SeqCst) >= 2);
+    }
+
+    #[tokio::test]
+    async fn ensemble_all_personas_approve() {
+        // All personas approve → merged approved == true, issues empty, score == 1.0.
+        let llm = PersonaScriptedLlm::new(vec![
+            PersonaResponse {
+                system_prompt_contains: "correctness",
+                approved: true,
+                score: 1.0,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "acceptance criteria",
+                approved: true,
+                score: 0.95,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "boundary",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "regression",
+                approved: true,
+                score: 0.85,
+                issues: vec![],
+            },
+        ]);
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let agent = Agent::builder()
+            .llm(llm)
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds");
+        let result = agent
+            .critique(
+                &Plan {
+                    goal: "all good".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        assert!(result.approved);
+        assert!(result.issues.is_empty());
+        // Score is min across personas (0.85 wins).
+        assert!((result.score - 0.85).abs() < f64::EPSILON);
+        assert_eq!(result.persona_breakdown.len(), 4);
+    }
+
+    #[tokio::test]
+    async fn ensemble_score_is_min_not_mean() {
+        // Three personas score 1.0, one scores 0.2 → merged score == 0.2 (not mean).
+        let llm = PersonaScriptedLlm::new(vec![
+            PersonaResponse {
+                system_prompt_contains: "correctness",
+                approved: true,
+                score: 1.0,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "acceptance criteria",
+                approved: true,
+                score: 1.0,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "boundary",
+                approved: true,
+                score: 1.0,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "regression",
+                approved: true,
+                score: 0.2,
+                issues: vec![],
+            },
+        ]);
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let agent = Agent::builder()
+            .llm(llm)
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds");
+        let result = agent
+            .critique(
+                &Plan {
+                    goal: "score check".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        assert!(result.approved);
+        // Min score wins (0.2), not mean (0.8).
+        assert!((result.score - 0.2).abs() < f64::EPSILON);
+    }
+
+    // --- Memory-in-critique tests (U4) ---
+
+    #[tokio::test]
+    async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
+        // Guardrail learning in memory → appears in critic prompt under
+        // "Known blind spots". Playbooks are excluded. Retrieval counters bump.
+        let guardrail = LearningEntry::guardrail(
+            "boundary crossing added",
+            "change crosses forbidden dependency",
+            "This change crosses a forbidden dependency boundary. Consider alternative approach.",
+        );
+        let playbook = LearningEntry::new(
+            "pattern works",
+            "regex pattern extraction succeeded",
+            "Pattern extraction approach is validated.",
+        );
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let tempdir = tempfile::tempdir().expect("tempdir");
+
+        let llm = PersonaScriptedLlm::new(vec![]);
+        let agent = Agent::builder()
+            .llm(llm)
+            .tools(ToolRegistry::new())
+            .config(config)
+            .memory(tempdir.path())
+            .build()
+            .expect("agent builds");
+
+        agent.memory.as_ref().map(|(_, mem)| {
+            mem.lock().unwrap().add_learning(guardrail.clone());
+            mem.lock().unwrap().add_learning(playbook.clone());
+            mem.lock()
+                .unwrap()
+                .save(tempdir.path())
+                .expect("save memory");
+        });
+
+        let result = agent
+            .critique(
+                &Plan {
+                    goal: "boundary crossing".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        // The guardrail learning ID is in injected_learning_ids; the playbook is not.
+        assert!(result.injected_learning_ids.contains(&guardrail.id));
+        assert!(!result.injected_learning_ids.contains(&playbook.id));
+
+        // Retrieval count on the guardrail was bumped (from 0 to 1).
+        agent.memory.as_ref().map(|(_, mem)| {
+            let mem = mem.lock().unwrap();
+            let entry = mem
+                .learnings
+                .iter()
+                .find(|e| e.id == guardrail.id)
+                .expect("guardrail added");
+            assert_eq!(entry.retrieval_count, 1);
+        });
+    }
+
+    #[tokio::test]
+    async fn critique_no_memory_shows_no_blind_spots_section() {
+        // No memory → no blind-spots section in the prompt.
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+
+        let llm = PersonaScriptedLlm::new(vec![PersonaResponse {
+            system_prompt_contains: "correctness",
+            approved: true,
+            score: 0.9,
+            issues: vec![],
+        }]);
+        let agent = Agent::builder()
+            .llm(llm.clone())
+            .tools(ToolRegistry::new())
+            .config(config)
+            .build()
+            .expect("agent builds");
+
+        let _ = agent
+            .critique(
+                &Plan {
+                    goal: "no memory".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        // Prompt received by the mock contains the shared context but no
+        // "Known blind spots" section.
+        let all_prompts = format!(
+            "{}\n{}",
+            llm.received_system_prompt(),
+            llm.received_user_prompt()
+        );
+        assert!(!all_prompts.contains("Known blind spots"));
+        assert!(all_prompts.contains("Execution Results"));
+    }
+
+    #[tokio::test]
+    async fn critique_playbooks_excluded_from_blind_spots() {
+        // Only guardrail learnings appear in the blind-spots section; playbooks
+        // are excluded from injected_learning_ids.
+        let guardrail = LearningEntry::guardrail(
+            "memory leak on disconnect",
+            "connection not closed",
+            "Always close connections in a finally block.",
+        );
+        let playbook = LearningEntry::new(
+            "successful pattern",
+            "caching worked well",
+            "Use Redis for caching.",
+        );
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let tempdir = tempfile::tempdir().expect("tempdir");
+
+        let llm = PersonaScriptedLlm::new(vec![PersonaResponse {
+            system_prompt_contains: "correctness",
+            approved: true,
+            score: 0.9,
+            issues: vec![],
+        }]);
+        let agent = Agent::builder()
+            .llm(llm.clone())
+            .tools(ToolRegistry::new())
+            .config(config)
+            .memory(tempdir.path())
+            .build()
+            .expect("agent builds");
+
+        agent.memory.as_ref().map(|(_, mem)| {
+            mem.lock().unwrap().add_learning(guardrail.clone());
+            mem.lock().unwrap().add_learning(playbook.clone());
+            mem.lock()
+                .unwrap()
+                .save(tempdir.path())
+                .expect("save memory");
+        });
+
+        let _ = agent
+            .critique(
+                &Plan {
+                    goal: "connection not closed".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        // The guardrail is injected; the playbook is not.
+        let user_prompt = llm.received_user_prompt();
+        assert!(
+            user_prompt.contains("Always close connections"),
+            "guardrail advice should appear in prompt"
+        );
+        assert!(
+            !user_prompt.contains("Redis for caching"),
+            "playbook should not appear in blind-spots prompt"
+        );
+    }
+
+    #[tokio::test]
+    async fn critique_roundtrips_with_ensemble() {
+        // With ensemble active, each persona's prompt contains the blind-spots
+        // section (not just one persona).
+        let guardrail = LearningEntry::guardrail(
+            "unchecked unwrap",
+            "potential panic",
+            "Always handle Result types properly.",
+        );
+
+        let mut config = AgentConfig::default();
+        config.critique_personas = CritiquePersona::default_personas();
+        let tempdir = tempfile::tempdir().expect("tempdir");
+
+        let llm = PersonaScriptedLlm::new(vec![
+            PersonaResponse {
+                system_prompt_contains: "correctness",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "acceptance criteria",
+                approved: true,
+                score: 0.8,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "boundary",
+                approved: true,
+                score: 0.9,
+                issues: vec![],
+            },
+            PersonaResponse {
+                system_prompt_contains: "regression",
+                approved: true,
+                score: 0.85,
+                issues: vec![],
+            },
+        ]);
+        let agent = Agent::builder()
+            .llm(llm.clone())
+            .tools(ToolRegistry::new())
+            .config(config)
+            .memory(tempdir.path())
+            .build()
+            .expect("agent builds");
+
+        agent.memory.as_ref().map(|(_, mem)| {
+            mem.lock().unwrap().add_learning(guardrail.clone());
+            mem.lock()
+                .unwrap()
+                .save(tempdir.path())
+                .expect("save memory");
+        });
+
+        let result = agent
+            .critique(
+                &Plan {
+                    goal: "potential panic".into(),
+                    subtasks: vec![],
+                    tdd: false,
+                    risks: vec![],
+                },
+                &vec![],
+            )
+            .await
+            .expect("critique runs");
+
+        assert!(result.approved);
+        // The guardrail was injected.
+        assert!(result.injected_learning_ids.contains(&guardrail.id));
+        // All four personas were invoked (each sees the blind-spots section
+        // because it's appended to shared_user which all personas receive).
+        assert_eq!(result.persona_breakdown.len(), 4);
     }
 
     #[test]
