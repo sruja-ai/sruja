@@ -353,16 +353,15 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                         meta.len() / 1024,
                         PRELOAD_MAX_BYTES / 1024
                     );
-                    return None;
+                    None
                 }
-                Err(e) => {
-                    eprintln!("  Warning: could not pre-load {path}: {e}");
-                    return None;
-                }
-                _ => {}
-            }
-            match std::fs::read_to_string(&full_path) {
-                Ok(content) => Some((path.clone(), content)),
+                Ok(_) => match std::fs::read_to_string(&full_path) {
+                    Ok(content) => Some((path.clone(), content)),
+                    Err(e) => {
+                        eprintln!("  Warning: could not pre-load {path}: {e}");
+                        None
+                    }
+                },
                 Err(e) => {
                     eprintln!("  Warning: could not pre-load {path}: {e}");
                     None

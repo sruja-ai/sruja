@@ -674,7 +674,6 @@ impl Agent {
         };
         let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}{hints}");
 
-        // Inject pre-loaded target file contents to eliminate redundant reads.
         let preloaded_section = if self.preloaded_files.is_empty() {
             String::new()
         } else {
