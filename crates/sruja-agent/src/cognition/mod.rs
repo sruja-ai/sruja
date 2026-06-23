@@ -18,6 +18,7 @@
 pub mod decision;
 pub mod hook;
 pub mod runbook;
+pub mod tool_tracing;
 
 use std::sync::Arc;
 
@@ -26,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use crate::llm::{
     CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter, Usage,
 };
+use crate::tool::ToolSignal;
 
 pub use crate::llm::TaskTier;
 use crate::memory::AgenticMemory;
@@ -38,6 +40,7 @@ use crate::LearningEntry;
 pub use decision::{DecisionRecord, DecisionStatus};
 pub use hook::{Hook, HookAction, HookRegistry, Hooks, LoggingHook};
 pub use runbook::{Runbook, RunbookSeverity};
+pub use tool_tracing::ToolCallTracer;
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -87,6 +90,10 @@ pub struct AgentConfig {
     /// single call with the legacy [`CRITIQUE_SYSTEM_PROMPT`] (backward
     /// compatible). Default is [`CritiquePersona::default_personas`].
     pub critique_personas: Vec<CritiquePersona>,
+    /// When true, emit `tool_call` / `tool_result` context events for every
+    /// agent→tool dispatch (requires `repo_path`, `run_id`, `trace_id` to be
+    /// set on the agent).
+    pub enable_tool_call_tracing: bool,
 }
 
 impl Default for AgentConfig {
@@ -100,6 +107,7 @@ impl Default for AgentConfig {
             max_tool_iterations: 15,
             system_hints: Vec::new(),
             critique_personas: CritiquePersona::default_personas(),
+            enable_tool_call_tracing: false,
         }
     }
 }
@@ -154,11 +162,22 @@ pub struct Subtask {
 /// A plan produced by the Planner.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Plan {
+    /// Backward-compatible goal string (kept for serialized JSON compat).
     pub goal: String,
+    /// Typed goal statement — the free-text part of the goal.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub goal_statement: String,
+    /// Acceptance criteria carried through from the [`GoalSpec`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub criteria: Vec<String>,
     pub subtasks: Vec<Subtask>,
     pub tdd: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub risks: Vec<String>,
+    /// Schema version for forward/backward compatibility. Old serialized
+    /// plans without this field deserialize via `#[serde(default)]`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub schema_version: String,
 }
 
 /// Result of executing a subtask.
@@ -168,6 +187,9 @@ pub struct StepResult {
     pub status: StepStatus,
     pub output: String,
     pub usage: Usage,
+    /// Per-tool-call structural signals for the grader (U4).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_signals: Vec<ToolSignal>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -464,6 +486,16 @@ pub struct LoopIteration {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub injected_learning_ids: Vec<String>,
     pub usage: Usage,
+    /// Plan parse error that occurred during this iteration (if any).
+    /// Non-empty means the plan was malformed; the retry may have recovered.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_parse_error: Option<String>,
+    /// Structural incorporation gap: the replan produced a plan identical
+    /// (or nearly identical) to the prior one despite non-empty critique
+    /// issues. `Some(description)` means the actor ignored the critic's
+    /// feedback structurally. `None` means incorporation was plausible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub incorporation_gap: Option<String>,
 }
 
 /// Result of `Agent::run_loop`.
@@ -494,6 +526,22 @@ impl LoopResult {
 // Errors
 // ---------------------------------------------------------------------------
 
+/// Errors from parsing a [`Plan`] from the LLM response.
+///
+/// These are *recoverable* — the caller may issue a format-correction
+/// re-prompt on the first failure before hard-failing.
+#[derive(Debug, thiserror::Error)]
+pub enum PlanParseError {
+    #[error("malformed JSON: {0}")]
+    MalformedJson(String),
+    #[error("missing required field `{field}` on subtask {subtask_index}")]
+    MissingRequiredField { field: String, subtask_index: usize },
+    #[error("plan contains no subtasks")]
+    NoSubtasks,
+    #[error("empty plan (JSON had no subtasks or risks)")]
+    EmptyPlan,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum AgentError {
     #[error("LLM error: {0}")]
@@ -506,6 +554,8 @@ pub enum AgentError {
     MaxIterations(usize),
     #[error("aborted by hook: {0}")]
     HookAborted(String),
+    #[error("plan parse failed (unrecoverable after retry): {0}")]
+    PlanParseFailed(#[source] PlanParseError),
     #[error("{0}")]
     Other(String),
 }
@@ -529,6 +579,11 @@ pub struct Agent {
     #[cfg(feature = "mcp-client")]
     #[allow(dead_code)]
     mcp_manager: Option<crate::tool::mcp::McpClientManager>,
+    /// Tool-call tracer for context event attribution (U5).
+    tool_call_tracer: Option<Box<dyn ToolCallTracer>>,
+    /// Trace context for tool-call event attribution (U5).
+    trace_run_id: Option<String>,
+    trace_id: Option<String>,
 }
 
 impl Agent {
@@ -553,13 +608,18 @@ impl Agent {
     ///
     /// If memory is enabled, relevant past learnings are injected into the
     /// context — the agent learns from its own history.
-    pub async fn comprehend(&self, goal: &str) -> Result<Comprehension, AgentError> {
+    pub async fn comprehend(
+        &self,
+        goal: &crate::goal::GoalSpec,
+    ) -> Result<Comprehension, AgentError> {
         self.guard.set_phase(Phase::Comprehend);
         self.hooks.on_phase_change(Phase::Comprehend).await;
 
+        let goal_str = goal.statement.as_str();
+
         // Retrieve relevant memories (token-budget capped).
         let (memory_context, retrieved_learning_ids) = if let Some(ref mem) = self.memory {
-            let learnings = mem.search(goal, 5);
+            let learnings = mem.search(goal_str, 5);
             if learnings.is_empty() {
                 (String::new(), Vec::new())
             } else {
@@ -607,7 +667,7 @@ impl Agent {
         };
         let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}{hints}");
         let user = format!(
-            "## Goal\n{goal}\n\n\
+            "## Goal\n{goal_str}\n\n\
              ## Instructions\n\
              Use the available tools to explore the codebase. \
              Cite architecture element IDs in your findings. \
@@ -616,7 +676,7 @@ impl Agent {
 
         let req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
 
-        let (response, usage) = self.run_tool_loop(req).await?;
+        let (response, usage, _signals) = self.run_tool_loop(req).await?;
 
         let cited_elements = extract_element_ids(&response.content);
 
@@ -635,11 +695,15 @@ impl Agent {
 
     /// Run the LLM tool-calling loop until the model stops requesting tools
     /// or the iteration limit is hit.
+    ///
+    /// Returns the final LLM response, cumulative token usage, and a per-call
+    /// list of [`ToolSignal`]s that the executor feeds into [`StepResult`].
     pub async fn run_tool_loop(
         &self,
         mut req: CompletionRequest,
-    ) -> Result<(CompletionResponse, Usage), AgentError> {
+    ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>), AgentError> {
         let mut total_usage = Usage::default();
+        let mut tool_signals: Vec<ToolSignal> = Vec::new();
         let mut last_response: Option<CompletionResponse> = None;
         let mut soft_sent = false;
         let mut hard_sent = false;
@@ -679,9 +743,9 @@ impl Agent {
                     // tool calls that the loop intentionally chose not to run.
                     let mut response = response;
                     response.tool_calls.clear();
-                    return Ok((response, total_usage));
+                    return Ok((response, total_usage, tool_signals));
                 }
-                return Ok((response, total_usage));
+                return Ok((response, total_usage, tool_signals));
             }
 
             last_response = Some(response.clone());
@@ -701,22 +765,96 @@ impl Agent {
                     args_preview = %call.arguments.to_string().chars().take(200).collect::<String>(),
                     "tool_loop: dispatching tool"
                 );
-                let result = match self
+                // U5: emit tool_call event before dispatch (when tracing enabled).
+                if self.config.enable_tool_call_tracing {
+                    if let (
+                        Some(ref tracer),
+                        Some(ref repo),
+                        Some(ref run_id),
+                        Some(ref trace_id),
+                    ) = (
+                        &self.tool_call_tracer,
+                        &self.repo_root,
+                        &self.trace_run_id,
+                        &self.trace_id,
+                    ) {
+                        let args_keys: Vec<String> = call
+                            .arguments
+                            .as_object()
+                            .map(|m| {
+                                let mut keys = m.keys().cloned().collect::<Vec<_>>();
+                                keys.sort();
+                                keys
+                            })
+                            .unwrap_or_default();
+                        tracer.on_tool_call(repo, run_id, trace_id, &call.name, &args_keys);
+                    }
+                }
+
+                let (result, mut record) = match self
                     .tools
-                    .dispatch(&call.name, call.arguments.clone())
+                    .dispatch_record(&call.name, call.arguments.clone())
                     .await
                 {
                     Ok(out) => out,
-                    Err(e) => format!("ERROR: {e}"),
+                    Err(e) => {
+                        let record = crate::tool::ToolCallRecord {
+                            ok: false,
+                            empty: false,
+                            elapsed_ms: 0,
+                            source: crate::tool::ToolRegistry::classify_source(&call.name),
+                            truncated: false,
+                            payload: e.to_string(),
+                        };
+                        (format!("ERROR: {e}"), record)
+                    }
                 };
-                let truncated = truncate(&result, 8_000);
+                let truncated_text = truncate(&result, 8_000);
+                let was_truncated = result.len() > 8_000;
+                if was_truncated {
+                    record.truncated = true;
+                }
                 tracing::debug!(
                     tool = %call.name,
-                    result_len = truncated.len(),
-                    result_preview = %truncated.chars().take(120).collect::<String>(),
+                    result_len = truncated_text.len(),
+                    result_preview = %truncated_text.chars().take(120).collect::<String>(),
                     "tool_loop: tool result"
                 );
-                req.messages.push(Message::tool_result(&call.id, truncated));
+                tool_signals.push(ToolSignal {
+                    tool: call.name.clone(),
+                    ok: record.ok,
+                    empty: record.empty,
+                    elapsed_ms: record.elapsed_ms,
+                    source: record.source,
+                });
+
+                // U5: emit tool_result event after dispatch (when tracing enabled).
+                if self.config.enable_tool_call_tracing {
+                    if let (
+                        Some(ref tracer),
+                        Some(ref repo),
+                        Some(ref run_id),
+                        Some(ref trace_id),
+                    ) = (
+                        &self.tool_call_tracer,
+                        &self.repo_root,
+                        &self.trace_run_id,
+                        &self.trace_id,
+                    ) {
+                        tracer.on_tool_result(
+                            repo,
+                            run_id,
+                            trace_id,
+                            &call.name,
+                            record.ok,
+                            record.empty,
+                            record.elapsed_ms,
+                        );
+                    }
+                }
+
+                req.messages
+                    .push(Message::tool_result(&call.id, truncated_text));
             }
 
             // ── Convergence pressure ─────────────────────────────────────
@@ -771,7 +909,7 @@ impl Agent {
         });
         fallback.tool_calls.clear();
         fallback.finish_reason = crate::llm::FinishReason::Stop;
-        Ok((fallback, total_usage))
+        Ok((fallback, total_usage, tool_signals))
     }
 
     /// Resolve the model name configured for a complexity tier.
@@ -805,10 +943,11 @@ impl Agent {
     /// subtasks (TDD pipeline).
     pub async fn plan(
         &self,
-        goal: &str,
+        goal: &crate::goal::GoalSpec,
         comprehension: &Comprehension,
     ) -> Result<Plan, AgentError> {
-        if let HookAction::Abort(reason) = self.hooks.before_plan(goal).await {
+        let goal_str = goal.statement.as_str();
+        if let HookAction::Abort(reason) = self.hooks.before_plan(goal_str).await {
             return Err(AgentError::HookAborted(reason));
         }
 
@@ -821,7 +960,7 @@ impl Agent {
         };
 
         let user = format!(
-            "## Goal\n{goal}\n\n\
+            "## Goal\n{goal_str}\n\n\
              ## Comprehension\n{}\n\n\
              ## Architecture Elements Cited\n{:?}\n\n\
              ## Instructions\n\
@@ -841,30 +980,66 @@ impl Agent {
         let req =
             CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
 
-        let (response, _usage) = self.run_tool_loop(req).await?;
+        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
 
         // Parse the plan from the LLM response.
-        let plan = parse_plan_from_response(&response.content, goal, self.config.tdd);
+        match parse_plan_from_response(&response.content, goal, self.config.tdd) {
+            Ok(plan) => {
+                tracing::warn!(
+                    response_len = response.content.len(),
+                    subtask_count = plan.subtasks.len(),
+                    risks = plan.risks.len(),
+                    "plan:parsed"
+                );
+                if plan.subtasks.is_empty() {
+                    tracing::warn!(
+                        raw_response = %response.content.chars().take(2000).collect::<String>(),
+                        "plan:empty — model returned 0 subtasks"
+                    );
+                }
 
-        tracing::warn!(
-            response_len = response.content.len(),
-            subtask_count = plan.subtasks.len(),
-            risks = plan.risks.len(),
-            "plan:parsed"
-        );
-        if plan.subtasks.is_empty() {
-            tracing::warn!(
-                raw_response = %response.content.chars().take(2000).collect::<String>(),
-                "plan:empty — model returned 0 subtasks"
-            );
+                let mut plan = plan;
+                if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
+                    return Err(AgentError::HookAborted(reason));
+                }
+
+                Ok(plan)
+            }
+            Err(parse_err) => {
+                // Format-correction retry: issue one re-prompt with the parse reason.
+                tracing::warn!(error = %parse_err, "plan:parse_failed — issuing correction re-prompt");
+                let correction_user = format!(
+                    "## Previous plan (rejected)\n{}\n\n\
+                     ## Parse error\n{parse_err}\n\n\
+                     ## Instructions\n\
+                     The plan JSON above was rejected because: {parse_err}.\n\
+                     Re-emit a VALID plan JSON. Each subtask MUST have `id`, `description`, \
+                     `tier`, and `kind` fields. Output a JSON object with `subtasks` array \
+                     and `risks` array.",
+                    response.content,
+                );
+                let correction_req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, correction_user)
+                    .with_tools(self.tools.schemas());
+                let (retry_response, _retry_usage, _signals) =
+                    self.run_tool_loop(correction_req).await?;
+                let plan = parse_plan_from_response(&retry_response.content, goal, self.config.tdd)
+                    .map_err(AgentError::PlanParseFailed)?;
+
+                tracing::warn!(
+                    response_len = retry_response.content.len(),
+                    subtask_count = plan.subtasks.len(),
+                    risks = plan.risks.len(),
+                    "plan:parsed_after_correction"
+                );
+
+                let mut plan = plan;
+                if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
+                    return Err(AgentError::HookAborted(reason));
+                }
+
+                Ok(plan)
+            }
         }
-
-        let mut plan = plan;
-        if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
-            return Err(AgentError::HookAborted(reason));
-        }
-
-        Ok(plan)
     }
 
     /// Re-plan using the prior critique as feedback.
@@ -874,11 +1049,13 @@ impl Agent {
     /// are injected into a new plan rather than discarded.
     pub async fn replan(
         &self,
-        goal: &str,
+        goal: &crate::goal::GoalSpec,
         comprehension: &Comprehension,
         critique: &Critique,
+        convergence_pressure: Option<&str>,
     ) -> Result<Plan, AgentError> {
-        if let HookAction::Abort(reason) = self.hooks.before_plan(goal).await {
+        let goal_str = goal.statement.as_str();
+        if let HookAction::Abort(reason) = self.hooks.before_plan(goal_str).await {
             return Err(AgentError::HookAborted(reason));
         }
 
@@ -909,8 +1086,19 @@ impl Agent {
             ""
         };
 
+        let pressure_note = if let Some(pressure) = convergence_pressure {
+            format!(
+                "\n\n## CONVERGENCE PRESSURE\n\
+                 The previous replan was flagged: {pressure}.\n\
+                 You MUST change the subtasks or risks to address the critic's issues. \
+                 Emitting an identical plan will be flagged again."
+            )
+        } else {
+            String::new()
+        };
+
         let user = format!(
-            "## Goal\n{goal}\n\n\
+            "## Goal\n{goal_str}\n\n\
              ## Comprehension\n{}\n\n\
              ## Prior review outcome\n\
              The independent critic REJECTED the previous attempt (score: {:.0}%).\n\
@@ -921,7 +1109,7 @@ impl Agent {
              Output a REVISED plan as a JSON object with `subtasks` and `risks` arrays. \
              Each subtask needs `id` (short unique string like \"s1\"), `description`, `tier` (cheap|mid|premium), \
              `kind` (test_author|implement|verify|review), `files`, and \
-             `acceptance_criteria`. Do not repeat failed approaches.{tdd_note}",
+             `acceptance_criteria`. Do not repeat failed approaches.{tdd_note}{pressure_note}",
             comprehension.summary,
             critique.score * 100.0,
         );
@@ -929,25 +1117,61 @@ impl Agent {
         let req =
             CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
 
-        let (response, _usage) = self.run_tool_loop(req).await?;
-        let mut plan = parse_plan_from_response(&response.content, goal, self.config.tdd);
+        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
 
-        tracing::warn!(
-            response_len = response.content.len(),
-            subtask_count = plan.subtasks.len(),
-            "replan:parsed"
-        );
-        if plan.subtasks.is_empty() {
-            tracing::warn!(
-                raw_response = %response.content.chars().take(2000).collect::<String>(),
-                "replan:empty — model returned 0 subtasks"
-            );
-        }
+        match parse_plan_from_response(&response.content, goal, self.config.tdd) {
+            Ok(plan) => {
+                tracing::warn!(
+                    response_len = response.content.len(),
+                    subtask_count = plan.subtasks.len(),
+                    "replan:parsed"
+                );
+                if plan.subtasks.is_empty() {
+                    tracing::warn!(
+                        raw_response = %response.content.chars().take(2000).collect::<String>(),
+                        "replan:empty — model returned 0 subtasks"
+                    );
+                }
 
-        if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
-            return Err(AgentError::HookAborted(reason));
+                let mut plan = plan;
+                if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
+                    return Err(AgentError::HookAborted(reason));
+                }
+                Ok(plan)
+            }
+            Err(parse_err) => {
+                // Format-correction retry: issue one re-prompt with the parse reason.
+                tracing::warn!(error = %parse_err, "replan:parse_failed — issuing correction re-prompt");
+                let correction_user = format!(
+                    "## Previous plan (rejected)\n{}\n\n\
+                     ## Parse error\n{parse_err}\n\n\
+                     ## Instructions\n\
+                     The plan JSON above was rejected because: {parse_err}.\n\
+                     Re-emit a VALID plan JSON. Each subtask MUST have `id`, `description`, \
+                     `tier`, and `kind` fields. Output a JSON object with `subtasks` array \
+                     and `risks` array.",
+                    response.content,
+                );
+                let correction_req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, correction_user)
+                    .with_tools(self.tools.schemas());
+                let (retry_response, _retry_usage, _signals) =
+                    self.run_tool_loop(correction_req).await?;
+                let plan = parse_plan_from_response(&retry_response.content, goal, self.config.tdd)
+                    .map_err(AgentError::PlanParseFailed)?;
+
+                tracing::warn!(
+                    response_len = retry_response.content.len(),
+                    subtask_count = plan.subtasks.len(),
+                    "replan:parsed_after_correction"
+                );
+
+                let mut plan = plan;
+                if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
+                    return Err(AgentError::HookAborted(reason));
+                }
+                Ok(plan)
+            }
         }
-        Ok(plan)
     }
 
     // --- Execute: run subtasks with phase enforcement ---
@@ -973,6 +1197,7 @@ impl Agent {
                         status: StepStatus::Skipped,
                         output: "skipped by hook".into(),
                         usage: Usage::default(),
+                        tool_signals: Vec::new(),
                     });
                     continue;
                 }
@@ -1003,9 +1228,11 @@ impl Agent {
             let mut req = CompletionRequest::prompt(system, user).with_tools(self.tools.schemas());
             req.model = Some(self.model_for_tier(tier).to_string());
 
-            let (response, tool_usage) = self.run_tool_loop(req).await?;
+            let (response, tool_usage, tool_signals) = self.run_tool_loop(req).await?;
 
-            let status = if response.content.contains("ERROR") {
+            let status = if response.content.contains("ERROR")
+                || tool_signals.iter().any(|s| !s.ok || s.empty)
+            {
                 StepStatus::Failed
             } else {
                 StepStatus::Ok
@@ -1016,6 +1243,7 @@ impl Agent {
                 status,
                 output: response.content,
                 usage: tool_usage,
+                tool_signals,
             };
 
             self.hooks.after_step(step, &result).await;
@@ -1082,7 +1310,7 @@ impl Agent {
         // comprehension.
         let mut injected_learning_ids: Vec<String> = Vec::new();
         let blind_spots = if let Some(ref mem) = self.memory {
-            let learnings = mem.search(&plan.goal, 5);
+            let learnings = mem.search(&plan.goal_statement, 5);
             let guardrails: Vec<&LearningEntry> = learnings
                 .iter()
                 .filter(|l| l.kind == Some(crate::LearningKind::Guardrail))
@@ -1130,7 +1358,7 @@ impl Agent {
             "## Goal\n{}\n\n\
              ## Plan\n{}\n\n\
              ## What the actor claims it did (self-report, may be inaccurate)\n{}{}\n{}",
-            plan.goal,
+            plan.goal_statement,
             plan.subtasks
                 .iter()
                 .map(|s| format!("- [{}] {} ({:?})", s.id, s.description, s.tier))
@@ -1350,7 +1578,7 @@ impl Agent {
              {{\"context\": \"...\", \"hypothesis\": \"...\", \"guardrail_advice\": \"...\", \
              \"kind\": \"playbook|guardrail\"}}\n\
              Playbooks = what worked. Guardrails = what to avoid.",
-            plan.goal,
+            plan.goal_statement,
             successes,
             failures,
             comprehension.cited_elements,
@@ -1362,7 +1590,7 @@ impl Agent {
         let req = CompletionRequest::prompt(REFLECTION_SYSTEM_PROMPT, &user)
             .with_model(&self.config.models.cheap);
 
-        let (response, _usage) = self.run_tool_loop(req).await?;
+        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
 
         let learnings = parse_learnings_from_response(&response.content);
 
@@ -1397,7 +1625,7 @@ impl Agent {
     ///
     /// These are written to `.sruja/decisions/` and `.sruja/runbooks/` so that
     /// a human Debugging at 3AM has immediate, actionable context.
-    pub async fn run(&self, goal: &str) -> Result<AgentRunResult, AgentError> {
+    pub async fn run(&self, goal: &crate::goal::GoalSpec) -> Result<AgentRunResult, AgentError> {
         let comprehension = self.comprehend(goal).await?;
         let plan = self.plan(goal, &comprehension).await?;
         let step_results = self.execute(&plan).await?;
@@ -1429,7 +1657,7 @@ impl Agent {
         }
 
         Ok(AgentRunResult {
-            goal: goal.to_string(),
+            goal: goal.statement.clone(),
             comprehension,
             plan,
             step_results,
@@ -1453,7 +1681,7 @@ impl Agent {
     /// host can detect convergence, oscillation, and flailing.
     pub async fn run_loop(
         &self,
-        goal: &str,
+        goal: &crate::goal::GoalSpec,
         loop_config: &LoopConfig,
     ) -> Result<LoopResult, AgentError> {
         let max_iterations = loop_config.max_iterations.max(1);
@@ -1468,18 +1696,28 @@ impl Agent {
         let mut termination = LoopTermination::MaxIterations;
         let mut seen_signatures: std::collections::HashSet<String> =
             std::collections::HashSet::new();
+        let mut convergence_pressure: Option<String> = None;
 
         for iteration in 1..=max_iterations {
             self.hooks.before_iteration(iteration, max_iterations).await;
             let replanned = iteration > 1 && last_critique.is_some();
 
             // --- PLAN (or re-plan from critique feedback) ---
-            let plan = if replanned {
+            let (plan, plan_parse_error) = if replanned {
                 match self
-                    .replan(goal, &comprehension, last_critique.as_ref().unwrap())
+                    .replan(
+                        goal,
+                        &comprehension,
+                        last_critique.as_ref().unwrap(),
+                        convergence_pressure.as_deref(),
+                    )
                     .await
                 {
-                    Ok(p) => p,
+                    Ok(p) => (p, None),
+                    Err(AgentError::PlanParseFailed(e)) => {
+                        // Already retried once inside replan — record and abort.
+                        return Err(AgentError::PlanParseFailed(e));
+                    }
                     Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
                         termination = LoopTermination::SpendCapExceeded(spent);
                         break;
@@ -1488,7 +1726,11 @@ impl Agent {
                 }
             } else {
                 match self.plan(goal, &comprehension).await {
-                    Ok(p) => p,
+                    Ok(p) => (p, None),
+                    Err(AgentError::PlanParseFailed(e)) => {
+                        // Already retried once inside plan — record and abort.
+                        return Err(AgentError::PlanParseFailed(e));
+                    }
                     Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
                         termination = LoopTermination::SpendCapExceeded(spent);
                         break;
@@ -1496,6 +1738,26 @@ impl Agent {
                     Err(e) => return Err(e),
                 }
             };
+
+            // --- INCORPORATION CHECK (U3) ---
+            // Before executing, check whether the replan structurally addressed
+            // the prior critique. If not, record the gap for convergence pressure.
+            let incorporation_gap = if replanned {
+                if let (Some(ref prev), Some(ref prev_critique)) = (&last_plan, &last_critique) {
+                    check_incorporation(prev, &plan, &prev_critique.issues)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            if let Some(ref gap) = incorporation_gap {
+                tracing::warn!(gap = %gap, "replan:incorporation_gap — structurally identical plan");
+                convergence_pressure = Some(gap.clone());
+            } else if replanned {
+                // Clear pressure when the replan did change (incorporation worked).
+                convergence_pressure = None;
+            }
 
             // --- EXECUTE ---
             let step_results = match self.execute(&plan).await {
@@ -1568,7 +1830,7 @@ impl Agent {
             iterations.push(LoopIteration {
                 iteration,
                 replanned,
-                plan_goal: plan.goal.clone(),
+                plan_goal: plan.goal_statement.clone(),
                 subtask_count: plan.subtasks.len(),
                 succeeded,
                 failed,
@@ -1578,6 +1840,10 @@ impl Agent {
                 verify_failed: verify_failed.clone(),
                 injected_learning_ids: critique.injected_learning_ids.clone(),
                 usage: critique.usage.clone(),
+                plan_parse_error: plan_parse_error
+                    .as_ref()
+                    .map(|e: &PlanParseError| e.to_string()),
+                incorporation_gap,
             });
 
             last_plan = Some(plan);
@@ -1635,7 +1901,7 @@ impl Agent {
         }
 
         let final_result = AgentRunResult {
-            goal: goal.to_string(),
+            goal: goal.statement.clone(),
             comprehension,
             plan,
             step_results: last_steps,
@@ -1646,7 +1912,7 @@ impl Agent {
         };
 
         Ok(LoopResult {
-            goal: goal.to_string(),
+            goal: goal.statement.clone(),
             iterations,
             converged,
             termination,
@@ -1683,7 +1949,7 @@ impl Agent {
              \"consequences\": [...], \"alternatives\": [...]}}\n\
              Be concise but thorough. This record will be read at 3AM by someone \
              who has no context on why this change was made.",
-            plan.goal,
+            plan.goal_statement,
             successes,
             failures,
             critique
@@ -1694,7 +1960,7 @@ impl Agent {
         let req = CompletionRequest::prompt(DECISION_SYSTEM_PROMPT, &user)
             .with_model(&self.config.models.cheap);
 
-        let (response, _usage) = self.run_tool_loop(req).await.ok()?;
+        let (response, _usage, _signals) = self.run_tool_loop(req).await.ok()?;
         let json_str = extract_json(&response.content);
         let value: serde_json::Value = serde_json::from_str(&json_str).ok()?;
 
@@ -1740,7 +2006,7 @@ impl Agent {
              \"symptoms\": [...], \"diagnosis\": [...], \"resolution\": [...], \
              \"rollback\": [...], \"verification\": [...]}}\n\
              Be practical. This will be read at 3AM.",
-            plan.goal,
+            plan.goal_statement,
             plan.subtasks.iter()
                 .map(|s| format!("- [{}] {}", s.id, s.description))
                 .collect::<Vec<_>>()
@@ -1750,7 +2016,7 @@ impl Agent {
         let req = CompletionRequest::prompt(RUNBOOK_SYSTEM_PROMPT, &user)
             .with_model(&self.config.models.cheap);
 
-        let (response, _usage) = self.run_tool_loop(req).await.ok()?;
+        let (response, _usage, _signals) = self.run_tool_loop(req).await.ok()?;
         let json_str = extract_json(&response.content);
         let value: serde_json::Value = serde_json::from_str(&json_str).ok()?;
 
@@ -1829,7 +2095,7 @@ impl Agent {
     // --- Convenience methods for DLC and pair programming ---
 
     /// Plan from a goal string (comprehends first, then plans).
-    pub async fn plan_simple(&self, goal: &str) -> Result<Plan, AgentError> {
+    pub async fn plan_simple(&self, goal: &crate::goal::GoalSpec) -> Result<Plan, AgentError> {
         let comprehension = self.comprehend(goal).await?;
         self.plan(goal, &comprehension).await
     }
@@ -1859,7 +2125,7 @@ impl Agent {
         let req = CompletionRequest::prompt(system, user).with_tools(self.tools.schemas());
 
         let response = self.complete_tiered(subtask.tier, req).await?;
-        let (response, _tool_usage) = self
+        let (response, _tool_usage, _signals) = self
             .run_tool_loop(
                 CompletionRequest::prompt(EXECUTION_SYSTEM_PROMPT, &response.content)
                     .with_tools(self.tools.schemas()),
@@ -1889,7 +2155,7 @@ impl Agent {
             CompletionRequest::prompt("You are a code reviewer. Be concise and practical.", &user)
                 .with_model(&self.config.models.cheap);
 
-        let (response, _usage) = self.run_tool_loop(req).await?;
+        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
         let json_str = extract_json(&response.content);
         let value: serde_json::Value = serde_json::from_str(&json_str)
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
@@ -1924,7 +2190,7 @@ impl Agent {
         )
         .with_model(&self.config.models.cheap);
 
-        let (response, _usage) = self.run_tool_loop(req).await?;
+        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
         Ok(response.content)
     }
 
@@ -1964,7 +2230,7 @@ impl Agent {
         )
         .with_model(&self.config.models.cheap);
 
-        let (response, _usage) = self.run_tool_loop(req).await?;
+        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
         let json_str = extract_json(&response.content);
         let suggestions: Vec<String> =
             serde_json::from_str::<Vec<String>>(&json_str).unwrap_or_default();
@@ -2016,6 +2282,53 @@ fn critique_signature(issues: &[String]) -> String {
     sorted.join("\x00")
 }
 
+/// Structural check: did the replan actually incorporate the prior critique?
+///
+/// Returns `None` when incorporation is plausible (critique was empty, or the
+/// new plan differs from the old one). Returns `Some(description)` when the
+/// critique raised issues but the new plan is structurally identical to the
+/// old one — meaning the actor likely re-emitted the same plan without changes.
+fn check_incorporation(
+    last_plan: &Plan,
+    new_plan: &Plan,
+    critique_issues: &[String],
+) -> Option<String> {
+    if critique_issues.is_empty() {
+        return None;
+    }
+
+    // Build a structural fingerprint: sorted (subtask_id, description) pairs.
+    let fingerprint = |plan: &Plan| -> Vec<(String, String)> {
+        let mut pairs: Vec<(String, String)> = plan
+            .subtasks
+            .iter()
+            .map(|s| (s.id.clone(), s.description.clone()))
+            .collect();
+        pairs.sort();
+        pairs
+    };
+
+    let old_fp = fingerprint(last_plan);
+    let new_fp = fingerprint(new_plan);
+
+    if old_fp == new_fp {
+        // Also check risks — if risks changed at least something moved.
+        let mut old_risks = last_plan.risks.clone();
+        let mut new_risks = new_plan.risks.clone();
+        old_risks.sort();
+        new_risks.sort();
+        if old_risks == new_risks {
+            let issue_count = critique_issues.len();
+            return Some(format!(
+                "replan incorporated none of {issue_count} critique issue(s); \
+                 subtasks and risks are structurally identical to prior plan"
+            ));
+        }
+    }
+
+    None
+}
+
 fn truncate(s: &str, max: usize) -> String {
     if s.len() <= max {
         s.to_string()
@@ -2065,7 +2378,7 @@ Rules:\n\
 2. If TDD mode: test_author subtasks MUST come before implement subtasks.\n\
 3. Tag complexity accurately: classification/extraction = cheap, standard coding = mid, hard architecture = premium.\n\
 4. Identify risks and edge cases.\n\
-5. Output a JSON object: {\"subtasks\": [...], \"risks\": [...]}.";
+5. Output a JSON object: {\"schema_version\": \"1.0\", \"subtasks\": [...], \"risks\": [...]}.";
 
 const EXECUTION_SYSTEM_PROMPT: &str = "\
 You are a Principal Engineer executing a specific subtask.\n\n\
@@ -2134,141 +2447,122 @@ Output JSON: {\"title\": \"...\", \"trigger\": \"...\", \"severity\": \"critical
 // Response parsing helpers
 // ---------------------------------------------------------------------------
 
-pub fn parse_plan_from_response(content: &str, goal: &str, tdd: bool) -> Plan {
+pub fn parse_plan_from_response(
+    content: &str,
+    goal: &crate::goal::GoalSpec,
+    tdd: bool,
+) -> Result<Plan, PlanParseError> {
+    let goal_str = goal.statement.as_str();
     // Try to extract JSON from the response (may be wrapped in markdown).
     let json_str = extract_json(content);
 
-    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
-        let subtasks: Vec<Subtask> = value
+    let value: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| PlanParseError::MalformedJson(format!("failed to parse JSON: {e}")))?;
+
+    // Validate schema_version if present.
+    if let Some(sv) = value.get("schema_version").and_then(|v| v.as_str()) {
+        if sv != "1.0" {
+            tracing::warn!(
+                schema_version = sv,
+                "plan has unexpected schema_version — proceeding anyway"
+            );
+        }
+    }
+
+    let subtasks_raw =
+        value
             .get("subtasks")
             .and_then(|s| s.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .enumerate()
-                    .filter_map(|(idx, st)| {
-                        // `id` is optional — synthesize if the model omits it.
-                        let id = st
-                            .get("id")
-                            .and_then(|v| v.as_str())
-                            .map(String::from)
-                            .unwrap_or_else(|| format!("s{}", idx + 1));
+            .ok_or(PlanParseError::MalformedJson(
+                "missing or non-array `subtasks` field".to_string(),
+            ))?;
 
-                        // `description`, `tier`, `kind` are required — drop with a
-                        // diagnostic log if missing so failures are traceable.
-                        let description = match st.get("description").and_then(|v| v.as_str()) {
-                            Some(d) => d.to_string(),
-                            None => {
-                                tracing::warn!(
-                                    index = idx,
-                                    "plan subtask dropped: missing or invalid 'description'"
-                                );
-                                return None;
-                            }
-                        };
-                        let tier_str = match st.get("tier").and_then(|v| v.as_str()) {
-                            Some(t) => t,
-                            None => {
-                                tracing::warn!(
-                                    index = idx,
-                                    "plan subtask dropped: missing or invalid 'tier'"
-                                );
-                                return None;
-                            }
-                        };
-                        let kind_str = match st.get("kind").and_then(|v| v.as_str()) {
-                            Some(k) => k,
-                            None => {
-                                tracing::warn!(
-                                    index = idx,
-                                    "plan subtask dropped: missing or invalid 'kind'"
-                                );
-                                return None;
-                            }
-                        };
-
-                        Some(Subtask {
-                            id,
-                            description,
-                            tier: parse_tier(tier_str),
-                            kind: parse_kind(kind_str),
-                            files: st
-                                .get("files")
-                                .and_then(|f| f.as_array())
-                                .map(|a| {
-                                    a.iter()
-                                        .filter_map(|v| v.as_str().map(String::from))
-                                        .collect()
-                                })
-                                .unwrap_or_default(),
-                            acceptance_criteria: st
-                                .get("acceptance_criteria")
-                                .and_then(|a| a.as_array())
-                                .map(|a| {
-                                    a.iter()
-                                        .filter_map(|v| v.as_str().map(String::from))
-                                        .collect()
-                                })
-                                .unwrap_or_default(),
-                        })
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let risks: Vec<String> = value
-            .get("risks")
-            .and_then(|r| r.as_array())
-            .map(|a| {
-                a.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        // If no subtasks survived parsing, fall back to a single subtask
-        // so the agent still attempts the goal rather than silently doing nothing.
-        if subtasks.is_empty() {
-            tracing::warn!(
-                "plan parsed successfully but contained 0 subtasks — \
-                 falling back to single-subtask plan"
-            );
-            return Plan {
-                goal: goal.to_string(),
-                subtasks: vec![Subtask {
-                    id: "s1".into(),
-                    description: goal.to_string(),
-                    tier: TaskTier::Mid,
-                    kind: SubtaskKind::Implement,
-                    files: Vec::new(),
-                    acceptance_criteria: Vec::new(),
-                }],
-                tdd,
-                risks,
-            };
-        }
-
-        return Plan {
-            goal: goal.to_string(),
-            subtasks,
-            tdd,
-            risks,
-        };
+    if subtasks_raw.is_empty() {
+        return Err(PlanParseError::NoSubtasks);
     }
 
-    // Fallback: single subtask plan.
-    Plan {
-        goal: goal.to_string(),
-        subtasks: vec![Subtask {
-            id: "s1".into(),
-            description: goal.to_string(),
-            tier: TaskTier::Mid,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }],
+    let mut subtasks = Vec::new();
+    for (idx, st) in subtasks_raw.iter().enumerate() {
+        let id = st
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| PlanParseError::MissingRequiredField {
+                field: "id".to_string(),
+                subtask_index: idx,
+            })?
+            .to_string();
+        let description = st
+            .get("description")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| PlanParseError::MissingRequiredField {
+                field: "description".to_string(),
+                subtask_index: idx,
+            })?
+            .to_string();
+        let tier_str = st.get("tier").and_then(|v| v.as_str()).ok_or_else(|| {
+            PlanParseError::MissingRequiredField {
+                field: "tier".to_string(),
+                subtask_index: idx,
+            }
+        })?;
+        let kind_str = st.get("kind").and_then(|v| v.as_str()).ok_or_else(|| {
+            PlanParseError::MissingRequiredField {
+                field: "kind".to_string(),
+                subtask_index: idx,
+            }
+        })?;
+
+        subtasks.push(Subtask {
+            id,
+            description,
+            tier: parse_tier(tier_str),
+            kind: parse_kind(kind_str),
+            files: st
+                .get("files")
+                .and_then(|f| f.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            acceptance_criteria: st
+                .get("acceptance_criteria")
+                .and_then(|a| a.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+        });
+    }
+
+    let risks: Vec<String> = value
+        .get("risks")
+        .and_then(|r| r.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let schema_version = value
+        .get("schema_version")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    Ok(Plan {
+        goal: goal_str.to_string(),
+        goal_statement: goal.statement.clone(),
+        criteria: goal.acceptance_criteria.clone(),
+        subtasks,
         tdd,
-        risks: Vec::new(),
-    }
+        risks,
+        schema_version,
+    })
 }
 
 fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
@@ -2444,6 +2738,9 @@ pub struct AgentBuilder {
     memory: Option<std::sync::Arc<dyn crate::memory::Memory + Send + Sync>>,
     #[cfg(feature = "mcp-client")]
     mcp_manager: Option<crate::tool::mcp::McpClientManager>,
+    tool_call_tracer: Option<Box<dyn ToolCallTracer>>,
+    trace_run_id: Option<String>,
+    trace_id: Option<String>,
 }
 
 impl AgentBuilder {
@@ -2531,6 +2828,26 @@ impl AgentBuilder {
         Ok(self)
     }
 
+    /// Set trace context for tool-call event attribution (U5).
+    ///
+    /// When all three are provided and `config.enable_tool_call_tracing` is
+    /// true, every agent→tool dispatch emits `tool_call`/`tool_result`
+    /// context events to `context_events.jsonl`.
+    pub fn trace_context(mut self, run_id: impl Into<String>, trace_id: impl Into<String>) -> Self {
+        self.trace_run_id = Some(run_id.into());
+        self.trace_id = Some(trace_id.into());
+        self
+    }
+
+    /// Set the tool-call tracer for context event attribution (U5).
+    ///
+    /// The tracer is called before and after every tool dispatch when
+    /// `config.enable_tool_call_tracing` is true and trace context is set.
+    pub fn tool_call_tracer(mut self, tracer: Box<dyn ToolCallTracer>) -> Self {
+        self.tool_call_tracer = Some(tracer);
+        self
+    }
+
     /// Build the agent.
     pub fn build(self) -> Result<Agent, AgentError> {
         let llm_arc = self.llm.ok_or(AgentError::NoLlm)?;
@@ -2575,6 +2892,9 @@ impl AgentBuilder {
             memory,
             #[cfg(feature = "mcp-client")]
             mcp_manager,
+            tool_call_tracer: self.tool_call_tracer,
+            trace_run_id: self.trace_run_id,
+            trace_id: self.trace_id,
         })
     }
 }
@@ -2716,31 +3036,32 @@ mod tests {
     }
 
     #[test]
-    fn parse_plan_synthesizes_id_when_missing() {
-        // Simulate a real LLM that follows the prompt but omits `id`
-        // (the prompt didn't ask for it before the fix).
+    fn parse_plan_requires_id_field() {
+        // Subtasks without `id` now fail with MissingRequiredField (U2).
         let raw = r#"{"subtasks":[
-            {"description":"write add()","tier":"mid","kind":"implement","files":["src/main.rs"]},
-            {"description":"test add()","tier":"cheap","kind":"test_author","files":["src/main.rs"]}
+            {"description":"write add()","tier":"mid","kind":"implement","files":["src/main.rs"]}
         ],"risks":[]}"#;
-        let plan = parse_plan_from_response(raw, "add function", false);
-        assert_eq!(plan.subtasks.len(), 2, "both subtasks should survive");
-        assert_eq!(plan.subtasks[0].id, "s1", "first id synthesized");
-        assert_eq!(plan.subtasks[1].id, "s2", "second id synthesized");
-        assert_eq!(plan.subtasks[0].description, "write add()");
+        let err = parse_plan_from_response(raw, &crate::goal::GoalSpec::new("add function"), false)
+            .unwrap_err();
+        assert!(
+            matches!(err, PlanParseError::MissingRequiredField { ref field, subtask_index: 0 } if field == "id"),
+            "expected MissingRequiredField for id on subtask 0, got: {err}"
+        );
     }
 
     #[test]
-    fn parse_plan_drops_subtask_missing_required_field() {
-        // A subtask missing `tier` should be dropped (not crash), while
-        // valid siblings survive.
+    fn parse_plan_error_on_missing_required_field() {
+        // A subtask missing `tier` should fail with MissingRequiredField.
         let raw = r#"{"subtasks":[
-            {"description":"ok","tier":"mid","kind":"implement"},
-            {"description":"no tier here","kind":"verify"}
+            {"id":"s1","description":"ok","tier":"mid","kind":"implement"},
+            {"id":"s2","description":"no tier here","kind":"verify"}
         ],"risks":[]}"#;
-        let plan = parse_plan_from_response(raw, "test", false);
-        assert_eq!(plan.subtasks.len(), 1, "malformed subtask dropped");
-        assert_eq!(plan.subtasks[0].description, "ok");
+        let err =
+            parse_plan_from_response(raw, &crate::goal::GoalSpec::new("test"), false).unwrap_err();
+        assert!(
+            matches!(err, PlanParseError::MissingRequiredField { ref field, subtask_index: 1 } if field == "tier"),
+            "expected MissingRequiredField for tier on subtask 1, got: {err}"
+        );
     }
 
     #[test]
@@ -2748,22 +3069,75 @@ mod tests {
         let raw = r#"{"subtasks":[
             {"id":"custom-id","description":"task","tier":"premium","kind":"review"}
         ],"risks":[]}"#;
-        let plan = parse_plan_from_response(raw, "test", false);
+        let plan =
+            parse_plan_from_response(raw, &crate::goal::GoalSpec::new("test"), false).unwrap();
         assert_eq!(plan.subtasks.len(), 1);
         assert_eq!(plan.subtasks[0].id, "custom-id");
     }
 
     #[test]
-    fn parse_plan_empty_array_falls_back_to_single_subtask() {
-        // Model returned valid JSON but with an empty subtasks array
-        // (e.g. it hallucinated the work was already done).
+    fn parse_plan_empty_array_returns_no_subtasks_error() {
+        // Model returned valid JSON but with an empty subtasks array —
+        // now returns a typed error (U2), not a synthesized fallback.
         let raw = r#"{"subtasks":[],"risks":["nothing to do"]}"#;
-        let plan = parse_plan_from_response(raw, "add the function", false);
-        assert_eq!(plan.subtasks.len(), 1, "fallback produces single subtask");
+        let err =
+            parse_plan_from_response(raw, &crate::goal::GoalSpec::new("add the function"), false)
+                .unwrap_err();
+        assert!(
+            matches!(err, PlanParseError::NoSubtasks),
+            "expected NoSubtasks, got: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_plan_happy_path_with_all_fields() {
+        let raw = r#"{"schema_version":"1.0","subtasks":[
+            {"id":"s1","description":"write add()","tier":"mid","kind":"implement","files":["src/main.rs"],"acceptance_criteria":["it works"]}
+        ],"risks":["none"]}"#;
+        let plan = parse_plan_from_response(raw, &crate::goal::GoalSpec::new("add function"), true)
+            .unwrap();
+        assert_eq!(plan.subtasks.len(), 1);
         assert_eq!(plan.subtasks[0].id, "s1");
-        assert_eq!(plan.subtasks[0].description, "add the function");
-        assert_eq!(plan.subtasks[0].kind, SubtaskKind::Implement);
-        assert_eq!(plan.risks, vec!["nothing to do"]);
+        assert_eq!(plan.schema_version, "1.0");
+        assert!(plan.tdd);
+        assert_eq!(plan.risks, vec!["none"]);
+    }
+
+    #[test]
+    fn parse_plan_malformed_json_returns_error() {
+        let err = parse_plan_from_response(
+            "not json at all",
+            &crate::goal::GoalSpec::new("test"),
+            false,
+        )
+        .unwrap_err();
+        assert!(
+            matches!(err, PlanParseError::MalformedJson(_)),
+            "expected MalformedJson, got: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_plan_missing_subtasks_array_returns_error() {
+        let raw = r#"{"risks":["none"]}"#;
+        let err =
+            parse_plan_from_response(raw, &crate::goal::GoalSpec::new("test"), false).unwrap_err();
+        assert!(
+            matches!(err, PlanParseError::MalformedJson(_)),
+            "expected MalformedJson for missing subtasks, got: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_plan_backward_compat_no_schema_version() {
+        // Old serialized plans without schema_version deserialize fine.
+        let raw = r#"{"subtasks":[
+            {"id":"s1","description":"task","tier":"cheap","kind":"implement"}
+        ],"risks":[]}"#;
+        let plan =
+            parse_plan_from_response(raw, &crate::goal::GoalSpec::new("test"), false).unwrap();
+        assert_eq!(plan.schema_version, "");
+        assert_eq!(plan.subtasks[0].id, "s1");
     }
 
     #[test]
@@ -2918,7 +3292,10 @@ mod tests {
         let llm = ScriptedLlm::approve_after(1);
         let agent = loop_test_agent(llm);
         let result = agent
-            .run_loop("ship the feature", &LoopConfig::default())
+            .run_loop(
+                &crate::goal::GoalSpec::new("ship the feature"),
+                &LoopConfig::default(),
+            )
             .await
             .expect("loop runs");
 
@@ -2945,7 +3322,7 @@ mod tests {
             ..Default::default()
         };
         let result = agent
-            .run_loop("ship the feature", &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
             .await
             .expect("loop runs");
 
@@ -2966,7 +3343,7 @@ mod tests {
             ..Default::default()
         };
         let result = agent
-            .run_loop("ship the feature", &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
             .await
             .expect("loop runs");
 
@@ -3003,6 +3380,8 @@ mod tests {
                     verify_failed: Vec::new(),
                     injected_learning_ids: Vec::new(),
                     usage: Usage::default(),
+                    plan_parse_error: None,
+                    incorporation_gap: None,
                 },
                 LoopIteration {
                     iteration: 2,
@@ -3017,6 +3396,8 @@ mod tests {
                     verify_failed: Vec::new(),
                     injected_learning_ids: Vec::new(),
                     usage: Usage::default(),
+                    plan_parse_error: None,
+                    incorporation_gap: None,
                 },
             ],
             converged: true,
@@ -3036,9 +3417,12 @@ mod tests {
                 },
                 plan: Plan {
                     goal: "g".into(),
+                    goal_statement: "g".into(),
+                    criteria: Vec::new(),
                     subtasks: Vec::new(),
                     tdd: false,
                     risks: Vec::new(),
+                    schema_version: String::new(),
                 },
                 step_results: Vec::new(),
                 critique: None,
@@ -3138,7 +3522,10 @@ mod tests {
             .expect("agent builds");
 
         let result = agent
-            .run_loop("create hello module", &LoopConfig::default())
+            .run_loop(
+                &crate::goal::GoalSpec::new("create hello module"),
+                &LoopConfig::default(),
+            )
             .await
             .expect("loop runs");
 
@@ -3175,7 +3562,7 @@ mod tests {
             ..Default::default()
         };
         let result = agent
-            .run_loop("ship the feature", &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
             .await
             .expect("loop runs");
 
@@ -3208,7 +3595,7 @@ mod tests {
             ..Default::default()
         };
         let result = agent
-            .run_loop("ship the feature", &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
             .await
             .expect("loop runs");
 
@@ -3234,7 +3621,7 @@ mod tests {
             ..Default::default()
         };
         let result = agent
-            .run_loop("ship the feature", &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
             .await
             .expect("loop runs");
 
@@ -3300,9 +3687,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "fix bug".into(),
+                    goal_statement: "fix bug".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3349,9 +3739,12 @@ mod tests {
                 .critique(
                     &Plan {
                         goal: "test".into(),
+                        goal_statement: "test".into(),
+                        criteria: Vec::new(),
                         subtasks: vec![],
                         tdd: false,
                         risks: vec![],
+                        schema_version: String::new(),
                     },
                     &vec![],
                 )
@@ -3414,9 +3807,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "test".into(),
+                    goal_statement: "test".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3480,9 +3876,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "concurrency check".into(),
+                    goal_statement: "concurrency check".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3542,9 +3941,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "all good".into(),
+                    goal_statement: "all good".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3606,9 +4008,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "score check".into(),
+                    goal_statement: "score check".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3662,9 +4067,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "boundary crossing".into(),
+                    goal_statement: "boundary crossing".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3732,9 +4140,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "no memory".into(),
+                    goal_statement: "no memory".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3802,9 +4213,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "connection not closed".into(),
+                    goal_statement: "connection not closed".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3891,9 +4305,12 @@ mod tests {
             .critique(
                 &Plan {
                     goal: "potential panic".into(),
+                    goal_statement: "potential panic".into(),
+                    criteria: Vec::new(),
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 &vec![],
             )
@@ -3928,5 +4345,131 @@ mod tests {
         let a = critique_signature(&["x".into(), "y".into()]);
         let b = critique_signature(&["y".into(), "x".into()]);
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn check_incorporation_returns_none_when_no_issues() {
+        let plan = Plan {
+            goal: "g".into(),
+            goal_statement: "g".into(),
+            criteria: Vec::new(),
+            subtasks: vec![Subtask {
+                id: "s1".into(),
+                description: "d".into(),
+                tier: TaskTier::Cheap,
+                kind: SubtaskKind::Implement,
+                files: Vec::new(),
+                acceptance_criteria: Vec::new(),
+            }],
+            tdd: false,
+            risks: vec![],
+            schema_version: String::new(),
+        };
+        // No issues → no incorporation needed.
+        assert!(check_incorporation(&plan, &plan, &[]).is_none());
+    }
+
+    #[test]
+    fn check_incorporation_detects_identical_plan() {
+        let plan = Plan {
+            goal: "g".into(),
+            goal_statement: "g".into(),
+            criteria: Vec::new(),
+            subtasks: vec![Subtask {
+                id: "s1".into(),
+                description: "d".into(),
+                tier: TaskTier::Cheap,
+                kind: SubtaskKind::Implement,
+                files: Vec::new(),
+                acceptance_criteria: Vec::new(),
+            }],
+            tdd: false,
+            risks: vec!["r1".into()],
+            schema_version: String::new(),
+        };
+        let issues = vec!["fix the bug".into()];
+        let gap = check_incorporation(&plan, &plan, &issues);
+        assert!(
+            gap.is_some(),
+            "identical plans with issues should produce a gap"
+        );
+        assert!(gap.unwrap().contains("structurally identical"));
+    }
+
+    #[test]
+    fn check_incorporation_returns_none_when_plan_changed() {
+        let old = Plan {
+            goal: "g".into(),
+            goal_statement: "g".into(),
+            criteria: Vec::new(),
+            subtasks: vec![Subtask {
+                id: "s1".into(),
+                description: "old".into(),
+                tier: TaskTier::Cheap,
+                kind: SubtaskKind::Implement,
+                files: Vec::new(),
+                acceptance_criteria: Vec::new(),
+            }],
+            tdd: false,
+            risks: vec![],
+            schema_version: String::new(),
+        };
+        let new = Plan {
+            goal: "g".into(),
+            goal_statement: "g".into(),
+            criteria: Vec::new(),
+            subtasks: vec![Subtask {
+                id: "s1".into(),
+                description: "new".into(),
+                tier: TaskTier::Cheap,
+                kind: SubtaskKind::Implement,
+                files: Vec::new(),
+                acceptance_criteria: Vec::new(),
+            }],
+            tdd: false,
+            risks: vec![],
+            schema_version: String::new(),
+        };
+        let issues = vec!["fix the bug".into()];
+        assert!(check_incorporation(&old, &new, &issues).is_none());
+    }
+
+    #[test]
+    fn check_incorporation_returns_none_when_risks_changed() {
+        let old = Plan {
+            goal: "g".into(),
+            goal_statement: "g".into(),
+            criteria: Vec::new(),
+            subtasks: vec![Subtask {
+                id: "s1".into(),
+                description: "d".into(),
+                tier: TaskTier::Cheap,
+                kind: SubtaskKind::Implement,
+                files: Vec::new(),
+                acceptance_criteria: Vec::new(),
+            }],
+            tdd: false,
+            risks: vec![],
+            schema_version: String::new(),
+        };
+        let new = Plan {
+            goal: "g".into(),
+            goal_statement: "g".into(),
+            criteria: Vec::new(),
+            subtasks: vec![Subtask {
+                id: "s1".into(),
+                description: "d".into(),
+                tier: TaskTier::Cheap,
+                kind: SubtaskKind::Implement,
+                files: Vec::new(),
+                acceptance_criteria: Vec::new(),
+            }],
+            tdd: false,
+            risks: vec!["new risk".into()],
+            schema_version: String::new(),
+        };
+        let issues = vec!["fix the bug".into()];
+        // Same subtasks but risks changed → no gap.
+        assert!(check_incorporation(&old, &new, &issues).is_none());
     }
 }

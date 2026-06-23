@@ -66,6 +66,8 @@ mod tests {
             confidence: 0.85,
             plan: Plan {
                 goal: "Add caching".to_string(),
+                goal_statement: "Add caching".to_string(),
+                criteria: Vec::new(),
                 subtasks: vec![
                     Subtask {
                         id: "1.0".to_string(),
@@ -86,6 +88,7 @@ mod tests {
                 ],
                 tdd: false,
                 risks: Vec::new(),
+                schema_version: String::new(),
             },
         };
 

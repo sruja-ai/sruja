@@ -280,8 +280,6 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         GoalSpec::new(options.goal)
     };
 
-    let goal_prompt = goal_spec.to_prompt();
-
     // ── Build tools + agent ───────────────────────────────────────────────
     // Built-in filesystem/shell tools + the sruja-native "eyes" (focus, explain,
     // drift, compliance, query). The latter ground the agent in the architecture
@@ -327,15 +325,21 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         review_every_change: manifest.review_every_change,
         dry_run,
         system_hints,
+        enable_tool_call_tracing: true,
         ..Default::default()
     };
+
+    // ── Run the loop ──────────────────────────────────────────────────────
+    let run_id = generate_run_id();
 
     let agent = {
         let mut builder = sruja_agent::Agent::builder()
             .llm(Arc::new(tiered))
             .tools(tools)
             .config(config)
-            .memory(repo_path);
+            .memory(repo_path)
+            .trace_context(&run_id, &run_id)
+            .tool_call_tracer(Box::new(super::context_events::ContextEventsTracer));
 
         // Connect to declared MCP servers (graceful degradation if none/failed)
         if !manifest.mcp.servers.is_empty() {
@@ -350,9 +354,6 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         }
         builder.build().map_err(agent_err_to_cli)?
     };
-
-    // ── Run the loop ──────────────────────────────────────────────────────
-    let run_id = generate_run_id();
 
     if io::stdin().is_terminal() {
         eprintln!();
@@ -476,7 +477,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     }
 
     let mut result = agent
-        .run_loop(&goal_prompt, &loop_config)
+        .run_loop(&goal_spec, &loop_config)
         .await
         .map_err(agent_err_to_cli)?;
 
@@ -951,9 +952,12 @@ mod tests {
                 },
                 plan: sruja_agent::Plan {
                     goal: "test goal".to_string(),
+                    goal_statement: "test goal".to_string(),
+                    criteria: vec![],
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 step_results: vec![],
                 critique: Some(Critique {
@@ -1001,9 +1005,12 @@ mod tests {
                 },
                 plan: sruja_agent::Plan {
                     goal: "test goal".to_string(),
+                    goal_statement: "test goal".to_string(),
+                    criteria: vec![],
                     subtasks: vec![],
                     tdd: false,
                     risks: vec![],
+                    schema_version: String::new(),
                 },
                 step_results: vec![],
                 critique: Some(Critique {

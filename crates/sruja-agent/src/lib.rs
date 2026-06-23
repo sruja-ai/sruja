@@ -20,7 +20,7 @@
 //!
 //! ```no_run
 //! # use std::sync::Arc;
-//! # use sruja_agent::{Agent, llm::OpenAiClient, tool::{ToolRegistry, tools}};
+//! # use sruja_agent::{Agent, goal::GoalSpec, llm::OpenAiClient, tool::{ToolRegistry, tools}};
 //! # async fn demo() -> Result<(), Box<dyn std::error::Error>> {
 //! let llm = OpenAiClient::from_env()?;
 //! let mut tools = ToolRegistry::new();
@@ -31,7 +31,7 @@
 //!     .tools(tools)
 //!     .build()?;
 //!
-//! let answer = agent.comprehend("How does the graph module work?").await?;
+//! let answer = agent.comprehend(&GoalSpec::new("How does the graph module work?")).await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -57,7 +57,8 @@ pub use calibration::{
 };
 pub use cognition::{
     Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult, Comprehension, Critique,
-    LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan, VerifierConfig,
+    LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan, ToolCallTracer,
+    VerifierConfig,
 };
 pub use dlc::DlcPipeline;
 pub use executor::TrajectoryExecutor;

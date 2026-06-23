@@ -20,6 +20,7 @@
 use std::sync::Arc;
 
 use sruja_agent::{
+    goal::GoalSpec,
     llm::{LlmClient, OpenAiClient},
     tool::{builtin::tools, ToolRegistry},
     Agent, AgentConfig,
@@ -52,11 +53,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     // 4. Run a simple comprehension task.
-    let goal =
-        "List all Rust source files in the current directory and summarize what this crate does.";
-    println!("\nGoal: {goal}\n");
+    let goal_spec = GoalSpec::new(
+        "List all Rust source files in the current directory and summarize what this crate does.",
+    );
+    println!("\nGoal: {goal_spec}\n");
 
-    let comprehension = agent.comprehend(goal).await?;
+    let comprehension = agent.comprehend(&goal_spec).await?;
 
     println!("=== Comprehension ===");
     println!("{}", comprehension.summary);
@@ -70,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 5. Generate a plan.
     println!("\n=== Planning ===");
-    let plan = agent.plan(goal, &comprehension).await?;
+    let plan = agent.plan(&goal_spec, &comprehension).await?;
 
     println!("Subtasks ({} total):", plan.subtasks.len());
     for st in &plan.subtasks {

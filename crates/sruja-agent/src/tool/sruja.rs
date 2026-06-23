@@ -14,6 +14,11 @@ use serde_json::{json, Value};
 
 use super::{Tool, ToolError};
 
+/// Returns `true` if `name` belongs to a sruja deterministic tool.
+pub fn is_sruja_tool(name: &str) -> bool {
+    name.starts_with("sruja_")
+}
+
 /// Resolve the sruja binary, checking common locations.
 pub fn find_sruja(repo_root: &Path) -> PathBuf {
     // 1. Explicit env var

@@ -192,9 +192,12 @@ async fn merge(
         confidence: avg_confidence,
         plan: Plan {
             goal: problem.to_string(),
+            goal_statement: problem.to_string(),
+            criteria: Vec::new(),
             subtasks: all_subtasks,
             tdd: false,
             risks: Vec::new(),
+            schema_version: String::new(),
         },
     };
 
@@ -280,9 +283,12 @@ mod tests {
             confidence,
             plan: Plan {
                 goal: "Test".to_string(),
+                goal_statement: "Test".to_string(),
+                criteria: Vec::new(),
                 subtasks,
                 tdd: false,
                 risks: Vec::new(),
+                schema_version: String::new(),
             },
         }
     }

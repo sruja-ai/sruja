@@ -161,8 +161,12 @@ impl PairSession {
         let navigator_agent = self.create_agent(&self.navigator_llm).await?;
 
         // Phase 1: Both agents comprehend the task.
-        let comprehension = driver_agent.comprehend(task).await?;
-        let nav_comprehension = navigator_agent.comprehend(task).await?;
+        let comprehension = driver_agent
+            .comprehend(&crate::goal::GoalSpec::new(task))
+            .await?;
+        let nav_comprehension = navigator_agent
+            .comprehend(&crate::goal::GoalSpec::new(task))
+            .await?;
 
         // Navigator sends initial observations.
         channel.send(ChannelMessage::Observation {
@@ -174,7 +178,9 @@ impl PairSession {
         });
 
         // Phase 2: Driver plans, navigator reviews.
-        let plan = driver_agent.plan(task, &comprehension).await?;
+        let plan = driver_agent
+            .plan(&crate::goal::GoalSpec::new(task), &comprehension)
+            .await?;
         channel.send(ChannelMessage::PlanReview {
             agent: PairRole::Navigator,
             feedback: format!(

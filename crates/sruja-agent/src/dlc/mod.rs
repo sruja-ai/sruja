@@ -325,7 +325,9 @@ impl DlcPipeline {
         ctx: &mut DlcContext,
     ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
         let agent = self.create_agent().await?;
-        let plan = agent.plan_simple(&ctx.task).await?;
+        let plan = agent
+            .plan_simple(&crate::goal::GoalSpec::new(&ctx.task))
+            .await?;
         ctx.plan = Some(plan.clone());
         Ok(DlcArtifact::Plan(plan))
     }
@@ -344,7 +346,7 @@ impl DlcPipeline {
         )
         .with_model("gpt-4o");
 
-        let (response, _usage) = agent
+        let (response, _usage, _signals) = agent
             .run_tool_loop(req)
             .await
             .map_err(|e| format!("Design failed: {}", e))?;
@@ -422,6 +424,7 @@ impl DlcPipeline {
                 },
                 output: result.output,
                 usage: crate::llm::Usage::default(),
+                tool_signals: Vec::new(),
             });
         }
 
@@ -436,7 +439,10 @@ impl DlcPipeline {
 
         // Use the Agent's run method for a quick review pass.
         let result = agent
-            .run(&format!("Review the implementation of: {}", ctx.task))
+            .run(&crate::goal::GoalSpec::new(format!(
+                "Review the implementation of: {}",
+                ctx.task
+            )))
             .await?;
 
         Ok(DlcArtifact::Review(result.critique.unwrap_or(
@@ -468,6 +474,7 @@ impl DlcPipeline {
                     status: StepStatus::Ok, // placeholder — real impl runs tests
                     output: "Tests passed".to_string(),
                     usage: crate::llm::Usage::default(),
+                    tool_signals: Vec::new(),
                 }
             })
             .collect();
@@ -505,7 +512,10 @@ impl DlcPipeline {
         // The Agent's reflect method handles this internally.
         let agent = self.create_agent().await?;
         let _result = agent
-            .run(&format!("Extract learnings from: {}", ctx.task))
+            .run(&crate::goal::GoalSpec::new(format!(
+                "Extract learnings from: {}",
+                ctx.task
+            )))
             .await?;
 
         // Learnings are persisted by the Agent internally.

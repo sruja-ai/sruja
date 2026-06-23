@@ -32,6 +32,8 @@ pub const DECISION_LINEAGE_KINDS: &[&str] = &[
     "decision_applied",
     "validation_passed",
     "validation_failed",
+    "tool_call",
+    "tool_result",
 ];
 
 fn events_path(repo: &Path) -> std::path::PathBuf {
@@ -374,6 +376,72 @@ pub fn record_agent_task_complete(
     );
 }
 
+/// Record an agent tool-call request (before dispatch).
+///
+/// Mirrors `record_agent_plan` / `record_agent_task_complete` pattern.
+/// Args keys (not values) are recorded for redaction safety.
+pub fn record_agent_tool_call(
+    repo: &Path,
+    run_id: &str,
+    trace_id: &str,
+    tool_name: &str,
+    args_keys: &[String],
+) {
+    let details = serde_json::json!({
+        "tool": tool_name,
+        "args_keys": args_keys,
+    });
+    let base = ContextEventRecord::new_v2_now(repo, "tool_call", "ok", details);
+    append_context_event(
+        repo,
+        ContextEventRecord {
+            trace_id: Some(trace_id.to_string()),
+            run_id: Some(run_id.to_string()),
+            actor: Some("sruja agent".to_string()),
+            source: Some("cli".to_string()),
+            tool: Some(tool_name.to_string()),
+            summary: Some(format!("agent tool_call: {tool_name}")),
+            ..base
+        },
+    );
+}
+
+/// Record an agent tool-call result (after dispatch).
+///
+/// Mirrors `record_agent_plan` / `record_agent_task_complete` pattern.
+pub fn record_agent_tool_result(
+    repo: &Path,
+    run_id: &str,
+    trace_id: &str,
+    tool_name: &str,
+    ok: bool,
+    empty: bool,
+    elapsed_ms: u64,
+) {
+    let outcome = if ok { "ok" } else { "fail" };
+    let details = serde_json::json!({
+        "tool": tool_name,
+        "ok": ok,
+        "empty": empty,
+        "elapsed_ms": elapsed_ms,
+    });
+    let base = ContextEventRecord::new_v2_now(repo, "tool_result", outcome, details);
+    append_context_event(
+        repo,
+        ContextEventRecord {
+            trace_id: Some(trace_id.to_string()),
+            run_id: Some(run_id.to_string()),
+            actor: Some("sruja agent".to_string()),
+            source: Some("cli".to_string()),
+            tool: Some(tool_name.to_string()),
+            summary: Some(format!(
+                "agent tool_result: {tool_name} (ok={ok}, empty={empty})"
+            )),
+            ..base
+        },
+    );
+}
+
 /// Host compressed chat history after a validation burst; hints middleware to skip re-compress.
 pub fn record_context_compressed(
     repo: &Path,
@@ -491,6 +559,35 @@ pub fn read_context_events_query(
     }
     matched.reverse();
     Ok(matched)
+}
+
+/// Concrete [`ToolCallTracer`] implementation that writes to `context_events.jsonl`.
+pub struct ContextEventsTracer;
+
+impl sruja_agent::cognition::ToolCallTracer for ContextEventsTracer {
+    fn on_tool_call(
+        &self,
+        repo: &Path,
+        run_id: &str,
+        trace_id: &str,
+        tool_name: &str,
+        args_keys: &[String],
+    ) {
+        record_agent_tool_call(repo, run_id, trace_id, tool_name, args_keys);
+    }
+
+    fn on_tool_result(
+        &self,
+        repo: &Path,
+        run_id: &str,
+        trace_id: &str,
+        tool_name: &str,
+        ok: bool,
+        empty: bool,
+        elapsed_ms: u64,
+    ) {
+        record_agent_tool_result(repo, run_id, trace_id, tool_name, ok, empty, elapsed_ms);
+    }
 }
 
 #[cfg(test)]
@@ -735,5 +832,62 @@ mod tests {
         .unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].run_id.as_deref(), Some("run_b"));
+    }
+
+    #[test]
+    fn record_agent_tool_call_writes_v2_event() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+        record_agent_tool_call(
+            repo,
+            "run-456",
+            "trace-789",
+            "sruja_focus",
+            &["repo".to_string(), "element_id".to_string()],
+        );
+        let raw = std::fs::read_to_string(repo.join(".sruja/context_events.jsonl")).unwrap();
+        let line = raw.lines().last().unwrap();
+        let ev: ContextEventRecord = serde_json::from_str(line).unwrap();
+        assert_eq!(ev.kind, "tool_call");
+        assert_eq!(ev.schema_version, CONTEXT_EVENTS_SCHEMA_V2);
+        assert_eq!(ev.trace_id.as_deref(), Some("trace-789"));
+        assert_eq!(ev.run_id.as_deref(), Some("run-456"));
+        assert_eq!(ev.tool.as_deref(), Some("sruja_focus"));
+        assert_eq!(ev.actor.as_deref(), Some("sruja agent"));
+        assert_eq!(ev.source.as_deref(), Some("cli"));
+        let keys = ev.details.get("args_keys").unwrap().as_array().unwrap();
+        assert_eq!(keys.len(), 2);
+    }
+
+    #[test]
+    fn record_agent_tool_result_writes_v2_event() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+        record_agent_tool_result(repo, "run-456", "trace-789", "sruja_focus", true, false, 42);
+        let raw = std::fs::read_to_string(repo.join(".sruja/context_events.jsonl")).unwrap();
+        let line = raw.lines().last().unwrap();
+        let ev: ContextEventRecord = serde_json::from_str(line).unwrap();
+        assert_eq!(ev.kind, "tool_result");
+        assert_eq!(ev.schema_version, CONTEXT_EVENTS_SCHEMA_V2);
+        assert_eq!(ev.outcome, "ok");
+        assert_eq!(ev.trace_id.as_deref(), Some("trace-789"));
+        assert_eq!(ev.run_id.as_deref(), Some("run-456"));
+        assert_eq!(ev.tool.as_deref(), Some("sruja_focus"));
+        assert_eq!(ev.details.get("ok").unwrap(), true);
+        assert_eq!(ev.details.get("elapsed_ms").unwrap(), 42);
+    }
+
+    #[test]
+    fn tool_call_and_tool_result_are_decision_lineage() {
+        let call = ContextEventRecord {
+            kind: "tool_call".into(),
+            ..Default::default()
+        };
+        assert!(call.is_decision_lineage_kind());
+        let result = ContextEventRecord {
+            kind: "tool_result".into(),
+            ..Default::default()
+        };
+        assert!(result.is_decision_lineage_kind());
     }
 }

@@ -268,14 +268,14 @@ impl BrainstormSession {
 
         // Plan from this agent's perspective.
         let plan = agent
-            .plan_from_comprehension(problem, &comprehension)
+            .plan_from_comprehension(&crate::goal::GoalSpec::new(problem), &comprehension)
             .await?;
 
         // Build the proposal.
         Ok(Proposal {
             agent_id,
             role: role.clone(),
-            title: plan.goal.clone(),
+            title: plan.goal_statement.clone(),
             summary: comprehension.summary.clone(),
             approach: plan
                 .subtasks
@@ -313,7 +313,7 @@ pub trait Brainstormable {
 
     fn plan_from_comprehension(
         &self,
-        goal: &str,
+        goal: &crate::goal::GoalSpec,
         comprehension: &Comprehension,
     ) -> impl std::future::Future<Output = Result<Plan, Box<dyn std::error::Error>>>;
 }
@@ -327,7 +327,7 @@ impl Brainstormable for Agent {
         // Use the agent's LLM with custom system prompt.
         let req = CompletionRequest::prompt(system_context, query).with_model("gpt-4o");
 
-        let (response, _usage) = self
+        let (response, _usage, _signals) = self
             .run_tool_loop(req)
             .await
             .map_err(|e| format!("Comprehension failed: {}", e))?;
@@ -345,24 +345,25 @@ impl Brainstormable for Agent {
 
     async fn plan_from_comprehension(
         &self,
-        goal: &str,
+        goal: &crate::goal::GoalSpec,
         comprehension: &Comprehension,
     ) -> Result<Plan, Box<dyn std::error::Error>> {
+        let goal_str = goal.statement.as_str();
         let user = format!(
             "## Goal\n{}\n\n## Context\n{}\n\n\
              Break this into complexity-tagged subtasks (cheap/mid/premium).",
-            goal, comprehension.summary
+            goal_str, comprehension.summary
         );
 
         let req = CompletionRequest::prompt(crate::cognition::PLAN_SYSTEM_PROMPT, &user)
             .with_model("gpt-4o");
 
-        let (response, _usage) = self
+        let (response, _usage, _signals) = self
             .run_tool_loop(req)
             .await
             .map_err(|e| format!("Planning failed: {}", e))?;
 
-        let plan = crate::cognition::parse_plan_from_response(&response.content, goal, false);
+        let plan = crate::cognition::parse_plan_from_response(&response.content, goal, false)?;
         Ok(plan)
     }
 }
@@ -411,9 +412,12 @@ mod tests {
             confidence: 0.9,
             plan: Plan {
                 goal: "Refactor API".to_string(),
+                goal_statement: "Refactor API".to_string(),
+                criteria: Vec::new(),
                 subtasks: Vec::new(),
                 tdd: false,
                 risks: Vec::new(),
+                schema_version: String::new(),
             },
         };
         assert_eq!(proposal.agent_id, 0);
