@@ -59,6 +59,10 @@ use crate::utils::run_snapshots::write_json_snapshot;
 /// the most common safe, non-destructive tools for a coding agent.
 const DEFAULT_SHELL_ALLOWLIST: &[&str] = &["cargo", "git"];
 
+/// Maximum file size (bytes) for pre-loading into the comprehension prompt.
+/// Files larger than this are skipped to avoid blowing up the context window.
+const PRELOAD_MAX_BYTES: usize = 50 * 1024; // 50 KB
+
 /// A hook that prints per-iteration progress to stderr during `sruja agent loop`.
 /// Only active when stdin is a TTY (interactive mode).
 struct ProgressHook;
@@ -326,11 +330,46 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         dry_run,
         system_hints,
         enable_tool_call_tracing: true,
+        max_tool_iterations: manifest.max_tool_iterations,
         ..Default::default()
     };
 
     // ── Run the loop ──────────────────────────────────────────────────────
     let run_id = generate_run_id();
+
+    // ── Pre-load target files for comprehension (Phase 2) ────────────────
+    // When --file is specified, read the file once and inject it into the
+    // comprehension prompt. Eliminates redundant file_read tool calls.
+    // Skip files larger than PRELOAD_MAX_BYTES to avoid context window bloat.
+    let preloaded_files: std::collections::HashMap<String, String> = goal_spec
+        .target_files
+        .iter()
+        .filter_map(|path| {
+            let full_path = repo_path.join(path);
+            match std::fs::metadata(&full_path) {
+                Ok(meta) if meta.len() as usize > PRELOAD_MAX_BYTES => {
+                    eprintln!(
+                        "  Warning: skipping pre-load of {path} ({}KB > {}KB limit)",
+                        meta.len() / 1024,
+                        PRELOAD_MAX_BYTES / 1024
+                    );
+                    return None;
+                }
+                Err(e) => {
+                    eprintln!("  Warning: could not pre-load {path}: {e}");
+                    return None;
+                }
+                _ => {}
+            }
+            match std::fs::read_to_string(&full_path) {
+                Ok(content) => Some((path.clone(), content)),
+                Err(e) => {
+                    eprintln!("  Warning: could not pre-load {path}: {e}");
+                    None
+                }
+            }
+        })
+        .collect();
 
     let agent = {
         let mut builder = sruja_agent::Agent::builder()
@@ -339,7 +378,8 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             .config(config)
             .memory(repo_path)
             .trace_context(&run_id, &run_id)
-            .tool_call_tracer(Box::new(super::context_events::ContextEventsTracer));
+            .tool_call_tracer(Box::new(super::context_events::ContextEventsTracer))
+            .preloaded_files(preloaded_files);
 
         // Connect to declared MCP servers (graceful degradation if none/failed)
         if !manifest.mcp.servers.is_empty() {

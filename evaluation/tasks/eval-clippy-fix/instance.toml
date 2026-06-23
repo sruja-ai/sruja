@@ -1,0 +1,15 @@
+instance_id = "eval-clippy-fix"
+category = "bug_repro_fix"
+difficulty = 2
+profile = "coding"
+base_commit = "e36c915309ff8a0c3422008c79c9ded316bdd86c"
+gold_patch = "snapshots/gold.diff"
+test_patch = "snapshots/test.diff"
+problem_statement = "problem_statement.md"
+fail_to_pass = ["intent_violation_preserves_specific_step_argv", "intent_violation_generic_fallback_uses_intent_check"]
+pass_to_pass = ["plan_remediation_steps_returns_steps_for_architecture_violations"]
+
+[metadata]
+crate = "sruja-cli"
+file = "crates/sruja-cli/src/commands/remediation.rs"
+severity = "correctness"

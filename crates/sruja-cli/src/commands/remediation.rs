@@ -207,19 +207,30 @@ fn step_for_violation(v: &ViolationRecord) -> PlaybookStep {
 
 fn step_for_intent_violation(v: &ViolationRecord) -> PlaybookStep {
     let mut step = step_for_violation(v);
-    if step.id == "step_drift_kind_unknown" || step.id.starts_with("step_drift_kind_") {
+    let is_generic_fallback = step.id.starts_with("step_drift_kind_");
+
+    if is_generic_fallback {
+        // Generic drift fallback: rewrite to a targeted intent check
         step.id = format!("step_intent_{}", step.id);
+        step.argv = vec![
+            "sruja".to_string(),
+            "intent".to_string(),
+            "check".to_string(),
+            "-r".to_string(),
+            ".".to_string(),
+            "-f".to_string(),
+            "json".to_string(),
+        ];
+        step.expected = Some("Intent vs reality report for architectural alignment".to_string());
+    } else {
+        // Specific step (propose, review, impact, compliance): preserve the
+        // tailored argv but mark it as intent-driven and update the id.
+        step.id = format!("step_intent_{}", step.id);
+        step.expected = Some(format!(
+            "Intent check for: {}",
+            step.expected.unwrap_or_default()
+        ));
     }
-    step.argv = vec![
-        "sruja".to_string(),
-        "intent".to_string(),
-        "check".to_string(),
-        "-r".to_string(),
-        ".".to_string(),
-        "-f".to_string(),
-        "json".to_string(),
-    ];
-    step.expected = Some("Intent vs reality report for architectural alignment".to_string());
     step
 }
 
@@ -266,5 +277,47 @@ mod tests {
             v.get("artifact_kind").and_then(|x| x.as_str()),
             Some("deterministic_fact")
         );
+    }
+
+    #[test]
+    fn intent_violation_preserves_specific_step_argv() {
+        let intent = serde_json::json!({
+            "violations": [{
+                "kind": "UndocumentedComponent",
+                "severity": "Warning",
+                "rule_id": "SRUJA-DOC-001"
+            }]
+        });
+        let steps = plan_remediation_steps(&Value::Null, &intent);
+        let propose = steps
+            .iter()
+            .find(|s| s.id == "step_intent_step_propose_baseline");
+        assert!(
+            propose.is_some(),
+            "should have a propose step, got: {:?}",
+            steps.iter().map(|s| &s.id).collect::<Vec<_>>()
+        );
+        let propose = propose.unwrap();
+        assert!(
+            propose.argv.contains(&"propose".to_string()),
+            "propose step should preserve sruja propose argv, got: {:?}",
+            propose.argv
+        );
+        assert!(propose.id.starts_with("step_intent_"));
+    }
+
+    #[test]
+    fn intent_violation_generic_fallback_uses_intent_check() {
+        let intent = serde_json::json!({
+            "violations": [{
+                "kind": "SomethingUnknown",
+                "severity": "Warning"
+            }]
+        });
+        let steps = plan_remediation_steps(&Value::Null, &intent);
+        assert_eq!(steps.len(), 1);
+        assert!(steps[0].id.starts_with("step_intent_step_drift_kind_"));
+        assert!(steps[0].argv.contains(&"intent".to_string()));
+        assert!(steps[0].argv.contains(&"check".to_string()));
     }
 }

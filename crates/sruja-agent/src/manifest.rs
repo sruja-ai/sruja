@@ -13,6 +13,9 @@ use crate::verify::VerifyStep;
 fn default_max_iterations() -> usize {
     3
 }
+fn default_max_tool_iterations() -> usize {
+    8
+}
 fn default_true() -> bool {
     true
 }
@@ -188,6 +191,11 @@ pub struct LoopManifest {
     #[serde(default = "default_max_iterations")]
     pub max_iterations: usize,
 
+    /// Max tool-call iterations per LLM phase (comprehension, plan, execute, critique).
+    /// Soft guard fires at half, hard guard at quarter. Default: 8.
+    #[serde(default = "default_max_tool_iterations")]
+    pub max_tool_iterations: usize,
+
     /// Write tests before implementation (TDD mode).
     #[serde(default = "default_true")]
     pub tdd: bool,
@@ -246,6 +254,7 @@ impl Default for LoopManifest {
         Self {
             goal: GoalSpec::default(),
             max_iterations: default_max_iterations(),
+            max_tool_iterations: default_max_tool_iterations(),
             tdd: default_true(),
             review_every_change: default_true(),
             dry_run: false,
@@ -302,6 +311,26 @@ spend_cap_usd = 1.5
         assert_eq!(m.spend_cap_usd, Some(1.5));
         assert!(m.goal.statement.is_empty());
         assert!(m.tdd);
+    }
+
+    #[test]
+    fn parse_max_tool_iterations() {
+        let toml_str = r#"
+max_iterations = 5
+max_tool_iterations = 12
+"#;
+        let m = LoopManifest::from_toml_str(toml_str).unwrap();
+        assert_eq!(m.max_iterations, 5);
+        assert_eq!(m.max_tool_iterations, 12);
+    }
+
+    #[test]
+    fn max_tool_iterations_defaults_to_eight() {
+        let toml_str = r#"
+max_iterations = 3
+"#;
+        let m = LoopManifest::from_toml_str(toml_str).unwrap();
+        assert_eq!(m.max_tool_iterations, 8);
     }
 
     #[test]

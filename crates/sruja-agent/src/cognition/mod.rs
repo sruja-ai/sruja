@@ -104,7 +104,10 @@ impl Default for AgentConfig {
             review_every_change: true,
             spend_cap_usd: None,
             dry_run: false,
-            max_tool_iterations: 15,
+            // Comprehension prompt says "3-5 tool calls" but models often ignore
+            // it. 8 is the safety net: soft guard at 4th call (iter 3), hard at 6th call (iter 5).
+            // Keeps total loop time under ~60s per phase at 5s/call.
+            max_tool_iterations: 8,
             system_hints: Vec::new(),
             critique_personas: CritiquePersona::default_personas(),
             enable_tool_call_tracing: false,
@@ -584,6 +587,10 @@ pub struct Agent {
     /// Trace context for tool-call event attribution (U5).
     trace_run_id: Option<String>,
     trace_id: Option<String>,
+    /// Pre-loaded target file contents, keyed by path.
+    /// Injected into the comprehension user prompt to avoid redundant file_read
+    /// tool calls when --file is specified on the CLI.
+    preloaded_files: std::collections::HashMap<String, String>,
 }
 
 impl Agent {
@@ -666,12 +673,29 @@ impl Agent {
             )
         };
         let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}{hints}");
+
+        // Inject pre-loaded target file contents to eliminate redundant reads.
+        let preloaded_section = if self.preloaded_files.is_empty() {
+            String::new()
+        } else {
+            let mut sections = Vec::new();
+            for (path, content) in &self.preloaded_files {
+                sections.push(format!("### {path}\n```\n{content}\n```"));
+            }
+            format!(
+                "\n\n## Pre-loaded Target Files\n\
+                 The following files have been provided for your reference. \
+                 Do NOT call file_read for these — the content is already here.\n\n{}",
+                sections.join("\n\n")
+            )
+        };
+
         let user = format!(
             "## Goal\n{goal_str}\n\n\
              ## Instructions\n\
              Use the available tools to explore the codebase. \
              Cite architecture element IDs in your findings. \
-             Produce a concise, grounded understanding."
+             Produce a concise, grounded understanding.{preloaded_section}"
         );
 
         let req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
@@ -2366,7 +2390,9 @@ Rules:\n\
    produce your understanding as plain text.\n\
 2. Cite architecture element IDs (e.g. Sruja.CLI, Sruja.Graph) in your findings.\n\
 3. Assess blast radius and risks.\n\
-4. Be concise. Cite evidence, not speculation.\n\n\
+4. Be concise. Cite evidence, not speculation.\n\
+5. If target files are pre-loaded in the user prompt, do NOT call file_read for them. \
+   Use the provided content directly.\n\n\
 IMPORTANT: Once you have enough context (usually after 2-4 tool calls), you MUST \
 stop calling tools and write your final answer as plain text in your response. \
 Do NOT keep calling tools indefinitely.";
@@ -2741,6 +2767,7 @@ pub struct AgentBuilder {
     tool_call_tracer: Option<Box<dyn ToolCallTracer>>,
     trace_run_id: Option<String>,
     trace_id: Option<String>,
+    preloaded_files: std::collections::HashMap<String, String>,
 }
 
 impl AgentBuilder {
@@ -2848,6 +2875,17 @@ impl AgentBuilder {
         self
     }
 
+    /// Set pre-loaded target file contents.
+    ///
+    /// When `--file <path>` is specified on the CLI, the file is read once
+    /// and injected into the comprehension user prompt. This eliminates
+    /// redundant `file_read` tool calls that models often repeat on the
+    /// same file in small chunks.
+    pub fn preloaded_files(mut self, files: std::collections::HashMap<String, String>) -> Self {
+        self.preloaded_files = files;
+        self
+    }
+
     /// Build the agent.
     pub fn build(self) -> Result<Agent, AgentError> {
         let llm_arc = self.llm.ok_or(AgentError::NoLlm)?;
@@ -2895,6 +2933,7 @@ impl AgentBuilder {
             tool_call_tracer: self.tool_call_tracer,
             trace_run_id: self.trace_run_id,
             trace_id: self.trace_id,
+            preloaded_files: self.preloaded_files,
         })
     }
 }

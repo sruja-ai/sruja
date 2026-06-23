@@ -102,7 +102,12 @@ mod tests {
 
     #[test]
     fn default_grader_steps_sruja_bin_substituted() {
-        let steps = default_grader_steps(Path::new("."), "/custom/path/to/sruja", "cycles");
+        let tmp = tempfile::tempdir().unwrap();
+        let repo_path = tmp.path();
+        std::fs::write(repo_path.join("repo.sruja"), "Test = system \"Test\" {}").unwrap();
+
+        let steps = default_grader_steps(repo_path, "/custom/path/to/sruja", "cycles");
+        assert_eq!(steps.len(), 2);
         assert_eq!(steps[0].command, "/custom/path/to/sruja");
         assert_eq!(steps[1].command, "/custom/path/to/sruja");
     }
