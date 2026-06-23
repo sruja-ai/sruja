@@ -191,6 +191,41 @@ fn git_commit_short(repo_path: &Path) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+/// Check if the cached context is fresh: git commit in context.json matches current HEAD.
+/// If true, sync can be skipped to avoid expensive re-scans.
+pub fn is_context_fresh(repo_path: &Path) -> bool {
+    let context_path = repo_path.join(".sruja/context.json");
+    let scan_cache_path = repo_path.join(".sruja/cache/scan.json");
+
+    // Both context.json and scan cache must exist for freshness.
+    if !context_path.exists() || !scan_cache_path.exists() {
+        return false;
+    }
+
+    let content = match fs::read_to_string(&context_path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    let ctx: serde_json::Value = match serde_json::from_str(&content) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+
+    let cached_commit = match ctx.get("git_commit").and_then(|v| v.as_str()) {
+        Some(c) => c,
+        None => return false,
+    };
+
+    // If no current HEAD available, cannot verify freshness.
+    let current_commit = match git_commit_short(repo_path) {
+        Some(c) => c,
+        None => return false,
+    };
+
+    current_commit == cached_commit
+}
+
 /// Context.json schema version for machine consumers.
 const CONTEXT_SCHEMA_VERSION: u32 = 1;
 
@@ -228,8 +263,12 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .as_ref()
         .and_then(|p| p.to_str().map(String::from));
 
-    // Use shared analysis pipeline for the compare step.
-    let analysis = crate::commands::analysis::run_analysis_default(repo_path)?;
+    // Use shared analysis pipeline for the compare step, reusing the graph from scan.
+    let analysis = crate::commands::analysis::run_analysis_with_graph(
+        repo_path,
+        &crate::commands::analysis::AnalysisOptions::default(),
+        Some(graph.clone()),
+    )?;
     let truth_status = &analysis.truth_status;
     let health_score = analysis.health_score;
 

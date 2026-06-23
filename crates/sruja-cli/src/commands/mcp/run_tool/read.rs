@@ -481,6 +481,7 @@ pub(crate) async fn try_run(
                 enrich: &enrich_ref,
                 continue_on_error,
                 trajectories: None,
+                force_sync: false,
             })
             .await?;
             finish(Ok(text))

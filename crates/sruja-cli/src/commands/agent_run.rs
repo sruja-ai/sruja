@@ -58,6 +58,7 @@ pub struct AgentRunOptions<'a> {
     pub enrich: &'a crate::enrichment::EnrichmentRef<'a>,
     pub continue_on_error: bool,
     pub trajectories: Option<usize>,
+    pub force_sync: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -550,7 +551,7 @@ fn build_intent_report_json(
     use std::path::PathBuf;
 
     let repo_path = Path::new(repo_root);
-    let graph = sruja_scan::scan_repo(repo_path)?;
+    let graph = crate::commands::scan_repo_cached(repo_path)?;
 
     let mut context = IntentContext::new();
     let intent_dir = if let Some(path) = intent_path {
@@ -721,8 +722,11 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         load_allowlists(repo_path);
 
     // ── Observe: gather deterministic facts ────────────────────────────────
-    // Always run sync in both plan/apply; it’s the deterministic grounding step.
-    sync_cmd::sync(options.repo, "quiet").await?;
+    // Skip sync when cache is fresh (same git HEAD) to avoid expensive re-scans.
+    // Pass --force-sync to bypass freshness check.
+    if options.force_sync || !sync_cmd::is_context_fresh(repo_path) {
+        sync_cmd::sync(options.repo, "quiet").await?;
+    }
 
     // Resolve target element id (if possible). For query we can’t reliably resolve yet.
     let resolved_element_id = if options.query.is_none() {
@@ -741,7 +745,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
     let focus_json = if let Some(ref id) = resolved_element_id {
         // Build the same JSON as focus --format for-ai would emit.
         let kg = crate::graph_store::load_or_build_graph(repo_path)?;
-        let scan_node_count = match sruja_scan::scan_repo(repo_path) {
+        let scan_node_count = match crate::commands::scan_repo_cached(repo_path) {
             Ok(g) => g.nodes.len(),
             Err(_) => kg.nodes.len(),
         };
@@ -771,7 +775,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
     };
 
     let impact_json = if let Some(ref id) = resolved_element_id {
-        let g = sruja_scan::scan_repo(repo_path)?;
+        let g = crate::commands::scan_repo_cached(repo_path)?;
         let blast = g.blast_radius(id, 3);
         serde_json::json!({
             "schema_version": "impact/v0",

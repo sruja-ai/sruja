@@ -970,6 +970,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 ref enrich,
                 continue_on_error,
                 trajectories,
+                force_sync,
             } => {
                 let enrich_ref = enrich.as_ref();
                 commands::agent_run(commands::AgentRunOptions {
@@ -987,6 +988,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     enrich: &enrich_ref,
                     continue_on_error,
                     trajectories,
+                    force_sync,
                 })
                 .await
             }
@@ -1020,6 +1022,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         enrich: &enrich_ref,
                         continue_on_error: false,
                         trajectories: None,
+                        force_sync: false,
                     },
                     out_path,
                     print,

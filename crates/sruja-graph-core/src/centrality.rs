@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 pub struct CentralityAnalyzer {
     normalized: bool,
     max_sample_size: usize,
+    quiet: bool,
 }
 
 const DEFAULT_MAX_SAMPLE_SIZE: usize = 1000;
@@ -69,6 +70,7 @@ impl Default for CentralityAnalyzer {
         Self {
             normalized: true,
             max_sample_size: DEFAULT_MAX_SAMPLE_SIZE,
+            quiet: false,
         }
     }
 }
@@ -88,6 +90,13 @@ impl CentralityAnalyzer {
     pub fn with_max_sample_size(max_sample_size: usize) -> Self {
         Self {
             max_sample_size,
+            ..Self::default()
+        }
+    }
+
+    pub fn with_quiet(quiet: bool) -> Self {
+        Self {
+            quiet,
             ..Self::default()
         }
     }
@@ -165,8 +174,9 @@ impl CentralityAnalyzer {
         };
 
         let total_sources = sources.len();
+        let progress_interval = if total_sources > 5000 { 1000 } else { 500 };
         for (idx, source) in sources.iter().enumerate() {
-            if total_sources > 100 && idx % 100 == 0 {
+            if !self.quiet && total_sources > 100 && idx % progress_interval == 0 {
                 eprintln!(
                     "  Computing betweenness: {}/{} sources processed",
                     idx, total_sources

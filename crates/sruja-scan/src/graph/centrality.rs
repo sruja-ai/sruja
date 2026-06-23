@@ -24,9 +24,16 @@ pub struct ComponentImportance {
 
 /// Compute all centrality metrics for all nodes in the graph
 pub fn compute_all_centrality(graph: &Graph) -> HashMap<String, ComponentImportance> {
+    compute_all_centrality_quiet(graph, false)
+}
+
+pub fn compute_all_centrality_quiet(
+    graph: &Graph,
+    quiet: bool,
+) -> HashMap<String, ComponentImportance> {
     use sruja_graph_core::centrality::CentralityAnalyzer;
 
-    let analyzer = CentralityAnalyzer::new();
+    let analyzer = CentralityAnalyzer::with_quiet(quiet);
     let result = analyzer.analyze_graph(graph);
 
     // Merge all 5 measures into ComponentImportance

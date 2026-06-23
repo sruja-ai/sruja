@@ -206,6 +206,63 @@ pub(crate) fn scan_repo_cached_with_opts(
     Ok(graph)
 }
 
+const CENTRALITY_CACHE_PATH: &str = ".sruja/cache/centrality.json";
+
+/// Compute centrality with disk caching. Results are cached keyed by graph hash.
+pub(crate) fn compute_all_centrality_cached(
+    repo_path: &std::path::Path,
+    graph: &sruja_scan::Graph,
+    quiet: bool,
+) -> Result<std::collections::HashMap<String, sruja_scan::graph::ComponentImportance>, CliError> {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    // Compute a hash of the graph for cache key.
+    let graph_json = serde_json::to_string(&graph)?;
+    let mut hasher = DefaultHasher::new();
+    graph_json.hash(&mut hasher);
+    let graph_hash = hasher.finish();
+
+    let cache_path = repo_path.join(CENTRALITY_CACHE_PATH);
+
+    // Try to load from cache.
+    if cache_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&cache_path) {
+            if let Ok(cached) = serde_json::from_str::<CentralityCache>(&content) {
+                if cached.graph_hash == graph_hash {
+                    return Ok(cached.scores);
+                }
+            }
+        }
+    }
+
+    // Compute fresh.
+    let scores = if quiet {
+        sruja_scan::graph::centrality::compute_all_centrality_quiet(graph, true)
+    } else {
+        sruja_scan::graph::centrality::compute_all_centrality(graph)
+    };
+
+    // Write cache.
+    let cache = CentralityCache {
+        graph_hash,
+        scores: scores.clone(),
+    };
+    if let Some(parent) = cache_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let content = serde_json::to_string(&cache)?;
+    let _ = std::fs::write(cache_path, content);
+
+    Ok(scores)
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct CentralityCache {
+    graph_hash: u64,
+    scores: std::collections::HashMap<String, sruja_scan::graph::ComponentImportance>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

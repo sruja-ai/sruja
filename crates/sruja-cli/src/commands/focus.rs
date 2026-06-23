@@ -280,7 +280,7 @@ pub fn resolve_target(
                 "Failed to scan repo for file focus resolution: {e}"
             ))
         })?;
-        let centrality = sruja_scan::graph::compute_all_centrality(&scan);
+        let centrality = crate::commands::compute_all_centrality_cached(repo_path, &scan, false)?;
         let focus_ctx = crate::commands::context::logic::build_focus_context(
             &scan,
             repo_path.to_string_lossy().as_ref(),

@@ -325,6 +325,9 @@ pub enum AgentCommand {
         /// Number of parallel sandbox trajectories for MaTTS self-contrast (minimum: 2)
         #[arg(long)]
         trajectories: Option<usize>,
+        /// Force full sync even when cache is fresh (re-scans entire codebase)
+        #[arg(long)]
+        force_sync: bool,
     },
     /// Emit a reviewable plan JSON grounded in repo evidence (pair with `agent apply`)
     Plan {

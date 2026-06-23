@@ -46,6 +46,18 @@ pub struct AnalysisOptions {
 /// This is the single source of truth for the analysis steps shared by
 /// `status`, `health`, `review`, `sync`, and `drift` commands.
 pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<AnalysisResult, CliError> {
+    run_analysis_with_graph(repo_path, opts, None)
+}
+
+/// Run the full analysis pipeline, optionally reusing a pre-scanned graph.
+///
+/// Pass `Some(graph)` to skip the expensive re-scan when the caller already
+/// has the graph (e.g. from `sync` which scans before calling analysis).
+pub fn run_analysis_with_graph(
+    repo_path: &Path,
+    opts: &AnalysisOptions,
+    graph: Option<sruja_scan::Graph>,
+) -> Result<AnalysisResult, CliError> {
     if !repo_path.exists() {
         return Err(CliError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
@@ -53,8 +65,11 @@ pub fn run_analysis(repo_path: &Path, opts: &AnalysisOptions) -> Result<Analysis
         )));
     }
 
-    // Step 1: Scan repo
-    let graph = sruja_scan::scan_repo(repo_path)?;
+    // Step 1: Scan repo (or reuse provided graph)
+    let graph = match graph {
+        Some(g) => g,
+        None => sruja_scan::scan_repo(repo_path)?,
+    };
 
     // Step 2: Resolve architecture path
     let baseline_path = if opts.structural_only {

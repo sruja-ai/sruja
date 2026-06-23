@@ -281,7 +281,11 @@ pub fn build_architecture_context(
     let mut boundaries = boundaries;
     boundaries.truncate(max_boundary_rules);
 
-    let centrality = sruja_scan::graph::compute_all_centrality(graph);
+    let centrality = crate::commands::compute_all_centrality_cached(
+        Path::new(repo),
+        graph,
+        false,
+    )?;
 
     let focus = file
         .map(|f| build_focus_context(graph, repo, f, intent, depth, max_tokens, &centrality))
@@ -967,7 +971,11 @@ fn resolve_focus(
     }
 
     if let Some(path) = selectors.file {
-        let centrality = sruja_scan::graph::compute_all_centrality(graph);
+    let centrality = crate::commands::compute_all_centrality_cached(
+        Path::new(repo_root),
+        graph,
+        false,
+    )?;
         let focus_ctx = build_focus_context(graph, repo_root, path, None, 0, 0, &centrality)?;
         let mut focus: Vec<String> = focus_ctx.matched_nodes.into_iter().map(|n| n.id).collect();
         focus.truncate(1);
