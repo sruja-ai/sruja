@@ -208,10 +208,9 @@ fn step_for_violation(v: &ViolationRecord) -> PlaybookStep {
 fn step_for_intent_violation(v: &ViolationRecord) -> PlaybookStep {
     let mut step = step_for_violation(v);
     let is_generic_fallback = step.id.starts_with("step_drift_kind_");
+    step.id = format!("step_intent_{}", step.id);
 
     if is_generic_fallback {
-        // Generic drift fallback: rewrite to a targeted intent check
-        step.id = format!("step_intent_{}", step.id);
         step.argv = vec![
             "sruja".to_string(),
             "intent".to_string(),
@@ -223,9 +222,6 @@ fn step_for_intent_violation(v: &ViolationRecord) -> PlaybookStep {
         ];
         step.expected = Some("Intent vs reality report for architectural alignment".to_string());
     } else {
-        // Specific step (propose, review, impact, compliance): preserve the
-        // tailored argv but mark it as intent-driven and update the id.
-        step.id = format!("step_intent_{}", step.id);
         step.expected = Some(format!(
             "Intent check for: {}",
             step.expected.unwrap_or_default()
