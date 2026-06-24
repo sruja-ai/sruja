@@ -10,10 +10,14 @@ use thiserror::Error;
 fn format_decision_evidence(d: &Decision) -> String {
     let snippet = d.decision.trim();
     let max_len = 200;
-    if snippet.len() <= max_len {
+    if snippet.chars().count() <= max_len {
         format!("[{}] {}", d.title, snippet)
     } else {
-        format!("[{}] {}...", d.title, &snippet[..max_len])
+        format!(
+            "[{}] {}...",
+            d.title,
+            snippet.chars().take(max_len).collect::<String>()
+        )
     }
 }
 

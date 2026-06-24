@@ -278,19 +278,22 @@ fn extract_relevant_excerpt(content: &str, term: &str, max_len: usize) -> String
     let term_lower = term.to_lowercase();
 
     if let Some(pos) = content_lower.find(&term_lower) {
-        let start = pos.saturating_sub(40);
-        let end = (pos + term.len() + 120).min(content.len());
+        let start = content.floor_char_boundary(pos.saturating_sub(40));
+        let end = content.ceil_char_boundary((pos + term.len() + 120).min(content.len()));
         let snippet = &content[start..end];
         let trimmed = snippet.trim();
-        if trimmed.len() > max_len {
-            format!("{}...", &trimmed[..max_len])
+        if trimmed.chars().count() > max_len {
+            format!("{}...", trimmed.chars().take(max_len).collect::<String>())
         } else {
             trimmed.to_string()
         }
     } else {
         let first_line = content.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
-        if first_line.len() > max_len {
-            format!("{}...", &first_line[..max_len])
+        if first_line.chars().count() > max_len {
+            format!(
+                "{}...",
+                first_line.chars().take(max_len).collect::<String>()
+            )
         } else {
             first_line.to_string()
         }

@@ -769,8 +769,8 @@ impl Parser {
             Err(_) => (remaining, ()),
         };
         if !final_tail.trim().is_empty() {
-            let preview = if final_tail.len() > 100 {
-                format!("{}...", &final_tail[..100])
+            let preview = if final_tail.chars().count() > 100 {
+                format!("{}...", final_tail.chars().take(100).collect::<String>())
             } else {
                 final_tail.to_string()
             };
