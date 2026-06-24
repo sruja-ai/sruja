@@ -59,6 +59,8 @@ rusqlite = { version = "0.33", features = ["bundled"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 async-trait = "0.1"
 toml = "1"
+futures = "0.3"
+async-stream = "0.3"
 
 [profile.release]
 opt-level = "z"

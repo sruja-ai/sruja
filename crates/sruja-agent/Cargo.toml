@@ -31,7 +31,9 @@ sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-graph = { path = "../sruja-graph" }
 sruja-language = { path = "../sruja-language" }
 fs2 = "0.4.3"
-reqwest = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true, features = ["stream"] }
+futures.workspace = true
+async-stream.workspace = true
 rmcp = { version = "1.7", default-features = false, optional = true, features = ["client", "transport-child-process", "transport-streamable-http-client", "transport-streamable-http-client-reqwest"] }
 
 [dev-dependencies]

@@ -308,6 +308,18 @@ impl ToolRegistry {
         }
     }
 
+    /// Return the file paths a mutating tool invocation will modify.
+    ///
+    /// For non-mutating tools (reads, searches) this is always empty.
+    /// Used by the streaming chat turn to collect `mutated_paths` for
+    /// selective git staging (U2/U4).
+    pub fn mutated_paths(&self, name: &str, params: &serde_json::Value) -> Vec<String> {
+        match self.tools.get(name) {
+            Some(tool) if tool.is_mutating() => tool.affected_paths(params),
+            _ => Vec::new(),
+        }
+    }
+
     /// Dispatch a tool call and wrap the outcome in a [`ToolCallRecord`].
     ///
     /// This is the primary entry point for the tool loop — it captures timing,

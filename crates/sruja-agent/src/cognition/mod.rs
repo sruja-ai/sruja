@@ -15,6 +15,7 @@
 //! the LLM call through the model configured for that tier, giving per-subtask
 //! cost control.
 
+pub mod chat;
 pub mod decision;
 pub mod hook;
 pub mod runbook;

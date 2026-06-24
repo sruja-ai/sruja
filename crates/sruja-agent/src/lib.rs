@@ -60,6 +60,7 @@ pub use cognition::{
     LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan, ToolCallTracer,
     VerifierConfig,
 };
+pub use cognition::chat::{TurnEvent, TurnResult};
 pub use dlc::DlcPipeline;
 pub use executor::TrajectoryExecutor;
 pub use goal::GoalSpec;

@@ -24,6 +24,7 @@
 //! ```
 
 pub mod router;
+pub mod stream;
 
 #[cfg(feature = "llm-openai")]
 pub mod openai;
@@ -40,6 +41,7 @@ pub use anthropic::AnthropicClient;
 #[cfg(feature = "llm-openai")]
 pub use openai::OpenAiClient;
 pub use router::{ModelRouter, TaskTier};
+pub use stream::{reassemble_stream, Stream, StreamEvent};
 pub use tiered::TieredClient;
 
 /// Error from an LLM provider call.
@@ -161,7 +163,7 @@ pub enum ResponseFormat {
 }
 
 /// Token usage for a completion.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct Usage {
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
@@ -284,4 +286,45 @@ pub trait LlmClient: Send + Sync {
 
     /// The default model this client uses.
     fn default_model(&self) -> &str;
+
+    /// Streaming variant of [`complete`](Self::complete). Returns a stream of
+    /// [`StreamEvent`]s that an interactive caller can render incrementally.
+    ///
+    /// The default implementation buffers [`complete`](Self::complete) and emits
+    /// the whole result as a burst of events (correct, but not token-streamed).
+    /// Providers with a real streaming endpoint override this for true streaming.
+    fn complete_stream<'a>(
+        &'a self,
+        req: &'a CompletionRequest,
+    ) -> Stream<'a> {
+        // Drive the non-streaming call, then translate its result into events.
+        // Tool calls are emitted as Start + a single Arguments fragment (the full
+        // serialized JSON); content as one delta; then Usage and Finish.
+        let fut = self.complete(req);
+        Box::pin(async_stream::stream! {
+            match fut.await {
+                Ok(resp) => {
+                    for (i, tc) in resp.tool_calls.iter().enumerate() {
+                        yield Ok(StreamEvent::ToolCallStart {
+                            index: i,
+                            id: tc.id.clone(),
+                            name: tc.name.clone(),
+                        });
+                        yield Ok(StreamEvent::ToolCallArguments {
+                            index: i,
+                            fragment: tc.arguments.to_string(),
+                        });
+                    }
+                    if !resp.content.is_empty() {
+                        yield Ok(StreamEvent::ContentDelta(resp.content));
+                    }
+                    yield Ok(StreamEvent::Usage(resp.usage));
+                    yield Ok(StreamEvent::Finish {
+                        finish_reason: resp.finish_reason,
+                    });
+                }
+                Err(e) => yield Err(e),
+            }
+        })
+    }
 }
