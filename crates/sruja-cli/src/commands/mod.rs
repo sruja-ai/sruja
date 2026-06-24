@@ -11,6 +11,7 @@ pub mod eval;
 pub mod intent_domain;
 pub mod loop_grader;
 pub mod scan_domain;
+pub mod snippet;
 pub mod utility_domain;
 pub mod workflow;
 pub(crate) mod workflow_aidlc;

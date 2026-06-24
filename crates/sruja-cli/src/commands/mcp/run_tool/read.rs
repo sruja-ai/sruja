@@ -487,6 +487,25 @@ pub(crate) async fn try_run(
             finish(Ok(text))
         }
 
+        "sruja_get_code_snippet" => {
+            let symbol_id = arguments.get("symbol_id").and_then(|v| v.as_str());
+            let file_path = arguments.get("file_path").and_then(|v| v.as_str());
+            let line = arguments
+                .get("line")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as usize);
+            let end_line = arguments
+                .get("end_line")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as usize);
+
+            let graph = get_or_scan_graph(graph_cache, repo).await?;
+            let snippet = crate::commands::snippet::fetch_code_snippet(
+                repo, &graph, symbol_id, file_path, line, end_line,
+            )?;
+            finish(Ok(serde_json::to_string_pretty(&snippet)?))
+        }
+
         _ => Ok(None),
     }
 }

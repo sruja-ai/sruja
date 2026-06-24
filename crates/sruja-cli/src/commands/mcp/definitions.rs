@@ -818,5 +818,20 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "name": "sruja_get_code_snippet",
+            "title": "Sruja Code Snippet",
+            "description": "Fetch source code for a symbol (function/struct/class) by qualified name or file path. Returns the source lines within the symbol's bounds (line to end_line).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "symbol_id": { "type": "string", "description": "Qualified symbol ID (e.g., 'src_main_rs:processOrder') - mutually exclusive with file_path" },
+                    "file_path": { "type": "string", "description": "Absolute or repo-relative file path (e.g., 'src/main.rs') - mutually exclusive with symbol_id. Returns all symbols in the file." },
+                    "line": { "type": "integer", "description": "Optional start line (1-indexed) when using file_path" },
+                    "end_line": { "type": "integer", "description": "Optional end line (1-indexed) when using file_path" }
+                }
+            }
+        }),
     ]
 }

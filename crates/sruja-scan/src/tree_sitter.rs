@@ -431,11 +431,73 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 confidence: Default::default(),
             });
         }
+
+        let mut definitions_sorted = parsed.definitions.clone();
+        definitions_sorted.sort_by_key(|d| d.line);
+
+        for (i, def) in definitions_sorted.iter().enumerate() {
+            let symbol_kind = definition_kind_to_symbol_kind(def.kind);
+            let end_line = if i + 1 < definitions_sorted.len() {
+                definitions_sorted[i + 1].line.saturating_sub(1).max(def.line)
+            } else {
+                def.line + 60
+            };
+
+            let symbol_node_id = format!("{}:{}", file_id, def.name);
+            let mut metadata = HashMap::new();
+            metadata.insert("line".to_string(), def.line.to_string());
+            metadata.insert("end_line".to_string(), end_line.to_string());
+            metadata.insert("symbol_kind".to_string(), symbol_kind.to_string());
+            metadata.insert("language".to_string(), language.to_string());
+
+            nodes.push(Node {
+                id: symbol_node_id.clone(),
+                kind: NodeKind::new(symbol_kind),
+                label: def.name.clone(),
+                technology: Some(language.to_string()),
+                path: Some(path.to_string_lossy().to_string()),
+                metadata,
+                canonical_id: None,
+                aliases: Vec::new(),
+                owner: None,
+                domain: None,
+                criticality: None,
+                sources: Vec::new(),
+                confidence: None,
+                ..Default::default()
+            });
+
+            edges.push(Edge {
+                source: file_id.clone(),
+                target: symbol_node_id.clone(),
+                kind: EdgeKind::new("defines"),
+                evidence: vec![EdgeEvidence {
+                    rule: "defines_symbol".to_string(),
+                    file: Some(path.to_string_lossy().to_string()),
+                    line: Some(def.line as u32),
+                    detail: Some(format!("defines {}", def.name)),
+                }],
+                confidence: Default::default(),
+            });
+        }
     }
 
     for (_module_id, node) in module_nodes {
         nodes.push(node);
     }
+
+    let symbols_by_file: HashMap<String, Vec<(String, String)>> = {
+        let mut map: HashMap<String, Vec<(String, String)>> = HashMap::new();
+        for node in &nodes {
+            if let Some(idx) = node.id.rfind(':') {
+                let file_part = &node.id[..idx];
+                map.entry(file_part.to_string())
+                    .or_default()
+                    .push((node.id.clone(), node.label.clone()));
+            }
+        }
+        map
+    };
 
     for (source, targets) in &file_imports {
         for target in targets {
@@ -451,6 +513,23 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
                 }],
                 confidence: Default::default(),
             });
+
+            if let Some(symbols) = symbols_by_file.get(target) {
+                for (symbol_id, label) in symbols {
+                    edges.push(Edge {
+                        source: source.clone(),
+                        target: symbol_id.clone(),
+                        kind: EdgeKind::new(EdgeKind::CALLS),
+                        evidence: vec![EdgeEvidence {
+                            rule: "imports_symbol".to_string(),
+                            file: None,
+                            line: None,
+                            detail: Some(format!("imports symbol {}", label)),
+                        }],
+                        confidence: Default::default(),
+                    });
+                }
+            }
         }
     }
 
@@ -675,6 +754,18 @@ const RESOLVE_EXTENSIONS: &[&str] = &[".ts", ".tsx", ".js", ".jsx", ".mjs", ".cj
 
 fn extract_module_from_id(id: &str) -> String {
     id.rsplit('_').nth(1).unwrap_or(id).to_string()
+}
+
+fn definition_kind_to_symbol_kind(kind: languages::DefinitionKind) -> &'static str {
+    match kind {
+        languages::DefinitionKind::Function => "function",
+        languages::DefinitionKind::Class => "class",
+        languages::DefinitionKind::Interface => "interface",
+        languages::DefinitionKind::Struct => "struct",
+        languages::DefinitionKind::Enum => "enum",
+        languages::DefinitionKind::Constant => "constant",
+        languages::DefinitionKind::Variable => "variable",
+    }
 }
 
 fn resolve_import_improved(
