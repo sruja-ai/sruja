@@ -8,6 +8,7 @@ use super::super::CliError;
 use crate::integrations::{
     resolve_enrichment_plan, resolve_openai_auth, run_cmd_enrichment, run_openai_markdown,
 };
+use sruja_agent::DEFAULT_MODEL;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn enrich_wrapper_json(
@@ -65,7 +66,7 @@ pub(crate) fn enrich_wrapper_json(
             }),
         }
     } else if provider == "openai" {
-        let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
+        let model = plan.model.as_deref().unwrap_or(DEFAULT_MODEL);
         let base_url = plan
             .base_url
             .as_deref()

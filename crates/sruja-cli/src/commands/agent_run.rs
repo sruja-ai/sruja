@@ -694,6 +694,136 @@ fn agent_artifacts_dir(repo_path: &Path) -> PathBuf {
     repo_path.join(".sruja").join("agent").join("runs")
 }
 
+fn build_focus_json(
+    repo_path: &Path,
+    resolved_element_id: &Option<String>,
+    options: &AgentRunOptions,
+    run_id: &str,
+) -> Result<(Value, Vec<String>), CliError> {
+    if let Some(ref id) = resolved_element_id {
+        let kg = crate::graph_store::load_or_build_graph(repo_path)?;
+        let scan_node_count = match crate::commands::scan_repo_cached(repo_path) {
+            Ok(g) => g.nodes.len(),
+            Err(_) => kg.nodes.len(),
+        };
+        let mut briefing = focus_cmd::build_focus_briefing(
+            &kg,
+            id,
+            repo_path,
+            scan_node_count,
+            None,
+            false,
+            false,
+        );
+        let surfaced_learning_ids = briefing.surfaced_learning_ids.clone();
+        briefing.enrichment = None;
+        briefing.run_id = Some(run_id.to_string());
+        let out = focus_cmd::build_focus_for_ai_output(
+            repo_path,
+            options.file,
+            options.element_id,
+            Some(run_id),
+            briefing,
+        );
+        Ok((serde_json::to_value(&out).unwrap_or(Value::Null), surfaced_learning_ids))
+    } else {
+        Ok((Value::Null, Vec::new()))
+    }
+}
+
+fn build_impact_json(repo_path: &Path, resolved_element_id: &Option<String>) -> Result<Value, CliError> {
+    if let Some(ref id) = resolved_element_id {
+        let g = crate::commands::scan_repo_cached(repo_path)?;
+        let blast = g.blast_radius(id, 3);
+        Ok(serde_json::json!({
+            "schema_version": "impact/v0",
+            "target_id": id,
+            "depth": 3,
+            "upstream": blast.upstream,
+            "downstream": blast.downstream,
+        }))
+    } else {
+        Ok(Value::Null)
+    }
+}
+
+fn build_drift_json(repo_path: &Path) -> Result<Value, CliError> {
+    let graph = crate::commands::scan_repo_cached(repo_path)?;
+    let baseline = crate::utils::architecture_path::resolve_architecture_path(repo_path);
+    if let Some(path) = baseline {
+        let content = std::fs::read_to_string(&path)?;
+        let parser = sruja_language::Parser::new(path.to_string_lossy().as_ref());
+        let program = parser.parse(&content).map_err(|diags| {
+            CliError::parse_with_diagnostics(path.to_string_lossy().to_string(), diags)
+        })?;
+        let proposed = sruja_diff::program_to_graph(&program);
+        let diff = sruja_diff::compare_graphs(&graph, &proposed);
+        Ok(serde_json::to_value(&diff).unwrap_or(Value::Null))
+    } else {
+        let drift = sruja_diff::detect_architectural_drift(&graph);
+        Ok(serde_json::to_value(&drift).unwrap_or(Value::Null))
+    }
+}
+
+fn build_intent_json(repo_path: &str) -> Value {
+    let intent_opt = std::env::var("SRUJA_INTENT_PATH").ok();
+    build_intent_report_json(repo_path, intent_opt.as_deref(), false).unwrap_or_else(|e| {
+        serde_json::json!({
+            "status": "error",
+            "error": e.to_string()
+        })
+    })
+}
+
+fn build_agent_history_json(
+    repo_path: &Path,
+    surfaced_learning_ids: &[String],
+) -> Result<Value, CliError> {
+    if surfaced_learning_ids.is_empty() {
+        return Ok(Value::Null);
+    }
+    let memory = sruja_agent::AgenticMemory::load(repo_path)
+        .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
+    let id_set: std::collections::HashSet<&str> =
+        surfaced_learning_ids.iter().map(|s| s.as_str()).collect();
+    let entries: Vec<_> = memory
+        .learnings
+        .iter()
+        .filter(|e| id_set.contains(e.id.as_str()))
+        .collect();
+    Ok(serde_json::to_value(entries).unwrap_or(Value::Null))
+}
+
+fn build_facts_payload(
+    options: &AgentRunOptions,
+    resolved_element_id: &Option<String>,
+    focus_json: &Value,
+    impact_json: &Value,
+    drift_json: &Value,
+    intent_json: &Value,
+    agent_history_json: &Value,
+) -> Value {
+    serde_json::json!({
+        "schema_version": "agent_facts/v1",
+        "repo": options.repo,
+        "goal": options.goal,
+        "ai_mode": options.ai_mode,
+        "target": {
+            "file": options.file,
+            "element_id": options.element_id,
+            "query": options.query,
+            "resolved_element_id": resolved_element_id,
+        },
+        "facts": {
+            "focus": focus_json,
+            "impact": impact_json,
+            "drift": drift_json,
+            "intent": intent_json,
+            "agent_history": agent_history_json,
+        }
+    })
+}
+
 pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String, CliError> {
     let repo_path = Path::new(options.repo);
     if !repo_path.exists() {
@@ -741,117 +871,21 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         None
     };
 
-    let mut surfaced_learning_ids: Vec<String> = Vec::new();
-    let focus_json = if let Some(ref id) = resolved_element_id {
-        // Build the same JSON as focus --format for-ai would emit.
-        let kg = crate::graph_store::load_or_build_graph(repo_path)?;
-        let scan_node_count = match crate::commands::scan_repo_cached(repo_path) {
-            Ok(g) => g.nodes.len(),
-            Err(_) => kg.nodes.len(),
-        };
-        let mut briefing = focus_cmd::build_focus_briefing(
-            &kg,
-            id,
-            repo_path,
-            scan_node_count,
-            None,
-            false,
-            false,
-        );
-        surfaced_learning_ids = briefing.surfaced_learning_ids.clone();
-        // No focus-specific enrichment here; agent enrichment is handled at the end.
-        briefing.enrichment = None;
-        briefing.run_id = Some(run_id.clone());
-        let out = focus_cmd::build_focus_for_ai_output(
-            repo_path,
-            options.file,
-            options.element_id,
-            Some(&run_id),
-            briefing,
-        );
-        serde_json::to_value(&out).unwrap_or(Value::Null)
-    } else {
-        Value::Null
-    };
+    let (focus_json, surfaced_learning_ids) = build_focus_json(repo_path, &resolved_element_id, &options, &run_id)?;
+    let impact_json = build_impact_json(repo_path, &resolved_element_id)?;
+    let drift_json = build_drift_json(repo_path)?;
+    let intent_json = build_intent_json(options.repo);
+    let agent_history_json = build_agent_history_json(repo_path, &surfaced_learning_ids)?;
 
-    let impact_json = if let Some(ref id) = resolved_element_id {
-        let g = crate::commands::scan_repo_cached(repo_path)?;
-        let blast = g.blast_radius(id, 3);
-        serde_json::json!({
-            "schema_version": "impact/v0",
-            "target_id": id,
-            "depth": 3,
-            "upstream": blast.upstream,
-            "downstream": blast.downstream,
-        })
-    } else {
-        Value::Null
-    };
-
-    let drift_json = {
-        // Reuse drift logic via compare_graphs when baseline exists, else drift detector.
-        let graph = crate::commands::scan_repo_cached(repo_path)?;
-        let baseline = crate::utils::architecture_path::resolve_architecture_path(repo_path);
-        if let Some(path) = baseline {
-            let content = std::fs::read_to_string(&path)?;
-            let parser = sruja_language::Parser::new(path.to_string_lossy().as_ref());
-            let program = parser.parse(&content).map_err(|diags| {
-                CliError::parse_with_diagnostics(path.to_string_lossy().to_string(), diags)
-            })?;
-            let proposed = sruja_diff::program_to_graph(&program);
-            let diff = sruja_diff::compare_graphs(&graph, &proposed);
-            serde_json::to_value(&diff).unwrap_or(Value::Null)
-        } else {
-            let drift = sruja_diff::detect_architectural_drift(&graph);
-            serde_json::to_value(&drift).unwrap_or(Value::Null)
-        }
-    };
-
-    let intent_json = {
-        let intent_opt = std::env::var("SRUJA_INTENT_PATH").ok();
-        build_intent_report_json(options.repo, intent_opt.as_deref(), false).unwrap_or_else(|e| {
-            serde_json::json!({
-                "status": "error",
-                "error": e.to_string()
-            })
-        })
-    };
-
-    let agent_history_json = if !surfaced_learning_ids.is_empty() {
-        let memory = sruja_agent::AgenticMemory::load(repo_path)
-            .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
-        let id_set: std::collections::HashSet<&str> =
-            surfaced_learning_ids.iter().map(|s| s.as_str()).collect();
-        let entries: Vec<_> = memory
-            .learnings
-            .iter()
-            .filter(|e| id_set.contains(e.id.as_str()))
-            .collect();
-        serde_json::to_value(entries).unwrap_or(Value::Null)
-    } else {
-        Value::Null
-    };
-
-    let facts_payload = serde_json::json!({
-        "schema_version": "agent_facts/v1",
-        "repo": options.repo,
-        "goal": options.goal,
-        "ai_mode": options.ai_mode,
-        "target": {
-            "file": options.file,
-            "element_id": options.element_id,
-            "query": options.query,
-            "resolved_element_id": resolved_element_id,
-        },
-        "facts": {
-            "focus": focus_json,
-            "impact": impact_json,
-            "drift": drift_json,
-            "intent": intent_json,
-            "agent_history": agent_history_json,
-        }
-    });
-
+    let facts_payload = build_facts_payload(
+        &options,
+        &resolved_element_id,
+        &focus_json,
+        &impact_json,
+        &drift_json,
+        &intent_json,
+        &agent_history_json,
+    );
     crate::commands::context_events::record_agent_plan(
         repo_path,
         &run_id,

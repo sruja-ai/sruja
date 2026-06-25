@@ -4,6 +4,7 @@ use std::io::{Read as _, Write as _};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
+use sruja_agent::DEFAULT_MODEL;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct SrujaConfigFile {
@@ -441,7 +442,7 @@ pub fn build_enrichment(
         });
     }
 
-    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
+    let model = plan.model.as_deref().unwrap_or(DEFAULT_MODEL);
     let base_url = plan
         .base_url
         .as_deref()

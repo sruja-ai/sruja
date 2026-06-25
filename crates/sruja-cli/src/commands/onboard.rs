@@ -16,6 +16,7 @@ use crate::integrations::{
     EnrichmentLimits,
 };
 use crate::utils::{architecture_path, context as context_utils};
+use sruja_agent::DEFAULT_MODEL;
 
 use sruja_scan::{graph::compute_all_centrality, EdgeKind, Graph, NodeKind};
 
@@ -266,7 +267,7 @@ fn enrich_onboard(
     let provider = provider.to_string();
     let model = enrich_model
         .map(|s| s.to_string())
-        .unwrap_or_else(|| "gpt-4o-mini".to_string());
+        .unwrap_or_else(|| DEFAULT_MODEL.to_string());
     let base_url = enrich_base_url
         .map(|s| s.to_string())
         .unwrap_or_else(|| "https://api.openai.com/v1".to_string());

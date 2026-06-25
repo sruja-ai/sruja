@@ -1,5 +1,7 @@
 //! Known LLM provider presets for zero-config onboarding.
 
+use sruja_agent::DEFAULT_MODEL;
+
 /// A preset for a known LLM provider.
 pub struct ProviderPreset {
     pub id: &'static str,
@@ -24,7 +26,7 @@ pub const PRESETS: &[ProviderPreset] = &[
         id: "openai",
         name: "OpenAI",
         base_url: "https://api.openai.com/v1",
-        default_model: "gpt-4o-mini",
+        default_model: DEFAULT_MODEL,
         key_env: "OPENAI_API_KEY",
         key_hint: "sk-... (from platform.openai.com/api-keys)",
     },

@@ -10,6 +10,7 @@ use std::path::Path;
 use sruja_scan::graph::compute_all_centrality;
 use sruja_scan::scan_scope::resolve_scan_scope;
 use sruja_scan::{generate_repomap_from_graph, EdgeKind, Graph, NodeKind, RepoMapOptions};
+use sruja_agent::DEFAULT_MODEL;
 
 use super::{scan_repo_cached, scan_repo_cached_with_opts, CliError};
 use crate::context_detection::build_repo_context;
@@ -1382,7 +1383,7 @@ fn enrich_discover_explain(
         });
     }
 
-    let model = plan.model.as_deref().unwrap_or("gpt-4o-mini");
+    let model = plan.model.as_deref().unwrap_or(DEFAULT_MODEL);
     let base_url = plan
         .base_url
         .as_deref()
