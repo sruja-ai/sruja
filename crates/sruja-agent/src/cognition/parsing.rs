@@ -1,0 +1,282 @@
+//! Response parsing helpers for LLM JSON output.
+//!
+//! These functions extract structured data (plans, critiques, learnings)
+//! from LLM responses that may be wrapped in markdown code fences.
+
+use super::*;
+
+pub fn parse_plan_from_response(
+    content: &str,
+    goal: &crate::goal::GoalSpec,
+    tdd: bool,
+) -> Result<Plan, PlanParseError> {
+    let goal_str = goal.statement.as_str();
+    // Try to extract JSON from the response (may be wrapped in markdown).
+    let json_str = extract_json(content);
+
+    let value: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| PlanParseError::MalformedJson(format!("failed to parse JSON: {e}")))?;
+
+    // Validate schema_version if present.
+    if let Some(sv) = value.get("schema_version").and_then(|v| v.as_str()) {
+        if sv != "1.0" {
+            tracing::warn!(
+                schema_version = sv,
+                "plan has unexpected schema_version — proceeding anyway"
+            );
+        }
+    }
+
+    let subtasks_raw =
+        value
+            .get("subtasks")
+            .and_then(|s| s.as_array())
+            .ok_or(PlanParseError::MalformedJson(
+                "missing or non-array `subtasks` field".to_string(),
+            ))?;
+
+    if subtasks_raw.is_empty() {
+        return Err(PlanParseError::NoSubtasks);
+    }
+
+    let mut subtasks = Vec::new();
+    for (idx, st) in subtasks_raw.iter().enumerate() {
+        let id = st
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| PlanParseError::MissingRequiredField {
+                field: "id".to_string(),
+                subtask_index: idx,
+            })?
+            .to_string();
+        let description = st
+            .get("description")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| PlanParseError::MissingRequiredField {
+                field: "description".to_string(),
+                subtask_index: idx,
+            })?
+            .to_string();
+        let tier_str = st.get("tier").and_then(|v| v.as_str()).ok_or_else(|| {
+            PlanParseError::MissingRequiredField {
+                field: "tier".to_string(),
+                subtask_index: idx,
+            }
+        })?;
+        let kind_str = st.get("kind").and_then(|v| v.as_str()).ok_or_else(|| {
+            PlanParseError::MissingRequiredField {
+                field: "kind".to_string(),
+                subtask_index: idx,
+            }
+        })?;
+
+        subtasks.push(Subtask {
+            id,
+            description,
+            tier: parse_tier(tier_str),
+            kind: parse_kind(kind_str),
+            files: st
+                .get("files")
+                .and_then(|f| f.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            acceptance_criteria: st
+                .get("acceptance_criteria")
+                .and_then(|a| a.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+        });
+    }
+
+    let risks: Vec<String> = value
+        .get("risks")
+        .and_then(|r| r.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let schema_version = value
+        .get("schema_version")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    Ok(Plan {
+        goal: goal_str.to_string(),
+        goal_statement: goal.statement.clone(),
+        criteria: goal.acceptance_criteria.clone(),
+        subtasks,
+        tdd,
+        risks,
+        schema_version,
+    })
+}
+
+pub(super) fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
+    let json_str = extract_json(content);
+
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
+        return Critique {
+            approved: value
+                .get("approved")
+                .and_then(|a| a.as_bool())
+                .unwrap_or(false),
+            score: value.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0),
+            issues: value
+                .get("issues")
+                .and_then(|i| i.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            suggestions: value
+                .get("suggestions")
+                .and_then(|s| s.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            usage,
+            persona_breakdown: Vec::new(),
+            injected_learning_ids: Vec::new(),
+            criteria: value
+                .get("criteria")
+                .and_then(|c| c.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| {
+                            let index = v.get("index")?.as_u64()? as usize;
+                            let criterion = v.get("criterion")?.as_str()?.to_string();
+                            let status = v.get("status")?.as_str()?;
+                            let reason = v
+                                .get("reason")
+                                .and_then(|r| r.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let verdict = match status {
+                                "addressed" => CriterionVerdict::Addressed,
+                                "partial" => CriterionVerdict::Partial,
+                                "missing" => CriterionVerdict::Missing,
+                                _ => return None,
+                            };
+                            Some(CriterionStatus {
+                                index,
+                                criterion,
+                                status: verdict,
+                                reason,
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+        };
+    }
+
+    // Fallback: check for approve/reject keywords.
+    let lower = content.to_lowercase();
+    let is_approved = lower.contains("\napproved") || lower.starts_with("approved");
+
+    Critique {
+        approved: is_approved,
+        score: if is_approved { 0.8 } else { 0.3 },
+        issues: vec!["could not parse structured critique".into()],
+        suggestions: Vec::new(),
+        usage,
+        persona_breakdown: Vec::new(),
+        injected_learning_ids: Vec::new(),
+        criteria: Vec::new(),
+    }
+}
+
+pub(super) fn parse_learnings_from_response(content: &str) -> Vec<LearningEntry> {
+    let json_str = extract_json(content);
+
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
+        let arr = match &value {
+            serde_json::Value::Array(a) => a.clone(),
+            serde_json::Value::Object(_) => vec![value.clone()],
+            _ => return Vec::new(),
+        };
+
+        return arr
+            .iter()
+            .filter_map(|v| {
+                let context = v.get("context")?.as_str()?;
+                let hypothesis = v.get("hypothesis")?.as_str()?;
+                let advice = v.get("guardrail_advice")?.as_str()?;
+                let kind = v.get("kind").and_then(|k| k.as_str()).unwrap_or("playbook");
+
+                Some(match kind {
+                    "guardrail" => LearningEntry::guardrail(context, hypothesis, advice),
+                    _ => LearningEntry::playbook(context, hypothesis, advice),
+                })
+            })
+            .collect();
+    }
+
+    Vec::new()
+}
+
+/// Extract JSON from a response that may contain markdown code fences.
+pub(super) fn extract_json(content: &str) -> String {
+    // Try to find JSON in code fences.
+    if let Some(start) = content.find("```json") {
+        let rest = &content[start + 7..];
+        if let Some(end) = rest.find("```") {
+            return rest[..end].trim().to_string();
+        }
+    }
+    if let Some(start) = content.find("```") {
+        let rest = &content[start + 3..];
+        // Skip optional language tag.
+        let rest = rest.lines().skip(1).collect::<Vec<_>>().join("\n");
+        if let Some(end) = rest.find("```") {
+            return rest[..end].trim().to_string();
+        }
+    }
+    // Try to find a JSON object or array directly.
+    if let Some(start) = content.find('{') {
+        if let Some(end) = content.rfind('}') {
+            return content[start..=end].to_string();
+        }
+    }
+    if let Some(start) = content.find('[') {
+        if let Some(end) = content.rfind(']') {
+            return content[start..=end].to_string();
+        }
+    }
+    content.to_string()
+}
+
+fn parse_tier(s: &str) -> TaskTier {
+    match s.to_lowercase().as_str() {
+        "cheap" | "low" | "simple" => TaskTier::Cheap,
+        "premium" | "high" | "complex" | "hard" => TaskTier::Premium,
+        _ => TaskTier::Mid,
+    }
+}
+
+fn parse_kind(s: &str) -> SubtaskKind {
+    match s.to_lowercase().as_str() {
+        "test_author" | "test" | "write_test" | "testing" => SubtaskKind::TestAuthor,
+        "implement" | "code" | "implementing" => SubtaskKind::Implement,
+        "verify" | "verification" | "check" => SubtaskKind::Verify,
+        "review" | "critique" => SubtaskKind::Review,
+        _ => SubtaskKind::Comprehend,
+    }
+}

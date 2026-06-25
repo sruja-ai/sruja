@@ -15,7 +15,7 @@
 //! # use sruja_agent::multi::*;
 //! # use sruja_agent::llm::OpenAiClient;
 //! # use sruja_agent::tool::ToolRegistry;
-//! # async fn demo() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn demo() -> Result<(), MultiError> {
 //! let llm = OpenAiClient::from_env()?;
 //! let tools = ToolRegistry::new();
 //!
@@ -39,12 +39,25 @@
 pub mod converge;
 pub mod proposal;
 
-use crate::cognition::{Agent, AgentConfig, Comprehension, Plan, TaskTier};
+use crate::cognition::{Agent, AgentConfig, AgentError, Comprehension, Plan, TaskTier};
 use crate::llm::{CompletionRequest, LlmClient};
 use crate::tool::ToolRegistry;
 use converge::{ConvergenceResult, ConvergenceStrategy};
 use proposal::Proposal;
 use std::sync::Arc;
+
+/// Errors from multi-agent brainstorming.
+#[derive(Debug, thiserror::Error)]
+pub enum MultiError {
+    #[error("agent error: {0}")]
+    Agent(#[from] AgentError),
+    #[error("plan parse error: {0}")]
+    PlanParse(#[from] crate::cognition::PlanParseError),
+    #[error("convergence failed: {0}")]
+    Convergence(String),
+    #[error("no proposals generated")]
+    NoProposals,
+}
 
 /// Role assigned to a brainstorming agent — determines perspective and bias.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,8 +203,8 @@ impl BrainstormSessionBuilder {
         self
     }
 
-    pub fn build(self) -> Result<BrainstormSession, String> {
-        let llm = self.llm.ok_or("LLM client is required")?;
+    pub fn build(self) -> Result<BrainstormSession, MultiError> {
+        let llm = self.llm.ok_or(MultiError::Convergence("LLM client is required".into()))?;
 
         Ok(BrainstormSession {
             llm,
@@ -209,7 +222,7 @@ impl BrainstormSession {
     pub async fn brainstorm(
         &self,
         problem: &str,
-    ) -> Result<BrainstormResult, Box<dyn std::error::Error>> {
+    ) -> Result<BrainstormResult, MultiError> {
         let mut proposals = Vec::new();
 
         // Phase 1: Independent brainstorming — each agent works alone.
@@ -241,7 +254,7 @@ impl BrainstormSession {
         agent_id: usize,
         role: &AgentRole,
         problem: &str,
-    ) -> Result<Proposal, Box<dyn std::error::Error>> {
+    ) -> Result<Proposal, MultiError> {
         let config = AgentConfig {
             models: crate::cognition::ModelMapping::default(),
             review_every_change: false,
@@ -309,13 +322,13 @@ pub trait Brainstormable {
         &self,
         query: &str,
         system_context: &str,
-    ) -> impl std::future::Future<Output = Result<Comprehension, Box<dyn std::error::Error>>>;
+    ) -> impl std::future::Future<Output = Result<Comprehension, MultiError>>;
 
     fn plan_from_comprehension(
         &self,
         goal: &crate::goal::GoalSpec,
         comprehension: &Comprehension,
-    ) -> impl std::future::Future<Output = Result<Plan, Box<dyn std::error::Error>>>;
+    ) -> impl std::future::Future<Output = Result<Plan, MultiError>>;
 }
 
 impl Brainstormable for Agent {
@@ -323,14 +336,14 @@ impl Brainstormable for Agent {
         &self,
         query: &str,
         system_context: &str,
-    ) -> Result<Comprehension, Box<dyn std::error::Error>> {
+    ) -> Result<Comprehension, MultiError> {
         // Use the agent's LLM with custom system prompt.
         let req = CompletionRequest::prompt(system_context, query).with_model("gpt-4o");
 
         let (response, _usage, _signals) = self
             .run_tool_loop(req)
             .await
-            .map_err(|e| format!("Comprehension failed: {}", e))?;
+            .map_err(|e| MultiError::Convergence(format!("Comprehension failed: {}", e)))?;
 
         Ok(Comprehension {
             goal: query.to_string(),
@@ -347,7 +360,7 @@ impl Brainstormable for Agent {
         &self,
         goal: &crate::goal::GoalSpec,
         comprehension: &Comprehension,
-    ) -> Result<Plan, Box<dyn std::error::Error>> {
+    ) -> Result<Plan, MultiError> {
         let goal_str = goal.statement.as_str();
         let user = format!(
             "## Goal\n{}\n\n## Context\n{}\n\n\
@@ -361,7 +374,7 @@ impl Brainstormable for Agent {
         let (response, _usage, _signals) = self
             .run_tool_loop(req)
             .await
-            .map_err(|e| format!("Planning failed: {}", e))?;
+            .map_err(|e| MultiError::Convergence(format!("Planning failed: {}", e)))?;
 
         let plan = crate::cognition::parse_plan_from_response(&response.content, goal, false)?;
         Ok(plan)

@@ -40,9 +40,9 @@ pub async fn run_convergence(
     strategy: &ConvergenceStrategy,
     problem: &str,
     proposals: &[Proposal],
-) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+) -> Result<ConvergenceResult, super::MultiError> {
     if proposals.is_empty() {
-        return Err("No proposals to converge on".into());
+        return Err(super::MultiError::NoProposals);
     }
 
     match strategy {
@@ -56,7 +56,7 @@ pub async fn run_convergence(
 /// Consensus: pick the proposal that overlaps most with others.
 async fn consensus(
     proposals: &[Proposal],
-) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+) -> Result<ConvergenceResult, super::MultiError> {
     let mut scores: Vec<(usize, f64)> = proposals
         .iter()
         .map(|p| {
@@ -107,7 +107,7 @@ async fn consensus(
 }
 
 /// BestOf: pick the single highest-confidence proposal.
-async fn best_of(proposals: &[Proposal]) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+async fn best_of(proposals: &[Proposal]) -> Result<ConvergenceResult, super::MultiError> {
     let scores: Vec<(usize, f64)> = proposals
         .iter()
         .map(|p| (p.agent_id, p.confidence))
@@ -135,7 +135,7 @@ async fn best_of(proposals: &[Proposal]) -> Result<ConvergenceResult, Box<dyn st
 async fn merge(
     proposals: &[Proposal],
     problem: &str,
-) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+) -> Result<ConvergenceResult, super::MultiError> {
     // Collect all unique steps, preserving order.
     let mut all_steps = Vec::new();
     let mut seen = std::collections::HashSet::new();
@@ -216,7 +216,7 @@ async fn merge(
 async fn debate(
     proposals: &[Proposal],
     _problem: &str,
-) -> Result<ConvergenceResult, Box<dyn std::error::Error>> {
+) -> Result<ConvergenceResult, super::MultiError> {
     // Score each proposal by how many risks it identifies (more = more thoughtful).
     let scores: Vec<(usize, f64)> = proposals
         .iter()

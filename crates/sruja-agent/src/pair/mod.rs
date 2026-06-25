@@ -16,7 +16,7 @@
 //! # use sruja_agent::pair::*;
 //! # use sruja_agent::llm::OpenAiClient;
 //! # use sruja_agent::tool::ToolRegistry;
-//! # async fn demo() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn demo() -> Result<(), PairError> {
 //! let driver_llm = OpenAiClient::from_env()?;
 //! let navigator_llm = OpenAiClient::from_env()?;
 //! let tools = ToolRegistry::new();
@@ -35,11 +35,20 @@
 
 pub mod channel;
 
-use crate::cognition::{Agent, AgentConfig, TaskTier};
+use crate::cognition::{Agent, AgentConfig, AgentError, TaskTier};
 use crate::llm::LlmClient;
 use crate::tool::ToolRegistry;
 use channel::{Channel, ChannelMessage};
 use std::sync::Arc;
+
+/// Errors from pair programming sessions.
+#[derive(Debug, thiserror::Error)]
+pub enum PairError {
+    #[error("agent error: {0}")]
+    Agent(#[from] AgentError),
+    #[error("session error: {0}")]
+    Session(String),
+}
 
 /// Role in a pair programming session.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,9 +144,9 @@ impl PairSessionBuilder {
         self
     }
 
-    pub fn build(self) -> Result<PairSession, String> {
-        let driver_llm = self.driver_llm.ok_or("Driver LLM is required")?;
-        let navigator_llm = self.navigator_llm.ok_or("Navigator LLM is required")?;
+    pub fn build(self) -> Result<PairSession, PairError> {
+        let driver_llm = self.driver_llm.ok_or(PairError::Session("Driver LLM is required".into()))?;
+        let navigator_llm = self.navigator_llm.ok_or(PairError::Session("Navigator LLM is required".into()))?;
 
         Ok(PairSession {
             driver_llm,
@@ -153,7 +162,7 @@ impl PairSession {
     }
 
     /// Run the pair programming session.
-    pub async fn work(&self, task: &str) -> Result<PairResult, Box<dyn std::error::Error>> {
+    pub async fn work(&self, task: &str) -> Result<PairResult, PairError> {
         let channel = Channel::new();
         let mut round = 0;
         let mut current_role = PairRole::Driver;
@@ -294,7 +303,7 @@ impl PairSession {
     async fn create_agent(
         &self,
         llm: &Arc<dyn LlmClient>,
-    ) -> Result<Agent, Box<dyn std::error::Error>> {
+    ) -> Result<Agent, PairError> {
         let config = AgentConfig {
             models: crate::cognition::ModelMapping::default(),
             review_every_change: false,

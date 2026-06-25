@@ -15,7 +15,7 @@
 //! # use sruja_agent::dlc::*;
 //! # use sruja_agent::llm::OpenAiClient;
 //! # use sruja_agent::tool::ToolRegistry;
-//! # async fn demo() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn demo() -> Result<(), DlcError> {
 //! let llm = OpenAiClient::from_env()?;
 //! let tools = ToolRegistry::new();
 //!
@@ -34,11 +34,22 @@
 //! ```
 
 use crate::cognition::{
-    Agent, AgentConfig, Comprehension, Critique, Plan, StepResult, StepStatus, TaskTier,
+    Agent, AgentConfig, AgentError, Comprehension, Critique, Plan, StepResult, StepStatus, TaskTier,
 };
 use crate::llm::{CompletionRequest, LlmClient};
 use crate::tool::ToolRegistry;
 use std::sync::Arc;
+
+/// Errors that can occur during DLC pipeline execution.
+#[derive(Debug, thiserror::Error)]
+pub enum DlcError {
+    #[error("agent error: {0}")]
+    Agent(#[from] AgentError),
+    #[error("missing comprehension in pipeline context")]
+    MissingComprehension,
+    #[error("phase {phase} failed: {message}")]
+    Phase { phase: String, message: String },
+}
 
 /// DLC phases in order.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -247,8 +258,8 @@ impl DlcPipelineBuilder {
         self
     }
 
-    pub fn build(self) -> Result<DlcPipeline, String> {
-        let llm = self.llm.ok_or("LLM client is required")?;
+    pub fn build(self) -> Result<DlcPipeline, DlcError> {
+        let llm = self.llm.ok_or(DlcError::Phase { phase: "init".into(), message: "LLM client is required".into() })?;
 
         Ok(DlcPipeline {
             llm: Arc::from(llm),
@@ -263,7 +274,7 @@ impl DlcPipeline {
     }
 
     /// Run the full DLC pipeline for a given task.
-    pub async fn run(&self, task: &str) -> Result<DlcResult, Box<dyn std::error::Error>> {
+    pub async fn run(&self, task: &str) -> Result<DlcResult, DlcError> {
         let mut stages = Vec::new();
         let mut context = DlcContext::new(task);
 
@@ -306,7 +317,7 @@ impl DlcPipeline {
         &self,
         phase: &DlcPhase,
         ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         match phase {
             DlcPhase::Plan => self.phase_plan(ctx).await,
             DlcPhase::Design => self.phase_design(ctx).await,
@@ -323,7 +334,7 @@ impl DlcPipeline {
     async fn phase_plan(
         &self,
         ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         let agent = self.create_agent().await?;
         let plan = agent
             .plan_simple(&crate::goal::GoalSpec::new(&ctx.task))
@@ -335,7 +346,7 @@ impl DlcPipeline {
     async fn phase_design(
         &self,
         _ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         let agent = self.create_agent().await?;
 
         let req = CompletionRequest::prompt(
@@ -349,7 +360,7 @@ impl DlcPipeline {
         let (response, _usage, _signals) = agent
             .run_tool_loop(req)
             .await
-            .map_err(|e| format!("Design failed: {}", e))?;
+            .map_err(|e| DlcError::Phase { phase: "design".into(), message: e.to_string() })?;
 
         let value: serde_json::Value = serde_json::from_str(&response.content)
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
@@ -406,8 +417,8 @@ impl DlcPipeline {
     async fn phase_implement(
         &self,
         ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
-        let plan = ctx.plan.as_ref().ok_or("No plan from Plan phase")?;
+    ) -> Result<DlcArtifact, DlcError> {
+        let plan = ctx.plan.as_ref().ok_or(DlcError::Phase { phase: "implement".into(), message: "No plan from Plan phase".into() })?;
         let comprehension = ctx.comprehension_ref()?;
         let agent = self.create_agent().await?;
 
@@ -434,7 +445,7 @@ impl DlcPipeline {
     async fn phase_review(
         &self,
         ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         let agent = self.create_agent().await?;
 
         // Use the Agent's run method for a quick review pass.
@@ -462,9 +473,9 @@ impl DlcPipeline {
     async fn phase_test(
         &self,
         ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         // Test phase: run the verification steps.
-        let plan = ctx.plan.as_ref().ok_or("No plan")?;
+        let plan = ctx.plan.as_ref().ok_or(DlcError::Phase { phase: "test".into(), message: "No plan".into() })?;
         let results: Vec<StepResult> = plan
             .subtasks
             .iter()
@@ -485,7 +496,7 @@ impl DlcPipeline {
     async fn phase_deploy(
         &self,
         _ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         Ok(DlcArtifact::Deploy(DeployArtifact {
             commit_sha: None,
             branch: "main".to_string(),
@@ -496,7 +507,7 @@ impl DlcPipeline {
     async fn phase_monitor(
         &self,
         _ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         Ok(DlcArtifact::Monitor(MonitorArtifact {
             drift_detected: false,
             violations: Vec::new(),
@@ -507,7 +518,7 @@ impl DlcPipeline {
     async fn phase_learn(
         &self,
         ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         // Learn phase: extract learnings from the completed work.
         // The Agent's reflect method handles this internally.
         let agent = self.create_agent().await?;
@@ -525,7 +536,7 @@ impl DlcPipeline {
     async fn phase_maintain(
         &self,
         ctx: &mut DlcContext,
-    ) -> Result<DlcArtifact, Box<dyn std::error::Error>> {
+    ) -> Result<DlcArtifact, DlcError> {
         let _plan = ctx.plan.as_ref();
         Ok(DlcArtifact::Maintain(MaintainArtifact {
             runbook_path: Some(format!(".sruja/runbooks/{}.md", ctx.task_slug())),
@@ -534,7 +545,7 @@ impl DlcPipeline {
         }))
     }
 
-    async fn create_agent(&self) -> Result<Agent, Box<dyn std::error::Error>> {
+    async fn create_agent(&self) -> Result<Agent, DlcError> {
         let config = AgentConfig {
             models: crate::cognition::ModelMapping::default(),
             review_every_change: true,
@@ -546,7 +557,7 @@ impl DlcPipeline {
             .tools(ToolRegistry::new())
             .config(config)
             .build()
-            .map_err(|e| e.into())
+            .map_err(DlcError::from)
     }
 }
 
@@ -567,10 +578,10 @@ impl DlcContext {
         }
     }
 
-    fn comprehension_ref(&self) -> Result<&Comprehension, Box<dyn std::error::Error>> {
+    fn comprehension_ref(&self) -> Result<&Comprehension, DlcError> {
         self.comprehension
             .as_ref()
-            .ok_or("No comprehension available".into())
+            .ok_or(DlcError::MissingComprehension)
     }
 
     fn task_slug(&self) -> String {

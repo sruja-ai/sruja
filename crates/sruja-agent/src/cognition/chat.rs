@@ -19,7 +19,7 @@ use crate::llm::{
     CompletionRequest, CompletionResponse, FinishReason, Message, MessageRole, ToolCall,
     Usage,
 };
-use crate::llm::stream::{reassemble_stream, StreamEvent};
+use crate::llm::stream::StreamEvent;
 use crate::tool::ToolSignal;
 use crate::AgentError;
 

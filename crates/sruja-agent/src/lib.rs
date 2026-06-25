@@ -61,14 +61,14 @@ pub use cognition::{
     VerifierConfig,
 };
 pub use cognition::chat::{TurnEvent, TurnResult};
-pub use dlc::DlcPipeline;
+pub use dlc::{DlcError, DlcPipeline};
 pub use executor::TrajectoryExecutor;
 pub use goal::GoalSpec;
 pub use manifest::LoopManifest;
 pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryStatus};
 pub use memory::{AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry};
-pub use multi::BrainstormSession;
-pub use pair::PairSession;
+pub use multi::{BrainstormSession, MultiError};
+pub use pair::{PairError, PairSession};
 
 // Re-export shared learning types from sruja-graph for backward compatibility.
 pub use sruja_graph::learning::{
