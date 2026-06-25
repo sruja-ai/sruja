@@ -273,4 +273,103 @@ mod tests {
             "mixed skipped+ok should NOT pass - only pure Ok passes"
         );
     }
+
+    // Security boundary tests
+    #[tokio::test]
+    async fn test_allowlist_rejects_unknown_command() {
+        let steps = vec![VerifyStep {
+            id: "malicious".into(),
+            command: "rm".into(),
+            args: vec!["-rf".into(), "/".into()],
+            expected: None,
+        }];
+
+        let opts = VerifyOptions::default();
+        let results = run_verification_steps(&steps, &opts, std::path::Path::new(".")).await;
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].status, VerifyStatus::Skipped);
+        assert!(results[0].stderr.contains("not in allowlist"));
+        assert!(!all_passed(&results));
+    }
+
+    #[tokio::test]
+    async fn test_bypass_attempt_via_path_traversal() {
+        let steps = vec![VerifyStep {
+            id: "bypass".into(),
+            command: "../../cargo".into(),
+            args: vec!["build".into()],
+            expected: None,
+        }];
+
+        let opts = VerifyOptions::default();
+        let results = run_verification_steps(&steps, &opts, std::path::Path::new(".")).await;
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].status, VerifyStatus::Skipped);
+        assert!(results[0].stderr.contains("not in allowlist"));
+    }
+
+    #[tokio::test]
+    async fn test_empty_allowlist_blocks_all() {
+        let steps = vec![
+            VerifyStep {
+                id: "cmd1".into(),
+                command: "cargo".into(),
+                args: vec!["build".into()],
+                expected: None,
+            },
+            VerifyStep {
+                id: "cmd2".into(),
+                command: "git".into(),
+                args: vec!["status".into()],
+                expected: None,
+            },
+        ];
+
+        let mut opts = VerifyOptions::default();
+        opts.allowed_executables = vec![];
+        opts.continue_on_error = true;
+
+        let results = run_verification_steps(&steps, &opts, std::path::Path::new(".")).await;
+
+        assert_eq!(results.len(), 2);
+        assert!(results.iter().all(|r| r.status == VerifyStatus::Skipped));
+        assert!(!all_passed(&results));
+    }
+
+    #[tokio::test]
+    async fn test_continue_on_error_with_mixed_results() {
+        let steps = vec![
+            VerifyStep {
+                id: "unknown".into(),
+                command: "not_in_allowlist".into(),
+                args: vec![],
+                expected: None,
+            },
+            VerifyStep {
+                id: "good".into(),
+                command: "cargo".into(),
+                args: vec!["--version".into()],
+                expected: Some("cargo".into()),
+            },
+            VerifyStep {
+                id: "bad".into(),
+                command: "cargo".into(),
+                args: vec!["nonexistent_command_12345".into()],
+                expected: None,
+            },
+        ];
+
+        let mut opts = VerifyOptions::default();
+        opts.continue_on_error = true;
+
+        let results = run_verification_steps(&steps, &opts, std::path::Path::new(".")).await;
+
+        assert_eq!(results.len(), 3);
+        assert_eq!(results[0].status, VerifyStatus::Skipped);
+        assert_eq!(results[1].status, VerifyStatus::Ok);
+        assert_eq!(results[2].status, VerifyStatus::Failed);
+        assert!(!all_passed(&results));
+    }
 }
