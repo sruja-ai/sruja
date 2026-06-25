@@ -34,7 +34,11 @@ pub mod anthropic;
 
 pub mod tiered;
 
+pub mod constants;
+
 use serde::{Deserialize, Serialize};
+
+pub use constants::{DEFAULT_MODEL, PREMIUM_MODEL};
 
 #[cfg(feature = "llm-anthropic")]
 pub use anthropic::AnthropicClient;

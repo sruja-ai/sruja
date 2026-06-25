@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::llm::{
     CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter, Usage,
+    DEFAULT_MODEL, PREMIUM_MODEL,
 };
 use crate::tool::ToolSignal;
 
@@ -59,10 +60,10 @@ pub struct ModelMapping {
 impl Default for ModelMapping {
     fn default() -> Self {
         Self {
-            cheap: "gpt-4o-mini".into(),
-            mid: "gpt-4o-mini".into(),
-            premium: "gpt-4o".into(),
-            review: "gpt-4o".into(),
+            cheap: DEFAULT_MODEL.into(),
+            mid: DEFAULT_MODEL.into(),
+            premium: PREMIUM_MODEL.into(),
+            review: PREMIUM_MODEL.into(),
         }
     }
 }

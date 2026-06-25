@@ -443,7 +443,7 @@ mod tests {
         Message, Usage,
     };
     use crate::llm::stream::{Stream, StreamEvent};
-    use crate::tool::{ToolRegistry, tools};
+    use crate::tool::ToolRegistry;
     use std::sync::Arc;
 
     /// A fake `LlmClient` that returns a scripted sequence of responses.

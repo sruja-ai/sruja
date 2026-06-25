@@ -36,7 +36,7 @@
 use crate::cognition::{
     Agent, AgentConfig, AgentError, Comprehension, Critique, Plan, StepResult, StepStatus, TaskTier,
 };
-use crate::llm::{CompletionRequest, LlmClient};
+use crate::llm::{CompletionRequest, LlmClient, PREMIUM_MODEL};
 use crate::tool::ToolRegistry;
 use std::sync::Arc;
 
@@ -355,7 +355,7 @@ impl DlcPipeline {
              interfaces (array of strings), constraints (array of strings).",
             &_ctx.task,
         )
-        .with_model("gpt-4o");
+        .with_model(PREMIUM_MODEL);
 
         let (response, _usage, _signals) = agent
             .run_tool_loop(req)

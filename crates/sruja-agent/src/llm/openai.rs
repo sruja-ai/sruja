@@ -7,12 +7,11 @@ use std::time::Duration;
 
 use super::{
     CompletionRequest, CompletionResponse, FinishReason, FunctionSchema, LlmClient, LlmError,
-    Message, MessageRole, ToolCall, Usage,
+    Message, MessageRole, ToolCall, Usage, DEFAULT_MODEL,
 };
 use super::stream::{Stream, StreamEvent};
 
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
-const DEFAULT_MODEL: &str = "gpt-4o-mini";
 const DEFAULT_TIMEOUT_SECS: u64 = 120;
 
 /// An OpenAI-compatible chat completions client.

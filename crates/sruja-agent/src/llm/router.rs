@@ -58,21 +58,24 @@ pub struct RouterConfig {
 
 impl Default for RouterConfig {
     fn default() -> Self {
+        use super::DEFAULT_MODEL;
+        use super::PREMIUM_MODEL;
+
         let mut tiers = HashMap::new();
-        tiers.insert(TaskTier::Cheap, "gpt-4o-mini".to_string());
-        tiers.insert(TaskTier::Mid, "gpt-4o-mini".to_string());
-        tiers.insert(TaskTier::Premium, "gpt-4o".to_string());
+        tiers.insert(TaskTier::Cheap, DEFAULT_MODEL.to_string());
+        tiers.insert(TaskTier::Mid, DEFAULT_MODEL.to_string());
+        tiers.insert(TaskTier::Premium, PREMIUM_MODEL.to_string());
 
         let mut pricing = HashMap::new();
         pricing.insert(
-            "gpt-4o-mini".to_string(),
+            DEFAULT_MODEL.to_string(),
             Pricing {
                 input_per_1m: 0.15,
                 output_per_1m: 0.60,
             },
         );
         pricing.insert(
-            "gpt-4o".to_string(),
+            PREMIUM_MODEL.to_string(),
             Pricing {
                 input_per_1m: 2.50,
                 output_per_1m: 10.00,
@@ -209,12 +212,12 @@ mod tests {
                     completion_tokens: 500_000,
                     total_tokens: 1_500_000,
                 },
-                model: "gpt-4o-mini".into(),
+                model: crate::llm::DEFAULT_MODEL.into(),
                 finish_reason: super::super::FinishReason::Stop,
             })
         }
         fn default_model(&self) -> &str {
-            "gpt-4o-mini"
+            crate::llm::DEFAULT_MODEL
         }
     }
 

@@ -64,6 +64,7 @@ pub use cognition::chat::{TurnEvent, TurnResult};
 pub use dlc::{DlcError, DlcPipeline};
 pub use executor::TrajectoryExecutor;
 pub use goal::GoalSpec;
+pub use llm::{DEFAULT_MODEL, PREMIUM_MODEL};
 pub use manifest::LoopManifest;
 pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryStatus};
 pub use memory::{AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry};
