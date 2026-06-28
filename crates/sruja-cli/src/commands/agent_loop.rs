@@ -603,6 +603,7 @@ pub struct AgentLoopOptions<'a> {
     pub force_proceed: bool,
     pub no_default_grader: bool,
     pub steer: bool,
+    pub resume: bool,
 }
 
 /// Entry point for `sruja agent loop`.
@@ -908,11 +909,15 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         }
     }
 
+    // Checkpoint directory for crash-resume support.
+    let checkpoint_dir = crate::utils::run_snapshots::run_dir(repo_path, &run_id);
+
     let loop_config = LoopConfig {
         max_iterations,
         spend_cap_usd,
         detect_oscillation,
         verifier,
+        checkpoint_dir: Some(checkpoint_dir.clone()),
         ..Default::default()
     };
 
@@ -975,10 +980,66 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         }
     }
 
-    let mut result = agent
-        .run_loop(&goal_spec, &loop_config)
-        .await
-        .map_err(agent_err_to_cli)?;
+    // ── Resume from checkpoint or start fresh ─────────────────────────────
+    // When --resume is set, look for an existing checkpoint and continue
+    // from where the previous run left off.
+    let mut result = if options.resume {
+        let cp_dir = crate::utils::run_snapshots::run_dir(repo_path, &run_id);
+        if sruja_agent::cognition::RunCheckpoint::exists(&cp_dir) {
+            eprintln!("  Resuming from checkpoint in {}", cp_dir.display());
+            agent
+                .resume_loop(&goal_spec, &loop_config)
+                .await
+                .map_err(agent_err_to_cli)?
+        } else {
+            // No checkpoint in current run — search for most recent checkpoint
+            // across all runs in this repo.
+            let runs_dir = repo_path.join(".sruja").join("runs");
+            let mut found_checkpoint: Option<std::path::PathBuf> = None;
+            if let Ok(entries) = std::fs::read_dir(&runs_dir) {
+                let mut checkpoints: Vec<(std::time::SystemTime, std::path::PathBuf)> = entries
+                    .filter_map(|e| e.ok())
+                    .filter_map(|e| {
+                        let cp = e.path().join("checkpoint.json");
+                        if cp.exists() {
+                            let modified = std::fs::metadata(&cp)
+                                .ok()
+                                .and_then(|m| m.modified().ok())
+                                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                            Some((modified, e.path()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                checkpoints.sort_by(|a, b| b.0.cmp(&a.0)); // most recent first
+                if let Some((_, path)) = checkpoints.first() {
+                    found_checkpoint = Some(path.clone());
+                }
+            }
+            if let Some(ref cp_dir) = found_checkpoint {
+                eprintln!("  Resuming from checkpoint: {}", cp_dir.display());
+                // Temporarily override the checkpoint_dir in loop_config.
+                let mut resume_config = loop_config.clone();
+                resume_config.checkpoint_dir = Some(cp_dir.clone());
+                agent
+                    .resume_loop(&goal_spec, &resume_config)
+                    .await
+                    .map_err(agent_err_to_cli)?
+            } else {
+                eprintln!("  No checkpoint found — starting fresh run");
+                agent
+                    .run_loop(&goal_spec, &loop_config)
+                    .await
+                    .map_err(agent_err_to_cli)?
+            }
+        }
+    } else {
+        agent
+            .run_loop(&goal_spec, &loop_config)
+            .await
+            .map_err(agent_err_to_cli)?
+    };
 
     result.grader_source = grader_source;
 

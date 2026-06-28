@@ -483,6 +483,59 @@ impl CritiquePersona {
     }
 }
 
+/// Tracks failed approaches across iterations to prevent repeating mistakes.
+///
+/// Accumulates `(approach_summary, failure_reason)` pairs and injects them
+/// into replanning prompts so the agent tries genuinely different strategies.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FailureTracker {
+    /// (approach_summary, failure_reason, iteration)
+    pub failures: Vec<(String, String, usize)>,
+    /// Number of times the same approach has been tried consecutively.
+    pub consecutive_same_approach: usize,
+    /// The approach summary from the last iteration.
+    pub last_approach: Option<String>,
+}
+
+impl FailureTracker {
+    pub fn record(&mut self, approach: String, reason: String, iteration: usize) {
+        if self.last_approach.as_deref() == Some(approach.as_str()) {
+            self.consecutive_same_approach += 1;
+        } else {
+            self.consecutive_same_approach = 1;
+        }
+        self.last_approach = Some(approach.clone());
+        self.failures.push((approach, reason, iteration));
+    }
+
+    /// Format failures for injection into replanning prompt.
+    pub fn format_for_prompt(&self) -> String {
+        if self.failures.is_empty() {
+            return String::new();
+        }
+        let mut out = String::from("\n\n## Previously Failed Approaches\n\n");
+        out.push_str("The following approaches have been tried and failed. You MUST try a DIFFERENT strategy:\n\n");
+        for (i, (approach, reason, iter)) in self.failures.iter().enumerate() {
+            out.push_str(&format!(
+                "{}. **Iteration {}**: {}\n   Failure reason: {}\n\n",
+                i + 1,
+                iter,
+                approach,
+                reason
+            ));
+        }
+        if self.consecutive_same_approach >= 2 {
+            out.push_str(&format!(
+                "⚠️ You have tried the same approach {} times in a row. \
+                 You MUST fundamentally change your strategy — different file, \
+                 different pattern, different level of abstraction.\n",
+                self.consecutive_same_approach
+            ));
+        }
+        out
+    }
+}
+
 /// Result of direct execution (bypasses plan/critique).
 #[derive(Debug, Clone)]
 pub struct DirectResult {
@@ -509,6 +562,80 @@ pub struct AgentRunResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runbook: Option<Runbook>,
     pub total_usage: Usage,
+}
+
+// ---------------------------------------------------------------------------
+// Checkpoint: persist state for crash-resume on long-running tasks
+// ---------------------------------------------------------------------------
+
+/// Persisted state for resuming a long-running agent loop after timeout or crash.
+///
+/// Written to `.sruja/runs/<run_id>/checkpoint.json` after each iteration.
+/// On resume, the agent loads this file and continues from the next iteration.
+/// Cleaned up on successful convergence.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunCheckpoint {
+    /// The goal statement (for display and verification on resume).
+    pub goal: String,
+    /// The comprehension from the initial run (carried forward).
+    pub comprehension: Comprehension,
+    /// Iterations completed so far.
+    pub iterations: Vec<LoopIteration>,
+    /// The last plan produced (may be rejected, but needed for replanning).
+    pub last_plan: Option<Plan>,
+    /// Step results from the last iteration.
+    pub last_steps: Vec<StepResult>,
+    /// Critique from the last iteration.
+    pub last_critique: Option<Critique>,
+    /// Failure tracker state (what approaches failed and why).
+    pub failure_tracker: FailureTracker,
+    /// Total token usage accumulated so far.
+    pub total_usage: Usage,
+    /// Whether the loop converged.
+    pub converged: bool,
+    /// Termination reason.
+    pub termination: LoopTermination,
+    /// Issue signatures seen so far (for oscillation detection).
+    pub seen_signatures: Vec<String>,
+    /// Checkpoint timestamp (ISO 8601).
+    pub timestamp: String,
+}
+
+impl RunCheckpoint {
+    /// Save checkpoint to disk.
+    pub fn write(&self, run_dir: &std::path::Path) -> Result<(), std::io::Error> {
+        std::fs::create_dir_all(run_dir)?;
+        let path = run_dir.join("checkpoint.json");
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        std::fs::write(&path, json)?;
+        tracing::debug!(path = %path.display(), "checkpoint: saved");
+        Ok(())
+    }
+
+    /// Load checkpoint from disk.
+    pub fn load(run_dir: &std::path::Path) -> Result<Self, std::io::Error> {
+        let path = run_dir.join("checkpoint.json");
+        let json = std::fs::read_to_string(&path)?;
+        let checkpoint: Self = serde_json::from_str(&json)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        Ok(checkpoint)
+    }
+
+    /// Delete checkpoint file (called on successful convergence).
+    pub fn cleanup(run_dir: &std::path::Path) -> Result<(), std::io::Error> {
+        let path = run_dir.join("checkpoint.json");
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+            tracing::debug!("checkpoint: cleaned up");
+        }
+        Ok(())
+    }
+
+    /// Check if a checkpoint exists for a run directory.
+    pub fn exists(run_dir: &std::path::Path) -> bool {
+        run_dir.join("checkpoint.json").exists()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -561,6 +688,10 @@ pub struct LoopConfig {
     /// — usually desirable (no point retrying a stuck failure), but set
     /// `detect_oscillation: false` if you want full retries.
     pub verifier: Option<VerifierConfig>,
+    /// Directory for writing checkpoint files (resume on crash/timeout).
+    /// `None` = no checkpointing (default). Set to `.sruja/runs/<run_id>/`
+    /// to enable crash-resume for long-running tasks.
+    pub checkpoint_dir: Option<std::path::PathBuf>,
 }
 
 impl Default for LoopConfig {
@@ -572,6 +703,7 @@ impl Default for LoopConfig {
             spend_cap_usd: None,
             detect_oscillation: true,
             verifier: None,
+            checkpoint_dir: None,
         }
     }
 }
@@ -1350,12 +1482,17 @@ impl Agent {
     /// This is the feedback edge that closes the outer ReAct loop: when the
     /// independent critic rejects a change, its `issues` and `suggestions`
     /// are injected into a new plan rather than discarded.
+    ///
+    /// The `failure_tracker` accumulates failed approaches across iterations
+    /// and injects them into the replanning prompt so the agent tries
+    /// genuinely different strategies instead of repeating mistakes.
     pub async fn replan(
         &self,
         goal: &crate::goal::GoalSpec,
         comprehension: &Comprehension,
         critique: &Critique,
         convergence_pressure: Option<&str>,
+        failure_tracker: &FailureTracker,
     ) -> Result<Plan, AgentError> {
         let goal_str = goal.statement.as_str();
         if let HookAction::Abort(reason) = self.hooks.before_plan(goal_str).await {
@@ -1416,6 +1553,8 @@ impl Agent {
             _ => PLAN_SYSTEM_PROMPT,
         };
 
+        let failure_context = failure_tracker.format_for_prompt();
+
         let user = format!(
             "## Goal\n{goal_str}\n\n\
              ## Comprehension\n{}\n\n\
@@ -1424,10 +1563,11 @@ impl Agent {
              You must produce a revised plan that addresses the feedback.\n\n\
              ### Critic issues\n{issues}\n\n\
              ### Critic suggestions\n{suggestions}\n\n\
+             {failure_context}\
              ## Instructions\n\
              {plan_instructions}\
              Output a JSON object with `subtasks` array and `risks` array. \
-             Do not repeat failed approaches.{tdd_note}{pressure_note}",
+             Do not repeat failed approaches. Try a DIFFERENT strategy.{tdd_note}{pressure_note}",
             comprehension.summary,
             critique.score * 100.0,
         );
@@ -2528,6 +2668,7 @@ impl Agent {
         let mut seen_signatures: std::collections::HashSet<String> =
             std::collections::HashSet::new();
         let mut convergence_pressure: Option<String> = None;
+        let mut failure_tracker = FailureTracker::default();
 
         for iteration in 1..=max_iterations {
             self.hooks.before_iteration(iteration, max_iterations).await;
@@ -2541,6 +2682,7 @@ impl Agent {
                         &comprehension,
                         last_critique.as_ref().unwrap(),
                         convergence_pressure.as_deref(),
+                        &failure_tracker,
                     )
                     .await
                 {
@@ -2656,6 +2798,31 @@ impl Agent {
                 .filter(|r| r.status == StepStatus::Failed)
                 .count();
 
+            // Record failure for self-correction: track what approach was tried
+            // and why it failed, so the next replan tries a different strategy.
+            if !approved {
+                let approach = format!(
+                    "subtasks: [{}]",
+                    plan.subtasks
+                        .iter()
+                        .map(|s| format!("{}({:?})", s.id, s.kind))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+                let reason = if critique.issues.is_empty() {
+                    "critic rejected (no specific issues)".to_string()
+                } else {
+                    critique.issues.join("; ")
+                };
+                failure_tracker.record(approach, reason, iteration);
+                tracing::info!(
+                    iteration,
+                    consecutive_same = failure_tracker.consecutive_same_approach,
+                    total_failures = failure_tracker.failures.len(),
+                    "self_correction: recorded failure for next replan"
+                );
+            }
+
             // Record the iteration evidence BEFORE guardrail checks so the
             // caller always sees what happened, even on the triggering iteration.
             iterations.push(LoopIteration {
@@ -2685,6 +2852,27 @@ impl Agent {
                 .after_iteration(iteration, max_iterations, iterations.last().unwrap())
                 .await;
 
+            // --- CHECKPOINT: persist state for crash-resume ---
+            if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
+                let checkpoint = RunCheckpoint {
+                    goal: goal.statement.clone(),
+                    comprehension: comprehension.clone(),
+                    iterations: iterations.clone(),
+                    last_plan: last_plan.clone(),
+                    last_steps: last_steps.clone(),
+                    last_critique: last_critique.clone(),
+                    failure_tracker: failure_tracker.clone(),
+                    total_usage: total_usage.clone(),
+                    converged,
+                    termination: termination.clone(),
+                    seen_signatures: seen_signatures.iter().cloned().collect(),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                };
+                if let Err(e) = checkpoint.write(checkpoint_dir) {
+                    tracing::warn!(error = %e, "checkpoint: failed to save");
+                }
+            }
+
             // --- GUARDRAIL: spend cap (loop-level estimate) ---
             if let Some(cap) = loop_config.spend_cap_usd {
                 let cost = total_usage.estimated_cost_usd();
@@ -2708,6 +2896,15 @@ impl Agent {
             if !approved && !loop_config.replan_on_failure {
                 termination = LoopTermination::NoReplan;
                 break;
+            }
+        }
+
+        // --- CHECKPOINT: cleanup on convergence, keep on failure for resume ---
+        if converged {
+            if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
+                if let Err(e) = RunCheckpoint::cleanup(checkpoint_dir) {
+                    tracing::warn!(error = %e, "checkpoint: cleanup failed");
+                }
             }
         }
 
@@ -2772,6 +2969,309 @@ impl Agent {
             termination,
             total_usage,
             grader_source: "unknown".to_string(),
+            final_result,
+        })
+    }
+
+    /// Resume a previously interrupted agent loop from a checkpoint.
+    ///
+    /// Loads the checkpoint from `loop_config.checkpoint_dir`, restores all
+    /// state (iterations, failure tracker, last plan/critique), and continues
+    /// the plan→execute→critique loop from the next iteration.
+    ///
+    /// Returns the same `LoopResult` as `run_loop`, but with the iterations
+    /// from the original run prepended.
+    pub async fn resume_loop(
+        &self,
+        goal: &crate::goal::GoalSpec,
+        loop_config: &LoopConfig,
+    ) -> Result<LoopResult, AgentError> {
+        let checkpoint_dir = loop_config
+            .checkpoint_dir
+            .as_ref()
+            .ok_or_else(|| AgentError::Other("no checkpoint_dir configured for resume".into()))?;
+
+        let checkpoint = RunCheckpoint::load(checkpoint_dir).map_err(|e| {
+            AgentError::Other(format!("failed to load checkpoint: {e}"))
+        })?;
+
+        tracing::info!(
+            goal = %checkpoint.goal,
+            iteration = checkpoint.iterations.len(),
+            failures = checkpoint.failure_tracker.failures.len(),
+            timestamp = %checkpoint.timestamp,
+            "resume_loop: loaded checkpoint"
+        );
+
+        // Verify the goal matches.
+        if checkpoint.goal != goal.statement {
+            tracing::warn!(
+                checkpoint_goal = %checkpoint.goal,
+                requested_goal = %goal.statement,
+                "resume_loop: goal mismatch — checkpoint goal differs from requested goal"
+            );
+        }
+
+        // If already converged, return the checkpoint result directly.
+        if checkpoint.converged {
+            tracing::info!("resume_loop: checkpoint already converged — nothing to resume");
+            let final_result = AgentRunResult {
+                goal: checkpoint.goal,
+                comprehension: checkpoint.comprehension,
+                plan: checkpoint.last_plan.unwrap_or_else(|| Plan {
+                    goal: String::new(),
+                    goal_statement: goal.statement.clone(),
+                    criteria: Vec::new(),
+                    subtasks: Vec::new(),
+                    tdd: false,
+                    risks: Vec::new(),
+                    schema_version: "1.0".into(),
+                    complexity: TaskComplexity::Simple,
+                }),
+                step_results: checkpoint.last_steps,
+                critique: checkpoint.last_critique,
+                decision: None,
+                runbook: None,
+                total_usage: checkpoint.total_usage.clone(),
+            };
+            return Ok(LoopResult {
+                goal: goal.statement.clone(),
+                iterations: checkpoint.iterations,
+                converged: true,
+                termination: LoopTermination::Approved,
+                total_usage: checkpoint.total_usage,
+                grader_source: "checkpoint".to_string(),
+                final_result,
+            });
+        }
+
+        // Restore state from checkpoint and continue the loop.
+        let mut iterations = checkpoint.iterations;
+        let mut total_usage = checkpoint.total_usage;
+        let mut last_plan = checkpoint.last_plan;
+        let mut last_steps = checkpoint.last_steps;
+        let mut last_critique = checkpoint.last_critique;
+        let mut failure_tracker = checkpoint.failure_tracker;
+        let mut converged = checkpoint.converged;
+        let mut termination = checkpoint.termination;
+        let mut seen_signatures: std::collections::HashSet<String> =
+            checkpoint.seen_signatures.into_iter().collect();
+        let comprehension = checkpoint.comprehension;
+        let max_iterations = loop_config.max_iterations.max(1);
+        let start_iteration = iterations.len() + 1;
+
+        tracing::info!(
+            start_iteration,
+            max_iterations,
+            "resume_loop: continuing from iteration {start_iteration}"
+        );
+
+        for iteration in start_iteration..=max_iterations {
+            self.hooks.before_iteration(iteration, max_iterations).await;
+            let replanned = iteration > 1 && last_critique.is_some();
+
+            // --- PLAN (or re-plan from critique feedback) ---
+            let (plan, plan_parse_error) = if replanned {
+                match self
+                    .replan(
+                        goal,
+                        &comprehension,
+                        last_critique.as_ref().unwrap(),
+                        None, // convergence_pressure — fresh start after resume
+                        &failure_tracker,
+                    )
+                    .await
+                {
+                    Ok(p) => (p, None),
+                    Err(AgentError::PlanParseFailed(e)) => {
+                        return Err(AgentError::PlanParseFailed(e));
+                    }
+                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                        termination = LoopTermination::SpendCapExceeded(spent);
+                        break;
+                    }
+                    Err(e) => return Err(e),
+                }
+            } else {
+                match self.plan(goal, &comprehension).await {
+                    Ok(p) => (p, None),
+                    Err(AgentError::PlanParseFailed(e)) => {
+                        return Err(AgentError::PlanParseFailed(e));
+                    }
+                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                        termination = LoopTermination::SpendCapExceeded(spent);
+                        break;
+                    }
+                    Err(e) => return Err(e),
+                }
+            };
+
+            // --- EXECUTE ---
+            self.guard.set_phase(Phase::Implement);
+            self.hooks.on_phase_change(Phase::Implement).await;
+
+            let step_results = match self.execute(&plan).await {
+                Ok(r) => r,
+                Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                    termination = LoopTermination::SpendCapExceeded(spent);
+                    break;
+                }
+                Err(e) => return Err(e),
+            };
+
+            self.guard.set_phase(Phase::Comprehend);
+
+            for step in &step_results {
+                total_usage.accumulate(&step.usage);
+            }
+
+            // --- CRITIQUE ---
+            let critique = match self
+                .critique(&plan, &step_results)
+                .await
+            {
+                Ok(c) => c,
+                Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
+                    termination = LoopTermination::SpendCapExceeded(spent);
+                    break;
+                }
+                Err(e) => return Err(e),
+            };
+            total_usage.accumulate(&critique.usage);
+
+            let approved = critique.approved;
+            let issue_sig = critique_signature(&critique.issues);
+            let succeeded = step_results
+                .iter()
+                .filter(|r| r.status == StepStatus::Ok)
+                .count();
+            let failed = step_results
+                .iter()
+                .filter(|r| r.status == StepStatus::Failed)
+                .count();
+
+            // Record failure for self-correction.
+            if !approved {
+                let approach = format!(
+                    "subtasks: [{}]",
+                    plan.subtasks
+                        .iter()
+                        .map(|s| format!("{}({:?})", s.id, s.kind))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+                let reason = if critique.issues.is_empty() {
+                    "critic rejected (no specific issues)".to_string()
+                } else {
+                    critique.issues.join("; ")
+                };
+                failure_tracker.record(approach, reason, iteration);
+            }
+
+            iterations.push(LoopIteration {
+                iteration,
+                replanned,
+                plan_goal: plan.goal_statement.clone(),
+                subtask_count: plan.subtasks.len(),
+                succeeded,
+                failed,
+                critique_approved: approved,
+                critique_score: critique.score,
+                critique_issues: critique.issues.clone(),
+                verify_failed: Vec::new(),
+                injected_learning_ids: critique.injected_learning_ids.clone(),
+                usage: critique.usage.clone(),
+                plan_parse_error: plan_parse_error
+                    .as_ref()
+                    .map(|e: &PlanParseError| e.to_string()),
+                incorporation_gap: None,
+            });
+
+            last_plan = Some(plan);
+            last_steps = step_results.clone();
+            last_critique = Some(critique);
+
+            self.hooks
+                .after_iteration(iteration, max_iterations, iterations.last().unwrap())
+                .await;
+
+            // --- CHECKPOINT: persist state for crash-resume ---
+            if let Some(ref cp_dir) = loop_config.checkpoint_dir {
+                let checkpoint = RunCheckpoint {
+                    goal: goal.statement.clone(),
+                    comprehension: comprehension.clone(),
+                    iterations: iterations.clone(),
+                    last_plan: last_plan.clone(),
+                    last_steps: last_steps.clone(),
+                    last_critique: last_critique.clone(),
+                    failure_tracker: failure_tracker.clone(),
+                    total_usage: total_usage.clone(),
+                    converged,
+                    termination: termination.clone(),
+                    seen_signatures: seen_signatures.iter().cloned().collect(),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                };
+                if let Err(e) = checkpoint.write(cp_dir) {
+                    tracing::warn!(error = %e, "checkpoint: failed to save");
+                }
+            }
+
+            // --- GUARDRAIL: spend cap ---
+            if let Some(cap) = loop_config.spend_cap_usd {
+                let cost = total_usage.estimated_cost_usd();
+                if cost >= cap {
+                    termination = LoopTermination::SpendCapExceeded(cost);
+                    break;
+                }
+            }
+
+            // --- GUARDRAIL: oscillation detection ---
+            if loop_config.detect_oscillation && !approved && !seen_signatures.insert(issue_sig) {
+                termination = LoopTermination::Oscillation;
+                break;
+            }
+
+            if approved && loop_config.stop_on_approval {
+                converged = true;
+                termination = LoopTermination::Approved;
+                break;
+            }
+            if !approved && !loop_config.replan_on_failure {
+                termination = LoopTermination::NoReplan;
+                break;
+            }
+        }
+
+        // --- CHECKPOINT: cleanup on convergence ---
+        if converged {
+            if let Some(ref cp_dir) = loop_config.checkpoint_dir {
+                if let Err(e) = RunCheckpoint::cleanup(cp_dir) {
+                    tracing::warn!(error = %e, "checkpoint: cleanup failed");
+                }
+            }
+        }
+
+        let plan = last_plan.ok_or(AgentError::Other("resume_loop produced no plan".into()))?;
+        let critique = last_critique;
+
+        let final_result = AgentRunResult {
+            goal: goal.statement.clone(),
+            comprehension,
+            plan,
+            step_results: last_steps,
+            critique,
+            decision: None,
+            runbook: None,
+            total_usage: total_usage.clone(),
+        };
+
+        Ok(LoopResult {
+            goal: goal.statement.clone(),
+            iterations,
+            converged,
+            termination,
+            total_usage,
+            grader_source: "checkpoint-resume".to_string(),
             final_result,
         })
     }

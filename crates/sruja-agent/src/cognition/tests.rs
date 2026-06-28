@@ -1689,3 +1689,137 @@
         // Same subtasks but risks changed → no gap.
         assert!(check_incorporation(&old, &new, &issues).is_none());
     }
+
+    // --- Checkpoint tests ---
+
+    fn test_comprehension() -> Comprehension {
+        Comprehension {
+            goal: String::new(),
+            summary: String::new(),
+            cited_elements: Vec::new(),
+            key_findings: Vec::new(),
+            risks: Vec::new(),
+            usage: Usage::default(),
+            retrieved_learning_ids: Vec::new(),
+            complexity: TaskComplexity::default(),
+        }
+    }
+
+    #[test]
+    fn checkpoint_write_and_load() {
+        let tmp = tempfile::tempdir().unwrap();
+        let checkpoint = RunCheckpoint {
+            goal: "test goal".into(),
+            comprehension: test_comprehension(),
+            iterations: Vec::new(),
+            last_plan: None,
+            last_steps: Vec::new(),
+            last_critique: None,
+            failure_tracker: FailureTracker::default(),
+            total_usage: Usage::default(),
+            converged: false,
+            termination: LoopTermination::MaxIterations,
+            seen_signatures: Vec::new(),
+            timestamp: "2026-01-01T00:00:00Z".into(),
+        };
+
+        // Write checkpoint.
+        checkpoint.write(tmp.path()).unwrap();
+        assert!(RunCheckpoint::exists(tmp.path()));
+
+        // Load checkpoint.
+        let loaded = RunCheckpoint::load(tmp.path()).unwrap();
+        assert_eq!(loaded.goal, "test goal");
+        assert!(!loaded.converged);
+        assert_eq!(loaded.termination, LoopTermination::MaxIterations);
+    }
+
+    #[test]
+    fn checkpoint_cleanup() {
+        let tmp = tempfile::tempdir().unwrap();
+        let checkpoint = RunCheckpoint {
+            goal: "test".into(),
+            comprehension: test_comprehension(),
+            iterations: Vec::new(),
+            last_plan: None,
+            last_steps: Vec::new(),
+            last_critique: None,
+            failure_tracker: FailureTracker::default(),
+            total_usage: Usage::default(),
+            converged: true,
+            termination: LoopTermination::Approved,
+            seen_signatures: Vec::new(),
+            timestamp: "2026-01-01T00:00:00Z".into(),
+        };
+
+        checkpoint.write(tmp.path()).unwrap();
+        assert!(RunCheckpoint::exists(tmp.path()));
+
+        RunCheckpoint::cleanup(tmp.path()).unwrap();
+        assert!(!RunCheckpoint::exists(tmp.path()));
+    }
+
+    #[test]
+    fn failure_tracker_records_and_formats() {
+        let mut tracker = FailureTracker::default();
+        tracker.record(
+            "subtasks: [s1(Implement)]".into(),
+            "critic rejected: missing tests".into(),
+            1,
+        );
+        assert_eq!(tracker.failures.len(), 1);
+        assert_eq!(tracker.consecutive_same_approach, 1);
+
+        // Same approach again → consecutive count increases.
+        tracker.record(
+            "subtasks: [s1(Implement)]".into(),
+            "critic rejected: still missing tests".into(),
+            2,
+        );
+        assert_eq!(tracker.consecutive_same_approach, 2);
+
+        // Different approach → resets consecutive count.
+        tracker.record(
+            "subtasks: [s1(TestAuthor), s2(Implement)]".into(),
+            "critic rejected: different issue".into(),
+            3,
+        );
+        assert_eq!(tracker.consecutive_same_approach, 1);
+
+        // Format for prompt includes failure history.
+        let formatted = tracker.format_for_prompt();
+        assert!(formatted.contains("Previously Failed Approaches"));
+        assert!(formatted.contains("Iteration 1"));
+        assert!(formatted.contains("Iteration 2"));
+        assert!(formatted.contains("Iteration 3"));
+    }
+
+    #[test]
+    fn checkpoint_serializes_failure_tracker() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut tracker = FailureTracker::default();
+        tracker.record("approach A".into(), "reason 1".into(), 1);
+        tracker.record("approach B".into(), "reason 2".into(), 2);
+
+        let checkpoint = RunCheckpoint {
+            goal: "serialize test".into(),
+            comprehension: test_comprehension(),
+            iterations: Vec::new(),
+            last_plan: None,
+            last_steps: Vec::new(),
+            last_critique: None,
+            failure_tracker: tracker.clone(),
+            total_usage: Usage::default(),
+            converged: false,
+            termination: LoopTermination::MaxIterations,
+            seen_signatures: vec!["sig1".into()],
+            timestamp: "2026-01-01T00:00:00Z".into(),
+        };
+
+        checkpoint.write(tmp.path()).unwrap();
+        let loaded = RunCheckpoint::load(tmp.path()).unwrap();
+        assert_eq!(loaded.failure_tracker.failures.len(), 2);
+        assert_eq!(loaded.failure_tracker.failures[0].0, "approach A");
+        assert_eq!(loaded.failure_tracker.failures[1].1, "reason 2");
+        assert_eq!(loaded.seen_signatures, vec!["sig1"]);
+    }

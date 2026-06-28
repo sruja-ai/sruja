@@ -453,6 +453,9 @@ pub enum AgentCommand {
         /// Interactive steering: prompt between iterations to continue, stop, or view the live report
         #[arg(long)]
         steer: bool,
+        /// Resume a previously interrupted loop from checkpoint (in .sruja/runs/<run_id>/)
+        #[arg(long)]
+        resume: bool,
     },
 }
 
