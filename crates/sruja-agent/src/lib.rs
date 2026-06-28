@@ -38,17 +38,13 @@
 
 pub mod calibration;
 pub mod cognition;
-pub mod dlc;
 pub mod executor;
 pub mod goal;
 pub mod llm;
 pub mod manifest;
 pub mod matts;
 pub mod memory;
-pub mod multi;
-pub mod pair;
 pub mod pipeline;
-pub mod program;
 pub mod tool;
 pub mod verify;
 
@@ -62,19 +58,13 @@ pub use cognition::{
     VerifierConfig,
 };
 pub use cognition::chat::{TurnEvent, TurnResult};
-pub use dlc::{DlcError, DlcPipeline};
 pub use executor::TrajectoryExecutor;
 pub use goal::GoalSpec;
 pub use llm::{DEFAULT_MODEL, PREMIUM_MODEL};
 pub use manifest::LoopManifest;
 pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryStatus};
 pub use memory::{AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry};
-pub use multi::{BrainstormSession, MultiError};
-pub use pair::{PairError, PairSession};
-pub use pipeline::{
-    AreaPartitioner, BudgetTracker, ConvergenceResult, LessonStore, LiveReport, PipelineBudgets,
-    PipelineManifest, PipelineOrchestrator, PipelineResult,
-};
+pub use pipeline::{PipelineOrchestrator, PipelineResult, Scorecard};
 
 // Re-export shared learning types from sruja-graph for backward compatibility.
 pub use sruja_graph::learning::{

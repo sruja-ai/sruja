@@ -167,11 +167,17 @@ pub fn generate_from_goal(goal: &str) -> PipelineManifest {
 
     let mut models = HashMap::new();
 
-    // All roles default to a single model name that users can customize.
-    // In single-model setups, all roles use the same model.
-    for role in &["analyzer", "prober", "confirmer", "fixer", "auditor", "retester", "judge"] {
-        models.insert(role.to_string(), ModelEntry::Single("model-name".to_string()));
-    }
+    // Default model mapping using actual model names so the TieredClient
+    // routes each stage to the correct provider. Users can edit these
+    // after generation to match their available models.
+    // Analyzer: premium model for deep analysis
+    models.insert("analyzer".to_string(), ModelEntry::Single("GLM-5.2".to_string()));
+    // Prober: mid-tier for test writing
+    models.insert("prober".to_string(), ModelEntry::Single("GLM-5.1".to_string()));
+    // Fixer: cheap model for implementation
+    models.insert("fixer".to_string(), ModelEntry::Single("GLM-4.7".to_string()));
+    // Judge: premium scoring
+    models.insert("judge".to_string(), ModelEntry::Single("GLM-5.2".to_string()));
 
     PipelineManifest {
         goal: goal.to_string(),
@@ -182,33 +188,13 @@ pub fn generate_from_goal(goal: &str) -> PipelineManifest {
                 phase_1_verify: false,
             },
             StageDef {
-                id: "self_review".into(), enabled: true, parallel: false,
-                model: "analyzer".into(), prompt_file: Some(format!("{slug}_self_review.md")),
-                phase_1_verify: false,
-            },
-            StageDef {
                 id: "prober".into(), enabled: true, parallel: false,
                 model: "prober".into(), prompt_file: Some(format!("{slug}_prober.md")),
                 phase_1_verify: false,
             },
             StageDef {
-                id: "confirmer".into(), enabled: true, parallel: false,
-                model: "confirmer".into(), prompt_file: Some(format!("{slug}_confirmer.md")),
-                phase_1_verify: false,
-            },
-            StageDef {
                 id: "fixer".into(), enabled: true, parallel: false,
                 model: "fixer".into(), prompt_file: Some(format!("{slug}_fixer.md")),
-                phase_1_verify: false,
-            },
-            StageDef {
-                id: "auditor".into(), enabled: true, parallel: false,
-                model: "auditor".into(), prompt_file: Some(format!("{slug}_auditor.md")),
-                phase_1_verify: false,
-            },
-            StageDef {
-                id: "retester".into(), enabled: true, parallel: false,
-                model: "retester".into(), prompt_file: Some(format!("{slug}_retester.md")),
                 phase_1_verify: false,
             },
             StageDef {
@@ -241,11 +227,12 @@ pub fn generate_prompt_file(goal: &str, stage_id: &str) -> String {
              Return a JSON object with a `gaps` array."
         ),
         "self_review" | "analyzer_self_review" => format!(
-            "You are the **Analyzer** doing a self-review.\n\n\
+            "You are the **Reviewer** — refine the analyzer's gap report.\n\n\
              Goal: {goal}\n\n\
-             Critique each gap you identified. Drop unsubstantiated ones, \
-             adjust severity, strengthen descriptions. Return only the gaps \
-             that survive review."
+             For each gap: strengthen the description, add more evidence (file:line), \
+             adjust severity up/down. Only drop a gap if it is provably wrong \
+             (contradicted by the actual code). Keep at least 80% of gaps. \
+             Return the refined gap list as a JSON object with a `gaps` array."
         ),
         "prober" => format!(
             "You are the **Prober** — you write test cases that expose gaps.\n\n\
@@ -256,14 +243,27 @@ pub fn generate_prompt_file(goal: &str, stage_id: &str) -> String {
         "confirmer" => format!(
             "You are the **Confirmer** — independently validate test cases.\n\n\
              Goal: {goal}\n\n\
-             For each test case: confirm it's valid, reject false positives, \
-             adjust severity. Record lessons for rejections."
+             For each test case: confirm it's valid, keep at least 80% of bugs. \
+             Only reject a bug if it is provably wrong (contradicted by the code). \
+             Adjust severity up/down when appropriate. \
+             Return the updated bugs as a JSON object with a `bugs` array."
         ),
         "fixer" => format!(
             "You are the **Crafter** — you implement fixes.\n\n\
              Goal: {goal}\n\n\
-             Fix each bug at the root cause. Write tests. Run the project's \
-             test suite before declaring done. No shortcuts."
+             Fix each bug at the root cause using **targeted patches**.\n\n\
+             Return JSON with a `fixes` array. Each fix must have:\n\
+             - `bug_id`: the bug ID\n\
+             - `file`: relative path to the file (e.g. \"packages/core/src/acengage_reporting/orchestrator.py\")\n\
+             - `description`: what you changed and why\n\
+             - `patches`: array of find/replace objects, each with:\n\
+               - `old`: the **exact existing text** to find (include surrounding context for uniqueness)\n\
+               - `new`: the replacement text\n\n\
+             RULES:\n\
+             1. Include enough surrounding context in `old` to make the match unique (3-5 lines)\n\
+             2. Preserve indentation exactly\n\
+             3. Only modify what needs to change — keep everything else intact\n\
+             4. One patch per change (you can have multiple patches per file)"
         ),
         "auditor" => format!(
             "You are the **Auditor** — you code-review fixes.\n\n\
@@ -281,7 +281,18 @@ pub fn generate_prompt_file(goal: &str, stage_id: &str) -> String {
              Goal: {goal}\n\n\
              Score 5 dimensions 0-5: functional correctness, code quality, \
              test coverage, UX quality, cost efficiency. Read actual files. \
-             Cite evidence. Return JSON."
+             Cite evidence.\n\n\
+             Return ONLY valid JSON with these fields:\n\
+             ```json\n\
+             {{\n  \"functional_correctness\": 0-5,\n  \
+             \"code_quality\": 0-5,\n  \
+             \"test_coverage\": 0-5,\n  \
+             \"ux_quality\": 0-5,\n  \
+             \"cost_efficiency\": 0-5,\n  \
+             \"total\": (average of the 5),\n  \
+             \"summary\": \"brief justification\",\n  \
+             \"evidence\": [\"file:line - finding\"]\n}}\n\
+             ```"
         ),
         _ => format!(
             "You are a pipeline agent.\n\nGoal: {goal}\n\nExecute your role."

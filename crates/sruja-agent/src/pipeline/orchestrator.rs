@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::llm::{CompletionRequest, LlmClient, OpenAiClient};
+use crate::llm::{CompletionRequest, LlmClient, OpenAiClient, TieredClient};
 
 use super::budget::BudgetTracker;
 use super::config::{self, PipelineManifest};
@@ -38,6 +38,7 @@ pub struct PipelineOrchestrator {
     focus: Option<String>,
     goal: String,
     llm: Option<Arc<dyn LlmClient>>,
+    tiered_llm: Option<Arc<TieredClient>>,
 }
 
 impl PipelineOrchestrator {
@@ -81,12 +82,22 @@ impl PipelineOrchestrator {
             focus,
             goal,
             llm: None,
+            tiered_llm: None,
         }
     }
 
-    /// Set the LLM client.
+    /// Set the LLM client (single-provider path).
     pub fn with_llm(mut self, llm: Arc<dyn LlmClient>) -> Self {
         self.llm = Some(llm);
+        self
+    }
+
+    /// Set a tiered LLM client for multi-provider routing.
+    ///
+    /// Routes each pipeline stage's model name through the correct provider
+    /// (e.g. GLM-5.2 → ZAI, mimo-v2.5-pro → Ximimo).
+    pub fn with_tiered(mut self, client: TieredClient) -> Self {
+        self.tiered_llm = Some(Arc::new(client));
         self
     }
 
@@ -103,6 +114,7 @@ impl PipelineOrchestrator {
         let mut gaps: Vec<Gap> = Vec::new();
         let mut bugs: Vec<Bug> = Vec::new();
         let mut fixes: Vec<FixReport> = Vec::new();
+        let mut auditor_rejected = false;
 
         for cycle in 0..cycles {
             self.budgets.start_new_cycle();
@@ -114,9 +126,26 @@ impl PipelineOrchestrator {
                     continue;
                 }
 
+                // Skip fix/audit/retest stages when there's nothing to process yet.
+                // Prevents wasting API calls and cascading empty artifacts.
+                if matches!(stage.id.as_str(), "fixer" | "auditor" | "retester") && bugs.is_empty() {
+                    println!("  ⏭ {} stage (skipped — no bugs to process)", stage.id);
+                    continue;
+                }
+
+                let stage_models = self.manifest.resolve_models(&stage.model);
+                let model_name = stage_models.first().map(|m| m.as_str()).unwrap_or("default");
+                println!("  ▶ {} stage (model: {model_name})...", stage.id);
                 let (result, duration) = self.run_stage(stage, &gaps, &bugs, &fixes, cycle).await;
 
                 self.extract_artifact(&result, &mut gaps, &mut bugs, &mut fixes, &mut scorecards);
+
+                // Track auditor rejection as blocking
+                if let Some(PipelineArtifact::AuditResult(ref a)) = result.artifact {
+                    if !a.approves {
+                        auditor_rejected = true;
+                    }
+                }
 
                 let artifact_name = self.artifact_name(&result);
                 self.live_report.update(&result, &artifact_name, duration.as_millis() as u64);
@@ -128,7 +157,8 @@ impl PipelineOrchestrator {
             cycle_count = cycle + 1;
 
             let current_score = scorecards.last().map(|s| s.total);
-            let has_blocking = bugs.iter().any(|b| b.severity == "critical" || b.severity == "high");
+            let has_blocking = auditor_rejected
+                || bugs.iter().any(|b| b.severity == "critical" || b.severity == "high");
 
             if let Some(score) = current_score {
                 self.budgets.previous_score = Some(score);
@@ -186,8 +216,8 @@ impl PipelineOrchestrator {
             self.goal
         );
 
-        let req = CompletionRequest::prompt(&role_prompt, &task)
-            .with_json();
+        // Route judge through the stage's model from manifest
+        let req = build_completion_request(&role_prompt, &task, &self.manifest, &judge_stage.model);
 
         let response = llm.complete(&req)
             .await
@@ -247,16 +277,83 @@ impl PipelineOrchestrator {
         // Build task from goal + artifacts
         let task = build_task_for_stage(&stage.id, &self.goal, gaps, bugs, fixes, cycle);
 
-        // Call LLM
-        let req = CompletionRequest::prompt(&system_prompt, &task)
-            .with_json();
-
-        let response = match llm.complete(&req).await {
-            Ok(r) => r,
-            Err(e) => return (self.failed_result(stage, vec![format!("LLM call failed: {e}")]), start.elapsed()),
+        // Call LLM with model routing from manifest.
+        // When parallel + multiple models, run concurrent calls on different providers
+        // to catch model-specific blind spots (the "cross-model review" pattern).
+        let stage_models = self.manifest.resolve_models(&stage.model);
+        let effective_models: Vec<String> = if stage.parallel && stage_models.len() > 1 {
+            stage_models
+        } else {
+            stage_models.into_iter().take(1).collect()
         };
 
-        let artifact = parse_artifact(&stage.id, &response.content, cycle);
+        let response = if effective_models.len() > 1 {
+            // Parallel multi-model: spawn concurrent calls, merge results
+            let mut handles = Vec::new();
+            for model in &effective_models {
+                let prompt = system_prompt.clone();
+                let task_clone = task.clone();
+                let model = model.clone();
+                let llm_ref = Arc::clone(&llm);
+                handles.push(tokio::spawn(async move {
+                    let req = CompletionRequest::prompt(&prompt, &task_clone)
+                        .with_model(model)
+                        .with_json();
+                    llm_ref.complete(&req).await
+                }));
+            }
+
+            let mut contents = Vec::new();
+            let mut errors = Vec::new();
+            for handle in handles {
+                match handle.await {
+                    Ok(Ok(resp)) => contents.push(resp.content),
+                    Ok(Err(e)) => errors.push(format!("LLM error: {e}")),
+                    Err(e) => errors.push(format!("spawn error: {e}")),
+                }
+            }
+
+            if contents.is_empty() {
+                return (self.failed_result(stage, errors), start.elapsed());
+            }
+
+            // Merge: concatenate all responses for artifact parsing
+            // (parse_artifact handles arrays by taking all items)
+            let merged = merge_multi_model_responses(&stage.id, &contents);
+            if !errors.is_empty() {
+                println!("  ⚠ some parallel models failed: {}", errors.join("; "));
+            }
+            merged
+        } else {
+            // Single model: direct call
+            let model = effective_models.first().filter(|m| !m.is_empty());
+            let req = if let Some(m) = model {
+                CompletionRequest::prompt(&system_prompt, &task)
+                    .with_model(m.clone())
+                    .with_json()
+            } else {
+                CompletionRequest::prompt(&system_prompt, &task)
+                    .with_json()
+            };
+
+            match llm.complete(&req).await {
+                Ok(r) => r.content,
+                Err(e) => return (self.failed_result(stage, vec![format!("LLM call failed: {e}")]), start.elapsed()),
+            }
+        };
+
+        // For fixer stage: apply code changes to disk
+        if stage.id == "fixer" {
+            let fix_report = self.apply_fixer_changes(&response, &stage.id, bugs, start).await;
+            return (StageResult {
+                stage_id: stage.id.clone(), role,
+                success: fix_report.status != FixStatus::Failed,
+                artifact: Some(PipelineArtifact::FixReport(fix_report)),
+                duration: start.elapsed(), errors: vec![],
+            }, start.elapsed());
+        }
+
+        let artifact = parse_artifact(&stage.id, &response, cycle);
         let elapsed = start.elapsed();
 
         (StageResult {
@@ -264,6 +361,274 @@ impl PipelineOrchestrator {
             success: true, artifact,
             duration: elapsed, errors: vec![],
         }, elapsed)
+    }
+
+    /// Apply code changes returned by the fixer LLM to actual files on disk.
+    ///
+    /// The LLM returns JSON with patches. Two modes:
+    ///
+    /// **Full file replacement** (use with care):
+    /// ```json
+    /// {"fixes": [{"bug_id":"bug-1", "file":"path/to/file.py",
+    ///            "new_content":"entire file content", "description":"..."}]}
+    /// ```
+    ///
+    /// **Targeted patches** (preferred — preserves rest of file):
+    /// ```json
+    /// {"fixes": [{"bug_id":"bug-1", "file":"path/to/file.py",
+    ///            "description":"add input validation",
+    ///            "patches": [
+    ///              {"old": "original code block",
+    ///               "new": "replacement code block"}
+    ///            ]}]}
+    /// ```
+    ///
+    /// The orchestrator reads each file, applies all patches in order,
+    /// then writes the result. Returns a `FixReport` for each file.
+    async fn apply_fixer_changes(
+        &self,
+        content: &str,
+        _stage_id: &str,
+        _bugs: &[Bug],
+        start: std::time::Instant,
+    ) -> FixReport {
+        let cleaned = strip_fences(content);
+        let v: serde_json::Value = serde_json::from_str(&cleaned).unwrap_or_default();
+
+        let fixes_arr = v.get("fixes")
+            .or_else(|| v.get("files"))
+            .and_then(|a| a.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        if fixes_arr.is_empty() {
+            // Maybe the LLM returned a single-file response
+            let file = v.get("file").and_then(|f| f.as_str()).unwrap_or("");
+            let new_content = v.get("new_content").and_then(|c| c.as_str()).unwrap_or("");
+            let desc = v.get("description").and_then(|d| d.as_str()).unwrap_or("fix");
+            if !file.is_empty() && !new_content.is_empty() {
+                return self.write_single_fix(file, new_content, "bug-1", desc, start).await;
+            }
+            return FixReport {
+                bug_id: "unknown".into(),
+                status: FixStatus::Failed,
+                fix_description: "No fixes returned by LLM".into(),
+                modified_files: vec![],
+                verify_output: vec!["No fixes in response".into()],
+                root_cause: "LLM returned empty fixes array".into(),
+            };
+        }
+
+        let mut combined_report: Option<FixReport> = None;
+        for fix_val in &fixes_arr {
+            let file = fix_val.get("file").and_then(|f| f.as_str()).unwrap_or("");
+            let bug_id = fix_val.get("bug_id").and_then(|b| b.as_str()).unwrap_or("bug-1");
+            let desc = fix_val.get("description").and_then(|d| d.as_str()).unwrap_or("fix");
+
+            if file.is_empty() {
+                continue;
+            }
+
+            // Check if LLM returned full file content or targeted patches
+            let new_content = fix_val.get("new_content").and_then(|c| c.as_str()).unwrap_or("");
+            let patches = fix_val.get("patches")
+                .and_then(|p| p.as_array()).cloned().unwrap_or_default();
+
+            let report = if !new_content.is_empty() {
+                // Full file replacement mode
+                self.write_single_fix(file, new_content, bug_id, desc, start).await
+            } else if !patches.is_empty() {
+                // Targeted patch mode — apply patches to existing file
+                self.apply_patches_to_file(file, &patches, bug_id, desc, start).await
+            } else {
+                continue;
+            };
+
+            combined_report = match combined_report {
+                Some(mut r) => {
+                    r.modified_files.extend(report.modified_files);
+                    r.verify_output.extend(report.verify_output);
+                    if report.status == FixStatus::Failed {
+                        r.status = FixStatus::Failed;
+                    }
+                    r.fix_description.push_str(&format!("\n---\n{}", report.fix_description));
+                    Some(r)
+                }
+                None => Some(report),
+            };
+        }
+
+        combined_report.unwrap_or_else(|| FixReport {
+            bug_id: "unknown".into(),
+            status: FixStatus::Failed,
+            fix_description: "Failed to apply any fixes".into(),
+            modified_files: vec![],
+            verify_output: vec![],
+            root_cause: "All fixes had empty file or content".into(),
+        })
+    }
+
+    /// Write a single file fix and return its report.
+    async fn write_single_fix(
+        &self,
+        file: &str,
+        new_content: &str,
+        bug_id: &str,
+        description: &str,
+        _start: std::time::Instant,
+    ) -> FixReport {
+        let file_path = self.repo.join(file);
+        if !file_path.exists() {
+            return FixReport {
+                bug_id: bug_id.into(),
+                status: FixStatus::Failed,
+                fix_description: format!("File not found: {file}"),
+                modified_files: vec![],
+                verify_output: vec!["File does not exist".into()],
+                root_cause: "Target file not found in repository".into(),
+            };
+        }
+
+        // Read current content to confirm the file is valid
+        let original = match std::fs::read_to_string(&file_path) {
+            Ok(c) => c,
+            Err(e) => return FixReport {
+                bug_id: bug_id.into(),
+                status: FixStatus::Failed,
+                fix_description: format!("Cannot read {file}: {e}"),
+                modified_files: vec![],
+                verify_output: vec![format!("Read error: {e}")],
+                root_cause: format!("File read error: {e}"),
+            },
+        };
+
+        // Skip if content hasn't changed
+        if original == new_content {
+            return FixReport {
+                bug_id: bug_id.into(),
+                status: FixStatus::Resolved,
+                fix_description: format!("{description} (no changes needed — content already matches)"),
+                modified_files: vec![file.into()],
+                verify_output: vec!["No changes applied (content identical)".into()],
+                root_cause: String::new(),
+            };
+        }
+
+        // Write the new content
+        match std::fs::write(&file_path, new_content) {
+            Ok(_) => {
+                // Run verify command if configured
+                let verify = self.run_verify_steps().await;
+                let mut verify_output = vec![format!("Wrote {file}")];
+                if !verify.all_passed {
+                    verify_output.push(verify.details);
+                }
+                FixReport {
+                    bug_id: bug_id.into(),
+                    status: FixStatus::Resolved,
+                    fix_description: description.into(),
+                    modified_files: vec![file.into()],
+                    verify_output,
+                    root_cause: String::new(),
+                }
+            }
+            Err(e) => FixReport {
+                bug_id: bug_id.into(),
+                status: FixStatus::Failed,
+                fix_description: format!("Write failed for {file}: {e}"),
+                modified_files: vec![],
+                verify_output: vec![format!("Write error: {e}")],
+                root_cause: format!("File write error: {e}"),
+            },
+        }
+    }
+
+    /// Apply targeted patches to a file — find/replace individual text blocks.
+    ///
+    /// Each patch in `patches` has `old` (existing text to find) and
+    /// `new` (replacement text). Patches are applied in order.
+    /// Fails if any `old` text is not found in the file.
+    async fn apply_patches_to_file(
+        &self,
+        file: &str,
+        patches: &[serde_json::Value],
+        bug_id: &str,
+        description: &str,
+        _start: std::time::Instant,
+    ) -> FixReport {
+        let file_path = self.repo.join(file);
+        if !file_path.exists() {
+            return FixReport {
+                bug_id: bug_id.into(), status: FixStatus::Failed,
+                fix_description: format!("File not found: {file}"),
+                modified_files: vec![],
+                verify_output: vec!["File does not exist".into()],
+                root_cause: "Target file not found".into(),
+            };
+        }
+
+        let mut content = match std::fs::read_to_string(&file_path) {
+            Ok(c) => c,
+            Err(e) => return FixReport {
+                bug_id: bug_id.into(), status: FixStatus::Failed,
+                fix_description: format!("Cannot read {file}: {e}"),
+                modified_files: vec![],
+                verify_output: vec![format!("Read error: {e}")],
+                root_cause: format!("File read error: {e}"),
+            },
+        };
+
+        let mut applied_count = 0;
+        let mut errors = Vec::new();
+
+        for patch in patches {
+            let old = patch.get("old").and_then(|v| v.as_str()).unwrap_or("");
+            let new = patch.get("new").and_then(|v| v.as_str()).unwrap_or("");
+
+            if old.is_empty() {
+                errors.push("Patch with empty 'old' field".into());
+                continue;
+            }
+
+            if content.contains(old) {
+                content = content.replacen(old, new, 1);
+                applied_count += 1;
+            } else {
+                errors.push(format!("Could not find expected text in {file}"));
+            }
+        }
+
+        if applied_count == 0 {
+            return FixReport {
+                bug_id: bug_id.into(), status: FixStatus::Failed,
+                fix_description: format!("{description} — no patches applied"),
+                modified_files: vec![],
+                verify_output: errors.clone(),
+                root_cause: format!("No matching text found for any patch in {file}"),
+            };
+        }
+
+        // Write the patched content
+        match std::fs::write(&file_path, &content) {
+            Ok(_) => {
+                let mut verify_output = vec![format!("Applied {applied_count} patches to {file}")];
+                verify_output.extend(errors);
+                FixReport {
+                    bug_id: bug_id.into(), status: FixStatus::Resolved,
+                    fix_description: description.into(),
+                    modified_files: vec![file.into()],
+                    verify_output,
+                    root_cause: String::new(),
+                }
+            }
+            Err(e) => FixReport {
+                bug_id: bug_id.into(), status: FixStatus::Failed,
+                fix_description: format!("Write failed for {file}: {e}"),
+                modified_files: vec![],
+                verify_output: vec![format!("Write error: {e}")],
+                root_cause: format!("File write error: {e}"),
+            },
+        }
     }
 
     fn failed_result(&self, stage: &StageDef, errors: Vec<String>) -> StageResult {
@@ -328,6 +693,16 @@ impl PipelineOrchestrator {
                 }
             }
             Some(PipelineArtifact::Scorecard(s)) => scorecards.push(s.clone()),
+            Some(PipelineArtifact::AuditResult(a)) => {
+                if !a.approves {
+                    println!("  ⚠ auditor rejected with {} issues", a.issues.len());
+                }
+            }
+            Some(PipelineArtifact::RetestResult(r)) => {
+                if matches!(r.verdict, RetestVerdict::Regression) {
+                    println!("  ⚠ regression detected: {}", r.details);
+                }
+            }
             _ => {}
         }
     }
@@ -356,14 +731,20 @@ impl PipelineOrchestrator {
     }
 
     fn get_llm(&self) -> Result<Arc<dyn LlmClient>, PipelineError> {
+        // Prefer tiered client (multi-provider routing by model name)
+        if let Some(ref tiered) = self.tiered_llm {
+            return Ok(tiered.clone() as Arc<dyn LlmClient>);
+        }
+        // Fallback to single-provider client
         if let Some(ref llm) = self.llm {
             return Ok(llm.clone());
         }
+        // Last resort: OpenAI-compatible from env
         OpenAiClient::from_env()
             .map(|c| Arc::new(c) as Arc<dyn LlmClient>)
             .map_err(|e| PipelineError::Stage {
                 stage: "setup".into(),
-                message: format!("No LLM client. Set OPENAI_API_KEY or use with_llm(): {e}"),
+                message: format!("No LLM client configured. Set up providers in .sruja/config.toml or set OPENAI_API_KEY: {e}"),
             })
     }
 
@@ -382,6 +763,24 @@ impl PipelineOrchestrator {
 // ---------------------------------------------------------------------------
 // Prompt file generation
 // ---------------------------------------------------------------------------
+
+/// Build a CompletionRequest with the model resolved from the manifest.
+fn build_completion_request(
+    system_prompt: &str,
+    task: &str,
+    manifest: &PipelineManifest,
+    model_key: &str,
+) -> CompletionRequest {
+    let models = manifest.resolve_models(model_key);
+    if let Some(model) = models.first().filter(|m| !m.is_empty()) {
+        CompletionRequest::prompt(system_prompt, task)
+            .with_model(model.clone())
+            .with_json()
+    } else {
+        CompletionRequest::prompt(system_prompt, task)
+            .with_json()
+    }
+}
 
 /// Derive a pipeline name from the goal (filesystem-safe slug).
 fn goal_to_name(goal: &str) -> String {
@@ -431,41 +830,37 @@ fn build_task_for_stage(
              implemented and what the goal requires. For each gap, cite \
              evidence (file:line). Return JSON with a `gaps` array."
         ),
-        "self_review" | "analyzer_self_review" => {
-            let json = serde_json::to_string_pretty(gaps).unwrap_or_default();
-            format!("{base}\n\nSelf-review these gaps. Drop unsubstantiated ones. \
-                     Return only survivors.\n\n{json}")
-        }
         "prober" => {
             let json = serde_json::to_string_pretty(gaps).unwrap_or_default();
             format!("{base}\n\nWrite test cases from these gaps. Each needs \
                      input, expected behavior, why it fails before fix.\n\n{json}")
-        }
-        "confirmer" => {
-            let json = serde_json::to_string_pretty(bugs).unwrap_or_default();
-            format!("{base}\n\nIndependently validate each test case. Confirm, \
-                     reject, or adjust severity.\n\n{json}")
         }
         "fixer" => {
             let json = serde_json::to_string_pretty(bugs).unwrap_or_default();
             format!("{base}\n\nFix each bug at the root cause. Write tests. \
                      Run the test suite.\n\n{json}")
         }
-        "auditor" => {
-            let json = serde_json::to_string_pretty(fixes).unwrap_or_default();
-            format!("{base}\n\nCode-review each fix. Approve or request \
-                     changes.\n\n{json}")
+        "judge" => {
+            let gap_count = gaps.len();
+            let bug_count = bugs.len();
+            let fix_count = fixes.len();
+            let has_fixes = if fix_count > 0 {
+                let json = serde_json::to_string_pretty(fixes).unwrap_or_default();
+                format!("\n\nFixes applied:\n{json}")
+            } else {
+                String::new()
+            };
+            format!(
+                "{base}\n\nPipeline found {gap_count} gaps and {bug_count} bugs, \
+                 applied {fix_count} fixes.{has_fixes}\n\n\
+                 Score the project 0-5 across: functional correctness, \
+                 code quality, test coverage, UX quality, cost efficiency. \
+                 Read actual code files. Cite evidence (file:line). \
+                 Return JSON with fields: functional_correctness, code_quality, \
+                 test_coverage, ux_quality, cost_efficiency, total (average), \
+                 summary, evidence."
+            )
         }
-        "retester" => {
-            let json = serde_json::to_string_pretty(fixes).unwrap_or_default();
-            format!("{base}\n\nRe-test each fix. Resolved, incomplete, or \
-                     regression?\n\n{json}")
-        }
-        "judge" => format!(
-            "{base}\n\nScore the project 0-5 across: functional correctness, \
-             code quality, test coverage, UX quality, cost efficiency. \
-             Read files. Cite evidence."
-        ),
         _ => format!("{base}\n\nExecute your role and produce structured output."),
     }
 }
@@ -481,21 +876,59 @@ fn parse_artifact(stage_id: &str, content: &str, cycle: usize) -> Option<Pipelin
         "prober" | "confirmer" =>
             Some(PipelineArtifact::BugReport(parse_bugs(content, cycle))),
         "judge" => Some(PipelineArtifact::Scorecard(parse_scorecard(content))),
-        "auditor" => Some(PipelineArtifact::AuditResult(AuditResult {
-            fix_index: 0, bug_id: String::new(),
-            verdict: AuditVerdict::Approved, issues: vec![], approves: true,
-        })),
-        "retester" => Some(PipelineArtifact::RetestResult(RetestResult {
-            bug_id: String::new(), verdict: RetestVerdict::Resolved,
-            details: content.chars().take(500).collect(),
-            tester_role: PipelineRole::ReTester,
-        })),
+        "auditor" => Some(PipelineArtifact::AuditResult(parse_audit(content))),
+        "retester" => Some(PipelineArtifact::RetestResult(parse_retest(content))),
         _ => None,
     }
 }
 
+/// Extract the first complete JSON object `{...}` or array `[...]` from mixed text.
+///
+/// Handles cases where the LLM wraps JSON in prose like:
+/// "I'll explore...\n\n{\"key\": \"value\"}\n\nDone."
+///
+/// Tracks brace/bracket depth to avoid matching from the first `{` to the last `}`
+/// when the response contains multiple separate JSON objects.
+fn extract_first_json_blob(text: &str) -> Option<serde_json::Value> {
+    let bytes = text.as_bytes();
+    // Find the first opening brace/bracket
+    let start = bytes.iter().position(|&b| b == b'{' || b == b'[')?;
+    let open = bytes[start];
+    let close = if open == b'{' { b'}' } else { b']' };
+
+    let mut depth = 0u32;
+    for (i, &b) in bytes[start..].iter().enumerate() {
+        if b == open {
+            depth += 1;
+        } else if b == close {
+            depth -= 1;
+            if depth == 0 {
+                let end = start + i + 1;
+                return serde_json::from_str(&text[start..end]).ok();
+            }
+        }
+    }
+    None
+}
+
+/// Strip markdown code fences from JSON content.
+fn strip_fences(content: &str) -> String {
+    content
+        .trim()
+        .strip_prefix("```json")
+        .or_else(|| content.trim().strip_prefix("```"))
+        .map(|s| s.strip_suffix("```").unwrap_or(s))
+        .unwrap_or(content)
+        .trim()
+        .to_string()
+}
+
 pub fn parse_gaps(content: &str, cycle: usize) -> GapReport {
-    let v: serde_json::Value = serde_json::from_str(content).unwrap_or_default();
+    let cleaned = strip_fences(content);
+    let v: serde_json::Value = serde_json::from_str(&cleaned)
+        .ok()
+        .or_else(|| extract_first_json_blob(&cleaned))
+        .unwrap_or_default();
     let gaps_array = v.get("gaps").and_then(|g| g.as_array()).cloned().unwrap_or_default();
     let gaps: Vec<Gap> = gaps_array.into_iter().enumerate().map(|(i, g)| Gap {
         id: format!("gap-{}", i + 1),
@@ -511,7 +944,11 @@ pub fn parse_gaps(content: &str, cycle: usize) -> GapReport {
 }
 
 pub fn parse_bugs(content: &str, cycle: usize) -> BugReport {
-    let v: serde_json::Value = serde_json::from_str(content).unwrap_or_default();
+    let cleaned = strip_fences(content);
+    let v: serde_json::Value = serde_json::from_str(&cleaned)
+        .ok()
+        .or_else(|| extract_first_json_blob(&cleaned))
+        .unwrap_or_default();
     let arr = v.get("bugs").or_else(|| v.get("validations"))
         .and_then(|g| g.as_array()).cloned().unwrap_or_default();
     let bugs: Vec<Bug> = arr.into_iter().enumerate().map(|(i, b)| Bug {
@@ -530,8 +967,124 @@ pub fn parse_bugs(content: &str, cycle: usize) -> BugReport {
     BugReport { bugs, summary: String::new(), cycle }
 }
 
+pub fn parse_audit(content: &str) -> AuditResult {
+    let cleaned = strip_fences(content);
+    let v: serde_json::Value = serde_json::from_str(&cleaned)
+        .ok()
+        .or_else(|| extract_first_json_blob(&cleaned))
+        .unwrap_or_default();
+
+    let verdict_str = v.get("verdict")
+        .and_then(|val| val.as_str())
+        .unwrap_or("request_changes");
+    let verdict = match verdict_str {
+        "approved" => AuditVerdict::Approved,
+        "rejected" => AuditVerdict::Rejected,
+        _ => AuditVerdict::RequestChanges,
+    };
+
+    let issues = v.get("issues")
+        .and_then(|a| a.as_array())
+        .map(|a| a.iter().filter_map(|i| i.as_str().map(String::from)).collect())
+        .unwrap_or_default();
+
+    AuditResult {
+        fix_index: 0,
+        bug_id: v.get("bug_id").and_then(|b| b.as_str()).unwrap_or("").to_string(),
+        verdict: verdict.clone(),
+        issues,
+        approves: matches!(verdict, AuditVerdict::Approved),
+    }
+}
+
+pub fn parse_retest(content: &str) -> RetestResult {
+    let cleaned = strip_fences(content);
+    let v: serde_json::Value = serde_json::from_str(&cleaned)
+        .ok()
+        .or_else(|| extract_first_json_blob(&cleaned))
+        .unwrap_or_default();
+
+    let verdict_str = v.get("verdict")
+        .and_then(|val| val.as_str())
+        .unwrap_or("resolved");
+    let verdict = match verdict_str {
+        "incomplete" => RetestVerdict::Incomplete,
+        "regression" => RetestVerdict::Regression,
+        _ => RetestVerdict::Resolved,
+    };
+
+    RetestResult {
+        bug_id: v.get("bug_id").and_then(|b| b.as_str()).unwrap_or("").to_string(),
+        verdict,
+        details: v.get("details").and_then(|d| d.as_str())
+            .unwrap_or("")
+            .to_string(),
+        tester_role: PipelineRole::ReTester,
+    }
+}
+
+/// Merge responses from multiple parallel model calls into a single parseable
+/// JSON structure. For gap/bug reports, deduplicates by description.
+fn merge_multi_model_responses(stage_id: &str, contents: &[String]) -> String {
+    match stage_id {
+        "analyzer" | "self_review" | "analyzer_self_review" => {
+            let mut all_gaps = Vec::new();
+            let mut seen = std::collections::HashSet::new();
+            for content in contents {
+                let cleaned = strip_fences(content);
+                let v: serde_json::Value = serde_json::from_str(&cleaned)
+                    .ok()
+                    .or_else(|| extract_first_json_blob(&cleaned))
+                    .unwrap_or_default();
+                if let Some(arr) = v.get("gaps").and_then(|g| g.as_array()) {
+                    for gap in arr {
+                        let desc = gap.get("description").and_then(|d| d.as_str()).unwrap_or("");
+                        if seen.insert(desc.to_string()) {
+                            all_gaps.push(gap.clone());
+                        }
+                    }
+                }
+            }
+            serde_json::json!({ "gaps": all_gaps }).to_string()
+        }
+        "prober" | "confirmer" => {
+            let mut all_bugs = Vec::new();
+            let mut seen = std::collections::HashSet::new();
+            for content in contents {
+                let cleaned = strip_fences(content);
+                let v: serde_json::Value = serde_json::from_str(&cleaned)
+                    .ok()
+                    .or_else(|| extract_first_json_blob(&cleaned))
+                    .unwrap_or_default();
+                let arr = v.get("bugs").or_else(|| v.get("validations"))
+                    .and_then(|g| g.as_array());
+                if let Some(arr) = arr {
+                    for bug in arr {
+                        let desc = bug.get("description").or_else(|| bug.get("bug_description"))
+                            .and_then(|d| d.as_str()).unwrap_or("");
+                        if seen.insert(desc.to_string()) {
+                            all_bugs.push(bug.clone());
+                        }
+                    }
+                }
+            }
+            serde_json::json!({ "bugs": all_bugs }).to_string()
+        }
+        _ => {
+            // For other stages, use the first successful response
+            contents.first().cloned().unwrap_or_default()
+        }
+    }
+}
+
 pub fn parse_scorecard(content: &str) -> Scorecard {
-    let v: serde_json::Value = serde_json::from_str(content).unwrap_or_default();
+    let cleaned = strip_fences(content);
+
+    // Try direct parse first, then extract JSON object from mixed text
+    let v: serde_json::Value = serde_json::from_str(&cleaned)
+        .ok()
+        .or_else(|| extract_first_json_blob(&cleaned))
+        .unwrap_or_default();
     let s = |k: &str| v.get(k).and_then(|v| v.as_u64()).unwrap_or(0) as u8;
     let scores = [s("functional_correctness"), s("code_quality"), s("test_coverage"),
                    s("ux_quality"), s("cost_efficiency")];
