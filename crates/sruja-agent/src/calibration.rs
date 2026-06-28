@@ -95,25 +95,48 @@ impl Default for Thresholds {
     }
 }
 
+/// Single-word infrastructure keywords that indicate a one-way door.
 const ONE_WAY_KEYWORDS: &[&str] = &[
     "database",
     "datastore",
     "migration",
     "schema",
-    "delete",
-    "publish",
-    "migrate",
     "deploy",
-    "prod",
     "queue",
     "event store",
 ];
 
+/// Multi-word patterns that are more specific than single keywords.
+/// These catch "deploy to prod" but not "production code".
+const ONE_WAY_PATTERNS: &[&str] = &[
+    "prod database",
+    "prod data",
+    "production database",
+    "production data",
+    "deploy to prod",
+    "deploy prod",
+    "production deploy",
+    "delete from",
+    "drop table",
+    "drop database",
+    "publish to",
+    "publish package",
+    "publish release",
+    "migrate data",
+    "data migration",
+];
+
 /// Infer reversibility from target kind/label text. Conservative: any
 /// storage/migration/deploy marker is treated as a one-way door.
+///
+/// Uses both single-word keywords and multi-word patterns to avoid
+/// false positives (e.g. "production code" is two-way, but "deploy to
+/// prod" is one-way).
 pub fn infer_reversibility(hints: TargetHints<'_>) -> Reversibility {
     let haystack = format!("{} {}", hints.kind, hints.label).to_lowercase();
-    if ONE_WAY_KEYWORDS.iter().any(|kw| haystack.contains(kw)) {
+    if ONE_WAY_KEYWORDS.iter().any(|kw| haystack.contains(kw))
+        || ONE_WAY_PATTERNS.iter().any(|pat| haystack.contains(pat))
+    {
         Reversibility::OneWay
     } else {
         Reversibility::TwoWay
@@ -479,8 +502,11 @@ mod tests {
             ("Database", "Orders DB", Reversibility::OneWay),
             ("Container", "Migration Runner", Reversibility::OneWay),
             ("Queue", "Event Bus", Reversibility::OneWay),
-            ("component", "user delete job", Reversibility::OneWay),
+            ("component", "drop table users", Reversibility::OneWay),
             ("container", "deploy to prod", Reversibility::OneWay),
+            ("Goal", "fix unwrap calls in production code", Reversibility::TwoWay),
+            ("Goal", "refactor the delete handler", Reversibility::TwoWay),
+            ("Goal", "publish a blog post about the API", Reversibility::TwoWay),
             ("component", "API", Reversibility::TwoWay),
             ("container", "Web Server", Reversibility::TwoWay),
         ] {

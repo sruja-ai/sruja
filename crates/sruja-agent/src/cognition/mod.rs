@@ -83,6 +83,9 @@ pub struct AgentConfig {
     pub dry_run: bool,
     /// Max tool-call iterations before giving up (default: 8).
     pub max_tool_iterations: usize,
+    /// Wall-clock timeout for the entire tool loop in seconds (default: 300 = 5 min).
+    /// Prevents the agent from getting stuck if individual calls are slow.
+    pub loop_timeout_secs: u64,
     /// Additional instructions appended to the comprehension system prompt.
     /// Use for context-specific nudges (e.g., "call sruja_focus first").
     pub system_hints: Vec<String>,
@@ -110,6 +113,8 @@ impl Default for AgentConfig {
             // it. 8 is the safety net: soft guard at 4th call (iter 3), hard at 6th call (iter 5).
             // Keeps total loop time under ~60s per phase at 5s/call.
             max_tool_iterations: 8,
+            // 5-minute wall-clock timeout for the entire tool loop.
+            loop_timeout_secs: 300,
             system_hints: Vec::new(),
             critique_personas: CritiquePersona::default_personas(),
             enable_tool_call_tracing: false,
@@ -896,7 +901,32 @@ impl Agent {
     ///
     /// Use this to cap iterations for trivial tasks (e.g. max 3 for a comment
     /// change). Pass `0` or omit to use the agent's configured default.
+    ///
+    /// The loop is also bounded by a wall-clock timeout (`config.loop_timeout_secs`)
+    /// to prevent indefinite hangs when tools or LLM calls are slow.
     pub async fn run_tool_loop_with_limit(
+        &self,
+        req: CompletionRequest,
+        max_iterations: usize,
+    ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>), AgentError> {
+        let timeout = std::time::Duration::from_secs(self.config.loop_timeout_secs);
+        match tokio::time::timeout(timeout, self.run_tool_loop_inner(req, max_iterations)).await {
+            Ok(result) => result,
+            Err(_) => {
+                tracing::warn!(
+                    timeout_secs = self.config.loop_timeout_secs,
+                    "tool_loop: wall-clock timeout exceeded"
+                );
+                Err(AgentError::Other(format!(
+                    "Agent loop timed out after {} seconds",
+                    self.config.loop_timeout_secs
+                )))
+            }
+        }
+    }
+
+    /// Inner implementation of the tool loop (extracted for timeout wrapping).
+    async fn run_tool_loop_inner(
         &self,
         mut req: CompletionRequest,
         max_iterations: usize,
@@ -1568,6 +1598,9 @@ impl Agent {
         // After all subtasks, reset to Comprehend phase.
         self.guard.set_phase(Phase::Comprehend);
 
+        // Auto-format: fix indentation/style issues from model edits.
+        self.auto_format().await;
+
         Ok(results)
     }
 
@@ -1645,6 +1678,10 @@ impl Agent {
         }
 
         tracing::info!("direct_execution: changes verified via git diff");
+
+        // Auto-format: fix indentation/style issues from model edits.
+        self.auto_format().await;
+
         Ok(Some(DirectResult {
             output: response.content,
             usage,
@@ -1827,6 +1864,64 @@ impl Agent {
 
         false
     }
+
+    /// Auto-format changed files to fix indentation/style issues from model edits.
+    ///
+    /// Tries `cargo fmt` for Rust projects, then `prettier` for JS/TS.
+    /// Failures are silently ignored — formatting is best-effort.
+    async fn auto_format(&self) {
+        // Try cargo fmt (Rust)
+        let params = serde_json::json!({
+            "command": "cargo",
+            "args": ["fmt"],
+            "timeout_ms": 30_000,
+        });
+        if let Ok(output) = self.tools.dispatch("shell", params).await {
+            let stderr = output
+                .split("--- stderr ---\n")
+                .nth(1)
+                .unwrap_or("")
+                .trim();
+            if stderr.is_empty() {
+                tracing::info!("auto_format: cargo fmt succeeded");
+                return;
+            }
+        }
+
+        // Try prettier on changed files (JS/TS)
+        let params = serde_json::json!({
+            "command": "git",
+            "args": ["diff", "--name-only"],
+            "timeout_ms": 5_000,
+        });
+        if let Ok(output) = self.tools.dispatch("shell", params).await {
+            let stdout = output
+                .split("--- stdout ---\n")
+                .nth(1)
+                .unwrap_or("")
+                .split("\n--- stderr ---")
+                .next()
+                .unwrap_or("")
+                .trim();
+            let js_files: Vec<&str> = stdout
+                .lines()
+                .filter(|l| l.ends_with(".js") || l.ends_with(".ts") || l.ends_with(".tsx"))
+                .collect();
+            if !js_files.is_empty() {
+                let mut args = vec!["prettier".to_string(), "--write".to_string()];
+                args.extend(js_files.iter().map(|s| s.to_string()));
+                let params = serde_json::json!({
+                    "command": "npx",
+                    "args": args,
+                    "timeout_ms": 30_000,
+                });
+                if self.tools.dispatch("shell", params).await.is_ok() {
+                    tracing::info!("auto_format: prettier succeeded");
+                }
+            }
+        }
+    }
+
     // --- Critique: review every change via the review model ---
 
     /// Review changes via the configured critic ensemble.
