@@ -47,6 +47,7 @@ pub mod matts;
 pub mod memory;
 pub mod multi;
 pub mod pair;
+pub mod pipeline;
 pub mod program;
 pub mod tool;
 pub mod verify;
@@ -70,6 +71,10 @@ pub use matts::{ContrastResult, TrajectoryOutcome, TrajectoryRunner, TrajectoryS
 pub use memory::{AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry};
 pub use multi::{BrainstormSession, MultiError};
 pub use pair::{PairError, PairSession};
+pub use pipeline::{
+    AreaPartitioner, BudgetTracker, ConvergenceResult, LessonStore, LiveReport, PipelineBudgets,
+    PipelineManifest, PipelineOrchestrator, PipelineResult,
+};
 
 // Re-export shared learning types from sruja-graph for backward compatibility.
 pub use sruja_graph::learning::{

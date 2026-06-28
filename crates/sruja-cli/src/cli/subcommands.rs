@@ -385,6 +385,33 @@ pub enum AgentCommand {
         #[arg(long, short = 'f', default_value = "json")]
         format: String,
     },
+    /// Multi-agent role pipeline: analyzer -> prober -> confirmer -> fixer -> auditor -> retester -> judge
+    ///
+    /// Auto-generates `.sruja/pipelines/{name}.toml` and `.sruja/agents/*.md` from the goal
+    /// on first run. Edit those files to customize stages, models, budgets, and prompts.
+    Pipeline {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Natural language goal (e.g. "Add JWT auth to API")
+        #[arg(long)]
+        goal: String,
+        /// Dry-run: analyzer + judge only, no code changes
+        #[arg(long)]
+        dry_run: bool,
+        /// Judge-only: re-score without running pipeline stages
+        #[arg(long)]
+        judge_only: bool,
+        /// Focus on a specific project area (e.g. "core", "api")
+        #[arg(long)]
+        focus: Option<String>,
+        /// Override max pipeline cycles
+        #[arg(long)]
+        max_cycles: Option<usize>,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
     /// Autonomous coding loop: comprehend -> plan -> execute via tools -> critique -> replan until approved
     Loop {
         /// Path to repository root

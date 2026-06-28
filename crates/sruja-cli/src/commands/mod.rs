@@ -3,6 +3,7 @@
 //! Commands are split by domain: dsl, scan, intent.
 //! See REFACTORING_PLAN.md for the layout.
 
+pub mod agent_pipeline;
 pub mod analysis;
 pub mod author;
 pub mod density;
@@ -18,6 +19,7 @@ pub(crate) mod workflow_aidlc;
 
 pub use intent_domain::remediation;
 
+pub use agent_pipeline::handle_pipeline;
 pub use agent_loop::{agent_loop, AgentLoopOptions};
 pub use agent_reflect::agent_reflect;
 pub use intent_domain::agent::{

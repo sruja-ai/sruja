@@ -955,6 +955,25 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 api_key.as_deref(),
                 model.as_deref(),
             ),
+            AgentCommand::Pipeline {
+                repo,
+                goal,
+                dry_run,
+                judge_only,
+                focus,
+                max_cycles,
+                format,
+            } => {
+                commands::handle_pipeline(
+                    &repo,
+                    &goal,
+                    dry_run,
+                    judge_only,
+                    focus,
+                    max_cycles,
+                    &format,
+                ).await
+            }
             AgentCommand::Run {
                 run_id,
                 repo,

@@ -1,0 +1,10 @@
+# architecture
+- Use AI coding editors (Cursor CLI, Claude Code, opencode) for LLM capabilities; avoid building own LLM/MCP integrations. Confidence: 0.80
+- Skill is the primary interface; tools (scan, sync, discover) run behind the scenes with no mandatory first step for users. Confidence: 0.85
+- Load context progressively: summary first, then scoped slice on demand, full graph only when needed. Confidence: 0.75
+- Ask clarifying questions instead of guessing when evidence is insufficient. Confidence: 0.70
+- Test architecture features on real customer-facing projects (ERP, CRM, ecommerce), not libraries or frameworks. Confidence: 0.70
+- Remove dead code, temporary test files, and outdated docs regularly; keep surface area minimal. Confidence: 0.65
+- Use LLM-driven extraction for architecture understanding over pattern-based or static analysis alone. Confidence: 0.75
+- Use rig-core (Rig) for LLM model integration to support multiple providers (OpenAI, OpenRouter, etc.) through a single interface. Confidence: 0.65
+- Generate a pipeline YAML from the user's goal, allow the user to modify it, then follow the pipeline YAML for the agent loop. Confidence: 0.75
