@@ -55,8 +55,8 @@ pub use calibration::{
 };
 pub use cognition::{
     classify_task_complexity, Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult,
-    Comprehension, Critique, LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping,
-    Plan, TaskComplexity, ToolCallTracer, VerifierConfig,
+    Comprehension, Critique, DirectResult, LoopConfig, LoopIteration, LoopResult, LoopTermination,
+    ModelMapping, Plan, TaskComplexity, ToolCallTracer, VerifierConfig,
 };
 pub use cognition::chat::{TurnEvent, TurnResult};
 pub use executor::TrajectoryExecutor;

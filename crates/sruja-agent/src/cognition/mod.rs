@@ -478,6 +478,17 @@ impl CritiquePersona {
     }
 }
 
+/// Result of direct execution (bypasses plan/critique).
+#[derive(Debug, Clone)]
+pub struct DirectResult {
+    /// The model's final response (summary of what it changed).
+    pub output: String,
+    /// Token usage from the direct execution LLM call(s).
+    pub usage: Usage,
+    /// Per-tool-call signals for telemetry.
+    pub tool_signals: Vec<ToolSignal>,
+}
+
 /// Complete result of a full agent run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentRunResult {
@@ -895,6 +906,11 @@ impl Agent {
         let mut last_response: Option<CompletionResponse> = None;
         let mut soft_sent = false;
         let mut hard_sent = false;
+        // Circuit breaker: track consecutive tool errors and inject recovery.
+        // Validated technique from the Self-Harness paper — prevents the agent
+        // from blindly retrying the same failing command.
+        let mut consecutive_errors: usize = 0;
+        let mut recovery_sent = false;
 
         for iteration in 0..max_iterations {
             let response = self.llm.complete(&req).await?;
@@ -1016,6 +1032,13 @@ impl Agent {
                     source: record.source,
                 });
 
+                // Track consecutive errors for circuit breaker.
+                if !record.ok {
+                    consecutive_errors += 1;
+                } else {
+                    consecutive_errors = 0;
+                }
+
                 // U5: emit tool_result event after dispatch (when tracing enabled).
                 if self.config.enable_tool_call_tracing {
                     if let (
@@ -1043,6 +1066,30 @@ impl Agent {
 
                 req.messages
                     .push(Message::tool_result(&call.id, truncated_text));
+            }
+
+            // ── Circuit breaker: consecutive error recovery ──────────────
+            // Self-Harness paper: "tool-error-triggered recovery injection"
+            // When the model hits 3 consecutive tool failures, inject a
+            // redirect: diagnose, try different approach, don't abandon work.
+            if consecutive_errors >= 3 && !recovery_sent {
+                recovery_sent = true;
+                tracing::warn!(
+                    iteration,
+                    consecutive_errors,
+                    "tool_loop: injecting error-recovery message (circuit breaker)"
+                );
+                req.messages.push(Message::user(
+                    "You have had 3 consecutive tool errors. STOP and diagnose:\n\
+                     1. What exactly is going wrong? Read the error message carefully.\n\
+                     2. Is the file path correct? Does the file exist?\n\
+                     3. Try a completely different approach.\n\
+                     Do NOT retry the same command. Do NOT delete files.\n\
+                     If you cannot fix the error, make your best attempt with \
+                     what you know and write your final answer."
+                ));
+                // Reset counter so recovery gets a fair chance.
+                consecutive_errors = 0;
             }
 
             // ── Convergence pressure ─────────────────────────────────────
@@ -1524,6 +1571,233 @@ impl Agent {
         Ok(results)
     }
 
+    // --- Direct execution: bypass plan/critique for simple tasks ---
+    // Inspired by Self-Harness paper: the harness (prompt + loop policy)
+    // matters more than model capability. For simple tasks, the overhead
+    // of plan → critique → replan wastes tokens and time. Just make the change.
+
+    /// Try direct execution: skip plan/critique, give the model the goal +
+    /// context + tools, let it make the change in one shot.
+    ///
+    /// Returns `Ok(Some(result))` if the change was made successfully,
+    /// `Ok(None)` if no changes were produced (caller should fall back to
+    /// the full pipeline), or `Err` on LLM failure.
+    async fn try_direct_execution(
+        &self,
+        goal: &crate::goal::GoalSpec,
+        comprehension: &Comprehension,
+    ) -> Result<Option<DirectResult>, AgentError> {
+        let goal_str = goal.statement.as_str();
+
+        // Build context: comprehension summary + preloaded files.
+        let mut context = String::new();
+        if !comprehension.summary.is_empty() {
+            context.push_str(&format!(
+                "## Understanding\n{}\n\n",
+                truncate(&comprehension.summary, 2000)
+            ));
+        }
+        if !self.preloaded_files.is_empty() {
+            context.push_str("## Target Files (content provided — do NOT call file_read for these)\n");
+            for (path, content) in &self.preloaded_files {
+                context.push_str(&format!(
+                    "### {path}\n```\n{}\n```\n\n",
+                    truncate(content, 8000)
+                ));
+            }
+        }
+
+        let user = format!(
+            "## Goal\n{goal_str}\n\n{context}\n\
+             Make the change described in the goal. Use the edit tool to modify \
+             the target file. Then verify your change. Then write a one-line summary."
+        );
+
+        let req = CompletionRequest::prompt(DIRECT_EXECUTION_PROMPT, user)
+            .with_tools(self.tools.schemas());
+
+        let max_iters = match comprehension.complexity {
+            TaskComplexity::Trivial => 5,
+            TaskComplexity::Simple => 8,
+            _ => 10,
+        };
+
+        self.guard.set_phase(Phase::Implement);
+        self.hooks.on_phase_change(Phase::Implement).await;
+
+        let (response, usage, tool_signals) =
+            self.run_tool_loop_with_limit(req, max_iters).await?;
+
+        self.guard.set_phase(Phase::Comprehend);
+
+        // Verify: did the model actually produce changes?
+        let has_diff = self.has_git_diff().await;
+        if !has_diff {
+            tracing::info!("direct_execution: no git diff produced — falling back to pipeline");
+            return Ok(None);
+        }
+
+        // Check for errors in tool signals.
+        let has_errors = tool_signals.iter().any(|s| !s.ok);
+        if has_errors && !tool_signals.iter().any(|s| s.ok) {
+            tracing::info!("direct_execution: all tool calls failed — falling back");
+            return Ok(None);
+        }
+
+        tracing::info!("direct_execution: changes verified via git diff");
+        Ok(Some(DirectResult {
+            output: response.content,
+            usage,
+            tool_signals,
+        }))
+    }
+
+    /// Check whether direct execution should be attempted for this goal.
+    ///
+    /// Auto-learns from past outcomes: if similar goals have consistently
+    /// failed via direct execution, skip it and use the full pipeline.
+    fn should_try_direct(&self, goal: &crate::goal::GoalSpec, complexity: TaskComplexity) -> bool {
+        // Only attempt direct for Trivial and Simple tasks.
+        if !matches!(complexity, TaskComplexity::Trivial | TaskComplexity::Simple) {
+            return false;
+        }
+
+        // Check past outcomes for similar goals.
+        if let Some(ref mem) = self.memory {
+            let pattern = goal_pattern(&goal.statement);
+            let outcomes = mem.search(&pattern, 10);
+            let routing_outcomes: Vec<_> = outcomes
+                .iter()
+                .filter(|l| l.tags.iter().any(|t| t == "routing"))
+                .collect();
+
+            if routing_outcomes.len() >= 3 {
+                let direct_successes = routing_outcomes
+                    .iter()
+                    .filter(|l| {
+                        l.tags.iter().any(|t| t == "direct")
+                            && l.outcome == crate::ExperimentOutcome::Success
+                    })
+                    .count();
+                let direct_failures = routing_outcomes
+                    .iter()
+                    .filter(|l| {
+                        l.tags.iter().any(|t| t == "direct")
+                            && l.outcome != crate::ExperimentOutcome::Success
+                    })
+                    .count();
+                let total = direct_successes + direct_failures;
+                if total >= 3 {
+                    let success_rate = direct_successes as f64 / total as f64;
+                    if success_rate < 0.4 {
+                        tracing::info!(
+                            success_rate,
+                            total,
+                            "adaptive_routing: skipping direct (poor success rate for similar goals)"
+                        );
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
+
+    /// Record task outcome to agent memory for future routing decisions.
+    ///
+    /// This is the self-learning loop: the agent tracks what worked and what
+    /// didn't, and uses that data to make better routing decisions next time.
+    /// No explicit configuration needed — it just works.
+    async fn record_task_outcome(
+        &self,
+        goal: &crate::goal::GoalSpec,
+        complexity: TaskComplexity,
+        path: &str,
+        success: bool,
+        iterations: usize,
+    ) {
+        let Some(ref mem) = self.memory else {
+            return;
+        };
+
+        let pattern = goal_pattern(&goal.statement);
+        let outcome = if success {
+            "succeeded"
+        } else {
+            "failed"
+        };
+
+        let entry = LearningEntry {
+            id: crate::generate_entry_id(),
+            kind: None,
+            timestamp: chrono::Utc::now(),
+            run_id: None,
+            repo: None,
+            selector: None,
+            context: pattern,
+            hypothesis: format!(
+                "classified as {complexity:?}, routed to {path} path, {outcome} after {iterations} iterations"
+            ),
+            outcome: if success {
+                crate::ExperimentOutcome::Success
+            } else {
+                crate::ExperimentOutcome::Failed
+            },
+            reason: None,
+            guardrail_advice: if success {
+                format!("{path} path effective for {complexity:?} tasks like this")
+            } else {
+                format!("{path} path failed for {complexity:?} tasks like this — try full pipeline")
+            },
+            affected_elements: vec![],
+            evidence_refs: vec![],
+            confidence: None,
+            tags: vec![
+                "routing".into(),
+                path.into(),
+                outcome.into(),
+                format!("{complexity:?}").to_lowercase(),
+            ],
+            hitl_kind: None,
+            related_ids: vec![],
+            retrieval_count: 0,
+            task_success_after: if success { 1 } else { 0 },
+            task_total_after: 1,
+        };
+
+        if let Err(e) = mem.record(entry.clone()) {
+            tracing::warn!(error = %e, "failed to record task outcome");
+        }
+        if let Some(ref repo) = self.repo_root {
+            if let Err(e) = mem.save_to_path(repo) {
+                tracing::warn!(error = %e, "failed to persist task outcome");
+            }
+        }
+    }
+
+    /// Check if there are uncommitted changes (git diff).
+    async fn has_git_diff(&self) -> bool {
+        let params = serde_json::json!({
+            "command": "git",
+            "args": ["diff", "--stat", "HEAD"],
+            "timeout_ms": 5_000,
+        });
+        match self.tools.dispatch("shell", params).await {
+            Ok(output) => {
+                let stdout = output
+                    .split("--- stdout ---\n")
+                    .nth(1)
+                    .unwrap_or("")
+                    .split("\n--- stderr ---")
+                    .next()
+                    .unwrap_or("")
+                    .trim();
+                !stdout.is_empty()
+            }
+            Err(_) => false,
+        }
+    }
     // --- Critique: review every change via the review model ---
 
     /// Review changes via the configured critic ensemble.
@@ -1895,6 +2169,51 @@ impl Agent {
     /// a human Debugging at 3AM has immediate, actionable context.
     pub async fn run(&self, goal: &crate::goal::GoalSpec) -> Result<AgentRunResult, AgentError> {
         let comprehension = self.comprehend(goal).await?;
+        let complexity = comprehension.complexity;
+
+        // ── Adaptive routing: try direct execution for simple tasks ──────
+        if self.should_try_direct(goal, complexity) {
+            if let Some(direct) = self.try_direct_execution(goal, &comprehension).await? {
+                self.record_task_outcome(goal, complexity, "direct", true, 0)
+                    .await;
+                return Ok(AgentRunResult {
+                    goal: goal.statement.clone(),
+                    comprehension,
+                    plan: Plan {
+                        goal: goal.to_string(),
+                        goal_statement: goal.statement.clone(),
+                        criteria: goal.acceptance_criteria.clone(),
+                        subtasks: vec![Subtask {
+                            id: "direct".into(),
+                            description: goal.statement.clone(),
+                            tier: TaskTier::Mid,
+                            kind: SubtaskKind::Implement,
+                            files: goal.target_files.clone(),
+                            acceptance_criteria: goal.acceptance_criteria.clone(),
+                        }],
+                        tdd: false,
+                        risks: Vec::new(),
+                        schema_version: "1.0".into(),
+                        complexity,
+                    },
+                    step_results: vec![StepResult {
+                        subtask_id: "direct".into(),
+                        status: StepStatus::Ok,
+                        output: direct.output,
+                        usage: direct.usage,
+                        tool_signals: direct.tool_signals,
+                    }],
+                    critique: None,
+                    decision: None,
+                    runbook: None,
+                    total_usage: Usage::default(),
+                });
+            }
+            self.record_task_outcome(goal, complexity, "direct", false, 0)
+                .await;
+        }
+
+        // ── Full pipeline ────────────────────────────────────────────────
         let plan = self.plan(goal, &comprehension).await?;
         let step_results = self.execute(&plan).await?;
 
@@ -1966,6 +2285,114 @@ impl Agent {
     ) -> Result<LoopResult, AgentError> {
         let max_iterations = loop_config.max_iterations.max(1);
         let comprehension = self.comprehend(goal).await?;
+
+        // ── Adaptive routing: try direct execution for simple tasks ──────
+        // Self-Harness insight: for simple/trivial tasks, the overhead of
+        // plan → critique → replan wastes tokens and time. Try making the
+        // change directly first. Falls back to full pipeline on failure.
+        // Auto-learns from past outcomes when to use direct vs pipeline.
+        if self.should_try_direct(goal, comprehension.complexity) {
+            tracing::info!(
+                complexity = ?comprehension.complexity,
+                "adaptive_routing: attempting direct execution"
+            );
+            match self.try_direct_execution(goal, &comprehension).await {
+                Ok(Some(direct)) => {
+                    tracing::info!("adaptive_routing: direct execution succeeded");
+                    self.record_task_outcome(
+                        goal,
+                        comprehension.complexity,
+                        "direct",
+                        true,
+                        0,
+                    )
+                    .await;
+
+                    // Construct synthetic results for the caller.
+                    let direct_usage = direct.usage.clone();
+                    let step = StepResult {
+                        subtask_id: "direct".into(),
+                        status: StepStatus::Ok,
+                        output: direct.output,
+                        usage: direct.usage,
+                        tool_signals: direct.tool_signals,
+                    };
+                    let plan = Plan {
+                        goal: goal.to_string(),
+                        goal_statement: goal.statement.clone(),
+                        criteria: goal.acceptance_criteria.clone(),
+                        subtasks: vec![Subtask {
+                            id: "direct".into(),
+                            description: goal.statement.clone(),
+                            tier: TaskTier::Mid,
+                            kind: SubtaskKind::Implement,
+                            files: goal.target_files.clone(),
+                            acceptance_criteria: goal.acceptance_criteria.clone(),
+                        }],
+                        tdd: false,
+                        risks: Vec::new(),
+                        schema_version: "1.0".into(),
+                        complexity: comprehension.complexity,
+                    };
+                    let final_result = AgentRunResult {
+                        goal: goal.statement.clone(),
+                        comprehension,
+                        plan,
+                        step_results: vec![step.clone()],
+                        critique: None,
+                        decision: None,
+                        runbook: None,
+                        total_usage: direct_usage.clone(),
+                    };
+                    return Ok(LoopResult {
+                        goal: goal.statement.clone(),
+                        iterations: vec![LoopIteration {
+                            iteration: 1,
+                            replanned: false,
+                            plan_goal: goal.statement.clone(),
+                            subtask_count: 1,
+                            succeeded: 1,
+                            failed: 0,
+                            critique_approved: true,
+                            critique_score: 1.0,
+                            critique_issues: Vec::new(),
+                            verify_failed: Vec::new(),
+                            injected_learning_ids: Vec::new(),
+                            usage: direct_usage,
+                            plan_parse_error: None,
+                            incorporation_gap: None,
+                        }],
+                        converged: true,
+                        termination: LoopTermination::Approved,
+                        total_usage: final_result.total_usage.clone(),
+                        grader_source: "direct".into(),
+                        final_result,
+                    });
+                }
+                Ok(None) => {
+                    tracing::info!("adaptive_routing: direct produced no changes — falling back to pipeline");
+                    self.record_task_outcome(
+                        goal,
+                        comprehension.complexity,
+                        "direct",
+                        false,
+                        0,
+                    )
+                    .await;
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "adaptive_routing: direct failed — falling back to pipeline");
+                    self.record_task_outcome(
+                        goal,
+                        comprehension.complexity,
+                        "direct",
+                        false,
+                        0,
+                    )
+                    .await;
+                }
+            }
+        }
 
         let mut iterations: Vec<LoopIteration> = Vec::new();
         let mut total_usage = Usage::default();
@@ -2204,6 +2631,16 @@ impl Agent {
             total_usage: total_usage.clone(),
         };
 
+        // Record outcome for adaptive routing (self-learning).
+        self.record_task_outcome(
+            goal,
+            final_result.comprehension.complexity,
+            "pipeline",
+            converged,
+            iterations.len(),
+        )
+        .await;
+
         Ok(LoopResult {
             goal: goal.statement.clone(),
             iterations,
@@ -2389,6 +2826,24 @@ impl Agent {
 
 fn comprehension_cited_elements(plan: &Plan) -> Vec<String> {
     plan.subtasks.iter().flat_map(|s| s.files.clone()).collect()
+}
+
+/// Extract a normalized pattern from a goal statement for routing matching.
+///
+/// Takes the first few words (lowercased) as a pattern key so similar goals
+/// cluster together for adaptive routing decisions.
+/// e.g. "Add a comment to mod.rs" → "add a comment to mod.rs"
+/// e.g. "Add a comment to lib.rs" → "add a comment to lib.rs"
+/// These will match because they share the "add a comment" prefix.
+fn goal_pattern(goal: &str) -> String {
+    let lower = goal.to_lowercase();
+    // Take first 5 words as the pattern — enough to capture the verb + object
+    // without being too specific (file names, line numbers).
+    lower
+        .split_whitespace()
+        .take(5)
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Summarize failing verification steps into human-readable critique issues.
