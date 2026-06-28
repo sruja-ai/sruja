@@ -120,6 +120,7 @@ pub fn parse_plan_from_response(
         tdd,
         risks,
         schema_version,
+        complexity: TaskComplexity::default(),
     })
 }
 

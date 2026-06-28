@@ -23,6 +23,16 @@ Rules:\n\
 4. Identify risks and edge cases.\n\
 5. Output a JSON object: {\"schema_version\": \"1.0\", \"subtasks\": [...], \"risks\": [...]}.";
 
+pub(crate) const PLAN_TRIVIAL_SYSTEM_PROMPT: &str = "\
+You are a Principal Engineer handling a trivial change.\n\n\
+Rules:\n\
+1. Output a SINGLE subtask with kind \"implement\".\n\
+2. Do NOT add test, verify, or review subtasks — the change is too small.\n\
+3. Keep it to one subtask only.\n\
+4. Each subtask MUST have: id, description, tier, kind, files, acceptance_criteria.\n\
+5. For tier, use \"cheap\" for trivial changes.\n\
+6. Output a JSON object: {\"schema_version\": \"1.0\", \"subtasks\": [{\"id\": \"s1\", \"description\": \"...\", \"tier\": \"cheap\", \"kind\": \"implement\", \"files\": [...], \"acceptance_criteria\": [...]}], \"risks\": []}.";
+
 pub(super) const EXECUTION_SYSTEM_PROMPT: &str = "\
 You are a Principal Engineer executing a specific subtask.\n\n\
 Rules:\n\

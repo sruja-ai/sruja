@@ -2,7 +2,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::llm::{CompletionRequest, LlmClient, OpenAiClient, TieredClient};
+use crate::llm::{CompletionRequest, FinishReason, LlmClient, Message, MessageRole, OpenAiClient, TieredClient};
+use crate::tool::ToolRegistry;
 
 use super::budget::BudgetTracker;
 use super::config::{self, PipelineManifest};
@@ -39,6 +40,12 @@ pub struct PipelineOrchestrator {
     goal: String,
     llm: Option<Arc<dyn LlmClient>>,
     tiered_llm: Option<Arc<TieredClient>>,
+    /// Architecture context injected into stage prompts (file inventory,
+    /// topology summary, drift findings). Set via `with_context()`.
+    context: String,
+    /// Tool registry for pipeline stages (file_read, grep, shell, etc.).
+    /// When set, stages can call tools during their analysis.
+    tools: Option<Arc<ToolRegistry>>,
 }
 
 impl PipelineOrchestrator {
@@ -83,6 +90,8 @@ impl PipelineOrchestrator {
             goal,
             llm: None,
             tiered_llm: None,
+            context: String::new(),
+            tools: None,
         }
     }
 
@@ -98,6 +107,24 @@ impl PipelineOrchestrator {
     /// (e.g. GLM-5.2 → ZAI, mimo-v2.5-pro → Ximimo).
     pub fn with_tiered(mut self, client: TieredClient) -> Self {
         self.tiered_llm = Some(Arc::new(client));
+        self
+    }
+
+    /// Inject architecture context (file inventory, topology, drift) into
+    /// every stage's task prompt. This is what makes sruja's pipeline
+    /// architecture-grounded instead of blind.
+    pub fn with_context(mut self, context: String) -> Self {
+        self.context = context;
+        self
+    }
+
+    /// Enable tool access for pipeline stages.
+    ///
+    /// When tools are registered, stages can call file_read, grep, shell, etc.
+    /// during their analysis. This closes the gap between sruja's pipeline
+    /// and the orchestrator's PM agent (which has opencode's tool access).
+    pub fn with_tools(mut self, tools: Arc<ToolRegistry>) -> Self {
+        self.tools = Some(tools);
         self
     }
 
@@ -137,6 +164,22 @@ impl PipelineOrchestrator {
                 let model_name = stage_models.first().map(|m| m.as_str()).unwrap_or("default");
                 println!("  ▶ {} stage (model: {model_name})...", stage.id);
                 let (result, duration) = self.run_stage(stage, &gaps, &bugs, &fixes, cycle).await;
+
+                // Print errors so failures are visible (was silently swallowed)
+                if !result.errors.is_empty() {
+                    for err in &result.errors {
+                        eprintln!("  ❌ {stage_id}: {err}", stage_id = result.stage_id);
+                    }
+                }
+
+                // If a stage fails (LLM error, parse error), skip remaining
+                // stages in this cycle — cascading empty artifacts wastes API
+                // calls and produces misleading "0/5" scores.
+                if !result.success {
+                    println!("  ⏭ remaining stages skipped — {stage_id} failed", stage_id = result.stage_id);
+                    all_stages.push(result);
+                    break;
+                }
 
                 self.extract_artifact(&result, &mut gaps, &mut bugs, &mut fixes, &mut scorecards);
 
@@ -275,7 +318,7 @@ impl PipelineOrchestrator {
         }
 
         // Build task from goal + artifacts
-        let task = build_task_for_stage(&stage.id, &self.goal, gaps, bugs, fixes, cycle);
+        let task = build_task_for_stage(&stage.id, &self.goal, gaps, bugs, fixes, &self.context, cycle);
 
         // Call LLM with model routing from manifest.
         // When parallel + multiple models, run concurrent calls on different providers
@@ -325,7 +368,7 @@ impl PipelineOrchestrator {
             }
             merged
         } else {
-            // Single model: direct call
+            // Single model: direct call (with tool loop if tools available)
             let model = effective_models.first().filter(|m| !m.is_empty());
             let req = if let Some(m) = model {
                 CompletionRequest::prompt(&system_prompt, &task)
@@ -336,9 +379,16 @@ impl PipelineOrchestrator {
                     .with_json()
             };
 
-            match llm.complete(&req).await {
-                Ok(r) => r.content,
-                Err(e) => return (self.failed_result(stage, vec![format!("LLM call failed: {e}")]), start.elapsed()),
+            // If tools are available, run a tool loop so the LLM can
+            // read files, grep, and run commands during its analysis.
+            if let Some(ref tools) = self.tools {
+                self.run_with_tools(req, tools, &llm).await
+                    .unwrap_or_else(|e| format!("Tool loop failed: {e}"))
+            } else {
+                match llm.complete(&req).await {
+                    Ok(r) => r.content,
+                    Err(e) => return (self.failed_result(stage, vec![format!("LLM call failed: {e}")]), start.elapsed()),
+                }
             }
         };
 
@@ -361,6 +411,74 @@ impl PipelineOrchestrator {
             success: true, artifact,
             duration: elapsed, errors: vec![],
         }, elapsed)
+    }
+
+    /// Run an LLM completion with a tool loop.
+    ///
+    /// The LLM can call tools (file_read, grep, shell) during its analysis.
+    /// Each tool call is executed and the result fed back until the LLM
+    /// produces a final response without tool calls.
+    ///
+    /// Max 5 tool iterations to prevent runaway loops.
+    async fn run_with_tools(
+        &self,
+        req: CompletionRequest,
+        tools: &Arc<ToolRegistry>,
+        llm: &Arc<dyn LlmClient>,
+    ) -> Result<String, String> {
+        let max_iterations = 5;
+        let mut req = req.with_tools(tools.schemas());
+        let mut accumulated = String::new();
+
+        for _iteration in 0..max_iterations {
+            let response = llm.complete(&req).await
+                .map_err(|e| format!("LLM error: {e}"))?;
+
+            // Accumulate content from each response
+            if !response.content.is_empty() {
+                if !accumulated.is_empty() {
+                    accumulated.push('\n');
+                }
+                accumulated.push_str(&response.content);
+            }
+
+            // If no tool calls, we're done
+            if response.tool_calls.is_empty() || response.finish_reason == FinishReason::Stop {
+                return Ok(accumulated);
+            }
+
+            // Push assistant message with tool calls
+            req.messages.push(Message {
+                role: MessageRole::Assistant,
+                content: response.content.clone(),
+                tool_calls: response.tool_calls.clone(),
+                tool_call_id: None,
+            });
+
+            // Execute each tool call and feed results back
+            for call in &response.tool_calls {
+                let result = match tools.dispatch_record(&call.name, call.arguments.clone()).await {
+                    Ok((output, _record)) => output,
+                    Err(e) => format!("ERROR: {e}"),
+                };
+
+                let truncated = if result.len() > 8_000 {
+                    let end = result.floor_char_boundary(8_000);
+                    format!("{}...[truncated at {end} chars]", &result[..end])
+                } else {
+                    result
+                };
+
+                req.messages.push(Message {
+                    role: MessageRole::Tool,
+                    content: truncated,
+                    tool_calls: vec![],
+                    tool_call_id: Some(call.id.clone()),
+                });
+            }
+        }
+
+        Ok(accumulated)
     }
 
     /// Apply code changes returned by the fixer LLM to actual files on disk.
@@ -820,24 +938,35 @@ fn build_task_for_stage(
     gaps: &[Gap],
     bugs: &[Bug],
     fixes: &[FixReport],
+    context: &str,
     _cycle: usize,
 ) -> String {
     let base = format!("Pipeline goal: {goal}");
 
+    // Prepend architecture context if available — this grounds every stage
+    // in sruja's own structural analysis instead of flying blind.
+    let ctx_section = if context.is_empty() {
+        String::new()
+    } else {
+        format!("\n\n## Architecture Context (from sruja scan)\n{context}\n")
+    };
+
     match stage_id {
-        "analyzer" => format!(
-            "{base}\n\nScan the project. Identify gaps between what's \
-             implemented and what the goal requires. For each gap, cite \
+        "analyzer" | "self_review" | "analyzer_self_review" => format!(
+            "{base}{ctx_section}\n\nScan the project. Identify gaps between what's \
+             implemented and what the goal requires. Use the architecture context \
+             above to target your analysis — focus on files with high complexity \
+             and known structural issues. For each gap, cite \
              evidence (file:line). Return JSON with a `gaps` array."
         ),
         "prober" => {
             let json = serde_json::to_string_pretty(gaps).unwrap_or_default();
-            format!("{base}\n\nWrite test cases from these gaps. Each needs \
+            format!("{base}{ctx_section}\n\nWrite test cases from these gaps. Each needs \
                      input, expected behavior, why it fails before fix.\n\n{json}")
         }
         "fixer" => {
             let json = serde_json::to_string_pretty(bugs).unwrap_or_default();
-            format!("{base}\n\nFix each bug at the root cause. Write tests. \
+            format!("{base}{ctx_section}\n\nFix each bug at the root cause. Write tests. \
                      Run the test suite.\n\n{json}")
         }
         "judge" => {
@@ -851,7 +980,7 @@ fn build_task_for_stage(
                 String::new()
             };
             format!(
-                "{base}\n\nPipeline found {gap_count} gaps and {bug_count} bugs, \
+                "{base}{ctx_section}\n\nPipeline found {gap_count} gaps and {bug_count} bugs, \
                  applied {fix_count} fixes.{has_fixes}\n\n\
                  Score the project 0-5 across: functional correctness, \
                  code quality, test coverage, UX quality, cost efficiency. \
@@ -861,7 +990,7 @@ fn build_task_for_stage(
                  summary, evidence."
             )
         }
-        _ => format!("{base}\n\nExecute your role and produce structured output."),
+        _ => format!("{base}{ctx_section}\n\nExecute your role and produce structured output."),
     }
 }
 
@@ -1085,7 +1214,16 @@ pub fn parse_scorecard(content: &str) -> Scorecard {
         .ok()
         .or_else(|| extract_first_json_blob(&cleaned))
         .unwrap_or_default();
-    let s = |k: &str| v.get(k).and_then(|v| v.as_u64()).unwrap_or(0) as u8;
+    let s = |k: &str| {
+        v.get(k)
+            .and_then(|val| {
+                val.as_u64()
+                    .map(|n| n as u8)
+                    .or_else(|| val.as_f64().map(|f| f as u8))
+                    .or_else(|| val.as_str().and_then(|s| s.parse::<u8>().ok()))
+            })
+            .unwrap_or(0)
+    };
     let scores = [s("functional_correctness"), s("code_quality"), s("test_coverage"),
                    s("ux_quality"), s("cost_efficiency")];
     let total = v.get("total").and_then(|v| v.as_f64())

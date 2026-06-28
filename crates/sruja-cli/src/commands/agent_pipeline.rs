@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use sruja_agent::llm::{OpenAiClient, TieredClient};
 use sruja_agent::pipeline::PipelineOrchestrator;
+use sruja_agent::tool::ToolRegistry;
 
 use super::error::CliError;
 use crate::config;
@@ -56,7 +57,18 @@ pub async fn handle_pipeline(
         }
     }
 
-    // ── Build orchestrator with tiered routing ───────────────────────────
+    // ── Build architecture context for grounding ─────────────────────────
+    let context = build_architecture_context(&repo_path)?;
+
+    // ── Build orchestrator with tiered routing + context + tools ────────
+    let tools = Arc::new(
+        ToolRegistry::with_builtin(repo_path.to_path_buf(), vec![
+            "find".into(), "grep".into(), "head".into(), "tail".into(),
+            "wc".into(), "cat".into(), "ls".into(),
+        ])
+        .dry_run()  // Pipeline tools are read-only
+    );
+
     let orchestrator = PipelineOrchestrator::new(
         &repo_path,
         goal.to_string(),
@@ -64,7 +76,9 @@ pub async fn handle_pipeline(
         focus,
         max_cycles,
     )
-    .with_tiered(tiered);
+    .with_tiered(tiered)
+    .with_context(context)
+    .with_tools(tools);
 
     // ── Judge-only short circuit ─────────────────────────────────────────
     if judge_only {
@@ -131,6 +145,172 @@ async fn handle_judge_only(orchestrator: PipelineOrchestrator) -> Result<(), Cli
         .map_err(|e| CliError::validation(format!("Judge failed: {e}")))?;
     println!("{}", format_scorecard(&scorecard));
     Ok(())
+}
+
+/// Build a rich architecture context string from the repo scan + file reads.
+///
+/// This is injected into every pipeline stage's task prompt so the LLM
+/// has grounded structural facts instead of flying blind.
+fn build_architecture_context(repo_path: &PathBuf) -> Result<String, CliError> {
+    let graph = super::scan_repo_cached(repo_path)?;
+
+    // ── File inventory: source files grouped by package ───────────────
+    let mut files_by_package: std::collections::BTreeMap<String, Vec<(String, u64)>> =
+        std::collections::BTreeMap::new();
+
+    let mut god_modules = Vec::new();
+
+    for node in &graph.nodes {
+        if let Some(ref path) = node.path {
+            if path.contains("node_modules") || path.contains(".git")
+                || path.contains("__pycache__") || path.contains(".venv")
+            {
+                continue;
+            }
+            let pkg = path.split('/').take(3).collect::<Vec<_>>().join("/");
+            let complexity = node.metadata.get("complexity")
+                .and_then(|c| c.parse::<u64>().ok())
+                .unwrap_or(0);
+            files_by_package.entry(pkg).or_default().push((path.clone(), complexity));
+        }
+
+        if let Some(deps) = node.metadata.get("outgoing_count")
+            .and_then(|c| c.parse::<usize>().ok())
+        {
+            if deps > 10 {
+                god_modules.push((node.label.clone(), deps));
+            }
+        }
+    }
+
+    god_modules.sort_by(|a, b| b.1.cmp(&a.1));
+
+    // ── Build context ────────────────────────────────────────────────
+    let mut ctx = String::new();
+
+    ctx.push_str(&format!(
+        "Repository: {} | {} nodes | {} edges\n\n",
+        repo_path.display(),
+        graph.nodes.len(),
+        graph.edges.len()
+    ));
+
+    // Package overview
+    ctx.push_str("## Packages\n");
+    let mut pkgs: Vec<_> = files_by_package.iter()
+        .map(|(k, v)| (k.as_str(), v.len()))
+        .collect();
+    pkgs.sort_by(|a, b| b.1.cmp(&a.1));
+    for (pkg, count) in pkgs.iter().take(10) {
+        ctx.push_str(&format!("  {pkg}: {count} files\n"));
+    }
+
+    // God modules
+    if !god_modules.is_empty() {
+        ctx.push_str("\n## God Modules (high fan-out, high regression risk)\n");
+        for (name, deps) in god_modules.iter().take(10) {
+            ctx.push_str(&format!("  - {name}: {deps} dependencies\n"));
+        }
+    }
+
+    // Key source files
+    ctx.push_str("\n## Key Source Files (by complexity)\n");
+    let mut all_files: Vec<_> = files_by_package.values()
+        .flat_map(|v| v.iter().cloned())
+        .collect();
+    all_files.sort_by(|a, b| b.1.cmp(&a.1));
+    for (path, complexity) in all_files.iter().take(30) {
+        ctx.push_str(&format!("  - {path} (complexity: {complexity})\n"));
+    }
+
+    // ── Actual file reads + grep (what a real PM agent would do) ─────
+    ctx.push_str("\n\n## Discovered Facts (from file reads)\n");
+
+    // Read AGENTS.md (project rules)
+    if let Ok(content) = std::fs::read_to_string(repo_path.join("AGENTS.md")) {
+        let truncated = if content.len() > 3000 {
+            let end = content.floor_char_boundary(3000);
+            format!("{}...", &content[..end])
+        } else {
+            content
+        };
+        ctx.push_str(&format!("\n### AGENTS.md (first 3000 chars)\n```\n{truncated}\n```\n"));
+    }
+
+    // Read CI config
+    if let Ok(content) = std::fs::read_to_string(repo_path.join(".gitlab-ci.yml")) {
+        let truncated = if content.len() > 3000 {
+            let end = content.floor_char_boundary(3000);
+            format!("{}...", &content[..end])
+        } else {
+            content
+        };
+        ctx.push_str(&format!("\n### .gitlab-ci.yml (first 3000 chars)\n```\n{truncated}\n```\n"));
+    }
+
+    // Read pyproject.toml testpaths
+    if let Ok(content) = std::fs::read_to_string(repo_path.join("pyproject.toml")) {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_tool = false;
+        let mut testpaths = Vec::new();
+        for line in &lines {
+            if line.contains("[tool.pytest") { in_tool = true; }
+            if in_tool && line.contains("testpaths") {
+                testpaths.push(line.to_string());
+            }
+            if in_tool && line.starts_with('[') && !line.contains("[tool.pytest") {
+                in_tool = false;
+            }
+        }
+        if !testpaths.is_empty() {
+            ctx.push_str(&format!("\n### pyproject.toml testpaths\n{}\n", testpaths.join("\n")));
+        }
+    }
+
+    // Grep for exception patterns (production quality indicator)
+    if let Ok(output) = std::process::Command::new("grep")
+        .args(["-rn", "except\\b", "packages/", "--include=*.py", "-l"])
+        .current_dir(repo_path)
+        .output()
+    {
+        let files = String::from_utf8_lossy(&output.stdout);
+        let file_count = files.lines().filter(|l| !l.is_empty() && !l.contains("node_modules")).count();
+        ctx.push_str(&format!("\n### Exception patterns: {file_count} files with try/except\n"));
+    }
+
+    // Count tests
+    if let Ok(output) = std::process::Command::new("find")
+        .args(["tests/", "-name", "*.py", "-path", "*/unit/*"])
+        .current_dir(repo_path)
+        .output()
+    {
+        let unit_count = String::from_utf8_lossy(&output.stdout).lines().filter(|l| !l.is_empty()).count();
+        ctx.push_str(&format!("  tests/unit/: {unit_count} files\n"));
+    }
+    if let Ok(output) = std::process::Command::new("find")
+        .args(["tests/", "-name", "*.py", "-path", "*/integration/*"])
+        .current_dir(repo_path)
+        .output()
+    {
+        let int_count = String::from_utf8_lossy(&output.stdout).lines().filter(|l| !l.is_empty()).count();
+        ctx.push_str(&format!("  tests/integration/: {int_count} files\n"));
+    }
+
+    // Check CI test paths vs actual test locations
+    ctx.push_str("\n### CI vs Actual Test Coverage\n");
+    if let Ok(output) = std::process::Command::new("grep")
+        .args(["pytest", ".gitlab-ci.yml"])
+        .current_dir(repo_path)
+        .output()
+    {
+        let ci_lines = String::from_utf8_lossy(&output.stdout);
+        ctx.push_str("  CI runs:\n");
+        for line in ci_lines.lines().filter(|l| !l.is_empty()) {
+            ctx.push_str(&format!("    {line}\n"));
+        }
+    }
+
+    Ok(ctx)
 }
 
 /// Extract the alphabetic prefix of a model name for name-substring routing.

@@ -1,3 +1,4 @@
+// Sruja Agent: Programmable agent framework with a deterministic cognition loop.
 //! @element Sruja.Agent
 //! @layer Core Engine
 //! @boundary The agent framework must not depend on sruja-cli; CLI provides
@@ -53,9 +54,9 @@ pub use calibration::{
     TargetHints, Thresholds, Verdict,
 };
 pub use cognition::{
-    Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult, Comprehension, Critique,
-    LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping, Plan, ToolCallTracer,
-    VerifierConfig,
+    classify_task_complexity, Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult,
+    Comprehension, Critique, LoopConfig, LoopIteration, LoopResult, LoopTermination, ModelMapping,
+    Plan, TaskComplexity, ToolCallTracer, VerifierConfig,
 };
 pub use cognition::chat::{TurnEvent, TurnResult};
 pub use executor::TrajectoryExecutor;

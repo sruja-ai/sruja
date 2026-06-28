@@ -118,6 +118,113 @@ impl Default for AgentConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Task complexity routing
+// ---------------------------------------------------------------------------
+
+/// Heuristic task complexity, determined from the goal statement and scope.
+///
+/// Controls prompt selection, TDD enforcement, tool-call budgets, and whether
+/// post-loop artifacts (decision record, runbook) are generated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskComplexity {
+    /// One-line change: comment, typo, rename, format, whitespace.
+    /// Skips TDD, skips post-loop artifacts, uses a minimal plan prompt.
+    Trivial,
+    /// Small change: 1-2 files, no architecture impact.
+    /// Full review but lightweight planning.
+    #[default]
+    Simple,
+    /// Multi-file change or moderate refactoring.
+    /// Full TDD pipeline, full review.
+    Moderate,
+    /// Architecture-level: migration, system redesign, new module.
+    /// Full pipeline, max iterations.
+    Complex,
+}
+
+impl TaskComplexity {
+    /// Whether TDD should be enforced for this complexity level.
+    pub fn enforce_tdd(self) -> bool {
+        !matches!(self, TaskComplexity::Trivial)
+    }
+
+    /// Whether post-loop artifacts (decision record, runbook) should be generated.
+    pub fn generate_artifacts(self) -> bool {
+        !matches!(self, TaskComplexity::Trivial)
+    }
+
+    /// Effective max tool iterations for this complexity level.
+    pub fn max_tool_iterations(self, configured: usize) -> usize {
+        match self {
+            TaskComplexity::Trivial => configured.min(3),
+            TaskComplexity::Simple => configured.min(5),
+            _ => configured,
+        }
+    }
+}
+
+/// Classify task complexity from the goal statement and scope hints.
+///
+/// Uses keyword heuristics + scope (file/element count). Deterministic —
+/// no LLM call — so it adds zero latency.
+pub fn classify_task_complexity(
+    goal: &str,
+    target_files: &[String],
+    target_elements: &[String],
+) -> TaskComplexity {
+    let goal_lower = goal.to_lowercase();
+    let file_count = target_files.len();
+    let element_count = target_elements.len();
+
+    // Complex keywords: architecture-level work.
+    // Check FIRST so "add a comment to migrate the database" → Complex, not Trivial.
+    let complex_keywords = [
+        "migrate",
+        "migration",
+        "architecture",
+        "redesign",
+        "restructure",
+        "system-wide",
+        "overhaul",
+    ];
+    let is_complex_keyword = complex_keywords.iter().any(|k| goal_lower.contains(k));
+    if is_complex_keyword || element_count >= 3 || file_count >= 5 {
+        return TaskComplexity::Complex;
+    }
+
+    // Trivial keywords: cosmetic / single-token changes.
+    let trivial_keywords = [
+        "comment",
+        "doc comment",
+        "add a comment",
+        "add comment",
+        "typo",
+        "spelling",
+        "whitespace",
+        "reformat",
+        "add a blank line",
+        "add newline",
+    ];
+    let is_trivial_keyword = trivial_keywords.iter().any(|k| goal_lower.contains(k));
+    if is_trivial_keyword && file_count <= 1 && element_count == 0 {
+        return TaskComplexity::Trivial;
+    }
+
+    // Rename is trivial when scoped to one file.
+    if goal_lower.contains("rename") && file_count <= 1 {
+        return TaskComplexity::Trivial;
+    }
+
+    // Simple: small scope, no architecture keywords.
+    if file_count <= 2 && element_count <= 1 {
+        return TaskComplexity::Simple;
+    }
+
+    TaskComplexity::Moderate
+}
+
+// ---------------------------------------------------------------------------
 // Cognition types
 // ---------------------------------------------------------------------------
 
@@ -183,6 +290,9 @@ pub struct Plan {
     /// plans without this field deserialize via `#[serde(default)]`.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub schema_version: String,
+    /// Task complexity classification — used to bound tool-loop iterations.
+    #[serde(default)]
+    pub complexity: TaskComplexity,
 }
 
 /// Result of executing a subtask.
@@ -221,6 +331,10 @@ pub struct Comprehension {
     /// IDs of past learnings retrieved during comprehension (U3 observability).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub retrieved_learning_ids: Vec<String>,
+    /// Heuristic complexity classification for this goal.
+    /// Controls prompt selection, TDD enforcement, and artifact generation.
+    #[serde(default)]
+    pub complexity: TaskComplexity,
 }
 
 /// The Critic's assessment.
@@ -705,6 +819,13 @@ impl Agent {
 
         let cited_elements = extract_element_ids(&response.content);
 
+        let complexity = classify_task_complexity(
+            goal_str,
+            &goal.target_files,
+            &goal.target_elements,
+        );
+        tracing::info!(?complexity, "comprehend: classified task complexity");
+
         Ok(Comprehension {
             goal: goal.to_string(),
             summary: response.content,
@@ -713,19 +834,61 @@ impl Agent {
             risks: Vec::new(),
             usage,
             retrieved_learning_ids,
+            complexity,
         })
     }
 
     // --- Tool-calling loop (shared by all phases) ---
 
-    /// Run the LLM tool-calling loop until the model stops requesting tools
-    /// or the iteration limit is hit.
+    /// Runs the main LLM tool-calling loop, repeatedly invoking the LLM and
+    /// dispatching tool calls until the model stops requesting tools or the
+    /// configured iteration limit is reached.
     ///
-    /// Returns the final LLM response, cumulative token usage, and a per-call
-    /// list of [`ToolSignal`]s that the executor feeds into [`StepResult`].
+    /// # When to use
+    ///
+    /// This is the primary entry-point for non-streaming phases (`comprehend`,
+    /// `plan`, `execute`, `reflect`, etc.).  Each phase builds a
+    /// [`CompletionRequest`], hands it here, and consumes the returned
+    /// response to decide what to do next.
+    ///
+    /// If you need a lower iteration cap for a lightweight or low-stakes task
+    /// (e.g. a quick comment-only edit), call [`run_tool_loop_with_limit`]
+    /// directly with a custom limit instead.
+    ///
+    /// # Relationship to [`run_tool_loop_with_limit`]
+    ///
+    /// `run_tool_loop` is a thin convenience wrapper around
+    /// [`run_tool_loop_with_limit`](Self::run_tool_loop_with_limit) that
+    /// forwards `self.config.max_tool_iterations` as the limit.  All
+    /// iteration, convergence-pressure, and graceful-degradation logic lives
+    /// in the `_with_limit` variant; this method simply picks the default.
+    ///
+    /// # Returns
+    ///
+    /// A tuple of:
+    /// * **`CompletionResponse`** — the final LLM response whose content is
+    ///   the answer (tool-calling responses are consumed inside the loop).
+    /// * **`Usage`** — cumulative prompt, completion, and total token counts
+    ///   across every LLM call made during the loop.
+    /// * **`Vec<ToolSignal>`** — a per-call list of [`ToolSignal`] outcomes
+    ///   (ok, empty, error, etc.) that downstream executors fold into
+    ///   [`StepResult`].
     pub async fn run_tool_loop(
         &self,
+        req: CompletionRequest,
+    ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>), AgentError> {
+        self.run_tool_loop_with_limit(req, self.config.max_tool_iterations)
+            .await
+    }
+
+    /// Run the LLM tool-calling loop with an explicit iteration limit.
+    ///
+    /// Use this to cap iterations for trivial tasks (e.g. max 3 for a comment
+    /// change). Pass `0` or omit to use the agent's configured default.
+    pub async fn run_tool_loop_with_limit(
+        &self,
         mut req: CompletionRequest,
+        max_iterations: usize,
     ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>), AgentError> {
         let mut total_usage = Usage::default();
         let mut tool_signals: Vec<ToolSignal> = Vec::new();
@@ -733,7 +896,7 @@ impl Agent {
         let mut soft_sent = false;
         let mut hard_sent = false;
 
-        for iteration in 0..self.config.max_tool_iterations {
+        for iteration in 0..max_iterations {
             let response = self.llm.complete(&req).await?;
             total_usage.prompt_tokens += response.usage.prompt_tokens;
             total_usage.completion_tokens += response.usage.completion_tokens;
@@ -888,9 +1051,9 @@ impl Agent {
             // When the tool-call budget is running low, inject a user message
             // that forces the model to produce a final answer. Each tier is
             // injected at most once to avoid flooding the context.
-            let remaining = self.config.max_tool_iterations - iteration - 1;
-            let quarter = (self.config.max_tool_iterations / 4).max(1);
-            let half = self.config.max_tool_iterations / 2;
+            let remaining = max_iterations - iteration - 1;
+            let quarter = (max_iterations / 4).max(1);
+            let half = max_iterations / 2;
             if remaining > 0 && remaining <= quarter && !hard_sent {
                 hard_sent = true;
                 tracing::warn!(
@@ -924,7 +1087,7 @@ impl Agent {
         // agent. Downstream phases may still fail to parse it, but at least
         // the error message will be meaningful instead of "max iterations".
         tracing::warn!(
-            max_iterations = self.config.max_tool_iterations,
+            max_iterations,
             "tool_loop: model did not converge — returning last response as fallback"
         );
         let mut fallback = last_response.unwrap_or_else(|| {
@@ -976,7 +1139,10 @@ impl Agent {
             return Err(AgentError::HookAborted(reason));
         }
 
-        let tdd_note = if self.config.tdd {
+        // Complexity-aware: skip TDD for trivial tasks even if config.tdd is on.
+        let enforce_tdd = self.config.tdd && comprehension.complexity.enforce_tdd();
+
+        let tdd_note = if enforce_tdd {
             "\n\nTDD MODE IS ON: You MUST emit test_author subtasks BEFORE any implement subtasks. \
              The framework enforces this — tests are written first, reviewed, then code is written \
              to pass the frozen tests. Tests and code are NEVER in flux simultaneously."
@@ -984,31 +1150,60 @@ impl Agent {
             ""
         };
 
+        // Complexity-aware prompt selection.
+        let (system_prompt, plan_instructions) = match comprehension.complexity {
+            TaskComplexity::Trivial => (
+                PLAN_TRIVIAL_SYSTEM_PROMPT,
+                "This is a trivial change (e.g. comment, typo, rename, format). \
+                 Output a SINGLE implement subtask that directly makes the change. \
+                 Do NOT add test, verify, or review subtasks. \
+                 Do NOT call any tools — just output the plan JSON.\n",
+            ),
+            TaskComplexity::Simple => (
+                PLAN_SYSTEM_PROMPT,
+                "Break this goal into 1-2 concrete subtasks. Keep it minimal.\n",
+            ),
+            _ => (
+                PLAN_SYSTEM_PROMPT,
+                "Break this goal into concrete subtasks. Each subtask must specify:\n\
+                 - `id`: a short unique identifier (e.g. \"s1\", \"s2\")\n\
+                 - `description`: what to do (concise, actionable)\n\
+                 - `tier`: cheap (classification/extraction), mid (standard coding), \
+                   or premium (hard architecture reasoning)\n\
+                 - `kind`: test_author, implement, verify, or review\n\
+                 - `files`: list of files this subtask touches\n\
+                 - `acceptance_criteria`: how to verify completion\n\n",
+            ),
+        };
+
         let user = format!(
             "## Goal\n{goal_str}\n\n\
              ## Comprehension\n{}\n\n\
              ## Architecture Elements Cited\n{:?}\n\n\
              ## Instructions\n\
-             Break this goal into concrete subtasks. Each subtask must specify:\n\
-             - `id`: a short unique identifier (e.g. \"s1\", \"s2\")\n\
-             - `description`: what to do (concise, actionable)\n\
-             - `tier`: cheap (classification/extraction), mid (standard coding), \
-               or premium (hard architecture reasoning)\n\
-             - `kind`: test_author, implement, verify, or review\n\
-             - `files`: list of files this subtask touches\n\
-             - `acceptance_criteria`: how to verify completion\n\n\
+             {plan_instructions}\
              Output a JSON object with `subtasks` array and `risks` array.\n\
              {tdd_note}",
             comprehension.summary, comprehension.cited_elements,
         );
 
-        let req =
-            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
+        let mut req = CompletionRequest::prompt(system_prompt, user);
+        // For trivial plans, do not attach tools — the prompt says "Do NOT
+        // call any tools" and attaching schemas causes the model to ignore
+        // that instruction and explore indefinitely.
+        if !matches!(comprehension.complexity, TaskComplexity::Trivial) {
+            req = req.with_tools(self.tools.schemas());
+        }
 
-        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
+        let max_iters = match comprehension.complexity {
+            TaskComplexity::Trivial => 3,
+            TaskComplexity::Simple => 5,
+            _ => self.config.max_tool_iterations,
+        };
+        let (response, _usage, _signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
 
         // Parse the plan from the LLM response.
-        match parse_plan_from_response(&response.content, goal, self.config.tdd) {
+        match parse_plan_from_response(&response.content, goal, enforce_tdd) {
             Ok(plan) => {
                 tracing::warn!(
                     response_len = response.content.len(),
@@ -1024,6 +1219,7 @@ impl Agent {
                 }
 
                 let mut plan = plan;
+                plan.complexity = comprehension.complexity;
                 if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
                     return Err(AgentError::HookAborted(reason));
                 }
@@ -1043,11 +1239,15 @@ impl Agent {
                      and `risks` array.",
                     response.content,
                 );
-                let correction_req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, correction_user)
-                    .with_tools(self.tools.schemas());
+                let correction_req = CompletionRequest::prompt(system_prompt, correction_user);
+                let correction_req = if matches!(comprehension.complexity, TaskComplexity::Trivial) {
+                    correction_req
+                } else {
+                    correction_req.with_tools(self.tools.schemas())
+                };
                 let (retry_response, _retry_usage, _signals) =
-                    self.run_tool_loop(correction_req).await?;
-                let plan = parse_plan_from_response(&retry_response.content, goal, self.config.tdd)
+                    self.run_tool_loop_with_limit(correction_req, max_iters).await?;
+                let plan = parse_plan_from_response(&retry_response.content, goal, enforce_tdd)
                     .map_err(AgentError::PlanParseFailed)?;
 
                 tracing::warn!(
@@ -1058,6 +1258,7 @@ impl Agent {
                 );
 
                 let mut plan = plan;
+                plan.complexity = comprehension.complexity;
                 if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
                     return Err(AgentError::HookAborted(reason));
                 }
@@ -1105,7 +1306,7 @@ impl Agent {
                 .join("\n")
         };
 
-        let tdd_note = if self.config.tdd {
+        let tdd_note = if self.config.tdd && comprehension.complexity.enforce_tdd() {
             "\n\nTDD MODE IS ON: keep test_author subtasks BEFORE implement subtasks."
         } else {
             ""
@@ -1122,6 +1323,22 @@ impl Agent {
             String::new()
         };
 
+        let plan_instructions: &str = match comprehension.complexity {
+            TaskComplexity::Trivial => {
+                "This is a trivial change (e.g. comment, typo, rename, format). \
+                 Output a SINGLE implement subtask that directly makes the change. \
+                 Do NOT add test, verify, or review subtasks. \
+                 Do NOT call any tools — just output the plan JSON.\n"
+            }
+            _ => {
+                "Produce a revised plan that addresses the critic's feedback.\n"
+            }
+        };
+        let system_prompt: &str = match comprehension.complexity {
+            TaskComplexity::Trivial => PLAN_TRIVIAL_SYSTEM_PROMPT,
+            _ => PLAN_SYSTEM_PROMPT,
+        };
+
         let user = format!(
             "## Goal\n{goal_str}\n\n\
              ## Comprehension\n{}\n\n\
@@ -1131,20 +1348,26 @@ impl Agent {
              ### Critic issues\n{issues}\n\n\
              ### Critic suggestions\n{suggestions}\n\n\
              ## Instructions\n\
-             Output a REVISED plan as a JSON object with `subtasks` and `risks` arrays. \
-             Each subtask needs `id` (short unique string like \"s1\"), `description`, `tier` (cheap|mid|premium), \
-             `kind` (test_author|implement|verify|review), `files`, and \
-             `acceptance_criteria`. Do not repeat failed approaches.{tdd_note}{pressure_note}",
+             {plan_instructions}\
+             Output a JSON object with `subtasks` array and `risks` array. \
+             Do not repeat failed approaches.{tdd_note}{pressure_note}",
             comprehension.summary,
             critique.score * 100.0,
         );
 
-        let req =
-            CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, user).with_tools(self.tools.schemas());
+        let mut req = CompletionRequest::prompt(system_prompt, user);
+        if !matches!(comprehension.complexity, TaskComplexity::Trivial) {
+            req = req.with_tools(self.tools.schemas());
+        }
 
-        let (response, _usage, _signals) = self.run_tool_loop(req).await?;
+        let max_iters = match comprehension.complexity {
+            TaskComplexity::Trivial => 3,
+            TaskComplexity::Simple => 5,
+            _ => self.config.max_tool_iterations,
+        };
+        let (response, _usage, _signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
 
-        match parse_plan_from_response(&response.content, goal, self.config.tdd) {
+        match parse_plan_from_response(&response.content, goal, self.config.tdd && comprehension.complexity.enforce_tdd()) {
             Ok(plan) => {
                 tracing::warn!(
                     response_len = response.content.len(),
@@ -1159,6 +1382,7 @@ impl Agent {
                 }
 
                 let mut plan = plan;
+                plan.complexity = comprehension.complexity;
                 if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
                     return Err(AgentError::HookAborted(reason));
                 }
@@ -1177,11 +1401,15 @@ impl Agent {
                      and `risks` array.",
                     response.content,
                 );
-                let correction_req = CompletionRequest::prompt(PLAN_SYSTEM_PROMPT, correction_user)
-                    .with_tools(self.tools.schemas());
+                let correction_req = CompletionRequest::prompt(system_prompt, correction_user);
+                let correction_req = if matches!(comprehension.complexity, TaskComplexity::Trivial) {
+                    correction_req
+                } else {
+                    correction_req.with_tools(self.tools.schemas())
+                };
                 let (retry_response, _retry_usage, _signals) =
-                    self.run_tool_loop(correction_req).await?;
-                let plan = parse_plan_from_response(&retry_response.content, goal, self.config.tdd)
+                    self.run_tool_loop_with_limit(correction_req, max_iters).await?;
+                let plan = parse_plan_from_response(&retry_response.content, goal, self.config.tdd && comprehension.complexity.enforce_tdd())
                     .map_err(AgentError::PlanParseFailed)?;
 
                 tracing::warn!(
@@ -1191,6 +1419,7 @@ impl Agent {
                 );
 
                 let mut plan = plan;
+                plan.complexity = comprehension.complexity;
                 if let HookAction::Abort(reason) = self.hooks.after_plan(&mut plan).await {
                     return Err(AgentError::HookAborted(reason));
                 }
@@ -1237,13 +1466,22 @@ impl Agent {
             // routing — no separate one-shot call beforehand.
             let tier = step.tier;
             let system = EXECUTION_SYSTEM_PROMPT;
+            let execute_instruction = match plan.complexity {
+                TaskComplexity::Trivial => {
+                    "Make the change directly. Read the file, make the edit, and stop. \
+                     Do NOT read other files. Do NOT explore."
+                }
+                _ => {
+                    "Execute this subtask using the available tools. \
+                     Be precise. Cite evidence."
+                }
+            };
             let user = format!(
                 "## Subtask: {}\n\n\
                  ## Description\n{}\n\n\
                  ## Acceptance Criteria\n{}\n\n\
                  ## Phase\n{:?}\n\n\
-                 Execute this subtask using the available tools. \
-                 Be precise. Cite evidence.",
+                 {execute_instruction}",
                 step.id,
                 step.description,
                 step.acceptance_criteria.join("\n"),
@@ -1253,7 +1491,12 @@ impl Agent {
             let mut req = CompletionRequest::prompt(system, user).with_tools(self.tools.schemas());
             req.model = Some(self.model_for_tier(tier).to_string());
 
-            let (response, tool_usage, tool_signals) = self.run_tool_loop(req).await?;
+            let max_iters = match plan.complexity {
+                TaskComplexity::Trivial => 5,
+                TaskComplexity::Simple => 8,
+                _ => self.config.max_tool_iterations,
+            };
+            let (response, tool_usage, tool_signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
 
             let status = if response.content.contains("ERROR")
                 || tool_signals.iter().any(|s| !s.ok || s.empty)
@@ -1661,15 +1904,27 @@ impl Agent {
             None
         };
 
-        let _learnings = self
-            .reflect(&comprehension, &plan, &step_results, critique.as_ref())
-            .await?;
+        // Complexity-aware: skip artifacts for trivial tasks.
+        let generate_artifacts = comprehension.complexity.generate_artifacts();
 
-        // Generate decision record and runbook.
-        let decision = self
-            .generate_decision(&plan, &step_results, critique.as_ref())
-            .await;
-        let runbook = self.generate_runbook(&plan, &step_results).await;
+        let _learnings = if generate_artifacts {
+            self.reflect(&comprehension, &plan, &step_results, critique.as_ref())
+                .await?
+        } else {
+            Vec::new()
+        };
+
+        let decision = if generate_artifacts {
+            self.generate_decision(&plan, &step_results, critique.as_ref())
+                .await
+        } else {
+            None
+        };
+        let runbook = if generate_artifacts {
+            self.generate_runbook(&plan, &step_results).await
+        } else {
+            None
+        };
 
         // Write artifacts to disk if a repo root is available.
         if let Some(ref repo) = self.repo_root {
@@ -1908,14 +2163,27 @@ impl Agent {
         let plan = last_plan.ok_or(AgentError::Other("loop produced no plan".into()))?;
         let critique = last_critique;
 
-        // Reflect + generate decision/runbook once, on the final state.
-        let _learnings = self
-            .reflect(&comprehension, &plan, &last_steps, critique.as_ref())
-            .await?;
-        let decision = self
-            .generate_decision(&plan, &last_steps, critique.as_ref())
-            .await;
-        let runbook = self.generate_runbook(&plan, &last_steps).await;
+        // Complexity-aware: skip reflect + artifacts for trivial tasks.
+        // A comment typo doesn't need a decision record or runbook.
+        let generate_artifacts = comprehension.complexity.generate_artifacts();
+
+        let _learnings = if generate_artifacts {
+            self.reflect(&comprehension, &plan, &last_steps, critique.as_ref())
+                .await?
+        } else {
+            Vec::new()
+        };
+        let decision = if generate_artifacts {
+            self.generate_decision(&plan, &last_steps, critique.as_ref())
+                .await
+        } else {
+            None
+        };
+        let runbook = if generate_artifacts {
+            self.generate_runbook(&plan, &last_steps).await
+        } else {
+            None
+        };
         if let Some(ref repo) = self.repo_root {
             if let Some(ref d) = decision {
                 self.write_decision(repo, d).await;

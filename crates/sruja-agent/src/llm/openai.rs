@@ -12,7 +12,10 @@ use super::{
 use super::stream::{Stream, StreamEvent};
 
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
+#[allow(dead_code)]
 const DEFAULT_TIMEOUT_SECS: u64 = 120;
+/// Max timeout we'll use for any single request (300s = 5 min).
+const MAX_TIMEOUT_SECS: u64 = 300;
 
 /// An OpenAI-compatible chat completions client.
 pub struct OpenAiClient {
@@ -23,6 +26,19 @@ pub struct OpenAiClient {
 }
 
 impl OpenAiClient {
+    /// Compute an adaptive timeout based on request body size.
+    ///
+    /// Larger prompts (e.g. fixer reading full files) get more time.
+    /// Formula: base 60s + (body_chars / 100) * 10s, capped at MAX_TIMEOUT_SECS.
+    /// This avoids hard timeouts on complex tasks while keeping quick tasks fast.
+    fn adaptive_timeout(&self, body: &serde_json::Value) -> Duration {
+        let body_str = serde_json::to_string(body).unwrap_or_default();
+        let chars = body_str.len().max(100);
+        // Each 100 chars = 10 extra seconds, base 60s
+        let secs = (60u64 + (chars as u64 / 100) * 10).min(MAX_TIMEOUT_SECS);
+        Duration::from_secs(secs)
+    }
+
     /// Create with explicit configuration.
     pub fn new(
         api_key: impl Into<String>,
@@ -30,7 +46,7 @@ impl OpenAiClient {
         model: impl Into<String>,
     ) -> Result<Self, LlmError> {
         let http = reqwest::Client::builder()
-            .timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECS))
+            .timeout(Duration::from_secs(MAX_TIMEOUT_SECS))
             .build()
             .map_err(|e| LlmError::Network(e.to_string()))?;
 
@@ -157,7 +173,14 @@ impl LlmClient for OpenAiClient {
             .unwrap_or(&self.default_model)
             .to_string();
 
-        let resp = self.send(&body).await?;
+        // Adaptive timeout based on prompt size
+        let timeout = self.adaptive_timeout(&body);
+        let resp = tokio::time::timeout(timeout, self.send(&body))
+            .await
+            .map_err(|_| LlmError::Network(format!(
+                "Request timed out after {timeout:?}. Prompt size: ~{} chars",
+                serde_json::to_string(&body).unwrap_or_default().len()
+            )))??;
 
         let json: serde_json::Value = resp
             .json()

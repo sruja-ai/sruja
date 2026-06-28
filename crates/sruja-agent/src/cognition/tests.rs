@@ -132,6 +132,108 @@
         assert!(ids.contains(&"Sruja.Graph.KnowledgeGraph".to_string()));
     }
 
+    // --- Task complexity routing tests ---
+
+    #[test]
+    fn classify_trivial_comment_task() {
+        let c = classify_task_complexity(
+            "Add a short comment to the top of lib.rs",
+            &["lib.rs".to_string()],
+            &[],
+        );
+        assert_eq!(c, TaskComplexity::Trivial);
+    }
+
+    #[test]
+    fn classify_trivial_typo_task() {
+        let c = classify_task_complexity(
+            "Fix typo in function name",
+            &["main.rs".to_string()],
+            &[],
+        );
+        assert_eq!(c, TaskComplexity::Trivial);
+    }
+
+    #[test]
+    fn classify_trivial_rename_single_file() {
+        let c = classify_task_complexity(
+            "Rename variable foo to bar",
+            &["handler.rs".to_string()],
+            &[],
+        );
+        assert_eq!(c, TaskComplexity::Trivial);
+    }
+
+    #[test]
+    fn classify_simple_small_change() {
+        let c = classify_task_complexity(
+            "Add input validation to the handler",
+            &["handler.rs".to_string()],
+            &[],
+        );
+        assert_eq!(c, TaskComplexity::Simple);
+    }
+
+    #[test]
+    fn classify_complex_migration() {
+        let c = classify_task_complexity(
+            "Migrate the database schema",
+            &[],
+            &[],
+        );
+        assert_eq!(c, TaskComplexity::Complex);
+    }
+
+    #[test]
+    fn classify_complex_many_elements() {
+        let c = classify_task_complexity(
+            "Update all API endpoints",
+            &[],
+            &["System.Api".to_string(), "System.Db".to_string(), "System.Auth".to_string()],
+        );
+        assert_eq!(c, TaskComplexity::Complex);
+    }
+
+    #[test]
+    fn classify_moderate_multi_file() {
+        let c = classify_task_complexity(
+            "Add JWT auth to the API",
+            &["auth.rs".to_string(), "middleware.rs".to_string(), "config.rs".to_string()],
+            &["System.Api".to_string(), "System.Auth".to_string()],
+        );
+        assert_eq!(c, TaskComplexity::Moderate);
+    }
+
+    #[test]
+    fn complex_keywords_override_trivial() {
+        // "migrate" should override "add a comment" — architecture keywords win.
+        let c = classify_task_complexity(
+            "add a comment to migrate the database",
+            &["migrations.rs".to_string()],
+            &[],
+        );
+        assert_eq!(c, TaskComplexity::Complex);
+    }
+
+    #[test]
+    fn trivial_skips_tdd_and_artifacts() {
+        assert!(!TaskComplexity::Trivial.enforce_tdd());
+        assert!(!TaskComplexity::Trivial.generate_artifacts());
+    }
+
+    #[test]
+    fn simple_enforces_tdd_and_artifacts() {
+        assert!(TaskComplexity::Simple.enforce_tdd());
+        assert!(TaskComplexity::Simple.generate_artifacts());
+    }
+
+    #[test]
+    fn trivial_caps_tool_iterations() {
+        assert_eq!(TaskComplexity::Trivial.max_tool_iterations(8), 3);
+        assert_eq!(TaskComplexity::Simple.max_tool_iterations(8), 5);
+        assert_eq!(TaskComplexity::Moderate.max_tool_iterations(8), 8);
+    }
+
     #[test]
     fn parse_plan_requires_id_field() {
         // Subtasks without `id` now fail with MissingRequiredField (U2).
@@ -511,6 +613,7 @@
                     risks: Vec::new(),
                     usage: Usage::default(),
                     retrieved_learning_ids: Vec::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 plan: Plan {
                     goal: "g".into(),
@@ -520,6 +623,7 @@
                     tdd: false,
                     risks: Vec::new(),
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 step_results: Vec::new(),
                 critique: None,
@@ -790,6 +894,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -842,6 +947,7 @@
                         tdd: false,
                         risks: vec![],
                         schema_version: String::new(),
+                        complexity: TaskComplexity::default(),
                     },
                     &vec![],
                 )
@@ -910,6 +1016,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -979,6 +1086,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -1044,6 +1152,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -1111,6 +1220,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -1170,6 +1280,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -1243,6 +1354,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -1316,6 +1428,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -1408,6 +1521,7 @@
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: TaskComplexity::default(),
                 },
                 &vec![],
             )
@@ -1461,6 +1575,7 @@
             tdd: false,
             risks: vec![],
             schema_version: String::new(),
+            complexity: TaskComplexity::default(),
         };
         // No issues → no incorporation needed.
         assert!(check_incorporation(&plan, &plan, &[]).is_none());
@@ -1483,6 +1598,7 @@
             tdd: false,
             risks: vec!["r1".into()],
             schema_version: String::new(),
+            complexity: TaskComplexity::default(),
         };
         let issues = vec!["fix the bug".into()];
         let gap = check_incorporation(&plan, &plan, &issues);
@@ -1510,6 +1626,7 @@
             tdd: false,
             risks: vec![],
             schema_version: String::new(),
+            complexity: TaskComplexity::default(),
         };
         let new = Plan {
             goal: "g".into(),
@@ -1526,6 +1643,7 @@
             tdd: false,
             risks: vec![],
             schema_version: String::new(),
+            complexity: TaskComplexity::default(),
         };
         let issues = vec!["fix the bug".into()];
         assert!(check_incorporation(&old, &new, &issues).is_none());
@@ -1548,6 +1666,7 @@
             tdd: false,
             risks: vec![],
             schema_version: String::new(),
+            complexity: TaskComplexity::default(),
         };
         let new = Plan {
             goal: "g".into(),
@@ -1564,6 +1683,7 @@
             tdd: false,
             risks: vec!["new risk".into()],
             schema_version: String::new(),
+            complexity: TaskComplexity::default(),
         };
         let issues = vec!["fix the bug".into()];
         // Same subtasks but risks changed → no gap.

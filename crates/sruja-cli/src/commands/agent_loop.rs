@@ -1448,6 +1448,7 @@ mod tests {
                     risks: vec![],
                     usage: Usage::default(),
                     retrieved_learning_ids: vec!["lrn_abc".to_string(), "lrn_def".to_string()],
+                    complexity: sruja_agent::TaskComplexity::default(),
                 },
                 plan: sruja_agent::Plan {
                     goal: "test goal".to_string(),
@@ -1457,6 +1458,7 @@ mod tests {
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: sruja_agent::TaskComplexity::default(),
                 },
                 step_results: vec![],
                 critique: Some(Critique {
@@ -1501,6 +1503,7 @@ mod tests {
                     risks: vec![],
                     usage: Usage::default(),
                     retrieved_learning_ids: vec![],
+                    complexity: sruja_agent::TaskComplexity::default(),
                 },
                 plan: sruja_agent::Plan {
                     goal: "test goal".to_string(),
@@ -1510,6 +1513,7 @@ mod tests {
                     tdd: false,
                     risks: vec![],
                     schema_version: String::new(),
+                    complexity: sruja_agent::TaskComplexity::default(),
                 },
                 step_results: vec![],
                 critique: Some(Critique {
