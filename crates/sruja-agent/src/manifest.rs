@@ -158,6 +158,41 @@ impl std::ops::Deref for McpConfig {
     }
 }
 
+/// Override for a critique persona's model. Matches the default persona by `id`
+/// and replaces its model. If `id` doesn't match a default, a new persona is
+/// created with the default prompt for that focus area.
+///
+/// ## Example
+///
+/// ```toml
+/// [[critique.personas]]
+/// id = "correctness"
+/// model = "GLM-5.1"
+///
+/// [[critique.personas]]
+/// id = "regression"
+/// model = "mimo-v2.5-pro"
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CritiquePersonaOverride {
+    /// Persona id to override (e.g. "correctness", "spec_coverage", "boundary",
+    /// "regression", "adversarial_test").
+    pub id: String,
+    /// Model name to route this persona to (e.g. "GLM-5.1", "mimo-v2.5-pro").
+    /// The TieredClient resolves this to the correct provider via exact match
+    /// or provider prefix match.
+    pub model: String,
+}
+
+/// Configuration for the critique persona ensemble.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CritiqueConfig {
+    /// Per-persona model overrides. Each entry maps a default persona id to a
+    /// model name. Unlisted personas keep the default `models.review` tier.
+    #[serde(default)]
+    pub personas: Vec<CritiquePersonaOverride>,
+}
+
 /// Declarative configuration for `sruja agent loop`, loaded from `.sruja/loop.toml`.
 ///
 /// ## Example
@@ -179,6 +214,15 @@ impl std::ops::Deref for McpConfig {
 /// id = "tests"
 /// command = "cargo"
 /// args = ["test", "--workspace"]
+///
+/// # Cross-model adversarial review: each persona runs on a different provider
+/// [[critique.personas]]
+/// id = "correctness"
+/// model = "GLM-5.1"
+///
+/// [[critique.personas]]
+/// id = "regression"
+/// model = "mimo-v2.5-pro"
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoopManifest {
@@ -247,6 +291,14 @@ pub struct LoopManifest {
     /// never touched. Defaults to `true`.
     #[serde(default = "default_true")]
     pub auto_consolidate: bool,
+
+    /// Critique persona ensemble configuration.
+    ///
+    /// Override the model used by each default critique persona. This enables
+    /// cross-model adversarial review: different personas run on different
+    /// providers so the Judge has independent perspectives.
+    #[serde(default)]
+    pub critique: CritiqueConfig,
 }
 
 impl Default for LoopManifest {
@@ -265,6 +317,7 @@ impl Default for LoopManifest {
             verify_steps: Vec::new(),
             mcp: McpConfig::default(),
             auto_consolidate: default_true(),
+            critique: CritiqueConfig::default(),
         }
     }
 }
@@ -457,5 +510,30 @@ args = ["-y", "@modelcontextprotocol/server-browser"]
         assert_eq!(s.command.as_deref(), Some("npx"));
         assert_eq!(s.init_timeout_secs, 10);
         assert_eq!(s.tool_timeout_secs, 60);
+    }
+
+    #[test]
+    fn parse_critique_personas() {
+        let toml_str = r#"
+[[critique.personas]]
+id = "correctness"
+model = "GLM-5.1"
+
+[[critique.personas]]
+id = "regression"
+model = "mimo-v2.5-pro"
+"#;
+        let m = LoopManifest::from_toml_str(toml_str).unwrap();
+        assert_eq!(m.critique.personas.len(), 2);
+        assert_eq!(m.critique.personas[0].id, "correctness");
+        assert_eq!(m.critique.personas[0].model, "GLM-5.1");
+        assert_eq!(m.critique.personas[1].id, "regression");
+        assert_eq!(m.critique.personas[1].model, "mimo-v2.5-pro");
+    }
+
+    #[test]
+    fn empty_critique_personas_gives_default() {
+        let m = LoopManifest::from_toml_str("").unwrap();
+        assert!(m.critique.personas.is_empty());
     }
 }

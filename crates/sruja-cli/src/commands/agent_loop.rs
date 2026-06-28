@@ -41,7 +41,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use sruja_agent::calibration::{self, AskInput, Thresholds};
-use sruja_agent::cognition::{Hook, LoopIteration};
+use sruja_agent::cognition::{Hook, HookAction};
 use sruja_agent::llm::{OpenAiClient, TieredClient};
 use sruja_agent::tool::ToolRegistry;
 use sruja_agent::verify::VerifyOptions;
@@ -63,35 +63,435 @@ const DEFAULT_SHELL_ALLOWLIST: &[&str] = &["cargo", "git"];
 /// Files larger than this are skipped to avoid blowing up the context window.
 const PRELOAD_MAX_BYTES: usize = 50 * 1024; // 50 KB
 
-/// A hook that prints per-iteration progress to stderr during `sruja agent loop`.
-/// Only active when stdin is a TTY (interactive mode).
-struct ProgressHook;
+/// Extract the alphabetic family name from a model identifier.
+/// Used for provider prefix routing in the TieredClient.
+///   "GLM-5.2" → "glm", "mimo-v2.5-pro" → "mimo",
+///   "anthropic/claude-sonnet-4" → "claude"
+fn model_family(model: &str) -> String {
+    let base = model.rsplit('/').next().unwrap_or(model);
+    base.chars()
+        .take_while(|c| c.is_alphabetic())
+        .collect::<String>()
+        .to_lowercase()
+}
+
+// ---------------------------------------------------------------------------
+// Progress tracking + steering hook
+// ---------------------------------------------------------------------------
+
+/// Phase names for the live report.
+fn phase_name(step: &sruja_agent::cognition::Subtask) -> &'static str {
+    match step.kind {
+        sruja_agent::cognition::SubtaskKind::Comprehend => "comprehend",
+        sruja_agent::cognition::SubtaskKind::TestAuthor => "test-author",
+        sruja_agent::cognition::SubtaskKind::Implement => "implement",
+        sruja_agent::cognition::SubtaskKind::Verify => "verify",
+        sruja_agent::cognition::SubtaskKind::AdversarialTest => "adversarial-test",
+        sruja_agent::cognition::SubtaskKind::Review => "review",
+    }
+}
+
+/// Mutable state accumulated across hook calls.
+struct ReportState {
+    goal: String,
+    started_at: std::time::Instant,
+    iteration: usize,
+    max_iterations: usize,
+    current_phase: String,
+    subtasks: Vec<SubtaskInfo>,
+    critique_score: Option<f64>,
+    critique_approved: Option<bool>,
+    persona_results: Vec<PersonaInfo>,
+    issues: Vec<String>,
+    verify_failures: Vec<String>,
+    cost_usd: f64,
+    steer: bool,
+    report_dir: std::path::PathBuf,
+    should_stop: bool,
+    dirty: bool,
+}
+
+#[derive(Clone)]
+struct SubtaskInfo {
+    id: String,
+    description: String,
+    kind: String,
+    tier: String,
+    status: String,
+}
+
+#[derive(Clone)]
+struct PersonaInfo {
+    id: String,
+    approved: bool,
+    score: f64,
+    issue_count: usize,
+}
+
+use std::sync::Mutex;
+
+/// A hook that writes a live markdown dashboard and optionally prompts for
+/// steering between iterations.
+struct LiveReportHook {
+    state: Mutex<ReportState>,
+}
+
+impl LiveReportHook {
+    fn new(goal: &str, max_iterations: usize, steer: bool, report_dir: std::path::PathBuf) -> Self {
+        Self {
+            state: Mutex::new(ReportState {
+                goal: goal.to_string(),
+                started_at: std::time::Instant::now(),
+                iteration: 0,
+                max_iterations,
+                current_phase: "starting".into(),
+                subtasks: Vec::new(),
+                critique_score: None,
+                critique_approved: None,
+                persona_results: Vec::new(),
+                issues: Vec::new(),
+                verify_failures: Vec::new(),
+                cost_usd: 0.0,
+                steer,
+                report_dir,
+                should_stop: false,
+                dirty: false,
+            }),
+        }
+    }
+
+    fn write_report(&self) {
+        let mut s = self.state.lock().unwrap();
+        if !s.dirty {
+            return;
+        }
+        // Clear dirty flag — next write will only happen when dirty is set
+        // again by a state-modifying hook, debouncing consecutive callbacks
+        // with no meaningful change (e.g. before_step + after_step).
+        s.dirty = false;
+        let elapsed = s.started_at.elapsed();
+        let mins = elapsed.as_secs() / 60;
+        let secs = elapsed.as_secs() % 60;
+
+        let status_icon = match s.critique_approved {
+            Some(true) => "PASS",
+            Some(false) => "FAIL",
+            None => "RUN",
+        };
+
+        let mut md = String::new();
+        md.push_str(&format!(
+            "# Agent Loop — Live Dashboard\n\n\
+             Goal: {}\n\n\
+             Started: {}m {:02}s ago · Iteration {}/{} · Phase: **{}** · Status: **{}** · Cost: ~${:.4}\n\n",
+            s.goal,
+            mins,
+            secs,
+            s.iteration,
+            s.max_iterations,
+            s.current_phase,
+            status_icon,
+            s.cost_usd,
+        ));
+
+        // Subtask table
+        if !s.subtasks.is_empty() {
+            md.push_str("## Subtasks\n\n");
+            md.push_str("| # | Kind | Tier | Status | Description |\n");
+            md.push_str("|---|------|------|--------|-------------|\n");
+            for st in &s.subtasks {
+                md.push_str(&format!(
+                    "| {} | {} | {} | {} | {} |\n",
+                    st.id, st.kind, st.tier, st.status, st.description
+                ));
+            }
+            md.push('\n');
+        }
+
+        // Critique persona breakdown
+        if !s.persona_results.is_empty() {
+            md.push_str("## Critique Personas\n\n");
+            md.push_str("| Persona | Approved | Score | Issues |\n");
+            md.push_str("|---------|----------|-------|--------|\n");
+            for p in &s.persona_results {
+                let icon = if p.approved { "yes" } else { "NO" };
+                md.push_str(&format!(
+                    "| {} | {} | {:.1} | {} |\n",
+                    p.id, icon, p.score, p.issue_count
+                ));
+            }
+            md.push('\n');
+        }
+
+        // Issues
+        if !s.issues.is_empty() {
+            md.push_str("## Open Issues\n\n");
+            for issue in &s.issues {
+                md.push_str(&format!("- {issue}\n"));
+            }
+            md.push('\n');
+        }
+
+        // Verify failures
+        if !s.verify_failures.is_empty() {
+            md.push_str("## Verify Failures (independent grader)\n\n");
+            for f in &s.verify_failures {
+                md.push_str(&format!("- {f}\n"));
+            }
+            md.push('\n');
+        }
+
+        // Write atomically
+        let _ = std::fs::create_dir_all(&s.report_dir);
+        let path = s.report_dir.join("LIVE.md");
+        let tmp = s.report_dir.join("LIVE.md.tmp");
+        if let Err(e) = std::fs::write(&tmp, &md) {
+            eprintln!("  Warning: could not write live report: {e}");
+            return;
+        }
+        if let Err(e) = std::fs::rename(&tmp, &path) {
+            eprintln!("  Warning: could not rename live report: {e}");
+        }
+    }
+
+    fn print_summary(&self) {
+        let s = self.state.lock().unwrap();
+        let mark = match s.critique_approved {
+            Some(true) => "PASS",
+            Some(false) => "FAIL",
+            None => "---",
+        };
+        let score_str = s
+            .critique_score
+            .map(|sc| format!("{sc:.1}"))
+            .unwrap_or_else(|| "-".into());
+
+        eprintln!(
+            "  [{}/{}] {} | {} subtasks | score {} | ~${:.4}",
+            s.iteration, s.max_iterations, mark, s.subtasks.len(), score_str, s.cost_usd,
+        );
+
+        // Print persona breakdown
+        if !s.persona_results.is_empty() {
+            for p in &s.persona_results {
+                let icon = if p.approved { "+" } else { "X" };
+                eprintln!(
+                    "    [{icon}] {} score={:.1} issues={}",
+                    p.id, p.score, p.issue_count
+                );
+            }
+        }
+
+        // Print issues
+        for issue in &s.issues {
+            eprintln!("    issue: {issue}");
+        }
+        for f in &s.verify_failures {
+            eprintln!("    verify FAIL: {f}");
+        }
+    }
+
+    /// Prompt the user for steering input. Returns false if the user wants to stop.
+    fn prompt_steer(&self) -> bool {
+        let s = self.state.lock().unwrap();
+        if !s.steer {
+            return true;
+        }
+        drop(s); // Release lock before stdin
+
+        eprintln!();
+        eprintln!("  ── Steering ──");
+        eprintln!("  [Enter] continue  ·  [s] stop  ·  [r] show report");
+        eprint!("  > ");
+        use std::io::Write;
+        let _ = std::io::stderr().flush();
+
+        let mut input = String::new();
+        if std::io::stdin().read_line(&mut input).is_err() {
+            return true;
+        }
+        match input.trim().to_lowercase().as_str() {
+            "s" | "stop" => false,
+            "r" | "report" => {
+                let s = self.state.lock().unwrap();
+                let path = s.report_dir.join("LIVE.md");
+                drop(s);
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    eprintln!();
+                    eprintln!("{content}");
+                }
+                true
+            }
+            _ => true,
+        }
+    }
+}
 
 #[async_trait::async_trait]
-impl Hook for ProgressHook {
+impl Hook for LiveReportHook {
+    async fn before_comprehend(&self, _goal: &str) -> HookAction {
+        let mut s = self.state.lock().unwrap();
+        s.current_phase = "comprehend".into();
+        s.iteration = s.iteration.max(1);
+        HookAction::Continue
+    }
+
+    async fn after_comprehend(&self, result: &sruja_agent::cognition::Comprehension) -> HookAction {
+        let mut s = self.state.lock().unwrap();
+        s.current_phase = "plan".into();
+        eprintln!(
+            "  Comprehend: {} elements cited, {} findings",
+            result.cited_elements.len(),
+            result.key_findings.len()
+        );
+        s.dirty = true;
+        drop(s);
+        self.write_report();
+        HookAction::Continue
+    }
+
+    async fn before_plan(&self, _goal: &str) -> HookAction {
+        // Check if the user requested to stop during steering.
+        // before_plan fires at the start of every iteration (plan or replan),
+        // so this catches the stop flag set by the prior after_iteration.
+        let s = self.state.lock().unwrap();
+        if s.should_stop {
+            eprintln!("  Stopped by user.");
+            return HookAction::Abort("Stopped by user.".into());
+        }
+        HookAction::Continue
+    }
+
+    async fn after_plan(&self, plan: &mut sruja_agent::cognition::Plan) -> HookAction {
+        let mut s = self.state.lock().unwrap();
+        s.current_phase = "execute".into();
+        s.subtasks = plan
+            .subtasks
+            .iter()
+            .map(|st| SubtaskInfo {
+                id: st.id.clone(),
+                description: st.description.chars().take(60).collect(),
+                kind: format!("{:?}", st.kind).to_lowercase(),
+                tier: format!("{:?}", st.tier).to_lowercase(),
+                status: "pending".into(),
+            })
+            .collect();
+        eprintln!("  Plan: {} subtasks, {} risks", plan.subtasks.len(), plan.risks.len());
+        s.dirty = true;
+        drop(s);
+        self.write_report();
+        HookAction::Continue
+    }
+
+    async fn before_step(&self, step: &sruja_agent::cognition::Subtask) -> HookAction {
+        let mut s = self.state.lock().unwrap();
+        s.current_phase = phase_name(step).into();
+        if let Some(st) = s.subtasks.iter_mut().find(|st| st.id == step.id) {
+            st.status = "running".into();
+        }
+        eprintln!("  Step {}: {} ({})", step.id, phase_name(step), format!("{:?}", step.tier).to_lowercase());
+        s.dirty = true;
+        drop(s);
+        self.write_report();
+        HookAction::Continue
+    }
+
+    async fn after_step(
+        &self,
+        step: &sruja_agent::cognition::Subtask,
+        result: &sruja_agent::cognition::StepResult,
+    ) {
+        let mut s = self.state.lock().unwrap();
+        let status = match result.status {
+            sruja_agent::cognition::StepStatus::Ok => "done",
+            sruja_agent::cognition::StepStatus::Failed => "FAILED",
+            sruja_agent::cognition::StepStatus::Skipped => "skipped",
+        };
+        if let Some(st) = s.subtasks.iter_mut().find(|st| st.id == step.id) {
+            st.status = status.into();
+        }
+        s.cost_usd += result.usage.estimated_cost_usd();
+        s.dirty = true;
+        drop(s);
+        self.write_report();
+    }
+
+    async fn before_review(&self) -> HookAction {
+        let mut s = self.state.lock().unwrap();
+        s.current_phase = "critique".into();
+        eprintln!("  Critique: running persona ensemble...");
+        s.dirty = true;
+        drop(s);
+        self.write_report();
+        HookAction::Continue
+    }
+
+    async fn after_review(&self, critique: &sruja_agent::cognition::Critique) -> HookAction {
+        let mut s = self.state.lock().unwrap();
+        s.current_phase = "done".into();
+        s.critique_score = Some(critique.score);
+        s.critique_approved = Some(critique.approved);
+        s.issues = critique.issues.clone();
+        s.cost_usd += critique.usage.estimated_cost_usd();
+        s.persona_results = critique
+            .persona_breakdown
+            .iter()
+            .map(|p| PersonaInfo {
+                id: p.id.clone(),
+                approved: p.approved,
+                score: p.score,
+                issue_count: p.issues.len(),
+            })
+            .collect();
+        s.dirty = true;
+        drop(s);
+
+        self.print_summary();
+        self.write_report();
+
+        HookAction::Continue
+    }
+
     async fn before_iteration(&self, iteration: usize, max_iterations: usize) {
-        eprintln!("  [{iteration}/{max_iterations}] planning...");
+        let mut s = self.state.lock().unwrap();
+        s.iteration = iteration;
+        s.max_iterations = max_iterations;
+        s.current_phase = if iteration == 1 { "comprehend" } else { "replan" }.into();
+        s.dirty = true;
+        drop(s);
+        self.write_report();
     }
 
     async fn after_iteration(
         &self,
         iteration: usize,
         max_iterations: usize,
-        result: &LoopIteration,
+        result: &sruja_agent::cognition::LoopIteration,
     ) {
-        let mark = if result.critique_approved {
-            "PASS"
-        } else {
-            "FAIL"
-        };
-        let cost = result.usage.estimated_cost_usd();
-        eprintln!(
-            "  [{iteration}/{max_iterations}] {mark} | {} subtasks, {} ok, {} failed | score {:.1} | ~${cost:.4}",
-            result.subtask_count, result.succeeded, result.failed, result.critique_score,
-        );
-        for issue in &result.critique_issues {
-            eprintln!("         issue: {issue}");
+        {
+            let mut s = self.state.lock().unwrap();
+            s.iteration = iteration;
+            s.max_iterations = max_iterations;
+            s.critique_score = Some(result.critique_score);
+            s.critique_approved = Some(result.critique_approved);
+            s.issues = result.critique_issues.clone();
+            s.verify_failures = result.verify_failed.clone();
+            s.cost_usd = result.usage.estimated_cost_usd();
+            s.dirty = true;
         }
+        self.write_report();
+
+        // Steering prompt — if the user chose to stop, set the flag.
+        // before_plan (called at the start of the next iteration) will
+        // check this flag and return HookAction::Abort.
+        if !self.prompt_steer() {
+            let mut s = self.state.lock().unwrap();
+            s.should_stop = true;
+        }
+    }
+
+    async fn on_error(&self, error: &sruja_agent::AgentError) {
+        eprintln!("  ERROR: {error}");
     }
 }
 
@@ -202,6 +602,7 @@ pub struct AgentLoopOptions<'a> {
     pub format: &'a str,
     pub force_proceed: bool,
     pub no_default_grader: bool,
+    pub steer: bool,
 }
 
 /// Entry point for `sruja agent loop`.
@@ -263,9 +664,19 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             tier_cfg.api_key != mid_config.api_key || tier_cfg.base_url != mid_config.base_url;
 
         if needs_own_client {
-            let client = OpenAiClient::new(&tier_cfg.api_key, &tier_cfg.base_url, &tier_cfg.model)
-                .map_err(|e| CliError::validation(format!("Failed to create LLM client: {e}")))?;
-            tiered = tiered.with_route(&tier_cfg.model, Arc::new(client));
+            let client = Arc::new(
+                OpenAiClient::new(&tier_cfg.api_key, &tier_cfg.base_url, &tier_cfg.model)
+                    .map_err(|e| CliError::validation(format!("Failed to create LLM client: {e}")))?,
+            );
+            // Exact route for the tier model name.
+            tiered = tiered.with_route(&tier_cfg.model, client.clone());
+            // Name-substring route derived from the model family name, so
+            // persona model overrides (e.g. "mimo-v2.5" when the tier model
+            // is "mimo-v2.5-pro") find the correct provider via containment.
+            let family = model_family(&tier_cfg.model);
+            if !family.is_empty() {
+                tiered = tiered.with_provider_name_contains(family, client);
+            }
         }
     }
 
@@ -323,6 +734,31 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         );
     }
 
+    // ── Build critique persona ensemble ────────────────────────────────
+    // Merge manifest persona model overrides with the default personas.
+    // Each manifest entry overrides the `model` field of the matching
+    // default persona (by id). Unlisted personas keep models.review.
+    let critique_personas = if manifest.critique.personas.is_empty() {
+        // No overrides — use defaults (all route to models.review).
+        sruja_agent::cognition::CritiquePersona::default_personas()
+    } else {
+        let mut personas = sruja_agent::cognition::CritiquePersona::default_personas();
+        let default_ids: Vec<String> = personas.iter().map(|p| p.id.clone()).collect();
+        for override_cfg in &manifest.critique.personas {
+            if let Some(persona) = personas.iter_mut().find(|p| p.id == override_cfg.id) {
+                persona.model = Some(override_cfg.model.clone());
+            } else {
+                eprintln!(
+                    "  Warning: critique persona override '{}' does not match any \
+                     default persona ({}) — ignored.",
+                    override_cfg.id,
+                    default_ids.join(", ")
+                );
+            }
+        }
+        personas
+    };
+
     let config = AgentConfig {
         models,
         tdd,
@@ -331,6 +767,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         system_hints,
         enable_tool_call_tracing: true,
         max_tool_iterations: manifest.max_tool_iterations,
+        critique_personas,
         ..Default::default()
     };
 
@@ -389,7 +826,13 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         }
 
         if io::stdin().is_terminal() {
-            builder = builder.hook(Box::new(ProgressHook));
+            let report_dir = repo_path.join(".sruja").join("agent");
+            builder = builder.hook(Box::new(LiveReportHook::new(
+                options.goal,
+                max_iterations,
+                options.steer,
+                report_dir,
+            )));
         }
         builder.build().map_err(agent_err_to_cli)?
     };
@@ -447,6 +890,23 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     } else {
         (None, "none".to_string())
     };
+
+    // ── Default grader health check ───────────────────────────────────────
+    // Verifies the sruja binary and the default grader toolchain work before
+    // the agent loop starts. Warnings only — the loop still runs even if the
+    // grader is misconfigured (e.g. under --no-default-grader).
+    if let ("default", Some(ref vc)) = (grader_source.as_str(), &verifier) {
+        let sruja_bin = vc.options.allowed_executables.first().map(|s| s.as_str()).unwrap_or("sruja");
+        if let Err(problems) = super::loop_grader::verify_grader_health(repo_path, sruja_bin) {
+            eprintln!("⚠️  Default grader health check:");
+            for p in &problems {
+                eprintln!("   • {p}");
+            }
+            eprintln!(
+                "   The agent loop will still run, but verification results may be unreliable."
+            );
+        }
+    }
 
     let loop_config = LoopConfig {
         max_iterations,

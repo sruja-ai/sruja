@@ -97,6 +97,8 @@ pub struct ResolvedLlmConfig {
     pub model: String,
     /// Human-readable provider name (for logging).
     pub provider_name: String,
+    /// Provider ID (e.g. "zai", "ximimo") — used for prefix routing.
+    pub provider_id: String,
 }
 
 /// Resolved multi-provider configuration for all model tiers.
@@ -163,6 +165,7 @@ pub fn resolve_llm_config(
         base_url,
         model,
         provider_name: preset.name.to_string(),
+        provider_id: preset.id.to_string(),
     })
 }
 
@@ -267,6 +270,7 @@ fn resolve_tier_config(
                 base_url,
                 model: tier.model.clone(),
                 provider_name,
+                provider_id: tier.provider.clone(),
             })
         }
         None => {
@@ -279,6 +283,7 @@ fn resolve_tier_config(
                 base_url: preset.base_url.to_string(),
                 model: preset.default_model.to_string(),
                 provider_name: preset.name.to_string(),
+                provider_id: preset.id.to_string(),
             })
         }
     }
@@ -417,6 +422,7 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
         assert_eq!(result.base_url, "https://open.bigmodel.cn/api/paas/v4");
         assert_eq!(result.model, "glm-4-flash");
         assert_eq!(result.provider_name, "Zhipu AI (z.ai)");
+        assert_eq!(result.provider_id, "zai");
 
         std::env::remove_var("ZAI_API_KEY");
     }
@@ -459,9 +465,12 @@ review = { provider = "openrouter", model = "google/gemini-2.5-flash" }
 
         assert_eq!(result.cheap.model, "GLM-4-Flash");
         assert_eq!(result.cheap.provider_name, "Zhipu AI (z.ai)");
+        assert_eq!(result.cheap.provider_id, "zai");
         assert_eq!(result.mid.model, "GLM-4.7");
         assert_eq!(result.premium.model, "anthropic/claude-sonnet-4");
+        assert_eq!(result.premium.provider_id, "openrouter");
         assert_eq!(result.review.model, "google/gemini-2.5-flash");
+        assert_eq!(result.review.provider_id, "openrouter");
 
         std::env::remove_var("ZAI_API_KEY");
         std::env::remove_var("OPENROUTER_API_KEY");
@@ -524,6 +533,7 @@ provider_id = "openrouter"
         let result = resolve_llm_config(repo, None, None, None).unwrap();
         assert_eq!(result.api_key, "or-key-789");
         assert_eq!(result.provider_name, "OpenRouter");
+        assert_eq!(result.provider_id, "openrouter");
 
         std::env::remove_var("OPENROUTER_API_KEY");
     }

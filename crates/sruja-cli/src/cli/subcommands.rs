@@ -423,6 +423,9 @@ pub enum AgentCommand {
         /// Disable the default deterministic grader (sruja lint + drift); trust the LLM critic only
         #[arg(long, alias = "trust-critic")]
         no_default_grader: bool,
+        /// Interactive steering: prompt between iterations to continue, stop, or view the live report
+        #[arg(long)]
+        steer: bool,
     },
 }
 
