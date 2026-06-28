@@ -1778,25 +1778,54 @@ impl Agent {
 
     /// Check if there are uncommitted changes (git diff).
     async fn has_git_diff(&self) -> bool {
+        // Helper to extract stdout from shell output
+        let extract_stdout = |output: &str| -> String {
+            output
+                .split("--- stdout ---\n")
+                .nth(1)
+                .unwrap_or("")
+                .split("\n--- stderr ---")
+                .next()
+                .unwrap_or("")
+                .trim()
+                .to_string()
+        };
+
+        // Try git diff --stat HEAD first (works when repo has commits)
         let params = serde_json::json!({
             "command": "git",
             "args": ["diff", "--stat", "HEAD"],
             "timeout_ms": 5_000,
         });
-        match self.tools.dispatch("shell", params).await {
-            Ok(output) => {
-                let stdout = output
-                    .split("--- stdout ---\n")
-                    .nth(1)
-                    .unwrap_or("")
-                    .split("\n--- stderr ---")
-                    .next()
-                    .unwrap_or("")
-                    .trim();
-                !stdout.is_empty()
+        if let Ok(output) = self.tools.dispatch("shell", params).await {
+            if !extract_stdout(&output).is_empty() {
+                return true;
             }
-            Err(_) => false,
         }
+
+        // Fallback: git diff --stat (no HEAD — works for repos without commits)
+        let params = serde_json::json!({
+            "command": "git",
+            "args": ["diff", "--stat"],
+            "timeout_ms": 5_000,
+        });
+        if let Ok(output) = self.tools.dispatch("shell", params).await {
+            if !extract_stdout(&output).is_empty() {
+                return true;
+            }
+        }
+
+        // Fallback: git status --porcelain (catches untracked files)
+        let params = serde_json::json!({
+            "command": "git",
+            "args": ["status", "--porcelain"],
+            "timeout_ms": 5_000,
+        });
+        if let Ok(output) = self.tools.dispatch("shell", params).await {
+            return !extract_stdout(&output).is_empty();
+        }
+
+        false
     }
     // --- Critique: review every change via the review model ---
 

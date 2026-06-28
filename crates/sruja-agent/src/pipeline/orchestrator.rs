@@ -70,7 +70,9 @@ impl PipelineOrchestrator {
         if !manifest.has_stages() {
             let gen = config::generate_from_goal(&goal);
             // Save so user can edit and re-run
-            let _ = gen.save(repo, &name);
+            if let Err(e) = gen.save(repo, &name) {
+                eprintln!("  ⚠️  Failed to save pipeline manifest: {e}. Edits will not persist across runs.");
+            }
             generate_prompt_files(repo, &goal, &gen, &name);
             manifest = gen;
         }
@@ -915,14 +917,19 @@ fn goal_to_name(goal: &str) -> String {
 /// Write prompt files for all stages in the manifest.
 fn generate_prompt_files(repo: &Path, goal: &str, manifest: &PipelineManifest, _name: &str) {
     let agents_dir = repo.join(&manifest.agents_dir);
-    let _ = std::fs::create_dir_all(&agents_dir);
+    if let Err(e) = std::fs::create_dir_all(&agents_dir) {
+        eprintln!("  ⚠️  Failed to create agents directory {}: {e}", agents_dir.display());
+        return;
+    }
 
     for stage in &manifest.stages {
         let prompt_path = manifest.prompt_path(stage, repo);
         if let Some(path) = prompt_path {
             if !path.exists() {
                 let content = config::generate_prompt_file(goal, &stage.id);
-                let _ = std::fs::write(&path, &content);
+                if let Err(e) = std::fs::write(&path, &content) {
+                    eprintln!("  ⚠️  Failed to write prompt file {}: {e}", path.display());
+                }
             }
         }
     }
