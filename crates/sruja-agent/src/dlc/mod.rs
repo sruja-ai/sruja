@@ -36,7 +36,7 @@
 use crate::cognition::{
     Agent, AgentConfig, AgentError, Comprehension, Critique, Plan, StepResult, StepStatus, TaskTier,
 };
-use crate::llm::{CompletionRequest, LlmClient, PREMIUM_MODEL};
+use crate::llm::{CompletionRequest, LlmClient};
 use crate::tool::ToolRegistry;
 use std::sync::Arc;
 
@@ -210,12 +210,14 @@ pub struct DlcPipelineBuilder {
     llm: Option<Box<dyn LlmClient>>,
     tools: Option<ToolRegistry>,
     config: DlcConfig,
+    models: crate::cognition::ModelMapping,
 }
 
 /// The DLC pipeline: orchestrates all development lifecycle phases.
 pub struct DlcPipeline {
     llm: Arc<dyn LlmClient>,
     config: DlcConfig,
+    models: crate::cognition::ModelMapping,
 }
 
 impl Default for DlcPipelineBuilder {
@@ -230,6 +232,7 @@ impl DlcPipelineBuilder {
             llm: None,
             tools: None,
             config: DlcConfig::default(),
+            models: crate::cognition::ModelMapping::default(),
         }
     }
 
@@ -240,6 +243,11 @@ impl DlcPipelineBuilder {
 
     pub fn tools(mut self, tools: ToolRegistry) -> Self {
         self.tools = Some(tools);
+        self
+    }
+
+    pub fn models(mut self, models: crate::cognition::ModelMapping) -> Self {
+        self.models = models;
         self
     }
 
@@ -264,6 +272,7 @@ impl DlcPipelineBuilder {
         Ok(DlcPipeline {
             llm: Arc::from(llm),
             config: self.config,
+            models: self.models,
         })
     }
 }
@@ -355,7 +364,7 @@ impl DlcPipeline {
              interfaces (array of strings), constraints (array of strings).",
             &_ctx.task,
         )
-        .with_model(PREMIUM_MODEL);
+        .with_model(&self.models.premium);
 
         let (response, _usage, _signals) = agent
             .run_tool_loop(req)
@@ -547,7 +556,7 @@ impl DlcPipeline {
 
     async fn create_agent(&self) -> Result<Agent, DlcError> {
         let config = AgentConfig {
-            models: crate::cognition::ModelMapping::default(),
+            models: self.models.clone(),
             review_every_change: true,
             ..Default::default()
         };

@@ -40,7 +40,7 @@ pub mod converge;
 pub mod proposal;
 
 use crate::cognition::{Agent, AgentConfig, AgentError, Comprehension, Plan, TaskTier};
-use crate::llm::{CompletionRequest, LlmClient, PREMIUM_MODEL};
+use crate::llm::{CompletionRequest, LlmClient};
 use crate::tool::ToolRegistry;
 use converge::{ConvergenceResult, ConvergenceStrategy};
 use proposal::Proposal;
@@ -338,7 +338,8 @@ impl Brainstormable for Agent {
         system_context: &str,
     ) -> Result<Comprehension, MultiError> {
         // Use the agent's LLM with custom system prompt.
-        let req = CompletionRequest::prompt(system_context, query).with_model(PREMIUM_MODEL);
+        let req = CompletionRequest::prompt(system_context, query)
+            .with_model(&self.config().models.premium);
 
         let (response, _usage, _signals) = self
             .run_tool_loop(req)
@@ -369,7 +370,7 @@ impl Brainstormable for Agent {
         );
 
         let req = CompletionRequest::prompt(crate::cognition::PLAN_SYSTEM_PROMPT, &user)
-            .with_model(PREMIUM_MODEL);
+            .with_model(&self.config().models.premium);
 
         let (response, _usage, _signals) = self
             .run_tool_loop(req)
