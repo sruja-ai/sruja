@@ -26,7 +26,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::llm::{
-    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter, Usage,
+    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, ModelRouter, Usage,
     DEFAULT_MODEL, PREMIUM_MODEL,
 };
 use crate::tool::ToolSignal;
@@ -483,14 +483,192 @@ impl CritiquePersona {
     }
 }
 
+/// Error classification for pattern learning across runs.
+///
+/// The classifier uses deterministic pattern matching on critic issues and
+/// tool output to categorize failures. This enables cross-run learning:
+/// "In this repo, 40% of failures are type errors — run cargo check first."
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ErrorClass {
+    /// Code doesn't compile (syntax, borrow checker, missing imports)
+    Compilation,
+    /// Type mismatch, trait bound not satisfied, lifetime issue
+    Type,
+    /// Test assertion failed (logic is wrong)
+    Test,
+    /// Lint/rustfmt failure (style only)
+    Lint,
+    /// Runtime panic, unwrap on None, index out of bounds
+    Runtime,
+    /// Architectural boundary violation (critic-detected)
+    Architecture,
+    /// Spec criterion not addressed (critic-detected)
+    SpecGap,
+    /// Other / unclassified
+    #[default]
+    Other,
+}
+
+/// Compresses old tool results in the message history to save context tokens.
+///
+/// Preserves: role, tool_call_id, tool_calls fields. Only rewrites content.
+/// Never compresses: most recent tool results (after the last assistant message),
+/// system prompt, user goal message, file_write/file_edit confirmations.
+///
+/// Compresses: file_read and shell outputs older than the most recent assistant
+/// turn, only if > 500 chars and > 6 lines.
+fn compress_tool_results(messages: &mut Vec<Message>) -> Vec<Message> {
+    // Build a map: tool_call_id -> tool_name (to detect file_write/file_edit).
+    let mut call_id_to_tool: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for msg in messages.iter() {
+        if msg.role == MessageRole::Assistant {
+            for call in &msg.tool_calls {
+                call_id_to_tool.insert(call.id.clone(), call.name.clone());
+            }
+        }
+    }
+
+    // Find the index of the last assistant message. Tool messages after it
+    // are the "most recent" results — the model needs them for its next step.
+    let most_recent_threshold = match messages.iter().rposition(|m| m.role == MessageRole::Assistant) {
+        Some(idx) => idx,
+        None => return std::mem::take(messages),
+    };
+
+    let mut compressed = Vec::new();
+
+    for (idx, msg) in messages.drain(..).enumerate() {
+        if msg.role == MessageRole::Tool {
+            let tool_call_id = msg.tool_call_id.clone().unwrap_or_default();
+            let tool_name = call_id_to_tool
+                .get(&tool_call_id)
+                .map(|s| s.as_str())
+                .unwrap_or("");
+
+            // Never compress: most recent tool results (after last assistant message).
+            if idx > most_recent_threshold {
+                compressed.push(msg);
+                continue;
+            }
+
+            // Never compress: file_write/file_edit confirmations.
+            if tool_name == "file_write" || tool_name == "file_edit" {
+                compressed.push(msg);
+                continue;
+            }
+
+            // Compress if > 500 chars and > 6 lines.
+            let compressed_content = if msg.content.len() > 500 {
+                let lines: Vec<&str> = msg.content.lines().collect();
+                if lines.len() <= 6 {
+                    msg.content.clone()
+                } else {
+                    let summary = lines.first().copied().unwrap_or("");
+                    let last_lines = lines
+                        .iter()
+                        .rev()
+                        .take(3)
+                        .rev()
+                        .copied()
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    format!(
+                        "{}\n[... {} lines compressed ...]\n{}",
+                        summary,
+                        lines.len().saturating_sub(4),
+                        last_lines
+                    )
+                }
+            } else {
+                msg.content.clone()
+            };
+
+            compressed.push(Message {
+                role: msg.role,
+                content: compressed_content,
+                tool_calls: msg.tool_calls,
+                tool_call_id: msg.tool_call_id,
+            });
+        } else {
+            compressed.push(msg);
+        }
+    }
+
+    compressed
+}
+
+/// Classifies errors from critic issues and tool output using deterministic pattern matching.
+///
+/// Returns the most specific error class that matches the available signals.
+/// Prioritizes tool output (shell/stderr) for low-level errors, then critic issues for
+/// high-level architectural/spec problems.
+pub fn classify_error(critique_issues: &[String], step_results: &[StepResult]) -> ErrorClass {
+    // Collect all tool output from step results — this is where error text lives.
+    let tool_output: String = step_results
+        .iter()
+        .map(|s| s.output.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Check for Rust compilation errors (error[E0XXX] or generic "error:")
+    if tool_output.contains("error[E0") || tool_output.contains("error:") {
+        if tool_output.contains("mismatched types")
+            || tool_output.contains("trait bound")
+            || tool_output.contains("lifetime")
+            || tool_output.contains("borrow checker")
+        {
+            return ErrorClass::Type;
+        }
+        return ErrorClass::Compilation;
+    }
+
+    // Test failures — check BEFORE runtime panics since test output often
+    // contains "panicked" / "unwrap on None" from the test assertion itself.
+    if tool_output.contains("test ... FAILED")
+        || tool_output.contains("assertion failed")
+        || tool_output.contains("test result: FAILED")
+    {
+        return ErrorClass::Test;
+    }
+
+    // Runtime panics (not from test execution).
+    if tool_output.contains("panicked") || tool_output.contains("unwrap on None") {
+        return ErrorClass::Runtime;
+    }
+    if tool_output.contains("index out of bounds") {
+        return ErrorClass::Runtime;
+    }
+
+    // Critic-detected errors (check issues text for architectural / spec gaps)
+    let issues_text = critique_issues.join(" ").to_lowercase();
+    if issues_text.contains("boundary") || issues_text.contains("drift") {
+        return ErrorClass::Architecture;
+    }
+    if issues_text.contains("criterion") || issues_text.contains("not addressed") {
+        return ErrorClass::SpecGap;
+    }
+
+    // Check for lint failures via tool signals (sruja tool failures on lint ops)
+    if step_results.iter().any(|s| {
+        s.tool_signals
+            .iter()
+            .any(|t| t.tool == "sruja" && !t.ok)
+    }) && tool_output.contains("warning") {
+        return ErrorClass::Lint;
+    }
+
+    ErrorClass::Other
+}
+
 /// Tracks failed approaches across iterations to prevent repeating mistakes.
 ///
-/// Accumulates `(approach_summary, failure_reason)` pairs and injects them
-/// into replanning prompts so the agent tries genuinely different strategies.
+/// Accumulates `(approach_summary, failure_reason, iteration, error_class)` pairs
+/// and injects them into replanning prompts so the agent tries genuinely different strategies.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FailureTracker {
-    /// (approach_summary, failure_reason, iteration)
-    pub failures: Vec<(String, String, usize)>,
+    /// (approach_summary, failure_reason, iteration, error_class)
+    pub failures: Vec<(String, String, usize, ErrorClass)>,
     /// Number of times the same approach has been tried consecutively.
     pub consecutive_same_approach: usize,
     /// The approach summary from the last iteration.
@@ -498,14 +676,14 @@ pub struct FailureTracker {
 }
 
 impl FailureTracker {
-    pub fn record(&mut self, approach: String, reason: String, iteration: usize) {
+    pub fn record(&mut self, approach: String, reason: String, iteration: usize, error_class: ErrorClass) {
         if self.last_approach.as_deref() == Some(approach.as_str()) {
             self.consecutive_same_approach += 1;
         } else {
             self.consecutive_same_approach = 1;
         }
         self.last_approach = Some(approach.clone());
-        self.failures.push((approach, reason, iteration));
+        self.failures.push((approach, reason, iteration, error_class));
     }
 
     /// Format failures for injection into replanning prompt.
@@ -515,13 +693,14 @@ impl FailureTracker {
         }
         let mut out = String::from("\n\n## Previously Failed Approaches\n\n");
         out.push_str("The following approaches have been tried and failed. You MUST try a DIFFERENT strategy:\n\n");
-        for (i, (approach, reason, iter)) in self.failures.iter().enumerate() {
+        for (i, (approach, reason, iter, error_class)) in self.failures.iter().enumerate() {
             out.push_str(&format!(
-                "{}. **Iteration {}**: {}\n   Failure reason: {}\n\n",
+                "{}. **Iteration {}**: {}\n   Failure reason: {}\n   Error class: {:?}\n\n",
                 i + 1,
                 iter,
                 approach,
-                reason
+                reason,
+                error_class
             ));
         }
         if self.consecutive_same_approach >= 2 {
@@ -936,7 +1115,56 @@ impl Agent {
                     .join("\n")
             )
         };
-        let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}{hints}");
+
+        // Retrieve error frequency history for this repo.
+        let error_history = if let Some(ref mem) = self.memory {
+            if let Some(repo_path) = &self.repo_root {
+                let repo_path_str = repo_path.display().to_string();
+                if let Ok(frequencies) = mem.search_error_history(&repo_path_str) {
+                    if frequencies.is_empty() {
+                        String::new()
+                    } else {
+                        let total: usize = frequencies.iter().map(|f| f.count).sum();
+                        let percentages: Vec<String> = frequencies
+                            .iter()
+                            .map(|f| {
+                                let pct = if total > 0 {
+                                    (f.count as f64 / total as f64 * 100.0) as u32
+                                } else {
+                                    0
+                                };
+                                let advice = match f.error_class {
+                                    ErrorClass::Compilation => "(run cargo check first)",
+                                    ErrorClass::Type => "(check type annotations before tests)",
+                                    ErrorClass::Test => "(verify logic against acceptance criteria)",
+                                    ErrorClass::Runtime => "(check for unwrap/None, bounds)",
+                                    ErrorClass::Lint => "(run cargo clippy)",
+                                    ErrorClass::Architecture => "(check boundary crossings)",
+                                    ErrorClass::SpecGap => "(verify all criteria are addressed)",
+                                    ErrorClass::Other => "(investigate carefully)",
+                                };
+                                format!("{}% {:?} {}", pct, f.error_class, advice)
+                            })
+                            .collect();
+                        format!(
+                            "\n\n## Error History for This Repo\n\
+                             This repo's past agent runs had these failure patterns:\n\
+                             - {}\n\
+                             Focus your attention accordingly.",
+                            percentages.join("\n- ")
+                        )
+                    }
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}{error_history}{hints}");
 
         let preloaded_section = if self.preloaded_files.is_empty() {
             String::new()
@@ -1228,6 +1456,20 @@ impl Agent {
 
                 req.messages
                     .push(Message::tool_result(&call.id, truncated_text));
+            }
+
+            // ── Progressive compression (every 3 iterations) ─────────────
+            // Compress old tool results to save context tokens.
+            // Only compress after 3 iterations have passed (not iteration 0).
+            if iteration > 0 && iteration % 3 == 0 {
+                let original_len = req.messages.len();
+                req.messages = compress_tool_results(&mut req.messages);
+                tracing::debug!(
+                    iteration,
+                    original_len,
+                    compressed_len = req.messages.len(),
+                    "tool_loop: compressed message history"
+                );
             }
 
             // ── Circuit breaker: consecutive error recovery ──────────────
@@ -2814,12 +3056,11 @@ impl Agent {
                 } else {
                     critique.issues.join("; ")
                 };
-                failure_tracker.record(approach, reason, iteration);
-                tracing::info!(
+                failure_tracker.record(
+                    approach,
+                    reason,
                     iteration,
-                    consecutive_same = failure_tracker.consecutive_same_approach,
-                    total_failures = failure_tracker.failures.len(),
-                    "self_correction: recorded failure for next replan"
+                    classify_error(&critique.issues, &step_results),
                 );
             }
 
@@ -3165,7 +3406,12 @@ impl Agent {
                 } else {
                     critique.issues.join("; ")
                 };
-                failure_tracker.record(approach, reason, iteration);
+                failure_tracker.record(
+                    approach,
+                    reason,
+                    iteration,
+                    classify_error(&critique.issues, &step_results),
+                );
             }
 
             iterations.push(LoopIteration {

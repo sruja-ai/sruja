@@ -3,6 +3,7 @@
 //! Re-exports the canonical learning types from `sruja-graph` and defines
 //! agent-specific curation types.
 
+use crate::cognition::ErrorClass;
 use serde::{Deserialize, Serialize};
 
 // Re-export shared types from sruja-graph (single source of truth).
@@ -11,6 +12,23 @@ pub use sruja_graph::learning::{
 };
 
 pub use sruja_graph::learning::generate_entry_id;
+
+/// Persisted error frequency counts for cross-run learning.
+///
+/// Keyed by `(repo_path, error_class)` — tracks how often each error class
+/// occurs in a specific repository. This enables injection like:
+/// "In this repo, 45% of failures are type errors — check type annotations first."
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorFrequency {
+    /// Repository path (absolute path on disk).
+    pub repo_path: String,
+    /// Error class being tracked.
+    pub error_class: ErrorClass,
+    /// Number of occurrences (non-zero).
+    pub count: usize,
+    /// Timestamp of last update (ISO 8601).
+    pub last_updated: String,
+}
 
 /// Suggested merge of clustered learnings (curator output).
 #[derive(Debug, Clone, Serialize, Deserialize)]

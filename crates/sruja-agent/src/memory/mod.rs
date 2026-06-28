@@ -19,6 +19,7 @@ pub use types::{
     CurationReport, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, LowUtilityEntry,
     MemoryError, MergeSuggestion, StaleEntry,
 };
+pub use types::ErrorFrequency;
 
 /// Persistent store for architectural learnings and agentic guardrails.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -276,6 +277,9 @@ pub trait Memory: Send + Sync {
     /// Record task outcomes for learnings retrieved during the task.
     fn record_outcomes(&self, ids: &[&str], success: bool);
 
+    /// Search error frequency history for a repository.
+    fn search_error_history(&self, repo_path: &str) -> Result<Vec<ErrorFrequency>, MemoryError>;
+
     /// Total number of learnings stored.
     fn count(&self) -> usize;
 
@@ -335,6 +339,10 @@ impl Memory for std::sync::Mutex<AgenticMemory> {
     fn record_outcomes(&self, ids: &[&str], success: bool) {
         let mut mem = self.lock().unwrap();
         mem.record_task_outcomes(ids, success);
+    }
+
+    fn search_error_history(&self, _repo_path: &str) -> Result<Vec<ErrorFrequency>, MemoryError> {
+        Ok(Vec::new()) // TODO: implement error frequency persistence
     }
 
     fn count(&self) -> usize {
