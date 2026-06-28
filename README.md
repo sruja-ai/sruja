@@ -2,13 +2,18 @@
 
 [![Coverage](https://codecov.io/gh/sruja-ai/sruja/branch/main/graph/badge.svg)](https://codecov.io/gh/sruja-ai/sruja)
 
-**Sruja is a CLI-first autonomous coding agent.** It scans your repo, grounds every edit in real topology, and verifies the result before you ship.
+**Sruja is a CLI-first autonomous coding agent where the actor never grades itself.** It scans your repo, grounds every edit in real topology, and verifies the result with an independent deterministic grader before you ship.
 
 ```text
-focus / drift  →  agent edits code  →  verify-task  →  (critique or approve)
+sruja agent loop --goal "..."   →   comprehend · plan · execute · critique · replan
 ```
 
-Sruja also works as a **passive harness** inside any editor (Cursor, Copilot, Claude, Windsurf) via MCP — same deterministic gates, your LLM drives.
+Sruja runs two ways:
+
+- **Autonomous** — `sruja agent loop` owns the full observe → act → verify → critique → replan loop, bounded by budget, iterations, and file guards.
+- **Passive harness** — inside any editor (Cursor, Copilot, Claude, Windsurf) via MCP; same deterministic gates, your LLM drives.
+
+The deterministic layer (`drift`, `lint`, `verify-task`, `intent check`) is the **independent grader** — the model that wrote the code never judges it.
 
 ---
 

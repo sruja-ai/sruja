@@ -1,6 +1,6 @@
 # Quick Start
 
-**AI coding harness in about 5 minutes** — structural scan, agent briefings, and verify gates. No `repo.sruja` required on day one.
+**Get Sruja, your autonomous coding agent, running in about 5 minutes.** It scans your repo, briefs each task, edits code in a closed loop, and verifies results with an independent grader before you ship. No `repo.sruja` required on day one.
 
 ---
 

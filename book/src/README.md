@@ -2,7 +2,7 @@
 
 <img src="sruja-logo.png" alt="Sruja" class="sruja-home-logo" width="160" />
 
-**Sruja is a CLI-first autonomous coding agent.** It scans your repo, grounds every edit in real topology, and verifies the result before you ship. Also works as a passive harness inside any editor (Cursor, Copilot, Claude, Windsurf) via MCP.
+**Sruja is a CLI-first autonomous coding agent where the actor never grades itself.** It scans your repo, grounds every edit in real topology, and verifies the result with an independent deterministic grader before you ship. Runs autonomously via `sruja agent loop`, or as a passive harness inside any editor (Cursor, Copilot, Claude, Windsurf) via MCP.
 
 ## The Problem
 
