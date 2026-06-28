@@ -3,7 +3,6 @@
 //! This crate provides exporters for converting Sruja AST to various formats.
 
 pub mod context;
-pub mod d2;
 pub mod dsl;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod explorer;
@@ -20,7 +19,6 @@ pub mod neo4j;
 pub mod obsidian;
 
 pub use context::ContextExporter;
-pub use d2::{D2Config, D2Exporter};
 pub use dsl::DslPrinter;
 #[cfg(not(target_arch = "wasm32"))]
 pub use explorer::{ExplorerBuilder, ExplorerModel};

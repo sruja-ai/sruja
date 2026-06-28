@@ -24,7 +24,6 @@ use super::rule::Rule;
 /// - **Minimal:** Essential safety/correctness only (unique id, valid refs, orphans, cycles, layer violations).
 ///   Use for fast feedback or when stricter rules are not desired.
 /// - **Default:** All registered rules (current full set).
-/// - **Strict:** Same as Default today; reserved for future additional opinionated rules.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RuleProfile {
     /// Safety and correctness only: UniqueId, ValidRef, Orphan, Cycle, LayerViolation.
@@ -32,8 +31,6 @@ pub enum RuleProfile {
     /// All rules (full validation).
     #[default]
     Default,
-    /// All rules; reserved for future stricter checks.
-    Strict,
 }
 
 /// Main validator that orchestrates multiple validation rules against a program
@@ -98,7 +95,7 @@ impl Validator {
                 self.register_rule(Arc::new(CycleDetectionRule));
                 self.register_rule(Arc::new(LayerViolationRule));
             }
-            RuleProfile::Default | RuleProfile::Strict => {
+            RuleProfile::Default => {
                 self = self.with_registered_default_rules();
             }
         }
@@ -316,13 +313,6 @@ mod tests {
         let minimal = Validator::with_profile(RuleProfile::Minimal);
         let default = Validator::with_profile(RuleProfile::Default);
         assert!(minimal.rule_count() < default.rule_count());
-    }
-
-    #[test]
-    fn validator_with_profile_strict_has_same_as_default() {
-        let strict = Validator::with_profile(RuleProfile::Strict);
-        let default = Validator::with_profile(RuleProfile::Default);
-        assert_eq!(strict.rule_count(), default.rule_count());
     }
 
     #[test]

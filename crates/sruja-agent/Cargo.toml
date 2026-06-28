@@ -8,14 +8,9 @@ repository.workspace = true
 
 [features]
 default = ["llm-openai", "llm-anthropic", "tools-fs"]
-# LLM provider backends.
 llm-openai = ["dep:reqwest"]
 llm-anthropic = ["dep:reqwest"]
-# Built-in filesystem / shell tools.
 tools-fs = []
-# SQLite memory search backend (enables FTS5+BM25 ranked retrieval via sruja-memory).
-memory-sqlite = []
-# MCP client support (connects to external MCP servers).
 mcp-client = ["dep:rmcp"]
 
 [dependencies]
@@ -27,9 +22,7 @@ tokio.workspace = true
 tracing.workspace = true
 async-trait.workspace = true
 toml.workspace = true
-sruja-diagnostics = { path = "../sruja-diagnostics" }
 sruja-graph = { path = "../sruja-graph" }
-sruja-language = { path = "../sruja-language" }
 fs2 = "0.4.3"
 reqwest = { workspace = true, optional = true, features = ["stream"] }
 futures.workspace = true
