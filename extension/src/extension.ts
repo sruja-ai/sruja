@@ -28,6 +28,7 @@ import { registerMcpServer } from "./mcpServer";
 import { updateDiagnostics, getDiagnosticCollection } from "./diagnostics";
 import { registerStatusBar } from "./statusBar";
 import { ArchitectureTreeProvider } from "./architectureTree";
+import { AgentRunsProvider, openAgentDiff } from "./agentRuns";
 import { maybeShowWelcome, registerWelcomeCommand } from "./welcome";
 
 function getLspPath(): string | undefined {
@@ -91,6 +92,14 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider("srujaArchitecture", archTreeProvider);
   context.subscriptions.push(
     vscode.commands.registerCommand("sruja.refreshStatus", () => archTreeProvider.refresh())
+  );
+
+  // Agent Runs Tree View
+  const agentRunsProvider = new AgentRunsProvider();
+  vscode.window.registerTreeDataProvider("srujaAgentRuns", agentRunsProvider);
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sruja.refreshAgentRuns", () => agentRunsProvider.refresh()),
+    vscode.commands.registerCommand("sruja.openAgentDiff", openAgentDiff)
   );
 
   // Welcome walkthrough

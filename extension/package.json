@@ -39,7 +39,8 @@
     "workspaceContains:**/*.sruja",
     "onStartupFinished",
     "onView:srujaSkillsView",
-    "onView:srujaArchitecture"
+    "onView:srujaArchitecture",
+    "onView:srujaAgentRuns"
   ],
   "main": "./out/extension.js",
   "extensionKind": [
@@ -428,6 +429,10 @@
         {
           "id": "srujaSkillsView",
           "name": "Skills"
+        },
+        {
+          "id": "srujaAgentRuns",
+          "name": "Agent Runs"
         }
       ]
     },
