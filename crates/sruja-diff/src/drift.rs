@@ -542,10 +542,12 @@ pub fn find_orphan_modules_with_config(graph: &Graph, exclude_barrel_files: bool
     let mut has_outgoing: HashSet<&str> = HashSet::new();
 
     for edge in &graph.edges {
-        if !edge.source.starts_with("module:") {
-            has_outgoing.insert(edge.source.as_str());
-            has_incoming.insert(edge.target.as_str());
+        // Skip containment and definition edges — only consider real dependency edges
+        if edge.source.starts_with("module:") || edge.kind.as_str() == "defines" {
+            continue;
         }
+        has_outgoing.insert(edge.source.as_str());
+        has_incoming.insert(edge.target.as_str());
     }
 
     graph
