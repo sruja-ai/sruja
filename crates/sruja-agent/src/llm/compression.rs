@@ -44,17 +44,19 @@
 //! the model needs the verbatim original.
 
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+use futures::{Stream, StreamExt};
 use sruja_compress::{
     count_tokens, BoundedCcrStore, CcrHandle, CcrStore, Compressed, CompressContext,
     KeepPolicy, TextCompressor, TextCrusher, TextRole,
 };
 
-use crate::llm::{
-    CompletionRequest, CompletionResponse, LlmClient, LlmError, MessageRole,
-};
+use crate::llm::{CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, StreamEvent};
 
 /// Prefix prepended to compressed messages so the compressor skips them on
 /// subsequent passes and the model can spot the CCR handle.
@@ -128,6 +130,8 @@ pub struct CompressingClient {
     config: CompressionConfig,
     stats: CompressionStats,
     compression_cache: Arc<std::sync::Mutex<HashMap<String, Compressed>>>,
+    cached_compressed_request: Arc<tokio::sync::RwLock<Option<CompletionRequest>>>,
+    cached_request_key: Arc<std::sync::Mutex<Option<u64>>>,
 }
 
 impl CompressingClient {
@@ -140,6 +144,8 @@ impl CompressingClient {
             config: CompressionConfig::default(),
             stats: CompressionStats::default(),
             compression_cache: Arc::new(std::sync::Mutex::new(HashMap::new())),
+            cached_compressed_request: Arc::new(tokio::sync::RwLock::new(None)),
+            cached_request_key: Arc::new(std::sync::Mutex::new(None)),
         }
     }
 
@@ -293,7 +299,77 @@ impl LlmClient for CompressingClient {
         self.inner.default_model()
     }
 
+    fn complete_stream<'a>(
+        &'a self,
+        req: &'a CompletionRequest,
+    ) -> Pin<Box<dyn Stream<Item = Result<StreamEvent, LlmError>> + Send + 'a>> {
+        let key = hash_request(req);
+        let cached_request_ref = self.cached_compressed_request.clone();
+        let inner = self.inner.clone();
 
+        Box::pin(async_stream::try_stream! {
+            let read_guard = cached_request_ref.read().await;
+
+            if let Some(cached) = read_guard.as_ref() {
+                let cached_key = *self.cached_request_key.lock().unwrap();
+                if cached_key == Some(key) {
+                    let req_ref = unsafe { &*(cached as *const CompletionRequest) };
+                    drop(read_guard);
+
+                    let mut stream = inner.complete_stream(req_ref);
+                    while let Some(event) = stream.next().await {
+                        yield event?;
+                    }
+                    return;
+                }
+            }
+            drop(read_guard);
+
+            {
+                let mut write_guard = cached_request_ref.write().await;
+                if let Some(cached) = write_guard.as_ref() {
+                    let cached_key = *self.cached_request_key.lock().unwrap();
+                    if cached_key == Some(key) {
+                        let req_ref = unsafe { &*(cached as *const CompletionRequest) };
+                        let _read_guard = write_guard.downgrade();
+
+                        let mut stream = inner.complete_stream(req_ref);
+                        while let Some(event) = stream.next().await {
+                            yield event?;
+                        }
+                        return;
+                    }
+                }
+
+                let compressed = self.compress_request(req);
+                *write_guard = Some(compressed);
+                *self.cached_request_key.lock().unwrap() = Some(key);
+
+                let req_ref = unsafe { &*(write_guard.as_ref().unwrap() as *const CompletionRequest) };
+                let _read_guard = write_guard.downgrade();
+
+                let mut stream = inner.complete_stream(req_ref);
+                while let Some(event) = stream.next().await {
+                    yield event?;
+                }
+            }
+        })
+    }
+}
+
+fn hash_request(req: &CompletionRequest) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    req.messages.hash(&mut hasher);
+    hasher.finish()
+}
+
+impl Hash for Message {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.role.hash(state);
+        self.content.hash(state);
+        self.tool_calls.hash(state);
+        self.tool_call_id.hash(state);
+    }
 }
 
 /// Format a compressed message with a CCR retrieval marker.

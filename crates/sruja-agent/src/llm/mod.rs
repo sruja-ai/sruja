@@ -74,7 +74,7 @@ pub enum LlmError {
 }
 
 /// Role of a chat message.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum MessageRole {
     System,
@@ -153,7 +153,7 @@ pub struct FunctionSchema {
 }
 
 /// A tool call requested by the model.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash)]
 pub struct ToolCall {
     pub id: String,
     pub name: String,
