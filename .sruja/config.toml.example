@@ -1,0 +1,28 @@
+# Sruja agent configuration
+# Copy this file to .sruja/config.toml and customize for your setup.
+# API keys are stored in environment variables, NEVER in this file.
+# See: sruja agent setup --help
+
+[integrations]
+default_provider = "zai"
+
+# Named provider configurations
+[integrations.providers.zai]
+base_url = "https://api.z.ai/api/coding/paas/v4"
+key_env = "ZAI_API_KEY"
+
+[integrations.providers.ximimo]
+base_url = "https://token-plan-sgp.xiaomimimo.com/v1"
+key_env = "XIMIMO_API_KEY"
+
+[integrations.providers.openrouter]
+base_url = "https://openrouter.ai/api/v1"
+key_env = "OPENROUTER_API_KEY"
+
+# Model tiers for different tasks
+# Each tier can use a different provider
+[agent.models]
+cheap = { provider = "zai", model = "GLM-4-Flash" }
+mid = { provider = "zai", model = "GLM-4.7" }
+premium = { provider = "openrouter", model = "anthropic/claude-sonnet-4" }
+review = { provider = "openrouter", model = "google/gemini-2.5-flash" }
