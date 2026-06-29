@@ -1,8 +1,8 @@
 diff --git a/crates/sruja-graph/src/learning.rs b/crates/sruja-graph/src/learning.rs
-index 0df8e355..d0a89512 100644
+index 6b528a69..ffac9673 100644
 --- a/crates/sruja-graph/src/learning.rs
 +++ b/crates/sruja-graph/src/learning.rs
-@@ -352,3 +352,22 @@ pub fn parse_hitl_kind(s: &str) -> Result<Option<String>, MemoryError> {
+@@ -358,3 +358,24 @@ pub fn parse_hitl_kind(s: &str) -> Result<Option<String>, MemoryError> {
          ))),
      }
  }
@@ -15,13 +15,15 @@ index 0df8e355..d0a89512 100644
 +    fn learning_entry_rename_serde_compat() {
 +        let json = r#"{"id":"t","timestamp":"2026-01-01T00:00:00Z","context":"c","hypothesis":"h","guardrail_advice":"a"}"#;
 +        let entry: LearningEntry = serde_json::from_str(json).unwrap();
-+        assert_eq!(entry.context, "c");
-+        assert_eq!(entry.guardrail_advice, "a");
++        assert_eq!(entry.situation, "c");
++        assert_eq!(entry.suggested_behavior, "a");
 +    }
 +
 +    #[test]
 +    fn learning_entry_playbook_factory() {
-+        let entry = LearningEntry::playbook("c", "h", "a");
++        let entry = LearningEntry::playbook("s", "h", "a");
 +        assert_eq!(entry.kind, Some(LearningKind::Playbook));
++        assert_eq!(entry.situation, "s");
++        assert_eq!(entry.suggested_behavior, "a");
 +    }
 +}

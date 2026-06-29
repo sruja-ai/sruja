@@ -559,6 +559,27 @@ pub async fn run_eval_instance(
     let verification_status = if test_diff.exists() {
         eprintln!("Applying test patch: {}", test_diff.display());
 
+        // Reset to clean state so the test patch applies against baseline,
+        // not on top of agent changes. This mirrors SWE-bench behavior:
+        // attempt → reset → apply gold fix → run tests.
+        let reset_output = std::process::Command::new("git")
+            .args(["reset", "--hard", "HEAD"])
+            .current_dir(&repo_path_clone)
+            .output();
+        if let Ok(out) = &reset_output {
+            if !out.status.success() {
+                eprintln!(
+                    "Warning: git reset failed: {}",
+                    String::from_utf8_lossy(&out.stderr)
+                );
+            }
+        }
+        // Also clean untracked files the agent may have created
+        let _ = std::process::Command::new("git")
+            .args(["clean", "-fd"])
+            .current_dir(&repo_path_clone)
+            .output();
+
         // Apply test patch
         let apply_output = std::process::Command::new("git")
             .args(["apply", "--check"])

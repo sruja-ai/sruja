@@ -1,8 +1,140 @@
+diff --git a/crates/sruja-agent/src/cognition/mod.rs b/crates/sruja-agent/src/cognition/mod.rs
+index 32ed7099..3093e790 100644
+--- a/crates/sruja-agent/src/cognition/mod.rs
++++ b/crates/sruja-agent/src/cognition/mod.rs
+@@ -1099,7 +1099,7 @@ impl Agent {
+                             .unwrap_or_default();
+                         format!(
+                             "- [{kind}] {} (utility: {utility}, retrieved {} times)\n  Advice: {}",
+-                            l.context, l.retrieval_count, l.guardrail_advice
++                            l.situation, l.retrieval_count, l.suggested_behavior
+                         )
+                     })
+                     .collect();
+@@ -2175,7 +2175,7 @@ impl Agent {
+             run_id: None,
+             repo: None,
+             selector: None,
+-            context: pattern,
++            situation: pattern,
+             hypothesis: format!(
+                 "classified as {complexity:?}, routed to {path} path, {outcome} after {iterations} iterations"
+             ),
+@@ -2184,8 +2184,8 @@ impl Agent {
+             } else {
+                 crate::ExperimentOutcome::Failed
+             },
+-            reason: None,
+-            guardrail_advice: if success {
++            failure_reason: None,
++            suggested_behavior: if success {
+                 format!("{path} path effective for {complexity:?} tasks like this")
+             } else {
+                 format!("{path} path failed for {complexity:?} tasks like this — try full pipeline")
+@@ -2395,7 +2395,7 @@ impl Agent {
+                             .unwrap_or_else(|| "?".to_string());
+                         format!(
+                             "- [retrieved {}x, util {}] {}\n  Probe: {}",
+-                            g.retrieval_count, util, g.context, g.guardrail_advice
++                            g.retrieval_count, util, g.situation, g.suggested_behavior
+                         )
+                     })
+                     .collect::<Vec<_>>()
+diff --git a/crates/sruja-agent/src/memory/curation.rs b/crates/sruja-agent/src/memory/curation.rs
+index 85204320..6c133e42 100644
+--- a/crates/sruja-agent/src/memory/curation.rs
++++ b/crates/sruja-agent/src/memory/curation.rs
+@@ -31,7 +31,7 @@ pub fn curation_report(memory: &AgenticMemory) -> CurationReport {
+             retrieval_count: e.retrieval_count,
+             task_total_after: e.task_total_after,
+             utility_ratio: e.utility_ratio(),
+-            context: e.context.clone(),
++            context: e.situation.clone(),
+         })
+         .collect();
+ 
+@@ -48,7 +48,7 @@ pub fn curation_report(memory: &AgenticMemory) -> CurationReport {
+             age_days: e.age_days(),
+             decay_score: e.decay_score(),
+             retrieval_count: e.retrieval_count,
+-            context: e.context.clone(),
++            context: e.situation.clone(),
+         })
+         .collect();
+ 
+diff --git a/crates/sruja-agent/src/memory/mod.rs b/crates/sruja-agent/src/memory/mod.rs
+index d9ac1c07..95486009 100644
+--- a/crates/sruja-agent/src/memory/mod.rs
++++ b/crates/sruja-agent/src/memory/mod.rs
+@@ -152,8 +152,8 @@ impl AgenticMemory {
+         if let Some(kind) = patch.kind {
+             entry.kind = Some(kind);
+         }
+-        if let Some(ctx) = patch.context {
+-            entry.context = ctx;
++        if let Some(ctx) = patch.situation {
++            entry.situation = ctx;
+             reextract_tags = true;
+         }
+         if let Some(h) = patch.hypothesis {
+@@ -163,11 +163,11 @@ impl AgenticMemory {
+         if let Some(outcome) = patch.outcome {
+             entry.outcome = outcome;
+         }
+-        if let Some(reason) = patch.reason {
+-            entry.reason = reason;
++        if let Some(reason) = patch.failure_reason {
++            entry.failure_reason = reason;
+         }
+-        if let Some(guardrail) = patch.guardrail_advice {
+-            entry.guardrail_advice = guardrail;
++        if let Some(guardrail) = patch.suggested_behavior {
++            entry.suggested_behavior = guardrail;
+             reextract_tags = true;
+         }
+         if let Some(elements) = patch.affected_elements {
+@@ -301,9 +301,9 @@ impl Memory for std::sync::Mutex<AgenticMemory> {
+             .learnings
+             .iter()
+             .filter(|e| {
+-                e.context.to_lowercase().contains(&query.to_lowercase())
++                e.situation.to_lowercase().contains(&query.to_lowercase())
+                     || e.hypothesis.to_lowercase().contains(&query.to_lowercase())
+-                    || e.guardrail_advice
++                    || e.suggested_behavior
+                         .to_lowercase()
+                         .contains(&query.to_lowercase())
+                     || e.tags
+diff --git a/crates/sruja-agent/src/memory/search.rs b/crates/sruja-agent/src/memory/search.rs
+index 02c2eb1c..86fa05de 100644
+--- a/crates/sruja-agent/src/memory/search.rs
++++ b/crates/sruja-agent/src/memory/search.rs
+@@ -81,7 +81,7 @@ pub fn find_by_tag<'a>(memory: &'a AgenticMemory, tag: &str) -> Vec<&'a Learning
+ pub fn extract_tags(entry: &LearningEntry) -> Vec<String> {
+     let combined = format!(
+         "{} {} {}",
+-        entry.context, entry.hypothesis, entry.guardrail_advice
++        entry.situation, entry.hypothesis, entry.suggested_behavior
+     );
+     let stop_words: std::collections::HashSet<&str> = [
+         "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+@@ -147,8 +147,8 @@ pub fn find_related_indices(memory: &AgenticMemory, new_entry: &LearningEntry) -
+             .count();
+         score += (shared_tags as u32) * 2;
+ 
+-        let ctx_lower = existing.context.to_lowercase();
+-        let new_ctx_lower = new_entry.context.to_lowercase();
++        let ctx_lower = existing.situation.to_lowercase();
++        let new_ctx_lower = new_entry.situation.to_lowercase();
+         let ctx_words: Vec<&str> = new_ctx_lower
+             .split_whitespace()
+             .filter(|w| w.len() >= 4)
 diff --git a/crates/sruja-graph/src/learning.rs b/crates/sruja-graph/src/learning.rs
-index 1234567..abcdefg 100644
+index 0df8e355..6b528a69 100644
 --- a/crates/sruja-graph/src/learning.rs
 +++ b/crates/sruja-graph/src/learning.rs
-@@ -79,14 +79,17 @@ pub struct LearningEntry {
+@@ -77,16 +77,19 @@ pub struct LearningEntry {
+     #[serde(default, skip_serializing_if = "Option::is_none")]
      pub selector: Option<String>,
      /// The context in which the experiment was performed (e.g., "Refactoring API layer").
 -    pub context: String,
@@ -21,121 +153,81 @@ index 1234567..abcdefg 100644
 -    pub guardrail_advice: String,
 +    #[serde(alias = "guardrail_advice")]
 +    pub suggested_behavior: String,
- }
+     /// IDs of architectural elements affected by this experiment.
+     pub affected_elements: Vec<String>,
+     /// Optional evidence references (files, ADR IDs, commands, etc.) that ground this learning.
+@@ -121,15 +124,18 @@ pub struct LearningPatch {
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub kind: Option<LearningKind>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+-    pub context: Option<String>,
++    #[serde(alias = "context")]
++    pub situation: Option<String>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub hypothesis: Option<String>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub outcome: Option<ExperimentOutcome>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+-    pub reason: Option<Option<String>>,
++    #[serde(alias = "reason")]
++    pub failure_reason: Option<Option<String>>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+-    pub guardrail_advice: Option<String>,
++    #[serde(alias = "guardrail_advice")]
++    pub suggested_behavior: Option<String>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub affected_elements: Option<Vec<String>>,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+@@ -209,7 +215,7 @@ impl LearningEntry {
+         }
  
- #[derive(Debug, Clone, Serialize, Deserialize)]
-@@ -110,17 +113,17 @@ impl LearningEntry {
+         // 2. Check context for keywords
+-        self.context.to_lowercase().contains(&element_id_lower)
++        self.situation.to_lowercase().contains(&element_id_lower)
      }
  
-     /// Create a playbook learning.
--    pub fn playbook(context: &str, hypothesis: &str, advice: &str) -> Self {
-+    pub fn playbook(situation: &str, hypothesis: &str, advice: &str) -> Self {
-         Self {
-             id: generate_entry_id(),
-             kind: Some(LearningKind::Playbook),
-             timestamp: Utc::now(),
+     /// Create a new learning entry with all bookkeeping fields defaulted.
+@@ -218,7 +224,7 @@ impl LearningEntry {
+     /// [`guardrail`](Self::guardrail), [`invariant`](Self::invariant)) which
+     /// also set the correct `kind` and `outcome`.
+     pub fn new(
+-        context: impl Into<String>,
++        situation: impl Into<String>,
+         hypothesis: impl Into<String>,
+         guardrail_advice: impl Into<String>,
+     ) -> Self {
+@@ -229,11 +235,11 @@ impl LearningEntry {
              run_id: None,
              repo: None,
              selector: None,
--            context: context.to_string(),
-+            situation: situation.to_string(),
-             hypothesis: hypothesis.to_string(),
+-            context: context.into(),
++            situation: situation.into(),
+             hypothesis: hypothesis.into(),
              outcome: ExperimentOutcome::default(),
 -            reason: None,
--            guardrail_advice: advice.to_string(),
+-            guardrail_advice: guardrail_advice.into(),
 +            failure_reason: None,
-+            suggested_behavior: advice.to_string(),
-         }
-     }
- 
-@@ -128,17 +131,17 @@ impl LearningEntry {
-     /// Create a guardrail learning.
--    pub fn guardrail(context: &str, hypothesis: &str, advice: &str) -> Self {
-+    pub fn guardrail(situation: &str, hypothesis: &str, advice: &str) -> Self {
-         Self {
-             id: generate_entry_id(),
-             kind: Some(LearningKind::Guardrail),
-             timestamp: Utc::now(),
-             run_id: None,
-             repo: None,
-             selector: None,
--            context: context.to_string(),
-+            situation: situation.to_string(),
-             hypothesis: hypothesis.to_string(),
-             outcome: ExperimentOutcome::default(),
--            reason: None,
--            guardrail_advice: advice.to_string(),
-+            failure_reason: None,
-+            suggested_behavior: advice.to_string(),
-         }
-     }
- }
-diff --git a/crates/sruja-agent/src/memory/mod.rs b/crates/sruja-agent/src/memory/mod.rs
-index 1234567..abcdefg 100644
---- a/crates/sruja-agent/src/memory/mod.rs
-+++ b/crates/sruja-agent/src/memory/mod.rs
-@@ -67,7 +67,7 @@ impl AgenticMemory {
-     pub fn add_learning(&mut self, mut learning: LearningEntry) {
-         // Auto-generate tags from the learning content
-         let tags = [
--            learning.context.clone(),
-+            learning.situation.clone(),
-             learning.hypothesis.clone(),
-         ];
-         learning.tags = tags.iter().flat_map(|t| extract_tags(t)).collect();
-@@ -92,7 +92,7 @@ impl AgenticMemory {
-     pub fn add_learning_raw(&mut self, learning: LearningEntry) {
-         self.learnings.push(learning);
-     }
- 
-     pub fn find_relevant(&self, element_id: &str) -> Vec<&LearningEntry> {
-         search::find_relevant(self, element_id)
-diff --git a/crates/sruja-agent/src/cognition/mod.rs b/crates/sruja-agent/src/cognition/mod.rs
-index 1234567..abcdefg 100644
---- a/crates/sruja-agent/src/cognition/mod.rs
-+++ b/crates/sruja-agent/src/cognition/mod.rs
-@@ -1906,8 +1906,8 @@ fn parse_learnings_from_response(content: &str) -> Vec<LearningEntry> {
-                     "guardrail" => LearningEntry::guardrail(context, hypothesis, advice),
-                     _ => LearningEntry::playbook(context, hypothesis, advice),
-                 };
--                entry.reason = reason;
--                entry.guardrail_advice = advice.to_string();
-+                entry.failure_reason = reason;
-+                entry.suggested_behavior = advice.to_string();
-                 entries.push(entry);
++            suggested_behavior: guardrail_advice.into(),
+             affected_elements: Vec::new(),
+             evidence_refs: Vec::new(),
+             confidence: None,
+diff --git a/crates/sruja-graph/src/snapshot.rs b/crates/sruja-graph/src/snapshot.rs
+index 9f8ddeb4..e52f588f 100644
+--- a/crates/sruja-graph/src/snapshot.rs
++++ b/crates/sruja-graph/src/snapshot.rs
+@@ -194,12 +194,12 @@ pub fn compute_deltas(old: &KnowledgeGraph, new: &KnowledgeGraph) -> Vec<GraphDe
+                     new: new_learning.outcome.to_string(),
+                 });
              }
-         }
-diff --git a/crates/sruja-agent/src/matts.rs b/crates/sruja-agent/src/matts.rs
-index 1234567..abcdefg 100644
---- a/crates/sruja-agent/src/matts.rs
-+++ b/crates/sruja-agent/src/matts.rs
-@@ -102,7 +102,7 @@ impl MatTsDistiller {
-             distilled.push(LearningEntry {
-                 id: entry.id.clone(),
-                 kind: Some(LearningKind::Playbook),
--                context: entry.context.clone(),
-+                situation: entry.context.clone(),
-                 hypothesis: entry.hypothesis.clone(),
-                 outcome: entry.outcome.clone(),
--                reason: entry.reason.clone(),
--                guardrail_advice: entry.guardrail_advice.clone(),
-+                failure_reason: entry.failure_reason.clone(),
-+                suggested_behavior: entry.suggested_behavior.clone(),
-                 timestamp: entry.timestamp,
-                 tags: entry.tags.clone(),
-                 links: entry.links.clone(),
-@@ -148,7 +148,7 @@ impl MatTsDistiller {
-             distilled.push(LearningEntry {
-                 id: entry.id.clone(),
-                 kind: Some(LearningKind::Guardrail),
--                context: entry.context.clone(),
-+                situation: entry.context.clone(),
-                 hypothesis: entry.hypothesis.clone(),
-                 outcome: entry.outcome.clone(),
--                reason: entry.reason.clone(),
--                guardrail_advice: entry.guardrail_advice.clone(),
-+                failure_reason: entry.failure_reason.clone(),
-+                suggested_behavior: entry.suggested_behavior.clone(),
-                 timestamp: entry.timestamp,
-                 tags: entry.tags.clone(),
-                 links: entry.links.clone(),
+-            if old_learning.guardrail_advice != new_learning.guardrail_advice {
++            if old_learning.suggested_behavior != new_learning.suggested_behavior {
+                 deltas.push(GraphDelta::LearningChanged {
+                     learning_id: id.clone(),
+                     field: "guardrail_advice".to_string(),
+-                    old: old_learning.guardrail_advice.clone(),
+-                    new: new_learning.guardrail_advice.clone(),
++                    old: old_learning.suggested_behavior.clone(),
++                    new: new_learning.suggested_behavior.clone(),
+                 });
+             }
+             if old_learning.confidence != new_learning.confidence {
