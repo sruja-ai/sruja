@@ -113,12 +113,14 @@ test-results/
 /internal-docs/
 
 # Sruja runtime state (memory, cache, local context)
-.sruja/
+.sruja/*
 # Allow committed component knowledge (doc feature)
 !.sruja/knowledge/
 !.sruja/knowledge/*
 # Allow config.toml template (no secrets)
 !.sruja/config.toml.example
+# Allow agent learning memory (shared across team)
+!.sruja/agent_memory.json
 
 # Demo generated outputs
 demo/intent_report.md

@@ -266,6 +266,360 @@
         "succeeded",
         "simple"
       ],
+      "related_ids": [
+        "learn_1782698688772_0",
+        "learn_1782698744888_1",
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782698688772_0",
+      "timestamp": "2026-06-29T02:04:48.772680Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, failed after 0 iterations",
+      "outcome": "failed",
+      "reason": null,
+      "guardrail_advice": "direct path failed for Trivial tasks like this — try full pipeline",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "failed",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782646860364_0",
+        "learn_1782698744888_1",
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782698744888_1",
+      "timestamp": "2026-06-29T02:05:44.888530Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to pipeline path, failed after 1 iterations",
+      "outcome": "failed",
+      "reason": null,
+      "guardrail_advice": "pipeline path failed for Trivial tasks like this — try full pipeline",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "pipeline",
+        "failed",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698688772_0",
+        "learn_1782646860364_0",
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782698782230_0",
+      "timestamp": "2026-06-29T02:06:22.230624Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698688772_0",
+        "learn_1782646860364_0",
+        "learn_1782698744888_1",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0",
+        "learn_1782699817968_0",
+        "learn_1782699845696_0",
+        "learn_1782699866090_0",
+        "learn_1782699921568_0",
+        "learn_1782699940620_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782698829919_0",
+      "timestamp": "2026-06-29T02:07:09.919027Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698688772_0",
+        "learn_1782646860364_0",
+        "learn_1782698744888_1",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0",
+        "learn_1782699817968_0",
+        "learn_1782699845696_0",
+        "learn_1782699866090_0",
+        "learn_1782699921568_0",
+        "learn_1782699940620_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782698890442_0",
+      "timestamp": "2026-06-29T02:08:10.442258Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698688772_0",
+        "learn_1782646860364_0",
+        "learn_1782698744888_1",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0",
+        "learn_1782699817968_0",
+        "learn_1782699845696_0",
+        "learn_1782699866090_0",
+        "learn_1782699921568_0",
+        "learn_1782699940620_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782699238394_0",
+      "timestamp": "2026-06-29T02:13:58.394640Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782698688772_0",
+        "learn_1782646860364_0",
+        "learn_1782699536271_0",
+        "learn_1782699817968_0",
+        "learn_1782699845696_0",
+        "learn_1782699866090_0",
+        "learn_1782699921568_0",
+        "learn_1782699940620_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782699536271_0",
+      "timestamp": "2026-06-29T02:18:56.271477Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782698688772_0",
+        "learn_1782699817968_0",
+        "learn_1782699845696_0",
+        "learn_1782699866090_0",
+        "learn_1782699921568_0",
+        "learn_1782699940620_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782699817968_0",
+      "timestamp": "2026-06-29T02:23:37.968348Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782699845696_0",
+      "timestamp": "2026-06-29T02:24:05.696676Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782699866090_0",
+      "timestamp": "2026-06-29T02:24:26.090166Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782699921568_0",
+      "timestamp": "2026-06-29T02:25:21.568309Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782699940620_0",
+      "timestamp": "2026-06-29T02:25:40.620313Z",
+      "context": "add a comment to readme.md",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0"
+      ],
       "retrieval_count": 0,
       "task_success_after": 1,
       "task_total_after": 1
