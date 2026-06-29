@@ -18,12 +18,14 @@
 pub mod chat;
 pub mod decision;
 pub mod hook;
+pub mod loop_event;
 pub mod runbook;
 pub mod tool_tracing;
 
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc;
 
 use crate::llm::{
     CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, ModelRouter, Usage,
@@ -41,6 +43,7 @@ use crate::LearningEntry;
 
 pub use decision::{DecisionRecord, DecisionStatus};
 pub use hook::{Hook, HookAction, HookRegistry, Hooks, LoggingHook};
+pub use loop_event::{LoopEvent, LoopPhase, PlanBrief};
 pub use runbook::{Runbook, RunbookSeverity};
 pub use tool_tracing::ToolCallTracer;
 
@@ -2773,6 +2776,15 @@ impl Agent {
         })
     }
 
+    /// Helper: best-effort emit a LoopEvent. Logs but ignores errors.
+    fn emit_event(events: Option<&mpsc::Sender<LoopEvent>>, event: LoopEvent) {
+        if let Some(sender) = events {
+            if let Err(e) = sender.try_send(event) {
+                tracing::warn!(error = %e, "loop_event: failed to send (receiver closed?)");
+            }
+        }
+    }
+
     /// Run the outer ReAct loop: comprehend once, then iterate
     /// (re)plan -> execute -> critique until the independent critic approves
     /// or the iteration budget is exhausted.
@@ -2784,13 +2796,31 @@ impl Agent {
     ///
     /// Per-iteration evidence is captured in [`LoopResult::iterations`] so a
     /// host can detect convergence, oscillation, and flailing.
+    ///
+    /// **Events** are sent to `events` in order: `Started` after comprehension,
+    /// `PlanReady` once the plan + calibration `AskPlan` are available,
+    /// `PhaseChanged` at each phase boundary, `IterationStarted` at each
+    /// replan loop, `StepProgress` per executed subtask, `VerifyResult` per
+    /// verify step, and `Done` with a one-line summary before returning.
+    /// The method performs **no terminal I/O** — the host renders events.
+    ///
+    /// Emissions are best-effort: a closed receiver must not fail the loop.
+    /// When `events` is `None`, the method behaves exactly as before.
     pub async fn run_loop(
         &self,
         goal: &crate::goal::GoalSpec,
         loop_config: &LoopConfig,
+        events: Option<&mpsc::Sender<LoopEvent>>,
     ) -> Result<LoopResult, AgentError> {
         let max_iterations = loop_config.max_iterations.max(1);
+
+        Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Comprehend));
         let comprehension = self.comprehend(goal).await?;
+
+        Self::emit_event(events, LoopEvent::Started {
+            goal: goal.statement.clone(),
+            max_iterations,
+        });
 
         // ── Adaptive routing: try direct execution for simple tasks ──────
         // Self-Harness insight: for simple/trivial tasks, the overhead of
@@ -2850,6 +2880,9 @@ impl Agent {
                         runbook: None,
                         total_usage: direct_usage.clone(),
                     };
+                    Self::emit_event(events, LoopEvent::Done {
+                        outcome_summary: "Direct execution succeeded".into(),
+                    });
                     return Ok(LoopResult {
                         goal: goal.statement.clone(),
                         iterations: vec![LoopIteration {
@@ -2917,6 +2950,13 @@ impl Agent {
             let replanned = iteration > 1 && last_critique.is_some();
 
             // --- PLAN (or re-plan from critique feedback) ---
+            let phase = if replanned { LoopPhase::Replan } else { LoopPhase::Plan };
+            Self::emit_event(events, LoopEvent::PhaseChanged(phase));
+            Self::emit_event(events, LoopEvent::IterationStarted {
+                n: iteration,
+                reason: if replanned { Some("critique feedback".into()) } else { None },
+            });
+
             let (plan, plan_parse_error) = if replanned {
                 match self
                     .replan(
@@ -2975,8 +3015,18 @@ impl Agent {
             }
 
             // --- EXECUTE ---
+            Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Execute));
             let step_results = match self.execute(&plan).await {
-                Ok(r) => r,
+                Ok(r) => {
+                    for (i, r) in r.iter().enumerate() {
+                        Self::emit_event(events, LoopEvent::StepProgress {
+                            step: i + 1,
+                            total: plan.subtasks.len(),
+                            description: r.subtask_id.clone(),
+                        });
+                    }
+                    r
+                },
                 Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
                     termination = LoopTermination::SpendCapExceeded(spent);
                     break;
@@ -2988,6 +3038,7 @@ impl Agent {
             }
 
             // --- CRITIQUE ---
+            Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Critique));
             let mut critique = if self.config.review_every_change {
                 match self.critique(&plan, &step_results).await {
                     Ok(c) => c,
@@ -3016,9 +3067,16 @@ impl Agent {
             // Runs the verifier, if configured. A failing step vetoes
             // convergence even when the critic approved, and the failures are
             // injected into the critique so the next replan addresses them.
+            Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Verify));
             let verify_failed = if let Some(vconf) = &loop_config.verifier {
                 let results =
                     run_verification_steps(&vconf.steps, &vconf.options, &vconf.workdir).await;
+                for r in &results {
+                    Self::emit_event(events, LoopEvent::VerifyResult {
+                        step: r.step_id.clone(),
+                        ok: r.status.is_pass(),
+                    });
+                }
                 let failed = summarize_verify_failures(&results);
                 if !all_passed(&results) {
                     critique.approved = false;
@@ -3202,6 +3260,13 @@ impl Agent {
             iterations.len(),
         )
         .await;
+
+        let outcome_summary = if converged {
+            format!("Converged in {} iteration(s)", iterations.len())
+        } else {
+            format!("Not converged after {} iteration(s) - {:?}", iterations.len(), termination)
+        };
+        Self::emit_event(events, LoopEvent::Done { outcome_summary });
 
         Ok(LoopResult {
             goal: goal.statement.clone(),
@@ -4028,3 +4093,6 @@ impl AgentBuilder {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod tests_loop_event;

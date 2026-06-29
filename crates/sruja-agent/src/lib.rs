@@ -54,6 +54,7 @@ pub use cognition::{
     classify_task_complexity, Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult,
     Comprehension, Critique, DirectResult, LoopConfig, LoopIteration, LoopResult, LoopTermination,
     ModelMapping, Plan, TaskComplexity, ToolCallTracer, VerifierConfig,
+    LoopEvent, LoopPhase, PlanBrief,
 };
 pub use cognition::chat::{TurnEvent, TurnResult};
 pub use goal::GoalSpec;
