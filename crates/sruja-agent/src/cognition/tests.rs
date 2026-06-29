@@ -498,6 +498,7 @@
                 &crate::goal::GoalSpec::new("ship the feature"),
                 &LoopConfig::default(),
                 None,
+                None,
             )
             .await
             .expect("loop runs");
@@ -525,7 +526,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None, None)
             .await
             .expect("loop runs");
 
@@ -546,7 +547,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None, None)
             .await
             .expect("loop runs");
 
@@ -731,6 +732,7 @@
                 &crate::goal::GoalSpec::new("create hello module"),
                 &LoopConfig::default(),
                 None,
+                None,
             )
             .await
             .expect("loop runs");
@@ -768,7 +770,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None, None)
             .await
             .expect("loop runs");
 
@@ -801,7 +803,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None, None)
             .await
             .expect("loop runs");
 
@@ -827,7 +829,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None, None)
             .await
             .expect("loop runs");
 
