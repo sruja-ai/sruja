@@ -15,11 +15,10 @@ use std::sync::Arc;
 
 use tokio::sync::mpsc;
 
-use crate::llm::{
-    CompletionRequest, CompletionResponse, FinishReason, Message, MessageRole, ToolCall,
-    Usage,
-};
 use crate::llm::stream::StreamEvent;
+use crate::llm::{
+    CompletionRequest, CompletionResponse, FinishReason, Message, MessageRole, ToolCall, Usage,
+};
 use crate::tool::ToolSignal;
 use crate::AgentError;
 
@@ -32,9 +31,7 @@ pub enum TurnEvent {
     /// A fragment of assistant text (concatenate and print inline).
     ContentDelta(String),
     /// The model is about to dispatch a tool call.
-    ToolStart {
-        name: String,
-    },
+    ToolStart { name: String },
     /// A tool call finished.
     ToolDone {
         name: String,
@@ -133,7 +130,8 @@ impl crate::cognition::Agent {
                             Ok(ev) => {
                                 // Forward content deltas to the host immediately.
                                 if let StreamEvent::ContentDelta(ref delta) = ev {
-                                    let _ = events.send(TurnEvent::ContentDelta(delta.clone())).await;
+                                    let _ =
+                                        events.send(TurnEvent::ContentDelta(delta.clone())).await;
                                 }
                                 acc_events.push(ev);
                             }
@@ -144,11 +142,7 @@ impl crate::cognition::Agent {
                 };
                 let events_vec = event_proxy.await?;
                 // Reassemble from the collected events.
-                let dummy_model = req
-                    .model
-                    .as_deref()
-                    .unwrap_or("unknown")
-                    .to_string();
+                let dummy_model = req.model.as_deref().unwrap_or("unknown").to_string();
                 reassemble_from_events(&events_vec, &dummy_model)?
             };
 
@@ -156,8 +150,11 @@ impl crate::cognition::Agent {
             total_usage.completion_tokens += response.usage.completion_tokens;
             total_usage.total_tokens += response.usage.total_tokens;
 
-            let tool_names: Vec<&str> =
-                response.tool_calls.iter().map(|c| c.name.as_str()).collect();
+            let tool_names: Vec<&str> = response
+                .tool_calls
+                .iter()
+                .map(|c| c.name.as_str())
+                .collect();
             let content_preview: String = response.content.chars().take(120).collect();
             tracing::info!(
                 iteration,
@@ -389,9 +386,7 @@ fn reassemble_from_events(
             StreamEvent::Usage(u) => {
                 usage = u.clone();
             }
-            StreamEvent::Finish {
-                finish_reason: fr,
-            } => {
+            StreamEvent::Finish { finish_reason: fr } => {
                 finish_reason = fr.clone();
             }
         }
@@ -438,11 +433,10 @@ fn truncate(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::llm::{
-        CompletionRequest, CompletionResponse, FinishReason, LlmClient, LlmError,
-        Message, Usage,
-    };
     use crate::llm::stream::{Stream, StreamEvent};
+    use crate::llm::{
+        CompletionRequest, CompletionResponse, FinishReason, LlmClient, LlmError, Message, Usage,
+    };
     use crate::tool::ToolRegistry;
     use std::sync::Arc;
 
@@ -462,18 +456,12 @@ mod tests {
 
     #[async_trait::async_trait]
     impl LlmClient for ScriptedClient {
-        async fn complete(
-            &self,
-            _req: &CompletionRequest,
-        ) -> Result<CompletionResponse, LlmError> {
+        async fn complete(&self, _req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
             // Not used by run_streaming_turn.
             Ok(CompletionResponse::text("(non-streaming)"))
         }
 
-        fn complete_stream<'a>(
-            &'a self,
-            _req: &'a CompletionRequest,
-        ) -> Stream<'a> {
+        fn complete_stream<'a>(&'a self, _req: &'a CompletionRequest) -> Stream<'a> {
             let mut queue = self.responses.lock().unwrap();
             if queue.is_empty() {
                 return Box::pin(futures::stream::iter(vec![Err(LlmError::Network(
@@ -515,9 +503,9 @@ mod tests {
 
     #[tokio::test]
     async fn happy_path_text_only() {
-        let client = ScriptedClient::new(vec![vec![
-            StreamEvent::ContentDelta("Hello, world!".into()),
-        ]]);
+        let client = ScriptedClient::new(vec![vec![StreamEvent::ContentDelta(
+            "Hello, world!".into(),
+        )]]);
         let tools = ToolRegistry::with_builtin("/tmp/test", vec![]);
         let agent = make_agent(client, tools);
 
@@ -525,10 +513,7 @@ mod tests {
         let cancel = cancel_token();
         let req = CompletionRequest::new(vec![Message::user("hi")]);
 
-        let result = agent
-            .run_streaming_turn(req, &tx, &cancel)
-            .await
-            .unwrap();
+        let result = agent.run_streaming_turn(req, &tx, &cancel).await.unwrap();
 
         assert_eq!(result.message.content, "Hello, world!");
         assert!(result.tool_calls.is_empty());
@@ -582,10 +567,7 @@ mod tests {
         let cancel = cancel_token();
         let req = CompletionRequest::new(vec![Message::user("read the file")]);
 
-        let result = agent
-            .run_streaming_turn(req, &tx, &cancel)
-            .await
-            .unwrap();
+        let result = agent.run_streaming_turn(req, &tx, &cancel).await.unwrap();
 
         assert_eq!(result.message.content, "The file says hello");
         assert_eq!(result.tool_calls.len(), 1);
@@ -628,10 +610,7 @@ mod tests {
         let cancel = cancel_token();
         let req = CompletionRequest::new(vec![Message::user("write the file")]);
 
-        let result = agent
-            .run_streaming_turn(req, &tx, &cancel)
-            .await
-            .unwrap();
+        let result = agent.run_streaming_turn(req, &tx, &cancel).await.unwrap();
 
         assert_eq!(result.message.content, "File written");
         assert_eq!(result.tool_calls.len(), 1);
@@ -680,10 +659,7 @@ mod tests {
         let cancel = cancel_token();
         let req = CompletionRequest::new(vec![Message::user("loop forever")]);
 
-        let result = agent
-            .run_streaming_turn(req, &tx, &cancel)
-            .await
-            .unwrap();
+        let result = agent.run_streaming_turn(req, &tx, &cancel).await.unwrap();
 
         // Should not panic; should return a fallback message.
         assert!(!result.message.content.is_empty());
@@ -717,10 +693,7 @@ mod tests {
         let cancel = Arc::new(AtomicBool::new(true)); // pre-cancelled
         let req = CompletionRequest::new(vec![Message::user("test")]);
 
-        let result = agent
-            .run_streaming_turn(req, &tx, &cancel)
-            .await
-            .unwrap();
+        let result = agent.run_streaming_turn(req, &tx, &cancel).await.unwrap();
 
         // Should return immediately with a fallback (cancelled before first call).
         assert!(!result.message.content.is_empty());
@@ -763,10 +736,7 @@ mod tests {
         let cancel = cancel_token();
         let req = CompletionRequest::new(vec![Message::user("read both")]);
 
-        let result = agent
-            .run_streaming_turn(req, &tx, &cancel)
-            .await
-            .unwrap();
+        let result = agent.run_streaming_turn(req, &tx, &cancel).await.unwrap();
 
         assert_eq!(result.message.content, "Both files read");
         assert_eq!(result.tool_calls.len(), 2);
@@ -805,7 +775,7 @@ mod tests {
             },
             StreamEvent::ToolCallArguments {
                 index: 0,
-                fragment: r#"{"path":"# .into(),
+                fragment: r#"{"path":"#.into(),
             },
             StreamEvent::ToolCallArguments {
                 index: 0,

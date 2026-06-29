@@ -723,13 +723,19 @@ fn build_focus_json(
             Some(run_id),
             briefing,
         );
-        Ok((serde_json::to_value(&out).unwrap_or(Value::Null), surfaced_learning_ids))
+        Ok((
+            serde_json::to_value(&out).unwrap_or(Value::Null),
+            surfaced_learning_ids,
+        ))
     } else {
         Ok((Value::Null, Vec::new()))
     }
 }
 
-fn build_impact_json(repo_path: &Path, resolved_element_id: &Option<String>) -> Result<Value, CliError> {
+fn build_impact_json(
+    repo_path: &Path,
+    resolved_element_id: &Option<String>,
+) -> Result<Value, CliError> {
     if let Some(ref id) = resolved_element_id {
         let g = crate::commands::scan_repo_cached(repo_path)?;
         let blast = g.blast_radius(id, 3);
@@ -869,7 +875,8 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         None
     };
 
-    let (focus_json, surfaced_learning_ids) = build_focus_json(repo_path, &resolved_element_id, &options, &run_id)?;
+    let (focus_json, surfaced_learning_ids) =
+        build_focus_json(repo_path, &resolved_element_id, &options, &run_id)?;
     let impact_json = build_impact_json(repo_path, &resolved_element_id)?;
     let drift_json = build_drift_json(repo_path)?;
     let intent_json = build_intent_json(options.repo);

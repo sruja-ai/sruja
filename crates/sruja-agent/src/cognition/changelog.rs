@@ -12,8 +12,8 @@
 use chrono::Utc;
 use serde::Serialize;
 
-use crate::cognition::{LoopResult, LoopTermination};
 use crate::calibration::{AskPlan, Verdict};
+use crate::cognition::{LoopResult, LoopTermination};
 
 /// A builder that consolidates a `LoopResult` into a markdown changelog.
 #[derive(Debug, Serialize)]
@@ -59,15 +59,8 @@ pub struct DecisionSummary {
 
 impl AgentChangelog {
     /// Build from a `LoopResult` and optional calibration `AskPlan`.
-    pub fn from_loop(
-        result: &LoopResult,
-        ask_plan: Option<&AskPlan>,
-        dry_run: bool,
-    ) -> Self {
-        let session_id = format!(
-            "{}",
-            Utc::now().format("%Y%m%d-%H%M%S")
-        );
+    pub fn from_loop(result: &LoopResult, ask_plan: Option<&AskPlan>, dry_run: bool) -> Self {
+        let session_id = format!("{}", Utc::now().format("%Y%m%d-%H%M%S"));
 
         let iterations: Vec<IterationSummary> = result
             .iterations
@@ -116,11 +109,13 @@ impl AgentChangelog {
             .final_result
             .decision
             .as_ref()
-            .map(|d| vec![DecisionSummary {
-                title: d.title.clone(),
-                context: d.context.clone(),
-                decision: d.decision.clone(),
-            }])
+            .map(|d| {
+                vec![DecisionSummary {
+                    title: d.title.clone(),
+                    context: d.context.clone(),
+                    decision: d.decision.clone(),
+                }]
+            })
             .unwrap_or_default();
 
         let termination = match &result.termination {
@@ -154,7 +149,11 @@ impl AgentChangelog {
         let mut md = String::new();
 
         // Header
-        let status = if self.converged { "CONVERGED" } else { "NOT CONVERGED" };
+        let status = if self.converged {
+            "CONVERGED"
+        } else {
+            "NOT CONVERGED"
+        };
         md.push_str(&format!("# Agent Loop Changelog: {}\n\n", self.session_id));
         md.push_str(&format!("**Status:** {}\n", status));
         md.push_str(&format!("**Termination:** {}\n", self.termination));
@@ -162,7 +161,7 @@ impl AgentChangelog {
             md.push_str("**Dry run:** true\n");
         }
         md.push_str(&format!("**Grader:** {}\n", self.grader_source));
-        md.push_str(&format!("**Goal:** {}\n\n", self.goal),);
+        md.push_str(&format!("**Goal:** {}\n\n", self.goal));
 
         // Verdict block
         if let Some(verdict) = self.verdict {
@@ -177,7 +176,11 @@ impl AgentChangelog {
             md.push_str("| # | Replanned | Subtasks | Succeeded | Failed | Critique | Score | Verify Failures |\n");
             md.push_str("|---|-----------|----------|-----------|--------|----------|-------|-----------------|\n");
             for iter in &self.iterations {
-                let mark = if iter.critique_approved { "PASS" } else { "FAIL" };
+                let mark = if iter.critique_approved {
+                    "PASS"
+                } else {
+                    "FAIL"
+                };
                 md.push_str(&format!(
                     "| {} | {} | {} | {} | {} | {} | {:.1} | {} |\n",
                     iter.iteration,
@@ -236,12 +239,12 @@ impl AgentChangelog {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::calibration::{AskPlan, Reversibility, Verdict};
     use crate::cognition::{
-        AgentRunResult, Comprehension, LoopIteration, LoopResult, LoopTermination, Plan, StepResult,
-        StepStatus, TaskComplexity, Subtask, SubtaskKind,
+        AgentRunResult, Comprehension, LoopIteration, LoopResult, LoopTermination, Plan,
+        StepResult, StepStatus, Subtask, SubtaskKind, TaskComplexity,
     };
     use crate::llm::{TaskTier, Usage};
-    use crate::calibration::{AskPlan, Reversibility, Verdict};
 
     fn fixture_loop_result(converged: bool) -> LoopResult {
         LoopResult {
@@ -349,7 +352,11 @@ mod tests {
     #[test]
     fn full_run_markdown_contains_all_sections() {
         let result = fixture_loop_result(true);
-        let cl = AgentChangelog::from_loop(&result, Some(&fixture_ask_plan(Verdict::ProceedSilent)), false);
+        let cl = AgentChangelog::from_loop(
+            &result,
+            Some(&fixture_ask_plan(Verdict::ProceedSilent)),
+            false,
+        );
         let md = cl.to_markdown();
 
         assert!(md.contains("Agent Loop Changelog"));

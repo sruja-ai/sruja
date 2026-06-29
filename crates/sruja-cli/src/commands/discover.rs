@@ -7,10 +7,10 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 
+use sruja_agent::DEFAULT_MODEL;
 use sruja_scan::graph::compute_all_centrality;
 use sruja_scan::scan_scope::resolve_scan_scope;
 use sruja_scan::{generate_repomap_from_graph, EdgeKind, Graph, NodeKind, RepoMapOptions};
-use sruja_agent::DEFAULT_MODEL;
 
 use super::{scan_repo_cached, scan_repo_cached_with_opts, CliError};
 use crate::context_detection::build_repo_context;

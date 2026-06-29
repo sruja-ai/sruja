@@ -438,7 +438,10 @@ pub fn scan_with_tree_sitter(repo_root: &Path, config: &ScanConfig) -> Result<Gr
         for (i, def) in definitions_sorted.iter().enumerate() {
             let symbol_kind = definition_kind_to_symbol_kind(def.kind);
             let end_line = if i + 1 < definitions_sorted.len() {
-                definitions_sorted[i + 1].line.saturating_sub(1).max(def.line)
+                definitions_sorted[i + 1]
+                    .line
+                    .saturating_sub(1)
+                    .max(def.line)
             } else {
                 def.line + 60
             };

@@ -1,6 +1,7 @@
 # Documentation (docs/)
 
 **Policy:** This directory contains only **implemented** features and implementation-aligned documentation.
+<!-- Architecture: see doc:README.md for documentation structure; core loop lives in Sruja.CLI -->
 
 Sruja is documented here as a context engineering product with a small default loop:
 
