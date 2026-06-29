@@ -480,7 +480,6 @@ pub(crate) async fn try_run(
                 max_runtime_ms_per_step,
                 enrich: &enrich_ref,
                 continue_on_error,
-                trajectories: None,
                 force_sync: false,
             })
             .await?;

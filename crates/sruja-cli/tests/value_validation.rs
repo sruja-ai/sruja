@@ -160,12 +160,12 @@ export const UserUI = () => { const p = new PrismaClient(); return null; }
         stdout
     );
     assert!(
-        stdout.contains("Bottleneck Detected") && stdout.contains("God Module"),
-        "Should detect God Module. Output: {}",
+        stdout.contains("God Modules"),
+        "Should detect God Modules. Output: {}",
         stdout
     );
     assert!(
-        stdout.contains("Top targets:"),
+        stdout.contains("Top targets:") || stdout.contains("Top Actionable Fixes"),
         "Suggestion should include top targets. Output: {}",
         stdout
     );

@@ -78,7 +78,7 @@ fn behavioral_drift_is_empty_when_node_has_no_path() {
 #[test]
 fn critique_report_formatters_are_stable_and_include_expected_fields() {
     let report = CritiqueReport {
-        findings: vec![
+        violations: vec![
             CritiqueFinding {
                 category: CritiqueCategory::ConstraintBreach,
                 severity: CritiqueSeverity::Medium,
@@ -91,6 +91,7 @@ fn critique_report_formatters_are_stable_and_include_expected_fields() {
                 }],
                 suggestion: Some("Add regression test".to_string()),
                 confidence: 1.0,
+                rule_id: Some("SRUJA-INTENT-POLICY-001".to_string()),
             },
             CritiqueFinding {
                 category: CritiqueCategory::BehavioralContractDrift,
@@ -100,8 +101,10 @@ fn critique_report_formatters_are_stable_and_include_expected_fields() {
                 evidence: vec![],
                 suggestion: None,
                 confidence: 0.8,
+                rule_id: Some("SRUJA-INTENT-POLICY-002".to_string()),
             },
         ],
+        context: vec![],
         risk_level: RiskLevel::Warning,
         summary: "2 issues found".to_string(),
         affected_elements: vec!["Svc".to_string()],
@@ -110,6 +113,7 @@ fn critique_report_formatters_are_stable_and_include_expected_fields() {
             downstream_consumers: 0,
             max_depth: 0,
         },
+        baseline_present: true,
     };
 
     let text = format_critique_text(&report);

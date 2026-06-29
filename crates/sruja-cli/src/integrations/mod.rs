@@ -15,8 +15,6 @@ pub struct SrujaConfigFile {
     #[serde(default)]
     pub baseline: BaselineConfig,
     #[serde(default)]
-    pub sandbox: SandboxConfig,
-    #[serde(default)]
     pub context_engineering: ContextEngineeringConfig,
     #[serde(default)]
     pub verify: VerifyConfig,
@@ -51,8 +49,6 @@ pub struct AgentConfig {
     pub max_steps: Option<usize>,
     /// Default maximum runtime per step (ms).
     pub max_runtime_ms_per_step: Option<u64>,
-    /// Default number of MaTTS trajectories for `agent run --trajectories`.
-    pub default_trajectories: Option<usize>,
     /// If true, `agent run --mode apply` may persist learnings to agentic memory.
     ///
     /// Default is false (no automatic memory writes) to keep the agent loop conservative.
@@ -69,19 +65,6 @@ pub struct BaselineConfig {
     /// - exhaustive: baseline is intended as inventory; treat "missing" as actionable drift.
     /// - auto: infer based on relative size (fallback).
     pub mode: Option<String>,
-}
-
-#[derive(Debug, Clone, Default, serde::Deserialize)]
-pub struct SandboxConfig {
-    /// Policy when sandbox/worktree execution is unavailable for requested trajectories.
-    ///
-    /// - warn_and_degrade: proceed with a single primary trajectory and record a warning.
-    /// - fail_fast: return an error.
-    pub policy: Option<String>,
-    /// Keep sandboxes on failure for inspection (default: false).
-    pub keep_on_failure: Option<bool>,
-    /// Remove sandboxes on success (default: true).
-    pub cleanup_on_success: Option<bool>,
 }
 
 /// Configuration for context engineering features (BM25, compression, hybrid retrieval).

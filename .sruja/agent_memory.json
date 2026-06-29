@@ -128,7 +128,6 @@
         "dependency",
         "aggregator"
       ],
-      "related_ids": [],
       "retrieval_count": 0,
       "task_success_after": 0,
       "task_total_after": 0
@@ -177,7 +176,6 @@
         "spec",
         "ai"
       ],
-      "related_ids": [],
       "retrieval_count": 0,
       "task_success_after": 0,
       "task_total_after": 0
@@ -203,7 +201,6 @@
         "loop",
         "independent-grader"
       ],
-      "related_ids": [],
       "retrieval_count": 0,
       "task_success_after": 0,
       "task_total_after": 0
@@ -227,7 +224,6 @@
         "allowlist",
         "hallucination-prevention"
       ],
-      "related_ids": [],
       "retrieval_count": 0,
       "task_success_after": 0,
       "task_total_after": 0
@@ -251,10 +247,28 @@
         "hallucination-prevention",
         "llm-parsing"
       ],
-      "related_ids": [],
       "retrieval_count": 0,
       "task_success_after": 0,
       "task_total_after": 0
+    },
+    {
+      "id": "learn_1782646860364_0",
+      "timestamp": "2026-06-28T11:41:00.364337Z",
+      "context": "analyze the sruja-agent crate (crates/sruja-agent/)",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
     }
   ]
 }

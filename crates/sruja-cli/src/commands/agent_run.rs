@@ -20,7 +20,6 @@ use super::agent;
 use super::focus as focus_cmd;
 use super::remediation::plan_remediation_steps;
 use crate::commands::sync_cmd;
-use sruja_agent::TrajectoryExecutor;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AgentMode {
@@ -57,7 +56,6 @@ pub struct AgentRunOptions<'a> {
     pub max_runtime_ms_per_step: Option<u64>,
     pub enrich: &'a crate::enrichment::EnrichmentRef<'a>,
     pub continue_on_error: bool,
-    pub trajectories: Option<usize>,
     pub force_sync: bool,
 }
 
@@ -1059,7 +1057,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
             }
         },
         AgentMode::Apply => {
-            let apply_start = std::time::Instant::now();
+            let _apply_start = std::time::Instant::now();
             if !surfaced_learning_ids.is_empty() {
                 let mut memory = sruja_agent::AgenticMemory::load(repo_path)
                     .map_err(|e| CliError::Io(std::io::Error::other(e.to_string())))?;
@@ -1203,72 +1201,6 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 }
             }
 
-            // MaTTS self-contrast: execute N sandboxed trajectories and distill
-            // learnings from success vs failure outcomes.
-            let traj_count = options
-                .trajectories
-                .or_else(|| load_repo_config(repo_path).and_then(|c| c.agent.default_trajectories));
-            if let Some(n) = traj_count {
-                if n >= 2 {
-                    let auto_record = load_repo_config(repo_path)
-                        .and_then(|c| c.agent.auto_record_learnings)
-                        .unwrap_or(false);
-                    let sandbox_cfg = load_repo_config(repo_path)
-                        .map(|c| c.sandbox)
-                        .unwrap_or_default();
-                    let policy = sandbox_cfg
-                        .policy
-                        .unwrap_or_else(|| "warn_and_degrade".to_string());
-                    let cleanup_on_success = sandbox_cfg.cleanup_on_success.unwrap_or(true);
-                    let keep_on_failure = sandbox_cfg.keep_on_failure.unwrap_or(false);
-
-                    let mut outcomes = Vec::new();
-                    outcomes.push(build_trajectory_outcome(
-                        "primary",
-                        &plan.goal,
-                        apply_start.elapsed().as_millis(),
-                        &verification_results,
-                        plan.target.resolved_element_id.as_deref(),
-                    ));
-
-                    let sandbox_ok = sruja_agent::matts::is_sandbox_available(repo_path);
-                    if sandbox_ok {
-                        let names = sruja_agent::matts::sandbox_names(&plan.goal, n);
-                        let exec = WorktreeVerificationExecutor {
-                            repo_root: repo_path,
-                            goal: &plan.goal,
-                            verification: &plan.verification,
-                            max_runtime_ms_per_step: plan.budgets.max_runtime_ms_per_step,
-                            allowed_sruja_subcommands: &allowed_sruja_subcommands,
-                            allowed_verify_execs: &allowed_verify_execs,
-                            resolved_element_id: plan.target.resolved_element_id.as_deref(),
-                            cleanup_on_success,
-                            keep_on_failure,
-                            sandbox_names: &names,
-                        };
-                        let extra = exec.run_n(n.saturating_sub(1)).await?;
-                        outcomes.extend(extra);
-                    } else if policy == "fail_fast" {
-                        return Err(CliError::validation(
-                            "MaTTS trajectories requested, but git worktrees are unavailable. Enable worktrees or set [sandbox].policy = \"warn_and_degrade\".".to_string(),
-                        ));
-                    } else {
-                        memory_recorded.push(format!(
-                            "MaTTS requested {} trajectories, but sandboxing is unavailable; proceeding with primary only.",
-                            n
-                        ));
-                    }
-
-                    let (_contrast, notes) = sruja_agent::matts::maybe_distill_and_record(
-                        repo_path,
-                        n,
-                        &outcomes,
-                        auto_record,
-                    );
-                    memory_recorded.extend(notes);
-                }
-            }
-
             let apply_success = agent_apply_verification_success(&verification_results);
             if !surfaced_learning_ids.is_empty() {
                 let mut memory = sruja_agent::AgenticMemory::load(repo_path)
@@ -1367,147 +1299,6 @@ pub async fn agent_run(options: AgentRunOptions<'_>) -> Result<(), CliError> {
     Ok(())
 }
 
-fn build_trajectory_outcome(
-    trajectory_id: &str,
-    goal: &str,
-    elapsed_ms: u128,
-    verification_results: &[StepObservation],
-    affected_element_id: Option<&str>,
-) -> sruja_agent::TrajectoryOutcome {
-    let all_ok = verification_results.iter().all(|o| o.status == "ok");
-    let last_exit = verification_results.last().and_then(|o| o.exit_code);
-    let summary = verification_results
-        .last()
-        .map(|o| {
-            format!(
-                "[{}] {} exit={}",
-                o.step_id,
-                o.status,
-                o.exit_code
-                    .map(|c| c.to_string())
-                    .unwrap_or_else(|| "?".to_string())
-            )
-        })
-        .unwrap_or_default();
-
-    sruja_agent::TrajectoryOutcome {
-        trajectory_id: trajectory_id.to_string(),
-        goal: goal.to_string(),
-        status: if all_ok {
-            sruja_agent::TrajectoryStatus::Success
-        } else {
-            sruja_agent::TrajectoryStatus::Failed
-        },
-        exit_code: last_exit,
-        summary,
-        elapsed_ms,
-        affected_elements: affected_element_id
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect(),
-    }
-}
-
-fn create_sandbox_worktree(repo_root: &Path, name: &str) -> Result<PathBuf, CliError> {
-    let sandbox_dir = repo_root.join(".sruja").join("sandboxes");
-    std::fs::create_dir_all(&sandbox_dir)?;
-    let target = sandbox_dir.join(name);
-    if target.exists() {
-        // Best-effort validation: if it exists but isn't a worktree, remove and recreate.
-        if is_git_worktree(repo_root, &target) {
-            return Ok(target);
-        }
-        let _ = std::fs::remove_dir_all(&target);
-    }
-    // Prune stale worktree references to reduce spurious failures.
-    let _ = std::process::Command::new("git")
-        .args(["worktree", "prune"])
-        .current_dir(repo_root)
-        .output();
-    let out = std::process::Command::new("git")
-        .args([
-            "worktree",
-            "add",
-            "-b",
-            &format!("sruja-sandbox/{}", name),
-            target
-                .to_str()
-                .ok_or_else(|| CliError::validation("Sandbox path is not valid UTF-8"))?,
-        ])
-        .current_dir(repo_root)
-        .output()?;
-    if !out.status.success() {
-        // If the branch already exists, retry by detaching instead of failing.
-        let err = String::from_utf8_lossy(&out.stderr);
-        if err.contains("already exists") {
-            let out2 = std::process::Command::new("git")
-                .args([
-                    "worktree",
-                    "add",
-                    "--detach",
-                    target
-                        .to_str()
-                        .ok_or_else(|| CliError::validation("Sandbox path is not valid UTF-8"))?,
-                ])
-                .current_dir(repo_root)
-                .output()?;
-            if out2.status.success() {
-                return Ok(target);
-            }
-            return Err(CliError::validation(format!(
-                "git worktree add failed after retry: {}",
-                String::from_utf8_lossy(&out2.stderr)
-            )));
-        }
-        return Err(CliError::validation(format!(
-            "git worktree add failed: {}",
-            err
-        )));
-    }
-    Ok(target)
-}
-
-fn discard_sandbox_worktree(repo_root: &Path, name: &str) -> Result<(), CliError> {
-    let target = repo_root.join(".sruja").join("sandboxes").join(name);
-    let _ = std::process::Command::new("git")
-        .args([
-            "worktree",
-            "remove",
-            "--force",
-            target
-                .to_str()
-                .ok_or_else(|| CliError::validation("Sandbox path is not valid UTF-8"))?,
-        ])
-        .current_dir(repo_root)
-        .output();
-    let _ = std::process::Command::new("git")
-        .args(["branch", "-D", &format!("sruja-sandbox/{}", name)])
-        .current_dir(repo_root)
-        .output();
-    Ok(())
-}
-
-fn is_git_worktree(repo_root: &Path, path: &Path) -> bool {
-    // A git worktree has a `.git` file pointing to the actual git dir.
-    let git_marker = path.join(".git");
-    if !git_marker.exists() {
-        return false;
-    }
-    if let Ok(content) = std::fs::read_to_string(&git_marker) {
-        if content.starts_with("gitdir:") {
-            return true;
-        }
-    }
-    // Fallback: ask git whether the worktree is recognized.
-    std::process::Command::new("git")
-        .args(["worktree", "list"])
-        .current_dir(repo_root)
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .is_some_and(|s| s.contains(path.to_string_lossy().as_ref()))
-}
-
 pub(crate) async fn run_verification_steps_in_repo(
     repo_path: &Path,
     verification: &[AgentStep],
@@ -1553,75 +1344,6 @@ pub(crate) async fn run_verification_steps_in_repo(
         }
     }
     Ok(out)
-}
-
-struct WorktreeVerificationExecutor<'a> {
-    repo_root: &'a Path,
-    goal: &'a str,
-    verification: &'a [AgentStep],
-    max_runtime_ms_per_step: u64,
-    allowed_sruja_subcommands: &'a [String],
-    allowed_verify_execs: &'a [String],
-    resolved_element_id: Option<&'a str>,
-    cleanup_on_success: bool,
-    keep_on_failure: bool,
-    sandbox_names: &'a [String],
-}
-
-impl<'a> sruja_agent::TrajectoryExecutor for WorktreeVerificationExecutor<'a> {
-    type Error = CliError;
-
-    fn run_trajectory<'b>(
-        &'b self,
-        trajectory_id: &'b str,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<Output = Result<sruja_agent::TrajectoryOutcome, Self::Error>>
-                + Send
-                + 'b,
-        >,
-    > {
-        Box::pin(async move {
-            // Map t1..tN to sandbox_names[1..] (t1 => sandbox_names[1]).
-            let idx = trajectory_id
-                .trim_start_matches('t')
-                .parse::<usize>()
-                .unwrap_or(1);
-            let name = self
-                .sandbox_names
-                .get(idx)
-                .cloned()
-                .unwrap_or_else(|| format!("matts-{}", trajectory_id));
-
-            let sandbox_path = create_sandbox_worktree(self.repo_root, &name)?;
-            let start = std::time::Instant::now();
-            let results = run_verification_steps_in_repo(
-                &sandbox_path,
-                self.verification,
-                self.max_runtime_ms_per_step,
-                self.allowed_sruja_subcommands,
-                self.allowed_verify_execs,
-                true, // run all steps even if one fails (worktree verification)
-            )
-            .await?;
-            let outcome = build_trajectory_outcome(
-                &name,
-                self.goal,
-                start.elapsed().as_millis(),
-                &results,
-                self.resolved_element_id,
-            );
-            let ok = outcome.status == sruja_agent::TrajectoryStatus::Success;
-            if ok {
-                if self.cleanup_on_success {
-                    let _ = discard_sandbox_worktree(self.repo_root, &name);
-                }
-            } else if !self.keep_on_failure {
-                let _ = discard_sandbox_worktree(self.repo_root, &name);
-            }
-            Ok(outcome)
-        })
-    }
 }
 
 #[cfg(test)]

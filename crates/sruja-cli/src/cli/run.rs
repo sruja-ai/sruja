@@ -955,25 +955,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 api_key.as_deref(),
                 model.as_deref(),
             ),
-            AgentCommand::Pipeline {
-                repo,
-                goal,
-                dry_run,
-                judge_only,
-                focus,
-                max_cycles,
-                format,
-            } => {
-                commands::handle_pipeline(
-                    &repo,
-                    &goal,
-                    dry_run,
-                    judge_only,
-                    focus,
-                    max_cycles,
-                    &format,
-                ).await
-            }
             AgentCommand::Run {
                 run_id,
                 repo,
@@ -988,7 +969,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 max_runtime_ms_per_step,
                 ref enrich,
                 continue_on_error,
-                trajectories,
                 force_sync,
             } => {
                 let enrich_ref = enrich.as_ref();
@@ -1006,7 +986,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     max_runtime_ms_per_step,
                     enrich: &enrich_ref,
                     continue_on_error,
-                    trajectories,
                     force_sync,
                 })
                 .await
@@ -1040,7 +1019,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         max_runtime_ms_per_step: None,
                         enrich: &enrich_ref,
                         continue_on_error: false,
-                        trajectories: None,
                         force_sync: false,
                     },
                     out_path,
