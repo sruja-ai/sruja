@@ -1,0 +1,63 @@
+========================================
+SRUJA BASELINE SNAPSHOT
+========================================
+Generated from: repo.sruja
+Date: Pre-condition snapshot for subtask s1
+
+----------------------------------------
+SECTION 1: Agent Description Text
+----------------------------------------
+Component: Agent = container "Agent & Memory"
+Line 29-33 of repo.sruja:
+  Agent = container "Agent & Memory" {
+    technology "Rust"
+    description "Agentic memory, MaTTS trajectories, learning loop, and cognitive architecture for AI-assisted development"
+    tags ["agent", "memory", "cognitive"]
+  }
+
+Full description text: "Agentic memory, MaTTS trajectories, learning loop, and cognitive architecture for AI-assisted development"
+
+grep_check_Agentic_memory_MaTTS: "Agentic memory, MaTTS" found in Agent description (CONFIRMED)
+
+----------------------------------------
+SECTION 2: CLI -> Agent Relationships
+----------------------------------------
+Count of 'CLI -> Agent' relationship lines: 1
+Line 55: CLI -> Agent "Manages memory and learning"
+
+grep_check_CLI_Agent: exactly 1 'CLI -> Agent' relationship line (CONFIRMED)
+
+----------------------------------------
+SECTION 3: All CLI Relationships (for context)
+----------------------------------------
+Line 53: CLI -> Core "Parses and validates"
+Line 54: CLI -> Context "Scans repos and checks drift"
+Line 55: CLI -> Agent "Manages memory and learning"
+Line 56: CLI -> Export "Exports outputs"
+Line 57: CLI -> Book "Builds and validates examples"
+
+Total CLI relationships: 5
+
+----------------------------------------
+SECTION 4: Lint Output
+----------------------------------------
+NOTE: 'sruja' binary is not in the shell allowlist ([cargo, git] only).
+Baseline lint output could not be captured in this environment.
+Lint output recorded as: UNAVAILABLE (tool not allowlisted)
+
+----------------------------------------
+SECTION 5: All Container Components
+----------------------------------------
+- CLI = container "Sruja CLI" (line 11)
+- Core = container "Core (Language + Validation + Diagnostics)" (line 17)
+- Context = container "Context Engineering (Scan + Graph + Drift + Intent)" (line 23)
+- Agent = container "Agent & Memory" (line 29)
+- Export = container "Export System" (line 35)
+- Book = container "Documentation Site (mdBook)" (line 41)
+- IDE = container "IDE Support (VS Code + WASM)" (line 47)
+
+Total containers: 7
+
+========================================
+END BASELINE SNAPSHOT
+========================================

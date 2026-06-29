@@ -1,0 +1,5 @@
+# Test: validate that repo.sruja has the autonomous loop relationship
+# This test fails before gold.diff because the relationship doesn't exist
+# and passes after gold.diff because it's added.
+
+# NOTE: This is a placeholder for held-out tests. In a real eval task,

@@ -28,7 +28,7 @@ Sruja = system "Sruja Platform" {
 
   Agent = container "Agent & Memory" {
     technology "Rust"
-    description "Agentic memory, MaTTS trajectories, learning loop, and cognitive architecture for AI-assisted development"
+    description "CLI-first autonomous agent with the full observe-act-verify-critique-replan loop, agentic memory, MaTTS trajectories, and cognitive architecture for AI-assisted development"
     tags ["agent", "memory", "cognitive"]
   }
 
@@ -53,6 +53,7 @@ Sruja = system "Sruja Platform" {
   CLI -> Core "Parses and validates"
   CLI -> Context "Scans repos and checks drift"
   CLI -> Agent "Manages memory and learning"
+  CLI -> Agent "Drives autonomous loop"
   CLI -> Export "Exports outputs"
   CLI -> Book "Builds and validates examples"
 
