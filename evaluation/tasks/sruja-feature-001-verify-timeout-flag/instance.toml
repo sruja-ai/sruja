@@ -3,13 +3,13 @@ category = "feature_impl"
 difficulty = 2
 profile = "coding"
 base_commit = "6113e364"
-gold_patch = "snapshots/gold.diff"
-test_patch = "snapshots/test.diff"
+gold_patch = "gold.diff"
+test_patch = "test.diff"
 problem_statement = "problem_statement.md"
 fail_to_pass = ["verify_timeout_flag_respected"]
-pass_to_pass = ["verify_task_existing_tests"]
+pass_to_pass = ["profile_display"]
 
 [metadata]
 crate = "sruja-cli"
-files = ["crates/sruja-cli/src/cli/commands.rs", "crates/sruja-cli/src/cli/run.rs", "crates/sruja-cli/src/commands/verify_task.rs"]
+files = "crates/sruja-cli/src/cli/commands.rs, crates/sruja-cli/src/cli/run.rs, crates/sruja-cli/src/commands/verify_task.rs"
 scope = "verify-subcommand"

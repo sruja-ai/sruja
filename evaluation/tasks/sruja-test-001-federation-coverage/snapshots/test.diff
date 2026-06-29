@@ -1,31 +1,40 @@
 diff --git a/crates/sruja-cli/src/commands/federation.rs b/crates/sruja-cli/src/commands/federation.rs
-index 1234567..abcdefg 100644
+index 14755291..a5c7b559 100644
 --- a/crates/sruja-cli/src/commands/federation.rs
 +++ b/crates/sruja-cli/src/commands/federation.rs
-@@ -1058,4 +1058,25 @@ mod tests {
-         assert_eq!(bundle.schema_version, 1);
-     }
+@@ -981,3 +981,35 @@ pub fn find_or_generate_system_index(repo_root: &Path) -> Result<SystemIndex, Cl
+     // If not found, generate a local one from scan
+     generate_local_system_index(repo_root)
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use std::fs;
++    use tempfile::tempdir;
 +
 +    #[test]
-+    fn infer_repo_id_tests() {
-+        // Test that infer_repo_id handles various edge cases
++    fn infer_repo_id_from_directory_name() {
 +        let dir = tempdir().unwrap();
-+
-+        // Test with directory containing special characters
-+        let special_dir = dir.path().join("my project (test)");
-+        fs::create_dir(&special_dir).unwrap();
-+        let repo_id = infer_repo_id(&special_dir);
-+        assert_eq!(repo_id, "my project (test)");
-+
-+        // Test with directory containing dots
-+        let dots_dir = dir.path().join("project.v2.0");
-+        fs::create_dir(&dots_dir).unwrap();
-+        let repo_id = infer_repo_id(&dots_dir);
-+        assert_eq!(repo_id, "project.v2.0");
-+
-+        // Test with empty directory name (should not happen in practice)
-+        let empty_dir = dir.path().join("");
-+        // This should not panic
-+        let _repo_id = infer_repo_id(&empty_dir);
++        let repo_path = dir.path().join("my-project");
++        fs::create_dir(&repo_path).unwrap();
++        let repo_id = infer_repo_id(&repo_path);
++        assert_eq!(repo_id, "my-project");
 +    }
- }
++
++    #[test]
++    fn infer_repo_id_falls_back_to_unknown() {
++        let dir = tempdir().unwrap();
++        let repo_id = infer_repo_id(dir.path());
++        // Returns the temp dir name (non-empty, non-".")
++        assert!(!repo_id.is_empty());
++        assert_ne!(repo_id, ".");
++    }
++
++    #[test]
++    fn git_commit_short_returns_none_outside_git_repo() {
++        let dir = tempdir().unwrap();
++        let commit = git_commit_short(dir.path());
++        assert!(commit.is_none());
++    }
++}

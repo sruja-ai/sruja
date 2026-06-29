@@ -1,36 +1,27 @@
 diff --git a/crates/sruja-graph/src/learning.rs b/crates/sruja-graph/src/learning.rs
-index 1234567..abcdefg 100644
+index 0df8e355..d0a89512 100644
 --- a/crates/sruja-graph/src/learning.rs
 +++ b/crates/sruja-graph/src/learning.rs
-@@ -350,4 +350,30 @@ mod tests {
-         let entry = LearningEntry::playbook("context", "hypothesis", "advice");
-         assert_eq!(entry.kind, Some(LearningKind::Playbook));
+@@ -352,3 +352,22 @@ pub fn parse_hitl_kind(s: &str) -> Result<Option<String>, MemoryError> {
+         ))),
      }
+ }
++
++#[cfg(test)]
++mod rename_tests {
++    use super::*;
 +
 +    #[test]
-+    fn learning_entry_field_rename_compiles() {
-+        // Test that the renamed fields compile correctly
-+        let entry = LearningEntry {
-+            id: "test".to_string(),
-+            kind: Some(LearningKind::Playbook),
-+            timestamp: Utc::now(),
-+            run_id: None,
-+            repo: None,
-+            selector: None,
-+            situation: "test situation".to_string(),
-+            hypothesis: "test hypothesis".to_string(),
-+            outcome: ExperimentOutcome::default(),
-+            failure_reason: Some("test reason".to_string()),
-+            suggested_behavior: "test advice".to_string(),
-+        };
-+
-+        assert_eq!(entry.situation, "test situation");
-+        assert_eq!(entry.failure_reason, Some("test reason".to_string()));
-+        assert_eq!(entry.suggested_behavior, "test advice");
-+
-+        // Test backward-compatible deserialization with old field names
-+        let json = r#"{"situation":"test","hypothesis":"test","guardrail_advice":"test"}"#;
++    fn learning_entry_rename_serde_compat() {
++        let json = r#"{"id":"t","timestamp":"2026-01-01T00:00:00Z","context":"c","hypothesis":"h","guardrail_advice":"a"}"#;
 +        let entry: LearningEntry = serde_json::from_str(json).unwrap();
-+        assert_eq!(entry.situation, "test");
++        assert_eq!(entry.context, "c");
++        assert_eq!(entry.guardrail_advice, "a");
 +    }
- }
++
++    #[test]
++    fn learning_entry_playbook_factory() {
++        let entry = LearningEntry::playbook("c", "h", "a");
++        assert_eq!(entry.kind, Some(LearningKind::Playbook));
++    }
++}

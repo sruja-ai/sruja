@@ -3,13 +3,13 @@ category = "refactor"
 difficulty = 2
 profile = "coding"
 base_commit = "6113e364"
-gold_patch = "snapshots/gold.diff"
-test_patch = "snapshots/test.diff"
+gold_patch = "gold.diff"
+test_patch = "test.diff"
 problem_statement = "problem_statement.md"
-fail_to_pass = ["slugify_unified_behavior"]
-pass_to_pass = ["slugify_existing_tests"]
+fail_to_pass = ["slugify_basic_works", "slugify_handles_special_chars"]
+pass_to_pass = ["decision_record_markdown"]
 
 [metadata]
 crate = "sruja-agent"
-files = ["crates/sruja-agent/src/cognition/decision.rs", "crates/sruja-agent/src/cognition/runbook.rs", "crates/sruja-cli/src/commands/agent_plan.rs"]
+files = "crates/sruja-agent/src/cognition/decision.rs, crates/sruja-agent/src/cognition/runbook.rs, crates/sruja-cli/src/commands/agent_plan.rs"
 scope = "cognition-slugify"

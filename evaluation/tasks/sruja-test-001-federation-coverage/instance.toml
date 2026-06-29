@@ -3,13 +3,13 @@ category = "test_generation"
 difficulty = 3
 profile = "coding"
 base_commit = "6113e364"
-gold_patch = "snapshots/gold.diff"
-test_patch = "snapshots/test.diff"
+gold_patch = "gold.diff"
+test_patch = "test.diff"
 problem_statement = "problem_statement.md"
-fail_to_pass = ["infer_repo_id_tests"]
-pass_to_pass = ["federation_existing_tests"]
+fail_to_pass = ["infer_repo_id_from_directory_name", "infer_repo_id_falls_back_to_unknown", "git_commit_short_returns_none_outside_git_repo"]
+pass_to_pass = []
 
 [metadata]
 crate = "sruja-cli"
-files = ["crates/sruja-cli/src/commands/federation.rs"]
+files = "crates/sruja-cli/src/commands/federation.rs"
 scope = "federation-module"

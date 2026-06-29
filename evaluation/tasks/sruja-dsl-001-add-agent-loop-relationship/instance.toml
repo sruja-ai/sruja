@@ -3,11 +3,11 @@ category = "dsl_arch_change"
 difficulty = 2
 profile = "arch"
 base_commit = "6113e364"
-gold_patch = "snapshots/gold.diff"
-test_patch = "snapshots/test.diff"
+gold_patch = "gold.diff"
+test_patch = "test.diff"
 problem_statement = "problem_statement.md"
-fail_to_pass = ["sruja_lint_passes_on_repo_sruja"]
-pass_to_pass = ["existing_sruja_lint_tests"]
+fail_to_pass = ["suggested_commands_include_sruja_lint_for_architecture_files"]
+pass_to_pass = []
 
 [metadata]
 dsl_file = "repo.sruja"

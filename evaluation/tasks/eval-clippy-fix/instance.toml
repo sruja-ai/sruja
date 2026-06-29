@@ -3,11 +3,11 @@ category = "bug_repro_fix"
 difficulty = 2
 profile = "coding"
 base_commit = "e36c915309ff8a0c3422008c79c9ded316bdd86c"
-gold_patch = "snapshots/gold.diff"
-test_patch = "snapshots/test.diff"
+gold_patch = "gold.diff"
+test_patch = "test.diff"
 problem_statement = "problem_statement.md"
 fail_to_pass = ["intent_violation_preserves_specific_step_argv", "intent_violation_generic_fallback_uses_intent_check"]
-pass_to_pass = ["plan_remediation_steps_returns_steps_for_architecture_violations"]
+pass_to_pass = ["proposes_propose_step_for_undocumented"]
 
 [metadata]
 crate = "sruja-cli"

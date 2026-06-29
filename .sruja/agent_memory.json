@@ -272,7 +272,12 @@
         "learn_1782698782230_0",
         "learn_1782698829919_0",
         "learn_1782698890442_0",
-        "learn_1782699238394_0"
+        "learn_1782699238394_0",
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782715487570_0",
+        "learn_1782715667871_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 1,
@@ -300,7 +305,8 @@
         "learn_1782698829919_0",
         "learn_1782698890442_0",
         "learn_1782699238394_0",
-        "learn_1782699536271_0"
+        "learn_1782699536271_0",
+        "learn_1782715228847_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 0,
@@ -326,7 +332,8 @@
         "learn_1782646860364_0",
         "learn_1782698782230_0",
         "learn_1782698829919_0",
-        "learn_1782698890442_0"
+        "learn_1782698890442_0",
+        "learn_1782715228847_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 0,
@@ -359,7 +366,12 @@
         "learn_1782699845696_0",
         "learn_1782699866090_0",
         "learn_1782699921568_0",
-        "learn_1782699940620_0"
+        "learn_1782699940620_0",
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782715487570_0",
+        "learn_1782715813378_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 1,
@@ -392,7 +404,11 @@
         "learn_1782699845696_0",
         "learn_1782699866090_0",
         "learn_1782699921568_0",
-        "learn_1782699940620_0"
+        "learn_1782699940620_0",
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782715813378_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 1,
@@ -425,7 +441,10 @@
         "learn_1782699845696_0",
         "learn_1782699866090_0",
         "learn_1782699921568_0",
-        "learn_1782699940620_0"
+        "learn_1782699940620_0",
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782715813378_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 1,
@@ -457,7 +476,9 @@
         "learn_1782699845696_0",
         "learn_1782699866090_0",
         "learn_1782699921568_0",
-        "learn_1782699940620_0"
+        "learn_1782699940620_0",
+        "learn_1782714578682_0",
+        "learn_1782715813378_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 1,
@@ -488,7 +509,8 @@
         "learn_1782699845696_0",
         "learn_1782699866090_0",
         "learn_1782699921568_0",
-        "learn_1782699940620_0"
+        "learn_1782699940620_0",
+        "learn_1782715813378_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 1,
@@ -619,6 +641,263 @@
         "learn_1782698890442_0",
         "learn_1782699238394_0",
         "learn_1782699536271_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782714578682_0",
+      "timestamp": "2026-06-29T06:29:38.682398Z",
+      "context": "task: eval-clippy-fix (difficulty 2) #",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "related_ids": [
+        "learn_1782646860364_0",
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782715228847_0",
+        "learn_1782715487570_0",
+        "learn_1782715667871_0",
+        "learn_1782715962833_0",
+        "learn_1782716167743_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782714654304_0",
+      "timestamp": "2026-06-29T06:30:54.304172Z",
+      "context": "task: sruja-bug-001-verify-all-skipped (difficulty 3) #",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "related_ids": [
+        "learn_1782714578682_0",
+        "learn_1782646860364_0",
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782714813044_0",
+        "learn_1782715228847_0",
+        "learn_1782715487570_0",
+        "learn_1782715667871_0",
+        "learn_1782715962833_0",
+        "learn_1782716167743_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782714813044_0",
+      "timestamp": "2026-06-29T06:33:33.044496Z",
+      "context": "task: sruja-debug-001-lock-unwrap-panic (difficulty 3) #",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "related_ids": [
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782646860364_0",
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782715228847_0",
+        "learn_1782715487570_0",
+        "learn_1782715667871_0",
+        "learn_1782715962833_0",
+        "learn_1782716167743_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782715228847_0",
+      "timestamp": "2026-06-29T06:40:28.847735Z",
+      "context": "task: sruja-dsl-001-add-agent-loop-relationship (difficulty 2) #",
+      "hypothesis": "classified as Complex, routed to pipeline path, failed after 1 iterations",
+      "outcome": "failed",
+      "reason": null,
+      "guardrail_advice": "pipeline path failed for Complex tasks like this — try full pipeline",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "pipeline",
+        "failed",
+        "complex"
+      ],
+      "related_ids": [
+        "learn_1782698744888_1",
+        "learn_1782698688772_0",
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 0,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782715487570_0",
+      "timestamp": "2026-06-29T06:44:47.570921Z",
+      "context": "task: sruja-feature-001-verify-timeout-flag (difficulty 2) #",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "related_ids": [
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782646860364_0",
+        "learn_1782698782230_0",
+        "learn_1782715667871_0",
+        "learn_1782715962833_0",
+        "learn_1782716167743_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782715667871_0",
+      "timestamp": "2026-06-29T06:47:47.871406Z",
+      "context": "task: sruja-refactor-001-extract-slugify (difficulty 2) #",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "related_ids": [
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782715487570_0",
+        "learn_1782646860364_0",
+        "learn_1782715962833_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782715813378_0",
+      "timestamp": "2026-06-29T06:50:13.378530Z",
+      "context": "task: sruja-rename-001-learning-entry-fields (difficulty 4) #",
+      "hypothesis": "classified as Trivial, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Trivial tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "trivial"
+      ],
+      "related_ids": [
+        "learn_1782698782230_0",
+        "learn_1782698829919_0",
+        "learn_1782698890442_0",
+        "learn_1782699238394_0",
+        "learn_1782699536271_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782715962833_0",
+      "timestamp": "2026-06-29T06:52:42.833052Z",
+      "context": "task: sruja-test-001-federation-coverage (difficulty 3) #",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "related_ids": [
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782715487570_0",
+        "learn_1782715667871_0",
+        "learn_1782716167743_0"
+      ],
+      "retrieval_count": 0,
+      "task_success_after": 1,
+      "task_total_after": 1
+    },
+    {
+      "id": "learn_1782716167743_0",
+      "timestamp": "2026-06-29T06:56:07.743359Z",
+      "context": "task: sruja-test-001-federation-coverage (difficulty 3) #",
+      "hypothesis": "classified as Simple, routed to direct path, succeeded after 0 iterations",
+      "outcome": "success",
+      "reason": null,
+      "guardrail_advice": "direct path effective for Simple tasks like this",
+      "affected_elements": [],
+      "tags": [
+        "routing",
+        "direct",
+        "succeeded",
+        "simple"
+      ],
+      "related_ids": [
+        "learn_1782715962833_0",
+        "learn_1782714578682_0",
+        "learn_1782714654304_0",
+        "learn_1782714813044_0",
+        "learn_1782715487570_0"
       ],
       "retrieval_count": 0,
       "task_success_after": 1,
