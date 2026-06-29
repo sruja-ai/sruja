@@ -113,7 +113,7 @@ test-results/
 /internal-docs/
 
 # Sruja runtime state (memory, cache, local context)
-.sruja/*
+.sruja/
 # Allow committed component knowledge (doc feature)
 !.sruja/knowledge/
 !.sruja/knowledge/*
