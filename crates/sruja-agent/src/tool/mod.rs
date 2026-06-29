@@ -31,11 +31,17 @@ pub mod builtin;
 pub mod policy;
 pub mod sruja;
 
+#[cfg(feature = "compression")]
+pub mod compress;
+
 #[cfg(feature = "mcp-client")]
 pub mod mcp;
 
 pub use builtin::tools;
 pub use policy::{FileGuard, Phase, TestPathClassifier};
+
+#[cfg(feature = "compression")]
+pub use compress::CompressRestoreTool;
 
 use std::collections::HashMap;
 use std::time::Instant;

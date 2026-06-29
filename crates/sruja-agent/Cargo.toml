@@ -11,6 +11,7 @@ default = ["llm-openai", "llm-anthropic", "tools-fs"]
 llm-openai = ["dep:reqwest"]
 llm-anthropic = ["dep:reqwest"]
 tools-fs = []
+compression = ["dep:sruja-compress"]
 mcp-client = ["dep:rmcp"]
 
 [dependencies]
@@ -23,6 +24,7 @@ tracing.workspace = true
 async-trait.workspace = true
 toml.workspace = true
 sruja-graph = { path = "../sruja-graph" }
+sruja-compress = { path = "../sruja-compress", optional = true }
 fs2 = "0.4.3"
 reqwest = { workspace = true, optional = true, features = ["stream"] }
 futures.workspace = true

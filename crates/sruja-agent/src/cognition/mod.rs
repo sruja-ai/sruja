@@ -103,6 +103,10 @@ pub struct AgentConfig {
     /// agent→tool dispatch (requires `repo_path`, `run_id`, `trace_id` to be
     /// set on the agent).
     pub enable_tool_call_tracing: bool,
+    /// When true, disables the legacy in-place `compress_tool_results` compressor.
+    /// Set this when using the reversible `CompressingClient` wrapper to avoid
+    /// conflicting compression strategies and preserve CCR reversibility.
+    pub disable_legacy_compression: bool,
 }
 
 impl Default for AgentConfig {
@@ -122,6 +126,7 @@ impl Default for AgentConfig {
             system_hints: Vec::new(),
             critique_personas: CritiquePersona::default_personas(),
             enable_tool_call_tracing: false,
+            disable_legacy_compression: false,
         }
     }
 }
@@ -1475,7 +1480,8 @@ impl Agent {
             // ── Progressive compression (every 3 iterations) ─────────────
             // Compress old tool results to save context tokens.
             // Only compress after 3 iterations have passed (not iteration 0).
-            if iteration > 0 && iteration % 3 == 0 {
+            // Skip if the reversible CompressingClient wrapper is active.
+            if !self.config.disable_legacy_compression && iteration > 0 && iteration % 3 == 0 {
                 let original_len = req.messages.len();
                 req.messages = compress_tool_results(&mut req.messages);
                 tracing::debug!(

@@ -20,7 +20,7 @@ sruja-scan = { path = "../sruja-scan" }
 sruja-diff = { path = "../sruja-diff" }
 sruja-graph = { path = "../sruja-graph" }
 sruja-intent = { path = "../sruja-intent" }
-sruja-agent = { path = "../sruja-agent", features = ["mcp-client"] }
+sruja-agent = { path = "../sruja-agent", features = ["mcp-client", "compression"] }
 sruja-memory = { path = "../sruja-memory" }
 sruja-extract = { path = "../sruja-extract" }
 git2 = { workspace = true }

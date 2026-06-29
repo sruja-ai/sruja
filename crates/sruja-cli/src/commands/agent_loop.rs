@@ -727,6 +727,15 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         GoalSpec::new(options.goal)
     };
 
+    // ── Compression layer ────────────────────────────────────────────────
+    // Wrap the tiered client in a CompressingClient so old tool messages are
+    // compressed before each LLM call. The CCR store is shared with the
+    // compress_restore tool so the agent can fetch verbatim originals.
+    let compressing = sruja_agent::llm::CompressingClient::new(Arc::new(tiered));
+    let ccr_store = compressing.ccr_store();
+
+    tracing::info!("agent_loop: context compression enabled (TextCrusher + CCR)");
+
     // ── Build tools + agent ───────────────────────────────────────────────
     // Built-in filesystem/shell tools + the sruja-native "eyes" (focus, explain,
     // drift, compliance, query). The latter ground the agent in the architecture
@@ -754,6 +763,9 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         ))
         .with(Box::new(sruja_agent::tool::sruja::SrujaQueryTool::new(
             repo_path.to_path_buf(),
+        )))
+        .with(Box::new(sruja_agent::tool::CompressRestoreTool::new(
+            ccr_store,
         )));
 
     let mut system_hints = Vec::new();
@@ -800,6 +812,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         enable_tool_call_tracing: true,
         max_tool_iterations: manifest.max_tool_iterations,
         critique_personas,
+        disable_legacy_compression: true,
         ..Default::default()
     };
 
@@ -841,7 +854,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
     let agent = {
         let mut builder = sruja_agent::Agent::builder()
-            .llm(Arc::new(tiered))
+            .llm(Arc::new(compressing))
             .tools(tools)
             .config(config)
             .memory(repo_path)

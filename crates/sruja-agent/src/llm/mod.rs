@@ -34,6 +34,9 @@ pub mod anthropic;
 
 pub mod tiered;
 
+#[cfg(feature = "compression")]
+pub mod compression;
+
 pub mod constants;
 
 use serde::{Deserialize, Serialize};
@@ -47,6 +50,9 @@ pub use openai::OpenAiClient;
 pub use router::{ModelRouter, TaskTier};
 pub use stream::{reassemble_stream, Stream, StreamEvent};
 pub use tiered::TieredClient;
+
+#[cfg(feature = "compression")]
+pub use compression::{CompressingClient, CompressionConfig, CompressionStats};
 
 /// Error from an LLM provider call.
 #[derive(Debug, thiserror::Error)]

@@ -22,6 +22,7 @@ members = [
     "crates/sruja-intent",
     "crates/sruja-agent",
     "crates/sruja-memory",
+    "crates/sruja-compress",
 ]
 resolver = "2"
 

@@ -1,0 +1,30 @@
+[package]
+name = "sruja-compress"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+# ONNX-backed ModernBERT extractive classifier (kompress-small / kompress-v2-base).
+# Off by default: the ~279MB model is fetched at runtime and the ort/tokenizers
+# build deps are only pulled when this feature is on.
+kompress = ["dep:ort", "dep:tokenizers", "dep:ndarray"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+regex = "1"
+sha2 = "0.10"
+lru = "0.12"
+
+# kompress-only. ort is in RC; pin at integration time. Default features don't pull it.
+ort = { version = "2.0.0-rc.12", optional = true, default-features = false, features = ["std", "ndarray"] }
+tokenizers = { version = "0.21", optional = true, features = ["onig"] }
+ndarray = { version = "0.16", optional = true }
+
+[dev-dependencies]
