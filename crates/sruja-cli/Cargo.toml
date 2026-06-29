@@ -23,6 +23,7 @@ sruja-intent = { path = "../sruja-intent" }
 sruja-agent = { path = "../sruja-agent", features = ["mcp-client"] }
 sruja-memory = { path = "../sruja-memory" }
 sruja-extract = { path = "../sruja-extract" }
+git2 = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }

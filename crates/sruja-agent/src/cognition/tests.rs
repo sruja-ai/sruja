@@ -4,6 +4,9 @@
     use std::sync::Arc;
     use std::sync::Mutex;
 
+    // Type alias for simpler test code
+    type MockLlm = ScriptedLlm;
+
     // --- Ensemble critic tests (U1) ---
     /// Helper for scripted ensemble tests: a mock that returns different
     /// responses based on which persona's system prompt substring it matches.
@@ -494,6 +497,7 @@
             .run_loop(
                 &crate::goal::GoalSpec::new("ship the feature"),
                 &LoopConfig::default(),
+                None,
             )
             .await
             .expect("loop runs");
@@ -521,7 +525,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
             .await
             .expect("loop runs");
 
@@ -542,7 +546,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
             .await
             .expect("loop runs");
 
@@ -726,6 +730,7 @@
             .run_loop(
                 &crate::goal::GoalSpec::new("create hello module"),
                 &LoopConfig::default(),
+                None,
             )
             .await
             .expect("loop runs");
@@ -763,7 +768,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
             .await
             .expect("loop runs");
 
@@ -796,7 +801,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
             .await
             .expect("loop runs");
 
@@ -822,7 +827,7 @@
             ..Default::default()
         };
         let result = agent
-            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg)
+            .run_loop(&crate::goal::GoalSpec::new("ship the feature"), &cfg, None)
             .await
             .expect("loop runs");
 
@@ -1955,3 +1960,5 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
             ErrorClass::Other
         );
     }
+
+    // ---------------------------------------------------------------------------

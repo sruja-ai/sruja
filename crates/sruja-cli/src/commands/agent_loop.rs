@@ -40,14 +40,21 @@ use std::io::{self, IsTerminal, Write};
 use std::path::Path;
 use std::sync::Arc;
 
+use tokio::sync::mpsc;
+
 use sruja_agent::calibration::{self, AskInput, Thresholds};
 use sruja_agent::cognition::{Hook, HookAction};
+use sruja_agent::cognition::loop_event::LoopEvent;
 use sruja_agent::llm::{OpenAiClient, TieredClient};
 use sruja_agent::tool::ToolRegistry;
 use sruja_agent::verify::VerifyOptions;
 use sruja_agent::{
-    AgentConfig, AgentError, GoalSpec, LoopConfig, LoopManifest, ModelMapping, VerifierConfig,
+    AgentChangelog, AgentConfig, AgentError, GoalSpec, LoopConfig, LoopManifest, ModelMapping,
+    VerifierConfig,
 };
+
+use super::loop_checkpoint::{self, GitCheckpoint};
+use super::loop_events::{self, StatusBar};
 
 use super::CliError;
 use crate::config;
@@ -604,6 +611,10 @@ pub struct AgentLoopOptions<'a> {
     pub no_default_grader: bool,
     pub steer: bool,
     pub resume: bool,
+    pub show_plan: bool,
+    pub checkpoint: bool,
+    pub no_checkpoint: bool,
+    pub changelog: bool,
 }
 
 /// Entry point for `sruja agent loop`.
@@ -980,6 +991,71 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         }
     }
 
+    // ── Capture calibration verdict for checkpoint + changelog ──────────
+    let calibration_ask_plan: Option<sruja_agent::AskPlan> = match &gate {
+        GateOutcome::Proceed { plan, .. } => Some((**plan).clone()),
+        GateOutcome::Halt { .. } => None,
+    };
+
+    // ── Git checkpoint (U5) ─────────────────────────────────────────────
+    // Auto-enable for one-way-door goals; explicit flags override.
+    let reversibility = calibration_ask_plan
+        .as_ref()
+        .map(|p| p.reversibility)
+        .unwrap_or(calibration::Reversibility::TwoWay);
+
+    let cp_enabled = loop_checkpoint::should_checkpoint(
+        reversibility,
+        options.checkpoint,
+        options.no_checkpoint,
+    );
+
+    let checkpoint = if cp_enabled {
+        match GitCheckpoint::create(repo_path) {
+            Ok(Some(cp)) => {
+                eprintln!("  ✓ Git checkpoint created: {}", cp.ref_name());
+                Some(cp)
+            }
+            Ok(None) => {
+                eprintln!("  ⚠ --checkpoint: not a git repo, skipping checkpoint");
+                None
+            }
+            Err(e) => {
+                eprintln!("  ⚠ Failed to create git checkpoint: {e}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // ── Event channel for plan preview (U2) + status bar (U3) ──────────
+    let (event_tx, mut event_rx) = mpsc::channel::<LoopEvent>(128);
+    let show_plan = options.show_plan;
+    let is_tty = io::stderr().is_terminal();
+
+    let render_task = tokio::spawn(async move {
+        let mut status_bar = StatusBar::new();
+        while let Some(event) = event_rx.recv().await {
+            match &event {
+                LoopEvent::PlanReady { plan_brief, ask_plan } => {
+                    if show_plan || ask_plan.verdict.should_ask() {
+                        loop_events::render_plan_preview(plan_brief, ask_plan);
+                    }
+                }
+                LoopEvent::Done { .. } => {
+                    status_bar.render(&event);
+                    status_bar.finish_line();
+                }
+                _ => {
+                    if is_tty {
+                        status_bar.render(&event);
+                    }
+                }
+            }
+        }
+    });
+
     // ── Resume from checkpoint or start fresh ─────────────────────────────
     // When --resume is set, look for an existing checkpoint and continue
     // from where the previous run left off.
@@ -1029,17 +1105,26 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             } else {
                 eprintln!("  No checkpoint found — starting fresh run");
                 agent
-                    .run_loop(&goal_spec, &loop_config)
+                    .run_loop(&goal_spec, &loop_config, Some(&event_tx))
                     .await
                     .map_err(agent_err_to_cli)?
             }
         }
     } else {
         agent
-            .run_loop(&goal_spec, &loop_config)
+            .run_loop(&goal_spec, &loop_config, Some(&event_tx))
             .await
             .map_err(agent_err_to_cli)?
     };
+
+    // ── Drain event channel ─────────────────────────────────────────────
+    drop(event_tx);
+    let _ = render_task.await;
+
+    // ── Print checkpoint restore hint (U5) ──────────────────────────────
+    if let Some(ref cp) = checkpoint {
+        cp.print_restore_hint();
+    }
 
     result.grader_source = grader_source;
 
@@ -1068,6 +1153,36 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         match consolidate_memory(repo_path) {
             Ok(msg) => println!("  {msg}"),
             Err(e) => eprintln!("  Warning: memory consolidation failed: {e}"),
+        }
+    }
+
+    // ── Post-loop changelog (U4) ───────────────────────────────────────
+    // Complexity-aware: skip for trivial/direct-execution runs to avoid
+    // clutter, unless --changelog forces it.
+    let complexity = &result.final_result.comprehension.complexity;
+    let should_write_changelog = options.changelog
+        || complexity.generate_artifacts()
+        || result.iteration_count() > 1;
+
+    if should_write_changelog {
+        let cl = AgentChangelog::from_loop(
+            &result,
+            calibration_ask_plan.as_ref(),
+            dry_run,
+        );
+        let cl_dir = repo_path.join(".sruja").join("changelogs");
+        if let Err(e) = std::fs::create_dir_all(&cl_dir) {
+            eprintln!("  Warning: could not create changelogs dir: {e}");
+        } else {
+            let path = cl_dir.join(cl.filename());
+            match std::fs::write(&path, cl.to_markdown()) {
+                Ok(()) => {
+                    eprintln!("  Changelog: {}", path.display());
+                }
+                Err(e) => {
+                    eprintln!("  Warning: could not write changelog: {e}");
+                }
+            }
         }
     }
 

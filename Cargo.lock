@@ -3806,6 +3806,7 @@ dependencies = [
  "dialoguer",
  "dotenvy",
  "fs2",
+ "git2",
  "indicatif",
  "notify",
  "notify-debouncer-mini",

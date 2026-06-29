@@ -426,6 +426,18 @@ pub enum AgentCommand {
         /// Resume a previously interrupted loop from checkpoint (in .sruja/runs/<run_id>/)
         #[arg(long)]
         resume: bool,
+        /// Show the plan preview before execution (even for Proceed* verdicts)
+        #[arg(long)]
+        show_plan: bool,
+        /// Create a git checkpoint ref before execution for rollback safety
+        #[arg(long)]
+        checkpoint: bool,
+        /// Disable auto git checkpoint (overrides default behavior for one-way-door goals)
+        #[arg(long)]
+        no_checkpoint: bool,
+        /// Force writing a post-loop changelog (skipped for trivial runs by default)
+        #[arg(long)]
+        changelog: bool,
     },
 }
 

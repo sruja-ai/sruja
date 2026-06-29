@@ -1050,6 +1050,10 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 no_default_grader,
                 steer,
                 resume,
+                show_plan,
+                checkpoint,
+                no_checkpoint,
+                changelog,
             } => {
                 commands::agent_loop(&commands::AgentLoopOptions {
                     repo: &repo,
@@ -1066,6 +1070,10 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     no_default_grader,
                     steer,
                     resume,
+                    show_plan,
+                    checkpoint,
+                    no_checkpoint,
+                    changelog,
                 })
                 .await
             }
