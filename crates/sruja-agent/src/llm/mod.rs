@@ -297,10 +297,7 @@ pub trait LlmClient: Send + Sync {
     /// The default implementation buffers [`complete`](Self::complete) and emits
     /// the whole result as a burst of events (correct, but not token-streamed).
     /// Providers with a real streaming endpoint override this for true streaming.
-    fn complete_stream<'a>(
-        &'a self,
-        req: &'a CompletionRequest,
-    ) -> Stream<'a> {
+    fn complete_stream<'a>(&'a self, req: &'a CompletionRequest) -> Stream<'a> {
         // Drive the non-streaming call, then translate its result into events.
         // Tool calls are emitted as Start + a single Arguments fragment (the full
         // serialized JSON); content as one delta; then Usage and Finish.

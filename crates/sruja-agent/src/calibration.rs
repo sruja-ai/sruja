@@ -504,9 +504,17 @@ mod tests {
             ("Queue", "Event Bus", Reversibility::OneWay),
             ("component", "drop table users", Reversibility::OneWay),
             ("container", "deploy to prod", Reversibility::OneWay),
-            ("Goal", "fix unwrap calls in production code", Reversibility::TwoWay),
+            (
+                "Goal",
+                "fix unwrap calls in production code",
+                Reversibility::TwoWay,
+            ),
             ("Goal", "refactor the delete handler", Reversibility::TwoWay),
-            ("Goal", "publish a blog post about the API", Reversibility::TwoWay),
+            (
+                "Goal",
+                "publish a blog post about the API",
+                Reversibility::TwoWay,
+            ),
             ("component", "API", Reversibility::TwoWay),
             ("container", "Web Server", Reversibility::TwoWay),
         ] {

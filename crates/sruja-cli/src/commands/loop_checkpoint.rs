@@ -39,10 +39,7 @@ impl GitCheckpoint {
             })
             .collect();
 
-        let ref_name = format!(
-            "refs/sruja/agent-backup-{}-{}",
-            timestamp, suffix
-        );
+        let ref_name = format!("refs/sruja/agent-backup-{}-{}", timestamp, suffix);
 
         repo.reference(
             &ref_name,
@@ -57,7 +54,10 @@ impl GitCheckpoint {
     /// Print the restore hint to stderr.
     pub fn print_restore_hint(&self) {
         eprintln!("  Checkpoint ref: {}", self.ref_name);
-        eprintln!("  To roll back: git update-ref HEAD {} && git reset --hard", self.ref_name);
+        eprintln!(
+            "  To roll back: git update-ref HEAD {} && git reset --hard",
+            self.ref_name
+        );
     }
 
     /// The full ref name (e.g. `refs/sruja/agent-backup-1234567890-abcd`).
@@ -83,7 +83,10 @@ pub fn should_checkpoint(
     if force_on {
         return true;
     }
-    matches!(reversibility, sruja_agent::calibration::Reversibility::OneWay)
+    matches!(
+        reversibility,
+        sruja_agent::calibration::Reversibility::OneWay
+    )
 }
 
 #[cfg(test)]
@@ -133,14 +136,9 @@ mod tests {
         index.write().unwrap();
         let tree_id = index.write_tree().unwrap();
         let tree = repo.find_tree(tree_id).unwrap();
-        let commit = repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            "initial",
-            &tree,
-            &[],
-        ).unwrap();
+        let commit = repo
+            .commit(Some("HEAD"), &sig, &sig, "initial", &tree, &[])
+            .unwrap();
 
         // Create checkpoint
         let cp = GitCheckpoint::create(repo_path).unwrap().unwrap();
@@ -172,7 +170,8 @@ mod tests {
         index.write().unwrap();
         let tree_id = index.write_tree().unwrap();
         let tree = repo.find_tree(tree_id).unwrap();
-        repo.commit(Some("HEAD"), &sig, &sig, "init", &tree, &[]).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "init", &tree, &[])
+            .unwrap();
 
         let cp1 = GitCheckpoint::create(repo_path).unwrap().unwrap();
         let cp2 = GitCheckpoint::create(repo_path).unwrap().unwrap();

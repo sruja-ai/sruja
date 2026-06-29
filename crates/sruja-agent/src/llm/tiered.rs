@@ -173,8 +173,14 @@ mod tests {
 
     #[tokio::test]
     async fn prefix_is_case_insensitive() {
-        let default = Arc::new(FakeClient { name: "def", model: "x" });
-        let other = Arc::new(FakeClient { name: "other", model: "y" });
+        let default = Arc::new(FakeClient {
+            name: "def",
+            model: "x",
+        });
+        let other = Arc::new(FakeClient {
+            name: "other",
+            model: "y",
+        });
 
         let tiered = TieredClient::new(default).with_provider_name_contains("GLM", other);
 
@@ -186,9 +192,18 @@ mod tests {
 
     #[tokio::test]
     async fn exact_route_beats_prefix() {
-        let default = Arc::new(FakeClient { name: "def", model: "x" });
-        let exact = Arc::new(FakeClient { name: "exact", model: "y" });
-        let prefix = Arc::new(FakeClient { name: "prefix", model: "z" });
+        let default = Arc::new(FakeClient {
+            name: "def",
+            model: "x",
+        });
+        let exact = Arc::new(FakeClient {
+            name: "exact",
+            model: "y",
+        });
+        let prefix = Arc::new(FakeClient {
+            name: "prefix",
+            model: "z",
+        });
 
         let tiered = TieredClient::new(default)
             .with_route("mimo-v2.5-pro", exact.clone())

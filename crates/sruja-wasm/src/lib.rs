@@ -452,5 +452,4 @@ mod wasm_tests {
             "invalid DSL should produce at least one diagnostic"
         );
     }
-
 }

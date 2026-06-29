@@ -18,7 +18,11 @@ fn loop_event_module_compiles() {
         goal: "test".into(),
         max_iterations: 10,
     };
-    if let LoopEvent::Started { goal, max_iterations } = event {
+    if let LoopEvent::Started {
+        goal,
+        max_iterations,
+    } = event
+    {
         assert_eq!(goal, "test");
         assert_eq!(max_iterations, 10);
     } else {

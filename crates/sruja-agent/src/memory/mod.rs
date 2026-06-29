@@ -15,11 +15,11 @@ mod tests;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+pub use types::ErrorFrequency;
 pub use types::{
     CurationReport, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, LowUtilityEntry,
     MemoryError, MergeSuggestion, StaleEntry,
 };
-pub use types::ErrorFrequency;
 
 /// Persistent store for architectural learnings and agentic guardrails.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

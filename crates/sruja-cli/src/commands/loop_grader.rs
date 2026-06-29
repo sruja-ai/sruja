@@ -88,7 +88,10 @@ pub fn default_grader_steps(repo_path: &Path, sruja_bin: &str, fail_on: &str) ->
 fn has_intent_artifacts(repo_path: &Path) -> bool {
     let candidates = [
         repo_path.join("docs").join("architecture").join("adr"),
-        repo_path.join("docs").join("architecture").join("decisions"),
+        repo_path
+            .join("docs")
+            .join("architecture")
+            .join("decisions"),
         repo_path.join(".sruja").join("adr"),
         repo_path.join(".sruja").join("decisions"),
     ];
@@ -157,14 +160,7 @@ pub fn verify_grader_health(repo_path: &Path, sruja_bin: &str) -> Result<(), Vec
 
     // 3. Drift tool works
     let drift_output = std::process::Command::new(sruja_bin)
-        .args([
-            "drift",
-            "-r",
-            ".",
-            "--structural-only",
-            "-f",
-            "json",
-        ])
+        .args(["drift", "-r", ".", "--structural-only", "-f", "json"])
         .current_dir(repo_path)
         .output();
     match drift_output {
@@ -242,11 +238,7 @@ mod tests {
         // Create an ADR directory to signal intent artifacts
         let adr_dir = repo_path.join(".sruja").join("adr");
         std::fs::create_dir_all(&adr_dir).unwrap();
-        std::fs::write(
-            adr_dir.join("001-choice.md"),
-            "# ADR-001: Some decision\n",
-        )
-        .unwrap();
+        std::fs::write(adr_dir.join("001-choice.md"), "# ADR-001: Some decision\n").unwrap();
 
         let steps = default_grader_steps(repo_path, "sruja", "all");
         assert_eq!(steps.len(), 2); // contract (-) + intent + drift
@@ -361,8 +353,7 @@ mod tests {
     #[test]
     fn detects_docs_architecture_adr() {
         let tmp = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(tmp.path().join("docs").join("architecture").join("adr"))
-            .unwrap();
+        std::fs::create_dir_all(tmp.path().join("docs").join("architecture").join("adr")).unwrap();
         assert!(has_intent_artifacts(tmp.path()));
     }
 
@@ -440,8 +431,7 @@ mod tests {
         };
         let tmp = tempfile::tempdir().unwrap();
         // Write a repo.sruja that will fail lint
-        std::fs::write(tmp.path().join("repo.sruja"), "not valid sruja DSL !@#$%")
-            .unwrap();
+        std::fs::write(tmp.path().join("repo.sruja"), "not valid sruja DSL !@#$%").unwrap();
 
         let result = verify_grader_health(tmp.path(), bin);
         // The binary may succeed on --version, but fail on lint and drift.

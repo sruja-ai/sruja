@@ -5,11 +5,11 @@
 
 use std::time::Duration;
 
+use super::stream::{Stream, StreamEvent};
 use super::{
     CompletionRequest, CompletionResponse, FinishReason, FunctionSchema, LlmClient, LlmError,
     Message, MessageRole, ToolCall, Usage, DEFAULT_MODEL,
 };
-use super::stream::{Stream, StreamEvent};
 
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 #[allow(dead_code)]
@@ -177,10 +177,12 @@ impl LlmClient for OpenAiClient {
         let timeout = self.adaptive_timeout(&body);
         let resp = tokio::time::timeout(timeout, self.send(&body))
             .await
-            .map_err(|_| LlmError::Network(format!(
-                "Request timed out after {timeout:?}. Prompt size: ~{} chars",
-                serde_json::to_string(&body).unwrap_or_default().len()
-            )))??;
+            .map_err(|_| {
+                LlmError::Network(format!(
+                    "Request timed out after {timeout:?}. Prompt size: ~{} chars",
+                    serde_json::to_string(&body).unwrap_or_default().len()
+                ))
+            })??;
 
         let json: serde_json::Value = resp
             .json()
@@ -617,13 +619,24 @@ mod tests {
     }
 
     /// A tool-call delta fragment. `args` is the raw JSON-string fragment.
-    fn tc_delta(index: usize, id: Option<&str>, name: Option<&str>, args: Option<&str>) -> serde_json::Value {
+    fn tc_delta(
+        index: usize,
+        id: Option<&str>,
+        name: Option<&str>,
+        args: Option<&str>,
+    ) -> serde_json::Value {
         let mut func = serde_json::Map::new();
-        if let Some(n) = name { func.insert("name".into(), n.into()); }
-        if let Some(a) = args { func.insert("arguments".into(), a.into()); }
+        if let Some(n) = name {
+            func.insert("name".into(), n.into());
+        }
+        if let Some(a) = args {
+            func.insert("arguments".into(), a.into());
+        }
         let mut tc = serde_json::Map::new();
         tc.insert("index".into(), index.into());
-        if let Some(i) = id { tc.insert("id".into(), i.into()); }
+        if let Some(i) = id {
+            tc.insert("id".into(), i.into());
+        }
         tc.insert("function".into(), serde_json::Value::Object(func));
         serde_json::json!({ "tool_calls": [serde_json::Value::Object(tc)] })
     }
@@ -669,8 +682,14 @@ mod tests {
         // A single get_weather call split across chunks, exactly like the
         // OpenAI wire format: first carries id+name, second carries arg fragments.
         let frames = [
-            data_frame(chunk(tc_delta(0, Some("call_x"), Some("get_weather"), Some("")), None)),
-            data_frame(chunk(tc_delta(0, None, None, Some("{\"city\":\"Paris\"}")), None)),
+            data_frame(chunk(
+                tc_delta(0, Some("call_x"), Some("get_weather"), Some("")),
+                None,
+            )),
+            data_frame(chunk(
+                tc_delta(0, None, None, Some("{\"city\":\"Paris\"}")),
+                None,
+            )),
             data_frame(chunk(serde_json::json!({}), Some("tool_calls"))),
         ];
         let mut started = std::collections::HashSet::new();
@@ -693,7 +712,9 @@ mod tests {
         assert_eq!(frag, "{\"city\":\"Paris\"}");
         assert!(matches!(
             all.last().unwrap(),
-            StreamEvent::Finish { finish_reason: super::FinishReason::ToolCalls }
+            StreamEvent::Finish {
+                finish_reason: super::FinishReason::ToolCalls
+            }
         ));
     }
 
@@ -741,7 +762,9 @@ mod tests {
         let mut started = std::collections::HashSet::new();
         let evs = parse_frame_events(&frame, &mut started);
         // Start + Arguments fragment, no ContentDelta.
-        assert!(evs.iter().all(|e| !matches!(e, StreamEvent::ContentDelta(_))));
+        assert!(evs
+            .iter()
+            .all(|e| !matches!(e, StreamEvent::ContentDelta(_))));
         assert_eq!(evs.len(), 2);
     }
 
@@ -749,8 +772,14 @@ mod tests {
     async fn parse_interleaved_tool_calls_reassemble() {
         // Two tool calls interleaved across chunks, reassembled by index.
         let frames = [
-            data_frame(chunk(tc_delta(0, Some("a"), Some("f0"), Some("{\"x\":")), None)),
-            data_frame(chunk(tc_delta(1, Some("b"), Some("f1"), Some("{\"y\":")), None)),
+            data_frame(chunk(
+                tc_delta(0, Some("a"), Some("f0"), Some("{\"x\":")),
+                None,
+            )),
+            data_frame(chunk(
+                tc_delta(1, Some("b"), Some("f1"), Some("{\"y\":")),
+                None,
+            )),
             data_frame(chunk(
                 serde_json::json!({
                     "tool_calls": [
@@ -768,7 +797,9 @@ mod tests {
             all.extend(parse_frame_events(f, &mut started));
         }
         let stream = futures::stream::iter(all.into_iter().map(Ok));
-        let resp = super::super::stream::reassemble_stream(stream, "m").await.unwrap();
+        let resp = super::super::stream::reassemble_stream(stream, "m")
+            .await
+            .unwrap();
         assert_eq!(resp.tool_calls.len(), 2);
         assert_eq!(resp.tool_calls[0].id, "a");
         assert_eq!(resp.tool_calls[0].arguments["x"], 1);

@@ -50,14 +50,14 @@ pub use calibration::{
     decide, infer_reversibility, proceed_decision_record, AskInput, AskPlan, Reversibility,
     TargetHints, Thresholds, Verdict,
 };
-pub use cognition::{
-    classify_task_complexity, Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult,
-    Comprehension, Critique, DirectResult, LoopConfig, LoopIteration, LoopResult, LoopTermination,
-    ModelMapping, Plan, TaskComplexity, ToolCallTracer, VerifierConfig,
-    LoopEvent, LoopPhase, PlanBrief,
-};
 pub use cognition::changelog::AgentChangelog;
 pub use cognition::chat::{TurnEvent, TurnResult};
+pub use cognition::{
+    classify_task_complexity, Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult,
+    Comprehension, Critique, DirectResult, LoopConfig, LoopEvent, LoopIteration, LoopPhase,
+    LoopResult, LoopTermination, ModelMapping, Plan, PlanBrief, TaskComplexity, ToolCallTracer,
+    VerifierConfig,
+};
 pub use goal::GoalSpec;
 pub use llm::{DEFAULT_MODEL, PREMIUM_MODEL};
 pub use manifest::LoopManifest;

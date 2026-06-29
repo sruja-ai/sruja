@@ -33,16 +33,11 @@ pub enum StreamEvent {
     },
     /// A JSON-*string* fragment of the tool call's arguments at `index`.
     /// Concatenate across fragments; parse only after [`StreamEvent::Finish`].
-    ToolCallArguments {
-        index: usize,
-        fragment: String,
-    },
+    ToolCallArguments { index: usize, fragment: String },
     /// Token usage (final chunk; may be absent if the stream is interrupted).
     Usage(Usage),
     /// The stream completed with this finish reason.
-    Finish {
-        finish_reason: FinishReason,
-    },
+    Finish { finish_reason: FinishReason },
 }
 
 /// A streaming completion: an async stream of [`StreamEvent`]s.
@@ -84,16 +79,13 @@ pub async fn reassemble_stream(
                 }
             }
             StreamEvent::ToolCallArguments { index, fragment } => {
-                accs
-                    .entry(index)
+                accs.entry(index)
                     .or_default()
                     .arguments_buf
                     .push_str(&fragment);
             }
             StreamEvent::Usage(u) => usage = u,
-            StreamEvent::Finish {
-                finish_reason: fr,
-            } => finish_reason = fr,
+            StreamEvent::Finish { finish_reason: fr } => finish_reason = fr,
         }
     }
 

@@ -15,8 +15,8 @@
 //!
 //! Events are best-effort: a closed receiver must not fail the loop.
 
-use serde::{Deserialize, Serialize};
 use crate::calibration::AskPlan;
+use serde::{Deserialize, Serialize};
 
 /// Phases of the autonomous loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -92,10 +92,7 @@ impl From<&crate::cognition::Subtask> for SubtaskBrief {
 #[derive(Debug, Clone, Serialize)]
 pub enum LoopEvent {
     /// Loop started after comprehension.
-    Started {
-        goal: String,
-        max_iterations: usize,
-    },
+    Started { goal: String, max_iterations: usize },
     /// Phase transition.
     PhaseChanged(LoopPhase),
     /// Plan is ready with calibration verdict.
@@ -104,10 +101,7 @@ pub enum LoopEvent {
         ask_plan: AskPlan,
     },
     /// Replanning loop started.
-    IterationStarted {
-        n: usize,
-        reason: Option<String>,
-    },
+    IterationStarted { n: usize, reason: Option<String> },
     /// Progress within the Execute phase.
     StepProgress {
         step: usize,
@@ -115,14 +109,9 @@ pub enum LoopEvent {
         description: String,
     },
     /// Deterministic grader result for a verify step.
-    VerifyResult {
-        step: String,
-        ok: bool,
-    },
+    VerifyResult { step: String, ok: bool },
     /// Loop finished with outcome summary.
-    Done {
-        outcome_summary: String,
-    },
+    Done { outcome_summary: String },
 }
 
 #[cfg(test)]

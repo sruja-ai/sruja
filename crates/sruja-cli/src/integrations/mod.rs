@@ -1,10 +1,10 @@
 pub mod providers;
 
+use sruja_agent::DEFAULT_MODEL;
 use std::io::{Read as _, Write as _};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
-use sruja_agent::DEFAULT_MODEL;
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct SrujaConfigFile {

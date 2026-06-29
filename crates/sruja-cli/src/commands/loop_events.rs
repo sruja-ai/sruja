@@ -22,7 +22,10 @@ use colored::Colorize;
 pub fn render_plan_preview(brief: &PlanBrief, ask_plan: &sruja_agent::calibration::AskPlan) {
     let mut out = String::new();
 
-    out.push_str(&format!("{}\n", "┌─ Plan Preview ──────────────────────────────".cyan()));
+    out.push_str(&format!(
+        "{}\n",
+        "┌─ Plan Preview ──────────────────────────────".cyan()
+    ));
     out.push_str(&format!("│ Goal: {}\n", brief.goal));
 
     if !brief.subtasks.is_empty() {
@@ -43,7 +46,10 @@ pub fn render_plan_preview(brief: &PlanBrief, ask_plan: &sruja_agent::calibratio
 
     out.push_str(&format!("{}\n", "│".cyan()));
     render_verdict_block(&mut out, ask_plan);
-    out.push_str(&format!("{}\n", "└──────────────────────────────────────────────".cyan()));
+    out.push_str(&format!(
+        "{}\n",
+        "└──────────────────────────────────────────────".cyan()
+    ));
 
     eprint!("{}", out);
     let _ = io::stderr().flush();
@@ -122,7 +128,11 @@ impl StatusBar {
                 self.step = 0;
                 self.render_phase_line(*phase);
             }
-            LoopEvent::StepProgress { step, total, description } => {
+            LoopEvent::StepProgress {
+                step,
+                total,
+                description,
+            } => {
                 self.step = *step;
                 self.total = *total;
                 if self.is_tty {
@@ -190,8 +200,12 @@ mod tests {
     fn verdict_labels_are_distinct() {
         assert_eq!(verdict_label(Verdict::Ask).to_string(), "ASK");
         assert_eq!(verdict_label(Verdict::ProceedSilent).to_string(), "PROCEED");
-        assert!(verdict_label(Verdict::ProceedAndFlag).to_string().contains("flagged"));
-        assert!(verdict_label(Verdict::ProceedCitingPrecedent).to_string().contains("precedent"));
+        assert!(verdict_label(Verdict::ProceedAndFlag)
+            .to_string()
+            .contains("flagged"));
+        assert!(verdict_label(Verdict::ProceedCitingPrecedent)
+            .to_string()
+            .contains("precedent"));
     }
 
     #[test]
@@ -218,6 +232,10 @@ mod tests {
             s.dedup();
             s
         };
-        assert_eq!(icons.len(), unique.len(), "all phase icons should be unique");
+        assert_eq!(
+            icons.len(),
+            unique.len(),
+            "all phase icons should be unique"
+        );
     }
 }
