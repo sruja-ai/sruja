@@ -43,8 +43,8 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use sruja_agent::calibration::{self, AskInput, Thresholds};
-use sruja_agent::cognition::{Hook, HookAction};
 use sruja_agent::cognition::loop_event::LoopEvent;
+use sruja_agent::cognition::{Hook, HookAction};
 use sruja_agent::llm::{OpenAiClient, TieredClient};
 use sruja_agent::tool::ToolRegistry;
 use sruja_agent::verify::VerifyOptions;
@@ -275,7 +275,12 @@ impl LiveReportHook {
 
         eprintln!(
             "  [{}/{}] {} | {} subtasks | score {} | ~${:.4}",
-            s.iteration, s.max_iterations, mark, s.subtasks.len(), score_str, s.cost_usd,
+            s.iteration,
+            s.max_iterations,
+            mark,
+            s.subtasks.len(),
+            score_str,
+            s.cost_usd,
         );
 
         // Print persona breakdown
@@ -383,7 +388,11 @@ impl Hook for LiveReportHook {
                 status: "pending".into(),
             })
             .collect();
-        eprintln!("  Plan: {} subtasks, {} risks", plan.subtasks.len(), plan.risks.len());
+        eprintln!(
+            "  Plan: {} subtasks, {} risks",
+            plan.subtasks.len(),
+            plan.risks.len()
+        );
         s.dirty = true;
         drop(s);
         self.write_report();
@@ -396,7 +405,12 @@ impl Hook for LiveReportHook {
         if let Some(st) = s.subtasks.iter_mut().find(|st| st.id == step.id) {
             st.status = "running".into();
         }
-        eprintln!("  Step {}: {} ({})", step.id, phase_name(step), format!("{:?}", step.tier).to_lowercase());
+        eprintln!(
+            "  Step {}: {} ({})",
+            step.id,
+            phase_name(step),
+            format!("{:?}", step.tier).to_lowercase()
+        );
         s.dirty = true;
         drop(s);
         self.write_report();
@@ -463,7 +477,12 @@ impl Hook for LiveReportHook {
         let mut s = self.state.lock().unwrap();
         s.iteration = iteration;
         s.max_iterations = max_iterations;
-        s.current_phase = if iteration == 1 { "comprehend" } else { "replan" }.into();
+        s.current_phase = if iteration == 1 {
+            "comprehend"
+        } else {
+            "replan"
+        }
+        .into();
         s.dirty = true;
         drop(s);
         self.write_report();
@@ -677,8 +696,9 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
         if needs_own_client {
             let client = Arc::new(
-                OpenAiClient::new(&tier_cfg.api_key, &tier_cfg.base_url, &tier_cfg.model)
-                    .map_err(|e| CliError::validation(format!("Failed to create LLM client: {e}")))?,
+                OpenAiClient::new(&tier_cfg.api_key, &tier_cfg.base_url, &tier_cfg.model).map_err(
+                    |e| CliError::validation(format!("Failed to create LLM client: {e}")),
+                )?,
             );
             // Exact route for the tier model name.
             tiered = tiered.with_route(&tier_cfg.model, client.clone());
@@ -908,7 +928,12 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     // the agent loop starts. Warnings only — the loop still runs even if the
     // grader is misconfigured (e.g. under --no-default-grader).
     if let ("default", Some(ref vc)) = (grader_source.as_str(), &verifier) {
-        let sruja_bin = vc.options.allowed_executables.first().map(|s| s.as_str()).unwrap_or("sruja");
+        let sruja_bin = vc
+            .options
+            .allowed_executables
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("sruja");
         if let Err(problems) = super::loop_grader::verify_grader_health(repo_path, sruja_bin) {
             eprintln!("⚠️  Default grader health check:");
             for p in &problems {
@@ -1038,7 +1063,10 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         let mut status_bar = StatusBar::new();
         while let Some(event) = event_rx.recv().await {
             match &event {
-                LoopEvent::PlanReady { plan_brief, ask_plan } => {
+                LoopEvent::PlanReady {
+                    plan_brief,
+                    ask_plan,
+                } => {
                     if show_plan || ask_plan.verdict.should_ask() {
                         loop_events::render_plan_preview(plan_brief, ask_plan);
                     }
@@ -1106,14 +1134,24 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             } else {
                 eprintln!("  No checkpoint found — starting fresh run");
                 agent
-                    .run_loop(&goal_spec, &loop_config, Some(&event_tx), calibration_ask_plan.as_ref())
+                    .run_loop(
+                        &goal_spec,
+                        &loop_config,
+                        Some(&event_tx),
+                        calibration_ask_plan.as_ref(),
+                    )
                     .await
                     .map_err(agent_err_to_cli)
             }
         }
     } else {
         agent
-            .run_loop(&goal_spec, &loop_config, Some(&event_tx), calibration_ask_plan.as_ref())
+            .run_loop(
+                &goal_spec,
+                &loop_config,
+                Some(&event_tx),
+                calibration_ask_plan.as_ref(),
+            )
             .await
             .map_err(agent_err_to_cli)
     };
@@ -1162,16 +1200,11 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     // Complexity-aware: skip for trivial/direct-execution runs to avoid
     // clutter, unless --changelog forces it.
     let complexity = &result.final_result.comprehension.complexity;
-    let should_write_changelog = options.changelog
-        || complexity.generate_artifacts()
-        || result.iteration_count() > 1;
+    let should_write_changelog =
+        options.changelog || complexity.generate_artifacts() || result.iteration_count() > 1;
 
     if should_write_changelog {
-        let cl = AgentChangelog::from_loop(
-            &result,
-            calibration_ask_plan.as_ref(),
-            dry_run,
-        );
+        let cl = AgentChangelog::from_loop(&result, calibration_ask_plan.as_ref(), dry_run);
         let cl_dir = repo_path.join(".sruja").join("changelogs");
         if let Err(e) = std::fs::create_dir_all(&cl_dir) {
             eprintln!("  Warning: could not create changelogs dir: {e}");

@@ -15,8 +15,8 @@
 //! the LLM call through the model configured for that tier, giving per-subtask
 //! cost control.
 
-pub mod chat;
 pub mod changelog;
+pub mod chat;
 pub mod decision;
 pub mod hook;
 pub mod loop_event;
@@ -29,8 +29,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::llm::{
-    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, ModelRouter, Usage,
-    DEFAULT_MODEL, PREMIUM_MODEL,
+    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, ModelRouter,
+    Usage, DEFAULT_MODEL, PREMIUM_MODEL,
 };
 use crate::tool::ToolSignal;
 
@@ -524,7 +524,8 @@ pub enum ErrorClass {
 /// turn, only if > 500 chars and > 6 lines.
 fn compress_tool_results(messages: &mut Vec<Message>) -> Vec<Message> {
     // Build a map: tool_call_id -> tool_name (to detect file_write/file_edit).
-    let mut call_id_to_tool: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut call_id_to_tool: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
     for msg in messages.iter() {
         if msg.role == MessageRole::Assistant {
             for call in &msg.tool_calls {
@@ -535,7 +536,10 @@ fn compress_tool_results(messages: &mut Vec<Message>) -> Vec<Message> {
 
     // Find the index of the last assistant message. Tool messages after it
     // are the "most recent" results — the model needs them for its next step.
-    let most_recent_threshold = match messages.iter().rposition(|m| m.role == MessageRole::Assistant) {
+    let most_recent_threshold = match messages
+        .iter()
+        .rposition(|m| m.role == MessageRole::Assistant)
+    {
         Some(idx) => idx,
         None => return std::mem::take(messages),
     };
@@ -654,11 +658,11 @@ pub fn classify_error(critique_issues: &[String], step_results: &[StepResult]) -
     }
 
     // Check for lint failures via tool signals (sruja tool failures on lint ops)
-    if step_results.iter().any(|s| {
-        s.tool_signals
-            .iter()
-            .any(|t| t.tool == "sruja" && !t.ok)
-    }) && tool_output.contains("warning") {
+    if step_results
+        .iter()
+        .any(|s| s.tool_signals.iter().any(|t| t.tool == "sruja" && !t.ok))
+        && tool_output.contains("warning")
+    {
         return ErrorClass::Lint;
     }
 
@@ -680,14 +684,21 @@ pub struct FailureTracker {
 }
 
 impl FailureTracker {
-    pub fn record(&mut self, approach: String, reason: String, iteration: usize, error_class: ErrorClass) {
+    pub fn record(
+        &mut self,
+        approach: String,
+        reason: String,
+        iteration: usize,
+        error_class: ErrorClass,
+    ) {
         if self.last_approach.as_deref() == Some(approach.as_str()) {
             self.consecutive_same_approach += 1;
         } else {
             self.consecutive_same_approach = 1;
         }
         self.last_approach = Some(approach.clone());
-        self.failures.push((approach, reason, iteration, error_class));
+        self.failures
+            .push((approach, reason, iteration, error_class));
     }
 
     /// Format failures for injection into replanning prompt.
@@ -1140,7 +1151,9 @@ impl Agent {
                                 let advice = match f.error_class {
                                     ErrorClass::Compilation => "(run cargo check first)",
                                     ErrorClass::Type => "(check type annotations before tests)",
-                                    ErrorClass::Test => "(verify logic against acceptance criteria)",
+                                    ErrorClass::Test => {
+                                        "(verify logic against acceptance criteria)"
+                                    }
                                     ErrorClass::Runtime => "(check for unwrap/None, bounds)",
                                     ErrorClass::Lint => "(run cargo clippy)",
                                     ErrorClass::Architecture => "(check boundary crossings)",
@@ -1199,11 +1212,8 @@ impl Agent {
 
         let cited_elements = extract_element_ids(&response.content);
 
-        let complexity = classify_task_complexity(
-            goal_str,
-            &goal.target_files,
-            &goal.target_elements,
-        );
+        let complexity =
+            classify_task_complexity(goal_str, &goal.target_files, &goal.target_elements);
         tracing::info!(?complexity, "comprehend: classified task complexity");
 
         Ok(Comprehension {
@@ -1494,7 +1504,7 @@ impl Agent {
                      3. Try a completely different approach.\n\
                      Do NOT retry the same command. Do NOT delete files.\n\
                      If you cannot fix the error, make your best attempt with \
-                     what you know and write your final answer."
+                     what you know and write your final answer.",
                 ));
                 // Reset counter so recovery gets a fair chance.
                 consecutive_errors = 0;
@@ -1695,13 +1705,15 @@ impl Agent {
                     response.content,
                 );
                 let correction_req = CompletionRequest::prompt(system_prompt, correction_user);
-                let correction_req = if matches!(comprehension.complexity, TaskComplexity::Trivial) {
+                let correction_req = if matches!(comprehension.complexity, TaskComplexity::Trivial)
+                {
                     correction_req
                 } else {
                     correction_req.with_tools(self.tools.schemas())
                 };
-                let (retry_response, _retry_usage, _signals) =
-                    self.run_tool_loop_with_limit(correction_req, max_iters).await?;
+                let (retry_response, _retry_usage, _signals) = self
+                    .run_tool_loop_with_limit(correction_req, max_iters)
+                    .await?;
                 let plan = parse_plan_from_response(&retry_response.content, goal, enforce_tdd)
                     .map_err(AgentError::PlanParseFailed)?;
 
@@ -1790,9 +1802,7 @@ impl Agent {
                  Do NOT add test, verify, or review subtasks. \
                  Do NOT call any tools — just output the plan JSON.\n"
             }
-            _ => {
-                "Produce a revised plan that addresses the critic's feedback.\n"
-            }
+            _ => "Produce a revised plan that addresses the critic's feedback.\n",
         };
         let system_prompt: &str = match comprehension.complexity {
             TaskComplexity::Trivial => PLAN_TRIVIAL_SYSTEM_PROMPT,
@@ -1830,7 +1840,11 @@ impl Agent {
         };
         let (response, _usage, _signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
 
-        match parse_plan_from_response(&response.content, goal, self.config.tdd && comprehension.complexity.enforce_tdd()) {
+        match parse_plan_from_response(
+            &response.content,
+            goal,
+            self.config.tdd && comprehension.complexity.enforce_tdd(),
+        ) {
             Ok(plan) => {
                 tracing::warn!(
                     response_len = response.content.len(),
@@ -1865,15 +1879,21 @@ impl Agent {
                     response.content,
                 );
                 let correction_req = CompletionRequest::prompt(system_prompt, correction_user);
-                let correction_req = if matches!(comprehension.complexity, TaskComplexity::Trivial) {
+                let correction_req = if matches!(comprehension.complexity, TaskComplexity::Trivial)
+                {
                     correction_req
                 } else {
                     correction_req.with_tools(self.tools.schemas())
                 };
-                let (retry_response, _retry_usage, _signals) =
-                    self.run_tool_loop_with_limit(correction_req, max_iters).await?;
-                let plan = parse_plan_from_response(&retry_response.content, goal, self.config.tdd && comprehension.complexity.enforce_tdd())
-                    .map_err(AgentError::PlanParseFailed)?;
+                let (retry_response, _retry_usage, _signals) = self
+                    .run_tool_loop_with_limit(correction_req, max_iters)
+                    .await?;
+                let plan = parse_plan_from_response(
+                    &retry_response.content,
+                    goal,
+                    self.config.tdd && comprehension.complexity.enforce_tdd(),
+                )
+                .map_err(AgentError::PlanParseFailed)?;
 
                 tracing::warn!(
                     response_len = retry_response.content.len(),
@@ -1959,7 +1979,8 @@ impl Agent {
                 TaskComplexity::Simple => 8,
                 _ => self.config.max_tool_iterations,
             };
-            let (response, tool_usage, tool_signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
+            let (response, tool_usage, tool_signals) =
+                self.run_tool_loop_with_limit(req, max_iters).await?;
 
             let status = if response.content.contains("ERROR")
                 || tool_signals.iter().any(|s| !s.ok || s.empty)
@@ -2017,7 +2038,8 @@ impl Agent {
             ));
         }
         if !self.preloaded_files.is_empty() {
-            context.push_str("## Target Files (content provided — do NOT call file_read for these)\n");
+            context
+                .push_str("## Target Files (content provided — do NOT call file_read for these)\n");
             for (path, content) in &self.preloaded_files {
                 context.push_str(&format!(
                     "### {path}\n```\n{}\n```\n\n",
@@ -2044,8 +2066,7 @@ impl Agent {
         self.guard.set_phase(Phase::Implement);
         self.hooks.on_phase_change(Phase::Implement).await;
 
-        let (response, usage, tool_signals) =
-            self.run_tool_loop_with_limit(req, max_iters).await?;
+        let (response, usage, tool_signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
 
         self.guard.set_phase(Phase::Comprehend);
 
@@ -2145,11 +2166,7 @@ impl Agent {
         };
 
         let pattern = goal_pattern(&goal.statement);
-        let outcome = if success {
-            "succeeded"
-        } else {
-            "failed"
-        };
+        let outcome = if success { "succeeded" } else { "failed" };
 
         let entry = LearningEntry {
             id: crate::generate_entry_id(),
@@ -2263,11 +2280,7 @@ impl Agent {
             "timeout_ms": 30_000,
         });
         if let Ok(output) = self.tools.dispatch("shell", params).await {
-            let stderr = output
-                .split("--- stderr ---\n")
-                .nth(1)
-                .unwrap_or("")
-                .trim();
+            let stderr = output.split("--- stderr ---\n").nth(1).unwrap_or("").trim();
             if stderr.is_empty() {
                 tracing::info!("auto_format: cargo fmt succeeded");
                 return;
@@ -2823,10 +2836,30 @@ impl Agent {
         Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Comprehend));
         let comprehension = self.comprehend(goal).await?;
 
-        Self::emit_event(events, LoopEvent::Started {
-            goal: goal.statement.clone(),
-            max_iterations,
-        });
+        Self::emit_event(
+            events,
+            LoopEvent::Started {
+                goal: goal.statement.clone(),
+                max_iterations,
+            },
+        );
+
+        // --- PLAN PREVIEW EVENT (U2) ---
+        // Emit PlanReady early (before adaptive routing) so --show-plan works
+        // even for simple tasks that take the direct execution shortcut.
+        if let (Some(tx), Some(ap)) = (events, calibration) {
+            Self::emit_event(
+                Some(tx),
+                LoopEvent::PlanReady {
+                    plan_brief: PlanBrief {
+                        goal: goal.statement.clone(),
+                        criteria: goal.acceptance_criteria.clone(),
+                        subtasks: Vec::new(),
+                    },
+                    ask_plan: ap.clone(),
+                },
+            );
+        }
 
         // ── Adaptive routing: try direct execution for simple tasks ──────
         // Self-Harness insight: for simple/trivial tasks, the overhead of
@@ -2841,14 +2874,8 @@ impl Agent {
             match self.try_direct_execution(goal, &comprehension).await {
                 Ok(Some(direct)) => {
                     tracing::info!("adaptive_routing: direct execution succeeded");
-                    self.record_task_outcome(
-                        goal,
-                        comprehension.complexity,
-                        "direct",
-                        true,
-                        0,
-                    )
-                    .await;
+                    self.record_task_outcome(goal, comprehension.complexity, "direct", true, 0)
+                        .await;
 
                     // Construct synthetic results for the caller.
                     let direct_usage = direct.usage.clone();
@@ -2886,9 +2913,12 @@ impl Agent {
                         runbook: None,
                         total_usage: direct_usage.clone(),
                     };
-                    Self::emit_event(events, LoopEvent::Done {
-                        outcome_summary: "Direct execution succeeded".into(),
-                    });
+                    Self::emit_event(
+                        events,
+                        LoopEvent::Done {
+                            outcome_summary: "Direct execution succeeded".into(),
+                        },
+                    );
                     return Ok(LoopResult {
                         goal: goal.statement.clone(),
                         iterations: vec![LoopIteration {
@@ -2915,26 +2945,16 @@ impl Agent {
                     });
                 }
                 Ok(None) => {
-                    tracing::info!("adaptive_routing: direct produced no changes — falling back to pipeline");
-                    self.record_task_outcome(
-                        goal,
-                        comprehension.complexity,
-                        "direct",
-                        false,
-                        0,
-                    )
-                    .await;
+                    tracing::info!(
+                        "adaptive_routing: direct produced no changes — falling back to pipeline"
+                    );
+                    self.record_task_outcome(goal, comprehension.complexity, "direct", false, 0)
+                        .await;
                 }
                 Err(e) => {
                     tracing::warn!(error = %e, "adaptive_routing: direct failed — falling back to pipeline");
-                    self.record_task_outcome(
-                        goal,
-                        comprehension.complexity,
-                        "direct",
-                        false,
-                        0,
-                    )
-                    .await;
+                    self.record_task_outcome(goal, comprehension.complexity, "direct", false, 0)
+                        .await;
                 }
             }
         }
@@ -2956,12 +2976,23 @@ impl Agent {
             let replanned = iteration > 1 && last_critique.is_some();
 
             // --- PLAN (or re-plan from critique feedback) ---
-            let phase = if replanned { LoopPhase::Replan } else { LoopPhase::Plan };
+            let phase = if replanned {
+                LoopPhase::Replan
+            } else {
+                LoopPhase::Plan
+            };
             Self::emit_event(events, LoopEvent::PhaseChanged(phase));
-            Self::emit_event(events, LoopEvent::IterationStarted {
-                n: iteration,
-                reason: if replanned { Some("critique feedback".into()) } else { None },
-            });
+            Self::emit_event(
+                events,
+                LoopEvent::IterationStarted {
+                    n: iteration,
+                    reason: if replanned {
+                        Some("critique feedback".into())
+                    } else {
+                        None
+                    },
+                },
+            );
 
             let (plan, plan_parse_error) = if replanned {
                 match self
@@ -3000,18 +3031,6 @@ impl Agent {
                 }
             };
 
-            // --- PLAN PREVIEW EVENT (U2) ---
-            // Emit PlanReady on the first plan (not replans) when calibration
-            // and events are both available. The host renders the plan preview.
-            if !replanned {
-                if let (Some(tx), Some(ap)) = (events, calibration) {
-                    Self::emit_event(Some(tx), LoopEvent::PlanReady {
-                        plan_brief: PlanBrief::from(&plan),
-                        ask_plan: ap.clone(),
-                    });
-                }
-            }
-
             // --- INCORPORATION CHECK (U3) ---
             // Before executing, check whether the replan structurally addressed
             // the prior critique. If not, record the gap for convergence pressure.
@@ -3037,14 +3056,17 @@ impl Agent {
             let step_results = match self.execute(&plan).await {
                 Ok(r) => {
                     for (i, r) in r.iter().enumerate() {
-                        Self::emit_event(events, LoopEvent::StepProgress {
-                            step: i + 1,
-                            total: plan.subtasks.len(),
-                            description: r.subtask_id.clone(),
-                        });
+                        Self::emit_event(
+                            events,
+                            LoopEvent::StepProgress {
+                                step: i + 1,
+                                total: plan.subtasks.len(),
+                                description: r.subtask_id.clone(),
+                            },
+                        );
                     }
                     r
-                },
+                }
                 Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
                     termination = LoopTermination::SpendCapExceeded(spent);
                     break;
@@ -3090,10 +3112,13 @@ impl Agent {
                 let results =
                     run_verification_steps(&vconf.steps, &vconf.options, &vconf.workdir).await;
                 for r in &results {
-                    Self::emit_event(events, LoopEvent::VerifyResult {
-                        step: r.step_id.clone(),
-                        ok: r.status.is_pass(),
-                    });
+                    Self::emit_event(
+                        events,
+                        LoopEvent::VerifyResult {
+                            step: r.step_id.clone(),
+                            ok: r.status.is_pass(),
+                        },
+                    );
                 }
                 let failed = summarize_verify_failures(&results);
                 if !all_passed(&results) {
@@ -3282,7 +3307,11 @@ impl Agent {
         let outcome_summary = if converged {
             format!("Converged in {} iteration(s)", iterations.len())
         } else {
-            format!("Not converged after {} iteration(s) - {:?}", iterations.len(), termination)
+            format!(
+                "Not converged after {} iteration(s) - {:?}",
+                iterations.len(),
+                termination
+            )
         };
         Self::emit_event(events, LoopEvent::Done { outcome_summary });
 
@@ -3315,9 +3344,8 @@ impl Agent {
             .as_ref()
             .ok_or_else(|| AgentError::Other("no checkpoint_dir configured for resume".into()))?;
 
-        let checkpoint = RunCheckpoint::load(checkpoint_dir).map_err(|e| {
-            AgentError::Other(format!("failed to load checkpoint: {e}"))
-        })?;
+        let checkpoint = RunCheckpoint::load(checkpoint_dir)
+            .map_err(|e| AgentError::Other(format!("failed to load checkpoint: {e}")))?;
 
         tracing::info!(
             goal = %checkpoint.goal,
@@ -3450,10 +3478,7 @@ impl Agent {
             }
 
             // --- CRITIQUE ---
-            let critique = match self
-                .critique(&plan, &step_results)
-                .await
-            {
+            let critique = match self.critique(&plan, &step_results).await {
                 Ok(c) => c,
                 Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
                     termination = LoopTermination::SpendCapExceeded(spent);
@@ -3774,7 +3799,6 @@ impl Agent {
         let _ = tokio::fs::write(&path, runbook.to_markdown()).await;
         tracing::info!(path = %path.display(), "runbook:written");
     }
-
 }
 
 fn comprehension_cited_elements(plan: &Plan) -> Vec<String> {
@@ -4107,7 +4131,6 @@ impl AgentBuilder {
         })
     }
 }
-
 
 #[cfg(test)]
 mod tests;
