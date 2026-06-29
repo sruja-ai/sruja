@@ -2807,11 +2807,16 @@ impl Agent {
     ///
     /// Emissions are best-effort: a closed receiver must not fail the loop.
     /// When `events` is `None`, the method behaves exactly as before.
+    ///
+    /// `calibration` is the optional ask/proceed verdict from the calibration
+    /// gate. When present and events are enabled, `PlanReady` is emitted after
+    /// the first plan is generated so the host can render the plan preview.
     pub async fn run_loop(
         &self,
         goal: &crate::goal::GoalSpec,
         loop_config: &LoopConfig,
         events: Option<&mpsc::Sender<LoopEvent>>,
+        calibration: Option<&crate::calibration::AskPlan>,
     ) -> Result<LoopResult, AgentError> {
         let max_iterations = loop_config.max_iterations.max(1);
 
@@ -2994,6 +2999,18 @@ impl Agent {
                     Err(e) => return Err(e),
                 }
             };
+
+            // --- PLAN PREVIEW EVENT (U2) ---
+            // Emit PlanReady on the first plan (not replans) when calibration
+            // and events are both available. The host renders the plan preview.
+            if !replanned {
+                if let (Some(tx), Some(ap)) = (events, calibration) {
+                    Self::emit_event(Some(tx), LoopEvent::PlanReady {
+                        plan_brief: PlanBrief::from(&plan),
+                        ask_plan: ap.clone(),
+                    });
+                }
+            }
 
             // --- INCORPORATION CHECK (U3) ---
             // Before executing, check whether the replan structurally addressed

@@ -1044,7 +1044,6 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                     }
                 }
                 LoopEvent::Done { .. } => {
-                    status_bar.render(&event);
                     status_bar.finish_line();
                 }
                 _ => {
@@ -1054,19 +1053,21 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                 }
             }
         }
+        // Clear stale status line when channel closes (error path)
+        status_bar.finish_line();
     });
 
     // ── Resume from checkpoint or start fresh ─────────────────────────────
     // When --resume is set, look for an existing checkpoint and continue
     // from where the previous run left off.
-    let mut result = if options.resume {
+    let loop_result = if options.resume {
         let cp_dir = crate::utils::run_snapshots::run_dir(repo_path, &run_id);
         if sruja_agent::cognition::RunCheckpoint::exists(&cp_dir) {
             eprintln!("  Resuming from checkpoint in {}", cp_dir.display());
             agent
                 .resume_loop(&goal_spec, &loop_config)
                 .await
-                .map_err(agent_err_to_cli)?
+                .map_err(agent_err_to_cli)
         } else {
             // No checkpoint in current run — search for most recent checkpoint
             // across all runs in this repo.
@@ -1101,23 +1102,23 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                 agent
                     .resume_loop(&goal_spec, &resume_config)
                     .await
-                    .map_err(agent_err_to_cli)?
+                    .map_err(agent_err_to_cli)
             } else {
                 eprintln!("  No checkpoint found — starting fresh run");
                 agent
-                    .run_loop(&goal_spec, &loop_config, Some(&event_tx))
+                    .run_loop(&goal_spec, &loop_config, Some(&event_tx), calibration_ask_plan.as_ref())
                     .await
-                    .map_err(agent_err_to_cli)?
+                    .map_err(agent_err_to_cli)
             }
         }
     } else {
         agent
-            .run_loop(&goal_spec, &loop_config, Some(&event_tx))
+            .run_loop(&goal_spec, &loop_config, Some(&event_tx), calibration_ask_plan.as_ref())
             .await
-            .map_err(agent_err_to_cli)?
+            .map_err(agent_err_to_cli)
     };
 
-    // ── Drain event channel ─────────────────────────────────────────────
+    // ── Drain event channel (always, even on error) ─────────────────────
     drop(event_tx);
     let _ = render_task.await;
 
@@ -1126,6 +1127,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         cp.print_restore_hint();
     }
 
+    let mut result = loop_result?;
     result.grader_source = grader_source;
 
     // ── Persist loop trajectory to disk ─────────────────────────────────

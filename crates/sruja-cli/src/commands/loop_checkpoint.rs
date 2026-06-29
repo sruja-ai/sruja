@@ -33,8 +33,8 @@ impl GitCheckpoint {
             .as_nanos();
 
         let suffix: String = (0..4)
-            .map(|_| {
-                let idx = (timestamp % 26) as u8;
+            .map(|i| {
+                let idx = ((timestamp >> (i * 6)) % 26) as u8;
                 (b'a' + idx) as char
             })
             .collect();
