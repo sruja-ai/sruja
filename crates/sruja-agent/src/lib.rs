@@ -56,6 +56,7 @@ pub use cognition::{
     ModelMapping, Plan, TaskComplexity, ToolCallTracer, VerifierConfig,
     LoopEvent, LoopPhase, PlanBrief,
 };
+pub use cognition::changelog::AgentChangelog;
 pub use cognition::chat::{TurnEvent, TurnResult};
 pub use goal::GoalSpec;
 pub use llm::{DEFAULT_MODEL, PREMIUM_MODEL};

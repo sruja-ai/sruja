@@ -16,6 +16,7 @@
 //! cost control.
 
 pub mod chat;
+pub mod changelog;
 pub mod decision;
 pub mod hook;
 pub mod loop_event;

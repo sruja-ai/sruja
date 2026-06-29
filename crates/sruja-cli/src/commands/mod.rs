@@ -129,6 +129,9 @@ pub mod extensions_config;
 pub mod learn;
 pub use learn::learn;
 
+pub(crate) mod loop_checkpoint;
+pub(crate) mod loop_events;
+
 pub mod before;
 pub mod cognitive_debt;
 pub mod confidence;

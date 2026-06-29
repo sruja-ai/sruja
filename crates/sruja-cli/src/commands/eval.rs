@@ -539,6 +539,10 @@ pub async fn run_eval_instance(
         no_default_grader: false,
         steer: false,
         resume: false,
+        show_plan: false,
+        checkpoint: false,
+        no_checkpoint: true,
+        changelog: false,
     };
 
     super::agent_loop(&options).await?;
