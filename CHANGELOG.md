@@ -5,6 +5,39 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.63.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.62.0...sruja-v0.63.0) (2026-06-29)
+
+
+### Features
+
+* **agent:** adaptive routing with direct execution and self-learning ([7078dd3](https://github.com/sruja-ai/sruja/commit/7078dd3469fc32782a6c91e70112a0d290d61ba5))
+* **agent:** add error taxonomy and progressive context compression ([c3b8233](https://github.com/sruja-ai/sruja/commit/c3b82335b3e89e1d0f2d2631efcc795951f922bc))
+* **agent:** add state checkpointing for crash-resume on long-running tasks ([f53b719](https://github.com/sruja-ai/sruja/commit/f53b71957d65f700aed7ef7a8ed846127384a0d1))
+* **agent:** cross-model critique personas + live report dashboard + steering ([86cf028](https://github.com/sruja-ai/sruja/commit/86cf028f9d7666c5b7ae4a4f80126123cf6133ee))
+* **agent:** FTS5 memory retrieval + auto-consolidation + observability ([37bd511](https://github.com/sruja-ai/sruja/commit/37bd5118bb418891dd86405d24227e9e6cb5ab55))
+* **agent:** multi-agent role pipeline with CLI command ([e45a617](https://github.com/sruja-ai/sruja/commit/e45a617a4ccee24e5634bfaa954037031f893a31))
+* **agent:** provider-neutral LLM streaming + streaming chat turn (U1/U2) ([c0ab08f](https://github.com/sruja-ai/sruja/commit/c0ab08f62f7c1a9653b76d6e68e70c09a7ceec8c))
+* **agent:** task complexity routing for trivial tasks ([60c7cdb](https://github.com/sruja-ai/sruja/commit/60c7cdb4df18af7a7156b843e4576bd2b8087ee0))
+* **agent:** typed intent contracts + tool-call observability ([7b6d7e4](https://github.com/sruja-ai/sruja/commit/7b6d7e4eed18ab4e996542457d9e9ee73324d5d0))
+* **cli:** default grader intent check + health verification ([76ad99a](https://github.com/sruja-ai/sruja/commit/76ad99a7e02504515b6e52f62feb0b8ab82c97a5))
+* **extension:** add agent runs tree view with click-to-diff ([6de973a](https://github.com/sruja-ai/sruja/commit/6de973ae415dbb6f6b47bad5ab5bac4c9b5178cd))
+* **scan:** symbol-level graph nodes, import resolution, code snippet tool ([d9368aa](https://github.com/sruja-ai/sruja/commit/d9368aa7cd54727794efd6341f4d23f5f4b2eb56))
+
+
+### Bug Fixes
+
+* **agent:** address gaps from real-world testing ([50b9ed4](https://github.com/sruja-ai/sruja/commit/50b9ed44c21b0e03d2e8d3d2190ca64bb4ae55ae))
+* **agent:** differentiate remediation steps and reduce comprehension tool calls ([c0a8e63](https://github.com/sruja-ai/sruja/commit/c0a8e635650dec3ff4c6cf613303ad1245fc5e9e))
+* **agent:** robust git diff detection and improved prompts ([0fb5f8b](https://github.com/sruja-ai/sruja/commit/0fb5f8b51e613cf9c0fdaa6000718a447a79306b))
+* **agent:** route multi/dlc modules through config instead of hardcoded models ([634514e](https://github.com/sruja-ai/sruja/commit/634514e538c64044d8e10af9236f5298de74f38e))
+* **diff:** orphan detection skips containment and definition edges ([ed16e2c](https://github.com/sruja-ai/sruja/commit/ed16e2c53b9128dce57fa4a5d90725186ecff87c))
+* **graph:** UTF-8 safe string slicing in excerpt/query formatting ([958b1b0](https://github.com/sruja-ai/sruja/commit/958b1b0774b7fd6b94a50a14fea7e8dcfe20297a))
+
+
+### Performance Improvements
+
+* **agent:** skip re-sync when cache is fresh and cache centrality results ([e36c915](https://github.com/sruja-ai/sruja/commit/e36c915309ff8a0c3422008c79c9ded316bdd86c))
+
 ## [0.62.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.61.0...sruja-v0.62.0) (2026-06-23)
 
 
