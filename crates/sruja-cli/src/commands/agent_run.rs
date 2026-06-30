@@ -541,6 +541,7 @@ fn validate_sruja_cmd_args(argv: &[String]) -> Result<(), CliError> {
 }
 
 fn build_intent_report_json(
+    graph: &sruja_scan::Graph,
     repo_root: &str,
     intent_path: Option<&str>,
     strict: bool,
@@ -549,7 +550,6 @@ fn build_intent_report_json(
     use std::path::PathBuf;
 
     let repo_path = Path::new(repo_root);
-    let graph = crate::commands::scan_repo_cached(repo_path)?;
 
     let mut context = IntentContext::new();
     let intent_dir = if let Some(path) = intent_path {
@@ -693,6 +693,7 @@ fn agent_artifacts_dir(repo_path: &Path) -> PathBuf {
 }
 
 fn build_focus_json(
+    scan_graph: &sruja_scan::Graph,
     repo_path: &Path,
     resolved_element_id: &Option<String>,
     options: &AgentRunOptions,
@@ -700,10 +701,7 @@ fn build_focus_json(
 ) -> Result<(Value, Vec<String>), CliError> {
     if let Some(ref id) = resolved_element_id {
         let kg = crate::graph_store::load_or_build_graph(repo_path)?;
-        let scan_node_count = match crate::commands::scan_repo_cached(repo_path) {
-            Ok(g) => g.nodes.len(),
-            Err(_) => kg.nodes.len(),
-        };
+        let scan_node_count = scan_graph.nodes.len();
         let mut briefing = focus_cmd::build_focus_briefing(
             &kg,
             id,
@@ -733,12 +731,11 @@ fn build_focus_json(
 }
 
 fn build_impact_json(
-    repo_path: &Path,
+    scan_graph: &sruja_scan::Graph,
     resolved_element_id: &Option<String>,
 ) -> Result<Value, CliError> {
     if let Some(ref id) = resolved_element_id {
-        let g = crate::commands::scan_repo_cached(repo_path)?;
-        let blast = g.blast_radius(id, 3);
+        let blast = scan_graph.blast_radius(id, 3);
         Ok(serde_json::json!({
             "schema_version": "impact/v0",
             "target_id": id,
@@ -751,8 +748,7 @@ fn build_impact_json(
     }
 }
 
-fn build_drift_json(repo_path: &Path) -> Result<Value, CliError> {
-    let graph = crate::commands::scan_repo_cached(repo_path)?;
+fn build_drift_json(scan_graph: &sruja_scan::Graph, repo_path: &Path) -> Result<Value, CliError> {
     let baseline = crate::utils::architecture_path::resolve_architecture_path(repo_path);
     if let Some(path) = baseline {
         let content = std::fs::read_to_string(&path)?;
@@ -761,17 +757,17 @@ fn build_drift_json(repo_path: &Path) -> Result<Value, CliError> {
             CliError::parse_with_diagnostics(path.to_string_lossy().to_string(), diags)
         })?;
         let proposed = sruja_diff::program_to_graph(&program);
-        let diff = sruja_diff::compare_graphs(&graph, &proposed);
+        let diff = sruja_diff::compare_graphs(scan_graph, &proposed);
         Ok(serde_json::to_value(&diff).unwrap_or(Value::Null))
     } else {
-        let drift = sruja_diff::detect_architectural_drift(&graph);
+        let drift = sruja_diff::detect_architectural_drift(scan_graph);
         Ok(serde_json::to_value(&drift).unwrap_or(Value::Null))
     }
 }
 
-fn build_intent_json(repo_path: &str) -> Value {
+fn build_intent_json(graph: &sruja_scan::Graph, repo_path: &str) -> Value {
     let intent_opt = std::env::var("SRUJA_INTENT_PATH").ok();
-    build_intent_report_json(repo_path, intent_opt.as_deref(), false).unwrap_or_else(|e| {
+    build_intent_report_json(graph, repo_path, intent_opt.as_deref(), false).unwrap_or_else(|e| {
         serde_json::json!({
             "status": "error",
             "error": e.to_string()
@@ -875,11 +871,13 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         None
     };
 
+    let scan_graph = crate::commands::scan_repo_cached(repo_path)?;
+
     let (focus_json, surfaced_learning_ids) =
-        build_focus_json(repo_path, &resolved_element_id, &options, &run_id)?;
-    let impact_json = build_impact_json(repo_path, &resolved_element_id)?;
-    let drift_json = build_drift_json(repo_path)?;
-    let intent_json = build_intent_json(options.repo);
+        build_focus_json(&scan_graph, repo_path, &resolved_element_id, &options, &run_id)?;
+    let impact_json = build_impact_json(&scan_graph, &resolved_element_id)?;
+    let drift_json = build_drift_json(&scan_graph, repo_path)?;
+    let intent_json = build_intent_json(&scan_graph, options.repo);
     let agent_history_json = build_agent_history_json(repo_path, &surfaced_learning_ids)?;
 
     let facts_payload = build_facts_payload(

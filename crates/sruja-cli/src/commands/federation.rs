@@ -48,18 +48,6 @@ pub struct RepoBundle {
     pub owners: Option<serde_json::Value>,
 }
 
-fn git_commit_short(repo_path: &Path) -> Option<String> {
-    std::process::Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
-        .current_dir(repo_path)
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-}
-
 /// Infer repo_id from directory name or git remote.
 pub fn infer_repo_id(repo_path: &Path) -> String {
     if let Ok(canonical) = repo_path.canonicalize() {
@@ -132,7 +120,7 @@ pub async fn publish(
 
     let mut context = context_value;
     context["truth_status"] = serde_json::Value::String(truth_status.clone());
-    context["git_commit"] = git_commit_short(repo_path)
+    context["git_commit"] = crate::commands::git_commit_short(repo_path)
         .map(serde_json::Value::String)
         .unwrap_or(serde_json::Value::Null);
     context["baseline_path"] = baseline_path_str
@@ -150,7 +138,7 @@ pub async fn publish(
         schema_version: REPO_BUNDLE_SCHEMA_VERSION,
         repo_id: repo_id.clone(),
         repo_path: repo_root.to_string(),
-        git_commit: git_commit_short(repo_path),
+        git_commit: crate::commands::git_commit_short(repo_path),
         baseline_path: baseline_path_str,
         baseline_dsl: baseline_dsl.or_else(|| {
             baseline_path
@@ -914,7 +902,7 @@ pub fn generate_local_system_index(repo_root: &Path) -> Result<SystemIndex, CliE
         .unwrap_or("local")
         .to_string();
 
-    let git_commit = git_commit_short(repo_root);
+    let git_commit = crate::commands::git_commit_short(repo_root);
 
     let repos = vec![RepoEntry {
         repo_id: repo_id.clone(),

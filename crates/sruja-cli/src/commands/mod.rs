@@ -164,22 +164,52 @@ pub use memory_cmd::{
 };
 pub use requirements::requirements_list;
 
+/// Read git HEAD commit (short) if repo is a git work tree; otherwise None.
+pub(crate) fn git_commit_short(repo_path: &std::path::Path) -> Option<String> {
+    std::process::Command::new("git")
+        .args(["rev-parse", "--short", "HEAD"])
+        .current_dir(repo_path)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
 pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
     scan_repo_cached_with_opts(repo_path, false)
 }
 
 pub(crate) const SCAN_CACHE_PATH: &str = ".sruja/cache/scan.json";
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct ScanCache {
+    #[serde(default)]
+    git_commit: String,
+    graph: sruja_scan::Graph,
+}
+
 pub(crate) fn scan_repo_cached_with_opts(
     repo_path: &std::path::Path,
     incremental: bool,
 ) -> Result<sruja_scan::Graph, CliError> {
     let cache_path = repo_path.join(SCAN_CACHE_PATH);
+    let current_commit = git_commit_short(repo_path).unwrap_or_default();
 
     if !incremental && cache_path.exists() {
-        let content = std::fs::read_to_string(&cache_path)?;
-        if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
-            return Ok(graph);
+        if let Ok(content) = std::fs::read_to_string(&cache_path) {
+            // Try new ScanCache format with git_commit staleness check
+            if let Ok(cache) = serde_json::from_str::<ScanCache>(&content) {
+                // If no git repo, skip staleness check (treat as fresh)
+                if current_commit.is_empty() || cache.git_commit == current_commit {
+                    return Ok(cache.graph);
+                }
+                // Cache is stale — fall through to use incremental rescan
+            } else if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
+                // Legacy format (raw Graph, no commit tracking)
+                return Ok(graph);
+            }
         }
     }
 
@@ -195,7 +225,8 @@ pub(crate) fn scan_repo_cached_with_opts(
         }
     }
 
-    let graph = if incremental {
+    let do_incremental = incremental || cache_path.exists();
+    let graph = if do_incremental {
         sruja_scan::scan_repo_incremental(repo_path)?
     } else {
         sruja_scan::scan_repo(repo_path)?
@@ -204,7 +235,11 @@ pub(crate) fn scan_repo_cached_with_opts(
     if let Some(parent) = cache_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let content = serde_json::to_string(&graph)?;
+    let cache = ScanCache {
+        git_commit: current_commit,
+        graph: graph.clone(),
+    };
+    let content = serde_json::to_string(&cache)?;
     let _ = std::fs::write(cache_path, content);
 
     Ok(graph)

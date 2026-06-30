@@ -178,19 +178,6 @@ fn trim_score_history(path: &Path, max_count: usize) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Read git HEAD commit (short) if repo is a git work tree; otherwise None.
-fn git_commit_short(repo_path: &Path) -> Option<String> {
-    std::process::Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
-        .current_dir(repo_path)
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-}
-
 /// Check if the cached context is fresh: git commit in context.json matches current HEAD.
 /// If true, sync can be skipped to avoid expensive re-scans.
 pub fn is_context_fresh(repo_path: &Path) -> bool {
@@ -218,7 +205,7 @@ pub fn is_context_fresh(repo_path: &Path) -> bool {
     };
 
     // If no current HEAD available, cannot verify freshness.
-    let current_commit = match git_commit_short(repo_path) {
+    let current_commit = match crate::commands::git_commit_short(repo_path) {
         Some(c) => c,
         None => return false,
     };
@@ -280,10 +267,10 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         .as_ref()
         .map(|s| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
-    let git_commit = git_commit_short(repo_path);
+    let git_commit = crate::commands::git_commit_short(repo_path);
     value["git_commit"] = git_commit
         .as_ref()
-        .map(|s| serde_json::Value::String(s.clone()))
+        .map(|s: &String| serde_json::Value::String(s.clone()))
         .unwrap_or(serde_json::Value::Null);
 
     // Use violations from shared analysis pipeline.
@@ -324,8 +311,14 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
         other => other,
     })?;
 
-    let graph_json =
-        serde_json::to_string(&graph).map_err(|e| CliError::validation(e.to_string()))?;
+    let graph_json = {
+        let cache = crate::commands::ScanCache {
+            git_commit: git_commit.clone().unwrap_or_default(),
+            graph: graph.clone(),
+        };
+        serde_json::to_string(&cache)
+            .map_err(|e| CliError::validation(e.to_string()))?
+    };
     atomic_write_file(&graph_path, graph_json.as_bytes()).map_err(|e| match e {
         CliError::Io(io) => CliError::Io(std::io::Error::new(
             io.kind(),
@@ -362,7 +355,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     };
 
     // Append score history if health_score is available
-    if let Err(e) = append_score_history(repo_path, health_score, git_commit_short(repo_path)) {
+    if let Err(e) = append_score_history(repo_path, health_score, crate::commands::git_commit_short(repo_path)) {
         eprintln!("Warning: Failed to save score history: {}", e);
     }
 

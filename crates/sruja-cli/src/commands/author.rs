@@ -100,18 +100,6 @@ fn iso8601_now() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
-fn git_commit_short(repo_path: &Path) -> Option<String> {
-    std::process::Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
-        .current_dir(repo_path)
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-}
-
 fn is_workspace_unit_id(id: &str) -> bool {
     id.starts_with("crate:") || id.starts_with("npm:")
 }
@@ -529,7 +517,7 @@ pub async fn author_evidence(
         repo_path,
         &graph,
         &truth_status,
-        git_commit_short(repo_path),
+        crate::commands::git_commit_short(repo_path),
     )?;
 
     match format {
@@ -585,7 +573,7 @@ pub async fn author_propose(
         repo_path,
         &graph,
         &truth_status,
-        git_commit_short(repo_path),
+        crate::commands::git_commit_short(repo_path),
     )?;
 
     let stdin_payload = serde_json::to_vec(&serde_json::json!({
@@ -654,7 +642,7 @@ fn compute_truth_status(graph: &Graph, baseline_path: Option<&Path>) -> Result<S
 pub fn load_or_build_author_evidence(repo_root: &str) -> Result<AuthorEvidence, CliError> {
     let repo_path = Path::new(repo_root);
     let p = repo_path.join(AUTHOR_EVIDENCE_DEFAULT_PATH);
-    let current_commit = git_commit_short(repo_path);
+    let current_commit = crate::commands::git_commit_short(repo_path);
     if let Ok(txt) = std::fs::read_to_string(&p) {
         if let Ok(existing) = serde_json::from_str::<AuthorEvidence>(&txt) {
             if existing.schema_version == AUTHOR_EVIDENCE_SCHEMA_VERSION
@@ -673,7 +661,7 @@ pub fn load_or_build_author_evidence(repo_root: &str) -> Result<AuthorEvidence, 
         repo_path,
         &graph,
         &truth_status,
-        git_commit_short(repo_path),
+        crate::commands::git_commit_short(repo_path),
     )?;
 
     let rendered =
