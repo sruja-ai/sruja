@@ -60,6 +60,10 @@ pub struct VerifyOptions {
     pub timeout_ms: u64,
     /// Allowlisted executables.
     pub allowed_executables: Vec<String>,
+    /// Minimum pass rate (0.0–1.0) required for `run_verification_steps` to
+    /// treat the batch as successful.  `all_passed` and `compute_pass_rate` are
+    /// independent utilities; this field is only consulted by the runner.
+    pub min_pass_rate: f64,
 }
 
 impl Default for VerifyOptions {
@@ -74,6 +78,7 @@ impl Default for VerifyOptions {
                 "make".into(),
                 "git".into(),
             ],
+            min_pass_rate: 1.0,
         }
     }
 }

@@ -122,7 +122,10 @@ mod tests {
     fn in_memory_round_trip() {
         let store = InMemoryCcrStore::default();
         let handle = store.put("original content").unwrap();
-        assert_eq!(store.get(&handle).unwrap(), Some("original content".to_string()));
+        assert_eq!(
+            store.get(&handle).unwrap(),
+            Some("original content".to_string())
+        );
     }
 
     #[test]

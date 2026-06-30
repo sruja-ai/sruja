@@ -13,6 +13,7 @@ pub mod types;
 mod tests;
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 pub use types::ErrorFrequency;
@@ -26,6 +27,9 @@ pub use types::{
 pub struct AgenticMemory {
     /// The list of recorded learnings.
     pub learnings: Vec<LearningEntry>,
+    /// In-memory index mapping tags to entry indices for fast lookup.
+    #[serde(skip)]
+    pub tag_index: HashMap<String, Vec<usize>>,
 }
 
 impl AgenticMemory {

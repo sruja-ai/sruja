@@ -22,8 +22,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::{count_tokens, BackendId, CompressContext, CompressError, Compressed, TextCompressor};
 
-use ort::session::Session;
 use ort::session::builder::GraphOptimizationLevel;
+use ort::session::Session;
 use ort::value::Tensor;
 use tokenizers::Tokenizer;
 
@@ -146,10 +146,12 @@ impl KompressBackend {
         let seq_len = input_ids.len();
         let shape = vec![1_i64, seq_len as i64];
 
-        let ids_tensor = Tensor::from_array((shape.clone(), input_ids.to_vec()))
-            .map_err(|e| CompressError::Inference(format!("failed to create input_ids tensor: {e}")))?;
-        let mask_tensor = Tensor::from_array((shape, attention_mask.to_vec()))
-            .map_err(|e| CompressError::Inference(format!("failed to create attention_mask tensor: {e}")))?;
+        let ids_tensor = Tensor::from_array((shape.clone(), input_ids.to_vec())).map_err(|e| {
+            CompressError::Inference(format!("failed to create input_ids tensor: {e}"))
+        })?;
+        let mask_tensor = Tensor::from_array((shape, attention_mask.to_vec())).map_err(|e| {
+            CompressError::Inference(format!("failed to create attention_mask tensor: {e}"))
+        })?;
 
         let inputs = ort::inputs! {
             "input_ids" => ids_tensor,

@@ -126,6 +126,9 @@ impl AgentChangelog {
                 format!("SpendCapExceeded (${cost:.4})")
             }
             LoopTermination::Oscillation => "Oscillation".to_string(),
+            LoopTermination::ModelNotConverging(frac) => {
+                format!("ModelNotConverging ({:.0}% non-converged)", frac * 100.0)
+            }
             LoopTermination::Aborted(msg) => format!("Aborted: {msg}"),
         };
 
@@ -319,6 +322,7 @@ mod tests {
                         output: "done".into(),
                         usage: Usage::default(),
                         tool_signals: vec![],
+                        converged: true,
                     },
                     StepResult {
                         subtask_id: "s2".into(),
@@ -326,6 +330,7 @@ mod tests {
                         output: "done".into(),
                         usage: Usage::default(),
                         tool_signals: vec![],
+                        converged: true,
                     },
                 ],
                 critique: None,

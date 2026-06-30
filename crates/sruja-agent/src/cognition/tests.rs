@@ -4,9 +4,6 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-// Type alias for simpler test code
-type MockLlm = ScriptedLlm;
-
 // --- Ensemble critic tests (U1) ---
 /// Helper for scripted ensemble tests: a mock that returns different
 /// responses based on which persona's system prompt substring it matches.
@@ -393,6 +390,7 @@ async fn verify_veto_when_critic_approves_but_fails_allowlisted_command() {
         allowed_executables: vec!["cargo".into()],
         continue_on_error: false,
         timeout_ms: 5000,
+        min_pass_rate: 1.0,
     };
 
     let results = verify::run_verification_steps(&steps, &opts, repo).await;
@@ -446,7 +444,9 @@ impl LlmClient for ScriptedLlm {
         } else if sys.contains("decomposing work into concrete subtasks") {
             r#"{"subtasks":[{"id":"s1","description":"implement feature","tier":"mid","kind":"implement","files":[],"acceptance_criteria":["it works"]}],"risks":[]}"#
                     .to_string()
-        } else if sys.contains("executing a specific subtask") {
+        } else if sys.contains("executing a specific subtask")
+            || sys.contains("autonomous coding agent")
+        {
             "done".to_string()
         } else if sys.contains("understand codebases thoroughly") {
             "Understood the goal.".to_string()
@@ -483,84 +483,6 @@ fn loop_test_agent(llm: Arc<dyn LlmClient>) -> Agent {
         .config(config)
         .build()
         .expect("agent builds")
-}
-
-#[tokio::test]
-async fn run_loop_converges_on_second_critique() {
-    // Critic rejects once, then approves -> converge in 2 iterations.
-    let llm = ScriptedLlm::approve_after(1);
-    let agent = loop_test_agent(llm);
-    let result = agent
-        .run_loop(
-            &crate::goal::GoalSpec::new("ship the feature"),
-            &LoopConfig::default(),
-            None,
-            None,
-        )
-        .await
-        .expect("loop runs");
-
-    assert!(result.converged);
-    assert_eq!(result.termination, LoopTermination::Approved);
-    assert_eq!(result.iteration_count(), 2);
-    // Iteration 1 rejected, iteration 2 approved.
-    assert!(!result.iterations[0].critique_approved);
-    assert!(result.iterations[1].critique_approved);
-    // The feedback edge fired: iteration 2 was a re-plan.
-    assert!(result.iterations[1].replanned);
-    assert!(!result.iterations[0].replanned);
-}
-
-#[tokio::test]
-async fn run_loop_exhausts_budget_without_convergence() {
-    // Critic never approves, and oscillation detection is off so we
-    // actually exhaust the iteration budget.
-    let llm = ScriptedLlm::approve_after(usize::MAX);
-    let agent = loop_test_agent(llm);
-    let cfg = LoopConfig {
-        max_iterations: 2,
-        detect_oscillation: false,
-        ..Default::default()
-    };
-    let result = agent
-        .run_loop(
-            &crate::goal::GoalSpec::new("ship the feature"),
-            &cfg,
-            None,
-            None,
-        )
-        .await
-        .expect("loop runs");
-
-    assert!(!result.converged);
-    assert_eq!(result.termination, LoopTermination::MaxIterations);
-    assert_eq!(result.iteration_count(), 2);
-    // Last iteration's critique issues carried forward.
-    assert!(!result.iterations[1].critique_issues.is_empty());
-}
-
-#[tokio::test]
-async fn run_loop_no_replan_terminates_after_first_rejection() {
-    let llm = ScriptedLlm::approve_after(usize::MAX);
-    let agent = loop_test_agent(llm);
-    let cfg = LoopConfig {
-        max_iterations: 5,
-        replan_on_failure: false,
-        ..Default::default()
-    };
-    let result = agent
-        .run_loop(
-            &crate::goal::GoalSpec::new("ship the feature"),
-            &cfg,
-            None,
-            None,
-        )
-        .await
-        .expect("loop runs");
-
-    assert!(!result.converged);
-    assert_eq!(result.termination, LoopTermination::NoReplan);
-    assert_eq!(result.iteration_count(), 1);
 }
 
 #[test]
@@ -671,7 +593,7 @@ impl LlmClient for ActingLlm {
         };
         let content = if sys.contains("reviewing a change") {
             r#"{"approved":true,"score":0.9,"issues":[],"suggestions":[]}"#.to_string()
-        } else if sys.contains("executing a specific subtask") {
+        } else if sys.contains("autonomous coding agent") || sys.contains("executing a specific subtask") {
             let n = self.execute_calls.fetch_add(1, Ordering::SeqCst);
             if n == 0 {
                 return Ok(CompletionResponse {
@@ -810,7 +732,7 @@ async fn run_loop_terminates_on_spend_cap() {
     let agent = loop_test_agent(llm);
     let cfg = LoopConfig {
         max_iterations: 5,
-        spend_cap_usd: Some(0.00001),
+        spend_cap_usd: Some(0.000001), // below one call's cost (~$0.0000045)
         detect_oscillation: false,
         ..Default::default()
     };
@@ -834,36 +756,142 @@ async fn run_loop_terminates_on_spend_cap() {
     assert!(result.iteration_count() < 5);
 }
 
+/// An LLM that never converges — always returns tool calls with empty content,
+/// simulating a model stuck in a tool-call loop.
+struct StuckLlm;
+
+#[async_trait]
+impl LlmClient for StuckLlm {
+    async fn complete(&self, _req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+        Ok(CompletionResponse {
+            content: String::new(),
+            tool_calls: vec![crate::llm::ToolCall {
+                id: "t1".into(),
+                name: "shell_command".into(),
+                arguments: serde_json::json!({"command": "echo stuck"}),
+            }],
+            usage: Usage {
+                prompt_tokens: 10,
+                completion_tokens: 5,
+                total_tokens: 15,
+            },
+            model: "stuck".into(),
+            finish_reason: crate::llm::FinishReason::ToolCalls,
+        })
+    }
+
+    fn default_model(&self) -> &str {
+        "stuck"
+    }
+}
+
 #[tokio::test]
-async fn run_loop_detects_oscillation() {
-    // ScriptedLlm always rejects with the same issues ("tests missing").
-    // After iteration 2, the same critique signature repeats → Oscillation.
-    let llm = ScriptedLlm::approve_after(usize::MAX);
-    let agent = loop_test_agent(llm);
-    let cfg = LoopConfig {
-        max_iterations: 5,
-        detect_oscillation: true,
-        ..Default::default()
-    };
+async fn run_loop_model_not_converging_terminates_early() {
+    let agent = Agent::builder()
+        .llm(Arc::new(StuckLlm))
+        .tools(ToolRegistry::new())
+        .config(AgentConfig::default())
+        .build()
+        .expect("agent builds");
+
     let result = agent
         .run_loop(
-            &crate::goal::GoalSpec::new("ship the feature"),
-            &cfg,
+            &crate::goal::GoalSpec::new("do the thing"),
+            &LoopConfig {
+                max_iterations: 6,
+                ..Default::default()
+            },
             None,
             None,
         )
         .await
         .expect("loop runs");
 
-    assert!(!result.converged);
-    assert_eq!(result.termination, LoopTermination::Oscillation);
-    // Oscillation is detected at iteration 2 (the first repeat).
-    assert_eq!(result.iteration_count(), 2);
-    // Both iterations had the same critique issues.
-    assert_eq!(
-        result.iterations[0].critique_issues,
-        result.iterations[1].critique_issues
+    assert!(
+        matches!(result.termination, LoopTermination::ModelNotConverging(_)),
+        "expected ModelNotConverging, got {:?}",
+        result.termination
     );
+    assert!(!result.converged);
+    // Should not run to the full 6 iterations — fail-fast kicks in.
+    assert!(result.iteration_count() < 6);
+}
+
+/// An LLM that produces a clean non-tool answer after `fail_first` tool-only
+/// responses. Used to test convergence in the simplified loop.
+struct ConvergingLlm {
+    call_count: AtomicUsize,
+    fail_first: usize,
+}
+
+impl ConvergingLlm {
+    fn after(fail_first: usize) -> Arc<Self> {
+        Arc::new(Self {
+            call_count: AtomicUsize::new(0),
+            fail_first,
+        })
+    }
+}
+
+#[async_trait]
+impl LlmClient for ConvergingLlm {
+    async fn complete(&self, _req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+        let n = self.call_count.fetch_add(1, Ordering::SeqCst);
+        let usage = Usage {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            total_tokens: 15,
+        };
+        if n < self.fail_first {
+            Ok(CompletionResponse {
+                content: String::new(),
+                tool_calls: vec![crate::llm::ToolCall {
+                    id: format!("t{n}"),
+                    name: "shell_command".into(),
+                    arguments: serde_json::json!({"command": "echo pre" }),
+                }],
+                usage,
+                model: "converging".into(),
+                finish_reason: crate::llm::FinishReason::ToolCalls,
+            })
+        } else {
+            Ok(CompletionResponse {
+                content: "Done! Implemented the feature.".into(),
+                tool_calls: vec![],
+                usage,
+                model: "converging".into(),
+                finish_reason: crate::llm::FinishReason::Stop,
+            })
+        }
+    }
+
+    fn default_model(&self) -> &str {
+        "converging"
+    }
+}
+
+#[tokio::test]
+async fn run_loop_converges_on_first_iteration() {
+    // Model answers immediately with no tool calls.
+    let agent = Agent::builder()
+        .llm(ConvergingLlm::after(0))
+        .tools(ToolRegistry::new())
+        .config(AgentConfig::default())
+        .build()
+        .expect("agent builds");
+
+    let cfg = LoopConfig {
+        max_iterations: 3,
+        ..Default::default()
+    };
+    let result = agent
+        .run_loop(&crate::goal::GoalSpec::new("explain concept"), &cfg, None, None)
+        .await
+        .expect("loop runs");
+
+    assert!(result.converged);
+    assert_eq!(result.termination, LoopTermination::Approved);
+    assert_eq!(result.iteration_count(), 1);
 }
 
 // --- Ensemble critic tests (U1) ---
@@ -1580,145 +1608,6 @@ fn usage_estimated_cost_is_nonzero() {
     );
 }
 
-#[test]
-fn critique_signature_normalises_order() {
-    let a = critique_signature(&["x".into(), "y".into()]);
-    let b = critique_signature(&["y".into(), "x".into()]);
-    assert_eq!(a, b);
-}
-
-#[test]
-fn check_incorporation_returns_none_when_no_issues() {
-    let plan = Plan {
-        goal: "g".into(),
-        goal_statement: "g".into(),
-        criteria: Vec::new(),
-        subtasks: vec![Subtask {
-            id: "s1".into(),
-            description: "d".into(),
-            tier: TaskTier::Cheap,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }],
-        tdd: false,
-        risks: vec![],
-        schema_version: String::new(),
-        complexity: TaskComplexity::default(),
-    };
-    // No issues → no incorporation needed.
-    assert!(check_incorporation(&plan, &plan, &[]).is_none());
-}
-
-#[test]
-fn check_incorporation_detects_identical_plan() {
-    let plan = Plan {
-        goal: "g".into(),
-        goal_statement: "g".into(),
-        criteria: Vec::new(),
-        subtasks: vec![Subtask {
-            id: "s1".into(),
-            description: "d".into(),
-            tier: TaskTier::Cheap,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }],
-        tdd: false,
-        risks: vec!["r1".into()],
-        schema_version: String::new(),
-        complexity: TaskComplexity::default(),
-    };
-    let issues = vec!["fix the bug".into()];
-    let gap = check_incorporation(&plan, &plan, &issues);
-    assert!(
-        gap.is_some(),
-        "identical plans with issues should produce a gap"
-    );
-    assert!(gap.unwrap().contains("structurally identical"));
-}
-
-#[test]
-fn check_incorporation_returns_none_when_plan_changed() {
-    let old = Plan {
-        goal: "g".into(),
-        goal_statement: "g".into(),
-        criteria: Vec::new(),
-        subtasks: vec![Subtask {
-            id: "s1".into(),
-            description: "old".into(),
-            tier: TaskTier::Cheap,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }],
-        tdd: false,
-        risks: vec![],
-        schema_version: String::new(),
-        complexity: TaskComplexity::default(),
-    };
-    let new = Plan {
-        goal: "g".into(),
-        goal_statement: "g".into(),
-        criteria: Vec::new(),
-        subtasks: vec![Subtask {
-            id: "s1".into(),
-            description: "new".into(),
-            tier: TaskTier::Cheap,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }],
-        tdd: false,
-        risks: vec![],
-        schema_version: String::new(),
-        complexity: TaskComplexity::default(),
-    };
-    let issues = vec!["fix the bug".into()];
-    assert!(check_incorporation(&old, &new, &issues).is_none());
-}
-
-#[test]
-fn check_incorporation_returns_none_when_risks_changed() {
-    let old = Plan {
-        goal: "g".into(),
-        goal_statement: "g".into(),
-        criteria: Vec::new(),
-        subtasks: vec![Subtask {
-            id: "s1".into(),
-            description: "d".into(),
-            tier: TaskTier::Cheap,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }],
-        tdd: false,
-        risks: vec![],
-        schema_version: String::new(),
-        complexity: TaskComplexity::default(),
-    };
-    let new = Plan {
-        goal: "g".into(),
-        goal_statement: "g".into(),
-        criteria: Vec::new(),
-        subtasks: vec![Subtask {
-            id: "s1".into(),
-            description: "d".into(),
-            tier: TaskTier::Cheap,
-            kind: SubtaskKind::Implement,
-            files: Vec::new(),
-            acceptance_criteria: Vec::new(),
-        }],
-        tdd: false,
-        risks: vec!["new risk".into()],
-        schema_version: String::new(),
-        complexity: TaskComplexity::default(),
-    };
-    let issues = vec!["fix the bug".into()];
-    // Same subtasks but risks changed → no gap.
-    assert!(check_incorporation(&old, &new, &issues).is_none());
-}
-
 // --- Checkpoint tests ---
 
 fn test_comprehension() -> Comprehension {
@@ -1870,6 +1759,7 @@ fn classify_error_type_error() {
         output: output.to_string(),
         usage: Usage::default(),
         tool_signals: vec![],
+        converged: true,
     };
 
     assert_eq!(classify_error(&[], &[step]), ErrorClass::Type);
@@ -1889,6 +1779,7 @@ fn classify_error_compilation_error() {
         output: output.to_string(),
         usage: Usage::default(),
         tool_signals: vec![],
+        converged: true,
     };
 
     assert_eq!(classify_error(&[], &[step]), ErrorClass::Compilation);
@@ -1916,6 +1807,7 @@ test result: FAILED. 1 passed; 1 failed; 0 ignored; finished in 0.01s
         output: output.to_string(),
         usage: Usage::default(),
         tool_signals: vec![],
+        converged: true,
     };
 
     assert_eq!(classify_error(&[], &[step]), ErrorClass::Test);
@@ -1933,6 +1825,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
         output: output.to_string(),
         usage: Usage::default(),
         tool_signals: vec![],
+        converged: true,
     };
 
     assert_eq!(classify_error(&[], &[step]), ErrorClass::Runtime);
@@ -1959,6 +1852,7 @@ fn classify_error_other() {
         output: output.to_string(),
         usage: Usage::default(),
         tool_signals: vec![],
+        converged: true,
     };
 
     assert_eq!(classify_error(&[], &[step]), ErrorClass::Other);

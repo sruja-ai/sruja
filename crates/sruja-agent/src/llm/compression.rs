@@ -43,8 +43,8 @@
 //! the structural backbone. CCR makes it literally reversible for the rare case
 //! the model needs the verbatim original.
 
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -52,11 +52,13 @@ use std::sync::Arc;
 
 use futures::{Stream, StreamExt};
 use sruja_compress::{
-    count_tokens, BoundedCcrStore, CcrHandle, CcrStore, Compressed, CompressContext,
-    KeepPolicy, TextCompressor, TextCrusher, TextRole,
+    count_tokens, BoundedCcrStore, CcrHandle, CcrStore, CompressContext, Compressed, KeepPolicy,
+    TextCompressor, TextCrusher, TextRole,
 };
 
-use crate::llm::{CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, StreamEvent};
+use crate::llm::{
+    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, StreamEvent,
+};
 
 /// Prefix prepended to compressed messages so the compressor skips them on
 /// subsequent passes and the model can spot the CCR handle.
@@ -203,32 +205,33 @@ impl CompressingClient {
         };
 
         match self.compressor.compress(content, &ctx) {
-            Ok(result) if result.savings() > 0.0 => {
-                match self.ccr.put(content) {
-                    Ok(handle) => {
-                        let compressed_text = format_ccr_message(&handle, &result.text);
-                        self.compression_cache.lock().unwrap().insert(cache_key, result.clone());
-                        self.stats
-                            .messages_compressed
-                            .fetch_add(1, Ordering::Relaxed);
-                        self.stats
-                            .original_tokens
-                            .fetch_add(original_tokens as u64, Ordering::Relaxed);
-                        self.stats
-                            .compressed_tokens
-                            .fetch_add(result.compressed_tokens as u64, Ordering::Relaxed);
-                        self.stats.tokens_saved.fetch_add(
-                            (original_tokens - result.compressed_tokens) as u64,
-                            Ordering::Relaxed,
-                        );
-                        Some((compressed_text, original_tokens, result.compressed_tokens))
-                    }
-                    Err(e) => {
-                        tracing::warn!(error = %e, "ccr put failed — skipping compression");
-                        None
-                    }
+            Ok(result) if result.savings() > 0.0 => match self.ccr.put(content) {
+                Ok(handle) => {
+                    let compressed_text = format_ccr_message(&handle, &result.text);
+                    self.compression_cache
+                        .lock()
+                        .unwrap()
+                        .insert(cache_key, result.clone());
+                    self.stats
+                        .messages_compressed
+                        .fetch_add(1, Ordering::Relaxed);
+                    self.stats
+                        .original_tokens
+                        .fetch_add(original_tokens as u64, Ordering::Relaxed);
+                    self.stats
+                        .compressed_tokens
+                        .fetch_add(result.compressed_tokens as u64, Ordering::Relaxed);
+                    self.stats.tokens_saved.fetch_add(
+                        (original_tokens - result.compressed_tokens) as u64,
+                        Ordering::Relaxed,
+                    );
+                    Some((compressed_text, original_tokens, result.compressed_tokens))
                 }
-            }
+                Err(e) => {
+                    tracing::warn!(error = %e, "ccr put failed — skipping compression");
+                    None
+                }
+            },
             Ok(_) => {
                 self.stats.messages_skipped.fetch_add(1, Ordering::Relaxed);
                 None
@@ -358,7 +361,7 @@ impl LlmClient for CompressingClient {
 }
 
 fn hash_request(req: &CompletionRequest) -> u64 {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    let mut hasher = DefaultHasher::new();
     req.messages.hash(&mut hasher);
     hasher.finish()
 }
@@ -590,8 +593,7 @@ mod tests {
         let inner = Arc::new(CapturingClient {
             last_messages: std::sync::Mutex::new(Vec::new()),
         });
-        let ccr: Arc<dyn sruja_compress::CcrStore> =
-            Arc::new(InMemoryCcrStore::default());
+        let ccr: Arc<dyn sruja_compress::CcrStore> = Arc::new(InMemoryCcrStore::default());
 
         let client = CompressingClient::new(inner.clone())
             .with_ccr(ccr.clone())
@@ -640,8 +642,7 @@ mod tests {
         let inner = Arc::new(CapturingClient {
             last_messages: std::sync::Mutex::new(Vec::new()),
         });
-        let ccr: Arc<dyn sruja_compress::CcrStore> =
-            Arc::new(BoundedCcrStore::new(100));
+        let ccr: Arc<dyn sruja_compress::CcrStore> = Arc::new(BoundedCcrStore::new(100));
 
         let client = CompressingClient::new(inner.clone())
             .with_ccr(ccr.clone())

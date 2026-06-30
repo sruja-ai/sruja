@@ -38,7 +38,7 @@ pub use crate::llm::TaskTier;
 use crate::memory::AgenticMemory;
 use crate::tool::{FileGuard, Phase, ToolError, ToolRegistry};
 use crate::verify::{
-    all_passed, run_verification_steps, VerifyOptions, VerifyResult, VerifyStatus, VerifyStep,
+    run_verification_steps, VerifyOptions, VerifyResult, VerifyStatus, VerifyStep,
 };
 use crate::LearningEntry;
 
@@ -117,10 +117,10 @@ impl Default for AgentConfig {
             review_every_change: true,
             spend_cap_usd: None,
             dry_run: false,
-            // Comprehension prompt says "3-5 tool calls" but models often ignore
-            // it. 8 is the safety net: soft guard at 4th call (iter 3), hard at 6th call (iter 5).
-            // Keeps total loop time under ~60s per phase at 5s/call.
-            max_tool_iterations: 8,
+            // 5 tool-call iterations is the sweet spot: hard convergence message
+            // fires at 75% budget (iteration 3), giving 2 iterations to comply.
+            // 8 was wasteful — most models converge by iteration 3 or never do.
+            max_tool_iterations: 5,
             // 5-minute wall-clock timeout for the entire tool loop.
             loop_timeout_secs: 300,
             system_hints: Vec::new(),
@@ -319,6 +319,11 @@ pub struct StepResult {
     /// Per-tool-call structural signals for the grader (U4).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tool_signals: Vec<ToolSignal>,
+    /// Whether the tool loop converged naturally (model stopped calling tools)
+    /// vs hitting the iteration fallback. When false, the output may be
+    /// incomplete or garbled.
+    #[serde(default)]
+    pub converged: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -519,15 +524,32 @@ pub enum ErrorClass {
     Other,
 }
 
+/// Returns `true` if `content` contains common error indicators
+/// (case-insensitive): `error`, `panic`, `FAILED`, `backtrace`, `stack trace`.
+fn has_error_patterns(content: &str) -> bool {
+    let lower = content.to_lowercase();
+    let patterns = ["error", "panic", "failed", "backtrace", "stack trace"];
+    patterns.iter().any(|p| lower.contains(p))
+}
+
 /// Compresses old tool results in the message history to save context tokens.
 ///
 /// Preserves: role, tool_call_id, tool_calls fields. Only rewrites content.
 /// Never compresses: most recent tool results (after the last assistant message),
 /// system prompt, user goal message, file_write/file_edit confirmations.
+/// Never compresses: messages containing error patterns (error, panic, etc.)
 ///
 /// Compresses: file_read and shell outputs older than the most recent assistant
 /// turn, only if > 500 chars and > 6 lines.
-fn compress_tool_results(messages: &mut Vec<Message>) -> Vec<Message> {
+fn compress_tool_results(mut messages: Vec<Message>) -> Vec<Message> {
+    // Early-return: skip compression entirely if any tool result contains error
+    // patterns. This preserves the original error context for the model.
+    if messages
+        .iter()
+        .any(|m| m.role == MessageRole::Tool && has_error_patterns(&m.content))
+    {
+        return messages;
+    }
     // Build a map: tool_call_id -> tool_name (to detect file_write/file_edit).
     let mut call_id_to_tool: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
@@ -546,7 +568,7 @@ fn compress_tool_results(messages: &mut Vec<Message>) -> Vec<Message> {
         .rposition(|m| m.role == MessageRole::Assistant)
     {
         Some(idx) => idx,
-        None => return std::mem::take(messages),
+        None => return messages,
     };
 
     let mut compressed = Vec::new();
@@ -921,6 +943,10 @@ pub enum LoopTermination {
     SpendCapExceeded(f64),
     /// Detected repeated critique patterns (the loop is oscillating).
     Oscillation,
+    /// The model(s) failed to converge — kept calling tools without producing
+    /// final answers across most subtasks. Further iterations would waste
+    /// tokens. The number is the fraction of steps that did not converge.
+    ModelNotConverging(f64),
     /// A hard error aborted the loop.
     Aborted(String),
 }
@@ -1272,8 +1298,10 @@ impl Agent {
         &self,
         req: CompletionRequest,
     ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>), AgentError> {
-        self.run_tool_loop_with_limit(req, self.config.max_tool_iterations)
-            .await
+        let (response, usage, signals, _converged) = self
+            .run_tool_loop_with_limit(req, self.config.max_tool_iterations)
+            .await?;
+        Ok((response, usage, signals))
     }
 
     /// Run the LLM tool-calling loop with an explicit iteration limit.
@@ -1287,7 +1315,7 @@ impl Agent {
         &self,
         req: CompletionRequest,
         max_iterations: usize,
-    ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>), AgentError> {
+    ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>, bool), AgentError> {
         let timeout = std::time::Duration::from_secs(self.config.loop_timeout_secs);
         match tokio::time::timeout(timeout, self.run_tool_loop_inner(req, max_iterations)).await {
             Ok(result) => result,
@@ -1305,21 +1333,26 @@ impl Agent {
     }
 
     /// Inner implementation of the tool loop (extracted for timeout wrapping).
+    ///
+    /// Returns `(response, usage, tool_signals, converged)`. When `converged`
+    /// is false, the model never stopped calling tools on its own and the
+    /// fallback path was taken — the output may be incomplete.
     async fn run_tool_loop_inner(
         &self,
         mut req: CompletionRequest,
         max_iterations: usize,
-    ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>), AgentError> {
+    ) -> Result<(CompletionResponse, Usage, Vec<ToolSignal>, bool), AgentError> {
         let mut total_usage = Usage::default();
         let mut tool_signals: Vec<ToolSignal> = Vec::new();
         let mut last_response: Option<CompletionResponse> = None;
-        let mut soft_sent = false;
         let mut hard_sent = false;
         // Circuit breaker: track consecutive tool errors and inject recovery.
-        // Validated technique from the Self-Harness paper — prevents the agent
-        // from blindly retrying the same failing command.
         let mut consecutive_errors: usize = 0;
         let mut recovery_sent = false;
+        // Track consecutive iterations where the model only called tools
+        // (no meaningful content). After 3, abort early — the model is
+        // stuck in a tool-calling loop it won't exit.
+        let mut consecutive_tool_only: usize = 0;
 
         for iteration in 0..max_iterations {
             let response = self.llm.complete(&req).await?;
@@ -1352,13 +1385,33 @@ impl Agent {
                         "tool_loop: finish_reason=Stop but tool_calls present — \
                          treating content as final answer (server quirk)"
                     );
-                    // Clear tool_calls so callers don't dispatch "final answer"
-                    // tool calls that the loop intentionally chose not to run.
                     let mut response = response;
                     response.tool_calls.clear();
-                    return Ok((response, total_usage, tool_signals));
+                    return Ok((response, total_usage, tool_signals, true));
                 }
-                return Ok((response, total_usage, tool_signals));
+                return Ok((response, total_usage, tool_signals, true));
+            }
+
+            // Track tool-only iterations for early-abort.
+            if response.content.trim().is_empty() {
+                consecutive_tool_only += 1;
+            } else {
+                consecutive_tool_only = 0;
+            }
+            if consecutive_tool_only >= 3 {
+                tracing::warn!(
+                    iteration,
+                    consecutive_tool_only,
+                    "tool_loop: model has called tools 3+ times with no output — aborting early"
+                );
+                let mut fallback = last_response.unwrap_or_else(|| {
+                    CompletionResponse::text(
+                        "ERROR: model stuck in tool-calling loop with no output.",
+                    )
+                });
+                fallback.tool_calls.clear();
+                fallback.finish_reason = crate::llm::FinishReason::Stop;
+                return Ok((fallback, total_usage, tool_signals, false));
             }
 
             last_response = Some(response.clone());
@@ -1483,7 +1536,7 @@ impl Agent {
             // Skip if the reversible CompressingClient wrapper is active.
             if !self.config.disable_legacy_compression && iteration > 0 && iteration % 3 == 0 {
                 let original_len = req.messages.len();
-                req.messages = compress_tool_results(&mut req.messages);
+                req.messages = compress_tool_results(std::mem::take(&mut req.messages));
                 tracing::debug!(
                     iteration,
                     original_len,
@@ -1517,14 +1570,11 @@ impl Agent {
             }
 
             // ── Convergence pressure ─────────────────────────────────────
-            // Some models (especially smaller OpenAI-compatible ones) never
-            // stop calling tools on their own — they explore indefinitely.
-            // When the tool-call budget is running low, inject a user message
-            // that forces the model to produce a final answer. Each tier is
-            // injected at most once to avoid flooding the context.
+            // When the tool-call budget is nearly exhausted, inject one final
+            // message forcing the model to produce an answer. The soft reminder
+            // was removed — one hard message is enough and less noisy.
             let remaining = max_iterations - iteration - 1;
             let quarter = (max_iterations / 4).max(1);
-            let half = max_iterations / 2;
             if remaining > 0 && remaining <= quarter && !hard_sent {
                 hard_sent = true;
                 tracing::warn!(
@@ -1538,25 +1588,10 @@ impl Agent {
                      Do NOT call any more tools. Synthesize what you have \
                      learned and write your answer.",
                 ));
-            } else if remaining > 0 && remaining <= half && !soft_sent {
-                soft_sent = true;
-                tracing::info!(
-                    iteration,
-                    remaining,
-                    "tool_loop: injecting soft convergence reminder"
-                );
-                req.messages.push(Message::user(
-                    "REMINDER: You have used more than half your tool budget. \
-                     Wrap up exploration and produce your final answer soon.",
-                ));
             }
         }
 
-        // Graceful degradation: the model didn't self-terminate, but it may
-        // have produced useful content in its last response. Return that
-        // content (with tool_calls cleared) rather than crashing the entire
-        // agent. Downstream phases may still fail to parse it, but at least
-        // the error message will be meaningful instead of "max iterations".
+        // Graceful degradation: the model didn't self-terminate.
         tracing::warn!(
             max_iterations,
             "tool_loop: model did not converge — returning last response as fallback"
@@ -1568,7 +1603,7 @@ impl Agent {
         });
         fallback.tool_calls.clear();
         fallback.finish_reason = crate::llm::FinishReason::Stop;
-        Ok((fallback, total_usage, tool_signals))
+        Ok((fallback, total_usage, tool_signals, false))
     }
 
     /// Resolve the model name configured for a complexity tier.
@@ -1671,7 +1706,8 @@ impl Agent {
             TaskComplexity::Simple => 5,
             _ => self.config.max_tool_iterations,
         };
-        let (response, _usage, _signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
+        let (response, _usage, _signals, _converged) =
+            self.run_tool_loop_with_limit(req, max_iters).await?;
 
         // Parse the plan from the LLM response.
         match parse_plan_from_response(&response.content, goal, enforce_tdd) {
@@ -1717,7 +1753,7 @@ impl Agent {
                 } else {
                     correction_req.with_tools(self.tools.schemas())
                 };
-                let (retry_response, _retry_usage, _signals) = self
+                let (retry_response, _retry_usage, _signals, _converged) = self
                     .run_tool_loop_with_limit(correction_req, max_iters)
                     .await?;
                 let plan = parse_plan_from_response(&retry_response.content, goal, enforce_tdd)
@@ -1844,7 +1880,8 @@ impl Agent {
             TaskComplexity::Simple => 5,
             _ => self.config.max_tool_iterations,
         };
-        let (response, _usage, _signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
+        let (response, _usage, _signals, _converged) =
+            self.run_tool_loop_with_limit(req, max_iters).await?;
 
         match parse_plan_from_response(
             &response.content,
@@ -1891,7 +1928,7 @@ impl Agent {
                 } else {
                     correction_req.with_tools(self.tools.schemas())
                 };
-                let (retry_response, _retry_usage, _signals) = self
+                let (retry_response, _retry_usage, _signals, _converged) = self
                     .run_tool_loop_with_limit(correction_req, max_iters)
                     .await?;
                 let plan = parse_plan_from_response(
@@ -1941,6 +1978,7 @@ impl Agent {
                         output: "skipped by hook".into(),
                         usage: Usage::default(),
                         tool_signals: Vec::new(),
+                        converged: true,
                     });
                     continue;
                 }
@@ -1985,7 +2023,7 @@ impl Agent {
                 TaskComplexity::Simple => 8,
                 _ => self.config.max_tool_iterations,
             };
-            let (response, tool_usage, tool_signals) =
+            let (response, tool_usage, tool_signals, step_converged) =
                 self.run_tool_loop_with_limit(req, max_iters).await?;
 
             let status = if response.content.contains("ERROR")
@@ -2002,6 +2040,7 @@ impl Agent {
                 output: response.content,
                 usage: tool_usage,
                 tool_signals,
+                converged: step_converged,
             };
 
             self.hooks.after_step(step, &result).await;
@@ -2072,7 +2111,8 @@ impl Agent {
         self.guard.set_phase(Phase::Implement);
         self.hooks.on_phase_change(Phase::Implement).await;
 
-        let (response, usage, tool_signals) = self.run_tool_loop_with_limit(req, max_iters).await?;
+        let (response, usage, tool_signals, _converged) =
+            self.run_tool_loop_with_limit(req, max_iters).await?;
 
         self.guard.set_phase(Phase::Comprehend);
 
@@ -2731,6 +2771,7 @@ impl Agent {
                         output: direct.output,
                         usage: direct.usage,
                         tool_signals: direct.tool_signals,
+                        converged: true,
                     }],
                     critique: None,
                     decision: None,
@@ -2806,41 +2847,55 @@ impl Agent {
     }
 
     /// Run the outer ReAct loop: comprehend once, then iterate
-    /// (re)plan -> execute -> critique until the independent critic approves
-    /// or the iteration budget is exhausted.
+    /// Simplified agent loop: trust the model, give it tools, verify results.
     ///
-    /// This closes the loop that `run` leaves open: a rejected critique feeds
-    /// back into a re-plan via [`Agent::replan`], embodying "loop engineering"
-    /// — the actor iterates against an independent grader until a verifiable
-    /// condition is met.
+    /// Flow:
+    /// 1. Classify complexity (deterministic)
+    /// 2. Model drives via tool loop (read files, edit, run commands)
+    /// 3. Deterministic verification (lint, test, drift)
+    /// 4. If verification fails, feed errors back for one retry
     ///
-    /// Per-iteration evidence is captured in [`LoopResult::iterations`] so a
-    /// host can detect convergence, oscillation, and flailing.
-    ///
-    /// **Events** are sent to `events` in order: `Started` after comprehension,
-    /// `PlanReady` once the plan + calibration `AskPlan` are available,
-    /// `PhaseChanged` at each phase boundary, `IterationStarted` at each
-    /// replan loop, `StepProgress` per executed subtask, `VerifyResult` per
-    /// verify step, and `Done` with a one-line summary before returning.
-    /// The method performs **no terminal I/O** — the host renders events.
-    ///
-    /// Emissions are best-effort: a closed receiver must not fail the loop.
-    /// When `events` is `None`, the method behaves exactly as before.
-    ///
-    /// `calibration` is the optional ask/proceed verdict from the calibration
-    /// gate. When present and events are enabled, `PlanReady` is emitted after
-    /// the first plan is generated so the host can render the plan preview.
+    /// No planning phase. No critique ensemble. No TDD enforcement.
+    /// The model decides what to do. Deterministic checks catch mistakes.
     pub async fn run_loop(
         &self,
         goal: &crate::goal::GoalSpec,
         loop_config: &LoopConfig,
         events: Option<&mpsc::Sender<LoopEvent>>,
-        calibration: Option<&crate::calibration::AskPlan>,
+        _calibration: Option<&crate::calibration::AskPlan>,
     ) -> Result<LoopResult, AgentError> {
         let max_iterations = loop_config.max_iterations.max(1);
 
         Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Comprehend));
-        let comprehension = self.comprehend(goal).await?;
+
+        // Validate target element IDs before comprehension when available.
+        if !goal.target_elements.is_empty() {
+            if let Err(unknown) = goal.validate(None) {
+                return Err(AgentError::Other(format!(
+                    "unknown target element IDs: {}",
+                    unknown.join(", ")
+                )));
+            }
+        }
+
+        // Classify complexity (deterministic, no LLM call).
+        let complexity = classify_task_complexity(
+            &goal.statement,
+            &goal.target_files,
+            &goal.target_elements,
+        );
+
+        // Build synthetic comprehension for backward compatibility.
+        let comprehension = Comprehension {
+            goal: goal.statement.clone(),
+            summary: goal.statement.clone(),
+            cited_elements: goal.target_elements.clone(),
+            key_findings: vec![],
+            risks: vec![],
+            usage: Usage::default(),
+            retrieved_learning_ids: vec![],
+            complexity,
+        };
 
         Self::emit_event(
             events,
@@ -2850,269 +2905,74 @@ impl Agent {
             },
         );
 
-        // --- PLAN PREVIEW EVENT (U2) ---
-        // Emit PlanReady early (before adaptive routing) so --show-plan works
-        // even for simple tasks that take the direct execution shortcut.
-        if let (Some(tx), Some(ap)) = (events, calibration) {
-            Self::emit_event(
-                Some(tx),
-                LoopEvent::PlanReady {
-                    plan_brief: PlanBrief {
-                        goal: goal.statement.clone(),
-                        criteria: goal.acceptance_criteria.clone(),
-                        subtasks: Vec::new(),
-                    },
-                    ask_plan: ap.clone(),
-                },
-            );
-        }
+        // --- Build initial request ---
+        let system = crate::cognition::prompts::AGENT_LOOP_SYSTEM_PROMPT;
+        let mut req = CompletionRequest::prompt(system, &goal.statement)
+            .with_tools(self.tools.schemas());
+        req.model = Some(self.config.models.mid.clone());
 
-        // ── Adaptive routing: try direct execution for simple tasks ──────
-        // Self-Harness insight: for simple/trivial tasks, the overhead of
-        // plan → critique → replan wastes tokens and time. Try making the
-        // change directly first. Falls back to full pipeline on failure.
-        // Auto-learns from past outcomes when to use direct vs pipeline.
-        if self.should_try_direct(goal, comprehension.complexity) {
-            tracing::info!(
-                complexity = ?comprehension.complexity,
-                "adaptive_routing: attempting direct execution"
-            );
-            match self.try_direct_execution(goal, &comprehension).await {
-                Ok(Some(direct)) => {
-                    tracing::info!("adaptive_routing: direct execution succeeded");
-                    self.record_task_outcome(goal, comprehension.complexity, "direct", true, 0)
-                        .await;
+        // Allow writes from the start — the model decides what to do.
+        self.guard.set_phase(Phase::Implement);
+        self.hooks.on_phase_change(Phase::Implement).await;
 
-                    // Construct synthetic results for the caller.
-                    let direct_usage = direct.usage.clone();
-                    let step = StepResult {
-                        subtask_id: "direct".into(),
-                        status: StepStatus::Ok,
-                        output: direct.output,
-                        usage: direct.usage,
-                        tool_signals: direct.tool_signals,
-                    };
-                    let plan = Plan {
-                        goal: goal.to_string(),
-                        goal_statement: goal.statement.clone(),
-                        criteria: goal.acceptance_criteria.clone(),
-                        subtasks: vec![Subtask {
-                            id: "direct".into(),
-                            description: goal.statement.clone(),
-                            tier: TaskTier::Mid,
-                            kind: SubtaskKind::Implement,
-                            files: goal.target_files.clone(),
-                            acceptance_criteria: goal.acceptance_criteria.clone(),
-                        }],
-                        tdd: false,
-                        risks: Vec::new(),
-                        schema_version: "1.0".into(),
-                        complexity: comprehension.complexity,
-                    };
-                    let final_result = AgentRunResult {
-                        goal: goal.statement.clone(),
-                        comprehension,
-                        plan,
-                        step_results: vec![step.clone()],
-                        critique: None,
-                        decision: None,
-                        runbook: None,
-                        total_usage: direct_usage.clone(),
-                    };
-                    Self::emit_event(
-                        events,
-                        LoopEvent::Done {
-                            outcome_summary: "Direct execution succeeded".into(),
-                        },
-                    );
-                    return Ok(LoopResult {
-                        goal: goal.statement.clone(),
-                        iterations: vec![LoopIteration {
-                            iteration: 1,
-                            replanned: false,
-                            plan_goal: goal.statement.clone(),
-                            subtask_count: 1,
-                            succeeded: 1,
-                            failed: 0,
-                            critique_approved: true,
-                            critique_score: 1.0,
-                            critique_issues: Vec::new(),
-                            verify_failed: Vec::new(),
-                            injected_learning_ids: Vec::new(),
-                            usage: direct_usage,
-                            plan_parse_error: None,
-                            incorporation_gap: None,
-                        }],
-                        converged: true,
-                        termination: LoopTermination::Approved,
-                        total_usage: final_result.total_usage.clone(),
-                        grader_source: "direct".into(),
-                        final_result,
-                    });
-                }
-                Ok(None) => {
-                    tracing::info!(
-                        "adaptive_routing: direct produced no changes — falling back to pipeline"
-                    );
-                    self.record_task_outcome(goal, comprehension.complexity, "direct", false, 0)
-                        .await;
-                }
-                Err(e) => {
-                    tracing::warn!(error = %e, "adaptive_routing: direct failed — falling back to pipeline");
-                    self.record_task_outcome(goal, comprehension.complexity, "direct", false, 0)
-                        .await;
-                }
-            }
-        }
-
-        let mut iterations: Vec<LoopIteration> = Vec::new();
         let mut total_usage = Usage::default();
-        let mut last_plan: Option<Plan> = None;
-        let mut last_steps: Vec<StepResult> = Vec::new();
-        let mut last_critique: Option<Critique> = None;
+        let mut iterations: Vec<LoopIteration> = Vec::new();
         let mut converged = false;
         let mut termination = LoopTermination::MaxIterations;
-        let mut seen_signatures: std::collections::HashSet<String> =
-            std::collections::HashSet::new();
-        let mut convergence_pressure: Option<String> = None;
-        let mut failure_tracker = FailureTracker::default();
+        let mut _last_output = String::new();
+        let mut step_results: Vec<StepResult> = Vec::new();
+        let mut non_converged_count: usize = 0;
 
         for iteration in 1..=max_iterations {
-            self.hooks.before_iteration(iteration, max_iterations).await;
-            let replanned = iteration > 1 && last_critique.is_some();
-
-            // --- PLAN (or re-plan from critique feedback) ---
-            let phase = if replanned {
-                LoopPhase::Replan
-            } else {
-                LoopPhase::Plan
-            };
-            Self::emit_event(events, LoopEvent::PhaseChanged(phase));
             Self::emit_event(
                 events,
                 LoopEvent::IterationStarted {
                     n: iteration,
-                    reason: if replanned {
-                        Some("critique feedback".into())
+                    reason: if iteration > 1 {
+                        Some("verification feedback".into())
                     } else {
                         None
                     },
                 },
             );
 
-            let (plan, plan_parse_error) = if replanned {
-                match self
-                    .replan(
-                        goal,
-                        &comprehension,
-                        last_critique.as_ref().unwrap(),
-                        convergence_pressure.as_deref(),
-                        &failure_tracker,
-                    )
-                    .await
-                {
-                    Ok(p) => (p, None),
-                    Err(AgentError::PlanParseFailed(e)) => {
-                        // Already retried once inside replan — record and abort.
-                        return Err(AgentError::PlanParseFailed(e));
-                    }
-                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                        termination = LoopTermination::SpendCapExceeded(spent);
-                        break;
-                    }
-                    Err(e) => return Err(e),
-                }
-            } else {
-                match self.plan(goal, &comprehension).await {
-                    Ok(p) => (p, None),
-                    Err(AgentError::PlanParseFailed(e)) => {
-                        // Already retried once inside plan — record and abort.
-                        return Err(AgentError::PlanParseFailed(e));
-                    }
-                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                        termination = LoopTermination::SpendCapExceeded(spent);
-                        break;
-                    }
-                    Err(e) => return Err(e),
-                }
-            };
+            // Run tool loop — model drives everything.
+            let max_iters = complexity.max_tool_iterations(self.config.max_tool_iterations);
+            let (response, usage, tool_signals, step_converged) =
+                self.run_tool_loop_with_limit(req.clone(), max_iters).await?;
+            total_usage.accumulate(&usage);
+            _last_output = response.content.clone();
 
-            // --- INCORPORATION CHECK (U3) ---
-            // Before executing, check whether the replan structurally addressed
-            // the prior critique. If not, record the gap for convergence pressure.
-            let incorporation_gap = if replanned {
-                if let (Some(ref prev), Some(ref prev_critique)) = (&last_plan, &last_critique) {
-                    check_incorporation(prev, &plan, &prev_critique.issues)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-            if let Some(ref gap) = incorporation_gap {
-                tracing::warn!(gap = %gap, "replan:incorporation_gap — structurally identical plan");
-                convergence_pressure = Some(gap.clone());
-            } else if replanned {
-                // Clear pressure when the replan did change (incorporation worked).
-                convergence_pressure = None;
+            // Track convergence for early-abort.
+            if !step_converged {
+                non_converged_count += 1;
             }
 
-            // --- EXECUTE ---
-            Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Execute));
-            let step_results = match self.execute(&plan).await {
-                Ok(r) => {
-                    for (i, r) in r.iter().enumerate() {
-                        Self::emit_event(
-                            events,
-                            LoopEvent::StepProgress {
-                                step: i + 1,
-                                total: plan.subtasks.len(),
-                                description: r.subtask_id.clone(),
-                            },
-                        );
-                    }
-                    r
-                }
-                Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                    termination = LoopTermination::SpendCapExceeded(spent);
-                    break;
-                }
-                Err(e) => return Err(e),
-            };
-            for r in &step_results {
-                total_usage.accumulate(&r.usage);
-            }
-
-            // --- CRITIQUE ---
-            Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Critique));
-            let mut critique = if self.config.review_every_change {
-                match self.critique(&plan, &step_results).await {
-                    Ok(c) => c,
-                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                        termination = LoopTermination::SpendCapExceeded(spent);
-                        break;
-                    }
-                    Err(e) => return Err(e),
-                }
+            // Record step result.
+            let status = if response.content.contains("ERROR") || !step_converged {
+                StepStatus::Failed
             } else {
-                let all_ok = step_results.iter().all(|r| r.status != StepStatus::Failed);
-                Critique {
-                    approved: all_ok,
-                    score: if all_ok { 1.0 } else { 0.0 },
-                    issues: Vec::new(),
-                    suggestions: Vec::new(),
-                    usage: Usage::default(),
-                    persona_breakdown: Vec::new(),
-                    injected_learning_ids: Vec::new(),
-                    criteria: Vec::new(),
-                }
+                StepStatus::Ok
             };
-            total_usage.accumulate(&critique.usage);
+            step_results.push(StepResult {
+                subtask_id: format!("iteration_{iteration}"),
+                status,
+                output: response.content.clone(),
+                usage: usage.clone(),
+                tool_signals,
+                converged: step_converged,
+            });
 
-            // --- DETERMINISTIC GRADER (independent of the LLM critic) ---
-            // Runs the verifier, if configured. A failing step vetoes
-            // convergence even when the critic approved, and the failures are
-            // injected into the critique so the next replan addresses them.
+            Self::emit_event(
+                events,
+                LoopEvent::StepProgress {
+                    step: iteration,
+                    total: max_iterations,
+                    description: format!("iteration {iteration}"),
+                },
+            );
+
+            // --- Deterministic verification ---
             Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Verify));
             let verify_failed = if let Some(vconf) = &loop_config.verifier {
                 let results =
@@ -3126,102 +2986,32 @@ impl Agent {
                         },
                     );
                 }
-                let failed = summarize_verify_failures(&results);
-                if !all_passed(&results) {
-                    critique.approved = false;
-                    critique.issues.extend(failed.clone());
-                }
-                failed
+                summarize_verify_failures(&results)
             } else {
                 Vec::new()
             };
 
-            let approved = critique.approved;
-            let issue_sig = critique_signature(&critique.issues);
-            let succeeded = step_results
-                .iter()
-                .filter(|r| r.status == StepStatus::Ok)
-                .count();
-            let failed = step_results
-                .iter()
-                .filter(|r| r.status == StepStatus::Failed)
-                .count();
+            let approved = verify_failed.is_empty() && step_converged;
 
-            // Record failure for self-correction: track what approach was tried
-            // and why it failed, so the next replan tries a different strategy.
-            if !approved {
-                let approach = format!(
-                    "subtasks: [{}]",
-                    plan.subtasks
-                        .iter()
-                        .map(|s| format!("{}({:?})", s.id, s.kind))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
-                let reason = if critique.issues.is_empty() {
-                    "critic rejected (no specific issues)".to_string()
-                } else {
-                    critique.issues.join("; ")
-                };
-                failure_tracker.record(
-                    approach,
-                    reason,
-                    iteration,
-                    classify_error(&critique.issues, &step_results),
-                );
-            }
-
-            // Record the iteration evidence BEFORE guardrail checks so the
-            // caller always sees what happened, even on the triggering iteration.
+            // Record iteration.
             iterations.push(LoopIteration {
                 iteration,
-                replanned,
-                plan_goal: plan.goal_statement.clone(),
-                subtask_count: plan.subtasks.len(),
-                succeeded,
-                failed,
+                replanned: iteration > 1,
+                plan_goal: goal.statement.clone(),
+                subtask_count: 1,
+                succeeded: if approved { 1 } else { 0 },
+                failed: if approved { 0 } else { 1 },
                 critique_approved: approved,
-                critique_score: critique.score,
-                critique_issues: critique.issues.clone(),
+                critique_score: if approved { 1.0 } else { 0.0 },
+                critique_issues: verify_failed.clone(),
                 verify_failed: verify_failed.clone(),
-                injected_learning_ids: critique.injected_learning_ids.clone(),
-                usage: critique.usage.clone(),
-                plan_parse_error: plan_parse_error
-                    .as_ref()
-                    .map(|e: &PlanParseError| e.to_string()),
-                incorporation_gap,
+                injected_learning_ids: vec![],
+                usage: usage.clone(),
+                plan_parse_error: None,
+                incorporation_gap: None,
             });
 
-            last_plan = Some(plan);
-            last_steps = step_results.clone();
-            last_critique = Some(critique);
-
-            self.hooks
-                .after_iteration(iteration, max_iterations, iterations.last().unwrap())
-                .await;
-
-            // --- CHECKPOINT: persist state for crash-resume ---
-            if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
-                let checkpoint = RunCheckpoint {
-                    goal: goal.statement.clone(),
-                    comprehension: comprehension.clone(),
-                    iterations: iterations.clone(),
-                    last_plan: last_plan.clone(),
-                    last_steps: last_steps.clone(),
-                    last_critique: last_critique.clone(),
-                    failure_tracker: failure_tracker.clone(),
-                    total_usage: total_usage.clone(),
-                    converged,
-                    termination: termination.clone(),
-                    seen_signatures: seen_signatures.iter().cloned().collect(),
-                    timestamp: chrono::Utc::now().to_rfc3339(),
-                };
-                if let Err(e) = checkpoint.write(checkpoint_dir) {
-                    tracing::warn!(error = %e, "checkpoint: failed to save");
-                }
-            }
-
-            // --- GUARDRAIL: spend cap (loop-level estimate) ---
+            // --- Spend cap (check BEFORE convergence to enforce budget) ---
             if let Some(cap) = loop_config.spend_cap_usd {
                 let cost = total_usage.estimated_cost_usd();
                 if cost >= cap {
@@ -3230,24 +3020,34 @@ impl Agent {
                 }
             }
 
-            // --- GUARDRAIL: oscillation detection ---
-            if loop_config.detect_oscillation && !approved && !seen_signatures.insert(issue_sig) {
-                termination = LoopTermination::Oscillation;
-                break;
-            }
-
+            // --- Convergence check ---
             if approved && loop_config.stop_on_approval {
                 converged = true;
                 termination = LoopTermination::Approved;
                 break;
             }
-            if !approved && !loop_config.replan_on_failure {
-                termination = LoopTermination::NoReplan;
-                break;
+
+            // --- Non-convergence fail-fast ---
+            if iterations.len() >= 2 {
+                let non_converged_fraction =
+                    non_converged_count as f64 / iterations.len() as f64;
+                if non_converged_fraction > 0.5 {
+                    termination = LoopTermination::ModelNotConverging(non_converged_fraction);
+                    break;
+                }
+            }
+
+            // Feed verification errors back for next iteration.
+            if !verify_failed.is_empty() {
+                req.messages
+                    .push(Message::user(&format!(
+                        "Verification failed:\n{}",
+                        verify_failed.join("\n")
+                    )));
             }
         }
 
-        // --- CHECKPOINT: cleanup on convergence, keep on failure for resume ---
+        // --- Cleanup checkpoint on convergence ---
         if converged {
             if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
                 if let Err(e) = RunCheckpoint::cleanup(checkpoint_dir) {
@@ -3256,59 +3056,35 @@ impl Agent {
             }
         }
 
-        let plan = last_plan.ok_or(AgentError::Other("loop produced no plan".into()))?;
-        let critique = last_critique;
-
-        // Complexity-aware: skip reflect + artifacts for trivial tasks.
-        // A comment typo doesn't need a decision record or runbook.
-        let generate_artifacts = comprehension.complexity.generate_artifacts();
-
-        let _learnings = if generate_artifacts {
-            self.reflect(&comprehension, &plan, &last_steps, critique.as_ref())
-                .await?
-        } else {
-            Vec::new()
+        // --- Build synthetic Plan for backward compatibility ---
+        let plan = Plan {
+            goal: goal.to_string(),
+            goal_statement: goal.statement.clone(),
+            criteria: goal.acceptance_criteria.clone(),
+            subtasks: vec![Subtask {
+                id: "work".into(),
+                description: goal.statement.clone(),
+                tier: TaskTier::Mid,
+                kind: SubtaskKind::Implement,
+                files: goal.target_files.clone(),
+                acceptance_criteria: goal.acceptance_criteria.clone(),
+            }],
+            tdd: false,
+            risks: vec![],
+            schema_version: "1.0".into(),
+            complexity,
         };
-        let decision = if generate_artifacts {
-            self.generate_decision(&plan, &last_steps, critique.as_ref())
-                .await
-        } else {
-            None
-        };
-        let runbook = if generate_artifacts {
-            self.generate_runbook(&plan, &last_steps).await
-        } else {
-            None
-        };
-        if let Some(ref repo) = self.repo_root {
-            if let Some(ref d) = decision {
-                self.write_decision(repo, d).await;
-            }
-            if let Some(ref r) = runbook {
-                self.write_runbook(repo, r).await;
-            }
-        }
 
         let final_result = AgentRunResult {
             goal: goal.statement.clone(),
             comprehension,
             plan,
-            step_results: last_steps,
-            critique,
-            decision,
-            runbook,
+            step_results,
+            critique: None,
+            decision: None,
+            runbook: None,
             total_usage: total_usage.clone(),
         };
-
-        // Record outcome for adaptive routing (self-learning).
-        self.record_task_outcome(
-            goal,
-            final_result.comprehension.complexity,
-            "pipeline",
-            converged,
-            iterations.len(),
-        )
-        .await;
 
         let outcome_summary = if converged {
             format!("Converged in {} iteration(s)", iterations.len())
@@ -3327,19 +3103,12 @@ impl Agent {
             converged,
             termination,
             total_usage,
-            grader_source: "unknown".to_string(),
+            grader_source: "simple".into(),
             final_result,
         })
     }
 
-    /// Resume a previously interrupted agent loop from a checkpoint.
-    ///
-    /// Loads the checkpoint from `loop_config.checkpoint_dir`, restores all
-    /// state (iterations, failure tracker, last plan/critique), and continues
-    /// the plan→execute→critique loop from the next iteration.
-    ///
-    /// Returns the same `LoopResult` as `run_loop`, but with the iterations
-    /// from the original run prepended.
+
     pub async fn resume_loop(
         &self,
         goal: &crate::goal::GoalSpec,
@@ -3356,12 +3125,10 @@ impl Agent {
         tracing::info!(
             goal = %checkpoint.goal,
             iteration = checkpoint.iterations.len(),
-            failures = checkpoint.failure_tracker.failures.len(),
             timestamp = %checkpoint.timestamp,
             "resume_loop: loaded checkpoint"
         );
 
-        // Verify the goal matches.
         if checkpoint.goal != goal.statement {
             tracing::warn!(
                 checkpoint_goal = %checkpoint.goal,
@@ -3370,7 +3137,7 @@ impl Agent {
             );
         }
 
-        // If already converged, return the checkpoint result directly.
+        // If converged, return checkpoint result directly.
         if checkpoint.converged {
             tracing::info!("resume_loop: checkpoint already converged — nothing to resume");
             let final_result = AgentRunResult {
@@ -3403,237 +3170,12 @@ impl Agent {
             });
         }
 
-        // Restore state from checkpoint and continue the loop.
-        let mut iterations = checkpoint.iterations;
-        let mut total_usage = checkpoint.total_usage;
-        let mut last_plan = checkpoint.last_plan;
-        let mut last_steps = checkpoint.last_steps;
-        let mut last_critique = checkpoint.last_critique;
-        let mut failure_tracker = checkpoint.failure_tracker;
-        let mut converged = checkpoint.converged;
-        let mut termination = checkpoint.termination;
-        let mut seen_signatures: std::collections::HashSet<String> =
-            checkpoint.seen_signatures.into_iter().collect();
-        let comprehension = checkpoint.comprehension;
-        let max_iterations = loop_config.max_iterations.max(1);
-        let start_iteration = iterations.len() + 1;
-
-        tracing::info!(
-            start_iteration,
-            max_iterations,
-            "resume_loop: continuing from iteration {start_iteration}"
-        );
-
-        for iteration in start_iteration..=max_iterations {
-            self.hooks.before_iteration(iteration, max_iterations).await;
-            let replanned = iteration > 1 && last_critique.is_some();
-
-            // --- PLAN (or re-plan from critique feedback) ---
-            let (plan, plan_parse_error) = if replanned {
-                match self
-                    .replan(
-                        goal,
-                        &comprehension,
-                        last_critique.as_ref().unwrap(),
-                        None, // convergence_pressure — fresh start after resume
-                        &failure_tracker,
-                    )
-                    .await
-                {
-                    Ok(p) => (p, None),
-                    Err(AgentError::PlanParseFailed(e)) => {
-                        return Err(AgentError::PlanParseFailed(e));
-                    }
-                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                        termination = LoopTermination::SpendCapExceeded(spent);
-                        break;
-                    }
-                    Err(e) => return Err(e),
-                }
-            } else {
-                match self.plan(goal, &comprehension).await {
-                    Ok(p) => (p, None),
-                    Err(AgentError::PlanParseFailed(e)) => {
-                        return Err(AgentError::PlanParseFailed(e));
-                    }
-                    Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                        termination = LoopTermination::SpendCapExceeded(spent);
-                        break;
-                    }
-                    Err(e) => return Err(e),
-                }
-            };
-
-            // --- EXECUTE ---
-            self.guard.set_phase(Phase::Implement);
-            self.hooks.on_phase_change(Phase::Implement).await;
-
-            let step_results = match self.execute(&plan).await {
-                Ok(r) => r,
-                Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                    termination = LoopTermination::SpendCapExceeded(spent);
-                    break;
-                }
-                Err(e) => return Err(e),
-            };
-
-            self.guard.set_phase(Phase::Comprehend);
-
-            for step in &step_results {
-                total_usage.accumulate(&step.usage);
-            }
-
-            // --- CRITIQUE ---
-            let critique = match self.critique(&plan, &step_results).await {
-                Ok(c) => c,
-                Err(AgentError::Llm(LlmError::BudgetExceeded { spent, .. })) => {
-                    termination = LoopTermination::SpendCapExceeded(spent);
-                    break;
-                }
-                Err(e) => return Err(e),
-            };
-            total_usage.accumulate(&critique.usage);
-
-            let approved = critique.approved;
-            let issue_sig = critique_signature(&critique.issues);
-            let succeeded = step_results
-                .iter()
-                .filter(|r| r.status == StepStatus::Ok)
-                .count();
-            let failed = step_results
-                .iter()
-                .filter(|r| r.status == StepStatus::Failed)
-                .count();
-
-            // Record failure for self-correction.
-            if !approved {
-                let approach = format!(
-                    "subtasks: [{}]",
-                    plan.subtasks
-                        .iter()
-                        .map(|s| format!("{}({:?})", s.id, s.kind))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
-                let reason = if critique.issues.is_empty() {
-                    "critic rejected (no specific issues)".to_string()
-                } else {
-                    critique.issues.join("; ")
-                };
-                failure_tracker.record(
-                    approach,
-                    reason,
-                    iteration,
-                    classify_error(&critique.issues, &step_results),
-                );
-            }
-
-            iterations.push(LoopIteration {
-                iteration,
-                replanned,
-                plan_goal: plan.goal_statement.clone(),
-                subtask_count: plan.subtasks.len(),
-                succeeded,
-                failed,
-                critique_approved: approved,
-                critique_score: critique.score,
-                critique_issues: critique.issues.clone(),
-                verify_failed: Vec::new(),
-                injected_learning_ids: critique.injected_learning_ids.clone(),
-                usage: critique.usage.clone(),
-                plan_parse_error: plan_parse_error
-                    .as_ref()
-                    .map(|e: &PlanParseError| e.to_string()),
-                incorporation_gap: None,
-            });
-
-            last_plan = Some(plan);
-            last_steps = step_results.clone();
-            last_critique = Some(critique);
-
-            self.hooks
-                .after_iteration(iteration, max_iterations, iterations.last().unwrap())
-                .await;
-
-            // --- CHECKPOINT: persist state for crash-resume ---
-            if let Some(ref cp_dir) = loop_config.checkpoint_dir {
-                let checkpoint = RunCheckpoint {
-                    goal: goal.statement.clone(),
-                    comprehension: comprehension.clone(),
-                    iterations: iterations.clone(),
-                    last_plan: last_plan.clone(),
-                    last_steps: last_steps.clone(),
-                    last_critique: last_critique.clone(),
-                    failure_tracker: failure_tracker.clone(),
-                    total_usage: total_usage.clone(),
-                    converged,
-                    termination: termination.clone(),
-                    seen_signatures: seen_signatures.iter().cloned().collect(),
-                    timestamp: chrono::Utc::now().to_rfc3339(),
-                };
-                if let Err(e) = checkpoint.write(cp_dir) {
-                    tracing::warn!(error = %e, "checkpoint: failed to save");
-                }
-            }
-
-            // --- GUARDRAIL: spend cap ---
-            if let Some(cap) = loop_config.spend_cap_usd {
-                let cost = total_usage.estimated_cost_usd();
-                if cost >= cap {
-                    termination = LoopTermination::SpendCapExceeded(cost);
-                    break;
-                }
-            }
-
-            // --- GUARDRAIL: oscillation detection ---
-            if loop_config.detect_oscillation && !approved && !seen_signatures.insert(issue_sig) {
-                termination = LoopTermination::Oscillation;
-                break;
-            }
-
-            if approved && loop_config.stop_on_approval {
-                converged = true;
-                termination = LoopTermination::Approved;
-                break;
-            }
-            if !approved && !loop_config.replan_on_failure {
-                termination = LoopTermination::NoReplan;
-                break;
-            }
+        // Stale checkpoint from old pipeline: clean up and start fresh.
+        tracing::info!("resume_loop: checkpoint is non-converged — cleaning up and starting fresh");
+        if let Err(e) = RunCheckpoint::cleanup(checkpoint_dir) {
+            tracing::warn!(error = %e, "resume_loop: failed to clean up stale checkpoint");
         }
-
-        // --- CHECKPOINT: cleanup on convergence ---
-        if converged {
-            if let Some(ref cp_dir) = loop_config.checkpoint_dir {
-                if let Err(e) = RunCheckpoint::cleanup(cp_dir) {
-                    tracing::warn!(error = %e, "checkpoint: cleanup failed");
-                }
-            }
-        }
-
-        let plan = last_plan.ok_or(AgentError::Other("resume_loop produced no plan".into()))?;
-        let critique = last_critique;
-
-        let final_result = AgentRunResult {
-            goal: goal.statement.clone(),
-            comprehension,
-            plan,
-            step_results: last_steps,
-            critique,
-            decision: None,
-            runbook: None,
-            total_usage: total_usage.clone(),
-        };
-
-        Ok(LoopResult {
-            goal: goal.statement.clone(),
-            iterations,
-            converged,
-            termination,
-            total_usage,
-            grader_source: "checkpoint-resume".to_string(),
-            final_result,
-        })
+        self.run_loop(goal, loop_config, None, None).await
     }
 
     /// Generate a decision record explaining WHY this change was made.
@@ -3860,61 +3402,7 @@ fn summarize_verify_failures(results: &[VerifyResult]) -> Vec<String> {
         .collect()
 }
 
-/// Build a normalised signature from critique issues to detect oscillation.
-/// Sorts and joins the issues so re-ordering doesn't produce a false negative.
-fn critique_signature(issues: &[String]) -> String {
-    let mut sorted: Vec<&str> = issues.iter().map(|s| s.as_str()).collect();
-    sorted.sort();
-    sorted.join("\x00")
-}
-
 /// Structural check: did the replan actually incorporate the prior critique?
-///
-/// Returns `None` when incorporation is plausible (critique was empty, or the
-/// new plan differs from the old one). Returns `Some(description)` when the
-/// critique raised issues but the new plan is structurally identical to the
-/// old one — meaning the actor likely re-emitted the same plan without changes.
-fn check_incorporation(
-    last_plan: &Plan,
-    new_plan: &Plan,
-    critique_issues: &[String],
-) -> Option<String> {
-    if critique_issues.is_empty() {
-        return None;
-    }
-
-    // Build a structural fingerprint: sorted (subtask_id, description) pairs.
-    let fingerprint = |plan: &Plan| -> Vec<(String, String)> {
-        let mut pairs: Vec<(String, String)> = plan
-            .subtasks
-            .iter()
-            .map(|s| (s.id.clone(), s.description.clone()))
-            .collect();
-        pairs.sort();
-        pairs
-    };
-
-    let old_fp = fingerprint(last_plan);
-    let new_fp = fingerprint(new_plan);
-
-    if old_fp == new_fp {
-        // Also check risks — if risks changed at least something moved.
-        let mut old_risks = last_plan.risks.clone();
-        let mut new_risks = new_plan.risks.clone();
-        old_risks.sort();
-        new_risks.sort();
-        if old_risks == new_risks {
-            let issue_count = critique_issues.len();
-            return Some(format!(
-                "replan incorporated none of {issue_count} critique issue(s); \
-                 subtasks and risks are structurally identical to prior plan"
-            ));
-        }
-    }
-
-    None
-}
-
 fn truncate(s: &str, max: usize) -> String {
     if s.len() <= max {
         s.to_string()

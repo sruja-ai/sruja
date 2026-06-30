@@ -62,6 +62,32 @@ impl GoalSpec {
         !self.acceptance_criteria.is_empty()
     }
 
+    /// Validate that every `target_elements` ID is present in `available_elements`.
+    ///
+    /// - Returns `Ok(())` when `target_elements` is empty or `available_elements`
+    ///   is `None` (availability unknown, skip check).
+    /// - Returns `Err` with a human-readable message listing the unknown IDs.
+    pub fn validate(&self, available_elements: Option<&[String]>) -> Result<(), Vec<String>> {
+        if self.target_elements.is_empty() {
+            return Ok(());
+        }
+        let available = match available_elements {
+            Some(a) => a,
+            None => return Ok(()),
+        };
+        let unknown: Vec<String> = self
+            .target_elements
+            .iter()
+            .filter(|id| !available.iter().any(|a| a == *id))
+            .cloned()
+            .collect();
+        if unknown.is_empty() {
+            Ok(())
+        } else {
+            Err(unknown)
+        }
+    }
+
     /// Render the goal as a rich prompt string, embedding criteria and constraints.
     ///
     /// If only `statement` is set, returns it unchanged (backward-compatible).

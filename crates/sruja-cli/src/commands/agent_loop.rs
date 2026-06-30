@@ -884,9 +884,8 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
     if io::stdin().is_terminal() {
         eprintln!();
-        eprintln!("Goal: {}", options.goal);
-        eprintln!("Model: {model}");
-        eprintln!("Max iterations: {max_iterations}");
+        eprintln!("🎯  {}", options.goal);
+        eprintln!("   {}  ·  Max iterations: {max_iterations}", model);
         eprintln!();
     }
 
@@ -1011,7 +1010,17 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             }
         }
         GateOutcome::Proceed { plan, record } => {
-            println!("✓  Calibration gate: PROCEED ({:?})", plan.verdict);
+            let verdict_human = match plan.verdict {
+                sruja_agent::calibration::Verdict::ProceedSilent => "proceeding autonomously",
+                sruja_agent::calibration::Verdict::ProceedAndFlag => {
+                    "proceeding (flagged for review)"
+                }
+                sruja_agent::calibration::Verdict::ProceedCitingPrecedent => {
+                    "proceeding (precedent exists)"
+                }
+                sruja_agent::calibration::Verdict::Ask => "needs approval",
+            };
+            eprintln!("✓  Calibration gate: {verdict_human}");
             // Write the calibration DR to .sruja/decisions/ if present.
             if let Some(dr) = record {
                 let decisions_dir = repo_path.join(".sruja").join("decisions");
@@ -1022,7 +1031,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                     if let Err(e) = std::fs::write(&path, dr.to_markdown()) {
                         eprintln!("   Warning: could not write calibration DR: {e}");
                     } else {
-                        println!("   Calibration DR: {}", path.display());
+                        eprintln!("   Calibration DR: {}", path.display());
                     }
                 }
             }
@@ -1070,8 +1079,9 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     // ── Event channel for plan preview (U2) + status bar (U3) ──────────
     let (event_tx, mut event_rx) = mpsc::channel::<LoopEvent>(128);
     let show_plan = options.show_plan;
-    let is_tty = io::stderr().is_terminal();
 
+    // The render task handles panics gracefully via tokio's JoinHandle.
+    // A panic here doesn't crash the process — the loop continues.
     let render_task = tokio::spawn(async move {
         let mut status_bar = StatusBar::new();
         while let Some(event) = event_rx.recv().await {
@@ -1081,16 +1091,14 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                     ask_plan,
                 } => {
                     if show_plan || ask_plan.verdict.should_ask() {
-                        loop_events::render_plan_preview(plan_brief, ask_plan);
+                        loop_events::render_plan_preview(plan_brief, ask_plan, show_plan);
                     }
                 }
                 LoopEvent::Done { .. } => {
                     status_bar.finish_line();
                 }
                 _ => {
-                    if is_tty {
-                        status_bar.render(&event);
-                    }
+                    status_bar.render(&event);
                 }
             }
         }

@@ -54,6 +54,8 @@ pub struct RouterConfig {
     pub tiers: HashMap<TaskTier, String>,
     pub pricing: HashMap<String, Pricing>,
     pub spend_cap_usd: Option<f64>,
+    /// Fallback pricing used when a model is not found in the primary pricing map.
+    pub fallback_pricing: Option<Pricing>,
 }
 
 impl Default for RouterConfig {
@@ -100,6 +102,7 @@ impl Default for RouterConfig {
             tiers,
             pricing,
             spend_cap_usd: None,
+            fallback_pricing: None,
         }
     }
 }
