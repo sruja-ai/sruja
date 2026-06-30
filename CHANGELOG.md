@@ -5,6 +5,25 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.64.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.63.0...sruja-v0.64.0) (2026-06-30)
+
+
+### Features
+
+* **agent:** add LoopEvent stream from Agent::run_loop (U1) ([9148587](https://github.com/sruja-ai/sruja/commit/9148587eecd35663ddcf4df20ed53d55d906be6d))
+* **agent:** add plan preview, status bar, changelog, git checkpoint (U2-U5) ([59aec91](https://github.com/sruja-ai/sruja/commit/59aec910f3b8f78882fbf16e6e0dd9fb1fd4ab20))
+
+
+### Bug Fixes
+
+* **agent:** address code review P0+P1 — emit PlanReady, drain on error ([27c9d29](https://github.com/sruja-ai/sruja/commit/27c9d29eb4d8347af23fcc4a195d6573885e4088))
+* **agent:** emit PlanReady before adaptive routing for --show-plan ([a823203](https://github.com/sruja-ai/sruja/commit/a823203f60daef100305b5fec77d0b6e9861628c))
+* **dsl:** update Agent description and add CLI→Agent relationship ([f68e4c2](https://github.com/sruja-ai/sruja/commit/f68e4c22ec5cabda14c69b7f220146e786f552f3))
+* **eval:** add git reset before test.patch, fix rename-001 gold/test diffs ([4cd1055](https://github.com/sruja-ai/sruja/commit/4cd105549bd6f109bbb154be097c86fffa48b23a))
+* **eval:** fix eval harness — instance.toml paths, test names, and test.diffs ([59f635f](https://github.com/sruja-ai/sruja/commit/59f635f74bc486191694c49e6c8eba6fcf3ad4a7))
+* **gitignore:** restore .sruja/ directory pattern for subdirectory coverage ([a845fb5](https://github.com/sruja-ai/sruja/commit/a845fb59ad711f91de9444fc8f6b49d68b02da3c))
+* resolve unused import and unused variable warnings in compression.rs ([a254872](https://github.com/sruja-ai/sruja/commit/a254872dd5b2cfa99606b3f277fccb1b77b9f665))
+
 ## [0.63.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.62.0...sruja-v0.63.0) (2026-06-29)
 
 
