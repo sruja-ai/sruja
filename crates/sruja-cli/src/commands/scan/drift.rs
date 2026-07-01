@@ -43,26 +43,26 @@ pub(crate) fn should_fail_on_violations(
                     return true;
                 }
                 "layer-violations" | "layer"
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation)
-                            && matches!(v.severity, sruja_diff::Severity::Error)) =>
+                    if violations.iter().any(|v| {
+                        matches!(v.kind, sruja_diff::ViolationKind::LayerViolation)
+                            && matches!(v.severity, sruja_diff::Severity::Error)
+                    }) =>
                 {
                     return true;
                 }
                 "god-modules" | "god"
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule)
-                            && matches!(v.severity, sruja_diff::Severity::Error)) =>
+                    if violations.iter().any(|v| {
+                        matches!(v.kind, sruja_diff::ViolationKind::GodModule)
+                            && matches!(v.severity, sruja_diff::Severity::Error)
+                    }) =>
                 {
                     return true;
                 }
                 "orphans"
-                    if violations
-                        .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent)
-                            && matches!(v.severity, sruja_diff::Severity::Error)) =>
+                    if violations.iter().any(|v| {
+                        matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent)
+                            && matches!(v.severity, sruja_diff::Severity::Error)
+                    }) =>
                 {
                     return true;
                 }

@@ -60,7 +60,7 @@ pub use cognition::{
 };
 pub use goal::GoalSpec;
 pub use llm::{DEFAULT_MODEL, PREMIUM_MODEL};
-pub use manifest::LoopManifest;
+pub use manifest::{LoopManifest, PipelineConfig, RecoveryStrategy, StageKind};
 pub use memory::{AgenticMemory, CurationReport, LowUtilityEntry, MergeSuggestion, StaleEntry};
 
 // Re-export shared learning types from sruja-graph for backward compatibility.

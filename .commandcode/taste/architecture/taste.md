@@ -8,3 +8,4 @@
 - Use LLM-driven extraction for architecture understanding over pattern-based or static analysis alone. Confidence: 0.75
 - Use rig-core (Rig) for LLM model integration to support multiple providers (OpenAI, OpenRouter, etc.) through a single interface. Confidence: 0.65
 - Generate a pipeline YAML from the user's goal, allow the user to modify it, then follow the pipeline YAML for the agent loop. Confidence: 0.75
+- Prefer minimal consolidation over creating new abstractions; when adding features, simplify and consolidate existing systems rather than building new complex types or modules. Confidence: 0.70

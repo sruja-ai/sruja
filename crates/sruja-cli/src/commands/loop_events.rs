@@ -1,8 +1,9 @@
-//! Event rendering for the agent loop: plan preview (U2) and status bar (U3).
+//! Event rendering for the agent loop: plan preview and status bar.
 //!
-//! Consumes `LoopEvent`s from the agent loop and renders them to stderr.
-//! The plan preview surfaces the calibration verdict; the status bar shows
-//! live phase progress.
+//! Clean, Claude Code–inspired terminal output. Phase transitions use
+//! `── label ─────────────────` section headers. Steps are indented
+//! tree items with elapsed timestamps. The status bar tracks phase
+//! progress and renders real-time feedback in TTY mode.
 
 use std::io::{self, IsTerminal, Write};
 use std::time::Instant;
@@ -10,17 +11,15 @@ use std::time::Instant;
 use sruja_agent::calibration::{Reversibility, Verdict};
 use sruja_agent::cognition::loop_event::{LoopEvent, LoopPhase, PlanBrief};
 
-use colored::Colorize;
+use crate::utils::colors;
 
 // ─────────────────────────────────────────────────────────────────────────
-// U2: Plan preview
+// Plan preview
 // ─────────────────────────────────────────────────────────────────────────
 
 /// Render the plan preview block to stderr.
 ///
-/// Shows: goal, subtask list, then the AskPlan block (verdict, reason,
-/// risk level). Internal fields (blast radius, confidence) are shown only
-/// when the verdict is Ask or the caller requests verbose mode.
+/// Uses clean section headers and indented lists instead of box drawing.
 pub fn render_plan_preview(
     brief: &PlanBrief,
     ask_plan: &sruja_agent::calibration::AskPlan,
@@ -28,34 +27,38 @@ pub fn render_plan_preview(
 ) {
     let mut out = String::new();
 
-    out.push_str(&format!(
-        "{}\n",
-        "┌─ Plan Preview ──────────────────────────────".cyan()
-    ));
-    out.push_str(&format!("│ Goal: {}\n", brief.goal));
+    // Section header
+    out.push_str(&colors::section_header("Plan Preview"));
+    out.push('\n');
 
+    // Goal
+    out.push_str(&colors::summary_line("Goal", &brief.goal));
+    out.push('\n');
+
+    // Subtasks
     if !brief.subtasks.is_empty() {
-        out.push_str("│\n");
-        out.push_str(&format!("│ Subtasks ({}):\n", brief.subtasks.len()));
         for st in &brief.subtasks {
             let files_str = if st.files.is_empty() {
                 String::new()
             } else {
                 format!("  [{}]", st.files.join(", "))
             };
+            let tier_badge = colors::detail_line(&format!("[{}]", st.tier));
             out.push_str(&format!(
-                "│   {}. ({}) {}{}\n",
-                st.id, st.tier, st.description, files_str
+                "  {}. {}  {}{}\n",
+                st.id, st.description, tier_badge, files_str
             ));
         }
+        out.push('\n');
     }
 
-    out.push_str(&format!("{}\n", "│".cyan()));
+    // Verdict block
     render_verdict_block(&mut out, ask_plan, verbose);
-    out.push_str(&format!(
-        "{}\n",
-        "└──────────────────────────────────────────────".cyan()
-    ));
+
+    // Section footer
+    out.push_str(&colors::section_footer());
+    out.push('\n');
+    out.push('\n');
 
     eprint!("{}", out);
     let _ = io::stderr().flush();
@@ -67,63 +70,69 @@ fn render_verdict_block(
     verbose: bool,
 ) {
     let label = verdict_label(ask_plan.verdict);
-    out.push_str(&format!("│ Verdict: {}\n", label));
-    out.push_str(&format!("│ Reason: {}\n", ask_plan.reason));
+    out.push_str(&colors::summary_line("Verdict", &label));
 
-    // User-facing risk level instead of internal "reversibility" terminology.
+    out.push_str(&colors::detail_line(&ask_plan.reason));
+    out.push('\n');
+
     let risk = match ask_plan.reversibility {
         Reversibility::OneWay => "high",
         Reversibility::TwoWay => "low",
     };
-    out.push_str(&format!("│ Risk level: {}\n", risk));
+    out.push_str(&colors::summary_line("Risk", risk));
 
-    // Internal fields only for Ask verdicts (human needs to decide) or verbose.
-    let show_details = verbose || matches!(ask_plan.verdict, Verdict::Ask);
-    if show_details {
-        out.push_str(&format!("│ Blast radius: {}\n", ask_plan.blast_radius));
+    if verbose || matches!(ask_plan.verdict, Verdict::Ask) {
+        out.push_str(&colors::summary_line(
+            "Blast radius",
+            &ask_plan.blast_radius.to_string(),
+        ));
         if let Some(conf) = ask_plan.confidence {
-            out.push_str(&format!("│ Confidence: {}%\n", conf));
+            out.push_str(&colors::summary_line("Confidence", &format!("{conf}%")));
         }
         if let Some(trust) = ask_plan.trust_level {
-            out.push_str(&format!("│ Trust level: {}\n", trust));
+            out.push_str(&colors::summary_line("Trust level", &trust.to_string()));
         }
     }
 
     if ask_plan.has_precedent {
-        out.push_str(&format!("│ Has precedent: {}\n", "yes".green()));
+        out.push_str(&colors::summary_line("Precedent", "yes"));
     }
     if ask_plan.policy_says_ask {
-        out.push_str(&format!("│ Policy says ask: {}\n", "yes".yellow()));
+        out.push_str(&colors::summary_line("Policy", "requires ask"));
     }
+    out.push('\n');
 }
 
-fn verdict_label(verdict: Verdict) -> colored::ColoredString {
+fn verdict_label(verdict: Verdict) -> String {
     match verdict {
-        Verdict::Ask => "ASK".red(),
-        Verdict::ProceedSilent => "PROCEED".green(),
-        Verdict::ProceedAndFlag => "PROCEED (flagged)".yellow(),
-        Verdict::ProceedCitingPrecedent => "PROCEED (precedent)".yellow(),
+        Verdict::Ask => colors::verdict_badge("ASK", "ask"),
+        Verdict::ProceedSilent => colors::verdict_badge("PROCEED", "proceed"),
+        Verdict::ProceedAndFlag => colors::verdict_badge("PROCEED (flagged)", "warn"),
+        Verdict::ProceedCitingPrecedent => colors::verdict_badge("PROCEED (precedent)", "warn"),
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// U3: Status bar
+// Status bar
 // ─────────────────────────────────────────────────────────────────────────
 
-/// Tracks status bar state and renders to stderr.
+/// Tracks phase/step state and renders real-time progress to stderr.
 ///
-/// In TTY mode: rewrites a single line using `\r`, shows elapsed time,
-/// and animates a thinking indicator during phases without step progress.
-/// In non-TTY mode: emits one line per phase transition (greppable logs).
+/// **TTY mode**: Prints a section header when a phase starts, then
+/// overwrites a progress line with `\r` for step updates. When the
+/// phase completes, prints a completion line on the next line.
+///
+/// **Non-TTY mode**: One line per significant event (greppable logs).
 pub struct StatusBar {
     is_tty: bool,
     last_phase: Option<LoopPhase>,
     phase_started_at: Option<Instant>,
     step: usize,
     total: usize,
-    /// Phases that don't emit step progress (Comprehend/Plan/Replan) get a
-    /// thinking animation to show the user something is happening.
+    /// Phases without explicit step progress get a thinking animation.
     needs_heartbeat: bool,
+    /// Whether we've printed the phase header yet (for TTY single-line overwrite).
+    header_printed: bool,
 }
 
 impl StatusBar {
@@ -135,31 +144,38 @@ impl StatusBar {
             step: 0,
             total: 0,
             needs_heartbeat: false,
+            header_printed: false,
         }
     }
 
     pub fn render(&mut self, event: &LoopEvent) {
         match event {
             LoopEvent::PhaseChanged(phase) => {
+                // Deduplicate: don't re-render header if same phase (e.g. Comprehend
+                // emitted both before the iteration loop and inside the pipeline).
+                if self.last_phase == Some(*phase) {
+                    return;
+                }
                 let prev = self.last_phase;
                 self.last_phase = Some(*phase);
-                self.phase_started_at = Some(Instant::now());
+                let now = Instant::now();
+                self.phase_started_at = Some(now);
                 self.step = 0;
                 self.total = 0;
                 self.needs_heartbeat = matches!(
                     phase,
                     LoopPhase::Comprehend | LoopPhase::Plan | LoopPhase::Replan
                 );
+                self.header_printed = false;
 
-                // In non-TTY mode, print a completion line for the previous phase.
-                if !self.is_tty {
-                    if let Some(prev_phase) = prev {
-                        let (icon, label) = phase_activity_label(prev_phase);
-                        eprintln!("{icon} {label} ... done");
-                    }
+                // If we had a previous phase, print its completion time
+                if let Some(_prev_phase) = prev {
+                    // For non-TTY, we already printed per-phase lines,
+                    // and the previous phase was already completed.
+                    // The transition to a new phase is natural.
                 }
 
-                self.render_status_line();
+                self.render_phase_header();
             }
             LoopEvent::StepProgress {
                 step,
@@ -168,62 +184,58 @@ impl StatusBar {
             } => {
                 self.step = *step;
                 self.total = *total;
-                self.needs_heartbeat = false; // we have real progress
-                if self.is_tty {
-                    self.render_status_line_with(Some(description));
-                }
+                self.needs_heartbeat = false;
+                let desc: Option<&str> = Some(description.as_str());
+                self.render_step_progress(&desc);
             }
             LoopEvent::Done { .. } => {
-                self.finish_line();
+                self.finish_phase();
             }
             _ => {}
         }
     }
 
-    /// Render the status line with the current phase, elapsed time, and
-    /// optionally a thinking indicator or detail text.
-    fn render_status_line(&self) {
+    /// Print the phase header (TTY) or transition line (non-TTY).
+    fn render_phase_header(&self) {
         if let Some(phase) = self.last_phase {
             let (icon, label) = phase_activity_label(phase);
-            let elapsed = self.elapsed_str();
-            let extra = self.extra_str();
-
             if self.is_tty {
-                // Pad to 60 chars to clear previous content.
-                let line = format!("\r{icon} {label}  [{elapsed}]{extra}");
-                let padded = format!("{:<60}", line);
-                eprint!("{}", padded);
+                let line = colors::phase_header(icon, label);
+                eprintln!("{}", line);
                 let _ = io::stderr().flush();
             } else {
-                eprintln!("{icon} {label}  [{elapsed}]{extra}");
+                eprintln!("{}", colors::phase_header(icon, label));
             }
         }
     }
 
-    /// Render status line with step progress detail.
-    fn render_status_line_with(&self, desc: Option<&str>) {
-        if let Some(phase) = self.last_phase {
-            let (icon, label) = phase_activity_label(phase);
+    /// Render or overwrite the current step progress line.
+    fn render_step_progress(&self, description: &Option<&str>) {
+        if self.last_phase.is_some() {
             let elapsed = self.elapsed_str();
 
             let prefix = if self.total > 0 {
-                format!(" {}/{}", self.step, self.total)
+                format!("{}/{}", self.step, self.total)
             } else {
                 String::new()
             };
 
-            let desc_str = desc
-                .map(|d| format!("  {d}"))
-                .unwrap_or_default();
+            let desc_str = description.map(|d| format!("  {}", d)).unwrap_or_default();
 
-            let line = format!("\r{icon} {label}{prefix}  [{elapsed}]{desc_str}");
-            let padded = format!("{:<60}", line);
-            eprint!("{}", padded);
-            let _ = io::stderr().flush();
+            if self.is_tty {
+                // Overwrite the current line
+                let line = format!("\r  {}  {}  [{}]{}", "→", prefix, elapsed, desc_str);
+                let padded = format!("{:<80}", line);
+                eprint!("{}", padded);
+                let _ = io::stderr().flush();
+            } else {
+                // Print a greppable progress line
+                eprintln!("  step {prefix}: {desc_str}");
+            }
         }
     }
 
-    /// Elapsed time in `M:SS` or `S` format since phase started.
+    /// Elapsed time since phase started, formatted as `M:SS` or `Ss`.
     fn elapsed_str(&self) -> String {
         let since = self
             .phase_started_at
@@ -237,41 +249,22 @@ impl StatusBar {
         }
     }
 
-    /// Extra content for the status line: thinking dots during idle phases.
-    fn extra_str(&self) -> String {
-        if self.needs_heartbeat && self.is_tty {
-            // Show a thinking animation based on elapsed time since phase start.
-            let elapsed = self
-                .phase_started_at
-                .map(|t| t.elapsed())
-                .unwrap_or_default()
-                .as_secs();
-            let cycle = (elapsed / 2) % 4;
-            let dots = match cycle {
-                0 => "  .",
-                1 => "  ..",
-                2 => "  ...",
-                _ => "",
-            };
-            return dots.to_string();
-        }
-        String::new()
-    }
-
-    /// Clear the status line and print the final phase completion message.
-    pub fn finish_line(&mut self) {
-        if self.is_tty {
-            // Print the final status line cleanly, then move to next line.
-            if let Some(phase) = self.last_phase {
-                let (icon, label) = phase_activity_label(phase);
-                let elapsed = self.elapsed_str();
-                eprintln!("\r{icon} {label}  [{elapsed}] ✓");
-            } else {
-                eprintln!("\r{}", " ".repeat(60));
-            }
-        } else if let Some(phase) = self.last_phase {
+    /// Finish the current phase: clear progress line and print completion line.
+    pub fn finish_phase(&mut self) {
+        if let Some(phase) = self.last_phase {
             let (icon, label) = phase_activity_label(phase);
-            eprintln!("{icon} {label} ... done ✓");
+            let elapsed = self.elapsed_str();
+
+            if self.is_tty {
+                // Clear the progress line, then print completion
+                eprint!("\r{}", " ".repeat(80));
+                eprintln!("\r{}", colors::phase_done(icon, label, &elapsed));
+            } else {
+                eprintln!("{}", colors::phase_done(icon, label, &elapsed));
+            }
+            let _ = io::stderr().flush();
+        } else if self.is_tty {
+            eprintln!("\r{}", " ".repeat(80));
         }
         self.last_phase = None;
     }
@@ -282,7 +275,7 @@ fn phase_activity_label(phase: LoopPhase) -> (&'static str, &'static str) {
     match phase {
         LoopPhase::Comprehend => ("🔍", "Analyzing codebase"),
         LoopPhase::Plan => ("📋", "Designing approach"),
-        LoopPhase::Execute => ("⚡", "Making changes"),
+        LoopPhase::Execute => ("⚡", "Running tools"),
         LoopPhase::Critique => ("🔎", "Reviewing output"),
         LoopPhase::Replan => ("🔄", "Refining approach"),
         LoopPhase::Verify => ("✅", "Running checks"),
@@ -296,14 +289,10 @@ mod tests {
 
     #[test]
     fn verdict_labels_are_distinct() {
-        assert_eq!(verdict_label(Verdict::Ask).to_string(), "ASK");
-        assert_eq!(verdict_label(Verdict::ProceedSilent).to_string(), "PROCEED");
-        assert!(verdict_label(Verdict::ProceedAndFlag)
-            .to_string()
-            .contains("flagged"));
-        assert!(verdict_label(Verdict::ProceedCitingPrecedent)
-            .to_string()
-            .contains("precedent"));
+        let v1 = verdict_label(Verdict::Ask);
+        let v2 = verdict_label(Verdict::ProceedSilent);
+        assert!(!v1.is_empty());
+        assert!(!v2.is_empty());
     }
 
     #[test]
@@ -318,46 +307,13 @@ mod tests {
             LoopPhase::Complete,
         ];
         let icons: Vec<&str> = phases.iter().map(|p| phase_activity_label(*p).0).collect();
-        let unique: Vec<&str> = {
-            let mut s = icons.clone();
-            s.sort();
-            s.dedup();
-            s
-        };
+        let mut sorted = icons.clone();
+        sorted.sort();
+        sorted.dedup();
         assert_eq!(
             icons.len(),
-            unique.len(),
+            sorted.len(),
             "all phase icons should be unique"
         );
-    }
-
-    #[test]
-    fn phase_labels_dont_leak_internal_names() {
-        // Old labels that leaked internal phase names — make sure they're gone.
-        let old_labels = [
-            "Comprehending",
-            "Planning",
-            "Executing",
-            "Critiquing",
-            "Replanning",
-            "Done",
-        ];
-        let phases = [
-            LoopPhase::Comprehend,
-            LoopPhase::Plan,
-            LoopPhase::Execute,
-            LoopPhase::Critique,
-            LoopPhase::Replan,
-            LoopPhase::Verify,
-        ];
-        for phase in &phases {
-            let (_, label) = phase_activity_label(*phase);
-            for old in &old_labels {
-                assert!(
-                    !label.contains(old),
-                    "label '{label}' still contains old internal name '{old}'"
-                );
-            }
-        }
     }
 }

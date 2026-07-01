@@ -353,9 +353,9 @@ fn validate_target(
     query: Option<&str>,
 ) -> Result<(), CliError> {
     let count = file.is_some() as u8 + element_id.is_some() as u8 + query.is_some() as u8;
-    if count != 1 {
+    if count > 1 {
         return Err(CliError::validation(
-            "Exactly one of --file, --element-id, or --query must be provided.".to_string(),
+            "Only one of --file, --element-id, or --query may be provided at a time.".to_string(),
         ));
     }
     Ok(())
@@ -796,6 +796,7 @@ fn build_agent_history_json(
 
 fn build_facts_payload(
     options: &AgentRunOptions,
+    query: Option<&str>,
     resolved_element_id: &Option<String>,
     focus_json: &Value,
     impact_json: &Value,
@@ -811,7 +812,7 @@ fn build_facts_payload(
         "target": {
             "file": options.file,
             "element_id": options.element_id,
-            "query": options.query,
+            "query": query,
             "resolved_element_id": resolved_element_id,
         },
         "facts": {
@@ -843,6 +844,17 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
         .unwrap_or_else(generate_run_id);
     validate_target(options.file, options.element_id, options.query)?;
 
+    // When no focus flag is provided, infer the query from the goal text.
+    // This lets `sruja agent plan --goal "..."` work without requiring
+    // --file/--element-id/--query.
+    let query = options.query.or_else(|| {
+        if options.file.is_none() && options.element_id.is_none() {
+            Some(options.goal)
+        } else {
+            None
+        }
+    });
+
     let budgets = load_agent_budgets(
         repo_path,
         ai_mode,
@@ -859,7 +871,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
     }
 
     // Resolve target element id (if possible). For query we can’t reliably resolve yet.
-    let resolved_element_id = if options.query.is_none() {
+    let resolved_element_id = if query.is_none() {
         let kg = crate::graph_store::load_or_build_graph(repo_path)?;
         Some(focus_cmd::resolve_target(
             &kg,
@@ -873,8 +885,13 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
 
     let scan_graph = crate::commands::scan_repo_cached(repo_path)?;
 
-    let (focus_json, surfaced_learning_ids) =
-        build_focus_json(&scan_graph, repo_path, &resolved_element_id, &options, &run_id)?;
+    let (focus_json, surfaced_learning_ids) = build_focus_json(
+        &scan_graph,
+        repo_path,
+        &resolved_element_id,
+        &options,
+        &run_id,
+    )?;
     let impact_json = build_impact_json(&scan_graph, &resolved_element_id)?;
     let drift_json = build_drift_json(&scan_graph, repo_path)?;
     let intent_json = build_intent_json(&scan_graph, options.repo);
@@ -882,6 +899,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
 
     let facts_payload = build_facts_payload(
         &options,
+        query,
         &resolved_element_id,
         &focus_json,
         &impact_json,
@@ -1013,7 +1031,7 @@ pub async fn agent_run_to_string(options: AgentRunOptions<'_>) -> Result<String,
                 .file
                 .map(|s| format!("file:{s}"))
                 .or_else(|| options.element_id.map(|s| format!("element_id:{s}")))
-                .or_else(|| options.query.map(|s| format!("query:{s}")))
+                .or_else(|| query.map(|s| format!("query:{s}")))
                 .unwrap_or_else(|| "unknown".to_string()),
             resolved_element_id,
         },

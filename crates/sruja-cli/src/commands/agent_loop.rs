@@ -58,6 +58,7 @@ use super::loop_events::{self, StatusBar};
 
 use super::CliError;
 use crate::config;
+use crate::utils::colors;
 use crate::utils::run_id::generate_run_id;
 use crate::utils::run_snapshots::write_json_snapshot;
 
@@ -264,42 +265,49 @@ impl LiveReportHook {
     fn print_summary(&self) {
         let s = self.state.lock().unwrap();
         let mark = match s.critique_approved {
-            Some(true) => "PASS",
-            Some(false) => "FAIL",
-            None => "---",
+            Some(true) => colors::verdict_badge("PASS", "pass"),
+            Some(false) => colors::verdict_badge("FAIL", "fail"),
+            None => "---".to_string(),
         };
         let score_str = s
             .critique_score
-            .map(|sc| format!("{sc:.1}"))
+            .map(|sc| format!("{:.1}", sc))
             .unwrap_or_else(|| "-".into());
 
         eprintln!(
-            "  [{}/{}] {} | {} subtasks | score {} | ~${:.4}",
-            s.iteration,
-            s.max_iterations,
-            mark,
-            s.subtasks.len(),
-            score_str,
-            s.cost_usd,
+            "{}",
+            colors::summary_line(
+                &format!("Iteration {}/{}", s.iteration, s.max_iterations),
+                &format!(
+                    "{}  {} subtasks  score {}  ~${:.4}",
+                    mark,
+                    s.subtasks.len(),
+                    score_str,
+                    s.cost_usd
+                ),
+            )
         );
 
         // Print persona breakdown
         if !s.persona_results.is_empty() {
             for p in &s.persona_results {
-                let icon = if p.approved { "+" } else { "X" };
+                let icon = if p.approved { "✓" } else { "✗" };
                 eprintln!(
-                    "    [{icon}] {} score={:.1} issues={}",
-                    p.id, p.score, p.issue_count
+                    "{}",
+                    colors::detail_line(&format!(
+                        "[{icon}] {}  score: {:.1}  issues: {}",
+                        p.id, p.score, p.issue_count
+                    ))
                 );
             }
         }
 
         // Print issues
         for issue in &s.issues {
-            eprintln!("    issue: {issue}");
+            eprintln!("{}", colors::detail_line(&format!("issue: {issue}")));
         }
         for f in &s.verify_failures {
-            eprintln!("    verify FAIL: {f}");
+            eprintln!("{}", colors::detail_line(&format!("verify FAIL: {f}")));
         }
     }
 
@@ -352,9 +360,12 @@ impl Hook for LiveReportHook {
         let mut s = self.state.lock().unwrap();
         s.current_phase = "plan".into();
         eprintln!(
-            "  Comprehend: {} elements cited, {} findings",
-            result.cited_elements.len(),
-            result.key_findings.len()
+            "{}",
+            colors::detail_line(&format!(
+                "{} elements cited, {} findings",
+                result.cited_elements.len(),
+                result.key_findings.len()
+            ))
         );
         s.dirty = true;
         drop(s);
@@ -389,9 +400,12 @@ impl Hook for LiveReportHook {
             })
             .collect();
         eprintln!(
-            "  Plan: {} subtasks, {} risks",
-            plan.subtasks.len(),
-            plan.risks.len()
+            "{}",
+            colors::detail_line(&format!(
+                "{} subtasks, {} risks",
+                plan.subtasks.len(),
+                plan.risks.len()
+            ))
         );
         s.dirty = true;
         drop(s);
@@ -405,11 +419,11 @@ impl Hook for LiveReportHook {
         if let Some(st) = s.subtasks.iter_mut().find(|st| st.id == step.id) {
             st.status = "running".into();
         }
+        let kind = format!("{:?}", step.tier).to_lowercase();
+        let desc_trimmed: String = step.description.chars().take(80).collect();
         eprintln!(
-            "  Step {}: {} ({})",
-            step.id,
-            phase_name(step),
-            format!("{:?}", step.tier).to_lowercase()
+            "{}",
+            colors::step_line("→", &step.id, &desc_trimmed, &kind, None)
         );
         s.dirty = true;
         drop(s);
@@ -440,7 +454,7 @@ impl Hook for LiveReportHook {
     async fn before_review(&self) -> HookAction {
         let mut s = self.state.lock().unwrap();
         s.current_phase = "critique".into();
-        eprintln!("  Critique: running persona ensemble...");
+        eprintln!("{}", colors::detail_line("Running persona ensemble..."));
         s.dirty = true;
         drop(s);
         self.write_report();
@@ -631,6 +645,8 @@ pub struct AgentLoopOptions<'a> {
     pub steer: bool,
     pub resume: bool,
     pub show_plan: bool,
+    pub plan_only: bool,
+    pub show_pipeline: bool,
     pub checkpoint: bool,
     pub no_checkpoint: bool,
     pub changelog: bool,
@@ -642,6 +658,28 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
     // ── Load .sruja/loop.toml for defaults ────────────────────────────────
     let manifest = LoopManifest::load_from_path(repo_path);
+
+    // ── Show pipeline (early return, no execution) ───────────────────────
+    if options.show_pipeline {
+        let pipeline = &manifest.pipeline;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(pipeline)
+                .map_err(|e| CliError::validation(format!("pipeline serialization: {e}")))?
+        );
+        return Ok(());
+    }
+
+    // ── Plan-only mode ───────────────────────────────────────────────────
+    // Override the pipeline to skip verification and block file mutations.
+    // The agent comprehends the goal and runs tools to produce a plan, but
+    // cannot write files. Output is printed at the end.
+    if options.plan_only {
+        eprintln!(
+            "{}",
+            colors::detail_line("Plan-only mode: producing plan without code changes.")
+        );
+    }
 
     // ── Resolve multi-provider configuration ──────────────────────────────
     // Supports different providers for different tasks (cheap/mid/premium/review)
@@ -884,8 +922,14 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
     if io::stdin().is_terminal() {
         eprintln!();
-        eprintln!("🎯  {}", options.goal);
-        eprintln!("   {}  ·  Max iterations: {max_iterations}", model);
+        eprintln!("{}", colors::section_header("Agent Loop"));
+        eprintln!("{}", colors::summary_line("Goal", options.goal));
+        eprintln!("{}", colors::summary_line("Model", model));
+        eprintln!(
+            "{}",
+            colors::summary_line("Max iterations", &max_iterations.to_string())
+        );
+        eprintln!("{}", colors::section_footer());
         eprintln!();
     }
 
@@ -902,15 +946,16 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     let baseline_path = repo_path.join(".sruja").join("violations.baseline.json");
     if !baseline_path.exists() && !options.no_default_grader && !dry_run {
         let bp = baseline_path.to_string_lossy().to_string();
-        match std::process::Command::new(
-            super::loop_grader::resolve_sruja_binary().as_str(),
-        )
-        .args(["baseline", "-r", ".", "-o", &bp])
-        .current_dir(repo_path)
-        .output()
+        match std::process::Command::new(super::loop_grader::resolve_sruja_binary().as_str())
+            .args(["baseline", "-r", ".", "-o", &bp])
+            .current_dir(repo_path)
+            .output()
         {
             Ok(output) if output.status.success() => {
-                eprintln!("  ✓ Violations baseline created: {}", bp);
+                eprintln!(
+                    "{}",
+                    colors::detail_line(&format!("✓ Violations baseline created: {}", bp))
+                );
             }
             Ok(output) => {
                 let stderr = String::from_utf8_lossy(&output.stderr);
@@ -993,10 +1038,32 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     // Checkpoint directory for crash-resume support.
     let checkpoint_dir = crate::utils::run_snapshots::run_dir(repo_path, &run_id);
 
+    // Plan-only mode: remove verify stage, force dry-run, disable grader.
+    let pipeline = if options.plan_only {
+        // Keep only comprehend + implement stages (skip verify).
+        // The agent can still run the tool loop to produce output, but
+        // dry-run blocks all file mutations.
+        let stages: Vec<sruja_agent::StageKind> = manifest
+            .pipeline
+            .stages
+            .iter()
+            .filter(|s| !matches!(s, sruja_agent::StageKind::Verify))
+            .copied()
+            .collect();
+        sruja_agent::PipelineConfig {
+            stages,
+            ..manifest.pipeline.clone()
+        }
+    } else {
+        manifest.pipeline.clone()
+    };
+    let dry_run = options.plan_only || dry_run;
+
     let loop_config = LoopConfig {
         max_iterations,
         spend_cap_usd,
         detect_oscillation,
+        pipeline,
         verifier,
         checkpoint_dir: Some(checkpoint_dir.clone()),
         ..Default::default()
@@ -1021,26 +1088,40 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
     match &gate {
         GateOutcome::Halt { reason } => {
-            eprintln!("⛔  Calibration gate: HALT");
-            eprintln!("   {reason}");
+            eprintln!("{}", colors::section_header("Calibration Gate"));
+            eprintln!("{}", colors::verdict_badge("HALT", "halt"));
+            eprintln!("{}", colors::detail_line(reason));
+            eprintln!();
 
             // Interactive prompt when stdin is a TTY (not piped/redirected).
             if io::stdin().is_terminal() {
-                eprintln!("   Proceed anyway? [y/N]: ");
-                eprint!("   ");
+                eprintln!("{}", colors::detail_line("Proceed anyway? [y/N]: "));
+                eprint!("  ");
                 io::stderr().flush().ok();
                 let mut input = String::new();
                 io::stdin().read_line(&mut input).ok();
                 let choice = input.trim().to_lowercase();
                 if choice != "y" && choice != "yes" {
-                    eprintln!("   Aborted. Use --yes to force (no calibration DR).");
+                    eprintln!(
+                        "{}",
+                        colors::detail_line("Aborted. Use --yes to force (no calibration DR).")
+                    );
                     return Ok(());
                 }
-                eprintln!("   Proceeding despite calibration Ask (forced by user).");
+                eprintln!(
+                    "{}",
+                    colors::detail_line("Proceeding despite calibration Ask (forced by user).")
+                );
             } else {
-                eprintln!("   Use --yes to override (no calibration DR will be written).");
+                eprintln!(
+                    "{}",
+                    colors::detail_line(
+                        "Use --yes to override (no calibration DR will be written)."
+                    )
+                );
                 return Ok(());
             }
+            eprintln!("{}", colors::section_footer());
         }
         GateOutcome::Proceed { plan, record } => {
             let verdict_human = match plan.verdict {
@@ -1053,7 +1134,9 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                 }
                 sruja_agent::calibration::Verdict::Ask => "needs approval",
             };
-            eprintln!("✓  Calibration gate: {verdict_human}");
+            eprintln!("{}", colors::section_header("Calibration Gate"));
+            eprintln!("{}", colors::verdict_badge(verdict_human, "info"));
+            eprintln!();
             // Write the calibration DR to .sruja/decisions/ if present.
             if let Some(dr) = record {
                 let decisions_dir = repo_path.join(".sruja").join("decisions");
@@ -1068,6 +1151,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                     }
                 }
             }
+            eprintln!("{}", colors::section_footer());
         }
     }
 
@@ -1093,15 +1177,24 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     let checkpoint = if cp_enabled {
         match GitCheckpoint::create(repo_path) {
             Ok(Some(cp)) => {
-                eprintln!("  ✓ Git checkpoint created: {}", cp.ref_name());
+                eprintln!(
+                    "{}",
+                    colors::detail_line(&format!("✓ Git checkpoint created: {}", cp.ref_name()))
+                );
                 Some(cp)
             }
             Ok(None) => {
-                eprintln!("  ⚠ --checkpoint: not a git repo, skipping checkpoint");
+                eprintln!(
+                    "{}",
+                    colors::detail_line("⚠ --checkpoint: not a git repo, skipping checkpoint")
+                );
                 None
             }
             Err(e) => {
-                eprintln!("  ⚠ Failed to create git checkpoint: {e}");
+                eprintln!(
+                    "{}",
+                    colors::detail_line(&format!("⚠ Failed to create git checkpoint: {e}"))
+                );
                 None
             }
         }
@@ -1128,7 +1221,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                     }
                 }
                 LoopEvent::Done { .. } => {
-                    status_bar.finish_line();
+                    status_bar.finish_phase();
                 }
                 _ => {
                     status_bar.render(&event);
@@ -1136,7 +1229,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             }
         }
         // Clear stale status line when channel closes (error path)
-        status_bar.finish_line();
+        status_bar.finish_phase();
     });
 
     // ── Resume from checkpoint or start fresh ─────────────────────────────
@@ -1145,7 +1238,10 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     let loop_result = if options.resume {
         let cp_dir = crate::utils::run_snapshots::run_dir(repo_path, &run_id);
         if sruja_agent::cognition::RunCheckpoint::exists(&cp_dir) {
-            eprintln!("  Resuming from checkpoint in {}", cp_dir.display());
+            eprintln!(
+                "{}",
+                colors::detail_line(&format!("Resuming from checkpoint in {}", cp_dir.display()))
+            );
             agent
                 .resume_loop(&goal_spec, &loop_config)
                 .await
@@ -1222,6 +1318,15 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     let mut result = loop_result?;
     result.grader_source = grader_source;
 
+    // ── Plan-only mode: print the plan text ─────────────────────────────
+    if options.plan_only {
+        for step in &result.final_result.step_results {
+            if step.status == sruja_agent::cognition::StepStatus::Ok && !step.output.is_empty() {
+                println!("\n{}", step.output);
+            }
+        }
+    }
+
     // ── Persist loop trajectory to disk ─────────────────────────────────
     // Write the full LoopResult to .sruja/runs/<run_id>/loop.json so
     // `sruja run show` and `sruja run export` can inspect it post-hoc.
@@ -1287,12 +1392,21 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         let last = result.iterations.last();
         let passed = last.map(|i| i.verify_failed.is_empty()).unwrap_or(true);
         if passed {
-            println!("✓  Verification passed (in-loop grader)");
+            println!(
+                "{}",
+                colors::verdict_badge("✓ Verification passed (in-loop grader)", "pass")
+            );
         } else {
-            eprintln!("⚠  Verification FAILED (in-loop grader vetoed convergence):");
+            eprintln!(
+                "{}",
+                colors::verdict_badge(
+                    "⚠ Verification FAILED (in-loop grader vetoed convergence)",
+                    "fail"
+                )
+            );
             if let Some(i) = last {
                 for f in &i.verify_failed {
-                    eprintln!("  ✗ {f}");
+                    eprintln!("  {}", colors::detail_line(&format!("✗ {f}")));
                 }
             }
         }
@@ -1315,9 +1429,15 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             if let Some(passed) = verify_passed {
                 println!();
                 if passed {
-                    println!("Verification: PASSED");
+                    println!("{}", colors::verdict_badge("Verification: PASSED", "pass"));
                 } else {
-                    println!("Verification: FAILED (loop result may be unreliable)");
+                    println!(
+                        "{}",
+                        colors::verdict_badge(
+                            "Verification: FAILED (loop result may be unreliable)",
+                            "fail"
+                        )
+                    );
                 }
             }
         }
@@ -1328,66 +1448,92 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
 fn print_loop_result_human(result: &sruja_agent::LoopResult) {
     let status = if result.converged {
-        "CONVERGED"
+        colors::verdict_badge("CONVERGED", "pass")
     } else {
-        "NOT CONVERGED"
+        colors::verdict_badge("NOT CONVERGED", "fail")
     };
-    println!("═══════════════════════════════════════════");
-    println!("  Agent Loop: {status}");
-    println!("═══════════════════════════════════════════");
-    println!();
-    println!("Goal: {}", result.goal);
+
     println!(
-        "Iterations: {} | Termination: {:?}",
-        result.iteration_count(),
-        result.termination
+        "{}",
+        colors::section_header(&format!("Agent Loop  {}", status))
+    );
+    println!();
+    println!("{}", colors::summary_line("Goal", &result.goal));
+    println!(
+        "{}",
+        colors::summary_line(
+            "Iterations",
+            &format!(
+                "{}  ·  Termination: {:?}",
+                result.iteration_count(),
+                result.termination
+            ),
+        )
     );
     println!(
-        "Tokens: {} prompt + {} completion = {} total (~${:.4})",
-        result.total_usage.prompt_tokens,
-        result.total_usage.completion_tokens,
-        result.total_usage.total_tokens,
-        result.total_usage.estimated_cost_usd()
+        "{}",
+        colors::summary_line(
+            "Tokens",
+            &format!(
+                "{} prompt + {} completion = {} total  ~${:.4}",
+                result.total_usage.prompt_tokens,
+                result.total_usage.completion_tokens,
+                result.total_usage.total_tokens,
+                result.total_usage.estimated_cost_usd()
+            ),
+        )
     );
     println!();
 
     for iter in &result.iterations {
         let mark = if iter.critique_approved {
-            "PASS"
+            colors::verdict_badge("PASS", "pass")
         } else {
-            "FAIL"
+            colors::verdict_badge("FAIL", "fail")
         };
         println!(
-            "  [{}/{}] {} | plan:{} succeed:{} failed:{} score:{:.1} {}",
-            iter.iteration,
-            result.iteration_count(),
-            mark,
-            iter.subtask_count,
-            iter.succeeded,
-            iter.failed,
-            iter.critique_score,
-            if iter.replanned { "(replanned)" } else { "" }
+            "{}",
+            colors::summary_line(
+                &format!("Iteration {}/{}", iter.iteration, result.iteration_count()),
+                &format!(
+                    "{}  {} subtasks  {} ok  {} failed  score: {:.1}{}",
+                    mark,
+                    iter.subtask_count,
+                    iter.succeeded,
+                    iter.failed,
+                    iter.critique_score,
+                    if iter.replanned { "  (replanned)" } else { "" },
+                ),
+            )
         );
         for issue in &iter.critique_issues {
-            println!("         issue: {issue}");
+            println!("{}", colors::detail_line(&format!("issue: {issue}")));
         }
     }
 
     println!();
     if let Some(critique) = result.final_result.critique.as_ref() {
+        let approved_str = if critique.approved {
+            colors::verdict_badge("yes", "pass")
+        } else {
+            colors::verdict_badge("no", "fail")
+        };
         println!(
-            "Final critique: score={:.1} approved={}",
-            critique.score, critique.approved
+            "{}",
+            colors::summary_line(
+                "Final critique",
+                &format!("score: {:.1}  approved: {}", critique.score, approved_str)
+            )
         );
         if !critique.issues.is_empty() {
-            println!("Issues:");
+            println!("{}", colors::detail_line("Issues:"));
             for issue in &critique.issues {
-                println!("  - {issue}");
+                println!("  - {}", issue);
             }
         }
     }
 
-    // U3: Memory retrieval observability.
+    // Memory retrieval observability.
     let comp_ids = &result.final_result.comprehension.retrieved_learning_ids;
     let crit_ids: Vec<&str> = result
         .final_result
@@ -1401,15 +1547,26 @@ fn print_loop_result_human(result: &sruja_agent::LoopResult) {
         all_ids.extend(&crit_ids);
         all_ids.sort_unstable();
         all_ids.dedup();
+        println!();
         println!(
-            "\nMemory: applied {} past learning{} ({})",
-            all_ids.len(),
-            if all_ids.len() == 1 { "" } else { "s" },
-            all_ids.join(", ")
+            "{}",
+            colors::detail_line(&format!(
+                "Applied {} past learning{} ({})",
+                all_ids.len(),
+                if all_ids.len() == 1 { "" } else { "s" },
+                all_ids.join(", "),
+            ))
         );
     } else if !result.converged {
-        println!("\nMemory: no relevant learnings found. Record one: sruja agent record ...");
+        println!();
+        println!(
+            "{}",
+            colors::detail_line("No relevant learnings found. Record one: sruja agent record ...")
+        );
     }
+
+    println!();
+    println!("{}", colors::section_footer());
 }
 
 fn agent_err_to_cli(e: AgentError) -> CliError {

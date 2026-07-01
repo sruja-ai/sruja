@@ -316,8 +316,7 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
             git_commit: git_commit.clone().unwrap_or_default(),
             graph: graph.clone(),
         };
-        serde_json::to_string(&cache)
-            .map_err(|e| CliError::validation(e.to_string()))?
+        serde_json::to_string(&cache).map_err(|e| CliError::validation(e.to_string()))?
     };
     atomic_write_file(&graph_path, graph_json.as_bytes()).map_err(|e| match e {
         CliError::Io(io) => CliError::Io(std::io::Error::new(
@@ -355,7 +354,11 @@ pub async fn sync(repo_root: &str, format: &str) -> Result<(), CliError> {
     };
 
     // Append score history if health_score is available
-    if let Err(e) = append_score_history(repo_path, health_score, crate::commands::git_commit_short(repo_path)) {
+    if let Err(e) = append_score_history(
+        repo_path,
+        health_score,
+        crate::commands::git_commit_short(repo_path),
+    ) {
         eprintln!("Warning: Failed to save score history: {}", e);
     }
 

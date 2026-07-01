@@ -1,5 +1,9 @@
 This guide helps AI agents work effectively with the Sruja codebase.
 
+> **Procedural workflow instructions belong in `.sruja/loop.toml [pipeline]`, not in natural language.**
+> See [`PipelineConfig`] for the explicit stage model that drives the agent loop.
+> This file contains *knowledge and context*, not step-by-step procedures.
+
 ## Table of Contents
 
 - [Quick Reference](#-quick-reference-top-5-commands)
@@ -84,15 +88,7 @@ sruja_check_drift  → verifies architecture rules
 
 ## Before Coding: Shared Understanding
 
-**IMPORTANT**: From the talks, AI produces garbage without shared understanding. Re-running the compiler just produces more garbage.
-
-### Required Process
-
-Before any significant code change:
-
-1. **Reach shared understanding first** - Use "grill me" or equivalent questioning
-2. **Write the spec** - Document intent before code
-3. **Verify against spec** - Test matches spec, not just compilation
+**IMPORTANT**: AI produces garbage without shared understanding. The pipeline config (`.sruja/loop.toml [pipeline]`) defines the deterministic workflow stages. The natural language in this file provides *knowledge* — it does not override the pipeline.
 
 ### Anti-Patterns to Avoid
 

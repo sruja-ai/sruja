@@ -113,10 +113,6 @@ impl CliError {
         match self {
             CliError::Io(e) => {
                 eprintln!("{} System IO error: {}", colors::error("Error:"), e);
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Ensure you have permissions to the directory.");
-                eprintln!("  2. Verify the path exists and is not a broken symlink.");
             }
             CliError::Parse {
                 file,
@@ -134,64 +130,33 @@ impl CliError {
                 for diag in diagnostics {
                     eprintln!("{}", sruja_diagnostics::format_diagnostic(diag));
                 }
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
                 if let Some(f) = fix {
-                    eprintln!("  1. {}", f);
-                } else {
-                    eprintln!("  1. Check syntax highlighting in your editor for errors.");
+                    eprintln!("{} {}", colors::style("Fix:").bold(), f);
                 }
                 if let Some(h) = help {
-                    eprintln!("  2. {}", h);
+                    eprintln!("{} {}", colors::style("Tip:").bold(), h);
                 }
-                eprintln!(
-                    "  3. Run the linter to verify fixes: {}",
-                    colors::info(format!("sruja lint {}", file))
-                );
             }
             CliError::Validation { message, help, fix } => {
-                eprintln!("{} Validation error: {}", colors::error("Error:"), message);
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
+                eprintln!("{} {}", colors::error("Error:"), message);
                 if let Some(f) = fix {
-                    eprintln!("  1. {}", f);
-                } else {
-                    eprintln!("  1. Double check your command arguments.");
+                    eprintln!("{} {}", colors::style("Fix:").bold(), f);
                 }
                 if let Some(h) = help {
-                    eprintln!("  2. {}", h);
+                    eprintln!("{} {}", colors::style("Tip:").bold(), h);
                 }
             }
             CliError::Export(e) => {
                 eprintln!("{} Export error: {}", colors::error("Error:"), e);
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Ensure the target directory is writable.");
-                eprintln!("  2. If exporting to a file, verify the parent path exists.");
             }
             CliError::Json(e) => {
                 eprintln!("{} JSON error: {}", colors::error("Error:"), e);
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Your cached evidence in .sruja/ may be out of date.");
-                eprintln!(
-                    "  2. Run a full sync to refresh: {}",
-                    colors::info("sruja daily")
-                );
             }
             CliError::Scan { message, help } => {
                 eprintln!("{} Scan error: {}", colors::error("Error:"), message);
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
                 if let Some(h) = help {
-                    eprintln!("  1. {}", h);
-                } else {
-                    eprintln!(
-                        "  1. If this is a new repo, run: {}",
-                        colors::info("sruja start")
-                    );
+                    eprintln!("{} {}", colors::style("Tip:").bold(), h);
                 }
-                eprintln!("  2. Ensure your .srujaignore is not excluding all source files.");
             }
             CliError::Timeout { message } => {
                 eprintln!(
@@ -199,22 +164,14 @@ impl CliError {
                     colors::error("Error:"),
                     message
                 );
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. The project may be too large for a single scan pass.");
-                eprintln!("  2. Use .srujaignore to narrow the scope.");
-                eprintln!("  3. If on a slow disk, try increasing the timeout via SRUJA_TIMEOUT environment variable.");
             }
             CliError::FailOnViolations => {
                 eprintln!(
                     "{} Strict check failed: architecture violations detected.",
                     colors::error("Error:")
                 );
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Review violations in the output above.");
                 eprintln!(
-                    "  2. To ignore known violations, run: {}",
+                    "To ignore known violations: {}",
                     colors::info("sruja baseline")
                 );
             }
@@ -224,13 +181,10 @@ impl CliError {
                     colors::error("Error:"),
                     path
                 );
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!(
-                    "  1. Initialize Sruja to get started: {}",
+                    "Initialize to get started: {}",
                     colors::success("sruja start")
                 );
-                eprintln!("  2. This will create .sruja/ and detect your architecture.");
             }
             CliError::ConfigCorrupted { message } => {
                 eprintln!(
@@ -238,23 +192,14 @@ impl CliError {
                     colors::error("Error:"),
                     message
                 );
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
                 eprintln!(
-                    "  1. Attempt to repair by running a sync: {}",
-                    colors::info("sruja daily")
-                );
-                eprintln!(
-                    "  2. If that fails, re-initialize (Caution: overwrites changes): {}",
+                    "Attempt repair: {}  |  Re-initialize: {}",
+                    colors::info("sruja daily"),
                     colors::warning("sruja start --force")
                 );
             }
             CliError::Discovery(message) => {
                 eprintln!("{} Discovery error: {}", colors::error("Error:"), message);
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Ensure the repository root is correct.");
-                eprintln!("  2. Check if the architecture file is valid and readable.");
             }
             CliError::CiGateExceeded { message } => {
                 eprintln!(
@@ -262,11 +207,6 @@ impl CliError {
                     colors::error("Error:"),
                     message
                 );
-                eprintln!();
-                eprintln!("{}", colors::style("Remediation:").bold());
-                eprintln!("  1. Review the impact of your changes.");
-                eprintln!("  2. Consider breaking the change into smaller PRs.");
-                eprintln!("  3. To bypass, add the 'high-impact-approved' label to the PR.");
             }
         }
     }

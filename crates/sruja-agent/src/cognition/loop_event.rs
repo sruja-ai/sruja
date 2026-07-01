@@ -38,6 +38,16 @@ pub enum LoopPhase {
     Complete,
 }
 
+impl LoopPhase {
+    /// Create a LoopPhase from a pipeline [`StageKind`].
+    ///
+    /// Used when the loop is driven by a pipeline config instead of hardcoded
+    /// phase transitions.
+    pub fn from_stage_kind(kind: crate::manifest::StageKind) -> Self {
+        kind.to_loop_phase()
+    }
+}
+
 /// A small serializable subset of [`Plan`] for plan previews.
 ///
 /// Contains only the essential fields needed to render a plan brief to

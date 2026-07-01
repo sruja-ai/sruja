@@ -818,6 +818,72 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             commands::requirements_list(&repo, &format, priority.as_deref(), status.as_deref())
                 .await
         }
+        Commands::Auto {
+            goal,
+            repo,
+            max_iterations,
+            dry_run,
+            yes,
+            pipeline,
+            resume,
+            format,
+        } => {
+            commands::auto_run(
+                &repo,
+                &goal,
+                max_iterations,
+                dry_run,
+                yes,
+                pipeline.as_deref(),
+                resume,
+                &format,
+            )
+            .await
+        }
+        Commands::Plan {
+            goal,
+            repo,
+            file,
+            element_id,
+            query,
+            pipeline,
+            output,
+            json,
+            compact,
+        } => {
+            commands::plan_run(
+                &repo,
+                &goal,
+                file.as_deref(),
+                element_id.as_deref(),
+                query.as_deref(),
+                pipeline,
+                output.as_deref(),
+                json,
+                compact,
+            )
+            .await
+        }
+        Commands::Verify {
+            repo,
+            profile,
+            file,
+            confidence,
+            plan,
+            json,
+            continue_on_error,
+        } => {
+            commands::verify_run(
+                &repo,
+                &profile,
+                file.as_deref(),
+                confidence,
+                plan.as_deref(),
+                json,
+                continue_on_error,
+            )
+            .await
+        }
         Commands::Agent { cmd } => match cmd {
             AgentCommand::History {
                 repo,
@@ -971,6 +1037,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 continue_on_error,
                 force_sync,
             } => {
+                eprintln!("⚠️  `sruja agent run` is deprecated. Use `sruja plan \"{goal}\"` or `sruja verify` instead.");
                 let enrich_ref = enrich.as_ref();
                 commands::agent_run(commands::AgentRunOptions {
                     repo: &repo,
@@ -1002,6 +1069,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 ai_mode,
                 ref enrich,
             } => {
+                eprintln!(
+                    "⚠️  `sruja agent plan` is deprecated. Use `sruja plan \"{goal}\"` instead."
+                );
                 let enrich_ref = enrich.as_ref();
                 let out_path = out.as_deref().map(std::path::Path::new);
                 commands::agent_plan(
@@ -1033,6 +1103,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 format,
             } => commands::agent_reflect(&repo, run_id.as_deref(), write, &format).await,
             AgentCommand::Apply { repo, plan, format } => {
+                eprintln!("⚠️  `sruja agent apply` is deprecated. Use `sruja verify --plan \"{plan}\"` instead.");
                 commands::agent_apply(std::path::Path::new(&plan), &repo, &format).await
             }
             AgentCommand::Loop {
@@ -1054,7 +1125,12 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 checkpoint,
                 no_checkpoint,
                 changelog,
+                plan_only,
+                show_pipeline,
             } => {
+                eprintln!(
+                    "⚠️  `sruja agent loop` is deprecated. Use `sruja auto \"{goal}\"` instead."
+                );
                 commands::agent_loop(&commands::AgentLoopOptions {
                     repo: &repo,
                     goal: &goal,
@@ -1071,9 +1147,11 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     steer,
                     resume,
                     show_plan,
+                    plan_only,
                     checkpoint,
                     no_checkpoint,
                     changelog,
+                    show_pipeline,
                 })
                 .await
             }
@@ -1087,6 +1165,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             evidence_pack_dir,
             format,
         } => {
+            eprintln!("⚠️  `sruja verify-task` is deprecated. Use `sruja verify --profile \"{profile}\"` instead.");
             let output = commands::verify_task(commands::VerifyTaskOptions {
                 repo: &repo,
                 profile: &profile,
@@ -1112,6 +1191,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             evidence_pack_dir,
             format,
         } => {
+            eprintln!(
+                "⚠️  `sruja confidence` is deprecated. Use `sruja verify --confidence` instead."
+            );
             let report = commands::confidence(commands::ConfidenceOptions {
                 repo: &repo,
                 profile: &profile,

@@ -32,12 +32,12 @@ impl ContextIntent {
         3) verify the result after editing\n\n\
         Reviewed intent in Git (repo.sruja) is optional and used only when you want strict enforcement.",
     after_help = r#"Quick start:
-  sruja start -r .                            Set up .sruja/
-  sruja drift -r . --structural-only --advisory  Detect structural drift from code
-  sruja focus -r . --file <path>              Retrieve task context before editing
-  sruja verify-task --profile coding -r .     Verify after editing
+  sruja auto "add health check"               Autonomous: plan → execute → verify → learn
+  sruja plan "what does auth affect"          Understand scope + blast radius
+  sruja verify                                Check architecture health (drift + lint + intent)
 
-Capture:
+Workflow:
+  sruja focus -r . --file <path>              Retrieve task context before editing
   sruja ingest docs/adr/ --category adr       Bring external context into the repo
   sruja decision new -t "..." --typ product   Record a decision
 

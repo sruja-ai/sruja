@@ -540,6 +540,8 @@ pub async fn run_eval_instance(
         steer: false,
         resume: false,
         show_plan: false,
+        plan_only: false,
+        show_pipeline: false,
         checkpoint: false,
         no_checkpoint: true,
         changelog: false,

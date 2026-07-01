@@ -593,7 +593,9 @@ impl LlmClient for ActingLlm {
         };
         let content = if sys.contains("reviewing a change") {
             r#"{"approved":true,"score":0.9,"issues":[],"suggestions":[]}"#.to_string()
-        } else if sys.contains("autonomous coding agent") || sys.contains("executing a specific subtask") {
+        } else if sys.contains("autonomous coding agent")
+            || sys.contains("executing a specific subtask")
+        {
             let n = self.execute_calls.fetch_add(1, Ordering::SeqCst);
             if n == 0 {
                 return Ok(CompletionResponse {
@@ -885,7 +887,12 @@ async fn run_loop_converges_on_first_iteration() {
         ..Default::default()
     };
     let result = agent
-        .run_loop(&crate::goal::GoalSpec::new("explain concept"), &cfg, None, None)
+        .run_loop(
+            &crate::goal::GoalSpec::new("explain concept"),
+            &cfg,
+            None,
+            None,
+        )
         .await
         .expect("loop runs");
 

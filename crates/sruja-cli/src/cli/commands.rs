@@ -812,7 +812,93 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: AgentCommand,
     },
+    /// Autonomous execution loop: comprehend → plan → execute → verify → learn.
+    ///
+    /// Example: sruja auto "add health check endpoint"
+    Auto {
+        /// What to do (e.g. "add health check endpoint")
+        goal: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Maximum plan->execute->verify iterations (default: 3)
+        #[arg(long)]
+        max_iterations: Option<usize>,
+        /// Plan preview only, no mutations
+        #[arg(long)]
+        dry_run: bool,
+        /// Skip confirmation prompts
+        #[arg(long)]
+        yes: bool,
+        /// Execute from saved pipeline YAML, or generate one
+        #[arg(long)]
+        pipeline: Option<String>,
+        /// Resume from last checkpoint
+        #[arg(long)]
+        resume: bool,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+    },
+    /// Understand scope and produce a reviewable plan.
+    ///
+    /// Example: sruja plan "what does adding auth affect"
+    Plan {
+        /// What to understand (e.g. "what does adding auth affect")
+        goal: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// File path focus (narrow scope to a specific file)
+        #[arg(long)]
+        file: Option<String>,
+        /// Architecture element ID focus
+        #[arg(long)]
+        element_id: Option<String>,
+        /// Natural language query focus
+        #[arg(long)]
+        query: Option<String>,
+        /// Also emit editable pipeline YAML
+        #[arg(long)]
+        pipeline: bool,
+        /// Save plan JSON to path
+        #[arg(long)]
+        output: Option<String>,
+        /// JSON output (machine-readable)
+        #[arg(long)]
+        json: bool,
+        /// Compact summary (no inline evidence)
+        #[arg(long)]
+        compact: bool,
+    },
+    /// Check architecture health: drift + lint + intent + confidence.
+    ///
+    /// Example: sruja verify
+    Verify {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Verification profile (full, coding, bugfix, review, arch)
+        #[arg(long, short = 'p', default_value = "full")]
+        profile: String,
+        /// File path focus
+        #[arg(long)]
+        file: Option<String>,
+        /// Also compute confidence score
+        #[arg(long)]
+        confidence: bool,
+        /// Run verification from saved plan
+        #[arg(long)]
+        plan: Option<String>,
+        /// JSON output
+        #[arg(long)]
+        json: bool,
+        /// Continue on error
+        #[arg(long)]
+        continue_on_error: bool,
+    },
     /// Run verification steps for a task profile (coding, bugfix, review, arch)
+    #[command(hide = true)]
     VerifyTask {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
@@ -842,6 +928,8 @@ pub enum Commands {
     ///
     /// Advisory by default — exits successfully even if the report contains blockers.
     /// Only exits non-zero for fatal execution/input errors.
+    ///
+    /// ⚠️ Deprecated: use `sruja verify --confidence` instead.
     #[command(hide = true)]
     Confidence {
         /// Path to repository root

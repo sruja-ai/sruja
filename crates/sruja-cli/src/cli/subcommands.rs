@@ -292,13 +292,14 @@ pub enum AgentCommand {
         /// Natural language goal (e.g. "Add agent loop to CLI")
         #[arg(long)]
         goal: String,
-        /// File path focus (relative to repo root). Exactly one of --file/--element-id/--query is required.
+        /// File path focus (relative to repo root). Optional: narrow the scope to a specific file.
         #[arg(long)]
         file: Option<String>,
-        /// Architecture element ID focus. Exactly one of --file/--element-id/--query is required.
+        /// Architecture element ID from repo.sruja. Optional: narrow the scope to an architecture element.
         #[arg(long)]
         element_id: Option<String>,
-        /// Natural language query focus. Exactly one of --file/--element-id/--query is required.
+        /// Natural language query focus. Optional: narrow the scope with a free-text query.
+        /// When none of --file/--element-id/--query are given, the goal text is used as the query.
         #[arg(long)]
         query: Option<String>,
         /// Execution mode (plan|apply). Default: plan
@@ -337,13 +338,14 @@ pub enum AgentCommand {
         /// Natural language goal
         #[arg(long)]
         goal: String,
-        /// File path focus (relative to repo root). Exactly one of --file/--element-id/--query is required.
+        /// File path focus (relative to repo root). Optional: narrow the scope to a specific file.
         #[arg(long)]
         file: Option<String>,
-        /// Architecture element ID focus. Exactly one of --file/--element-id/--query is required.
+        /// Architecture element ID from repo.sruja. Optional: narrow the scope to an architecture element.
         #[arg(long)]
         element_id: Option<String>,
-        /// Natural language query focus. Exactly one of --file/--element-id/--query is required.
+        /// Natural language query focus. Optional: narrow the scope with a free-text query.
+        /// When none of --file/--element-id/--query are given, the goal text is used as the query.
         #[arg(long)]
         query: Option<String>,
         /// Output path for plan artifact (defaults to docs/plans/<run_id>-<slug>.json)
@@ -438,6 +440,12 @@ pub enum AgentCommand {
         /// Force writing a post-loop changelog (skipped for trivial runs by default)
         #[arg(long)]
         changelog: bool,
+        /// Plan-only mode: produce a plan without making code changes (dry-run, skip verify).
+        #[arg(long)]
+        plan_only: bool,
+        /// Show the resolved pipeline stages as JSON and exit (no execution).
+        #[arg(long)]
+        show_pipeline: bool,
     },
 }
 

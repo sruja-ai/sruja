@@ -79,7 +79,7 @@ pub fn read_plan_file(path: &Path) -> Result<AgentPlanFile, CliError> {
 pub async fn agent_plan(
     mut options: AgentRunOptions<'_>,
     out: Option<&Path>,
-    print: bool,
+    _print: bool,
 ) -> Result<(), CliError> {
     // Force plan mode & json; plan output is the canonical artifact.
     options.mode = "plan";
@@ -106,11 +106,9 @@ pub async fn agent_plan(
     // Persist as a first-class plan file.
     let out_path = write_plan_file(repo_root, &plan, out)?;
 
-    if print {
-        println!("{}", serde_json::to_string_pretty(&plan)?);
-    } else {
-        println!("{}", out_path.to_string_lossy());
-    }
+    // Always print the plan to stdout. The file is also persisted to disk.
+    println!("{}", serde_json::to_string_pretty(&plan)?);
+    eprintln!("Plan saved to: {}", out_path.to_string_lossy());
     Ok(())
 }
 

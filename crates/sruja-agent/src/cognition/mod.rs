@@ -737,6 +737,8 @@ pub struct FailureTracker {
     pub consecutive_same_approach: usize,
     /// The approach summary from the last iteration.
     pub last_approach: Option<String>,
+    /// Optional diagnostic output from a `DiagnoseThenRetry` recovery cycle.
+    pub diagnostic: Option<String>,
 }
 
 impl FailureTracker {
@@ -758,11 +760,19 @@ impl FailureTracker {
     }
 
     /// Format failures for injection into replanning prompt.
+    ///
+    /// When `diagnostic` is set (from `DiagnoseThenRetry` recovery), the
+    /// diagnostic is prefixed and the prompt asks the model to address it.
     pub fn format_for_prompt(&self) -> String {
         if self.failures.is_empty() {
             return String::new();
         }
-        let mut out = String::from("\n\n## Previously Failed Approaches\n\n");
+        let mut out = if let Some(ref diag) = self.diagnostic {
+            format!("\n\n## Diagnostic Analysis\n{diag}\n\n")
+        } else {
+            String::new()
+        };
+        out.push_str("## Previously Failed Approaches\n\n");
         out.push_str("The following approaches have been tried and failed. You MUST try a DIFFERENT strategy:\n\n");
         for (i, (approach, reason, iter, error_class)) in self.failures.iter().enumerate() {
             out.push_str(&format!(
@@ -926,6 +936,12 @@ pub struct LoopConfig {
     /// Detect repeated critique patterns and terminate with
     /// [`LoopTermination::Oscillation`] to avoid flailing (default: true).
     pub detect_oscillation: bool,
+    /// Pipeline configuration — the explicit workflow model.
+    ///
+    /// Controls which stages run, in what order, and how to recover from
+    /// failures. The default (three-stage: comprehend → implement → verify)
+    /// matches the current `run_loop()` behavior exactly.
+    pub pipeline: crate::manifest::PipelineConfig,
     /// Optional deterministic verifier — the independent grader. When set, its
     /// steps run after `execute` in every iteration. Any failure vetoes
     /// convergence (overrides the LLM critic) and feeds failures into the next
@@ -952,6 +968,7 @@ impl Default for LoopConfig {
             replan_on_failure: true,
             spend_cap_usd: None,
             detect_oscillation: true,
+            pipeline: crate::manifest::PipelineConfig::default(),
             verifier: None,
             checkpoint_dir: None,
         }
@@ -3016,11 +3033,8 @@ impl Agent {
         }
 
         // Classify complexity (deterministic, no LLM call).
-        let complexity = classify_task_complexity(
-            &goal.statement,
-            &goal.target_files,
-            &goal.target_elements,
-        );
+        let complexity =
+            classify_task_complexity(&goal.statement, &goal.target_files, &goal.target_elements);
 
         // Build synthetic comprehension for backward compatibility.
         let comprehension = Comprehension {
@@ -3044,14 +3058,12 @@ impl Agent {
 
         // --- Build initial request ---
         let system = crate::cognition::prompts::AGENT_LOOP_SYSTEM_PROMPT;
-        let mut req = CompletionRequest::prompt(system, &goal.statement)
-            .with_tools(self.tools.schemas());
+        let mut req =
+            CompletionRequest::prompt(system, &goal.statement).with_tools(self.tools.schemas());
         req.model = Some(self.config.models.mid.clone());
 
-        // Allow writes from the start — the model decides what to do.
-        self.guard.set_phase(Phase::Implement);
-        self.hooks.on_phase_change(Phase::Implement).await;
-
+        // Pipeline-driven phase management.
+        let pipeline = &loop_config.pipeline;
         let mut total_usage = Usage::default();
         let mut iterations: Vec<LoopIteration> = Vec::new();
         let mut converged = false;
@@ -3075,81 +3087,126 @@ impl Agent {
                 },
             );
 
-            // Run tool loop — model drives everything.
-            let max_iters = complexity.max_tool_iterations(self.config.max_tool_iterations);
-            let (response, usage, tool_signals, step_converged) =
-                self.run_tool_loop_with_limit(req.clone(), max_iters).await?;
-            total_usage.accumulate(&usage);
-            _last_output = response.content.clone();
+            let mut iteration_verify_failed: Vec<String> = Vec::new();
 
-            // Track convergence for early-abort.
-            if !step_converged {
-                non_converged_count += 1;
+            for &stage_kind in &pipeline.stages {
+                // Skip "comprehend" after the first iteration — understood once.
+                if stage_kind == crate::manifest::StageKind::Comprehend && iteration > 1 {
+                    continue;
+                }
+
+                // Set file permissions for this stage.
+                let phase = stage_kind.to_file_guard_phase();
+                if self.guard.phase() != phase {
+                    self.guard.set_phase(phase);
+                    self.hooks.on_phase_change(phase).await;
+                }
+                Self::emit_event(events, LoopEvent::PhaseChanged(stage_kind.to_loop_phase()));
+
+                match stage_kind {
+                    crate::manifest::StageKind::Comprehend
+                    | crate::manifest::StageKind::Plan
+                    | crate::manifest::StageKind::Critique
+                    | crate::manifest::StageKind::Reflect
+                    | crate::manifest::StageKind::TestReview => {
+                        // These stages are handled by the full pipeline (`Agent::run()`);
+                        // in the simplified loop they are no-ops.
+                    }
+
+                    crate::manifest::StageKind::Implement
+                    | crate::manifest::StageKind::TestAuthor
+                    | crate::manifest::StageKind::Replan => {
+                        // Run tool loop — model drives changes.
+                        let max_iters =
+                            complexity.max_tool_iterations(self.config.max_tool_iterations);
+                        let (response, usage, tool_signals, step_converged) = self
+                            .run_tool_loop_with_limit(req.clone(), max_iters)
+                            .await?;
+                        total_usage.accumulate(&usage);
+                        _last_output = response.content.clone();
+
+                        if !step_converged {
+                            non_converged_count += 1;
+                        }
+
+                        let status = if response.content.contains("ERROR")
+                            || !step_converged
+                            || !content_has_quality(&response.content)
+                        {
+                            StepStatus::Failed
+                        } else {
+                            StepStatus::Ok
+                        };
+                        step_results.push(StepResult {
+                            subtask_id: format!("{iteration}_{stage_kind:?}"),
+                            status,
+                            output: response.content.clone(),
+                            usage: usage.clone(),
+                            tool_signals,
+                            converged: step_converged,
+                        });
+
+                        Self::emit_event(
+                            events,
+                            LoopEvent::StepProgress {
+                                step: iteration,
+                                total: max_iterations,
+                                description: format!(
+                                    "stage {:?} iteration {iteration}",
+                                    stage_kind
+                                ),
+                            },
+                        );
+                    }
+
+                    crate::manifest::StageKind::Verify => {
+                        // --- Deterministic verification ---
+                        Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Verify));
+                        iteration_verify_failed = if let Some(vconf) = &loop_config.verifier {
+                            let results = run_verification_steps(
+                                &vconf.steps,
+                                &vconf.options,
+                                &vconf.workdir,
+                            )
+                            .await;
+                            for r in &results {
+                                Self::emit_event(
+                                    events,
+                                    LoopEvent::VerifyResult {
+                                        step: r.step_id.clone(),
+                                        ok: r.status.is_pass(),
+                                    },
+                                );
+                            }
+                            summarize_verify_failures(&results)
+                        } else {
+                            Vec::new()
+                        };
+                    }
+                }
             }
 
-            // Record step result — check both convergence and content quality.
-            let status = if response.content.contains("ERROR")
-                || !step_converged
-                || !content_has_quality(&response.content)
-            {
-                StepStatus::Failed
-            } else {
-                StepStatus::Ok
-            };
-            step_results.push(StepResult {
-                subtask_id: format!("iteration_{iteration}"),
-                status,
-                output: response.content.clone(),
-                usage: usage.clone(),
-                tool_signals,
-                converged: step_converged,
-            });
-
-            Self::emit_event(
-                events,
-                LoopEvent::StepProgress {
-                    step: iteration,
-                    total: max_iterations,
-                    description: format!("iteration {iteration}"),
-                },
-            );
-
-            // --- Deterministic verification ---
-            Self::emit_event(events, LoopEvent::PhaseChanged(LoopPhase::Verify));
-            let verify_failed = if let Some(vconf) = &loop_config.verifier {
-                let results =
-                    run_verification_steps(&vconf.steps, &vconf.options, &vconf.workdir).await;
-                for r in &results {
-                    Self::emit_event(
-                        events,
-                        LoopEvent::VerifyResult {
-                            step: r.step_id.clone(),
-                            ok: r.status.is_pass(),
-                        },
-                    );
-                }
-                summarize_verify_failures(&results)
-            } else {
-                Vec::new()
-            };
-
-            let approved =
-                verify_failed.is_empty() && step_converged && content_has_quality(&response.content);
+            // Determine approval from the last work stage result.
+            let last_work = step_results.last();
+            let step_converged = last_work.map_or(false, |r| r.converged);
+            let approved = iteration_verify_failed.is_empty()
+                && step_converged
+                && content_has_quality(&_last_output);
 
             // Record iteration.
             iterations.push(LoopIteration {
                 iteration,
                 replanned: iteration > 1,
                 plan_goal: goal.statement.clone(),
-                subtask_count: 1,
+                subtask_count: pipeline.stages.len(),
                 succeeded: if approved { 1 } else { 0 },
                 failed: if approved { 0 } else { 1 },
                 critique_approved: approved,
                 critique_score: if approved { 1.0 } else { 0.0 },
-                critique_issues: verify_failed.clone(),
-                verify_failed: verify_failed.clone(),
+                critique_issues: iteration_verify_failed.clone(),
+                verify_failed: iteration_verify_failed.clone(),
                 injected_learning_ids: vec![],
-                usage: usage.clone(),
+                usage: total_usage.clone(),
                 plan_parse_error: None,
                 incorporation_gap: None,
             });
@@ -3172,8 +3229,7 @@ impl Agent {
 
             // --- Non-convergence fail-fast ---
             if iterations.len() >= 2 {
-                let non_converged_fraction =
-                    non_converged_count as f64 / iterations.len() as f64;
+                let non_converged_fraction = non_converged_count as f64 / iterations.len() as f64;
                 if non_converged_fraction > 0.5 {
                     termination = LoopTermination::ModelNotConverging(non_converged_fraction);
                     break;
@@ -3181,10 +3237,8 @@ impl Agent {
             }
 
             // --- Oscillation detection ---
-            // Check if the same verify_failed pattern repeats across iterations.
             if loop_config.detect_oscillation {
-                let signature = verify_failed.join("|");
-                // Only consider non-empty signatures (empty = approved = no oscillation).
+                let signature = iteration_verify_failed.join("|");
                 if !signature.is_empty() {
                     if seen_signatures.last() == Some(&signature) {
                         tracing::warn!(
@@ -3198,21 +3252,63 @@ impl Agent {
                 }
             }
 
-            // Feed verification errors back for next iteration, with FailureTracker context.
-            if !verify_failed.is_empty() {
-                let error_class = classify_error(&verify_failed, &step_results);
+            // --- Recovery strategy: structured error feedback ---
+            if !iteration_verify_failed.is_empty() {
+                let error_class = classify_error(&iteration_verify_failed, &step_results);
                 failure_tracker.record(
                     format!("iteration {iteration}"),
-                    verify_failed.join("; "),
+                    iteration_verify_failed.join("; "),
                     iteration,
                     error_class,
                 );
-                let mut feedback = format!("Verification failed:\n{}", verify_failed.join("\n"));
-                let tracker_history = failure_tracker.format_for_prompt();
-                if !tracker_history.is_empty() {
-                    feedback.push_str(&tracker_history);
+
+                let retries_remaining = pipeline
+                    .max_retries
+                    .saturating_sub(failure_tracker.failures.len());
+
+                match pipeline.recovery {
+                    crate::manifest::RecoveryStrategy::Retry if retries_remaining > 0 => {
+                        let mut feedback = format!(
+                            "Verification failed:\n{}",
+                            iteration_verify_failed.join("\n")
+                        );
+                        feedback.push_str(&failure_tracker.format_for_prompt());
+                        req.messages.push(Message::user(&feedback));
+                    }
+                    crate::manifest::RecoveryStrategy::DiagnoseThenRetry
+                        if retries_remaining > 0 =>
+                    {
+                        let mut feedback = String::from(
+                            "[Diagnostic mode]\nAnalyze the failure before retrying.\n",
+                        );
+                        feedback.push_str(&format!(
+                            "Failure:\n{}\n",
+                            iteration_verify_failed.join("\n")
+                        ));
+                        failure_tracker.diagnostic = Some(iteration_verify_failed.join(", "));
+                        feedback.push_str(&failure_tracker.format_for_prompt());
+                        req.messages.push(Message::user(&feedback));
+                    }
+                    crate::manifest::RecoveryStrategy::Escalate => {
+                        tracing::info!("recovery: escalate — stopping for human input");
+                        termination = LoopTermination::NoReplan;
+                        break;
+                    }
+                    crate::manifest::RecoveryStrategy::Fail => {
+                        tracing::info!("recovery: fail — stopping pipeline");
+                        termination = LoopTermination::NoReplan;
+                        break;
+                    }
+                    _ => {
+                        // No retries remaining — stop.
+                        tracing::info!(
+                            retries_remaining,
+                            "recovery: no retries remaining — stopping"
+                        );
+                        termination = LoopTermination::NoReplan;
+                        break;
+                    }
                 }
-                req.messages.push(Message::user(&feedback));
             }
         }
 
@@ -3276,7 +3372,6 @@ impl Agent {
             final_result,
         })
     }
-
 
     pub async fn resume_loop(
         &self,
@@ -3605,18 +3700,9 @@ fn extract_violation_lines_from_drift_json(stdout: &str) -> Option<Vec<String>> 
         .take(12)
         .map(|v| {
             let kind = v.get("kind").and_then(|k| k.as_str()).unwrap_or("?");
-            let severity = v
-                .get("severity")
-                .and_then(|s| s.as_str())
-                .unwrap_or("?");
-            let message = v
-                .get("message")
-                .and_then(|m| m.as_str())
-                .unwrap_or("?");
-            let location = v
-                .get("location")
-                .and_then(|l| l.as_str())
-                .unwrap_or("");
+            let severity = v.get("severity").and_then(|s| s.as_str()).unwrap_or("?");
+            let message = v.get("message").and_then(|m| m.as_str()).unwrap_or("?");
+            let location = v.get("location").and_then(|l| l.as_str()).unwrap_or("");
             let file = v
                 .get("sources")
                 .and_then(|s| s.as_array())
@@ -3630,13 +3716,9 @@ fn extract_violation_lines_from_drift_json(stdout: &str) -> Option<Vec<String>> 
                 .unwrap_or("");
             let tag = if baseline == "new" { " [NEW]" } else { "" };
             if file.is_empty() {
-                format!(
-                    "  {kind}({severity}){tag}: {message} ({location})"
-                )
+                format!("  {kind}({severity}){tag}: {message} ({location})")
             } else {
-                format!(
-                    "  {kind}({severity}){tag}: {message} — {file}"
-                )
+                format!("  {kind}({severity}){tag}: {message} — {file}")
             }
         })
         .collect();

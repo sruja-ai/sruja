@@ -25,3 +25,4 @@ See [architecture/taste.md](architecture/taste.md)
 
 # workflow
 - Prefer deep codebase fixes over surface-level workarounds; when given a choice between a quick workaround and fixing the root cause, fix the root cause. Confidence: 0.65
+- The agent workflow should expose a simple, single-command UX (like `agent run` or `agent loop`) that hides internal steps (plan, apply, record); users should not need to understand the internal architecture pipeline to make a change. Confidence: 0.78

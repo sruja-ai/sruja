@@ -299,6 +299,16 @@ pub struct LoopManifest {
     /// providers so the Judge has independent perspectives.
     #[serde(default)]
     pub critique: CritiqueConfig,
+
+    /// Pipeline configuration — the explicit workflow model for the agent loop.
+    ///
+    /// Defines the ordered stages, recovery strategy, and retry limits.
+    /// The agent loop drives from this instead of hardcoded phase transitions.
+    ///
+    /// Default: `["comprehend", "implement", "verify"]` with `retry` recovery
+    /// (matches the current `run_loop()` behavior exactly).
+    #[serde(default)]
+    pub pipeline: PipelineConfig,
 }
 
 impl Default for LoopManifest {
@@ -318,7 +328,155 @@ impl Default for LoopManifest {
             mcp: McpConfig::default(),
             auto_consolidate: default_true(),
             critique: CritiqueConfig::default(),
+            pipeline: PipelineConfig::default(),
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline configuration — the explicit agent workflow model
+// ---------------------------------------------------------------------------
+
+/// Ordered list of stage kinds in this pipeline.
+pub type StageList = Vec<StageKind>;
+
+/// Pipeline configuration — makes the agent's workflow an explicit artifact.
+///
+/// Replaces the implicit workflow that was scattered across `run_loop()`,
+/// `LoopPhase`, `Phase`, and markdown procedural instructions.
+///
+/// ## Example
+///
+/// ```toml
+/// [pipeline]
+/// stages = ["comprehend", "plan", "test_author", "test_review", "implement", "verify", "critique"]
+/// recovery = "diagnose_then_retry"
+/// max_retries = 2
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PipelineConfig {
+    /// Ordered list of stages the agent loop will execute.
+    ///
+    /// Default: `["comprehend", "implement", "verify"]` — matches the
+    /// current simplified `run_loop()` behavior.
+    pub stages: Vec<StageKind>,
+
+    /// Recovery strategy when a stage's verification fails.
+    ///
+    /// - `retry`: feed errors back and retry (current behavior)
+    /// - `escalate`: stop and ask the human for guidance
+    /// - `diagnose_then_retry`: run a diagnostic stage, then retry
+    /// - `fail`: stop the pipeline immediately
+    ///
+    /// Default: `retry`.
+    pub recovery: RecoveryStrategy,
+
+    /// Maximum retries per stage before escalating or failing.
+    ///
+    /// Default: 3.
+    pub max_retries: usize,
+}
+
+impl Default for PipelineConfig {
+    fn default() -> Self {
+        Self {
+            // Default pipeline matches the current `run_loop()` behavior:
+            // 1. Comprehend: classify complexity (deterministic)
+            // 2. Implement: model drives tools to make changes
+            // 3. Verify: run deterministic verification
+            stages: vec![
+                StageKind::Comprehend,
+                StageKind::Implement,
+                StageKind::Verify,
+            ],
+            recovery: RecoveryStrategy::default(),
+            max_retries: 3,
+        }
+    }
+}
+
+/// A single stage in the agent pipeline.
+///
+/// Each stage has a corresponding file permission scope and telemetry phase.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StageKind {
+    /// Read-only comprehension: understand the goal and codebase.
+    Comprehend,
+    /// Generate a structured plan (LLM → structured output).
+    Plan,
+    /// Write tests (TestAuthor: test files writable, code frozen).
+    TestAuthor,
+    /// Human-in-the-loop test review gate (read-only).
+    TestReview,
+    /// Write implementation code (code files writable, tests frozen).
+    Implement,
+    /// Run deterministic verification commands (lint, test, drift).
+    Verify,
+    /// LLM critique of changes (read-only).
+    Critique,
+    /// Re-plan based on critique feedback.
+    Replan,
+    /// Extract learnings and persist to memory.
+    Reflect,
+}
+
+impl StageKind {
+    /// Map this stage to the corresponding [`Phase`] for file permission enforcement.
+    ///
+    /// [`Phase`]: crate::tool::policy::Phase
+    pub fn to_file_guard_phase(self) -> crate::tool::policy::Phase {
+        use crate::tool::policy::Phase;
+        match self {
+            StageKind::Comprehend
+            | StageKind::Plan
+            | StageKind::Critique
+            | StageKind::Reflect
+            | StageKind::TestReview => Phase::Comprehend,
+            StageKind::TestAuthor => Phase::TestAuthor,
+            StageKind::Implement | StageKind::Verify | StageKind::Replan => Phase::Implement,
+        }
+    }
+
+    /// Map this stage to the corresponding [`LoopPhase`] for telemetry events.
+    ///
+    /// [`LoopPhase`]: crate::cognition::LoopPhase
+    pub fn to_loop_phase(self) -> crate::cognition::LoopPhase {
+        use crate::cognition::LoopPhase;
+        match self {
+            StageKind::Comprehend => LoopPhase::Comprehend,
+            StageKind::Plan => LoopPhase::Plan,
+            StageKind::TestAuthor | StageKind::Implement | StageKind::Replan => LoopPhase::Execute,
+            StageKind::TestReview => LoopPhase::Critique,
+            StageKind::Verify => LoopPhase::Verify,
+            StageKind::Critique => LoopPhase::Critique,
+            StageKind::Reflect => LoopPhase::Complete,
+        }
+    }
+}
+
+/// How the pipeline recovers when a stage's verification fails.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecoveryStrategy {
+    /// Feed error messages back into the model and retry the stage.
+    ///
+    /// This is the current behavior — the model sees its failures and tries again.
+    #[default]
+    Retry,
+    /// Stop and ask the human for guidance before continuing.
+    Escalate,
+    /// Run a diagnostic stage first to identify the root cause, then retry.
+    DiagnoseThenRetry,
+    /// Stop the pipeline immediately with a failure status.
+    Fail,
+}
+
+impl RecoveryStrategy {
+    /// Returns `true` if this strategy allows retrying the stage.
+    pub fn allows_retry(self) -> bool {
+        matches!(self, Self::Retry | Self::DiagnoseThenRetry)
     }
 }
 

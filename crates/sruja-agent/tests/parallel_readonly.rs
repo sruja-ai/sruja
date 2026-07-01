@@ -134,16 +134,15 @@ async fn read_only_tool_reports_true() {
 async fn file_edit_is_classified_as_mutating() {
     // Use the real builtin FileEdit tool.
     let reg = ToolRegistry::with_builtin(".", vec![]);
-    let tool = reg.get("file_edit").expect("file_edit should be registered");
+    let tool = reg
+        .get("file_edit")
+        .expect("file_edit should be registered");
     assert!(
         tool.is_mutating(),
         "file_edit must be classified as mutating"
     );
     // Conversely it must NOT be read-only.
-    assert!(
-        !tool.is_read_only(),
-        "file_edit must NOT be read-only"
-    );
+    assert!(!tool.is_read_only(), "file_edit must NOT be read-only");
 }
 
 // ---------------------------------------------------------------------------
@@ -171,9 +170,7 @@ async fn read_only_tools_execute_concurrently() {
         let name = format!("read_{i}");
         let reg_ref = &reg;
         handles.push(tokio::spawn(async move {
-            reg_ref
-                .dispatch(&name, serde_json::json!({}))
-                .await
+            reg_ref.dispatch(&name, serde_json::json!({})).await
         }));
     }
     for h in handles {

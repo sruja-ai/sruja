@@ -16,8 +16,8 @@ use sruja_agent::llm::{CompletionRequest, CompletionResponse, LlmClient, LlmErro
 // Helpers
 // ---------------------------------------------------------------------------
 
-use sruja_agent::llm::DEFAULT_MODEL;
 use sruja_agent::llm::FinishReason;
+use sruja_agent::llm::DEFAULT_MODEL;
 
 /// A fake client that always returns DEFAULT_MODEL.
 struct FakeClient;
@@ -154,9 +154,7 @@ async fn unknown_model_with_fallback_pricing_uses_fallback_rates() {
 #[tokio::test]
 async fn known_model_uses_exact_pricing_table_entry() {
     // "gpt-4o-mini" is in the default pricing table at $0.15/$0.60.
-    let router = ModelRouter::new(Arc::new(FakeClientWithModel(
-        DEFAULT_MODEL.to_string(),
-    )));
+    let router = ModelRouter::new(Arc::new(FakeClientWithModel(DEFAULT_MODEL.to_string())));
     let req = CompletionRequest::new(vec![]);
     router.complete(&req).await.unwrap();
 

@@ -7,7 +7,7 @@ use crate::commands::CliError;
 use std::fs;
 use std::path::Path;
 
-pub use drift::{drift, drift_pr, status_result};
+pub use drift::{drift, drift_pr, status_result, DriftRequest};
 pub use quickstart::quickstart;
 
 pub async fn scan(repo_root: &str, output: &str) -> Result<(), CliError> {

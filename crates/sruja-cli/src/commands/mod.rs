@@ -20,6 +20,7 @@ pub use intent_domain::remediation;
 
 pub use agent_loop::{agent_loop, AgentLoopOptions};
 pub use agent_reflect::agent_reflect;
+pub use auto_cmd::auto_run;
 pub use intent_domain::agent::{
     agent_clear, agent_clusters, agent_curate, agent_delete, agent_distill, agent_history,
     agent_merge, agent_propose_fact, agent_record, agent_session_summary, agent_update,
@@ -29,6 +30,8 @@ pub use intent_domain::agent_run::{agent_run, agent_run_to_string, AgentRunOptio
 pub use intent_domain::ai::{ai_brief, AiBriefOptions};
 pub use intent_domain::evolution::{evaluate, evolution_log};
 pub use intent_domain::propose::*;
+pub use plan_cmd::plan_run;
+pub use verify_cmd::verify_run;
 
 pub use dsl_domain::check::{baseline, check};
 pub use dsl_domain::dsl::{
@@ -125,8 +128,11 @@ pub use utility_domain::federation::{compose, publish};
 pub mod agent_loop;
 pub mod agent_reflect;
 pub mod agent_setup;
+pub mod auto_cmd;
 pub mod extensions_config;
 pub mod learn;
+pub mod plan_cmd;
+pub mod verify_cmd;
 pub use learn::learn;
 
 pub(crate) mod loop_checkpoint;

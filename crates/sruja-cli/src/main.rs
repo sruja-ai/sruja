@@ -37,10 +37,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     let log_level = match cli.verbose {
-        0 => "warn",
-        1 => "info",
-        2 => "debug",
-        _ => "trace",
+        0 => "error",
+        1 => "warn",
+        2 => "info",
+        _ => "debug",
     };
 
     tracing_subscriber::fmt()
