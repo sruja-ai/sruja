@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.64.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.64.0...sruja-v0.64.1) (2026-07-01)
+
+
+### Bug Fixes
+
+* **agent:** gate approval on content quality, wire resilient client ([036998c](https://github.com/sruja-ai/sruja/commit/036998c2b2f16f9d0107acda411607a36d841326))
+
 ## [0.64.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.63.0...sruja-v0.64.0) (2026-06-30)
 
 
