@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::cognition::ErrorClass;
+
 pub use types::ErrorFrequency;
 pub use types::{
     CurationReport, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, LowUtilityEntry,
@@ -30,6 +32,9 @@ pub struct AgenticMemory {
     /// In-memory index mapping tags to entry indices for fast lookup.
     #[serde(skip)]
     pub tag_index: HashMap<String, Vec<usize>>,
+    /// Cross-run error frequency history, keyed by (repo_path, error_class).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub error_frequencies: Vec<ErrorFrequency>,
 }
 
 impl AgenticMemory {
@@ -69,12 +74,48 @@ impl AgenticMemory {
     }
 
     /// Adds a new learning entry, auto-generating tags and linking to related entries.
+    ///
+    /// Deduplicates against existing entries with the same `(context, hypothesis)` pair:
+    /// instead of appending a duplicate, the existing entry's guardrail_advice and
+    /// outcome are updated with the new information.
     pub fn add_learning(&mut self, mut learning: LearningEntry) {
         if learning.id.is_empty() {
             learning.id = types::generate_entry_id();
         }
         if learning.tags.is_empty() {
             learning.tags = search::extract_tags(&learning);
+        }
+
+        // Deduplicate: if an entry with the same (context, hypothesis) already exists,
+        // merge into it rather than appending a duplicate.
+        let normalized_ctx = learning.context.trim().to_lowercase();
+        let normalized_hyp = learning.hypothesis.trim().to_lowercase();
+        if let Some(existing) = self.learnings.iter_mut().find(|e| {
+            e.context.trim().to_lowercase() == normalized_ctx
+                && e.hypothesis.trim().to_lowercase() == normalized_hyp
+        }) {
+            // Merge: update guardrail_advice if new info is longer/more specific.
+            if learning.guardrail_advice.len() > existing.guardrail_advice.len() {
+                existing.guardrail_advice = learning.guardrail_advice;
+            }
+            // Merge: update outcome on failure (prefer recording failures).
+            if learning.outcome != ExperimentOutcome::Success {
+                existing.outcome = learning.outcome;
+            }
+            // Merge: extend affected elements (deduped).
+            for el in &learning.affected_elements {
+                if !existing.affected_elements.contains(el) {
+                    existing.affected_elements.push(el.clone());
+                }
+            }
+            // Merge: extend tags (deduped).
+            for tag in &learning.tags {
+                if !existing.tags.contains(tag) {
+                    existing.tags.push(tag.clone());
+                }
+            }
+            existing.timestamp = learning.timestamp;
+            return;
         }
 
         let new_id = learning.id.clone();
@@ -101,6 +142,35 @@ impl AgenticMemory {
     /// Finds learning entries relevant to a specific architectural element ID.
     pub fn find_relevant(&self, element_id: &str) -> Vec<&LearningEntry> {
         search::find_relevant(self, element_id)
+    }
+
+    /// Record an error occurrence, incrementing frequency for (repo_path, error_class).
+    pub fn record_error(&mut self, repo_path: &str, error_class: ErrorClass) {
+        let now = chrono::Utc::now().to_rfc3339();
+        if let Some(entry) = self
+            .error_frequencies
+            .iter_mut()
+            .find(|e| e.repo_path == repo_path && e.error_class == error_class)
+        {
+            entry.count += 1;
+            entry.last_updated = now;
+        } else {
+            self.error_frequencies.push(ErrorFrequency {
+                repo_path: repo_path.to_string(),
+                error_class,
+                count: 1,
+                last_updated: now,
+            });
+        }
+    }
+
+    /// Search error frequency history, optionally filtered by repo_path.
+    pub fn search_error_frequencies(&self, repo_path: &str) -> Vec<ErrorFrequency> {
+        self.error_frequencies
+            .iter()
+            .filter(|e| e.repo_path == repo_path)
+            .cloned()
+            .collect()
     }
 
     /// Finds all relevant learnings and increments `retrieval_count`.
@@ -284,6 +354,9 @@ pub trait Memory: Send + Sync {
     /// Search error frequency history for a repository.
     fn search_error_history(&self, repo_path: &str) -> Result<Vec<ErrorFrequency>, MemoryError>;
 
+    /// Record an error occurrence for cross-run learning.
+    fn record_error(&self, repo_path: &str, error_class: ErrorClass) -> Result<(), MemoryError>;
+
     /// Total number of learnings stored.
     fn count(&self) -> usize;
 
@@ -345,8 +418,15 @@ impl Memory for std::sync::Mutex<AgenticMemory> {
         mem.record_task_outcomes(ids, success);
     }
 
-    fn search_error_history(&self, _repo_path: &str) -> Result<Vec<ErrorFrequency>, MemoryError> {
-        Ok(Vec::new()) // TODO: implement error frequency persistence
+    fn search_error_history(&self, repo_path: &str) -> Result<Vec<ErrorFrequency>, MemoryError> {
+        let mem = self.lock().unwrap();
+        Ok(mem.search_error_frequencies(repo_path))
+    }
+
+    fn record_error(&self, repo_path: &str, error_class: ErrorClass) -> Result<(), MemoryError> {
+        let mut mem = self.lock().unwrap();
+        mem.record_error(repo_path, error_class);
+        Ok(())
     }
 
     fn count(&self) -> usize {

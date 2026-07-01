@@ -37,6 +37,7 @@ pub(crate) fn should_fail_on_violations(
                 "cycles" | "circular"
                     if violations.iter().any(|v| {
                         matches!(v.kind, sruja_diff::ViolationKind::CircularDependency)
+                            && matches!(v.severity, sruja_diff::Severity::Error)
                     }) =>
                 {
                     return true;
@@ -44,21 +45,24 @@ pub(crate) fn should_fail_on_violations(
                 "layer-violations" | "layer"
                     if violations
                         .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation)) =>
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::LayerViolation)
+                            && matches!(v.severity, sruja_diff::Severity::Error)) =>
                 {
                     return true;
                 }
                 "god-modules" | "god"
                     if violations
                         .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule)) =>
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::GodModule)
+                            && matches!(v.severity, sruja_diff::Severity::Error)) =>
                 {
                     return true;
                 }
                 "orphans"
                     if violations
                         .iter()
-                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent)) =>
+                        .any(|v| matches!(v.kind, sruja_diff::ViolationKind::OrphanComponent)
+                            && matches!(v.severity, sruja_diff::Severity::Error)) =>
                 {
                     return true;
                 }
@@ -908,21 +912,76 @@ App = system "App" {
                 rule_id: None,
                 rationale: None,
             },
+            Violation {
+                kind: ViolationKind::LayerViolation,
+                severity: Severity::Warning,
+                message: "layer warning".to_string(),
+                location: Some("a -> b".to_string()),
+                suggestion: None,
+                sources: vec![],
+                confidence: None,
+                evidence_count: Some(0),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
+            },
+            Violation {
+                kind: ViolationKind::LayerViolation,
+                severity: Severity::Error,
+                message: "layer error".to_string(),
+                location: Some("core -> infra".to_string()),
+                suggestion: None,
+                sources: vec![],
+                confidence: None,
+                evidence_count: Some(0),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
+            },
+            Violation {
+                kind: ViolationKind::GodModule,
+                severity: Severity::Warning,
+                message: "god warning".to_string(),
+                location: Some("big_module".to_string()),
+                suggestion: None,
+                sources: vec![],
+                confidence: None,
+                evidence_count: Some(0),
+                production_relevant: None,
+                baseline_delta: None,
+                suppressed: None,
+                rule_id: None,
+                rationale: None,
+            },
         ];
 
+        // "all" matches Error-severity violations only.
         assert!(super::should_fail_on_violations(Some("all"), &violations));
+        // cycles has an Error-severity entry — should match.
         assert!(super::should_fail_on_violations(
             Some("cycles"),
             &violations
         ));
+        // layer-violations has a Warning entry (should NOT match) and an Error entry (should match).
         assert!(super::should_fail_on_violations(
-            Some("orphans"),
-            &violations
-        ));
-        assert!(!super::should_fail_on_violations(
             Some("layer-violations"),
             &violations
         ));
+        // orphans has only a Warning-severity entry — should NOT match.
+        assert!(!super::should_fail_on_violations(
+            Some("orphans"),
+            &violations
+        ));
+        // god-modules has only a Warning-severity entry — should NOT match.
+        assert!(!super::should_fail_on_violations(
+            Some("god-modules"),
+            &violations
+        ));
+        // None should never fail.
         assert!(!super::should_fail_on_violations(None, &violations));
     }
 

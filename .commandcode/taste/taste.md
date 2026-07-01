@@ -19,3 +19,9 @@ See [architecture/taste.md](architecture/taste.md)
 
 # llm
 - Use adaptive/smart timeouts for LLM calls based on task complexity and progress signals, rather than a single hardcoded timeout value. Confidence: 0.70
+
+# communication
+- Prefer clear, jargon-free explanations over cryptic technical output; translate terms like "convergence" and "drift" into plain English when the user signals confusion. Confidence: 0.75
+
+# workflow
+- Prefer deep codebase fixes over surface-level workarounds; when given a choice between a quick workaround and fixing the root cause, fix the root cause. Confidence: 0.65

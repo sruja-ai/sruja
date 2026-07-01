@@ -896,6 +896,39 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         manifest.detect_oscillation
     };
 
+    // ── Auto-baseline: snapshot current violations so the grader only
+    // fails on NEW violations the agent introduces, not pre-existing noise
+    // (god-module thresholds, orphan book JS, tree-sitter false positives).
+    let baseline_path = repo_path.join(".sruja").join("violations.baseline.json");
+    if !baseline_path.exists() && !options.no_default_grader && !dry_run {
+        let bp = baseline_path.to_string_lossy().to_string();
+        match std::process::Command::new(
+            super::loop_grader::resolve_sruja_binary().as_str(),
+        )
+        .args(["baseline", "-r", ".", "-o", &bp])
+        .current_dir(repo_path)
+        .output()
+        {
+            Ok(output) if output.status.success() => {
+                eprintln!("  ✓ Violations baseline created: {}", bp);
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                eprintln!(
+                    "  ⚠ Could not create violations baseline ({}): will run \
+                     without pre-existing violation suppression.",
+                    stderr.trim().lines().next().unwrap_or("unknown error")
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "  ⚠ Could not create violations baseline ({e}): will run \
+                     without pre-existing violation suppression."
+                );
+            }
+        }
+    }
+
     // ── In-loop verifier configuration ───────────────────────────────────
     // Priority chain: user manifest steps > default grader > none.
     // The default grader makes the "never self-graded" thesis true without

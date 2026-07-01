@@ -58,19 +58,31 @@ pub fn default_grader_steps(repo_path: &Path, sruja_bin: &str, fail_on: &str) ->
         });
     }
 
+    // Drift check: if a violations baseline exists, use it to suppress
+    // pre-existing noise so the grader only fails on NEW violations the
+    // agent introduces. Without this, every loop iteration fails on
+    // structural artifacts (god-module counts, orphan book JS files,
+    // tree-sitter layer-violation false positives) that predate the run.
+    let baseline_path = repo_path.join(".sruja").join("violations.baseline.json");
+    let mut drift_args = vec![
+        "drift".to_string(),
+        "-r".to_string(),
+        ".".to_string(),
+        "--structural-only".to_string(),
+        "--fail-on".to_string(),
+        fail_on.to_string(),
+        "-f".to_string(),
+        "json".to_string(),
+    ];
+    if baseline_path.exists() {
+        drift_args.push("--baseline".to_string());
+        drift_args.push(baseline_path.to_string_lossy().to_string());
+    }
+
     steps.push(VerifyStep {
         id: "grader_drift".to_string(),
         command: sruja_bin.to_string(),
-        args: vec![
-            "drift".to_string(),
-            "-r".to_string(),
-            ".".to_string(),
-            "--structural-only".to_string(),
-            "--fail-on".to_string(),
-            fail_on.to_string(),
-            "-f".to_string(),
-            "json".to_string(),
-        ],
+        args: drift_args,
         expected: None,
     });
 
@@ -217,6 +229,31 @@ mod tests {
         assert!(steps[0]
             .args
             .contains(&"cycles,layer-violations".to_string()));
+        // No baseline file exists, so no --baseline flag.
+        assert!(!steps[0].args.contains(&"--baseline".to_string()));
+    }
+
+    #[test]
+    fn drift_step_includes_baseline_when_violations_baseline_exists() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo_path = tmp.path();
+        // Create a dummy violations baseline
+        std::fs::create_dir_all(repo_path.join(".sruja")).unwrap();
+        std::fs::write(
+            repo_path.join(".sruja").join("violations.baseline.json"),
+            r#"{"schema_version":"1","fingerprints":{}}"#,
+        )
+        .unwrap();
+
+        let steps = default_grader_steps(repo_path, "sruja", "cycles");
+        let drift_step = steps.iter().find(|s| s.id == "grader_drift").unwrap();
+        assert!(drift_step.args.contains(&"--baseline".to_string()));
+        let baseline_idx = drift_step
+            .args
+            .iter()
+            .position(|a| a == "--baseline")
+            .unwrap();
+        assert!(drift_step.args[baseline_idx + 1].contains("violations.baseline.json"));
     }
 
     #[test]
@@ -235,7 +272,6 @@ mod tests {
     fn with_intent_artifacts() {
         let tmp = tempfile::tempdir().unwrap();
         let repo_path = tmp.path();
-        // Create an ADR directory to signal intent artifacts
         let adr_dir = repo_path.join(".sruja").join("adr");
         std::fs::create_dir_all(&adr_dir).unwrap();
         std::fs::write(adr_dir.join("001-choice.md"), "# ADR-001: Some decision\n").unwrap();

@@ -208,10 +208,12 @@ impl CompressingClient {
             Ok(result) if result.savings() > 0.0 => match self.ccr.put(content) {
                 Ok(handle) => {
                     let compressed_text = format_ccr_message(&handle, &result.text);
+                    let mut cached = result.clone();
+                    cached.ccr_handle = Some(handle.clone());
                     self.compression_cache
                         .lock()
                         .unwrap()
-                        .insert(cache_key, result.clone());
+                        .insert(cache_key, cached);
                     self.stats
                         .messages_compressed
                         .fetch_add(1, Ordering::Relaxed);

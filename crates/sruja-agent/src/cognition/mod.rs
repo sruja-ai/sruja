@@ -541,15 +541,11 @@ fn has_error_patterns(content: &str) -> bool {
 ///
 /// Compresses: file_read and shell outputs older than the most recent assistant
 /// turn, only if > 500 chars and > 6 lines.
+///
+/// Messages containing error patterns are preserved in full — only non-error
+/// tool results are compressed. This gives the model the error context it needs
+/// while still saving tokens on the rest.
 fn compress_tool_results(mut messages: Vec<Message>) -> Vec<Message> {
-    // Early-return: skip compression entirely if any tool result contains error
-    // patterns. This preserves the original error context for the model.
-    if messages
-        .iter()
-        .any(|m| m.role == MessageRole::Tool && has_error_patterns(&m.content))
-    {
-        return messages;
-    }
     // Build a map: tool_call_id -> tool_name (to detect file_write/file_edit).
     let mut call_id_to_tool: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
@@ -589,6 +585,12 @@ fn compress_tool_results(mut messages: Vec<Message>) -> Vec<Message> {
 
             // Never compress: file_write/file_edit confirmations.
             if tool_name == "file_write" || tool_name == "file_edit" {
+                compressed.push(msg);
+                continue;
+            }
+
+            // Never compress: error-containing messages (preserve full context).
+            if has_error_patterns(&msg.content) {
                 compressed.push(msg);
                 continue;
             }
@@ -633,9 +635,36 @@ fn compress_tool_results(mut messages: Vec<Message>) -> Vec<Message> {
     compressed
 }
 
-/// Classifies errors from critic issues and tool output using deterministic pattern matching.
+/// Check whether model output contains meaningful content beyond just surface text.
 ///
-/// Returns the most specific error class that matches the available signals.
+/// A model can produce text without tools (step_converged=true) but the output
+/// may still be a refusal, a placeholder, or gibberish — all of which should
+/// count as non-converged for quality purposes.
+pub fn content_has_quality(content: &str) -> bool {
+    let trimmed = content.trim();
+    if trimmed.len() < 30 {
+        return false;
+    }
+    // Refusal/failure indicators that suggest the model gave up rather than
+    // producing a real answer.
+    let low_quality_patterns = [
+        "i cannot",
+        "i can't",
+        "i am unable",
+        "i'm unable",
+        "i apologize",
+        "i'm sorry",
+        "i cannot complete",
+        "unable to complete",
+        "cannot fulfill",
+    ];
+    let lower = trimmed.to_lowercase();
+    if low_quality_patterns.iter().any(|p| lower.contains(p)) {
+        return false;
+    }
+    true
+}
+
 /// Prioritizes tool output (shell/stderr) for low-level errors, then critic issues for
 /// high-level architectural/spec problems.
 pub fn classify_error(critique_issues: &[String], step_results: &[StepResult]) -> ErrorClass {
@@ -1345,6 +1374,7 @@ impl Agent {
         let mut total_usage = Usage::default();
         let mut tool_signals: Vec<ToolSignal> = Vec::new();
         let mut last_response: Option<CompletionResponse> = None;
+        let mut soft_sent = false;
         let mut hard_sent = false;
         // Circuit breaker: track consecutive tool errors and inject recovery.
         let mut consecutive_errors: usize = 0;
@@ -1353,6 +1383,11 @@ impl Agent {
         // (no meaningful content). After 3, abort early — the model is
         // stuck in a tool-calling loop it won't exit.
         let mut consecutive_tool_only: usize = 0;
+        // Track repeated tool+arg signatures to detect stuck loops
+        // even when the model produces some text. Same tool with same
+        // args 3+ times = loop.
+        let mut last_tool_signature: Option<String> = None;
+        let mut consecutive_same_tool_call: usize = 0;
 
         for iteration in 0..max_iterations {
             let response = self.llm.complete(&req).await?;
@@ -1530,6 +1565,51 @@ impl Agent {
                     .push(Message::tool_result(&call.id, truncated_text));
             }
 
+            // ── Tool call signature tracking ────────────────────────────
+            // Detect repeated tool+arg patterns to distinguish productive
+            // exploration from stuck loops. Build a signature from (tool_name, arg_keys)
+            // pairs — if the same signature appears 3+ times in a row, abort.
+            {
+                let sig: String = response
+                    .tool_calls
+                    .iter()
+                    .map(|call| {
+                        let keys: Vec<String> = call
+                            .arguments
+                            .as_object()
+                            .map(|m| {
+                                let mut k: Vec<String> = m.keys().cloned().collect();
+                                k.sort();
+                                k
+                            })
+                            .unwrap_or_default();
+                        format!("{}:{:?}", call.name, keys)
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|");
+                if last_tool_signature.as_deref() == Some(&sig) {
+                    consecutive_same_tool_call += 1;
+                } else {
+                    consecutive_same_tool_call = 0;
+                }
+                last_tool_signature = Some(sig);
+                if consecutive_same_tool_call >= 3 {
+                    tracing::warn!(
+                        iteration,
+                        consecutive_same_tool_call,
+                        "tool_loop: same tool+args called 3+ times in a row — aborting"
+                    );
+                    let mut fallback = last_response.unwrap_or_else(|| {
+                        CompletionResponse::text(
+                            "ERROR: model stuck repeating the same tool call with same arguments.",
+                        )
+                    });
+                    fallback.tool_calls.clear();
+                    fallback.finish_reason = crate::llm::FinishReason::Stop;
+                    return Ok((fallback, total_usage, tool_signals, false));
+                }
+            }
+
             // ── Progressive compression (every 3 iterations) ─────────────
             // Compress old tool results to save context tokens.
             // Only compress after 3 iterations have passed (not iteration 0).
@@ -1569,12 +1649,13 @@ impl Agent {
                 consecutive_errors = 0;
             }
 
-            // ── Convergence pressure ─────────────────────────────────────
-            // When the tool-call budget is nearly exhausted, inject one final
-            // message forcing the model to produce an answer. The soft reminder
-            // was removed — one hard message is enough and less noisy.
+            // ── Tiered convergence pressure ─────────────────────────────
+            // Two-stage pressure: soft reminder at 50% remaining, hard
+            // cutoff at 25% remaining. This gives models a chance to wrap
+            // up gradually instead of a one-shot ultimatum.
             let remaining = max_iterations - iteration - 1;
             let quarter = (max_iterations / 4).max(1);
+            let half = (max_iterations / 2).max(1);
             if remaining > 0 && remaining <= quarter && !hard_sent {
                 hard_sent = true;
                 tracing::warn!(
@@ -1587,6 +1668,18 @@ impl Agent {
                      You MUST produce your final answer now as plain text. \
                      Do NOT call any more tools. Synthesize what you have \
                      learned and write your answer.",
+                ));
+            } else if remaining > 0 && remaining <= half && !soft_sent && !hard_sent {
+                soft_sent = true;
+                tracing::info!(
+                    iteration,
+                    remaining,
+                    "tool_loop: injecting soft convergence reminder"
+                );
+                req.messages.push(Message::user(
+                    "Note: you have about half your tool calls remaining. \
+                     Start thinking about how to wrap up. If you can produce \
+                     your final answer now, please do.",
                 ));
             }
         }
@@ -2319,17 +2412,61 @@ impl Agent {
     /// Tries `cargo fmt` for Rust projects, then `prettier` for JS/TS.
     /// Failures are silently ignored — formatting is best-effort.
     async fn auto_format(&self) {
-        // Try cargo fmt (Rust)
-        let params = serde_json::json!({
-            "command": "cargo",
-            "args": ["fmt"],
-            "timeout_ms": 30_000,
-        });
-        if let Ok(output) = self.tools.dispatch("shell", params).await {
-            let stderr = output.split("--- stderr ---\n").nth(1).unwrap_or("").trim();
-            if stderr.is_empty() {
-                tracing::info!("auto_format: cargo fmt succeeded");
-                return;
+        // Get changed Rust files first to scope cargo fmt.
+        let changed_rust_files: Vec<String> = {
+            let params = serde_json::json!({
+                "command": "git",
+                "args": ["diff", "--name-only"],
+                "timeout_ms": 5_000,
+            });
+            if let Ok(output) = self.tools.dispatch("shell", params).await {
+                let stdout = output
+                    .split("--- stdout ---\n")
+                    .nth(1)
+                    .unwrap_or("")
+                    .split("\n--- stderr ---")
+                    .next()
+                    .unwrap_or("")
+                    .trim();
+                stdout
+                    .lines()
+                    .filter(|l| l.ends_with(".rs"))
+                    .map(|s| s.to_string())
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        };
+
+        // Try cargo fmt — scoped to changed files if any, otherwise full repo.
+        if !changed_rust_files.is_empty() {
+            let mut args = vec!["fmt".to_string(), "--".to_string()];
+            args.extend(changed_rust_files);
+            let params = serde_json::json!({
+                "command": "cargo",
+                "args": args,
+                "timeout_ms": 30_000,
+            });
+            if let Ok(output) = self.tools.dispatch("shell", params).await {
+                let stderr = output.split("--- stderr ---\n").nth(1).unwrap_or("").trim();
+                if stderr.is_empty() {
+                    tracing::info!("auto_format: cargo fmt (scoped) succeeded");
+                    return;
+                }
+            }
+        } else {
+            // Fallback: full repo cargo fmt if no changed files detected.
+            let params = serde_json::json!({
+                "command": "cargo",
+                "args": ["fmt"],
+                "timeout_ms": 30_000,
+            });
+            if let Ok(output) = self.tools.dispatch("shell", params).await {
+                let stderr = output.split("--- stderr ---\n").nth(1).unwrap_or("").trim();
+                if stderr.is_empty() {
+                    tracing::info!("auto_format: cargo fmt (full) succeeded");
+                    return;
+                }
             }
         }
 
@@ -2922,6 +3059,8 @@ impl Agent {
         let mut _last_output = String::new();
         let mut step_results: Vec<StepResult> = Vec::new();
         let mut non_converged_count: usize = 0;
+        let mut seen_signatures: Vec<String> = Vec::new();
+        let mut failure_tracker: FailureTracker = FailureTracker::default();
 
         for iteration in 1..=max_iterations {
             Self::emit_event(
@@ -2948,8 +3087,11 @@ impl Agent {
                 non_converged_count += 1;
             }
 
-            // Record step result.
-            let status = if response.content.contains("ERROR") || !step_converged {
+            // Record step result — check both convergence and content quality.
+            let status = if response.content.contains("ERROR")
+                || !step_converged
+                || !content_has_quality(&response.content)
+            {
                 StepStatus::Failed
             } else {
                 StepStatus::Ok
@@ -2991,7 +3133,8 @@ impl Agent {
                 Vec::new()
             };
 
-            let approved = verify_failed.is_empty() && step_converged;
+            let approved =
+                verify_failed.is_empty() && step_converged && content_has_quality(&response.content);
 
             // Record iteration.
             iterations.push(LoopIteration {
@@ -3037,13 +3180,39 @@ impl Agent {
                 }
             }
 
-            // Feed verification errors back for next iteration.
+            // --- Oscillation detection ---
+            // Check if the same verify_failed pattern repeats across iterations.
+            if loop_config.detect_oscillation {
+                let signature = verify_failed.join("|");
+                // Only consider non-empty signatures (empty = approved = no oscillation).
+                if !signature.is_empty() {
+                    if seen_signatures.last() == Some(&signature) {
+                        tracing::warn!(
+                            iteration,
+                            "oscillation: same verify_failed pattern repeated consecutively"
+                        );
+                        termination = LoopTermination::Oscillation;
+                        break;
+                    }
+                    seen_signatures.push(signature);
+                }
+            }
+
+            // Feed verification errors back for next iteration, with FailureTracker context.
             if !verify_failed.is_empty() {
-                req.messages
-                    .push(Message::user(&format!(
-                        "Verification failed:\n{}",
-                        verify_failed.join("\n")
-                    )));
+                let error_class = classify_error(&verify_failed, &step_results);
+                failure_tracker.record(
+                    format!("iteration {iteration}"),
+                    verify_failed.join("; "),
+                    iteration,
+                    error_class,
+                );
+                let mut feedback = format!("Verification failed:\n{}", verify_failed.join("\n"));
+                let tracker_history = failure_tracker.format_for_prompt();
+                if !tracker_history.is_empty() {
+                    feedback.push_str(&tracker_history);
+                }
+                req.messages.push(Message::user(&feedback));
             }
         }
 
@@ -3380,11 +3549,6 @@ fn summarize_verify_failures(results: &[VerifyResult]) -> Vec<String> {
         .iter()
         .filter(|r| !matches!(r.status, VerifyStatus::Ok))
         .map(|r| {
-            let detail = if r.stderr.trim().is_empty() {
-                r.stdout.trim()
-            } else {
-                r.stderr.trim()
-            };
             let exit = r
                 .exit_code
                 .map(|c| c.to_string())
@@ -3394,12 +3558,103 @@ fn summarize_verify_failures(results: &[VerifyResult]) -> Vec<String> {
                 VerifyStatus::Skipped => "skipped",
                 VerifyStatus::Ok => unreachable!(),
             };
+
+            // For drift failures, parse the JSON to extract actionable violation details.
+            if r.step_id == "grader_drift" {
+                if let Some(lines) = extract_violation_lines_from_drift_json(&r.stdout) {
+                    return format!(
+                        "verify '{}' {} (exit={}):\n{}",
+                        r.step_id,
+                        status_str,
+                        exit,
+                        lines.join("\n")
+                    );
+                }
+            }
+
+            let detail = if r.stderr.trim().is_empty() {
+                r.stdout.trim()
+            } else {
+                r.stderr.trim()
+            };
             format!(
                 "verify '{}' {} (exit={}): {}",
                 r.step_id, status_str, exit, detail
             )
         })
         .collect()
+}
+
+/// Extract human-readable violation lines from a `sruja drift` JSON output.
+///
+/// Parses the stdout of `sruja drift -f json --structural-only --fail-on ...`
+/// and returns one line per violation that triggered the failure. Returns
+/// `None` if the JSON can't be parsed (fall back to raw output).
+fn extract_violation_lines_from_drift_json(stdout: &str) -> Option<Vec<String>> {
+    let parsed: serde_json::Value = serde_json::from_str(stdout).ok()?;
+    let violations = parsed.get("violations")?.as_array()?;
+
+    if violations.is_empty() {
+        return Some(vec!["No specific violations listed.".into()]);
+    }
+
+    // Show up to 12 violations so the model gets context without flooding.
+    let mut lines: Vec<String> = violations
+        .iter()
+        .filter(|v| v.get("suppressed").and_then(|s| s.as_bool()) != Some(true))
+        .take(12)
+        .map(|v| {
+            let kind = v.get("kind").and_then(|k| k.as_str()).unwrap_or("?");
+            let severity = v
+                .get("severity")
+                .and_then(|s| s.as_str())
+                .unwrap_or("?");
+            let message = v
+                .get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("?");
+            let location = v
+                .get("location")
+                .and_then(|l| l.as_str())
+                .unwrap_or("");
+            let file = v
+                .get("sources")
+                .and_then(|s| s.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|src| src.get("file"))
+                .and_then(|f| f.as_str())
+                .unwrap_or("");
+            let baseline = v
+                .get("baseline_delta")
+                .and_then(|b| b.as_str())
+                .unwrap_or("");
+            let tag = if baseline == "new" { " [NEW]" } else { "" };
+            if file.is_empty() {
+                format!(
+                    "  {kind}({severity}){tag}: {message} ({location})"
+                )
+            } else {
+                format!(
+                    "  {kind}({severity}){tag}: {message} — {file}"
+                )
+            }
+        })
+        .collect();
+
+    let total = violations.len();
+    let suppressed = violations
+        .iter()
+        .filter(|v| v.get("suppressed").and_then(|s| s.as_bool()) == Some(true))
+        .count();
+    let summary = format!(
+        "{} new violation(s) ({} total, {} pre-existing suppressed):",
+        total - suppressed,
+        total,
+        suppressed
+    );
+    lines.insert(0, summary);
+
+    Some(lines)
 }
 
 /// Structural check: did the replan actually incorporate the prior critique?

@@ -52,8 +52,7 @@ Sruja = system "Sruja Platform" {
 
   CLI -> Core "Parses and validates"
   CLI -> Context "Scans repos and checks drift"
-  CLI -> Agent "Manages memory and learning"
-  CLI -> Agent "Drives autonomous loop"
+  CLI -> Agent "Manages memory, learning, and drives autonomous loop"
   CLI -> Export "Exports outputs"
   CLI -> Book "Builds and validates examples"
 

@@ -447,7 +447,7 @@ impl LlmClient for ScriptedLlm {
         } else if sys.contains("executing a specific subtask")
             || sys.contains("autonomous coding agent")
         {
-            "done".to_string()
+            "Done writing the hello module. The file was created successfully and contains the expected content.".to_string()
         } else if sys.contains("understand codebases thoroughly") {
             "Understood the goal.".to_string()
         } else {
@@ -611,7 +611,7 @@ impl LlmClient for ActingLlm {
                     finish_reason: crate::llm::FinishReason::ToolCalls,
                 });
             }
-            "done".to_string()
+            "Done writing the hello module. The file was created successfully and contains the expected content.".to_string()
         } else if sys.contains("decomposing work into concrete subtasks") {
             r#"{"subtasks":[{"id":"s1","description":"write hello module","tier":"mid","kind":"implement","files":["src/hello.rs"],"acceptance_criteria":["file exists"]}],"risks":[]}"#
                     .to_string()
