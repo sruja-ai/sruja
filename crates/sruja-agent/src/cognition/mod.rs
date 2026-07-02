@@ -393,6 +393,11 @@ pub struct Comprehension {
     /// Controls prompt selection, TDD enforcement, and artifact generation.
     #[serde(default)]
     pub complexity: TaskComplexity,
+    /// Actionable pre-condition directives derived from error history.
+    /// Injected into execute prompts to prevent repeated failures.
+    /// E.g., "Run cargo check before editing — high rate of compilation errors."
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pre_conditions: Vec<String>,
 }
 
 /// The Critic's assessment.
@@ -728,6 +733,65 @@ impl FailureTracker {
             ));
         }
         out
+    }
+}
+
+/// Runtime scope drift detection.
+///
+/// Tracks tool call volumes during execution and detects when the actual
+/// scope exceeds the initial `TaskComplexity` classification. When drift
+/// is detected, the pipeline can be escalated mid-loop (e.g., Simple → Moderate
+/// adds Plan and Critique stages).
+///
+/// Since `ToolSignal` doesn't carry file paths, we approximate scope by
+/// counting tool calls: a Simple task making 20+ tool calls is likely
+/// doing more than expected.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ScopeDrift {
+    /// Total tool calls observed across the iteration.
+    pub total_tool_calls: usize,
+    /// Whether scope exceeded the original classification.
+    pub exceeded: bool,
+    /// Whether escalation has already been applied.
+    pub escalated: bool,
+}
+
+impl ScopeDrift {
+    /// Thresholds per complexity: max tool calls before drift is detected.
+    fn threshold(complexity: TaskComplexity) -> usize {
+        match complexity {
+            TaskComplexity::Trivial => 3,
+            TaskComplexity::Simple => 10,
+            TaskComplexity::Moderate => 20,
+            TaskComplexity::Complex => 40,
+        }
+    }
+
+    /// Check if scope has drifted beyond the original classification.
+    pub fn detect(&mut self, initial: TaskComplexity) -> bool {
+        let max_calls = Self::threshold(initial);
+        self.exceeded = self.total_tool_calls > max_calls;
+        self.exceeded
+    }
+
+    /// Return an escalated pipeline that adds Plan and/or Critique if missing.
+    pub fn escalated_stages(&self, current: &[crate::manifest::StageKind]) -> Vec<crate::manifest::StageKind> {
+        use crate::manifest::StageKind;
+        let mut stages: Vec<StageKind> = current.to_vec();
+        if !stages.contains(&StageKind::Plan) {
+            if let Some(pos) = stages.iter().position(|s| *s == StageKind::Comprehend) {
+                stages.insert(pos + 1, StageKind::Plan);
+            }
+        }
+        if !stages.contains(&StageKind::Critique) {
+            stages.push(StageKind::Critique);
+        }
+        stages
+    }
+
+    /// Record tool signals to accumulate scope metrics.
+    pub fn record_tool_signals(&mut self, signals: &[ToolSignal]) {
+        self.total_tool_calls += signals.len();
     }
 }
 
@@ -1105,53 +1169,93 @@ impl Agent {
         };
 
         // Retrieve error frequency history for this repo.
-        let error_history = if let Some(ref mem) = self.memory {
+        // Retrieve error frequency history for this repo.
+        let (error_history, pre_conditions) = if let Some(ref mem) = self.memory {
             if let Some(repo_path) = &self.repo_root {
                 let repo_path_str = repo_path.display().to_string();
                 if let Ok(frequencies) = mem.search_error_history(&repo_path_str) {
                     if frequencies.is_empty() {
-                        String::new()
+                        (String::new(), Vec::new())
                     } else {
                         let total: usize = frequencies.iter().map(|f| f.count).sum();
-                        let percentages: Vec<String> = frequencies
-                            .iter()
-                            .map(|f| {
-                                let pct = if total > 0 {
-                                    (f.count as f64 / total as f64 * 100.0) as u32
-                                } else {
-                                    0
-                                };
-                                let advice = match f.error_class {
-                                    ErrorClass::Compilation => "(run cargo check first)",
-                                    ErrorClass::Type => "(check type annotations before tests)",
-                                    ErrorClass::Test => {
-                                        "(verify logic against acceptance criteria)"
-                                    }
-                                    ErrorClass::Runtime => "(check for unwrap/None, bounds)",
-                                    ErrorClass::Lint => "(run cargo clippy)",
-                                    ErrorClass::Architecture => "(check boundary crossings)",
-                                    ErrorClass::SpecGap => "(verify all criteria are addressed)",
-                                    ErrorClass::Other => "(investigate carefully)",
-                                };
-                                format!("{}% {:?} {}", pct, f.error_class, advice)
-                            })
-                            .collect();
-                        format!(
+                        let mut percentages = Vec::new();
+                        let mut preconds = Vec::new();
+                        for f in &frequencies {
+                            let pct = if total > 0 {
+                                (f.count as f64 / total as f64 * 100.0) as u32
+                            } else {
+                                0
+                            };
+                            let (advice, precond) = match f.error_class {
+                                ErrorClass::Compilation => (
+                                    "(run cargo check first)",
+                                    if pct >= 20 {
+                                        Some("Run `cargo check` before editing — high rate of compilation errors in this repo.".to_string())
+                                    } else { None },
+                                ),
+                                ErrorClass::Type => (
+                                    "(check type annotations before tests)",
+                                    if pct >= 20 {
+                                        Some("Check type annotations and trait bounds carefully — type errors are common here.".to_string())
+                                    } else { None },
+                                ),
+                                ErrorClass::Test => (
+                                    "(verify logic against acceptance criteria)",
+                                    if pct >= 20 {
+                                        Some("Verify test assertions against acceptance criteria before implementing.".to_string())
+                                    } else { None },
+                                ),
+                                ErrorClass::Runtime => (
+                                    "(check for unwrap/None, bounds)",
+                                    if pct >= 20 {
+                                        Some("Check for unwrap/None and bounds — runtime panics are frequent in this repo.".to_string())
+                                    } else { None },
+                                ),
+                                ErrorClass::Lint => (
+                                    "(run cargo clippy)",
+                                    if pct >= 20 {
+                                        Some("Run `cargo clippy --fix` after changes.".to_string())
+                                    } else { None },
+                                ),
+                                ErrorClass::Architecture => (
+                                    "(check boundary crossings)",
+                                    if pct >= 20 {
+                                        Some("Run `sruja drift` before verification — boundary violations are common.".to_string())
+                                    } else { None },
+                                ),
+                                ErrorClass::SpecGap => (
+                                    "(verify all criteria are addressed)",
+                                    if pct >= 20 {
+                                        Some("Verify all acceptance criteria are addressed before submitting.".to_string())
+                                    } else { None },
+                                ),
+                                ErrorClass::Other => (
+                                    "(investigate carefully)",
+                                    None,
+                                ),
+                            };
+                            percentages.push(format!("{}% {:?} {}", pct, f.error_class, advice));
+                            if let Some(pc) = precond {
+                                preconds.push(pc);
+                            }
+                        }
+                        let history = format!(
                             "\n\n## Error History for This Repo\n\
                              This repo's past agent runs had these failure patterns:\n\
                              - {}\n\
                              Focus your attention accordingly.",
                             percentages.join("\n- ")
-                        )
+                        );
+                        (history, preconds)
                     }
                 } else {
-                    String::new()
+                    (String::new(), Vec::new())
                 }
             } else {
-                String::new()
+                (String::new(), Vec::new())
             }
         } else {
-            String::new()
+            (String::new(), Vec::new())
         };
 
         let system = format!("{COMPREHENSION_SYSTEM_PROMPT}{memory_context}{error_history}{hints}");
@@ -1198,6 +1302,7 @@ impl Agent {
             usage,
             retrieved_learning_ids,
             complexity,
+            pre_conditions,
         })
     }
 
@@ -1791,27 +1896,6 @@ impl Agent {
             return Err(AgentError::HookAborted(reason));
         }
 
-        let issues = if critique.issues.is_empty() {
-            "(none reported)".to_string()
-        } else {
-            critique
-                .issues
-                .iter()
-                .map(|i| format!("- {i}"))
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
-        let suggestions = if critique.suggestions.is_empty() {
-            "(none reported)".to_string()
-        } else {
-            critique
-                .suggestions
-                .iter()
-                .map(|s| format!("- {s}"))
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
-
         let tdd_note = if self.config.tdd && comprehension.complexity.enforce_tdd() {
             "\n\nTDD MODE IS ON: keep test_author subtasks BEFORE implement subtasks."
         } else {
@@ -1845,19 +1929,45 @@ impl Agent {
 
         let failure_context = failure_tracker.format_for_prompt();
 
+        // Structured critique JSON instead of flat text soup.
+        let critique_json = serde_json::to_string_pretty(&serde_json::json!({
+            "approved": critique.approved,
+            "score": critique.score,
+            "issues": critique.issues,
+            "suggestions": critique.suggestions,
+            "persona_breakdown": critique.persona_breakdown.iter().map(|p| {
+                serde_json::json!({
+                    "persona_id": p.id,
+                    "approved": p.approved,
+                    "issues": p.issues,
+                })
+            }).collect::<Vec<_>>(),
+            "criteria_matrix": critique.criteria.iter().map(|c| {
+                serde_json::json!({
+                    "index": c.index,
+                    "criterion": c.criterion,
+                    "status": c.status,
+                    "reason": c.reason,
+                })
+            }).collect::<Vec<_>>(),
+        })).unwrap_or_else(|_| "{}".to_string());
+
         let user = format!(
             "## Goal\n{goal_str}\n\n\
              ## Comprehension\n{}\n\n\
-             ## Prior review outcome\n\
+             ## Prior Review Outcome (Structured)\n\
              The independent critic REJECTED the previous attempt (score: {:.0}%).\n\
-             You must produce a revised plan that addresses the feedback.\n\n\
-             ### Critic issues\n{issues}\n\n\
-             ### Critic suggestions\n{suggestions}\n\n\
+             Below is the full structured critique — each issue is tagged with\n\
+             its originating persona, and the criteria matrix shows which\n\
+             acceptance criteria are missing or partial.\n\n\
+             ```json\n{critique_json}\n```\n\
              {failure_context}\
              ## Instructions\n\
              {plan_instructions}\
              Output a JSON object with `subtasks` array and `risks` array. \
-             Do not repeat failed approaches. Try a DIFFERENT strategy.{tdd_note}{pressure_note}",
+             Do not repeat failed approaches. Try a DIFFERENT strategy. \
+             Each criterion marked `missing` or `partial` in the criteria matrix \
+             MUST be addressed by new subtasks.{tdd_note}{pressure_note}",
             comprehension.summary,
             critique.score * 100.0,
         );
@@ -2490,6 +2600,7 @@ impl Agent {
             usage: Usage::default(),
             retrieved_learning_ids: vec![],
             complexity,
+            pre_conditions: vec![],
         };
 
         Self::emit_event(
@@ -2502,12 +2613,25 @@ impl Agent {
 
         // --- Build initial request ---
         let system = crate::cognition::prompts::AGENT_LOOP_SYSTEM_PROMPT;
+        let pre_condition_section = if !comprehension.pre_conditions.is_empty() {
+            format!(
+                "\n\n## Pre-conditions from Error History\n\
+                 This repo has patterns of recurring failures. Address these proactively:\n{}\n",
+                comprehension.pre_conditions.iter()
+                    .map(|p| format!("- {p}"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        } else {
+            String::new()
+        };
+        let initial_user = format!("{}{}", goal.statement, pre_condition_section);
         let mut req =
-            CompletionRequest::prompt(system, &goal.statement).with_tools(self.tools.schemas());
+            CompletionRequest::prompt(system, &initial_user).with_tools(self.tools.schemas());
         req.model = Some(self.config.models.mid.clone());
 
-        // Pipeline-driven phase management.
         let pipeline = &loop_config.pipeline;
+        let mut pipeline_stages = pipeline.stages.clone();
         let mut total_usage = Usage::default();
         let mut iterations: Vec<LoopIteration> = Vec::new();
         let mut converged = false;
@@ -2517,6 +2641,7 @@ impl Agent {
         let mut non_converged_count: usize = 0;
         let mut seen_signatures: Vec<String> = Vec::new();
         let mut failure_tracker: FailureTracker = FailureTracker::default();
+        let mut scope_drift: ScopeDrift = ScopeDrift::default();
         let mut current_plan: Option<Plan> = None;
         let mut current_critique: Option<Critique> = None;
 
@@ -2535,7 +2660,8 @@ impl Agent {
 
             let mut iteration_verify_failed: Vec<String> = Vec::new();
 
-            for &stage_kind in &pipeline.stages {
+            let stages_this_iteration: Vec<crate::manifest::StageKind> = pipeline_stages.clone();
+            for &stage_kind in &stages_this_iteration {
                 // Skip "comprehend" after the first iteration — understood once.
                 if stage_kind == crate::manifest::StageKind::Comprehend && iteration > 1 {
                     continue;
@@ -2571,6 +2697,82 @@ impl Agent {
                         }
                     }
 
+                    crate::manifest::StageKind::Fix => {
+                        // Targeted fix: if critique has file-level issues, run a
+                        // focused tool loop to apply targeted edits instead of
+                        // regenerating the full plan.
+                        if let Some(ref critique) = current_critique {
+                            if !critique.approved && !critique.issues.is_empty() {
+                                let file_refs = crate::cognition::parsing::extract_file_references(&critique.issues);
+                                if !file_refs.is_empty() {
+                                    let git_diff = self.get_git_diff().await.unwrap_or_default();
+                                    let critique_json = serde_json::to_string_pretty(&serde_json::json!({
+                                        "approved": critique.approved,
+                                        "score": critique.score,
+                                        "issues": critique.issues,
+                                        "suggestions": critique.suggestions,
+                                        "file_references": file_refs.iter().map(|(f, lines)| {
+                                            serde_json::json!({"file": f, "lines": lines})
+                                        }).collect::<Vec<_>>(),
+                                    })).unwrap_or_default();
+
+                                    let fix_user = format!(
+                                        "## Current Diff\n```diff\n{}\n```\n\n\
+                                         ## Critique Issues\n```json\n{}\n```\n\n\
+                                         ## Instructions\n\
+                                         Fix the issues above by editing the flagged files.\n\
+                                         Only modify files referenced in the critique.",
+                                        git_diff, critique_json,
+                                    );
+                                    let mut fix_req = CompletionRequest::prompt(
+                                        crate::cognition::prompts::FIX_SYSTEM_PROMPT,
+                                        &fix_user,
+                                    ).with_tools(self.tools.schemas());
+                                    fix_req.model = Some(self.config.models.premium.clone());
+
+                                    let (response, usage, tool_signals, step_converged) = self
+                                        .run_tool_loop_with_limit(fix_req, 5)
+                                        .await?;
+                                    total_usage.accumulate(&usage);
+                                    scope_drift.record_tool_signals(&tool_signals);
+
+                                    let status = if step_converged && content_has_quality(&response.content) {
+                                        StepStatus::Ok
+                                    } else {
+                                        StepStatus::Failed
+                                    };
+                                    let output = response.content;
+                                    let result = StepResult {
+                                        subtask_id: format!("{iteration}_fix"),
+                                        status,
+                                        output: output.clone(),
+                                        usage,
+                                        tool_signals,
+                                        converged: step_converged,
+                                    };
+                                    // Pass a placeholder subtask for the hook
+                                    let fix_subtask = Subtask {
+                                        id: format!("{iteration}_fix"),
+                                        description: "targeted fix from critique feedback".into(),
+                                        tier: TaskTier::Premium,
+                                        kind: SubtaskKind::Implement,
+                                        files: file_refs.iter().map(|(f, _)| f.clone()).collect(),
+                                        acceptance_criteria: vec![],
+                                    };
+                                    self.hooks.after_step(&fix_subtask, &result).await;
+                                    step_results.push(result);
+                                    _last_output = output;
+                                } else {
+                                    tracing::info!("fix stage: no file-level references — skipping");
+                                }
+                            } else {
+                                tracing::info!("fix stage: critique approved or empty — skipping");
+                            }
+                        } else {
+                            tracing::info!("fix stage: no critique available — skipping");
+                        }
+                    }
+
                     crate::manifest::StageKind::Reflect => {
                         if let Some(ref plan) = current_plan {
                             let _ = self
@@ -2589,6 +2791,7 @@ impl Agent {
                             .run_tool_loop_with_limit(req.clone(), max_iters)
                             .await?;
                         total_usage.accumulate(&usage);
+                        scope_drift.record_tool_signals(&tool_signals);
                         _last_output = response.content.clone();
 
                         if !step_converged {
@@ -2648,6 +2851,18 @@ impl Agent {
                         } else {
                             Vec::new()
                         };
+
+                        // --- Scope drift detection (escalate pipeline if needed) ---
+                        if !scope_drift.escalated && scope_drift.detect(complexity) {
+                            let new_stages = scope_drift.escalated_stages(&pipeline_stages);
+                            tracing::info!(
+                                from = ?pipeline_stages,
+                                to = ?new_stages,
+                                "pipeline: escalating due to scope drift"
+                            );
+                            pipeline_stages = new_stages;
+                            scope_drift.escalated = true;
+                        }
                     }
                 }
             }
@@ -2664,7 +2879,7 @@ impl Agent {
                 iteration,
                 replanned: iteration > 1,
                 plan_goal: goal.statement.clone(),
-                subtask_count: pipeline.stages.len(),
+                subtask_count: pipeline_stages.len(),
                 succeeded: if approved { 1 } else { 0 },
                 failed: if approved { 0 } else { 1 },
                 critique_approved: approved,

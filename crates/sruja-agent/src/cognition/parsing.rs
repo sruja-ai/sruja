@@ -266,6 +266,106 @@ pub(super) fn extract_json(content: &str) -> String {
     content.to_string()
 }
 
+/// Known file extensions to recognize when scanning critique issues.
+const KNOWN_EXTENSIONS: &[&str] = &[
+    ".rs", ".ts", ".tsx", ".js", ".jsx", ".toml", ".md", ".json", ".yaml", ".yml",
+];
+
+/// Known file-path indicator phrases.
+const FILE_INDICATORS: &[&str] = &["in file", "file:", "at "];
+
+/// Extract file path and line number references from critique issues.
+///
+/// Uses simple string scanning to find patterns like:
+/// - `src/foo.rs:42` (file with line number)
+/// - `in file src/foo.rs` (file-level reference)
+/// - `[correctness] src/foo.rs:12 – null input` (persona-prefixed)
+///
+/// No regex crate needed — all matching is done via `str::find` and `split`.
+pub fn extract_file_references(issues: &[String]) -> Vec<(String, Vec<usize>)> {
+    use std::collections::BTreeMap;
+
+    let mut refs: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+
+    for issue in issues {
+        // Find file:line patterns by scanning for known extensions followed by :digits
+        let mut pos = 0;
+        while pos < issue.len() {
+            // Scan for a known extension
+            let mut found_ext = None;
+            for ext in KNOWN_EXTENSIONS {
+                if let Some(ext_pos) = issue[pos..].find(ext) {
+                    let abs_pos = pos + ext_pos;
+                    let after_ext = abs_pos + ext.len();
+                    // Check if followed by :digits
+                    if after_ext < issue.len() && issue.as_bytes()[after_ext] == b':' {
+                        let rest = &issue[after_ext + 1..];
+                        let line_str: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+                        if !line_str.is_empty() {
+                            // Walk backward from extension to find path start
+                            let path_start = abs_pos.saturating_sub(1);
+                            let file_start = issue[..=path_start]
+                                .rfind(|c: char| c == ' ' || c == '\t' || c == '`' || c == '–' || c == '-')
+                                .map(|p| p + 1)
+                                .unwrap_or(0);
+                            let file = &issue[file_start..after_ext];
+                            let file = file.trim().to_string();
+                            if !file.is_empty() && !file.contains(' ') {
+                                let line: usize = line_str.parse().unwrap_or(0);
+                                refs.entry(file).or_default().push(line);
+                            }
+                            pos = after_ext + 1 + line_str.len();
+                            found_ext = Some(());
+                            break;
+                        }
+                    }
+                    // No :digits — just a file reference (file-level)
+                    let path_start = abs_pos.saturating_sub(1);
+                    let file_start = issue[..=path_start]
+                        .rfind(|c: char| c == ' ' || c == '\t' || c == '`' || c == '–' || c == '-')
+                        .map(|p| p + 1)
+                        .unwrap_or(0);
+                    let file = &issue[file_start..after_ext];
+                    let file = file.trim().to_string();
+                    if !file.is_empty() && !file.contains(' ') {
+                        refs.entry(file).or_default();
+                    }
+                    pos = after_ext;
+                    found_ext = Some(());
+                    break;
+                }
+            }
+            if found_ext.is_none() {
+                pos += 1;
+            }
+        }
+
+        // Find "in file ..." or "file: ..." indicator patterns
+        for indicator in FILE_INDICATORS {
+            let mut search_pos = 0;
+            while let Some(idx) = issue[search_pos..].find(indicator) {
+                let abs_idx = search_pos + idx;
+                let after = abs_idx + indicator.len();
+                // Take the next whitespace-delimited token
+                let rest = &issue[after..];
+                let token: String = rest.chars().take_while(|c| !c.is_whitespace() && *c != ',' && *c != '.').collect();
+                if !token.is_empty() && KNOWN_EXTENSIONS.iter().any(|e| token.ends_with(e)) {
+                    refs.entry(token).or_default();
+                }
+                search_pos = after + 1;
+            }
+        }
+    }
+
+    // Deduplicate and sort line numbers per file
+    for lines in refs.values_mut() {
+        lines.sort();
+        lines.dedup();
+    }
+
+    refs.into_iter().collect()
+}
+
 fn parse_tier(s: &str) -> TaskTier {
     match s.to_lowercase().as_str() {
         "cheap" | "low" | "simple" => TaskTier::Cheap,

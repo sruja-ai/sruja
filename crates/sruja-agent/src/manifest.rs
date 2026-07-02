@@ -396,6 +396,58 @@ impl Default for PipelineConfig {
     }
 }
 
+impl PipelineConfig {
+    /// Generate a pipeline configuration from a goal specification.
+    ///
+    /// Uses the deterministic complexity classifier to select an appropriate
+    /// pipeline: trivial tasks skip planning and verification, complex tasks
+    /// get the full TDD pipeline with critique and reflection.
+    pub fn from_goal(goal: &GoalSpec) -> Self {
+        match crate::cognition::classify_task_complexity(
+            &goal.statement,
+            &goal.target_files,
+            &goal.target_elements,
+        ) {
+            crate::cognition::TaskComplexity::Trivial => Self {
+                stages: vec![StageKind::Implement],
+                recovery: RecoveryStrategy::Fail,
+                max_retries: 0,
+            },
+            crate::cognition::TaskComplexity::Simple => Self {
+                stages: vec![
+                    StageKind::Comprehend,
+                    StageKind::Implement,
+                    StageKind::Verify,
+                ],
+                ..Default::default()
+            },
+            crate::cognition::TaskComplexity::Moderate => Self {
+                stages: vec![
+                    StageKind::Comprehend,
+                    StageKind::Plan,
+                    StageKind::Implement,
+                    StageKind::Verify,
+                    StageKind::Critique,
+                ],
+                ..Default::default()
+            },
+            crate::cognition::TaskComplexity::Complex => Self {
+                stages: vec![
+                    StageKind::Comprehend,
+                    StageKind::Plan,
+                    StageKind::TestAuthor,
+                    StageKind::Implement,
+                    StageKind::Verify,
+                    StageKind::Critique,
+                    StageKind::Reflect,
+                ],
+                recovery: RecoveryStrategy::DiagnoseThenRetry,
+                max_retries: 2,
+            },
+        }
+    }
+}
+
 /// A single stage in the agent pipeline.
 ///
 /// Each stage has a corresponding file permission scope and telemetry phase.
@@ -420,6 +472,12 @@ pub enum StageKind {
     Replan,
     /// Extract learnings and persist to memory.
     Reflect,
+    /// Targeted fix based on critique feedback (incremental, not full replan).
+    ///
+    /// Produces line-level edits instead of regenerating the full plan.
+    /// Activated when critique has file-level references and specific issues.
+    /// Slots naturally between Critique and the next iteration's Execute.
+    Fix,
 }
 
 impl StageKind {
@@ -435,7 +493,7 @@ impl StageKind {
             | StageKind::Reflect
             | StageKind::TestReview => Phase::Comprehend,
             StageKind::TestAuthor => Phase::TestAuthor,
-            StageKind::Implement | StageKind::Verify | StageKind::Replan => Phase::Implement,
+            StageKind::Implement | StageKind::Verify | StageKind::Replan | StageKind::Fix => Phase::Implement,
         }
     }
 
@@ -447,7 +505,7 @@ impl StageKind {
         match self {
             StageKind::Comprehend => LoopPhase::Comprehend,
             StageKind::Plan => LoopPhase::Plan,
-            StageKind::TestAuthor | StageKind::Implement | StageKind::Replan => LoopPhase::Execute,
+            StageKind::TestAuthor | StageKind::Implement | StageKind::Replan | StageKind::Fix => LoopPhase::Execute,
             StageKind::TestReview => LoopPhase::Critique,
             StageKind::Verify => LoopPhase::Verify,
             StageKind::Critique => LoopPhase::Critique,

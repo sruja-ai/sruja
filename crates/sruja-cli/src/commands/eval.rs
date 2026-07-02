@@ -542,6 +542,7 @@ pub async fn run_eval_instance(
         show_plan: false,
         plan_only: false,
         show_pipeline: false,
+        pipeline_override: None,
         checkpoint: false,
         no_checkpoint: true,
         changelog: false,
@@ -663,6 +664,7 @@ async fn run_held_out_tests(instance: &TaskInstance, repo_path: &Path) -> String
             command: "cargo".into(),
             args: vec!["test".into(), pattern.into()],
             expected: None,
+            group: None,
         };
         let results = run_verification_steps(&[step], &opts, repo_path).await;
         all_results.extend(results);
@@ -675,6 +677,7 @@ async fn run_held_out_tests(instance: &TaskInstance, repo_path: &Path) -> String
             command: "cargo".into(),
             args: vec!["test".into(), pattern.into()],
             expected: None,
+            group: None,
         };
         let results = run_verification_steps(&[step], &opts, repo_path).await;
         all_results.extend(results);

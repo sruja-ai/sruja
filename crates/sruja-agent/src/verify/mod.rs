@@ -12,6 +12,7 @@
 //! process execution here or to `sruja_cmd` respectively.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// A single verification step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +25,14 @@ pub struct VerifyStep {
     /// Expected substring in stdout/stderr for success (optional).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected: Option<String>,
+    /// Optional group identifier for parallel execution.
+    ///
+    /// Steps with different group values run concurrently.
+    /// Steps without a group (or with the same group) run sequentially.
+    /// This is backward-compatible: existing manifests without a `group`
+    /// field will all default to `None`, meaning sequential execution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
 }
 
 /// Result of a single verification step.
@@ -83,11 +92,62 @@ impl Default for VerifyOptions {
     }
 }
 
-/// Run a batch of verification steps sequentially.
+/// Run a batch of verification steps with optional group-based concurrency.
 ///
-/// This is the canonical implementation — all call sites in sruja-cli should
-/// delegate here instead of re-implementing the loop.
+/// Steps are partitioned into groups by their `group` field:
+/// - Steps with `group: None` all fall into the default group → sequential.
+/// - Each distinct `group: Some("...")` value forms its own group.
+/// - Groups run concurrently via `tokio::spawn`.
+/// - Within each group, steps run sequentially (respecting `continue_on_error`).
+///
+/// This is backward compatible: existing manifests without a `group` field
+/// (all `None`) execute sequentially as before.
 pub async fn run_verification_steps(
+    steps: &[VerifyStep],
+    opts: &VerifyOptions,
+    workdir: &std::path::Path,
+) -> Vec<VerifyResult> {
+    // Partition steps by group.
+    let mut groups: HashMap<Option<String>, Vec<&VerifyStep>> = HashMap::new();
+    for step in steps {
+        groups.entry(step.group.clone()).or_default().push(step);
+    }
+
+    // Run each group as a concurrent task.
+    let mut tasks = Vec::new();
+    for (_key, group_steps) in groups {
+        let opts = opts.clone();
+        let wd = workdir.to_path_buf();
+        let steps: Vec<VerifyStep> = group_steps.into_iter().cloned().collect();
+        tasks.push(tokio::spawn(async move {
+            run_sequential_group(&steps, &opts, &wd).await
+        }));
+    }
+
+    // Collect results, preserving original order by step id.
+    let mut results_by_id: HashMap<String, VerifyResult> = HashMap::new();
+    for task in tasks {
+        match task.await {
+            Ok(group_results) => {
+                for r in group_results {
+                    results_by_id.entry(r.step_id.clone()).or_insert(r);
+                }
+            }
+            Err(e) => {
+                tracing::error!("verification group panicked: {e}");
+            }
+        }
+    }
+
+    // Return results in the original step order.
+    steps
+        .iter()
+        .filter_map(|s| results_by_id.remove(&s.id))
+        .collect()
+}
+
+/// Run a group of steps sequentially (preserves existing sequential behavior).
+async fn run_sequential_group(
     steps: &[VerifyStep],
     opts: &VerifyOptions,
     workdir: &std::path::Path,
@@ -287,6 +347,7 @@ mod tests {
             command: "rm".into(),
             args: vec!["-rf".into(), "/".into()],
             expected: None,
+            group: None,
         }];
 
         let opts = VerifyOptions::default();
@@ -305,6 +366,7 @@ mod tests {
             command: "../../cargo".into(),
             args: vec!["build".into()],
             expected: None,
+            group: None,
         }];
 
         let opts = VerifyOptions::default();
@@ -323,12 +385,14 @@ mod tests {
                 command: "cargo".into(),
                 args: vec!["build".into()],
                 expected: None,
+                group: None,
             },
             VerifyStep {
                 id: "cmd2".into(),
                 command: "git".into(),
                 args: vec!["status".into()],
                 expected: None,
+                group: None,
             },
         ];
 
@@ -351,18 +415,21 @@ mod tests {
                 command: "not_in_allowlist".into(),
                 args: vec![],
                 expected: None,
+                group: None,
             },
             VerifyStep {
                 id: "good".into(),
                 command: "cargo".into(),
                 args: vec!["--version".into()],
                 expected: Some("cargo".into()),
+                group: None,
             },
             VerifyStep {
                 id: "bad".into(),
                 command: "cargo".into(),
                 args: vec!["nonexistent_command_12345".into()],
                 expected: None,
+                group: None,
             },
         ];
 

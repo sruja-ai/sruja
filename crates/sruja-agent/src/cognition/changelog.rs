@@ -288,6 +288,7 @@ mod tests {
                     usage: Usage::default(),
                     retrieved_learning_ids: vec![],
                     complexity: TaskComplexity::Moderate,
+                    pre_conditions: vec![],
                 },
                 plan: Plan {
                     goal: "Add observability events".into(),

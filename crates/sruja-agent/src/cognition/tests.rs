@@ -384,6 +384,7 @@ async fn verify_veto_when_critic_approves_but_fails_allowlisted_command() {
         command: "cargo".into(),
         args: vec!["test".into(), "--nonexistent-flag-xyz123".into()],
         expected: None,
+        group: None,
     }];
 
     let opts = VerifyOptions {
@@ -550,6 +551,7 @@ fn loop_result_iteration_count_counts_records() {
                 usage: Usage::default(),
                 retrieved_learning_ids: Vec::new(),
                 complexity: TaskComplexity::default(),
+                pre_conditions: vec![],
             },
             plan: Plan {
                 goal: "g".into(),
@@ -690,6 +692,7 @@ async fn run_loop_convergence_vetoed_by_deterministic_verifier() {
         command: "git".into(),
         args: vec!["not-a-real-git-subcommand".into()],
         expected: None,
+        group: None,
     };
     let cfg = LoopConfig {
         // Oscillation detection off so a repeated verify-failure signature
@@ -1639,6 +1642,7 @@ fn test_comprehension() -> Comprehension {
         usage: Usage::default(),
         retrieved_learning_ids: Vec::new(),
         complexity: TaskComplexity::default(),
+        pre_conditions: vec![],
     }
 }
 

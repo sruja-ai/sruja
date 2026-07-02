@@ -34,6 +34,7 @@ pub fn default_grader_steps(repo_path: &Path, sruja_bin: &str, fail_on: &str) ->
                 "json".to_string(),
             ],
             expected: None,
+            group: None,
         });
     }
 
@@ -55,6 +56,7 @@ pub fn default_grader_steps(repo_path: &Path, sruja_bin: &str, fail_on: &str) ->
                 "json".to_string(),
             ],
             expected: None,
+            group: None,
         });
     }
 
@@ -84,6 +86,7 @@ pub fn default_grader_steps(repo_path: &Path, sruja_bin: &str, fail_on: &str) ->
         command: sruja_bin.to_string(),
         args: drift_args,
         expected: None,
+        group: None,
     });
 
     steps
