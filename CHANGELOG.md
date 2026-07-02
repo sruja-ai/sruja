@@ -5,6 +5,14 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.65.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.64.1...sruja-v0.65.0) (2026-07-02)
+
+
+### Features
+
+* **agent:** implement 7 agent improvement phases ([f1ffcf7](https://github.com/sruja-ai/sruja/commit/f1ffcf7049cb697c6cbad94f906c55161f53064f))
+* **cli:** overhaul agent UX — sruja auto/plan/verify, deprecate old commands ([7d37177](https://github.com/sruja-ai/sruja/commit/7d37177a45b431737fe5cfb13a73d77ce34636cd))
+
 ## [0.64.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.64.0...sruja-v0.64.1) (2026-07-01)
 
 
