@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 
 // Re-export shared types from sruja-graph (single source of truth).
 pub use sruja_graph::learning::{
-    ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, MemoryError,
+    BlastRadius, ExperimentOutcome, LearningCategory, LearningConstraints, LearningEntry,
+    LearningKind, LearningPatch, MemoryError, SignalPattern,
 };
 
 pub use sruja_graph::learning::generate_entry_id;

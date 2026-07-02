@@ -111,11 +111,33 @@ Example entry (fields may include optional `id`, `run_id`, `hitl_kind`, `evidenc
   "guardrail_advice": "Always run drift after promoting proposals that touch PaymentService",
   "affected_elements": ["Shop.PaymentService"],
   "hitl_kind": "precedent",
-  "evidence_refs": [".sruja/proposals/pay-001.json"]
+  "evidence_refs": [".sruja/proposals/pay-001.json"],
+  "category": "repair",
+  "signals_match": [{"name": "boundary_violation", "score": 0.8}],
+  "constraints": {"max_files": 5, "forbidden_paths": ["migrations/"]},
+  "validation": ["cargo test passes", "drift check clean"],
+  "blast_radius": {"depth": 2, "affected": ["Shop.API", "Shop.PaymentService"]}
 }
 ```
 
 `hitl_kind` values: `precedent`, `exception`, `correction`, `guardrail`.
+
+`category` values (Gene-inspired task classification):
+
+| Category | Meaning | Use when |
+|----------|---------|----------|
+| `repair` | Fix a bug or regression | Correcting failures, fixing drift violations |
+| `optimize` | Improve performance or quality | Refactoring, tuning, reducing complexity |
+| `innovate` | Add new capability | New features, new patterns, new integrations |
+| `explore` | Research or prototype | Spikes, investigations, proof-of-concept |
+
+`signals_match` entries pair a signal name (e.g. `log_error`, `perf_bottleneck`, `boundary_violation`) with a relevance score (0.0–1.0). Signals are auto-extracted from context/hypothesis text via `signals::extract_signals`.
+
+`constraints` optionally limits the scope of a learning (e.g. `max_files` cap, `forbidden_paths` exclusions).
+
+`validation` lists verification steps that should pass for this learning to be considered confirmed.
+
+`blast_radius` describes how many hops deep the change reaches and which elements are affected.
 
 CLI:
 

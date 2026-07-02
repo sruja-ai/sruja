@@ -1163,7 +1163,7 @@ impl Agent {
 
         // Retrieve relevant memories (token-budget capped).
         let (memory_context, retrieved_learning_ids) = if let Some(ref mem) = self.memory {
-            let learnings = mem.search(goal_str, 5);
+            let learnings = mem.search(goal_str, 5, None);
             if learnings.is_empty() {
                 (String::new(), Vec::new())
             } else {
@@ -2254,7 +2254,7 @@ impl Agent {
         // comprehension.
         let mut injected_learning_ids: Vec<String> = Vec::new();
         let blind_spots = if let Some(ref mem) = self.memory {
-            let learnings = mem.search(&plan.goal_statement, 5);
+            let learnings = mem.search(&plan.goal_statement, 5, None);
             let guardrails: Vec<&LearningEntry> = learnings
                 .iter()
                 .filter(|l| l.kind == Some(crate::LearningKind::Guardrail))

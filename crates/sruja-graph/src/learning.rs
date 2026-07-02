@@ -46,6 +46,109 @@ impl std::fmt::Display for ExperimentOutcome {
     }
 }
 
+/// Evolution intent category, borrowed from Evolver's Gene schema.
+///
+/// Each category biases how a learning is used in the agent loop:
+/// - `Repair`: fix a known failure pattern
+/// - `Optimize`: improve performance or efficiency
+/// - `Innovate`: add new capabilities
+/// - `Explore`: investigate unknown territory
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LearningCategory {
+    Repair,
+    Optimize,
+    Innovate,
+    Explore,
+}
+
+/// A signal pattern that activates a learning entry.
+///
+/// Modeled after Evolver's `signals_match` on Genes — allows a learning
+/// to specify *when* it should be retrieved based on extracted session signals.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalPattern {
+    /// Signal name or prefix to match (e.g., "log_error", "perf_bottleneck").
+    pub signal: String,
+    /// Boost multiplier when this signal matches the current context (1.0 = default).
+    #[serde(default = "default_signal_weight")]
+    pub weight: f64,
+}
+
+fn default_signal_weight() -> f64 {
+    1.0
+}
+
+/// Constraints bounding a learning's applicability.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LearningConstraints {
+    /// Maximum number of files a change derived from this learning should touch.
+    #[serde(default = "default_max_files")]
+    pub max_files: usize,
+    /// File paths/patterns that should never be touched when applying this learning.
+    #[serde(default)]
+    pub forbidden_paths: Vec<String>,
+}
+
+fn default_max_files() -> usize {
+    20
+}
+
+impl Default for LearningConstraints {
+    fn default() -> Self {
+        Self {
+            max_files: 20,
+            forbidden_paths: vec![".git".to_string(), "node_modules".to_string()],
+        }
+    }
+}
+
+/// Blast radius of a change — how many files/lines were affected.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlastRadius {
+    /// Number of files changed.
+    #[serde(default)]
+    pub files: usize,
+    /// Number of lines changed (added + removed).
+    #[serde(default)]
+    pub lines: usize,
+}
+
+impl Default for BlastRadius {
+    fn default() -> Self {
+        Self { files: 0, lines: 0 }
+    }
+}
+
+/// Standard signal names extracted from session context.
+///
+/// These match Evolver's `SIGNAL_PROFILES` and are produced by the
+/// [`SignalExtractor`](crate::signal::SignalExtractor).
+pub mod signals {
+    /// An error was logged in the session.
+    pub const LOG_ERROR: &str = "log_error";
+    /// A specific error signature was detected (carries detail after `:`).
+    pub const ERR_SIG: &str = "errsig";
+    /// A performance bottleneck was detected.
+    pub const PERF_BOTTLENECK: &str = "perf_bottleneck";
+    /// A capability gap was detected.
+    pub const CAPABILITY_GAP: &str = "capability_gap";
+    /// A user feature request was detected.
+    pub const USER_FEATURE_REQUEST: &str = "user_feature_request";
+    /// A user improvement suggestion was detected.
+    pub const USER_IMPROVEMENT_SUGGESTION: &str = "user_improvement_suggestion";
+    /// A recurring error pattern was found.
+    pub const RECURRING_ERROR: &str = "recurring_error";
+    /// The system appears stagnant (plateau).
+    pub const STAGNATION_DETECTED: &str = "evolution_stagnation_detected";
+    /// High consecutive repair count detected.
+    pub const REPAIR_LOOP_DETECTED: &str = "repair_loop_detected";
+    /// Consecutive failures detected.
+    pub const FAILURE_LOOP_DETECTED: &str = "failure_loop_detected";
+    /// A tool bypass (shell exec outside tool layer) was detected.
+    pub const TOOL_BYPASS: &str = "tool_bypass";
+}
+
 /// A single learning entry representing a learned architectural lesson.
 ///
 /// Inspired by the Zettelkasten method: each entry is an atomic note with
@@ -113,6 +216,21 @@ pub struct LearningEntry {
     /// Total tasks where this entry was retrieved (denominator for utility).
     #[serde(default)]
     pub task_total_after: u32,
+    /// Evolution category: what kind of change this learning guides.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<LearningCategory>,
+    /// Signal patterns that trigger this learning's retrieval.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub signals_match: Vec<SignalPattern>,
+    /// Constraints bounding this learning's applicability (blast radius, forbidden paths).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constraints: Option<LearningConstraints>,
+    /// Validation commands or preconditions to verify before applying this learning.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub validation: Vec<String>,
+    /// Measured blast radius of the change that produced this learning.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blast_radius: Option<BlastRadius>,
 }
 
 /// Partial update for an existing [`LearningEntry`].
@@ -140,6 +258,16 @@ pub struct LearningPatch {
     pub tags: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hitl_kind: Option<Option<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<LearningCategory>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signals_match: Option<Vec<SignalPattern>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constraints: Option<Option<LearningConstraints>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blast_radius: Option<Option<BlastRadius>>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -243,6 +371,11 @@ impl LearningEntry {
             retrieval_count: 0,
             task_success_after: 0,
             task_total_after: 0,
+            category: None,
+            signals_match: Vec::new(),
+            constraints: None,
+            validation: Vec::new(),
+            blast_radius: None,
         }
     }
 
@@ -334,6 +467,42 @@ impl LearningEntry {
     /// Builder-style: set confidence label.
     pub fn with_confidence(mut self, confidence: impl Into<String>) -> Self {
         self.confidence = Some(confidence.into());
+        self
+    }
+
+    /// Builder-style: set the evolution category.
+    pub fn with_category(mut self, category: LearningCategory) -> Self {
+        self.category = Some(category);
+        self
+    }
+
+    /// Builder-style: set signal patterns that trigger this learning.
+    pub fn with_signals(mut self, signals: Vec<SignalPattern>) -> Self {
+        self.signals_match = signals;
+        self
+    }
+
+    /// Builder-style: add a single signal pattern.
+    pub fn with_signal(mut self, signal: SignalPattern) -> Self {
+        self.signals_match.push(signal);
+        self
+    }
+
+    /// Builder-style: set constraints.
+    pub fn with_constraints(mut self, constraints: LearningConstraints) -> Self {
+        self.constraints = Some(constraints);
+        self
+    }
+
+    /// Builder-style: add validation commands.
+    pub fn with_validation(mut self, validation: Vec<String>) -> Self {
+        self.validation = validation;
+        self
+    }
+
+    /// Builder-style: set blast radius.
+    pub fn with_blast_radius(mut self, blast_radius: BlastRadius) -> Self {
+        self.blast_radius = Some(blast_radius);
         self
     }
 }

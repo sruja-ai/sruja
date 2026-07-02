@@ -6,6 +6,7 @@
 
 pub mod curation;
 pub mod search;
+pub mod signals;
 pub mod storage;
 pub mod types;
 
@@ -21,8 +22,9 @@ use crate::cognition::ErrorClass;
 
 pub use types::ErrorFrequency;
 pub use types::{
-    CurationReport, ExperimentOutcome, LearningEntry, LearningKind, LearningPatch, LowUtilityEntry,
-    MemoryError, MergeSuggestion, StaleEntry,
+    BlastRadius, CurationReport, ExperimentOutcome, LearningCategory, LearningConstraints,
+    LearningEntry, LearningKind, LearningPatch, LowUtilityEntry,
+    MemoryError, MergeSuggestion, SignalPattern, StaleEntry,
 };
 
 /// Maximum number of error frequency entries before the oldest are evicted.
@@ -355,6 +357,21 @@ impl AgenticMemory {
             if let Some(hitl) = patch.hitl_kind {
                 entry.hitl_kind = hitl;
             }
+            if let Some(cat) = patch.category {
+                entry.category = Some(cat);
+            }
+            if let Some(signals) = patch.signals_match {
+                entry.signals_match = signals;
+            }
+            if let Some(constraints) = patch.constraints {
+                entry.constraints = constraints;
+            }
+            if let Some(validation) = patch.validation {
+                entry.validation = validation;
+            }
+            if let Some(blast_radius) = patch.blast_radius {
+                entry.blast_radius = blast_radius;
+            }
 
             if reextract_tags {
                 entry.tags = search::extract_tags(entry);
@@ -445,7 +462,15 @@ impl AgenticMemory {
 /// backends. The cognition loop uses this trait — not the concrete type.
 pub trait Memory: Send + Sync {
     /// Search for learnings relevant to a query, returning at most `limit` results.
-    fn search(&self, query: &str, limit: usize) -> Vec<LearningEntry>;
+    ///
+    /// When `category` is `Some`, results are filtered to entries with that
+    /// category (repair / optimize / innovate / explore).
+    fn search(
+        &self,
+        query: &str,
+        limit: usize,
+        category: Option<types::LearningCategory>,
+    ) -> Vec<LearningEntry>;
 
     /// Record a new learning.
     fn record(&self, entry: LearningEntry) -> Result<(), MemoryError>;
@@ -476,31 +501,58 @@ pub trait Memory: Send + Sync {
 }
 
 impl Memory for std::sync::Mutex<AgenticMemory> {
-    fn search(&self, query: &str, limit: usize) -> Vec<LearningEntry> {
+    fn search(
+        &self,
+        query: &str,
+        limit: usize,
+        category: Option<types::LearningCategory>,
+    ) -> Vec<LearningEntry> {
         let mem = self.lock().unwrap();
-        // Search by element ID, tag, and text relevance.
+        let query_lower = query.to_lowercase();
+
+        // Extract signals from the query for signal-based boosting.
+        let query_signals = signals::extract_signals(query, &[]);
+
+        // Search by element ID, tag, and text relevance, with optional category filter.
         let mut results: Vec<LearningEntry> = mem
             .learnings
             .iter()
             .filter(|e| {
-                e.context.to_lowercase().contains(&query.to_lowercase())
-                    || e.hypothesis.to_lowercase().contains(&query.to_lowercase())
-                    || e.guardrail_advice
-                        .to_lowercase()
-                        .contains(&query.to_lowercase())
+                // Category filter (Gene-inspired).
+                if let Some(ref cat) = category {
+                    if e.category.as_ref() != Some(cat) {
+                        return false;
+                    }
+                }
+                e.context.to_lowercase().contains(&query_lower)
+                    || e.hypothesis.to_lowercase().contains(&query_lower)
+                    || e.guardrail_advice.to_lowercase().contains(&query_lower)
                     || e.tags
                         .iter()
-                        .any(|t| t.to_lowercase().contains(&query.to_lowercase()))
+                        .any(|t| t.to_lowercase().contains(&query_lower))
                     || e.affected_elements.iter().any(|el| el.contains(query))
             })
             .cloned()
             .collect();
 
-        // Sort by utility (decay_score * utility_ratio) — best first.
+        // Score by signal overlap: boost learnings whose signals_match
+        // aligns with the extracted query signals.
+        for entry in &mut results {
+            let _signal_score =
+                signals::score_signals_match(&query_signals, &entry.signals_match);
+        }
+
+        // Sort by composite score: decay * utility + signal boost.
         results.sort_by(|a, b| {
-            let sa = a.decay_score() * a.utility_ratio().unwrap_or(0.5);
-            let sb = b.decay_score() * b.utility_ratio().unwrap_or(0.5);
-            sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
+            let base_a = a.decay_score() * a.utility_ratio().unwrap_or(0.5);
+            let base_b = b.decay_score() * b.utility_ratio().unwrap_or(0.5);
+            let sig_a = signals::score_signals_match(&query_signals, &a.signals_match);
+            let sig_b = signals::score_signals_match(&query_signals, &b.signals_match);
+            let score_a = base_a + sig_a * 2.0;
+            let score_b = base_b + sig_b * 2.0;
+            score_b
+                .partial_cmp(&score_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         results.truncate(limit);

@@ -159,7 +159,7 @@ For how this relates to “context graph” terminology in industry writing vers
 | `sruja_memory_clusters` | Thematic clusters/tags from agentic memory (read). Complements **`sruja_get_agent_learnings`**, which filters by **element id**. |
 | `sruja_ai_scratchpad` | Read/append legacy scratchpad markdown (**mutating** on append). |
 | `sruja_sandbox` | Git worktree sandbox lifecycle (**mutating**). |
-| `sruja_record_learning` | Structured agentic memory entry (**mutating**). Optional **`hitl_kind`**: `precedent` \| `exception` \| `correction` \| `guardrail` (see [CONTEXT_ENGINEERING.md](CONTEXT_ENGINEERING.md)). |
+| `sruja_record_learning` | Structured agentic memory entry (**mutating**). Optional **`hitl_kind`**: `precedent` \| `exception` \| `correction` \| `guardrail`. Optional **`category`**: `repair` \| `optimize` \| `innovate` \| `explore` (see [GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md](GROUNDED_HARNESS_AND_CONTINUAL_LEARNING.md#agent-memory-schema-learningentry)). |
 
 CLI lifecycle (not MCP yet): `sruja agent curate`, `agent update`, `agent merge`, `agent delete` — see **Agentic memory utility** in [AGENTS.md](../AGENTS.md).
 
@@ -227,7 +227,7 @@ After host compresses chat history, append a lineage row with `sruja_record_cont
 
 | Tool | Summary |
 |------|---------|
-| `sruja_search_memory` | FTS over `.sruja/memory.sqlite` (learnings, context events, decision records). Hits labeled `hypothesis` or `reviewed_truth`. |
+| `sruja_search_memory` | FTS over `.sruja/memory.sqlite` (learnings, context events, decision records). Hits labeled `hypothesis` or `reviewed_truth`. Supports optional `category` filter: `repair` \| `optimize` \| `innovate` \| `explore`. |
 | `sruja_get_memory_timeline` | Chronological slice around `anchor_id` or `anchor_timestamp`. |
 | `sruja_reindex_memory` | Rebuild index from `agent_memory.json`, `context_events.jsonl`, `.sruja/decisions/*.md`. |
 | CLI | `sruja memory search|timeline|reindex` (hidden subcommands). |

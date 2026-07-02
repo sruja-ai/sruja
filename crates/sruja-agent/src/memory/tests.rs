@@ -26,6 +26,11 @@ fn make_entry(context: &str, hypothesis: &str, elements: Vec<&str>) -> LearningE
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     }
 }
 
@@ -163,6 +168,11 @@ fn test_add_and_find_relevant() {
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     };
 
     memory.add_learning(entry.clone());
@@ -197,6 +207,11 @@ fn test_auto_tag_extraction() {
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     };
     memory.add_learning(entry);
 
@@ -321,6 +336,11 @@ fn test_save_and_load() {
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     };
 
     memory.add_learning(entry);
@@ -395,6 +415,11 @@ fn test_find_relevant_edge_cases() {
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     };
     memory.add_learning(entry);
 
@@ -430,6 +455,11 @@ fn test_load_save_custom_path() {
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     });
 
     memory.save_to_path(&path).unwrap();
@@ -463,6 +493,11 @@ fn test_learning_entry_relevance() {
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     };
 
     assert!(entry.is_relevant_to("System.Core"));
@@ -498,6 +533,11 @@ fn test_save_to_path_replaces_longer_existing_content() {
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     });
 
     std::fs::write(&path, "{".repeat(4096)).unwrap();
@@ -607,4 +647,38 @@ fn test_auto_archive_preserves_invariants() {
     let archived = memory.auto_archive_stale(0.15, 30);
     assert_eq!(archived.len(), 0, "Should not archive invariants");
     assert_eq!(memory.learnings.len(), 1);
+}
+
+#[test]
+fn test_category_filter_on_search() {
+    use super::types::LearningCategory;
+
+    let mem = std::sync::Mutex::new(AgenticMemory::default());
+
+    let mut e1 = make_entry("repair the boundary violation", "fix", vec!["API"]);
+    e1.category = Some(LearningCategory::Repair);
+    mem.lock().unwrap().add_learning(e1);
+
+    let mut e2 = make_entry("optimize the query performance", "speed", vec!["API"]);
+    e2.category = Some(LearningCategory::Optimize);
+    mem.lock().unwrap().add_learning(e2);
+
+    let mut e3 = make_entry("repair the database connection", "fix", vec!["DB"]);
+    e3.category = Some(LearningCategory::Repair);
+    mem.lock().unwrap().add_learning(e3);
+
+    // Query by affected element — all 3 match because they share "API" or "DB" but
+    // we use a broad text query "the" that appears in all contexts.
+    let all = mem.search("repair", 10, None);
+    // All entries whose context contains "repair" should be returned.
+    assert!(all.len() >= 2, "at least repair entries should match, got {}", all.len());
+
+    // Filter to Repair only.
+    let repair = mem.search("repair", 10, Some(LearningCategory::Repair));
+    assert!(repair.len() >= 1, "Repair filter should return at least 1 entry");
+    assert!(repair.iter().all(|e| e.category == Some(LearningCategory::Repair)));
+
+    // Filter to Innovate — none should match.
+    let innovate = mem.search("repair", 10, Some(LearningCategory::Innovate));
+    assert_eq!(innovate.len(), 0, "Innovate filter should return 0 entries");
 }

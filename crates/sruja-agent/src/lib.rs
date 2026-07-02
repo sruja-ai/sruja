@@ -54,7 +54,7 @@ pub use cognition::changelog::AgentChangelog;
 pub use cognition::chat::{TurnEvent, TurnResult};
 pub use cognition::{
     classify_task_complexity, Agent, AgentBuilder, AgentConfig, AgentError, AgentRunResult,
-    Comprehension, Critique, DirectResult, LoopConfig, LoopEvent, LoopIteration, LoopPhase,
+    Comprehension, Critique, LoopConfig, LoopEvent, LoopIteration, LoopPhase,
     LoopResult, LoopTermination, ModelMapping, Plan, PlanBrief, TaskComplexity, ToolCallTracer,
     VerifierConfig,
 };
