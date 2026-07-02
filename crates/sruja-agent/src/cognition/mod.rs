@@ -18,6 +18,7 @@
 pub mod changelog;
 pub mod chat;
 pub mod decision;
+pub mod errors;
 pub mod hook;
 pub mod loop_event;
 pub mod runbook;
@@ -29,20 +30,21 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::llm::{
-    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, MessageRole, ModelRouter,
+    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter,
     Usage, DEFAULT_MODEL, PREMIUM_MODEL,
 };
 use crate::tool::ToolSignal;
 
 pub use crate::llm::TaskTier;
 use crate::memory::AgenticMemory;
-use crate::tool::{FileGuard, Phase, ToolError, ToolRegistry};
+use crate::tool::{FileGuard, Phase, ToolRegistry};
 use crate::verify::{
     run_verification_steps, VerifyOptions, VerifyResult, VerifyStatus, VerifyStep,
 };
 use crate::LearningEntry;
 
 pub use decision::{DecisionRecord, DecisionStatus};
+pub use errors::{AgentError, PlanParseError};
 pub use hook::{Hook, HookAction, HookRegistry, Hooks, LoggingHook};
 pub use loop_event::{LoopEvent, LoopPhase, PlanBrief};
 pub use runbook::{Runbook, RunbookSeverity};
@@ -51,6 +53,26 @@ pub use tool_tracing::ToolCallTracer;
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
+
+/// How the critique ensemble dispatches: always run the full set of
+/// personas, or run a single quick check first and skip the ensemble when
+/// the quick check is confident.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CritiqueMode {
+    /// Always run the full persona ensemble (current behavior).
+    Full,
+    /// Run a single quick-check call first. If its score >= threshold and
+    /// it approves, skip the full ensemble. Otherwise, fall through.
+    QuickThenFull,
+    /// Always run just the quick check (cheapest, least thorough).
+    QuickOnly,
+}
+
+impl Default for CritiqueMode {
+    fn default() -> Self {
+        Self::QuickThenFull
+    }
+}
 
 /// User-configured model names per complexity tier.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -103,10 +125,23 @@ pub struct AgentConfig {
     /// agent→tool dispatch (requires `repo_path`, `run_id`, `trace_id` to be
     /// set on the agent).
     pub enable_tool_call_tracing: bool,
-    /// When true, disables the legacy in-place `compress_tool_results` compressor.
-    /// Set this when using the reversible `CompressingClient` wrapper to avoid
-    /// conflicting compression strategies and preserve CCR reversibility.
-    pub disable_legacy_compression: bool,
+    /// Abort after N consecutive tool-only iterations (no text output).
+    /// Default: 3. Set to 0 to disable.
+    pub max_consecutive_tool_only: usize,
+    /// Abort after N consecutive identical tool+arg signatures.
+    /// Default: 3. Set to 0 to disable.
+    pub max_consecutive_same_call: usize,
+    /// Abort when non-converged fraction exceeds this threshold.
+    /// Default: 0.5. Set to >1.0 to disable.
+    pub max_non_converged_fraction: f64,
+    /// Critique dispatch mode. When `QuickThenFull` (default), a single
+    /// lightweight check runs first; the full ensemble is skipped if the
+    /// check is confident (score >= `quick_critique_threshold`).
+    pub critique_mode: CritiqueMode,
+    /// Minimum score for the quick critique to short-circuit the full
+    /// ensemble. Only used when `critique_mode` is `QuickThenFull`.
+    /// Default: 0.9.
+    pub quick_critique_threshold: f64,
 }
 
 impl Default for AgentConfig {
@@ -125,8 +160,12 @@ impl Default for AgentConfig {
             loop_timeout_secs: 300,
             system_hints: Vec::new(),
             critique_personas: CritiquePersona::default_personas(),
-            enable_tool_call_tracing: false,
-            disable_legacy_compression: false,
+            enable_tool_call_tracing: true,
+            max_consecutive_tool_only: 3,
+            max_consecutive_same_call: 3,
+            max_non_converged_fraction: 0.5,
+            critique_mode: CritiqueMode::QuickThenFull,
+            quick_critique_threshold: 0.9,
         }
     }
 }
@@ -387,6 +426,11 @@ pub struct Critique {
     /// Empty when no acceptance criteria are defined.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub criteria: Vec<CriterionStatus>,
+    /// Source of this critique: "quick_check" when the tiered mode's fast
+    /// path sufficed, "ensemble" when the full persona set ran, or empty
+    /// for the legacy single-critic fallback.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub source: String,
 }
 
 /// Result of a single persona critic within an ensemble.
@@ -526,115 +570,6 @@ pub enum ErrorClass {
 
 /// Returns `true` if `content` contains common error indicators
 /// (case-insensitive): `error`, `panic`, `FAILED`, `backtrace`, `stack trace`.
-fn has_error_patterns(content: &str) -> bool {
-    let lower = content.to_lowercase();
-    let patterns = ["error", "panic", "failed", "backtrace", "stack trace"];
-    patterns.iter().any(|p| lower.contains(p))
-}
-
-/// Compresses old tool results in the message history to save context tokens.
-///
-/// Preserves: role, tool_call_id, tool_calls fields. Only rewrites content.
-/// Never compresses: most recent tool results (after the last assistant message),
-/// system prompt, user goal message, file_write/file_edit confirmations.
-/// Never compresses: messages containing error patterns (error, panic, etc.)
-///
-/// Compresses: file_read and shell outputs older than the most recent assistant
-/// turn, only if > 500 chars and > 6 lines.
-///
-/// Messages containing error patterns are preserved in full — only non-error
-/// tool results are compressed. This gives the model the error context it needs
-/// while still saving tokens on the rest.
-fn compress_tool_results(mut messages: Vec<Message>) -> Vec<Message> {
-    // Build a map: tool_call_id -> tool_name (to detect file_write/file_edit).
-    let mut call_id_to_tool: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-    for msg in messages.iter() {
-        if msg.role == MessageRole::Assistant {
-            for call in &msg.tool_calls {
-                call_id_to_tool.insert(call.id.clone(), call.name.clone());
-            }
-        }
-    }
-
-    // Find the index of the last assistant message. Tool messages after it
-    // are the "most recent" results — the model needs them for its next step.
-    let most_recent_threshold = match messages
-        .iter()
-        .rposition(|m| m.role == MessageRole::Assistant)
-    {
-        Some(idx) => idx,
-        None => return messages,
-    };
-
-    let mut compressed = Vec::new();
-
-    for (idx, msg) in messages.drain(..).enumerate() {
-        if msg.role == MessageRole::Tool {
-            let tool_call_id = msg.tool_call_id.clone().unwrap_or_default();
-            let tool_name = call_id_to_tool
-                .get(&tool_call_id)
-                .map(|s| s.as_str())
-                .unwrap_or("");
-
-            // Never compress: most recent tool results (after last assistant message).
-            if idx > most_recent_threshold {
-                compressed.push(msg);
-                continue;
-            }
-
-            // Never compress: file_write/file_edit confirmations.
-            if tool_name == "file_write" || tool_name == "file_edit" {
-                compressed.push(msg);
-                continue;
-            }
-
-            // Never compress: error-containing messages (preserve full context).
-            if has_error_patterns(&msg.content) {
-                compressed.push(msg);
-                continue;
-            }
-
-            // Compress if > 500 chars and > 6 lines.
-            let compressed_content = if msg.content.len() > 500 {
-                let lines: Vec<&str> = msg.content.lines().collect();
-                if lines.len() <= 6 {
-                    msg.content.clone()
-                } else {
-                    let summary = lines.first().copied().unwrap_or("");
-                    let last_lines = lines
-                        .iter()
-                        .rev()
-                        .take(3)
-                        .rev()
-                        .copied()
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    format!(
-                        "{}\n[... {} lines compressed ...]\n{}",
-                        summary,
-                        lines.len().saturating_sub(4),
-                        last_lines
-                    )
-                }
-            } else {
-                msg.content.clone()
-            };
-
-            compressed.push(Message {
-                role: msg.role,
-                content: compressed_content,
-                tool_calls: msg.tool_calls,
-                tool_call_id: msg.tool_call_id,
-            });
-        } else {
-            compressed.push(msg);
-        }
-    }
-
-    compressed
-}
-
 /// Check whether model output contains meaningful content beyond just surface text.
 ///
 /// A model can produce text without tools (step_converged=true) but the output
@@ -797,16 +732,6 @@ impl FailureTracker {
 }
 
 /// Result of direct execution (bypasses plan/critique).
-#[derive(Debug, Clone)]
-pub struct DirectResult {
-    /// The model's final response (summary of what it changed).
-    pub output: String,
-    /// Token usage from the direct execution LLM call(s).
-    pub usage: Usage,
-    /// Per-tool-call signals for telemetry.
-    pub tool_signals: Vec<ToolSignal>,
-}
-
 /// Complete result of a full agent run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentRunResult {
@@ -1034,6 +959,10 @@ pub struct LoopIteration {
     /// feedback structurally. `None` means incorporation was plausible.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub incorporation_gap: Option<String>,
+    /// Estimated USD cost for this iteration, computed from per-model
+    /// pricing when available, falling back to default flat rates.
+    #[serde(default)]
+    pub cost_usd: f64,
 }
 
 /// Result of `Agent::run_loop`.
@@ -1065,39 +994,6 @@ impl LoopResult {
 // ---------------------------------------------------------------------------
 
 /// Errors from parsing a [`Plan`] from the LLM response.
-///
-/// These are *recoverable* — the caller may issue a format-correction
-/// re-prompt on the first failure before hard-failing.
-#[derive(Debug, thiserror::Error)]
-pub enum PlanParseError {
-    #[error("malformed JSON: {0}")]
-    MalformedJson(String),
-    #[error("missing required field `{field}` on subtask {subtask_index}")]
-    MissingRequiredField { field: String, subtask_index: usize },
-    #[error("plan contains no subtasks")]
-    NoSubtasks,
-    #[error("empty plan (JSON had no subtasks or risks)")]
-    EmptyPlan,
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum AgentError {
-    #[error("LLM error: {0}")]
-    Llm(#[from] LlmError),
-    #[error("tool error: {0}")]
-    Tool(#[from] ToolError),
-    #[error("no LLM client configured")]
-    NoLlm,
-    #[error("max tool iterations ({0}) exceeded")]
-    MaxIterations(usize),
-    #[error("aborted by hook: {0}")]
-    HookAborted(String),
-    #[error("plan parse failed (unrecoverable after retry): {0}")]
-    PlanParseFailed(#[source] PlanParseError),
-    #[error("{0}")]
-    Other(String),
-}
-
 // ---------------------------------------------------------------------------
 // Agent
 // ---------------------------------------------------------------------------
@@ -1370,10 +1266,7 @@ impl Agent {
                     timeout_secs = self.config.loop_timeout_secs,
                     "tool_loop: wall-clock timeout exceeded"
                 );
-                Err(AgentError::Other(format!(
-                    "Agent loop timed out after {} seconds",
-                    self.config.loop_timeout_secs
-                )))
+                Err(AgentError::Timeout(self.config.loop_timeout_secs))
             }
         }
     }
@@ -1450,7 +1343,9 @@ impl Agent {
             } else {
                 consecutive_tool_only = 0;
             }
-            if consecutive_tool_only >= 3 {
+            if self.config.max_consecutive_tool_only > 0
+                && consecutive_tool_only >= self.config.max_consecutive_tool_only
+            {
                 tracing::warn!(
                     iteration,
                     consecutive_tool_only,
@@ -1610,7 +1505,9 @@ impl Agent {
                     consecutive_same_tool_call = 0;
                 }
                 last_tool_signature = Some(sig);
-                if consecutive_same_tool_call >= 3 {
+                if self.config.max_consecutive_same_call > 0
+                    && consecutive_same_tool_call >= self.config.max_consecutive_same_call
+                {
                     tracing::warn!(
                         iteration,
                         consecutive_same_tool_call,
@@ -1625,21 +1522,6 @@ impl Agent {
                     fallback.finish_reason = crate::llm::FinishReason::Stop;
                     return Ok((fallback, total_usage, tool_signals, false));
                 }
-            }
-
-            // ── Progressive compression (every 3 iterations) ─────────────
-            // Compress old tool results to save context tokens.
-            // Only compress after 3 iterations have passed (not iteration 0).
-            // Skip if the reversible CompressingClient wrapper is active.
-            if !self.config.disable_legacy_compression && iteration > 0 && iteration % 3 == 0 {
-                let original_len = req.messages.len();
-                req.messages = compress_tool_results(std::mem::take(&mut req.messages));
-                tracing::debug!(
-                    iteration,
-                    original_len,
-                    compressed_len = req.messages.len(),
-                    "tool_loop: compressed message history"
-                );
             }
 
             // ── Circuit breaker: consecutive error recovery ──────────────
@@ -2160,366 +2042,10 @@ impl Agent {
         // After all subtasks, reset to Comprehend phase.
         self.guard.set_phase(Phase::Comprehend);
 
-        // Auto-format: fix indentation/style issues from model edits.
-        self.auto_format().await;
-
         Ok(results)
     }
 
-    // --- Direct execution: bypass plan/critique for simple tasks ---
-    // Inspired by Self-Harness paper: the harness (prompt + loop policy)
-    // matters more than model capability. For simple tasks, the overhead
-    // of plan → critique → replan wastes tokens and time. Just make the change.
 
-    /// Try direct execution: skip plan/critique, give the model the goal +
-    /// context + tools, let it make the change in one shot.
-    ///
-    /// Returns `Ok(Some(result))` if the change was made successfully,
-    /// `Ok(None)` if no changes were produced (caller should fall back to
-    /// the full pipeline), or `Err` on LLM failure.
-    async fn try_direct_execution(
-        &self,
-        goal: &crate::goal::GoalSpec,
-        comprehension: &Comprehension,
-    ) -> Result<Option<DirectResult>, AgentError> {
-        let goal_str = goal.statement.as_str();
-
-        // Build context: comprehension summary + preloaded files.
-        let mut context = String::new();
-        if !comprehension.summary.is_empty() {
-            context.push_str(&format!(
-                "## Understanding\n{}\n\n",
-                truncate(&comprehension.summary, 2000)
-            ));
-        }
-        if !self.preloaded_files.is_empty() {
-            context
-                .push_str("## Target Files (content provided — do NOT call file_read for these)\n");
-            for (path, content) in &self.preloaded_files {
-                context.push_str(&format!(
-                    "### {path}\n```\n{}\n```\n\n",
-                    truncate(content, 8000)
-                ));
-            }
-        }
-
-        let user = format!(
-            "## Goal\n{goal_str}\n\n{context}\n\
-             Make the change described in the goal. Use the edit tool to modify \
-             the target file. Then verify your change. Then write a one-line summary."
-        );
-
-        let req = CompletionRequest::prompt(DIRECT_EXECUTION_PROMPT, user)
-            .with_tools(self.tools.schemas());
-
-        let max_iters = match comprehension.complexity {
-            TaskComplexity::Trivial => 5,
-            TaskComplexity::Simple => 8,
-            _ => 10,
-        };
-
-        self.guard.set_phase(Phase::Implement);
-        self.hooks.on_phase_change(Phase::Implement).await;
-
-        let (response, usage, tool_signals, _converged) =
-            self.run_tool_loop_with_limit(req, max_iters).await?;
-
-        self.guard.set_phase(Phase::Comprehend);
-
-        // Verify: did the model actually produce changes?
-        let has_diff = self.has_git_diff().await;
-        if !has_diff {
-            tracing::info!("direct_execution: no git diff produced — falling back to pipeline");
-            return Ok(None);
-        }
-
-        // Check for errors in tool signals.
-        let has_errors = tool_signals.iter().any(|s| !s.ok);
-        if has_errors && !tool_signals.iter().any(|s| s.ok) {
-            tracing::info!("direct_execution: all tool calls failed — falling back");
-            return Ok(None);
-        }
-
-        tracing::info!("direct_execution: changes verified via git diff");
-
-        // Auto-format: fix indentation/style issues from model edits.
-        self.auto_format().await;
-
-        Ok(Some(DirectResult {
-            output: response.content,
-            usage,
-            tool_signals,
-        }))
-    }
-
-    /// Check whether direct execution should be attempted for this goal.
-    ///
-    /// Auto-learns from past outcomes: if similar goals have consistently
-    /// failed via direct execution, skip it and use the full pipeline.
-    fn should_try_direct(&self, goal: &crate::goal::GoalSpec, complexity: TaskComplexity) -> bool {
-        // Only attempt direct for Trivial and Simple tasks.
-        if !matches!(complexity, TaskComplexity::Trivial | TaskComplexity::Simple) {
-            return false;
-        }
-
-        // Check past outcomes for similar goals.
-        if let Some(ref mem) = self.memory {
-            let pattern = goal_pattern(&goal.statement);
-            let outcomes = mem.search(&pattern, 10);
-            let routing_outcomes: Vec<_> = outcomes
-                .iter()
-                .filter(|l| l.tags.iter().any(|t| t == "routing"))
-                .collect();
-
-            if routing_outcomes.len() >= 3 {
-                let direct_successes = routing_outcomes
-                    .iter()
-                    .filter(|l| {
-                        l.tags.iter().any(|t| t == "direct")
-                            && l.outcome == crate::ExperimentOutcome::Success
-                    })
-                    .count();
-                let direct_failures = routing_outcomes
-                    .iter()
-                    .filter(|l| {
-                        l.tags.iter().any(|t| t == "direct")
-                            && l.outcome != crate::ExperimentOutcome::Success
-                    })
-                    .count();
-                let total = direct_successes + direct_failures;
-                if total >= 3 {
-                    let success_rate = direct_successes as f64 / total as f64;
-                    if success_rate < 0.4 {
-                        tracing::info!(
-                            success_rate,
-                            total,
-                            "adaptive_routing: skipping direct (poor success rate for similar goals)"
-                        );
-                        return false;
-                    }
-                }
-            }
-        }
-
-        true
-    }
-
-    /// Record task outcome to agent memory for future routing decisions.
-    ///
-    /// This is the self-learning loop: the agent tracks what worked and what
-    /// didn't, and uses that data to make better routing decisions next time.
-    /// No explicit configuration needed — it just works.
-    async fn record_task_outcome(
-        &self,
-        goal: &crate::goal::GoalSpec,
-        complexity: TaskComplexity,
-        path: &str,
-        success: bool,
-        iterations: usize,
-    ) {
-        let Some(ref mem) = self.memory else {
-            return;
-        };
-
-        let pattern = goal_pattern(&goal.statement);
-        let outcome = if success { "succeeded" } else { "failed" };
-
-        let entry = LearningEntry {
-            id: crate::generate_entry_id(),
-            kind: None,
-            timestamp: chrono::Utc::now(),
-            run_id: None,
-            repo: None,
-            selector: None,
-            context: pattern,
-            hypothesis: format!(
-                "classified as {complexity:?}, routed to {path} path, {outcome} after {iterations} iterations"
-            ),
-            outcome: if success {
-                crate::ExperimentOutcome::Success
-            } else {
-                crate::ExperimentOutcome::Failed
-            },
-            reason: None,
-            guardrail_advice: if success {
-                format!("{path} path effective for {complexity:?} tasks like this")
-            } else {
-                format!("{path} path failed for {complexity:?} tasks like this — try full pipeline")
-            },
-            affected_elements: vec![],
-            evidence_refs: vec![],
-            confidence: None,
-            tags: vec![
-                "routing".into(),
-                path.into(),
-                outcome.into(),
-                format!("{complexity:?}").to_lowercase(),
-            ],
-            hitl_kind: None,
-            related_ids: vec![],
-            retrieval_count: 0,
-            task_success_after: if success { 1 } else { 0 },
-            task_total_after: 1,
-        };
-
-        if let Err(e) = mem.record(entry.clone()) {
-            tracing::warn!(error = %e, "failed to record task outcome");
-        }
-        if let Some(ref repo) = self.repo_root {
-            if let Err(e) = mem.save_to_path(repo) {
-                tracing::warn!(error = %e, "failed to persist task outcome");
-            }
-        }
-    }
-
-    /// Check if there are uncommitted changes (git diff).
-    async fn has_git_diff(&self) -> bool {
-        // Helper to extract stdout from shell output
-        let extract_stdout = |output: &str| -> String {
-            output
-                .split("--- stdout ---\n")
-                .nth(1)
-                .unwrap_or("")
-                .split("\n--- stderr ---")
-                .next()
-                .unwrap_or("")
-                .trim()
-                .to_string()
-        };
-
-        // Try git diff --stat HEAD first (works when repo has commits)
-        let params = serde_json::json!({
-            "command": "git",
-            "args": ["diff", "--stat", "HEAD"],
-            "timeout_ms": 5_000,
-        });
-        if let Ok(output) = self.tools.dispatch("shell", params).await {
-            if !extract_stdout(&output).is_empty() {
-                return true;
-            }
-        }
-
-        // Fallback: git diff --stat (no HEAD — works for repos without commits)
-        let params = serde_json::json!({
-            "command": "git",
-            "args": ["diff", "--stat"],
-            "timeout_ms": 5_000,
-        });
-        if let Ok(output) = self.tools.dispatch("shell", params).await {
-            if !extract_stdout(&output).is_empty() {
-                return true;
-            }
-        }
-
-        // Fallback: git status --porcelain (catches untracked files)
-        let params = serde_json::json!({
-            "command": "git",
-            "args": ["status", "--porcelain"],
-            "timeout_ms": 5_000,
-        });
-        if let Ok(output) = self.tools.dispatch("shell", params).await {
-            return !extract_stdout(&output).is_empty();
-        }
-
-        false
-    }
-
-    /// Auto-format changed files to fix indentation/style issues from model edits.
-    ///
-    /// Tries `cargo fmt` for Rust projects, then `prettier` for JS/TS.
-    /// Failures are silently ignored — formatting is best-effort.
-    async fn auto_format(&self) {
-        // Get changed Rust files first to scope cargo fmt.
-        let changed_rust_files: Vec<String> = {
-            let params = serde_json::json!({
-                "command": "git",
-                "args": ["diff", "--name-only"],
-                "timeout_ms": 5_000,
-            });
-            if let Ok(output) = self.tools.dispatch("shell", params).await {
-                let stdout = output
-                    .split("--- stdout ---\n")
-                    .nth(1)
-                    .unwrap_or("")
-                    .split("\n--- stderr ---")
-                    .next()
-                    .unwrap_or("")
-                    .trim();
-                stdout
-                    .lines()
-                    .filter(|l| l.ends_with(".rs"))
-                    .map(|s| s.to_string())
-                    .collect()
-            } else {
-                Vec::new()
-            }
-        };
-
-        // Try cargo fmt — scoped to changed files if any, otherwise full repo.
-        if !changed_rust_files.is_empty() {
-            let mut args = vec!["fmt".to_string(), "--".to_string()];
-            args.extend(changed_rust_files);
-            let params = serde_json::json!({
-                "command": "cargo",
-                "args": args,
-                "timeout_ms": 30_000,
-            });
-            if let Ok(output) = self.tools.dispatch("shell", params).await {
-                let stderr = output.split("--- stderr ---\n").nth(1).unwrap_or("").trim();
-                if stderr.is_empty() {
-                    tracing::info!("auto_format: cargo fmt (scoped) succeeded");
-                    return;
-                }
-            }
-        } else {
-            // Fallback: full repo cargo fmt if no changed files detected.
-            let params = serde_json::json!({
-                "command": "cargo",
-                "args": ["fmt"],
-                "timeout_ms": 30_000,
-            });
-            if let Ok(output) = self.tools.dispatch("shell", params).await {
-                let stderr = output.split("--- stderr ---\n").nth(1).unwrap_or("").trim();
-                if stderr.is_empty() {
-                    tracing::info!("auto_format: cargo fmt (full) succeeded");
-                    return;
-                }
-            }
-        }
-
-        // Try prettier on changed files (JS/TS)
-        let params = serde_json::json!({
-            "command": "git",
-            "args": ["diff", "--name-only"],
-            "timeout_ms": 5_000,
-        });
-        if let Ok(output) = self.tools.dispatch("shell", params).await {
-            let stdout = output
-                .split("--- stdout ---\n")
-                .nth(1)
-                .unwrap_or("")
-                .split("\n--- stderr ---")
-                .next()
-                .unwrap_or("")
-                .trim();
-            let js_files: Vec<&str> = stdout
-                .lines()
-                .filter(|l| l.ends_with(".js") || l.ends_with(".ts") || l.ends_with(".tsx"))
-                .collect();
-            if !js_files.is_empty() {
-                let mut args = vec!["prettier".to_string(), "--write".to_string()];
-                args.extend(js_files.iter().map(|s| s.to_string()));
-                let params = serde_json::json!({
-                    "command": "npx",
-                    "args": args,
-                    "timeout_ms": 30_000,
-                });
-                if self.tools.dispatch("shell", params).await.is_ok() {
-                    tracing::info!("auto_format: prettier succeeded");
-                }
-            }
-        }
-    }
 
     // --- Critique: review every change via the review model ---
 
@@ -2652,9 +2178,37 @@ impl Agent {
             let req = CompletionRequest::prompt(CRITIQUE_SYSTEM_PROMPT, &user)
                 .with_model(&self.config.models.review);
             let response = self.llm.complete(&req).await?;
-            parse_critique_from_response(&response.content, response.usage.clone())
-        } else {
+            let mut c = parse_critique_from_response(&response.content, response.usage.clone());
+            c.source = "legacy".to_string();
+            c
+        } else if self.config.critique_mode == CritiqueMode::Full {
+            // Full ensemble mode: always run all personas.
             self.run_persona_ensemble(personas, &shared_user).await?
+        } else {
+            // Tiered mode: run quick check first.
+            let quick_req = CompletionRequest::prompt(QUICK_CRITIQUE_PROMPT, &shared_user)
+                .with_model(&self.config.models.review);
+            let quick_resp = self.llm.complete(&quick_req).await?;
+            let quick_critique =
+                parse_critique_from_response(&quick_resp.content, quick_resp.usage.clone());
+
+            if self.config.critique_mode == CritiqueMode::QuickOnly {
+                let mut c = quick_critique;
+                c.source = "quick_check".to_string();
+                c
+            } else if quick_critique.approved
+                && quick_critique.score >= self.config.quick_critique_threshold
+            {
+                // Quick check passed with high confidence — skip the ensemble.
+                let mut c = quick_critique;
+                c.source = "quick_check".to_string();
+                c
+            } else {
+                // Quick check didn't clear the threshold — run full ensemble.
+                let mut c = self.run_persona_ensemble(personas, &shared_user).await?;
+                c.source = "ensemble".to_string();
+                c
+            }
         };
 
         critique.injected_learning_ids = injected_learning_ids;
@@ -2807,6 +2361,7 @@ impl Agent {
             persona_breakdown: persona_results,
             injected_learning_ids: Vec::new(),
             criteria: criteria_vec,
+            source: "ensemble".to_string(),
         })
     }
 
@@ -2880,117 +2435,6 @@ impl Agent {
         Ok(learnings)
     }
 
-    // --- Run: the full end-to-end Principal Engineer loop ---
-
-    /// Run the full agent loop: comprehend → plan → execute → critique → reflect.
-    ///
-    /// After critique, the agent generates:
-    /// - A **decision record** explaining WHY the change was made
-    /// - A **runbook** for handling failures related to the change
-    ///
-    /// These are written to `.sruja/decisions/` and `.sruja/runbooks/` so that
-    /// a human Debugging at 3AM has immediate, actionable context.
-    pub async fn run(&self, goal: &crate::goal::GoalSpec) -> Result<AgentRunResult, AgentError> {
-        let comprehension = self.comprehend(goal).await?;
-        let complexity = comprehension.complexity;
-
-        // ── Adaptive routing: try direct execution for simple tasks ──────
-        if self.should_try_direct(goal, complexity) {
-            if let Some(direct) = self.try_direct_execution(goal, &comprehension).await? {
-                self.record_task_outcome(goal, complexity, "direct", true, 0)
-                    .await;
-                return Ok(AgentRunResult {
-                    goal: goal.statement.clone(),
-                    comprehension,
-                    plan: Plan {
-                        goal: goal.to_string(),
-                        goal_statement: goal.statement.clone(),
-                        criteria: goal.acceptance_criteria.clone(),
-                        subtasks: vec![Subtask {
-                            id: "direct".into(),
-                            description: goal.statement.clone(),
-                            tier: TaskTier::Mid,
-                            kind: SubtaskKind::Implement,
-                            files: goal.target_files.clone(),
-                            acceptance_criteria: goal.acceptance_criteria.clone(),
-                        }],
-                        tdd: false,
-                        risks: Vec::new(),
-                        schema_version: "1.0".into(),
-                        complexity,
-                    },
-                    step_results: vec![StepResult {
-                        subtask_id: "direct".into(),
-                        status: StepStatus::Ok,
-                        output: direct.output,
-                        usage: direct.usage,
-                        tool_signals: direct.tool_signals,
-                        converged: true,
-                    }],
-                    critique: None,
-                    decision: None,
-                    runbook: None,
-                    total_usage: Usage::default(),
-                });
-            }
-            self.record_task_outcome(goal, complexity, "direct", false, 0)
-                .await;
-        }
-
-        // ── Full pipeline ────────────────────────────────────────────────
-        let plan = self.plan(goal, &comprehension).await?;
-        let step_results = self.execute(&plan).await?;
-
-        let critique = if self.config.review_every_change {
-            Some(self.critique(&plan, &step_results).await?)
-        } else {
-            None
-        };
-
-        // Complexity-aware: skip artifacts for trivial tasks.
-        let generate_artifacts = comprehension.complexity.generate_artifacts();
-
-        let _learnings = if generate_artifacts {
-            self.reflect(&comprehension, &plan, &step_results, critique.as_ref())
-                .await?
-        } else {
-            Vec::new()
-        };
-
-        let decision = if generate_artifacts {
-            self.generate_decision(&plan, &step_results, critique.as_ref())
-                .await
-        } else {
-            None
-        };
-        let runbook = if generate_artifacts {
-            self.generate_runbook(&plan, &step_results).await
-        } else {
-            None
-        };
-
-        // Write artifacts to disk if a repo root is available.
-        if let Some(ref repo) = self.repo_root {
-            if let Some(ref d) = decision {
-                self.write_decision(repo, d).await;
-            }
-            if let Some(ref r) = runbook {
-                self.write_runbook(repo, r).await;
-            }
-        }
-
-        Ok(AgentRunResult {
-            goal: goal.statement.clone(),
-            comprehension,
-            plan,
-            step_results,
-            critique,
-            decision,
-            runbook,
-            total_usage: Usage::default(),
-        })
-    }
-
     /// Helper: best-effort emit a LoopEvent. Logs but ignores errors.
     fn emit_event(events: Option<&mpsc::Sender<LoopEvent>>, event: LoopEvent) {
         if let Some(sender) = events {
@@ -3025,7 +2469,7 @@ impl Agent {
         // Validate target element IDs before comprehension when available.
         if !goal.target_elements.is_empty() {
             if let Err(unknown) = goal.validate(None) {
-                return Err(AgentError::Other(format!(
+                return Err(AgentError::Validation(format!(
                     "unknown target element IDs: {}",
                     unknown.join(", ")
                 )));
@@ -3073,6 +2517,8 @@ impl Agent {
         let mut non_converged_count: usize = 0;
         let mut seen_signatures: Vec<String> = Vec::new();
         let mut failure_tracker: FailureTracker = FailureTracker::default();
+        let mut current_plan: Option<Plan> = None;
+        let mut current_critique: Option<Critique> = None;
 
         for iteration in 1..=max_iterations {
             Self::emit_event(
@@ -3105,12 +2551,32 @@ impl Agent {
 
                 match stage_kind {
                     crate::manifest::StageKind::Comprehend
-                    | crate::manifest::StageKind::Plan
-                    | crate::manifest::StageKind::Critique
-                    | crate::manifest::StageKind::Reflect
                     | crate::manifest::StageKind::TestReview => {
-                        // These stages are handled by the full pipeline (`Agent::run()`);
-                        // in the simplified loop they are no-ops.
+                        // Comprehend is handled deterministically before the loop.
+                        // TestReview is a no-op in the simplified loop.
+                    }
+
+                    crate::manifest::StageKind::Plan => {
+                        let mut plan = self.plan(goal, &comprehension).await?;
+                        // Notify hooks about the plan.
+                        self.hooks.after_plan(&mut plan).await;
+                        current_plan = Some(plan);
+                    }
+
+                    crate::manifest::StageKind::Critique => {
+                        if let Some(ref plan) = current_plan {
+                            let critique = self.critique(plan, &step_results).await?;
+                            self.hooks.after_review(&critique).await;
+                            current_critique = Some(critique);
+                        }
+                    }
+
+                    crate::manifest::StageKind::Reflect => {
+                        if let Some(ref plan) = current_plan {
+                            let _ = self
+                                .reflect(&comprehension, plan, &step_results, current_critique.as_ref())
+                                .await;
+                        }
                     }
 
                     crate::manifest::StageKind::Implement
@@ -3188,7 +2654,7 @@ impl Agent {
 
             // Determine approval from the last work stage result.
             let last_work = step_results.last();
-            let step_converged = last_work.map_or(false, |r| r.converged);
+            let step_converged = last_work.is_some_and(|r| r.converged);
             let approved = iteration_verify_failed.is_empty()
                 && step_converged
                 && content_has_quality(&_last_output);
@@ -3207,13 +2673,14 @@ impl Agent {
                 verify_failed: iteration_verify_failed.clone(),
                 injected_learning_ids: vec![],
                 usage: total_usage.clone(),
+                cost_usd: total_usage.estimated_cost_usd(),
                 plan_parse_error: None,
                 incorporation_gap: None,
             });
 
             // --- Spend cap (check BEFORE convergence to enforce budget) ---
             if let Some(cap) = loop_config.spend_cap_usd {
-                let cost = total_usage.estimated_cost_usd();
+                let cost: f64 = iterations.iter().map(|i| i.cost_usd).sum();
                 if cost >= cap {
                     termination = LoopTermination::SpendCapExceeded(cost);
                     break;
@@ -3230,7 +2697,9 @@ impl Agent {
             // --- Non-convergence fail-fast ---
             if iterations.len() >= 2 {
                 let non_converged_fraction = non_converged_count as f64 / iterations.len() as f64;
-                if non_converged_fraction > 0.5 {
+                if self.config.max_non_converged_fraction <= 1.0
+                    && non_converged_fraction > self.config.max_non_converged_fraction
+                {
                     termination = LoopTermination::ModelNotConverging(non_converged_fraction);
                     break;
                 }
@@ -3321,8 +2790,9 @@ impl Agent {
             }
         }
 
-        // --- Build synthetic Plan for backward compatibility ---
-        let plan = Plan {
+        // --- Build Plan for the result ---
+        // Use the real plan if Plan stage ran, otherwise fall back to synthetic.
+        let plan = current_plan.unwrap_or_else(|| Plan {
             goal: goal.to_string(),
             goal_statement: goal.statement.clone(),
             criteria: goal.acceptance_criteria.clone(),
@@ -3338,14 +2808,14 @@ impl Agent {
             risks: vec![],
             schema_version: "1.0".into(),
             complexity,
-        };
+        });
 
         let final_result = AgentRunResult {
             goal: goal.statement.clone(),
             comprehension,
             plan,
             step_results,
-            critique: None,
+            critique: current_critique,
             decision: None,
             runbook: None,
             total_usage: total_usage.clone(),
@@ -3381,10 +2851,10 @@ impl Agent {
         let checkpoint_dir = loop_config
             .checkpoint_dir
             .as_ref()
-            .ok_or_else(|| AgentError::Other("no checkpoint_dir configured for resume".into()))?;
+            .ok_or_else(|| AgentError::Checkpoint("no checkpoint_dir configured for resume".into()))?;
 
         let checkpoint = RunCheckpoint::load(checkpoint_dir)
-            .map_err(|e| AgentError::Other(format!("failed to load checkpoint: {e}")))?;
+            .map_err(|e| AgentError::Checkpoint(format!("failed to load checkpoint: {e}")))?;
 
         tracing::info!(
             goal = %checkpoint.goal,
@@ -3441,198 +2911,6 @@ impl Agent {
         }
         self.run_loop(goal, loop_config, None, None).await
     }
-
-    /// Generate a decision record explaining WHY this change was made.
-    async fn generate_decision(
-        &self,
-        plan: &Plan,
-        results: &[StepResult],
-        critique: Option<&Critique>,
-    ) -> Option<DecisionRecord> {
-        let successes = results
-            .iter()
-            .filter(|r| r.status == StepStatus::Ok)
-            .count();
-        let failures = results
-            .iter()
-            .filter(|r| r.status == StepStatus::Failed)
-            .count();
-
-        let user = format!(
-            "## Goal\n{}\n\n\
-             ## What was done\n\
-             {} subtasks succeeded, {} failed\n\
-             Critique: {}\n\n\
-             ## Instructions\n\
-             Generate a decision record. Output JSON:\n\
-             {{\"title\": \"...\", \"context\": \"...\", \"decision\": \"...\", \
-             \"consequences\": [...], \"alternatives\": [...]}}\n\
-             Be concise but thorough. This record will be read at 3AM by someone \
-             who has no context on why this change was made.",
-            plan.goal_statement,
-            successes,
-            failures,
-            critique
-                .map(|c| format!("approved={}", c.approved))
-                .unwrap_or_else(|| "skipped".into()),
-        );
-
-        let req = CompletionRequest::prompt(DECISION_SYSTEM_PROMPT, &user)
-            .with_model(&self.config.models.cheap);
-
-        let (response, _usage, _signals) = self.run_tool_loop(req).await.ok()?;
-        let json_str = extract_json(&response.content);
-        let value: serde_json::Value = serde_json::from_str(&json_str).ok()?;
-
-        let title = value.get("title")?.as_str()?.to_string();
-        let context = value.get("context")?.as_str()?.to_string();
-        let decision_text = value.get("decision")?.as_str()?.to_string();
-
-        let mut record = DecisionRecord::new(title, context, decision_text)
-            .with_status(DecisionStatus::Accepted)
-            .with_elements(comprehension_cited_elements(plan));
-
-        if let Some(c) = critique {
-            record = record.with_consequence(format!("Critic score: {:.0}%", c.score * 100.0));
-        }
-
-        if let Some(arr) = value.get("consequences").and_then(|v| v.as_array()) {
-            for c in arr {
-                if let Some(s) = c.as_str() {
-                    record = record.with_consequence(s);
-                }
-            }
-        }
-
-        if let Some(arr) = value.get("alternatives").and_then(|v| v.as_array()) {
-            for a in arr {
-                if let Some(s) = a.as_str() {
-                    record = record.with_alternative(s);
-                }
-            }
-        }
-
-        Some(record)
-    }
-
-    /// Generate a runbook for handling failures related to this change.
-    async fn generate_runbook(&self, plan: &Plan, _results: &[StepResult]) -> Option<Runbook> {
-        let user = format!(
-            "## Goal\n{}\n\n\
-             ## Subtasks\n{}\n\n\
-             ## Instructions\n\
-             Generate a runbook for handling failures. Output JSON:\n\
-             {{\"title\": \"...\", \"trigger\": \"...\", \"severity\": \"critical|high|medium|low\", \
-             \"symptoms\": [...], \"diagnosis\": [...], \"resolution\": [...], \
-             \"rollback\": [...], \"verification\": [...]}}\n\
-             Be practical. This will be read at 3AM.",
-            plan.goal_statement,
-            plan.subtasks.iter()
-                .map(|s| format!("- [{}] {}", s.id, s.description))
-                .collect::<Vec<_>>()
-                .join("\n"),
-        );
-
-        let req = CompletionRequest::prompt(RUNBOOK_SYSTEM_PROMPT, &user)
-            .with_model(&self.config.models.cheap);
-
-        let (response, _usage, _signals) = self.run_tool_loop(req).await.ok()?;
-        let json_str = extract_json(&response.content);
-        let value: serde_json::Value = serde_json::from_str(&json_str).ok()?;
-
-        let title = value.get("title")?.as_str()?.to_string();
-        let trigger = value.get("trigger")?.as_str()?.to_string();
-
-        let mut rb = Runbook::new(title, trigger)
-            .with_elements(plan.subtasks.iter().flat_map(|s| s.files.clone()).collect());
-
-        if let Some(sev) = value.get("severity").and_then(|v| v.as_str()) {
-            rb.severity = match sev {
-                "critical" => runbook::RunbookSeverity::Critical,
-                "medium" => runbook::RunbookSeverity::Medium,
-                "low" => runbook::RunbookSeverity::Low,
-                _ => runbook::RunbookSeverity::High,
-            };
-        }
-
-        if let Some(arr) = value.get("symptoms").and_then(|v| v.as_array()) {
-            for item in arr {
-                if let Some(s) = item.as_str() {
-                    rb = rb.with_symptom(s);
-                }
-            }
-        }
-        if let Some(arr) = value.get("diagnosis").and_then(|v| v.as_array()) {
-            for item in arr {
-                if let Some(s) = item.as_str() {
-                    rb = rb.with_diagnosis_step(s);
-                }
-            }
-        }
-        if let Some(arr) = value.get("resolution").and_then(|v| v.as_array()) {
-            for item in arr {
-                if let Some(s) = item.as_str() {
-                    rb = rb.with_resolution_step(s);
-                }
-            }
-        }
-        if let Some(arr) = value.get("rollback").and_then(|v| v.as_array()) {
-            for item in arr {
-                if let Some(s) = item.as_str() {
-                    rb = rb.with_rollback_step(s);
-                }
-            }
-        }
-        if let Some(arr) = value.get("verification").and_then(|v| v.as_array()) {
-            for item in arr {
-                if let Some(s) = item.as_str() {
-                    rb = rb.with_verification_step(s);
-                }
-            }
-        }
-
-        Some(rb)
-    }
-
-    /// Write a decision record to `.sruja/decisions/`.
-    async fn write_decision(&self, repo: &std::path::Path, record: &DecisionRecord) {
-        let dir = repo.join(".sruja/decisions");
-        let _ = tokio::fs::create_dir_all(&dir).await;
-        let path = dir.join(record.filename());
-        let _ = tokio::fs::write(&path, record.to_markdown()).await;
-        tracing::info!(path = %path.display(), "decision:written");
-    }
-
-    /// Write a runbook to `.sruja/runbooks/`.
-    async fn write_runbook(&self, repo: &std::path::Path, runbook: &Runbook) {
-        let dir = repo.join(".sruja/runbooks");
-        let _ = tokio::fs::create_dir_all(&dir).await;
-        let path = dir.join(runbook.filename());
-        let _ = tokio::fs::write(&path, runbook.to_markdown()).await;
-        tracing::info!(path = %path.display(), "runbook:written");
-    }
-}
-
-fn comprehension_cited_elements(plan: &Plan) -> Vec<String> {
-    plan.subtasks.iter().flat_map(|s| s.files.clone()).collect()
-}
-
-/// Extract a normalized pattern from a goal statement for routing matching.
-///
-/// Takes the first few words (lowercased) as a pattern key so similar goals
-/// cluster together for adaptive routing decisions.
-/// e.g. "Add a comment to mod.rs" → "add a comment to mod.rs"
-/// e.g. "Add a comment to lib.rs" → "add a comment to lib.rs"
-/// These will match because they share the "add a comment" prefix.
-fn goal_pattern(goal: &str) -> String {
-    let lower = goal.to_lowercase();
-    // Take first 5 words as the pattern — enough to capture the verb + object
-    // without being too specific (file names, line numbers).
-    lower
-        .split_whitespace()
-        .take(5)
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 /// Summarize failing verification steps into human-readable critique issues.
@@ -3773,7 +3051,7 @@ pub(crate) use prompts::*;
 
 mod parsing;
 pub use parsing::parse_plan_from_response;
-use parsing::{extract_json, parse_critique_from_response, parse_learnings_from_response};
+use parsing::{parse_critique_from_response, parse_learnings_from_response};
 // ---------------------------------------------------------------------------
 // Builder
 // ---------------------------------------------------------------------------
@@ -3870,7 +3148,7 @@ impl AgentBuilder {
         let repo_root = repo_root.into();
         let (manager, mcp_tools) = McpClientManager::from_manifest(manifest, &repo_root)
             .await
-            .map_err(|e| AgentError::Other(format!("MCP initialization failed: {}", e)))?;
+            .map_err(|e| AgentError::Mcp(format!("initialization failed: {}", e)))?;
 
         for tool in mcp_tools {
             self.tools.register(tool);
@@ -3925,6 +3203,12 @@ impl AgentBuilder {
         } else {
             llm_arc
         };
+
+        // Wrap in circuit breaker for per-model failure detection and
+        // fast-fail. This prevents cascading failures when a provider is
+        // unhealthy — the circuit opens after 3 consecutive failures for
+        // a model and rejects further calls for 30s.
+        let llm: Arc<dyn LlmClient> = Arc::new(crate::llm::CircuitBreakerClient::new(llm));
 
         // Wire the guard and dry_run into the tools.
         let mut tools = self.tools;

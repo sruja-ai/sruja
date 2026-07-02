@@ -32,6 +32,7 @@ pub mod openai;
 #[cfg(feature = "llm-anthropic")]
 pub mod anthropic;
 
+pub mod circuit_breaker;
 pub mod tiered;
 
 #[cfg(feature = "compression")]
@@ -50,6 +51,8 @@ pub use openai::OpenAiClient;
 pub use router::{ModelRouter, TaskTier};
 pub use stream::{reassemble_stream, Stream, StreamEvent};
 pub use tiered::TieredClient;
+
+pub use circuit_breaker::{CircuitBreakerClient, CircuitBreakerConfig};
 
 #[cfg(feature = "compression")]
 pub use compression::{CompressingClient, CompressionConfig, CompressionStats};

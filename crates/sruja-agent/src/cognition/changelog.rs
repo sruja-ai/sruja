@@ -265,6 +265,7 @@ mod tests {
                 verify_failed: vec![],
                 injected_learning_ids: vec![],
                 usage: Usage::default(),
+                cost_usd: 0.0,
                 plan_parse_error: None,
                 incorporation_gap: None,
             }],

@@ -28,7 +28,9 @@ pub fn load_from_path(path: &Path) -> Result<AgenticMemory, MemoryError> {
     let mut reader = std::io::BufReader::new(&file);
     reader.read_to_string(&mut content)?;
     file.unlock()?;
-    let memory = serde_json::from_str(&content)?;
+    let mut memory: AgenticMemory = serde_json::from_str(&content)?;
+    // Rebuild the in-memory dedup index (not serialized).
+    memory.rebuild_dedup_index();
     Ok(memory)
 }
 

@@ -12,6 +12,7 @@ pub mod types;
 #[cfg(test)]
 mod tests;
 
+use chrono::{TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -24,14 +25,21 @@ pub use types::{
     MemoryError, MergeSuggestion, StaleEntry,
 };
 
+/// Maximum number of error frequency entries before the oldest are evicted.
+const MAX_ERROR_ENTRIES: usize = 100;
+
+/// Entries older than this many days are filtered out of error frequency results.
+const ERROR_TTL_DAYS: i64 = 60;
+
 /// Persistent store for architectural learnings and agentic guardrails.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AgenticMemory {
     /// The list of recorded learnings.
     pub learnings: Vec<LearningEntry>,
-    /// In-memory index mapping tags to entry indices for fast lookup.
+    /// In-memory index mapping (normalized context, normalized hypothesis) to
+    /// index in `learnings` for O(1) dedup lookups.
     #[serde(skip)]
-    pub tag_index: HashMap<String, Vec<usize>>,
+    pub dedup_index: HashMap<(String, String), usize>,
     /// Cross-run error frequency history, keyed by (repo_path, error_class).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub error_frequencies: Vec<ErrorFrequency>,
@@ -73,6 +81,21 @@ impl AgenticMemory {
         storage::get_path(repo_root)
     }
 
+    /// Rebuilds the dedup index from scratch.
+    ///
+    /// This is called after deserialization (load) and after any structural
+    /// mutation (delete, update) that could shift indices.
+    pub fn rebuild_dedup_index(&mut self) {
+        self.dedup_index.clear();
+        for (idx, entry) in self.learnings.iter().enumerate() {
+            let key = (
+                entry.context.trim().to_lowercase(),
+                entry.hypothesis.trim().to_lowercase(),
+            );
+            self.dedup_index.insert(key, idx);
+        }
+    }
+
     /// Adds a new learning entry, auto-generating tags and linking to related entries.
     ///
     /// Deduplicates against existing entries with the same `(context, hypothesis)` pair:
@@ -86,36 +109,71 @@ impl AgenticMemory {
             learning.tags = search::extract_tags(&learning);
         }
 
-        // Deduplicate: if an entry with the same (context, hypothesis) already exists,
-        // merge into it rather than appending a duplicate.
+        // O(1) dedup via the index: check dedup_index first, fall back to
+        // linear scan only if the index doesn't have the key (defensive).
         let normalized_ctx = learning.context.trim().to_lowercase();
         let normalized_hyp = learning.hypothesis.trim().to_lowercase();
-        if let Some(existing) = self.learnings.iter_mut().find(|e| {
-            e.context.trim().to_lowercase() == normalized_ctx
-                && e.hypothesis.trim().to_lowercase() == normalized_hyp
-        }) {
-            // Merge: update guardrail_advice if new info is longer/more specific.
-            if learning.guardrail_advice.len() > existing.guardrail_advice.len() {
-                existing.guardrail_advice = learning.guardrail_advice;
-            }
-            // Merge: update outcome on failure (prefer recording failures).
-            if learning.outcome != ExperimentOutcome::Success {
-                existing.outcome = learning.outcome;
-            }
-            // Merge: extend affected elements (deduped).
-            for el in &learning.affected_elements {
-                if !existing.affected_elements.contains(el) {
-                    existing.affected_elements.push(el.clone());
+        let dedup_key = (normalized_ctx.clone(), normalized_hyp.clone());
+
+        // Fast path: use the index for O(1) lookup. If the key isn't in the
+        // index, or the index points to a stale position, fall through to
+        // the linear scan as a safety net.
+        let idx_from_index = self.dedup_index.get(&dedup_key).copied();
+        let index_is_valid = idx_from_index.is_some_and(|idx| idx < self.learnings.len());
+
+        if let Some(idx) = idx_from_index {
+            if let Some(existing) = self.learnings.get_mut(idx) {
+                // Merge: update guardrail_advice if new info is longer/more specific.
+                if learning.guardrail_advice.len() > existing.guardrail_advice.len() {
+                    existing.guardrail_advice = learning.guardrail_advice;
                 }
-            }
-            // Merge: extend tags (deduped).
-            for tag in &learning.tags {
-                if !existing.tags.contains(tag) {
-                    existing.tags.push(tag.clone());
+                // Merge: update outcome on failure (prefer recording failures).
+                if learning.outcome != ExperimentOutcome::Success {
+                    existing.outcome = learning.outcome;
                 }
+                // Merge: extend affected elements (deduped).
+                for el in &learning.affected_elements {
+                    if !existing.affected_elements.contains(el) {
+                        existing.affected_elements.push(el.clone());
+                    }
+                }
+                // Merge: extend tags (deduped).
+                for tag in &learning.tags {
+                    if !existing.tags.contains(tag) {
+                        existing.tags.push(tag.clone());
+                    }
+                }
+                existing.timestamp = learning.timestamp;
+                return;
             }
-            existing.timestamp = learning.timestamp;
-            return;
+        }
+
+        // Fallback: linear scan (safety net for stale index or missing key).
+        if !index_is_valid {
+            if let Some(existing) = self.learnings.iter_mut().find(|e| {
+                e.context.trim().to_lowercase() == normalized_ctx
+                    && e.hypothesis.trim().to_lowercase() == normalized_hyp
+            }) {
+                // Merge: same logic as above.
+                if learning.guardrail_advice.len() > existing.guardrail_advice.len() {
+                    existing.guardrail_advice = learning.guardrail_advice;
+                }
+                if learning.outcome != ExperimentOutcome::Success {
+                    existing.outcome = learning.outcome;
+                }
+                for el in &learning.affected_elements {
+                    if !existing.affected_elements.contains(el) {
+                        existing.affected_elements.push(el.clone());
+                    }
+                }
+                for tag in &learning.tags {
+                    if !existing.tags.contains(tag) {
+                        existing.tags.push(tag.clone());
+                    }
+                }
+                existing.timestamp = learning.timestamp;
+                return;
+            }
         }
 
         let new_id = learning.id.clone();
@@ -132,9 +190,14 @@ impl AgenticMemory {
         }
 
         self.learnings.push(learning);
+        // Update the dedup index with the new entry.
+        self.dedup_index.insert(dedup_key, self.learnings.len() - 1);
     }
 
     /// Adds a learning entry without auto-linking (for deserialization or migration).
+    ///
+    /// Does NOT update the dedup index — call `rebuild_dedup_index()` if the
+    /// index needs to be consistent afterward.
     pub fn add_learning_raw(&mut self, learning: LearningEntry) {
         self.learnings.push(learning);
     }
@@ -145,6 +208,8 @@ impl AgenticMemory {
     }
 
     /// Record an error occurrence, incrementing frequency for (repo_path, error_class).
+    ///
+    /// Automatically evicts the oldest entries when MAX_ERROR_ENTRIES is exceeded.
     pub fn record_error(&mut self, repo_path: &str, error_class: ErrorClass) {
         let now = chrono::Utc::now().to_rfc3339();
         if let Some(entry) = self
@@ -162,13 +227,35 @@ impl AgenticMemory {
                 last_updated: now,
             });
         }
+
+        // Enforce cap: if over MAX_ERROR_ENTRIES, evict oldest entries.
+        if self.error_frequencies.len() > MAX_ERROR_ENTRIES {
+            let excess = self.error_frequencies.len() - MAX_ERROR_ENTRIES;
+            self.error_frequencies.sort_by(|a, b| a.last_updated.cmp(&b.last_updated));
+            self.error_frequencies.drain(..excess);
+        }
     }
 
     /// Search error frequency history, optionally filtered by repo_path.
+    ///
+    /// Entries older than ERROR_TTL_DAYS are excluded from results.
     pub fn search_error_frequencies(&self, repo_path: &str) -> Vec<ErrorFrequency> {
+        let cutoff = Utc::now() - TimeDelta::try_days(ERROR_TTL_DAYS).unwrap_or_default();
         self.error_frequencies
             .iter()
-            .filter(|e| e.repo_path == repo_path)
+            .filter(|e| {
+                if e.repo_path != repo_path {
+                    return false;
+                }
+                // Exclude entries older than the TTL.
+                if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(&e.last_updated) {
+                    ts.naive_utc().date() >= cutoff.naive_utc().date()
+                } else {
+                    // If we can't parse the timestamp, keep the entry
+                    // (defensive: don't silently drop data).
+                    true
+                }
+            })
             .cloned()
             .collect()
     }
@@ -213,6 +300,8 @@ impl AgenticMemory {
     }
 
     /// Updates an existing learning by id. Re-extracts tags when text fields change.
+    ///
+    /// Rebuilds the dedup index if context or hypothesis changed.
     pub fn update_learning(&mut self, id: &str, patch: LearningPatch) -> Result<(), MemoryError> {
         let idx = self
             .learnings
@@ -220,55 +309,70 @@ impl AgenticMemory {
             .position(|e| e.id == id)
             .ok_or_else(|| MemoryError::NotFound(id.to_string()))?;
 
-        let entry = &mut self.learnings[idx];
+        let mut rebuild_index = false;
         let mut reextract_tags = false;
 
-        if let Some(kind) = patch.kind {
-            entry.kind = Some(kind);
-        }
-        if let Some(ctx) = patch.context {
-            entry.context = ctx;
-            reextract_tags = true;
-        }
-        if let Some(h) = patch.hypothesis {
-            entry.hypothesis = h;
-            reextract_tags = true;
-        }
-        if let Some(outcome) = patch.outcome {
-            entry.outcome = outcome;
-        }
-        if let Some(reason) = patch.reason {
-            entry.reason = reason;
-        }
-        if let Some(guardrail) = patch.guardrail_advice {
-            entry.guardrail_advice = guardrail;
-            reextract_tags = true;
-        }
-        if let Some(elements) = patch.affected_elements {
-            entry.affected_elements = elements;
-        }
-        if let Some(refs) = patch.evidence_refs {
-            entry.evidence_refs = refs;
-        }
-        if let Some(conf) = patch.confidence {
-            entry.confidence = conf;
-        }
-        if let Some(tags) = patch.tags {
-            entry.tags = tags;
-            reextract_tags = false;
-        }
-        if let Some(hitl) = patch.hitl_kind {
-            entry.hitl_kind = hitl;
+        // Apply patches to the entry at idx.
+        {
+            let entry = &mut self.learnings[idx];
+
+            if let Some(kind) = patch.kind {
+                entry.kind = Some(kind);
+            }
+            if let Some(ctx) = patch.context {
+                entry.context = ctx;
+                reextract_tags = true;
+                rebuild_index = true;
+            }
+            if let Some(h) = patch.hypothesis {
+                entry.hypothesis = h;
+                reextract_tags = true;
+                rebuild_index = true;
+            }
+            if let Some(outcome) = patch.outcome {
+                entry.outcome = outcome;
+            }
+            if let Some(reason) = patch.reason {
+                entry.reason = reason;
+            }
+            if let Some(guardrail) = patch.guardrail_advice {
+                entry.guardrail_advice = guardrail;
+                reextract_tags = true;
+            }
+            if let Some(elements) = patch.affected_elements {
+                entry.affected_elements = elements;
+            }
+            if let Some(refs) = patch.evidence_refs {
+                entry.evidence_refs = refs;
+            }
+            if let Some(conf) = patch.confidence {
+                entry.confidence = conf;
+            }
+            if let Some(tags) = patch.tags {
+                entry.tags = tags;
+                reextract_tags = false;
+            }
+            if let Some(hitl) = patch.hitl_kind {
+                entry.hitl_kind = hitl;
+            }
+
+            if reextract_tags {
+                entry.tags = search::extract_tags(entry);
+            }
         }
 
-        if reextract_tags {
-            entry.tags = search::extract_tags(entry);
+        // Rebuild index if context or hypothesis changed (requires no active
+        // borrow on self.learnings[idx]).
+        if rebuild_index {
+            self.rebuild_dedup_index();
         }
 
         Ok(())
     }
 
     /// Removes a learning and scrubs `related_ids` references across the library.
+    ///
+    /// Rebuilds the dedup index after removal to keep it consistent.
     pub fn delete_learning(&mut self, id: &str) -> Result<LearningEntry, MemoryError> {
         let idx = self
             .learnings
@@ -279,6 +383,7 @@ impl AgenticMemory {
         for entry in &mut self.learnings {
             entry.related_ids.retain(|rid| rid != id);
         }
+        self.rebuild_dedup_index();
         Ok(removed)
     }
 

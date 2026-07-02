@@ -513,6 +513,7 @@ fn loop_result_iteration_count_counts_records() {
                 verify_failed: Vec::new(),
                 injected_learning_ids: Vec::new(),
                 usage: Usage::default(),
+                cost_usd: 0.0,
                 plan_parse_error: None,
                 incorporation_gap: None,
             },
@@ -529,6 +530,7 @@ fn loop_result_iteration_count_counts_records() {
                 verify_failed: Vec::new(),
                 injected_learning_ids: Vec::new(),
                 usage: Usage::default(),
+                cost_usd: 0.0,
                 plan_parse_error: None,
                 incorporation_gap: None,
             },
@@ -942,6 +944,8 @@ async fn ensemble_one_persona_blocks_union_issues_and_min_score() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
+    config.critique_mode = CritiqueMode::Full;
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1064,6 +1068,7 @@ async fn ensemble_union_dedup_issues() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1134,6 +1139,7 @@ async fn ensemble_parallel_dispatch_is_concurrent() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
     let agent = Agent::builder()
         .llm(llm.clone())
         .tools(ToolRegistry::new())
@@ -1200,6 +1206,7 @@ async fn ensemble_all_personas_approve() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1268,6 +1275,7 @@ async fn ensemble_score_is_min_not_mean() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1315,6 +1323,7 @@ async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![]);
@@ -1368,6 +1377,7 @@ async fn critique_no_memory_shows_no_blind_spots_section() {
     // No memory → no blind-spots section in the prompt.
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
 
     let llm = PersonaScriptedLlm::new(vec![
         PersonaResponse {
@@ -1453,6 +1463,7 @@ async fn critique_playbooks_excluded_from_blind_spots() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![PersonaResponse {
@@ -1523,6 +1534,7 @@ async fn critique_roundtrips_with_ensemble() {
 
     let mut config = AgentConfig::default();
     config.critique_personas = CritiquePersona::default_personas();
+    config.critique_mode = CritiqueMode::Full;
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![

@@ -850,7 +850,6 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         enable_tool_call_tracing: true,
         max_tool_iterations: manifest.max_tool_iterations,
         critique_personas,
-        disable_legacy_compression: true,
         ..Default::default()
     };
 

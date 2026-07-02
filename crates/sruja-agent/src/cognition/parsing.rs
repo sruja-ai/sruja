@@ -185,6 +185,7 @@ pub(super) fn parse_critique_from_response(content: &str, usage: Usage) -> Criti
                         .collect()
                 })
                 .unwrap_or_default(),
+            source: String::new(),
         };
     }
 
@@ -201,6 +202,7 @@ pub(super) fn parse_critique_from_response(content: &str, usage: Usage) -> Criti
         persona_breakdown: Vec::new(),
         injected_learning_ids: Vec::new(),
         criteria: Vec::new(),
+        source: String::new(),
     }
 }
 

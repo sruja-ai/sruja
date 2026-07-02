@@ -72,28 +72,6 @@ IMPORTANT: After making your edits, you MUST stop calling tools and write a \
 summary of what you changed as plain text. Do NOT keep calling tools after \
 your edits are complete.";
 
-/// Direct execution prompt — bypasses plan/critique for simple tasks.
-///
-/// Incorporates validated techniques from the Self-Harness paper:
-/// - Artifact-first (make the edit immediately, don't explore)
-/// - Verify-before-conclude (read back or test after editing)
-/// - Error recovery (don't blindly retry failed approaches)
-/// - Exploration termination (switch to implementing after 3 calls)
-pub(crate) const DIRECT_EXECUTION_PROMPT: &str = "\
-You are a senior engineer making a precise code change.\n\n\
-Rules:\n\
-1. MAKE THE CHANGE FIRST. Read the target file, make your edit immediately. \
-   Do not explore unrelated files or read documentation.\n\
-2. Always use the FULL file path as given in the goal (e.g. 'src/pipeline.rs', not 'pipeline.rs'). \
-   File paths are relative to the repository root.\n\
-3. After editing, VERIFY your change: read the file back or run a build/test.\n\
-4. If a tool call fails, do NOT retry the same approach. Diagnose the error \
-   and try a completely different strategy. Never delete or abandon the target file.\n\
-5. If you have made more than 3 tool calls without producing an edit, \
-   STOP. You must make your edit NOW with the information you have.\n\
-6. Write a one-line summary of what you changed. Then STOP.\n\n\
-You have a limited number of tool calls. Be decisive.";
-
 pub(super) const CRITIQUE_SYSTEM_PROMPT: &str = "\
 You are a senior architect reviewing a change. Be adversarial but fair.\n\n\
 Check:\n\
@@ -114,6 +92,15 @@ pub(super) const REGRESSION_PERSONA_PROMPT: &str = "You are a senior engineer re
 
 pub(super) const ADVERSARIAL_TEST_PERSONA_PROMPT: &str = "You are a senior engineer generating adversarial tests for a code change. You are reviewing a change.\n\nYour job is to write a failing test that exposes a flaw in the implementation. The test should:\n1. Target a specific edge case or incorrect behavior\n2. Be concrete and runnable (not a description)\n3. Fail against the current implementation\n\nIf you cannot conceive of a test that would fail, approve (the implementation is solid).\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [\"test: <concrete test code or description>\"]}";
 
+/// Quick-check critique prompt for tiered mode.
+///
+/// This is a single lightweight call used to short-circuit the full 5-persona
+/// ensemble when the change is unambiguously good. It asks a single broad
+/// question rather than probing from 5 perspectives, making it much cheaper.
+///
+/// When the quick check score >= threshold, the full ensemble is skipped.
+pub(super) const QUICK_CRITIQUE_PROMPT: &str = "You are a senior engineer performing a quick review. You are reviewing a change.\n\nGive a rapid overall assessment: does this change look correct, complete, and safe?\nCheck for:\n- Obvious correctness issues (typos, logic errors, missing null/error checks)\n- Does the output match the stated goal?\n- Any deal-breaking architectural violations\n\nBe strict: only approve if you are confident (>90%) the change is solid.\nIf you see any concrete issue, flag it and set score accordingly.\n\nRespond with JSON: {\"approved\": bool, \"score\": 0.0-1.0, \"issues\": [...], \"suggestions\": [...]}";
+
 pub(super) const REFLECTION_SYSTEM_PROMPT: &str = "\
 You are extracting lessons from a completed task.\n\n\
 For each learning, produce JSON:\n\
@@ -122,24 +109,4 @@ For each learning, produce JSON:\n\
 - guardrail = what failed, don't repeat\n\
 Output a JSON array of learnings.";
 
-pub(super) const DECISION_SYSTEM_PROMPT: &str = "\
-You are writing a decision record for a code change.\n\n\
-This record will be read at 3AM by someone with zero context.\n\
-Be clear, concise, and thorough. Explain:\n\
-1. WHY this change was needed (context)\n\
-2. WHAT was decided (decision)\n\
-3. What FOLLOWS from this decision (consequences)\n\
-4. What ELSE was considered and why it was rejected (alternatives)\n\n\
-Output JSON: {\"title\": \"...\", \"context\": \"...\", \"decision\": \"...\", \"consequences\": [...], \"alternatives\": [...]}";
 
-pub(super) const RUNBOOK_SYSTEM_PROMPT: &str = "\
-You are writing a runbook for handling production failures.\n\n\
-This runbook will be read at 3AM by someone who is tired and stressed.\n\
-Be practical, specific, and actionable. Include:\n\
-1. What would trigger this runbook (trigger)\n\
-2. How to detect the problem (symptoms)\n\
-3. Step-by-step diagnosis\n\
-4. Step-by-step resolution\n\
-5. How to roll back if needed\n\
-6. How to verify the fix worked\n\n\
-Output JSON: {\"title\": \"...\", \"trigger\": \"...\", \"severity\": \"critical|high|medium|low\", \"symptoms\": [...], \"diagnosis\": [...], \"resolution\": [...], \"rollback\": [...], \"verification\": [...]}";
