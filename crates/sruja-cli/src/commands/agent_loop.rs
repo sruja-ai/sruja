@@ -44,7 +44,6 @@ use tokio::sync::mpsc;
 
 use sruja_agent::calibration::{self, AskInput, Thresholds};
 use sruja_agent::cognition::loop_event::LoopEvent;
-use sruja_agent::cognition::{Hook, HookAction};
 use sruja_agent::llm::{OpenAiClient, TieredClient};
 use sruja_agent::tool::ToolRegistry;
 use sruja_agent::verify::VerifyOptions;
@@ -55,6 +54,7 @@ use sruja_agent::{
 
 use super::loop_checkpoint::{self, GitCheckpoint};
 use super::loop_events::{self, StatusBar};
+use super::loop_report::LiveReportHook;
 
 use super::CliError;
 use crate::config;
@@ -81,458 +81,6 @@ fn model_family(model: &str) -> String {
         .take_while(|c| c.is_alphabetic())
         .collect::<String>()
         .to_lowercase()
-}
-
-// ---------------------------------------------------------------------------
-// Progress tracking + steering hook
-// ---------------------------------------------------------------------------
-
-/// Phase names for the live report.
-fn phase_name(step: &sruja_agent::cognition::Subtask) -> &'static str {
-    match step.kind {
-        sruja_agent::cognition::SubtaskKind::Comprehend => "comprehend",
-        sruja_agent::cognition::SubtaskKind::TestAuthor => "test-author",
-        sruja_agent::cognition::SubtaskKind::Implement => "implement",
-        sruja_agent::cognition::SubtaskKind::Verify => "verify",
-        sruja_agent::cognition::SubtaskKind::AdversarialTest => "adversarial-test",
-        sruja_agent::cognition::SubtaskKind::Review => "review",
-    }
-}
-
-/// Mutable state accumulated across hook calls.
-struct ReportState {
-    goal: String,
-    started_at: std::time::Instant,
-    iteration: usize,
-    max_iterations: usize,
-    current_phase: String,
-    subtasks: Vec<SubtaskInfo>,
-    critique_score: Option<f64>,
-    critique_approved: Option<bool>,
-    persona_results: Vec<PersonaInfo>,
-    issues: Vec<String>,
-    verify_failures: Vec<String>,
-    cost_usd: f64,
-    steer: bool,
-    report_dir: std::path::PathBuf,
-    should_stop: bool,
-    dirty: bool,
-}
-
-#[derive(Clone)]
-struct SubtaskInfo {
-    id: String,
-    description: String,
-    kind: String,
-    tier: String,
-    status: String,
-}
-
-#[derive(Clone)]
-struct PersonaInfo {
-    id: String,
-    approved: bool,
-    score: f64,
-    issue_count: usize,
-}
-
-use std::sync::Mutex;
-
-/// A hook that writes a live markdown dashboard and optionally prompts for
-/// steering between iterations.
-struct LiveReportHook {
-    state: Mutex<ReportState>,
-}
-
-impl LiveReportHook {
-    fn new(goal: &str, max_iterations: usize, steer: bool, report_dir: std::path::PathBuf) -> Self {
-        Self {
-            state: Mutex::new(ReportState {
-                goal: goal.to_string(),
-                started_at: std::time::Instant::now(),
-                iteration: 0,
-                max_iterations,
-                current_phase: "starting".into(),
-                subtasks: Vec::new(),
-                critique_score: None,
-                critique_approved: None,
-                persona_results: Vec::new(),
-                issues: Vec::new(),
-                verify_failures: Vec::new(),
-                cost_usd: 0.0,
-                steer,
-                report_dir,
-                should_stop: false,
-                dirty: false,
-            }),
-        }
-    }
-
-    fn write_report(&self) {
-        let mut s = self.state.lock().unwrap();
-        if !s.dirty {
-            return;
-        }
-        // Clear dirty flag — next write will only happen when dirty is set
-        // again by a state-modifying hook, debouncing consecutive callbacks
-        // with no meaningful change (e.g. before_step + after_step).
-        s.dirty = false;
-        let elapsed = s.started_at.elapsed();
-        let mins = elapsed.as_secs() / 60;
-        let secs = elapsed.as_secs() % 60;
-
-        let status_icon = match s.critique_approved {
-            Some(true) => "PASS",
-            Some(false) => "FAIL",
-            None => "RUN",
-        };
-
-        let mut md = String::new();
-        md.push_str(&format!(
-            "# Agent Loop — Live Dashboard\n\n\
-             Goal: {}\n\n\
-             Started: {}m {:02}s ago · Iteration {}/{} · Phase: **{}** · Status: **{}** · Cost: ~${:.4}\n\n",
-            s.goal,
-            mins,
-            secs,
-            s.iteration,
-            s.max_iterations,
-            s.current_phase,
-            status_icon,
-            s.cost_usd,
-        ));
-
-        // Subtask table
-        if !s.subtasks.is_empty() {
-            md.push_str("## Subtasks\n\n");
-            md.push_str("| # | Kind | Tier | Status | Description |\n");
-            md.push_str("|---|------|------|--------|-------------|\n");
-            for st in &s.subtasks {
-                md.push_str(&format!(
-                    "| {} | {} | {} | {} | {} |\n",
-                    st.id, st.kind, st.tier, st.status, st.description
-                ));
-            }
-            md.push('\n');
-        }
-
-        // Critique persona breakdown
-        if !s.persona_results.is_empty() {
-            md.push_str("## Critique Personas\n\n");
-            md.push_str("| Persona | Approved | Score | Issues |\n");
-            md.push_str("|---------|----------|-------|--------|\n");
-            for p in &s.persona_results {
-                let icon = if p.approved { "yes" } else { "NO" };
-                md.push_str(&format!(
-                    "| {} | {} | {:.1} | {} |\n",
-                    p.id, icon, p.score, p.issue_count
-                ));
-            }
-            md.push('\n');
-        }
-
-        // Issues
-        if !s.issues.is_empty() {
-            md.push_str("## Open Issues\n\n");
-            for issue in &s.issues {
-                md.push_str(&format!("- {issue}\n"));
-            }
-            md.push('\n');
-        }
-
-        // Verify failures
-        if !s.verify_failures.is_empty() {
-            md.push_str("## Verify Failures (independent grader)\n\n");
-            for f in &s.verify_failures {
-                md.push_str(&format!("- {f}\n"));
-            }
-            md.push('\n');
-        }
-
-        // Write atomically
-        let _ = std::fs::create_dir_all(&s.report_dir);
-        let path = s.report_dir.join("LIVE.md");
-        let tmp = s.report_dir.join("LIVE.md.tmp");
-        if let Err(e) = std::fs::write(&tmp, &md) {
-            eprintln!("  Warning: could not write live report: {e}");
-            return;
-        }
-        if let Err(e) = std::fs::rename(&tmp, &path) {
-            eprintln!("  Warning: could not rename live report: {e}");
-        }
-    }
-
-    fn print_summary(&self) {
-        let s = self.state.lock().unwrap();
-        let mark = match s.critique_approved {
-            Some(true) => colors::verdict_badge("PASS", "pass"),
-            Some(false) => colors::verdict_badge("FAIL", "fail"),
-            None => "---".to_string(),
-        };
-        let score_str = s
-            .critique_score
-            .map(|sc| format!("{:.1}", sc))
-            .unwrap_or_else(|| "-".into());
-
-        eprintln!(
-            "{}",
-            colors::summary_line(
-                &format!("Iteration {}/{}", s.iteration, s.max_iterations),
-                &format!(
-                    "{}  {} subtasks  score {}  ~${:.4}",
-                    mark,
-                    s.subtasks.len(),
-                    score_str,
-                    s.cost_usd
-                ),
-            )
-        );
-
-        // Print persona breakdown
-        if !s.persona_results.is_empty() {
-            for p in &s.persona_results {
-                let icon = if p.approved { "✓" } else { "✗" };
-                eprintln!(
-                    "{}",
-                    colors::detail_line(&format!(
-                        "[{icon}] {}  score: {:.1}  issues: {}",
-                        p.id, p.score, p.issue_count
-                    ))
-                );
-            }
-        }
-
-        // Print issues
-        for issue in &s.issues {
-            eprintln!("{}", colors::detail_line(&format!("issue: {issue}")));
-        }
-        for f in &s.verify_failures {
-            eprintln!("{}", colors::detail_line(&format!("verify FAIL: {f}")));
-        }
-    }
-
-    /// Prompt the user for steering input. Returns false if the user wants to stop.
-    fn prompt_steer(&self) -> bool {
-        let s = self.state.lock().unwrap();
-        if !s.steer {
-            return true;
-        }
-        drop(s); // Release lock before stdin
-
-        eprintln!();
-        eprintln!("  ── Steering ──");
-        eprintln!("  [Enter] continue  ·  [s] stop  ·  [r] show report");
-        eprint!("  > ");
-        use std::io::Write;
-        let _ = std::io::stderr().flush();
-
-        let mut input = String::new();
-        if std::io::stdin().read_line(&mut input).is_err() {
-            return true;
-        }
-        match input.trim().to_lowercase().as_str() {
-            "s" | "stop" => false,
-            "r" | "report" => {
-                let s = self.state.lock().unwrap();
-                let path = s.report_dir.join("LIVE.md");
-                drop(s);
-                if let Ok(content) = std::fs::read_to_string(&path) {
-                    eprintln!();
-                    eprintln!("{content}");
-                }
-                true
-            }
-            _ => true,
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl Hook for LiveReportHook {
-    async fn before_comprehend(&self, _goal: &str) -> HookAction {
-        let mut s = self.state.lock().unwrap();
-        s.current_phase = "comprehend".into();
-        s.iteration = s.iteration.max(1);
-        HookAction::Continue
-    }
-
-    async fn after_comprehend(&self, result: &sruja_agent::cognition::Comprehension) -> HookAction {
-        let mut s = self.state.lock().unwrap();
-        s.current_phase = "plan".into();
-        eprintln!(
-            "{}",
-            colors::detail_line(&format!(
-                "{} elements cited, {} findings",
-                result.cited_elements.len(),
-                result.key_findings.len()
-            ))
-        );
-        s.dirty = true;
-        drop(s);
-        self.write_report();
-        HookAction::Continue
-    }
-
-    async fn before_plan(&self, _goal: &str) -> HookAction {
-        // Check if the user requested to stop during steering.
-        // before_plan fires at the start of every iteration (plan or replan),
-        // so this catches the stop flag set by the prior after_iteration.
-        let s = self.state.lock().unwrap();
-        if s.should_stop {
-            eprintln!("  Stopped by user.");
-            return HookAction::Abort("Stopped by user.".into());
-        }
-        HookAction::Continue
-    }
-
-    async fn after_plan(&self, plan: &mut sruja_agent::cognition::Plan) -> HookAction {
-        let mut s = self.state.lock().unwrap();
-        s.current_phase = "execute".into();
-        s.subtasks = plan
-            .subtasks
-            .iter()
-            .map(|st| SubtaskInfo {
-                id: st.id.clone(),
-                description: st.description.chars().take(60).collect(),
-                kind: format!("{:?}", st.kind).to_lowercase(),
-                tier: format!("{:?}", st.tier).to_lowercase(),
-                status: "pending".into(),
-            })
-            .collect();
-        eprintln!(
-            "{}",
-            colors::detail_line(&format!(
-                "{} subtasks, {} risks",
-                plan.subtasks.len(),
-                plan.risks.len()
-            ))
-        );
-        s.dirty = true;
-        drop(s);
-        self.write_report();
-        HookAction::Continue
-    }
-
-    async fn before_step(&self, step: &sruja_agent::cognition::Subtask) -> HookAction {
-        let mut s = self.state.lock().unwrap();
-        s.current_phase = phase_name(step).into();
-        if let Some(st) = s.subtasks.iter_mut().find(|st| st.id == step.id) {
-            st.status = "running".into();
-        }
-        let kind = format!("{:?}", step.tier).to_lowercase();
-        let desc_trimmed: String = step.description.chars().take(80).collect();
-        eprintln!(
-            "{}",
-            colors::step_line("→", &step.id, &desc_trimmed, &kind, None)
-        );
-        s.dirty = true;
-        drop(s);
-        self.write_report();
-        HookAction::Continue
-    }
-
-    async fn after_step(
-        &self,
-        step: &sruja_agent::cognition::Subtask,
-        result: &sruja_agent::cognition::StepResult,
-    ) {
-        let mut s = self.state.lock().unwrap();
-        let status = match result.status {
-            sruja_agent::cognition::StepStatus::Ok => "done",
-            sruja_agent::cognition::StepStatus::Failed => "FAILED",
-            sruja_agent::cognition::StepStatus::Skipped => "skipped",
-        };
-        if let Some(st) = s.subtasks.iter_mut().find(|st| st.id == step.id) {
-            st.status = status.into();
-        }
-        s.cost_usd += result.usage.estimated_cost_usd();
-        s.dirty = true;
-        drop(s);
-        self.write_report();
-    }
-
-    async fn before_review(&self) -> HookAction {
-        let mut s = self.state.lock().unwrap();
-        s.current_phase = "critique".into();
-        eprintln!("{}", colors::detail_line("Running persona ensemble..."));
-        s.dirty = true;
-        drop(s);
-        self.write_report();
-        HookAction::Continue
-    }
-
-    async fn after_review(&self, critique: &sruja_agent::cognition::Critique) -> HookAction {
-        let mut s = self.state.lock().unwrap();
-        s.current_phase = "done".into();
-        s.critique_score = Some(critique.score);
-        s.critique_approved = Some(critique.approved);
-        s.issues = critique.issues.clone();
-        s.cost_usd += critique.usage.estimated_cost_usd();
-        s.persona_results = critique
-            .persona_breakdown
-            .iter()
-            .map(|p| PersonaInfo {
-                id: p.id.clone(),
-                approved: p.approved,
-                score: p.score,
-                issue_count: p.issues.len(),
-            })
-            .collect();
-        s.dirty = true;
-        drop(s);
-
-        self.print_summary();
-        self.write_report();
-
-        HookAction::Continue
-    }
-
-    async fn before_iteration(&self, iteration: usize, max_iterations: usize) {
-        let mut s = self.state.lock().unwrap();
-        s.iteration = iteration;
-        s.max_iterations = max_iterations;
-        s.current_phase = if iteration == 1 {
-            "comprehend"
-        } else {
-            "replan"
-        }
-        .into();
-        s.dirty = true;
-        drop(s);
-        self.write_report();
-    }
-
-    async fn after_iteration(
-        &self,
-        iteration: usize,
-        max_iterations: usize,
-        result: &sruja_agent::cognition::LoopIteration,
-    ) {
-        {
-            let mut s = self.state.lock().unwrap();
-            s.iteration = iteration;
-            s.max_iterations = max_iterations;
-            s.critique_score = Some(result.critique_score);
-            s.critique_approved = Some(result.critique_approved);
-            s.issues = result.critique_issues.clone();
-            s.verify_failures = result.verify_failed.clone();
-            s.cost_usd = result.usage.estimated_cost_usd();
-            s.dirty = true;
-        }
-        self.write_report();
-
-        // Steering prompt — if the user chose to stop, set the flag.
-        // before_plan (called at the start of the next iteration) will
-        // check this flag and return HookAction::Abort.
-        if !self.prompt_steer() {
-            let mut s = self.state.lock().unwrap();
-            s.should_stop = true;
-        }
-    }
-
-    async fn on_error(&self, error: &sruja_agent::AgentError) {
-        eprintln!("  ERROR: {error}");
-    }
 }
 
 /// Outcome of the pre-flight calibration gate.
@@ -647,6 +195,8 @@ pub struct AgentLoopOptions<'a> {
     pub show_plan: bool,
     pub plan_only: bool,
     pub show_pipeline: bool,
+    /// Path to a pipeline TOML file that overrides the manifest's pipeline.
+    pub pipeline_override: Option<std::path::PathBuf>,
     pub checkpoint: bool,
     pub no_checkpoint: bool,
     pub changelog: bool,
@@ -657,7 +207,18 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     let repo_path = Path::new(&options.repo);
 
     // ── Load .sruja/loop.toml for defaults ────────────────────────────────
-    let manifest = LoopManifest::load_from_path(repo_path);
+    let mut manifest = LoopManifest::load_from_path(repo_path);
+
+    // ── Pipeline override ────────────────────────────────────────────────
+    // When `--pipeline <path>` is provided, load that file and use it as
+    // the pipeline configuration instead of the one from .sruja/loop.toml.
+    if let Some(ref pipeline_path) = options.pipeline_override {
+        let content = std::fs::read_to_string(pipeline_path)
+            .map_err(|e| CliError::validation(format!("cannot read pipeline file: {e}")))?;
+        let pipeline: sruja_agent::PipelineConfig = toml::from_str(&content)
+            .map_err(|e| CliError::validation(format!("cannot parse pipeline file: {e}")))?;
+        manifest.pipeline = pipeline;
+    }
 
     // ── Show pipeline (early return, no execution) ───────────────────────
     if options.show_pipeline {
@@ -850,6 +411,10 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         enable_tool_call_tracing: true,
         max_tool_iterations: manifest.max_tool_iterations,
         critique_personas,
+        // Stuck-detection thresholds (configurable via AgentConfig directly).
+        max_consecutive_tool_only: 3,
+        max_consecutive_same_call: 3,
+        max_non_converged_fraction: 0.5,
         ..Default::default()
     };
 
@@ -1510,6 +1075,20 @@ fn print_loop_result_human(result: &sruja_agent::LoopResult) {
         }
     }
 
+    // For Research tasks, the comprehension summary IS the deliverable.
+    if result.final_result.comprehension.complexity
+        == sruja_agent::TaskComplexity::Research
+    {
+        let summary = result.final_result.comprehension.summary.trim();
+        if !summary.is_empty() && summary != result.goal {
+            println!();
+            println!("{}", colors::section_header("Analysis"));
+            println!();
+            println!("{}", summary);
+            println!();
+        }
+    }
+
     println!();
     if let Some(critique) = result.final_result.critique.as_ref() {
         let approved_str = if critique.approved {
@@ -1891,6 +1470,7 @@ mod tests {
                     persona_breakdown: vec![],
                     injected_learning_ids: vec!["lrn_abc".to_string()],
                     criteria: vec![],
+                    source: String::new(),
                 }),
                 decision: None,
                 runbook: None,
@@ -1946,6 +1526,7 @@ mod tests {
                     persona_breakdown: vec![],
                     injected_learning_ids: vec![],
                     criteria: vec![],
+                    source: String::new(),
                 }),
                 decision: None,
                 runbook: None,

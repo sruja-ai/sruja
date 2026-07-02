@@ -1,3 +1,8 @@
+use std::path::PathBuf;
+
+use sruja_agent::goal::GoalSpec;
+use sruja_agent::PipelineConfig;
+
 use crate::commands::{agent_loop, AgentLoopOptions};
 
 /// Run the autonomous execution loop.
@@ -11,10 +16,29 @@ pub async fn auto_run(
     resume: bool,
     format: &str,
 ) -> Result<(), crate::commands::CliError> {
-    if let Some(p) = pipeline {
-        eprintln!("⚠️  Pipeline-based execution is not yet implemented. Running with defaults.");
-        eprintln!("   (pipeline path: {})", p);
-    }
+    let pipeline_override = if let Some(p) = pipeline {
+        Some(PathBuf::from(p))
+    } else {
+        // No explicit pipeline — generate one from the goal and write it.
+        let goal_spec = GoalSpec::new(goal);
+        let cfg = PipelineConfig::from_goal(&goal_spec);
+        let auto_path = PathBuf::from(repo).join(".sruja/auto-pipeline.toml");
+        let toml_str = toml::to_string_pretty(&cfg)
+            .map_err(|e| crate::commands::CliError::validation(format!("pipeline serialization: {e}")))?;
+        std::fs::create_dir_all(auto_path.parent().unwrap())
+            .map_err(|e| crate::commands::CliError::validation(format!("cannot create .sruja dir: {e}")))?;
+        std::fs::write(&auto_path, &toml_str)
+            .map_err(|e| crate::commands::CliError::validation(format!("cannot write pipeline: {e}")))?;
+        eprintln!(
+            "Generated pipeline for goal: {}",
+            auto_path.display()
+        );
+        eprintln!("  Edit this file to customize the agent stages, then re-run with:");
+        eprintln!("  sruja auto --pipeline {} \"{}\"", auto_path.display(), goal);
+        eprintln!();
+        // Still run with the generated pipeline (in memory).
+        Some(auto_path)
+    };
 
     let options = AgentLoopOptions {
         repo,
@@ -37,6 +61,7 @@ pub async fn auto_run(
         no_checkpoint: false,
         changelog: false,
         show_pipeline: false,
+        pipeline_override,
     };
 
     agent_loop(&options).await

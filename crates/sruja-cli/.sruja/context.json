@@ -1,0 +1,73 @@
+{
+  "architecture_style": "monolith",
+  "baseline_path": "crates/sruja-cli/architecture.sruja",
+  "components": 180,
+  "domain": "CLI Tool",
+  "edges": 595,
+  "framework": null,
+  "git_commit": "21a6c2e",
+  "primary_language": "Rust",
+  "repo": "crates/sruja-cli",
+  "scan_scope": {
+    "exclude_patterns": [
+      "node_modules",
+      "target",
+      "dist",
+      "build",
+      ".next",
+      "out",
+      "*.min.js",
+      "*.min.css",
+      "vendor",
+      "third_party",
+      "fixtures",
+      "__mocks__",
+      "__fixtures__",
+      "test_data",
+      "docs",
+      "documentation",
+      "*.md",
+      "*.rst",
+      "evaluation",
+      "benchmark",
+      "bench",
+      "perf",
+      ".git",
+      ".gitignore",
+      ".env*",
+      "*.log",
+      "*test*.rs",
+      "*test*.js",
+      "*test*.ts",
+      "*test*.py",
+      "*test*.go",
+      "*spec*.js",
+      "*spec*.ts",
+      "tests/",
+      "__tests__/",
+      "spec/"
+    ],
+    "excluded": [
+      "tests"
+    ],
+    "included": [
+      "Cargo.toml",
+      "architecture.sruja",
+      "src"
+    ],
+    "total_files": 39
+  },
+  "schema_version": 1,
+  "suggested_areas": [
+    "crates",
+    "src",
+    "src_commands",
+    "src_modules",
+    "src_sampling",
+    "src_scoring",
+    "src_selection",
+    "src_utils"
+  ],
+  "truth_status": "drifted",
+  "updated_at": "2026-03-14T14:38:58.192318+00:00"
+}

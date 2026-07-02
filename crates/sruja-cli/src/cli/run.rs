@@ -1152,6 +1152,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     no_checkpoint,
                     changelog,
                     show_pipeline,
+                    pipeline_override: None,
                 })
                 .await
             }

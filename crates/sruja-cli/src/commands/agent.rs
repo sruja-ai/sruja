@@ -297,6 +297,11 @@ pub async fn agent_merge(
                 retrieval_count: 0,
                 task_success_after: 0,
                 task_total_after: 0,
+                category: None,
+                signals_match: Vec::new(),
+                constraints: None,
+                validation: Vec::new(),
+                blast_radius: None,
             },
         )
         .map_err(memory_err)?;
@@ -376,6 +381,11 @@ pub async fn agent_record(
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     });
 
     memory
@@ -572,6 +582,11 @@ pub async fn agent_distill(
         retrieval_count: 0,
         task_success_after: 0,
         task_total_after: 0,
+        category: None,
+        signals_match: Vec::new(),
+        constraints: None,
+        validation: Vec::new(),
+        blast_radius: None,
     });
 
     memory
