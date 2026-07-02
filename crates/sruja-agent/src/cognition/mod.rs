@@ -194,12 +194,15 @@ pub enum TaskComplexity {
     /// Architecture-level: migration, system redesign, new module.
     /// Full pipeline, max iterations.
     Complex,
+    /// Research/analysis: comprehend IS the output. No code changes produced.
+    /// Pipeline: [Comprehend]. Recovery: Fail. Hard-capped at 1 iteration.
+    Research,
 }
 
 impl TaskComplexity {
     /// Whether TDD should be enforced for this complexity level.
     pub fn enforce_tdd(self) -> bool {
-        !matches!(self, TaskComplexity::Trivial)
+        !matches!(self, TaskComplexity::Trivial | TaskComplexity::Research)
     }
 
     /// Whether post-loop artifacts (decision record, runbook) should be generated.
@@ -212,6 +215,7 @@ impl TaskComplexity {
         match self {
             TaskComplexity::Trivial => configured.min(3),
             TaskComplexity::Simple => configured.min(5),
+            TaskComplexity::Research => configured.min(10),
             _ => configured,
         }
     }
@@ -229,6 +233,43 @@ pub fn classify_task_complexity(
     let goal_lower = goal.to_lowercase();
     let file_count = target_files.len();
     let element_count = target_elements.len();
+
+    // Research heuristics: detect analysis/review-only goals BEFORE Complex so
+    // "explain the migration system" → Research, not Complex (explaining is
+    // research even about a complex topic).
+    {
+        let trimmed = goal_lower.trim();
+        let starts_with_how = trimmed.starts_with("how to") || trimmed.starts_with("how do");
+        // Use word-boundary matching via split_whitespace to avoid false positives
+        // like "build" in "the build failing" or "change" in "what changed".
+        let has_implementation_keywords = {
+            let words: std::collections::HashSet<&str> =
+                goal_lower.split_whitespace().collect();
+            const IMPL_WORDS: &[&str] = &[
+                "add", "create", "implement", "write", "edit", "fix",
+                "refactor", "migrate", "delete", "remove", "modify",
+            ];
+            IMPL_WORDS.iter().any(|k| words.contains(k))
+        };
+
+        let is_question = trimmed.ends_with('?');
+        let is_exploratory_prefix = [
+            "what", "why", "explain", "analyze", "describe",
+            "investigate", "evaluate", "review", "research",
+        ]
+        .iter()
+        .any(|prefix| {
+            let p = format!("{} ", prefix);
+            goal_lower.starts_with(&p) || goal_lower == *prefix
+        });
+
+        if !starts_with_how
+            && !has_implementation_keywords
+            && (is_question || is_exploratory_prefix)
+        {
+            return TaskComplexity::Research;
+        }
+    }
 
     // Complex keywords: architecture-level work.
     // Check FIRST so "add a comment to migrate the database" → Complex, not Trivial.
@@ -762,6 +803,7 @@ impl ScopeDrift {
         match complexity {
             TaskComplexity::Trivial => 3,
             TaskComplexity::Simple => 10,
+            TaskComplexity::Research => 15,
             TaskComplexity::Moderate => 20,
             TaskComplexity::Complex => 40,
         }
@@ -1283,7 +1325,8 @@ impl Agent {
              Produce a concise, grounded understanding.{preloaded_section}"
         );
 
-        let req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
+        let mut req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
+        req.model = Some(self.config.models.mid.clone());
 
         let (response, usage, _signals) = self.run_tool_loop(req).await?;
 
@@ -2591,7 +2634,7 @@ impl Agent {
             classify_task_complexity(&goal.statement, &goal.target_files, &goal.target_elements);
 
         // Build synthetic comprehension for backward compatibility.
-        let comprehension = Comprehension {
+        let mut comprehension = Comprehension {
             goal: goal.statement.clone(),
             summary: goal.statement.clone(),
             cited_elements: goal.target_elements.clone(),
@@ -2630,6 +2673,11 @@ impl Agent {
             CompletionRequest::prompt(system, &initial_user).with_tools(self.tools.schemas());
         req.model = Some(self.config.models.mid.clone());
 
+        // Research tasks use the premium model for deeper analysis.
+        if complexity == TaskComplexity::Research {
+            req.model = Some(self.config.models.premium.clone());
+        }
+
         let pipeline = &loop_config.pipeline;
         let mut pipeline_stages = pipeline.stages.clone();
         let mut total_usage = Usage::default();
@@ -2645,7 +2693,14 @@ impl Agent {
         let mut current_plan: Option<Plan> = None;
         let mut current_critique: Option<Critique> = None;
 
-        for iteration in 1..=max_iterations {
+        // Research tasks hard-cap at 1 iteration — comprehension IS the output.
+        let effective_iterations = if complexity == TaskComplexity::Research {
+            1
+        } else {
+            max_iterations
+        };
+
+        for iteration in 1..=effective_iterations {
             Self::emit_event(
                 events,
                 LoopEvent::IterationStarted {
@@ -2678,8 +2733,25 @@ impl Agent {
                 match stage_kind {
                     crate::manifest::StageKind::Comprehend
                     | crate::manifest::StageKind::TestReview => {
-                        // Comprehend is handled deterministically before the loop.
-                        // TestReview is a no-op in the simplified loop.
+                        // Research: use full LLM-based comprehension instead of synthetic.
+                        if stage_kind == crate::manifest::StageKind::Comprehend
+                            && complexity == TaskComplexity::Research
+                        {
+                            let real_comprehension = self.comprehend(goal).await?;
+                            total_usage.accumulate(&real_comprehension.usage);
+                            _last_output = real_comprehension.summary.clone();
+                            comprehension = real_comprehension;
+
+                            step_results.push(StepResult {
+                                subtask_id: "research_comprehend".into(),
+                                status: StepStatus::Ok,
+                                output: _last_output.clone(),
+                                usage: comprehension.usage.clone(),
+                                tool_signals: vec![],
+                                converged: true,
+                            });
+                        }
+                        // else: common comprehend / TestReview are no-ops.
                     }
 
                     crate::manifest::StageKind::Plan => {
@@ -2774,11 +2846,31 @@ impl Agent {
                     }
 
                     crate::manifest::StageKind::Reflect => {
-                        if let Some(ref plan) = current_plan {
-                            let _ = self
-                                .reflect(&comprehension, plan, &step_results, current_critique.as_ref())
-                                .await;
-                        }
+                        let reflect_plan = current_plan.clone().unwrap_or_else(|| Plan {
+                            goal: goal.to_string(),
+                            goal_statement: goal.statement.clone(),
+                            criteria: goal.acceptance_criteria.clone(),
+                            subtasks: vec![Subtask {
+                                id: "research".into(),
+                                description: goal.statement.clone(),
+                                tier: TaskTier::Mid,
+                                kind: SubtaskKind::Comprehend,
+                                files: goal.target_files.clone(),
+                                acceptance_criteria: goal.acceptance_criteria.clone(),
+                            }],
+                            tdd: false,
+                            risks: vec![],
+                            schema_version: "1.0".into(),
+                            complexity,
+                        });
+                        let _ = self
+                            .reflect(
+                                &comprehension,
+                                &reflect_plan,
+                                &step_results,
+                                current_critique.as_ref(),
+                            )
+                            .await;
                     }
 
                     crate::manifest::StageKind::Implement
@@ -2870,9 +2962,14 @@ impl Agent {
             // Determine approval from the last work stage result.
             let last_work = step_results.last();
             let step_converged = last_work.is_some_and(|r| r.converged);
-            let approved = iteration_verify_failed.is_empty()
-                && step_converged
-                && content_has_quality(&_last_output);
+            let approved = if complexity == TaskComplexity::Research {
+                // For Research, comprehension IS the deliverable — no verify gate needed.
+                content_has_quality(&_last_output)
+            } else {
+                iteration_verify_failed.is_empty()
+                    && step_converged
+                    && content_has_quality(&_last_output)
+            };
 
             // Record iteration.
             iterations.push(LoopIteration {

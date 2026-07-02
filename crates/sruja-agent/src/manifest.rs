@@ -408,6 +408,12 @@ impl PipelineConfig {
             &goal.target_files,
             &goal.target_elements,
         ) {
+            crate::cognition::TaskComplexity::Research => Self {
+                // Comprehension IS the output — no code changes, no verify.
+                stages: vec![StageKind::Comprehend, StageKind::Reflect],
+                recovery: RecoveryStrategy::Fail,
+                max_retries: 0,
+            },
             crate::cognition::TaskComplexity::Trivial => Self {
                 stages: vec![StageKind::Implement],
                 recovery: RecoveryStrategy::Fail,
@@ -751,5 +757,25 @@ model = "mimo-v2.5-pro"
     fn empty_critique_personas_gives_default() {
         let m = LoopManifest::from_toml_str("").unwrap();
         assert!(m.critique.personas.is_empty());
+    }
+
+    #[test]
+    fn from_goal_research_uses_comprehend_reflect() {
+        let goal = crate::goal::GoalSpec::new("what is the architecture of the parser");
+        let cfg = PipelineConfig::from_goal(&goal);
+        assert_eq!(
+            cfg.stages,
+            vec![crate::StageKind::Comprehend, crate::StageKind::Reflect],
+            "Research goals should use [Comprehend, Reflect] pipeline"
+        );
+        assert_eq!(
+            cfg.recovery,
+            RecoveryStrategy::Fail,
+            "Research should use Fail recovery"
+        );
+        assert_eq!(
+            cfg.max_retries, 0,
+            "Research should have 0 max retries"
+        );
     }
 }

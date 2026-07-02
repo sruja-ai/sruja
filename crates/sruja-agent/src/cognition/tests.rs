@@ -234,6 +234,141 @@ fn trivial_caps_tool_iterations() {
     assert_eq!(TaskComplexity::Moderate.max_tool_iterations(8), 8);
 }
 
+// --- Research task classification tests ---
+
+#[test]
+fn classify_research_what_question() {
+    let c = classify_task_complexity(
+        "what is the architecture of the parser",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Research);
+}
+
+#[test]
+fn classify_research_why_question() {
+    let c = classify_task_complexity(
+        "why is the build failing",
+        &["ci.yml".to_string()],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Research);
+}
+
+#[test]
+fn classify_research_explain() {
+    let c = classify_task_complexity(
+        "explain the migration system",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Research);
+}
+
+#[test]
+fn classify_research_analyze() {
+    let c = classify_task_complexity(
+        "analyze the performance of the query engine",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Research);
+}
+
+#[test]
+fn classify_research_review() {
+    let c = classify_task_complexity(
+        "review the security of the auth module",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Research);
+}
+
+#[test]
+fn classify_research_description() {
+    let c = classify_task_complexity(
+        "describe the data flow between components",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Research);
+}
+
+#[test]
+fn classify_research_evaluate() {
+    let c = classify_task_complexity(
+        "evaluate the parser performance",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Research);
+}
+
+#[test]
+fn classify_not_research_when_implementation_keyword() {
+    // "fix" is an implementation keyword — not research even though it's a question.
+    let c = classify_task_complexity(
+        "fix the bug in the parser",
+        &["parser.rs".to_string()],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Simple);
+}
+
+#[test]
+fn classify_not_research_when_how_to() {
+    // "how to" is excluded — it's an implementation question.
+    let c = classify_task_complexity(
+        "how to add JWT auth to the API",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Simple);
+}
+
+#[test]
+fn classify_not_research_when_how_do() {
+    let c = classify_task_complexity(
+        "how do I implement input validation",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Simple);
+}
+
+#[test]
+fn classify_not_research_with_implementation_keyword() {
+    // "add" is an implementation keyword.
+    let c = classify_task_complexity(
+        "add JWT auth to the API",
+        &[],
+        &[],
+    );
+    assert_eq!(c, TaskComplexity::Simple);
+}
+
+#[test]
+fn research_disables_tdd() {
+    assert!(!TaskComplexity::Research.enforce_tdd(),
+        "Research tasks should not enforce TDD (no code changes)");
+}
+
+#[test]
+fn research_generates_artifacts() {
+    assert!(TaskComplexity::Research.generate_artifacts(),
+        "Research should generate comprehension artifact");
+}
+
+#[test]
+fn research_caps_tool_iterations() {
+    assert_eq!(TaskComplexity::Research.max_tool_iterations(8), 8,
+        "Research with 8 configured should use 8 (10 > 8)");
+    assert_eq!(TaskComplexity::Research.max_tool_iterations(12), 10,
+        "Research with 12 configured should cap at 10");
+}
+
 #[test]
 fn parse_plan_requires_id_field() {
     // Subtasks without `id` now fail with MissingRequiredField (U2).
