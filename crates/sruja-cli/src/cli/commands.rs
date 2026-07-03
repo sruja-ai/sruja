@@ -839,6 +839,9 @@ pub enum Commands {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
+        /// Show internal details (paths, tokens, costs, checkpoint refs)
+        #[arg(long = "show-details")]
+        show_details: bool,
     },
     /// Understand scope and produce a reviewable plan.
     ///

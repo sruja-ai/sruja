@@ -508,12 +508,11 @@ pub async fn agent_propose_fact(
 
 /// Standalone auto-distillation: records what worked or failed after any agent's task.
 ///
-/// This is the primary API for coding agents (Claude Code, Cursor, Copilot) to
-/// build episodic memory without going through `sruja agent run`.
+/// Record what the agent learned from a task (what worked, what failed).
 ///
 /// On success: records a playbook with the steps that worked.
 /// On failure: records a guardrail with what to avoid.
-pub async fn agent_distill(
+pub async fn agent_learn(
     repo: &str,
     goal: &str,
     outcome_str: &str,
@@ -797,11 +796,11 @@ mod tests {
     use tempfile::tempdir;
 
     #[tokio::test]
-    async fn test_agent_distill_success() {
+    async fn test_agent_learn_success() {
         let dir = tempdir().unwrap();
         let repo = dir.path().to_str().unwrap();
 
-        agent_distill(
+        agent_learn(
             repo,
             "implemented JWT refresh",
             "success",
@@ -825,11 +824,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_agent_distill_failure() {
+    async fn test_agent_learn_failure() {
         let dir = tempdir().unwrap();
         let repo = dir.path().to_str().unwrap();
 
-        agent_distill(
+        agent_learn(
             repo,
             "fix auth bug",
             "failed",

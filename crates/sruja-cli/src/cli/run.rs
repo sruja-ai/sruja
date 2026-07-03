@@ -827,6 +827,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             pipeline,
             resume,
             format,
+            show_details,
         } => {
             commands::auto_run(
                 &repo,
@@ -837,6 +838,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 pipeline.as_deref(),
                 resume,
                 &format,
+                show_details,
             )
             .await
         }
@@ -885,6 +887,41 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             .await
         }
         Commands::Agent { cmd } => match cmd {
+            AgentCommand::Task {
+                goal,
+                repo,
+                max_iterations,
+                dry_run,
+                yes,
+                pipeline,
+                resume,
+                format,
+                show_details,
+            } => {
+                commands::auto_run(
+                    &repo,
+                    &goal,
+                    max_iterations,
+                    dry_run,
+                    yes,
+                    pipeline.as_deref(),
+                    resume,
+                    &format,
+                    show_details,
+                )
+                .await
+            }
+            AgentCommand::Setup {
+                repo,
+                provider,
+                api_key,
+                model,
+            } => commands::agent_setup::agent_setup(
+                &repo,
+                provider.as_deref(),
+                api_key.as_deref(),
+                model.as_deref(),
+            ),
             AgentCommand::History {
                 repo,
                 element_id,
@@ -956,7 +993,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 commands::agent_merge(&repo, &ids, &context, &hypothesis, &guardrail, &outcome)
                     .await
             }
-            AgentCommand::Distill {
+            AgentCommand::Learn {
                 repo,
                 goal,
                 outcome,
@@ -964,7 +1001,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 detail,
                 guardrail,
             } => {
-                commands::agent_distill(
+                commands::agent_learn(
                     &repo,
                     &goal,
                     &outcome,
@@ -1010,17 +1047,6 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .await
             }
-            AgentCommand::Setup {
-                repo,
-                provider,
-                api_key,
-                model,
-            } => commands::agent_setup::agent_setup(
-                &repo,
-                provider.as_deref(),
-                api_key.as_deref(),
-                model.as_deref(),
-            ),
             AgentCommand::Run {
                 run_id,
                 repo,
@@ -1153,6 +1179,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     changelog,
                     show_pipeline,
                     pipeline_override: None,
+                    verbose: false,
                 })
                 .await
             }

@@ -162,7 +162,7 @@ pub fn agent_setup(
 
     println!("\n{}", "-".repeat(50));
     println!("Test with:");
-    println!("  sruja agent run --goal \"Summarize this repo\"");
+    println!("  sruja agent task \"Summarize this repo\"");
 
     Ok(())
 }

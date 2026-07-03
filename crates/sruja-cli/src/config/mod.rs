@@ -254,8 +254,13 @@ fn resolve_tier_config(
 
             let api_key = std::env::var(&key_env).map_err(|_| {
                 CliError::validation(format!(
-                    "No API key found for provider '{}' (tier '{}'). \
-                         Set {} environment variable.",
+                    "No API key found for provider '{}' (tier '{}').\n\
+                     \n\
+                     Run the setup wizard to configure your provider:\n\
+                       sruja agent setup\n\
+                     \n\
+                     Or set the environment variable directly:\n\
+                       export {}=\"your-key-here\"",
                     tier.provider, tier_name, key_env
                 ))
             })?;
@@ -363,8 +368,13 @@ fn resolve_api_key(
 
     // 4. No key found
     Err(CliError::validation(format!(
-        "No API key found for provider '{}'. \
-         Set {} environment variable, or set OPENAI_API_KEY as a fallback.",
+        "No API key found for provider '{}'.\n\
+         \n\
+         Run the setup wizard to configure your provider:\n\
+           sruja agent setup\n\
+         \n\
+         Or set the environment variable directly:\n\
+           export {}=\"your-key-here\"",
         preset.name, preset.key_env
     )))
 }

@@ -15,6 +15,7 @@ pub async fn auto_run(
     pipeline: Option<&str>,
     resume: bool,
     format: &str,
+    show_details: bool,
 ) -> Result<(), crate::commands::CliError> {
     let pipeline_override = if let Some(p) = pipeline {
         Some(PathBuf::from(p))
@@ -29,13 +30,15 @@ pub async fn auto_run(
             .map_err(|e| crate::commands::CliError::validation(format!("cannot create .sruja dir: {e}")))?;
         std::fs::write(&auto_path, &toml_str)
             .map_err(|e| crate::commands::CliError::validation(format!("cannot write pipeline: {e}")))?;
-        eprintln!(
-            "Generated pipeline for goal: {}",
-            auto_path.display()
-        );
-        eprintln!("  Edit this file to customize the agent stages, then re-run with:");
-        eprintln!("  sruja auto --pipeline {} \"{}\"", auto_path.display(), goal);
-        eprintln!();
+        if show_details {
+            eprintln!(
+                "Generated pipeline for goal: {}",
+                auto_path.display()
+            );
+            eprintln!("  Edit this file to customize the agent stages, then re-run with:");
+            eprintln!("  sruja auto --pipeline {} \"{}\"", auto_path.display(), goal);
+            eprintln!();
+        }
         // Still run with the generated pipeline (in memory).
         Some(auto_path)
     };
@@ -62,6 +65,7 @@ pub async fn auto_run(
         changelog: false,
         show_pipeline: false,
         pipeline_override,
+        verbose: show_details,
     };
 
     agent_loop(&options).await

@@ -81,8 +81,74 @@ pub enum AuthorCommand {
 
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)]
+#[command(
+    after_help = r#"Quick start:
+  sruja agent task "add health check"    Autonomous coding agent
+  sruja agent setup                      Configure your LLM provider
+
+Learning & memory:
+  sruja agent history                    What the agent has learned
+  sruja agent learn                      Record what worked or failed
+  sruja agent session-summary            Handoff context between sessions
+
+Advanced:
+  sruja agent record / update / delete / merge / curate / clusters / clear
+  sruja agent propose-fact / reflect
+
+Tip: sruja auto "task" does the same thing as sruja agent task "task"."#
+)]
 pub enum AgentCommand {
-    /// Show architectural learning history and guardrails
+    /// Run the autonomous coding agent on a task.
+    ///
+    /// Example: sruja agent task "add a health check endpoint"
+    ///
+    /// The agent will plan, implement, and verify your changes automatically.
+    /// Run `sruja agent setup` first to configure your LLM provider.
+    #[command(visible_alias = "go")]
+    Task {
+        /// What do you want the agent to do?
+        goal: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Maximum plan->execute->verify iterations (default: 3)
+        #[arg(long)]
+        max_iterations: Option<usize>,
+        /// Plan preview only, no code changes
+        #[arg(long)]
+        dry_run: bool,
+        /// Skip confirmation prompts
+        #[arg(long)]
+        yes: bool,
+        /// Execute from saved pipeline TOML
+        #[arg(long)]
+        pipeline: Option<String>,
+        /// Resume from last checkpoint
+        #[arg(long)]
+        resume: bool,
+        /// Output format (text or json)
+        #[arg(long, short = 'f', default_value = "text")]
+        format: String,
+        /// Show internal details (paths, tokens, costs)
+        #[arg(long = "show-details")]
+        show_details: bool,
+    },
+    /// Interactive setup for LLM provider (configures .sruja/config.toml)
+    Setup {
+        /// Path to repository root
+        #[arg(long, short = 'r', default_value = ".")]
+        repo: String,
+        /// Provider id (skip interactive selection): openrouter, openai, zai, ximimo, groq, ollama
+        #[arg(long, short = 'p')]
+        provider: Option<String>,
+        /// API key (skip interactive prompt; not needed for ollama)
+        #[arg(long, short = 'k')]
+        api_key: Option<String>,
+        /// Model override (uses provider default if omitted)
+        #[arg(long, short = 'm')]
+        model: Option<String>,
+    },
+    /// Show what the agent has learned from past tasks
     History {
         /// Path to repository root
         #[arg(long, short = 'r', default_value = ".")]
@@ -194,14 +260,13 @@ pub enum AgentCommand {
         #[arg(long, short = 'o', default_value = "success")]
         outcome: String,
     },
-    /// Record what worked (playbook) or failed after any agent completes a task.
+    /// Record what the agent learned from a task (what worked, what failed).
     ///
-    /// Standalone command for coding agents (Claude Code, Cursor, etc.) to
-    /// auto-distill learnings without going through `sruja agent run`.
-    Distill {
+    /// Use this after any coding session so future runs learn from past experience.
+    Learn {
         #[arg(long, short = 'r', default_value = ".")]
         repo: String,
-        /// What task was being performed
+        /// What task was done
         #[arg(long, short = 'c')]
         goal: String,
         /// Outcome: success or failed
@@ -262,21 +327,6 @@ pub enum AgentCommand {
         /// Optional comma-separated evidence references
         #[arg(long)]
         evidence: Option<String>,
-    },
-    /// Interactive setup for LLM provider (configures .sruja/config.toml)
-    Setup {
-        /// Path to repository root
-        #[arg(long, short = 'r', default_value = ".")]
-        repo: String,
-        /// Provider id (skip interactive selection): openrouter, openai, zai, ximimo, groq, ollama
-        #[arg(long, short = 'p')]
-        provider: Option<String>,
-        /// API key (skip interactive prompt; not needed for ollama)
-        #[arg(long, short = 'k')]
-        api_key: Option<String>,
-        /// Model override (uses provider default if omitted)
-        #[arg(long, short = 'm')]
-        model: Option<String>,
     },
     /// Architecture-bounded agent loop: observe → plan → (optional) apply → verify → record learnings
     ///
@@ -416,7 +466,7 @@ pub enum AgentCommand {
         /// Output format (text or json)
         #[arg(long, short = 'f', default_value = "text")]
         format: String,
-        /// Force proceed past the calibration gate (override Ask verdict; no calibration DR written)
+        /// Skip safety check confirmation prompts
         #[arg(long, alias = "force-proceed")]
         yes: bool,
         /// Disable the default deterministic grader (sruja lint + drift); trust the LLM critic only

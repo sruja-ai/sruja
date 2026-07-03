@@ -23,7 +23,7 @@ pub use agent_loop::{agent_loop, AgentLoopOptions};
 pub use agent_reflect::agent_reflect;
 pub use auto_cmd::auto_run;
 pub use intent_domain::agent::{
-    agent_clear, agent_clusters, agent_curate, agent_delete, agent_distill, agent_history,
+    agent_clear, agent_clusters, agent_curate, agent_delete, agent_learn, agent_history,
     agent_merge, agent_propose_fact, agent_record, agent_session_summary, agent_update,
 };
 pub use intent_domain::agent_plan::{agent_apply, agent_plan};
