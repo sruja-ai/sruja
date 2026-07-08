@@ -521,6 +521,31 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             );
         }
         eprintln!();
+        eprintln!(
+            "{}",
+            colors::detail_line("The agent will:")
+        );
+        eprintln!(
+            "  {} {}",
+            colors::detail_line("1."),
+            colors::detail_line("Analyze your codebase to understand the structure")
+        );
+        eprintln!(
+            "  {} {}",
+            colors::detail_line("2."),
+            colors::detail_line("Create a plan with concrete steps")
+        );
+        eprintln!(
+            "  {} {}",
+            colors::detail_line("3."),
+            colors::detail_line("Execute changes and verify they work")
+        );
+        eprintln!(
+            "  {} {}",
+            colors::detail_line("4."),
+            colors::detail_line("Review results and provide feedback")
+        );
+        eprintln!();
     }
 
     let spend_cap_usd = options.spend_cap_usd.or(manifest.spend_cap_usd);
@@ -1080,8 +1105,9 @@ fn print_loop_result_human(result: &sruja_agent::LoopResult, verbose: bool) {
     descriptions.dedup();
 
     if !descriptions.is_empty() {
+        println!("{}", colors::summary_line("What I did:", ""));
         for desc in &descriptions {
-            println!("{} {}", colors::detail_line("•"), desc);
+            println!("  {} {}", colors::detail_line("•"), desc);
         }
         println!();
     }

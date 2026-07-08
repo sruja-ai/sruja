@@ -518,6 +518,22 @@ impl StageKind {
             StageKind::Reflect => LoopPhase::Complete,
         }
     }
+
+    /// User-friendly description of what this stage does.
+    pub fn user_friendly_description(self) -> &'static str {
+        match self {
+            StageKind::Comprehend => "Reading and analyzing the codebase",
+            StageKind::Plan => "Creating a step-by-step plan",
+            StageKind::TestAuthor => "Writing tests to verify behavior",
+            StageKind::TestReview => "Reviewing test coverage",
+            StageKind::Implement => "Making code changes",
+            StageKind::Verify => "Running checks and tests",
+            StageKind::Critique => "Reviewing changes for quality",
+            StageKind::Replan => "Adjusting the approach",
+            StageKind::Reflect => "Saving learnings for future",
+            StageKind::Fix => "Applying targeted fixes",
+        }
+    }
 }
 
 /// How the pipeline recovers when a stage's verification fails.

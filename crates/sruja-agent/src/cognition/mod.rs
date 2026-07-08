@@ -2735,7 +2735,7 @@ impl Agent {
                 LoopEvent::IterationStarted {
                     n: iteration,
                     reason: if iteration > 1 {
-                        Some("verification feedback".into())
+                        Some("Addressing feedback from previous iteration".into())
                     } else {
                         None
                     },
@@ -2942,8 +2942,8 @@ impl Agent {
                                 step: iteration,
                                 total: max_iterations,
                                 description: format!(
-                                    "stage {:?} iteration {iteration}",
-                                    stage_kind
+                                    "{} (iteration {iteration})",
+                                    stage_kind.user_friendly_description()
                                 ),
                             },
                         );
@@ -3163,12 +3163,20 @@ impl Agent {
         };
 
         let outcome_summary = if converged {
-            format!("Converged in {} iteration(s)", iterations.len())
+            format!("Completed successfully in {} iteration(s)", iterations.len())
         } else {
             format!(
-                "Not converged after {} iteration(s) - {:?}",
+                "Stopped after {} iteration(s) - {}",
                 iterations.len(),
-                termination
+                match termination {
+                    crate::cognition::LoopTermination::Approved => "approved",
+                    crate::cognition::LoopTermination::MaxIterations => "max iterations reached",
+                    crate::cognition::LoopTermination::NoReplan => "no replan",
+                    crate::cognition::LoopTermination::SpendCapExceeded(_) => "budget exceeded",
+                    crate::cognition::LoopTermination::Oscillation => "oscillation detected",
+                    crate::cognition::LoopTermination::ModelNotConverging(_) => "model not converging",
+                    crate::cognition::LoopTermination::Aborted(_) => "aborted",
+                }
             )
         };
         Self::emit_event(events, LoopEvent::Done { outcome_summary });

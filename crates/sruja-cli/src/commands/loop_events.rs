@@ -199,12 +199,15 @@ impl StatusBar {
     fn render_phase_header(&self) {
         if let Some(phase) = self.last_phase {
             let (icon, label) = phase_activity_label(phase);
+            let detail = phase_detail_description(phase);
             if self.is_tty {
                 let line = colors::phase_header(icon, label);
                 eprintln!("{}", line);
+                eprintln!("  {}", colors::detail_line(detail));
                 let _ = io::stderr().flush();
             } else {
                 eprintln!("{}", colors::phase_header(icon, label));
+                eprintln!("  {}", colors::detail_line(detail));
             }
         }
     }
@@ -223,13 +226,13 @@ impl StatusBar {
             let desc_str = description.map(|d| format!("  {}", d)).unwrap_or_default();
 
             if self.is_tty {
-                // Overwrite the current line
+                // Overwrite the current line with more context
                 let line = format!("\r  {}  {}  [{}]{}", "→", prefix, elapsed, desc_str);
                 let padded = format!("{:<80}", line);
                 eprint!("{}", padded);
                 let _ = io::stderr().flush();
             } else {
-                // Print a greppable progress line
+                // Print a greppable progress line with more context
                 eprintln!("  step {prefix}: {desc_str}");
             }
         }
@@ -280,6 +283,19 @@ fn phase_activity_label(phase: LoopPhase) -> (&'static str, &'static str) {
         LoopPhase::Replan => ("🔄", "Refining approach"),
         LoopPhase::Verify => ("✅", "Running checks"),
         LoopPhase::Complete => ("🎯", "Complete"),
+    }
+}
+
+/// Detailed descriptions for each phase — explains what the agent is doing.
+fn phase_detail_description(phase: LoopPhase) -> &'static str {
+    match phase {
+        LoopPhase::Comprehend => "Reading files and understanding the codebase structure",
+        LoopPhase::Plan => "Breaking down the goal into concrete, actionable steps",
+        LoopPhase::Execute => "Making code changes and running verification commands",
+        LoopPhase::Critique => "Evaluating changes against requirements and best practices",
+        LoopPhase::Replan => "Adjusting approach based on review feedback",
+        LoopPhase::Verify => "Running final checks to ensure everything works",
+        LoopPhase::Complete => "All steps finished successfully",
     }
 }
 
