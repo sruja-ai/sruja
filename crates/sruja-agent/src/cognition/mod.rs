@@ -1166,15 +1166,14 @@ impl Agent {
     /// - Memory backend (if present) is properly configured
     ///
     /// Returns `Ok(())` if validation passes, or an `AgentError` describing the issue.
+    /// Validate that the agent is in a consistent state before proceeding.
+    ///
+    /// Checks:
+    /// 1. Tool registry is not empty (in non-dry-run mode)
+    /// 2. Memory is accessible (if enabled)
     pub fn validate_intermediate_state(&self) -> Result<(), AgentError> {
-        // Check phase guard
-        if self.guard.current_phase() == Phase::None {
-            return Err(AgentError::Other("Agent phase not initialized".into()));
-        }
-
-        // Check LLM client
-        // (Implicitly valid if the agent was constructed, but we verify critical assumptions)
-        if self.tools.is_empty() && !self.config.dry_run {
+        // Check tool registry
+        if !self.config.dry_run && self.tools.names().is_empty() {
             return Err(AgentError::Other(
                 "Tool registry is empty in non-dry-run mode".into(),
             ));
@@ -1182,7 +1181,6 @@ impl Agent {
 
         // If memory is enabled, verify it's accessible
         if let Some(ref mem) = self.memory {
-            // A simple accessibility check - search with empty string to verify backend works
             let _ = mem.search("", 0, None);
         }
 

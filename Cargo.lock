@@ -3918,6 +3918,7 @@ dependencies = [
  "notify-debouncer-mini",
  "opener",
  "predicates",
+ "regex",
  "rmcp",
  "serde",
  "serde_json",
