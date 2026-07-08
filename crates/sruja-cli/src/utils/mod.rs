@@ -6,4 +6,5 @@ pub mod progress;
 pub mod redact;
 pub mod run_id;
 pub mod run_snapshots;
+pub mod string_utils;
 pub mod table_formatter;
