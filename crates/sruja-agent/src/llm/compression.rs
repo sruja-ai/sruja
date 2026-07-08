@@ -87,7 +87,14 @@ impl Default for CompressionConfig {
     }
 }
 
-/// Running compression telemetry. Access via [`CompressingClient::stats`].
+/// Running compression telemetry for a [`CompressingClient`].
+///
+/// Tracks the token-level impact of compression across the lifetime of the
+/// client: how many messages were compressed vs. skipped, the original and
+/// post-compression token counts, and cumulative tokens saved. All counters
+/// are atomics so they can be read concurrently without locking.
+///
+/// Access via [`CompressingClient::stats`](super::CompressingClient::stats).
 #[derive(Debug, Default)]
 pub struct CompressionStats {
     /// Number of messages that were compressed.
