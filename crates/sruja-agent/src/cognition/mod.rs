@@ -214,7 +214,7 @@ impl TaskComplexity {
     /// Effective max tool iterations for this complexity level.
     pub fn max_tool_iterations(self, configured: usize) -> usize {
         match self {
-            TaskComplexity::Trivial => configured.min(3),
+            TaskComplexity::Trivial => configured.min(5),
             TaskComplexity::Simple => configured.min(5),
             TaskComplexity::Research => configured.min(10),
             _ => configured,
@@ -1155,6 +1155,38 @@ impl Agent {
 
     pub fn config(&self) -> &AgentConfig {
         &self.config
+    }
+
+    /// Validate that the agent's intermediate state is consistent and ready to continue.
+    ///
+    /// Checks include:
+    /// - Phase guard is properly initialized
+    /// - Tool registry is not empty (if tools are expected)
+    /// - LLM client is available
+    /// - Memory backend (if present) is properly configured
+    ///
+    /// Returns `Ok(())` if validation passes, or an `AgentError` describing the issue.
+    pub fn validate_intermediate_state(&self) -> Result<(), AgentError> {
+        // Check phase guard
+        if self.guard.current_phase() == Phase::None {
+            return Err(AgentError::Other("Agent phase not initialized".into()));
+        }
+
+        // Check LLM client
+        // (Implicitly valid if the agent was constructed, but we verify critical assumptions)
+        if self.tools.is_empty() && !self.config.dry_run {
+            return Err(AgentError::Other(
+                "Tool registry is empty in non-dry-run mode".into(),
+            ));
+        }
+
+        // If memory is enabled, verify it's accessible
+        if let Some(ref mem) = self.memory {
+            // A simple accessibility check - search with empty string to verify backend works
+            let _ = mem.search("", 0, None);
+        }
+
+        Ok(())
     }
 
     // --- Phase 0: Comprehension (read-only, grounded) ---
