@@ -22,6 +22,7 @@ pub async fn init(
     dry_run: bool,
     schema: &str,
     sync_rules: bool,
+    quick: bool,
 ) -> Result<(), CliError> {
     let repo_path = Path::new(repo_root);
     use crate::utils::{colors, progress};
@@ -86,13 +87,17 @@ pub async fn init(
         if !dry_run {
             fs::write(&srujaignore_path, ignore_content)?;
         }
-        if is_interactive || dry_run {
+        if is_interactive || dry_run || quick {
             println!(
                 "  {} [3/4] Generated {}",
                 colors::success("✓"),
                 colors::dim(".srujaignore")
             );
         }
+    }
+
+    if quick {
+        return quick_init(repo_path, &dot_sruja, force, dry_run).await;
     }
 
     if generate_prompt_file {
@@ -622,6 +627,69 @@ pub async fn init(
             colors::info("sruja drift -r . --structural-only --advisory")
         );
     }
+
+    Ok(())
+}
+
+async fn quick_init(
+    repo_path: &Path,
+    _dot_sruja: &Path,
+    force: bool,
+    dry_run: bool,
+) -> Result<(), CliError> {
+    use crate::utils::{colors, progress};
+
+    if dry_run {
+        println!(
+            "{} Would auto-classify and sync IDE rules (dry run)",
+            colors::warning("DRY RUN:")
+        );
+        return Ok(());
+    }
+
+    // Step 1: classification
+    println!("🔍 Auto-classifying repository...");
+    let classify_result = super::classify::classify(super::classify::ClassifyOptions {
+        repo: &repo_path.to_string_lossy(),
+        force,
+    });
+    match classify_result {
+        Ok(()) => {
+            println!("  {}", colors::success("✅ Classification written (.sruja/classification.json)"));
+        }
+        Err(e) => {
+            println!("  {} Classification skipped: {e}", colors::warning("⚠"));
+        }
+    }
+
+    // Step 2: sync IDE rules
+    let sync_pb = progress::spinner("📝 Syncing IDE rules...");
+    let sync_result = super::sync_ide_rules::sync_ide_rules(
+        super::sync_ide_rules::SyncIdeRulesOptions {
+            repo: &repo_path.to_string_lossy(),
+            max_tokens: 10000,
+            check: false,
+        },
+    )
+    .await;
+    sync_pb.finish_and_clear();
+
+    match sync_result {
+        Ok(()) => {
+            println!("  {}", colors::success("✅ IDE rules synced (.cursorrules, copilot-instructions.md, llms-architecture.txt)"));
+        }
+        Err(e) => {
+            println!("  {} IDE rules sync skipped: {e}", colors::warning("⚠"));
+        }
+    }
+
+    println!();
+    println!("{} Quick init complete!", colors::success("🎉"));
+    println!();
+    println!("{}", colors::style("Next steps:").bold());
+    println!("  sruja focus -r .                     — task briefing for your next change");
+    println!("  sruja drift -r . --structural-only --advisory  — check structural health");
+    println!("  sruja agent loop --goal \"...\"         — autonomous agent run");
 
     Ok(())
 }

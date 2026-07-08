@@ -3,6 +3,7 @@ pub mod architecture_path;
 pub mod colors;
 pub mod context;
 pub mod progress;
+pub mod redact;
 pub mod run_id;
 pub mod run_snapshots;
 pub mod table_formatter;

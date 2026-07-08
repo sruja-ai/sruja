@@ -1336,13 +1336,42 @@ impl Agent {
             classify_task_complexity(goal_str, &goal.target_files, &goal.target_elements);
         tracing::info!(?complexity, "comprehend: classified task complexity");
 
+        // If the tool loop produced no text summary (LLM called tools but
+        // didn't write a final answer), re-prompt once without tools to get
+        // a plain-text summary of what was learned.
+        let (summary, final_usage) = if response.content.trim().is_empty() {
+            tracing::warn!("comprehend: tool loop returned empty summary — re-prompting for text-only answer");
+            let retry_system = "You are a Principal Engineer. Summarize your analysis concisely. \
+                Do NOT call any tools — just write your findings as plain text.";
+            let retry_user = format!(
+                "Goal: {goal_str}\n\n\
+                 You explored the codebase using tools but did not produce a written summary. \
+                 Based on what you found, write a concise analysis now. \
+                 Include: what you found, key risks, and recommended next steps."
+            );
+            let retry_req = CompletionRequest::prompt(retry_system, retry_user);
+            match self.llm.complete(&retry_req).await {
+                Ok(retry_response) => {
+                    let mut total = usage.clone();
+                    total.accumulate(&retry_response.usage);
+                    (retry_response.content, total)
+                }
+                Err(e) => {
+                    tracing::warn!("comprehend: retry prompt failed: {e}");
+                    (response.content, usage)
+                }
+            }
+        } else {
+            (response.content, usage)
+        };
+
         Ok(Comprehension {
             goal: goal.to_string(),
-            summary: response.content,
+            summary,
             cited_elements,
             key_findings: Vec::new(),
             risks: Vec::new(),
-            usage,
+            usage: final_usage,
             retrieved_learning_ids,
             complexity,
             pre_conditions,
