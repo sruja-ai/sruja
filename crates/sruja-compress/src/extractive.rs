@@ -89,7 +89,7 @@ impl BM25 {
     }
 }
 
-const KEYWORDS: [&str; 10] = [
+const KEYWORDS: [&str; 25] = [
     "error",
     "exception",
     "failed",
@@ -100,6 +100,23 @@ const KEYWORDS: [&str; 10] = [
     "assert",
     "todo",
     "fixme",
+    // Code-specific keywords
+    "fn",
+    "struct",
+    "impl",
+    "pub",
+    "mod",
+    "use",
+    "crate",
+    "self",
+    "super",
+    // Error patterns
+    "panic",
+    "unwrap",
+    "expect",
+    "result",
+    "option",
+    "err",
 ];
 
 pub struct TextCrusher {
@@ -126,6 +143,37 @@ impl TextCrusher {
             backend: BackendId::TextCrusher,
             ccr_handle: None,
         }
+    }
+
+    /// Check if a segment contains code that should be preserved.
+    /// Code blocks, function definitions, and struct definitions are important.
+    fn is_code_segment(&self, segment: &str) -> bool {
+        let trimmed = segment.trim();
+        // Code blocks (fenced with ```)
+        if trimmed.starts_with("```") || trimmed.contains("```") {
+            return true;
+        }
+        // Function definitions
+        if trimmed.contains("fn ") && (trimmed.contains("(") || trimmed.contains("{")) {
+            return true;
+        }
+        // Struct/enum definitions
+        if trimmed.contains("struct ") || trimmed.contains("enum ") {
+            return true;
+        }
+        // Impl blocks
+        if trimmed.contains("impl ") {
+            return true;
+        }
+        // Module definitions
+        if trimmed.starts_with("mod ") || trimmed.starts_with("pub mod ") {
+            return true;
+        }
+        // Use statements
+        if trimmed.starts_with("use ") || trimmed.starts_with("pub use ") {
+            return true;
+        }
+        false
     }
 }
 
@@ -175,6 +223,12 @@ impl TextCompressor for TextCrusher {
             let salience = salient as f64 / (words.len() as f64 + 1.0);
             let mut score =
                 cfg.w_recency * recency + cfg.w_relevance * rel + cfg.w_salience * salience;
+
+            // Boost code segments significantly
+            if self.is_code_segment(&segments[i]) {
+                score *= 2.0;
+            }
+
             if segments[i].len() < cfg.min_segment_chars {
                 score *= 0.25;
             }
