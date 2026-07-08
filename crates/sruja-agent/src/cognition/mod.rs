@@ -1128,6 +1128,9 @@ pub struct Agent {
     /// Injected into the comprehension user prompt to avoid redundant file_read
     /// tool calls when --file is specified on the CLI.
     preloaded_files: std::collections::HashMap<String, String>,
+    /// Pre-loaded architecture context (repomap, topology).
+    /// Injected into the comprehension user prompt to avoid redundant MCP tool calls.
+    preloaded_arch_context: String,
 }
 
 impl Agent {
@@ -1317,12 +1320,19 @@ impl Agent {
             )
         };
 
+        // Include pre-loaded architecture context if available
+        let arch_context_section = if self.preloaded_arch_context.is_empty() {
+            String::new()
+        } else {
+            self.preloaded_arch_context.clone()
+        };
+
         let user = format!(
             "## Goal\n{goal_str}\n\n\
              ## Instructions\n\
              Use the available tools to explore the codebase. \
              Cite architecture element IDs in your findings. \
-             Produce a concise, grounded understanding.{preloaded_section}"
+             Produce a concise, grounded understanding.{preloaded_section}{arch_context_section}"
         );
 
         let mut req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
@@ -3420,6 +3430,7 @@ pub struct AgentBuilder {
     trace_run_id: Option<String>,
     trace_id: Option<String>,
     preloaded_files: std::collections::HashMap<String, String>,
+    preloaded_arch_context: String,
 }
 
 impl AgentBuilder {
@@ -3538,6 +3549,17 @@ impl AgentBuilder {
         self
     }
 
+    /// Set pre-loaded architecture context.
+    ///
+    /// When architecture context (repomap, topology) is pre-loaded, it's
+    /// injected into the comprehension prompt so the agent doesn't need to
+    /// call MCP tools for basic architecture context. Saves tokens and
+    /// makes the agent more efficient.
+    pub fn preloaded_arch_context(mut self, context: String) -> Self {
+        self.preloaded_arch_context = context;
+        self
+    }
+
     /// Build the agent.
     pub fn build(self) -> Result<Agent, AgentError> {
         let llm_arc = self.llm.ok_or(AgentError::NoLlm)?;
@@ -3592,6 +3614,7 @@ impl AgentBuilder {
             trace_run_id: self.trace_run_id,
             trace_id: self.trace_id,
             preloaded_files: self.preloaded_files,
+            preloaded_arch_context: self.preloaded_arch_context,
         })
     }
 }

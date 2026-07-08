@@ -71,6 +71,10 @@ const DEFAULT_SHELL_ALLOWLIST: &[&str] = &["cargo", "git"];
 /// Files larger than this are skipped to avoid blowing up the context window.
 const PRELOAD_MAX_BYTES: usize = 50 * 1024; // 50 KB
 
+/// Maximum tokens for architecture context injection.
+/// Keeps the context compact to avoid blowing up the prompt.
+const ARCH_CONTEXT_MAX_TOKENS: usize = 2000;
+
 /// Extract the alphabetic family name from a model identifier.
 /// Used for provider prefix routing in the TieredClient.
 ///   "GLM-5.2" → "glm", "mimo-v2.5-pro" → "mimo",
@@ -469,6 +473,12 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         })
         .collect();
 
+    // ── Pre-load architecture context for comprehension ────────────────
+    // Injects repomap and topology into the comprehension prompt so the
+    // agent doesn't need to call MCP tools for basic architecture context.
+    // This saves tokens and makes the agent more efficient.
+    let arch_context = preloaded_architecture_context(repo_path, ARCH_CONTEXT_MAX_TOKENS);
+
     let agent = {
         let mut builder = sruja_agent::Agent::builder()
             .llm(Arc::new(compressing))
@@ -477,7 +487,8 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
             .memory(repo_path)
             .trace_context(&run_id, &run_id)
             .tool_call_tracer(Box::new(super::context_events::ContextEventsTracer))
-            .preloaded_files(preloaded_files);
+            .preloaded_files(preloaded_files)
+            .preloaded_arch_context(arch_context);
 
         // Connect to declared MCP servers (graceful degradation if none/failed)
         if !manifest.mcp.servers.is_empty() {
@@ -1236,6 +1247,56 @@ fn consolidate_memory(repo_path: &Path) -> Result<String, CliError> {
     Ok(format!(
         "Memory: archived {archived_count} stale, pruned {pruned_count} low-utility ({remaining} entries remain)"
     ))
+}
+
+/// Pre-load architecture context (repomap + topology) for the comprehension phase.
+///
+/// This injects a compact architecture summary into the comprehension prompt
+/// so the agent doesn't need to call MCP tools for basic context. Saves tokens
+/// and makes the agent more efficient.
+///
+/// Returns empty string if no architecture data is available.
+fn preloaded_architecture_context(repo_path: &Path, max_tokens: usize) -> String {
+    // Try to load repomap from .sruja/repomap.json if it exists
+    let repomap_path = repo_path.join(".sruja").join("repomap.json");
+    if let Ok(content) = std::fs::read_to_string(&repomap_path) {
+        // Truncate to max_tokens if needed (rough estimate: 1 token ≈ 4 chars)
+        let max_chars = max_tokens * 4;
+        let truncated = if content.len() > max_chars {
+            format!("{}...", &content[..max_chars])
+        } else {
+            content
+        };
+        
+        return format!(
+            "\n\n## Architecture Context (pre-loaded)\n\
+             The following architecture context has been pre-loaded for you.\n\
+             Do NOT call sruja_list_architecture_index or sruja_get_topology — \
+             the information is already here.\n\n{}",
+            truncated
+        );
+    }
+
+    // Try to load llms-architecture.txt if it exists
+    let llms_path = repo_path.join("llms-architecture.txt");
+    if let Ok(content) = std::fs::read_to_string(&llms_path) {
+        let max_chars = max_tokens * 4;
+        let truncated = if content.len() > max_chars {
+            format!("{}...", &content[..max_chars])
+        } else {
+            content
+        };
+        
+        return format!(
+            "\n\n## Architecture Context (pre-loaded)\n\
+             The following architecture context has been pre-loaded for you.\n\
+             Do NOT call sruja_list_architecture_index or sruja_get_topology — \
+             the information is already here.\n\n{}",
+            truncated
+        );
+    }
+
+    String::new()
 }
 
 #[cfg(test)]
