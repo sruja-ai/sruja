@@ -864,6 +864,14 @@ pub struct AgentRunResult {
 /// Written to `.sruja/runs/<run_id>/checkpoint.json` after each iteration.
 /// On resume, the agent loads this file and continues from the next iteration.
 /// Cleaned up on successful convergence.
+/// Checkpoint for saving and resuming agent loop state.
+///
+/// Captures the full state of a running agent loop so it can be resumed
+/// after interruption (crash, timeout, user cancel). Includes the goal,
+/// comprehension, plan, step results, and all tracking state.
+///
+/// Checkpoints are written to `.sruja/runs/<run_id>/checkpoint.json`
+/// after each iteration and cleaned up on successful convergence.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunCheckpoint {
     /// The goal statement (for display and verification on resume).
@@ -1485,6 +1493,10 @@ impl Agent {
         // args 3+ times = loop.
         let mut last_tool_signature: Option<String> = None;
         let mut consecutive_same_tool_call: usize = 0;
+        // Progress tracking: track actual changes made
+        let mut file_changes: usize = 0;
+        let mut successful_tool_calls: usize = 0;
+        let mut last_file_change_iteration: Option<usize> = None;
 
         for iteration in 0..max_iterations {
             let response = self.llm.complete(&req).await?;
@@ -1533,19 +1545,36 @@ impl Agent {
             if self.config.max_consecutive_tool_only > 0
                 && consecutive_tool_only >= self.config.max_consecutive_tool_only
             {
-                tracing::warn!(
-                    iteration,
-                    consecutive_tool_only,
-                    "tool_loop: model has called tools 3+ times with no output — aborting early"
-                );
-                let mut fallback = last_response.unwrap_or_else(|| {
-                    CompletionResponse::text(
-                        "ERROR: model stuck in tool-calling loop with no output.",
-                    )
-                });
-                fallback.tool_calls.clear();
-                fallback.finish_reason = crate::llm::FinishReason::Stop;
-                return Ok((fallback, total_usage, tool_signals, false));
+                // Check if we're making progress (file changes)
+                let recent_file_change = last_file_change_iteration
+                    .map(|last| iteration.saturating_sub(last) <= 2)
+                    .unwrap_or(false);
+
+                if recent_file_change || file_changes > 0 {
+                    // We're making progress, don't abort
+                    tracing::info!(
+                        iteration,
+                        consecutive_tool_only,
+                        file_changes,
+                        "tool_loop: model making progress despite tool-only iterations"
+                    );
+                    consecutive_tool_only = 0; // Reset counter
+                } else {
+                    tracing::warn!(
+                        iteration,
+                        consecutive_tool_only,
+                        file_changes,
+                        "tool_loop: model has called tools 3+ times with no output — aborting early"
+                    );
+                    let mut fallback = last_response.unwrap_or_else(|| {
+                        CompletionResponse::text(
+                            "ERROR: model stuck in tool-calling loop with no output.",
+                        )
+                    });
+                    fallback.tool_calls.clear();
+                    fallback.finish_reason = crate::llm::FinishReason::Stop;
+                    return Ok((fallback, total_usage, tool_signals, false));
+                }
             }
 
             last_response = Some(response.clone());
@@ -1633,6 +1662,18 @@ impl Agent {
                     consecutive_errors += 1;
                 } else {
                     consecutive_errors = 0;
+                    successful_tool_calls += 1;
+                }
+
+                // Track file changes for progress detection
+                if record.ok && (call.name == "file_write" || call.name == "file_edit") {
+                    file_changes += 1;
+                    last_file_change_iteration = Some(iteration);
+                    tracing::debug!(
+                        iteration,
+                        file_changes,
+                        "tool_loop: file change detected"
+                    );
                 }
 
                 // U5: emit tool_result event after dispatch (when tracing enabled).
@@ -1695,19 +1736,35 @@ impl Agent {
                 if self.config.max_consecutive_same_call > 0
                     && consecutive_same_tool_call >= self.config.max_consecutive_same_call
                 {
-                    tracing::warn!(
-                        iteration,
-                        consecutive_same_tool_call,
-                        "tool_loop: same tool+args called 3+ times in a row — aborting"
-                    );
-                    let mut fallback = last_response.unwrap_or_else(|| {
-                        CompletionResponse::text(
-                            "ERROR: model stuck repeating the same tool call with same arguments.",
-                        )
-                    });
-                    fallback.tool_calls.clear();
-                    fallback.finish_reason = crate::llm::FinishReason::Stop;
-                    return Ok((fallback, total_usage, tool_signals, false));
+                    // Check if we're making progress (file changes)
+                    let recent_file_change = last_file_change_iteration
+                        .map(|last| iteration.saturating_sub(last) <= 2)
+                        .unwrap_or(false);
+
+                    if recent_file_change || file_changes > 0 {
+                        // We're making progress, don't abort
+                        tracing::info!(
+                            iteration,
+                            consecutive_same_tool_call,
+                            file_changes,
+                            "tool_loop: same tool+args called but making progress"
+                        );
+                        consecutive_same_tool_call = 0; // Reset counter
+                    } else {
+                        tracing::warn!(
+                            iteration,
+                            consecutive_same_tool_call,
+                            "tool_loop: same tool+args called 3+ times in a row — aborting"
+                        );
+                        let mut fallback = last_response.unwrap_or_else(|| {
+                            CompletionResponse::text(
+                                "ERROR: model stuck repeating the same tool call with same arguments.",
+                            )
+                        });
+                        fallback.tool_calls.clear();
+                        fallback.finish_reason = crate::llm::FinishReason::Stop;
+                        return Ok((fallback, total_usage, tool_signals, false));
+                    }
                 }
             }
 
@@ -1733,6 +1790,36 @@ impl Agent {
                 ));
                 // Reset counter so recovery gets a fair chance.
                 consecutive_errors = 0;
+            }
+
+            // ── Progress-based recovery injection ──────────────────────
+            // If the model has been calling tools for a while without making
+            // file changes, inject a message to help it get unstuck.
+            if iteration >= 3 && file_changes == 0 && successful_tool_calls >= 3 {
+                let tool_names: Vec<&str> = tool_signals
+                    .iter()
+                    .skip(tool_signals.len().saturating_sub(3))
+                    .map(|s| s.tool.as_str())
+                    .collect();
+                let has_read = tool_names.iter().any(|t| t.contains("read"));
+                let has_write = tool_names.iter().any(|t| t.contains("write") || t.contains("edit"));
+
+                if has_read && !has_write {
+                    tracing::info!(
+                        iteration,
+                        successful_tool_calls,
+                        file_changes,
+                        "tool_loop: injecting progress recovery message"
+                    );
+                    req.messages.push(Message::user(
+                        "You have been reading files but haven't made any changes yet. \
+                         The goal requires code changes. Please:\n\
+                         1. Identify the file(s) that need to be modified\n\
+                         2. Use file_write or file_edit to make the changes\n\
+                         3. Don't just keep reading — take action!\n\
+                         If you're unsure, make your best attempt and move on.",
+                    ));
+                }
             }
 
             // ── Tiered convergence pressure ─────────────────────────────
