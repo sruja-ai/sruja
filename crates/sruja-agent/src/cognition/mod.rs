@@ -25,6 +25,7 @@ pub mod runbook;
 pub mod tool_tracing;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
@@ -1638,10 +1639,53 @@ impl Agent {
                         (format!("ERROR: {e}"), record)
                     }
                 };
-                let truncated_text = truncate(&result, 8_000);
-                let was_truncated = result.len() > 8_000;
+
+                // Retry failed tool calls up to 2 times for transient errors
+                let mut retry_count = 0;
+                let max_retries = 2;
+                let mut final_result = result;
+                let mut final_record = record;
+
+                while !final_record.ok && retry_count < max_retries {
+                    retry_count += 1;
+                    tracing::info!(
+                        tool = %call.name,
+                        retry_count,
+                        "tool_loop: retrying failed tool call"
+                    );
+
+                    // Wait a bit before retrying (exponential backoff)
+                    tokio::time::sleep(Duration::from_millis(100 * retry_count as u64)).await;
+
+                    let (retry_result, retry_record) = match self
+                        .tools
+                        .dispatch_record(&call.name, call.arguments.clone())
+                        .await
+                    {
+                        Ok(out) => out,
+                        Err(e) => {
+                            let record = crate::tool::ToolCallRecord {
+                                ok: false,
+                                empty: false,
+                                elapsed_ms: 0,
+                                source: crate::tool::ToolRegistry::classify_source(&call.name),
+                                truncated: false,
+                                payload: e.to_string(),
+                            };
+                            (format!("ERROR: {e}"), record)
+                        }
+                    };
+
+                    if retry_record.ok {
+                        final_result = retry_result;
+                        final_record = retry_record;
+                        break;
+                    }
+                }
+                let truncated_text = truncate(&final_result, 8_000);
+                let was_truncated = final_result.len() > 8_000;
                 if was_truncated {
-                    record.truncated = true;
+                    final_record.truncated = true;
                 }
                 tracing::debug!(
                     tool = %call.name,
@@ -1651,14 +1695,14 @@ impl Agent {
                 );
                 tool_signals.push(ToolSignal {
                     tool: call.name.clone(),
-                    ok: record.ok,
-                    empty: record.empty,
-                    elapsed_ms: record.elapsed_ms,
-                    source: record.source,
+                    ok: final_record.ok,
+                    empty: final_record.empty,
+                    elapsed_ms: final_record.elapsed_ms,
+                    source: final_record.source,
                 });
 
                 // Track consecutive errors for circuit breaker.
-                if !record.ok {
+                if !final_record.ok {
                     consecutive_errors += 1;
                 } else {
                     consecutive_errors = 0;
@@ -1666,7 +1710,7 @@ impl Agent {
                 }
 
                 // Track file changes for progress detection
-                if record.ok && (call.name == "file_write" || call.name == "file_edit") {
+                if final_record.ok && (call.name == "file_write" || call.name == "file_edit") {
                     file_changes += 1;
                     last_file_change_iteration = Some(iteration);
                     tracing::debug!(
@@ -1694,9 +1738,9 @@ impl Agent {
                             run_id,
                             trace_id,
                             &call.name,
-                            record.ok,
-                            record.empty,
-                            record.elapsed_ms,
+                            final_record.ok,
+                            final_record.empty,
+                            final_record.elapsed_ms,
                         );
                     }
                 }
