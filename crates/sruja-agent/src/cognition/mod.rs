@@ -2739,6 +2739,28 @@ impl Agent {
             max_iterations
         };
 
+        // --- Write initial checkpoint after comprehension ---
+        // This enables resume from comprehension state if something goes wrong
+        if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
+            let checkpoint = RunCheckpoint {
+                goal: goal.statement.clone(),
+                comprehension: comprehension.clone(),
+                iterations: Vec::new(),
+                last_plan: None,
+                last_steps: Vec::new(),
+                last_critique: None,
+                failure_tracker: FailureTracker::default(),
+                total_usage: Usage::default(),
+                converged: false,
+                termination: LoopTermination::MaxIterations,
+                seen_signatures: Vec::new(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            };
+            if let Err(e) = checkpoint.write(checkpoint_dir) {
+                tracing::warn!(error = %e, "checkpoint: failed to write initial checkpoint");
+            }
+        }
+
         for iteration in 1..=effective_iterations {
             Self::emit_event(
                 events,
@@ -2996,6 +3018,28 @@ impl Agent {
                         }
                     }
                 }
+
+                // --- Write checkpoint after each stage ---
+                // This enables resume from last good state if something goes wrong
+                if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
+                    let checkpoint = RunCheckpoint {
+                        goal: goal.statement.clone(),
+                        comprehension: comprehension.clone(),
+                        iterations: iterations.clone(),
+                        last_plan: current_plan.clone(),
+                        last_steps: step_results.clone(),
+                        last_critique: current_critique.clone(),
+                        failure_tracker: failure_tracker.clone(),
+                        total_usage: total_usage.clone(),
+                        converged: false,
+                        termination: LoopTermination::MaxIterations, // placeholder
+                        seen_signatures: seen_signatures.clone(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                    };
+                    if let Err(e) = checkpoint.write(checkpoint_dir) {
+                        tracing::warn!(error = %e, "checkpoint: failed to write after stage");
+                    }
+                }
             }
 
             // Determine approval from the last work stage result.
@@ -3028,6 +3072,28 @@ impl Agent {
                 plan_parse_error: None,
                 incorporation_gap: None,
             });
+
+            // --- Write checkpoint after each iteration ---
+            // This enables resume from last good state if something goes wrong
+            if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
+                let checkpoint = RunCheckpoint {
+                    goal: goal.statement.clone(),
+                    comprehension: comprehension.clone(),
+                    iterations: iterations.clone(),
+                    last_plan: current_plan.clone(),
+                    last_steps: step_results.clone(),
+                    last_critique: current_critique.clone(),
+                    failure_tracker: failure_tracker.clone(),
+                    total_usage: total_usage.clone(),
+                    converged: false,
+                    termination: LoopTermination::MaxIterations, // placeholder
+                    seen_signatures: seen_signatures.clone(),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                };
+                if let Err(e) = checkpoint.write(checkpoint_dir) {
+                    tracing::warn!(error = %e, "checkpoint: failed to write after iteration");
+                }
+            }
 
             // --- Spend cap (check BEFORE convergence to enforce budget) ---
             if let Some(cap) = loop_config.spend_cap_usd {
@@ -3137,6 +3203,28 @@ impl Agent {
             if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
                 if let Err(e) = RunCheckpoint::cleanup(checkpoint_dir) {
                     tracing::warn!(error = %e, "checkpoint: cleanup failed");
+                }
+            }
+        } else {
+            // --- Write final checkpoint for non-converged runs ---
+            // This enables resume from last state
+            if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
+                let checkpoint = RunCheckpoint {
+                    goal: goal.statement.clone(),
+                    comprehension: comprehension.clone(),
+                    iterations: iterations.clone(),
+                    last_plan: current_plan.clone(),
+                    last_steps: step_results.clone(),
+                    last_critique: current_critique.clone(),
+                    failure_tracker: failure_tracker.clone(),
+                    total_usage: total_usage.clone(),
+                    converged: false,
+                    termination: termination.clone(),
+                    seen_signatures: seen_signatures.clone(),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                };
+                if let Err(e) = checkpoint.write(checkpoint_dir) {
+                    tracing::warn!(error = %e, "checkpoint: failed to write final checkpoint");
                 }
             }
         }
