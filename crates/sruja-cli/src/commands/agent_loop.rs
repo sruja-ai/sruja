@@ -505,7 +505,6 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                 max_iterations,
                 options.steer,
                 report_dir,
-                options.verbose,
             )));
         }
         builder.build().map_err(agent_err_to_cli)?
@@ -1084,9 +1083,16 @@ fn print_loop_result_human(result: &sruja_agent::LoopResult, verbose: bool) {
     let steps = &result.final_result.step_results;
 
     // ── Collect what was done ──────────────────────────────────────────
-    let succeeded = steps.iter().filter(|s| s.status == sruja_agent::cognition::StepStatus::Ok).count();
-    let failed = steps.iter().filter(|s| s.status == sruja_agent::cognition::StepStatus::Failed).count();
-    let skipped = steps.iter().filter(|s| s.status == sruja_agent::cognition::StepStatus::Skipped).count();
+    // Count subtasks from plan, not step_results (which includes all stages)
+    let succeeded = plan.subtasks.iter().filter(|st| {
+        steps.iter().any(|s| s.subtask_id == st.id && s.status == sruja_agent::cognition::StepStatus::Ok)
+    }).count();
+    let failed = plan.subtasks.iter().filter(|st| {
+        steps.iter().any(|s| s.subtask_id == st.id && s.status == sruja_agent::cognition::StepStatus::Failed)
+    }).count();
+    let skipped = plan.subtasks.iter().filter(|st| {
+        steps.iter().any(|s| s.subtask_id == st.id && s.status == sruja_agent::cognition::StepStatus::Skipped)
+    }).count();
 
     let touched_files: Vec<&str> = plan
         .subtasks
@@ -1147,10 +1153,11 @@ fn print_loop_result_human(result: &sruja_agent::LoopResult, verbose: bool) {
     if skipped > 0 {
         parts.push(format!("{} skipped", skipped));
     }
+    let total_subtasks = plan.subtasks.len();
     println!(
         "{} subtask{}: {}",
-        steps.len(),
-        if steps.len() == 1 { "" } else { "s" },
+        total_subtasks,
+        if total_subtasks == 1 { "" } else { "s" },
         parts.join(", ")
     );
 

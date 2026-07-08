@@ -367,7 +367,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             sync_rules,
         } => {
             commands::init(
-                &path, prompt, auto, scan, force, hook, ci, dry_run, &schema, sync_rules,
+                &path, prompt, auto, scan, force, hook, ci, dry_run, &schema, sync_rules, false,
             )
             .await
         }

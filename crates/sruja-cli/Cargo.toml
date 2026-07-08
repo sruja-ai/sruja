@@ -48,6 +48,7 @@ toml = "1.1"
 blake3 = "1.5"
 async-trait = { workspace = true }
 dotenvy = "0.15"
+regex = "1"
 fs2 = "0.4.3"
 rmcp = { version = "1.7", default-features = false, features = ["server", "macros", "transport-io"] }
 

@@ -120,6 +120,19 @@ impl CompressionStats {
             1.0 - comp as f64 / orig as f64
         }
     }
+
+    /// Return a human-readable summary of compression statistics.
+    ///
+    /// Example output: `"Compressed 5 messages, saved 1000 tokens (30% reduction)"`
+    pub fn report(&self) -> String {
+        let msgs = self.messages_compressed.load(Ordering::Relaxed);
+        let saved = self.tokens_saved.load(Ordering::Relaxed);
+        let pct = self.savings() * 100.0;
+        format!(
+            "Compressed {} messages, saved {} tokens ({:.0}% reduction)",
+            msgs, saved, pct
+        )
+    }
 }
 
 /// A transparent compression layer wrapping any [`LlmClient`].

@@ -546,6 +546,7 @@ pub async fn run_eval_instance(
         checkpoint: false,
         no_checkpoint: true,
         changelog: false,
+        verbose: false,
     };
 
     super::agent_loop(&options).await?;
