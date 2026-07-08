@@ -116,7 +116,7 @@ impl Tool for FileRead {
     async fn call(&self, params: Value) -> Result<String, ToolError> {
         let path_str = str_param(&params, "path")?;
         let offset = opt_usize(&params, "offset").unwrap_or(1).max(1);
-        let limit = opt_usize(&params, "limit");
+        let limit = opt_usize(&params, "limit").unwrap_or(200);
 
         let path = resolve_path(&self.root, &path_str)?;
         let content = tokio::fs::read_to_string(&path)
@@ -125,10 +125,7 @@ impl Tool for FileRead {
 
         let lines: Vec<&str> = content.lines().collect();
         let start = (offset - 1).min(lines.len());
-        let end = match limit {
-            Some(l) => (start + l).min(lines.len()),
-            None => lines.len(),
-        };
+        let end = (start + limit).min(lines.len());
 
         let mut out = String::new();
         for (i, line) in lines[start..end].iter().enumerate() {
@@ -136,6 +133,9 @@ impl Tool for FileRead {
         }
         if out.is_empty() {
             out.push_str("(empty or beyond end of file)\n");
+        }
+        if end < lines.len() {
+            out.push_str(&format!("... ({} more lines, use offset={} to continue)\n", lines.len() - end, end + 1));
         }
         Ok(out)
     }
