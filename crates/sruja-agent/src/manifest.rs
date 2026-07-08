@@ -499,7 +499,9 @@ impl StageKind {
             | StageKind::Reflect
             | StageKind::TestReview => Phase::Comprehend,
             StageKind::TestAuthor => Phase::TestAuthor,
-            StageKind::Implement | StageKind::Verify | StageKind::Replan | StageKind::Fix => Phase::Implement,
+            StageKind::Implement | StageKind::Verify | StageKind::Replan | StageKind::Fix => {
+                Phase::Implement
+            }
         }
     }
 
@@ -511,7 +513,9 @@ impl StageKind {
         match self {
             StageKind::Comprehend => LoopPhase::Comprehend,
             StageKind::Plan => LoopPhase::Plan,
-            StageKind::TestAuthor | StageKind::Implement | StageKind::Replan | StageKind::Fix => LoopPhase::Execute,
+            StageKind::TestAuthor | StageKind::Implement | StageKind::Replan | StageKind::Fix => {
+                LoopPhase::Execute
+            }
             StageKind::TestReview => LoopPhase::Critique,
             StageKind::Verify => LoopPhase::Verify,
             StageKind::Critique => LoopPhase::Critique,
@@ -568,15 +572,17 @@ impl LoopManifest {
 
     /// Load from a `.sruja/loop.toml` file path. Returns `Default` if the
     /// file does not exist (non-fatal — the manifest is optional).
-    /// Logs a warning if the file exists but cannot be parsed.
+    /// Emits an error if the file exists but cannot be parsed.
     pub fn load_from_path(repo: &std::path::Path) -> Self {
         let path = repo.join(".sruja/loop.toml");
         match std::fs::read_to_string(&path) {
             Ok(content) => match Self::from_toml_str(&content) {
                 Ok(m) => m,
                 Err(e) => {
-                    tracing::warn!(
-                        "Failed to parse {}: {e}. Using default loop config.",
+                    tracing::error!(
+                        "INVALID loop config at {}: {e}. \
+                         Your loop.toml is broken — falling back to defaults. \
+                         Fix the file or delete it to suppress this error.",
                         path.display()
                     );
                     Self::default()
@@ -789,9 +795,6 @@ model = "mimo-v2.5-pro"
             RecoveryStrategy::Fail,
             "Research should use Fail recovery"
         );
-        assert_eq!(
-            cfg.max_retries, 0,
-            "Research should have 0 max retries"
-        );
+        assert_eq!(cfg.max_retries, 0, "Research should have 0 max retries");
     }
 }

@@ -148,28 +148,30 @@ impl FileGuard {
         }
     }
 
+    /// Poison-resistant lock helper. Recovers the guard even if a prior
+    /// thread panicked while holding the mutex, preventing cascading panics.
+    fn lock(&self) -> std::sync::MutexGuard<'_, FileGuardInner> {
+        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     /// Current phase.
     pub fn phase(&self) -> Phase {
-        self.inner.lock().unwrap().phase
+        self.lock().phase
     }
 
     /// Transition to a new phase.
     pub fn set_phase(&self, phase: Phase) {
-        self.inner.lock().unwrap().phase = phase;
+        self.lock().phase = phase;
     }
 
     /// Freeze specific paths explicitly (e.g. the agreed test files after review).
     pub fn freeze(&self, paths: &[String]) {
-        self.inner
-            .lock()
-            .unwrap()
-            .frozen
-            .extend(paths.iter().cloned());
+        self.lock().frozen.extend(paths.iter().cloned());
     }
 
     /// Check whether a write to `path` is permitted under the current phase.
     pub fn can_write(&self, path: &str) -> bool {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.lock();
         if inner.frozen.iter().any(|f| path == f) {
             return false;
         }
@@ -183,7 +185,7 @@ impl FileGuard {
 
     /// Human-readable reason for a denied write.
     pub fn deny_reason(&self, path: &str) -> Option<String> {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.lock();
         if inner.frozen.iter().any(|f| path == f) {
             return Some(format!("'{path}' is explicitly frozen"));
         }

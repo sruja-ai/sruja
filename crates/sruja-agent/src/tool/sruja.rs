@@ -35,7 +35,21 @@ pub fn find_sruja(repo_root: &Path) -> PathBuf {
     if debug.exists() {
         return debug;
     }
-    // 4. Assume it's in PATH
+    // 4. Search PATH — validate before returning
+    if let Ok(path) = std::process::Command::new("which")
+        .arg("sruja")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    {
+        if !path.is_empty() {
+            return PathBuf::from(path);
+        }
+    }
+    // 5. Bare fallback — will fail at spawn time with a clear error
+    tracing::error!(
+        "Cannot locate sruja binary. Set SRUJA_PATH, build with 'cargo build --release', \
+         or ensure 'sruja' is on PATH."
+    );
     PathBuf::from("sruja")
 }
 

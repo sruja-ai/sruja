@@ -229,8 +229,8 @@ fn simple_enforces_tdd_and_artifacts() {
 
 #[test]
 fn trivial_caps_tool_iterations() {
-    assert_eq!(TaskComplexity::Trivial.max_tool_iterations(8), 3);
-    assert_eq!(TaskComplexity::Simple.max_tool_iterations(8), 5);
+    assert_eq!(TaskComplexity::Trivial.max_tool_iterations(8), 7);
+    assert_eq!(TaskComplexity::Simple.max_tool_iterations(8), 7);
     assert_eq!(TaskComplexity::Moderate.max_tool_iterations(8), 8);
 }
 
@@ -238,135 +238,101 @@ fn trivial_caps_tool_iterations() {
 
 #[test]
 fn classify_research_what_question() {
-    let c = classify_task_complexity(
-        "what is the architecture of the parser",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("what is the architecture of the parser", &[], &[]);
     assert_eq!(c, TaskComplexity::Research);
 }
 
 #[test]
 fn classify_research_why_question() {
-    let c = classify_task_complexity(
-        "why is the build failing",
-        &["ci.yml".to_string()],
-        &[],
-    );
+    let c = classify_task_complexity("why is the build failing", &["ci.yml".to_string()], &[]);
     assert_eq!(c, TaskComplexity::Research);
 }
 
 #[test]
 fn classify_research_explain() {
-    let c = classify_task_complexity(
-        "explain the migration system",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("explain the migration system", &[], &[]);
     assert_eq!(c, TaskComplexity::Research);
 }
 
 #[test]
 fn classify_research_analyze() {
-    let c = classify_task_complexity(
-        "analyze the performance of the query engine",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("analyze the performance of the query engine", &[], &[]);
     assert_eq!(c, TaskComplexity::Research);
 }
 
 #[test]
 fn classify_research_review() {
-    let c = classify_task_complexity(
-        "review the security of the auth module",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("review the security of the auth module", &[], &[]);
     assert_eq!(c, TaskComplexity::Research);
 }
 
 #[test]
 fn classify_research_description() {
-    let c = classify_task_complexity(
-        "describe the data flow between components",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("describe the data flow between components", &[], &[]);
     assert_eq!(c, TaskComplexity::Research);
 }
 
 #[test]
 fn classify_research_evaluate() {
-    let c = classify_task_complexity(
-        "evaluate the parser performance",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("evaluate the parser performance", &[], &[]);
     assert_eq!(c, TaskComplexity::Research);
 }
 
 #[test]
 fn classify_not_research_when_implementation_keyword() {
     // "fix" is an implementation keyword — not research even though it's a question.
-    let c = classify_task_complexity(
-        "fix the bug in the parser",
-        &["parser.rs".to_string()],
-        &[],
-    );
+    let c = classify_task_complexity("fix the bug in the parser", &["parser.rs".to_string()], &[]);
     assert_eq!(c, TaskComplexity::Simple);
 }
 
 #[test]
 fn classify_not_research_when_how_to() {
     // "how to" is excluded — it's an implementation question.
-    let c = classify_task_complexity(
-        "how to add JWT auth to the API",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("how to add JWT auth to the API", &[], &[]);
     assert_eq!(c, TaskComplexity::Simple);
 }
 
 #[test]
 fn classify_not_research_when_how_do() {
-    let c = classify_task_complexity(
-        "how do I implement input validation",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("how do I implement input validation", &[], &[]);
     assert_eq!(c, TaskComplexity::Simple);
 }
 
 #[test]
 fn classify_not_research_with_implementation_keyword() {
     // "add" is an implementation keyword.
-    let c = classify_task_complexity(
-        "add JWT auth to the API",
-        &[],
-        &[],
-    );
+    let c = classify_task_complexity("add JWT auth to the API", &[], &[]);
     assert_eq!(c, TaskComplexity::Simple);
 }
 
 #[test]
 fn research_disables_tdd() {
-    assert!(!TaskComplexity::Research.enforce_tdd(),
-        "Research tasks should not enforce TDD (no code changes)");
+    assert!(
+        !TaskComplexity::Research.enforce_tdd(),
+        "Research tasks should not enforce TDD (no code changes)"
+    );
 }
 
 #[test]
 fn research_generates_artifacts() {
-    assert!(TaskComplexity::Research.generate_artifacts(),
-        "Research should generate comprehension artifact");
+    assert!(
+        TaskComplexity::Research.generate_artifacts(),
+        "Research should generate comprehension artifact"
+    );
 }
 
 #[test]
 fn research_caps_tool_iterations() {
-    assert_eq!(TaskComplexity::Research.max_tool_iterations(8), 8,
-        "Research with 8 configured should use 8 (10 > 8)");
-    assert_eq!(TaskComplexity::Research.max_tool_iterations(12), 10,
-        "Research with 12 configured should cap at 10");
+    assert_eq!(
+        TaskComplexity::Research.max_tool_iterations(8),
+        8,
+        "Research with 8 configured should use 8 (10 > 8)"
+    );
+    assert_eq!(
+        TaskComplexity::Research.max_tool_iterations(12),
+        10,
+        "Research with 12 configured should cap at 10"
+    );
 }
 
 #[test]
@@ -2014,6 +1980,179 @@ fn classify_error_other() {
     };
 
     assert_eq!(classify_error(&[], &[step]), ErrorClass::Other);
+}
+
+// ---------------------------------------------------------------------------
+// E2E regression tests: full run_loop() with mock LLMs
+// ---------------------------------------------------------------------------
+
+/// E2E: Research task classification runs the Research path (premium model,
+/// single iteration, comprehension is the deliverable).
+#[tokio::test]
+async fn run_loop_research_task_single_iteration() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().to_path_buf();
+
+    let llm = ConvergingLlm::after(0);
+    let tools = crate::tool::ToolRegistry::with_builtin(root.clone(), Vec::new());
+    let agent = crate::cognition::Agent::builder()
+        .llm(llm)
+        .tools(tools)
+        .config(crate::cognition::AgentConfig {
+            tdd: false,
+            review_every_change: false,
+            ..Default::default()
+        })
+        .build()
+        .expect("agent builds");
+
+    let goal = crate::goal::GoalSpec::new("what is the architecture of the parser");
+    let loop_cfg = crate::cognition::LoopConfig::default();
+    let result = agent
+        .run_loop(&goal, &loop_cfg, None, None)
+        .await
+        .expect("loop runs");
+
+    assert!(result.converged, "research task should converge");
+    assert_eq!(result.iteration_count(), 1);
+    assert!(
+        result
+            .final_result
+            .comprehension
+            .summary
+            .to_lowercase()
+            .contains("done"),
+        "should produce a summary"
+    );
+}
+
+/// Smoke: ScriptedLlm converges within 2 iterations with critique enabled.
+#[tokio::test]
+async fn run_loop_scripted_llm_converges_in_two() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().to_path_buf();
+
+    let llm = ScriptedLlm::approve_after(0);
+    let tools = crate::tool::ToolRegistry::with_builtin(root.clone(), Vec::new());
+    let agent = crate::cognition::Agent::builder()
+        .llm(llm)
+        .tools(tools)
+        .config(crate::cognition::AgentConfig {
+            tdd: false,
+            review_every_change: true,
+            ..Default::default()
+        })
+        .build()
+        .expect("agent builds");
+
+    let result = agent
+        .run_loop(
+            &crate::goal::GoalSpec::new("make a change"),
+            &crate::cognition::LoopConfig::default(),
+            None,
+            None,
+        )
+        .await
+        .expect("loop runs");
+
+    assert!(result.converged);
+    assert!(result.iteration_count() <= 2);
+}
+
+/// E2E: Pipeline-driven loop with Plan + Critique stages. Verifies that the
+/// critique result is consulted for convergence approval.
+#[tokio::test]
+async fn run_loop_pipeline_with_critique_approval() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().to_path_buf();
+
+    let llm = ScriptedLlm::approve_after(0);
+    let tools = crate::tool::ToolRegistry::with_builtin(root.clone(), Vec::new());
+    let agent = crate::cognition::Agent::builder()
+        .llm(llm)
+        .tools(tools)
+        .config(crate::cognition::AgentConfig {
+            tdd: false,
+            review_every_change: true,
+            ..Default::default()
+        })
+        .build()
+        .expect("agent builds");
+
+    let result = agent
+        .run_loop(
+            &crate::goal::GoalSpec::new("add a small feature"),
+            &crate::cognition::LoopConfig::default(),
+            None,
+            None,
+        )
+        .await
+        .expect("loop runs");
+
+    assert!(result.converged);
+    let last_iteration = result.iterations.last().expect("at least one iteration");
+    assert!(last_iteration.critique_approved, "critique should approve");
+}
+
+/// E2E: step_has_quality should correctly flag a refused converged step.
+/// When the tool signals include a failure, quality should be false even
+/// if the model claims to have converged.
+#[test]
+fn step_has_quality_with_tool_failure() {
+    let signals = vec![crate::tool::ToolSignal {
+        tool: "file_write".into(),
+        ok: false,
+        empty: false,
+        elapsed_ms: 10,
+        source: crate::tool::ToolSource::Builtin,
+    }];
+    assert!(
+        !crate::cognition::step_has_quality(
+            true, // converged
+            &signals,
+            "I wrote the file successfully and everything looks good now.",
+        ),
+        "should fail quality check when a tool failed"
+    );
+}
+
+#[test]
+fn step_has_quality_with_all_tools_ok() {
+    let signals = vec![crate::tool::ToolSignal {
+        tool: "file_write".into(),
+        ok: true,
+        empty: false,
+        elapsed_ms: 10,
+        source: crate::tool::ToolSource::Builtin,
+    }];
+    assert!(
+        crate::cognition::step_has_quality(
+            true,
+            &signals,
+            "The file was written successfully. The module now contains the expected function.",
+        ),
+        "should pass quality check when all tools succeed"
+    );
+}
+
+#[test]
+fn step_has_quality_non_converged() {
+    assert!(
+        !crate::cognition::step_has_quality(false, &[], "some output"),
+        "should fail when step did not converge"
+    );
+}
+
+#[test]
+fn step_has_quality_refusal_pattern() {
+    assert!(
+        !crate::cognition::step_has_quality(
+            true,
+            &[],
+            "I cannot complete this task because I don't have enough information.",
+        ),
+        "should fail on refusal patterns"
+    );
 }
 
 // ---------------------------------------------------------------------------

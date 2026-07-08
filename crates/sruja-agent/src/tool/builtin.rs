@@ -135,7 +135,11 @@ impl Tool for FileRead {
             out.push_str("(empty or beyond end of file)\n");
         }
         if end < lines.len() {
-            out.push_str(&format!("... ({} more lines, use offset={} to continue)\n", lines.len() - end, end + 1));
+            out.push_str(&format!(
+                "... ({} more lines, use offset={} to continue)\n",
+                lines.len() - end,
+                end + 1
+            ));
         }
         Ok(out)
     }
@@ -203,6 +207,16 @@ impl Tool for FileWrite {
     async fn call(&self, params: Value) -> Result<String, ToolError> {
         let path_str = str_param(&params, "path")?;
         let content = str_param(&params, "content")?;
+
+        const MAX_WRITE_BYTES: usize = 10 * 1024 * 1024; // 10 MiB
+        if content.len() > MAX_WRITE_BYTES {
+            return Err(ToolError::Execution(format!(
+                "content too large: {} bytes exceeds maximum {}. Use multiple smaller writes or split the output.",
+                content.len(),
+                MAX_WRITE_BYTES
+            )));
+        }
+
         let path = resolve_path(&self.root, &path_str)?;
 
         if let Some(parent) = path.parent() {
@@ -656,9 +670,15 @@ impl Tool for Glob {
 
     async fn call(&self, params: Value) -> Result<String, ToolError> {
         let pattern = str_param(&params, "pattern")?;
-        let mut results = Vec::new();
+        let root = self.root.clone();
 
-        walk_dir(&self.root, &self.root, &pattern, &mut results);
+        let mut results = tokio::task::spawn_blocking(move || {
+            let mut results = Vec::new();
+            walk_dir(&root, &root, &pattern, &mut results);
+            results
+        })
+        .await
+        .map_err(|e| ToolError::Execution(format!("glob walk panicked: {e}")))?;
 
         if results.is_empty() {
             return Ok("(no matches)\n".into());
@@ -766,31 +786,39 @@ impl Tool for Grep {
             query.clone()
         };
 
-        let mut results = Vec::new();
-        let mut files = Vec::new();
-        walk_dir(&self.root, &self.root, "**/*", &mut files);
+        let root = self.root.clone();
+        let file_pattern_owned = file_pattern.map(String::from);
 
-        for rel in &files {
-            if let Some(fp) = file_pattern {
-                if !glob_match(fp, &rel.to_string_lossy()) {
+        let results = tokio::task::spawn_blocking(move || {
+            let mut files = Vec::new();
+            walk_dir(&root, &root, "**/*", &mut files);
+
+            let mut results: Vec<String> = Vec::new();
+            for rel in &files {
+                if let Some(ref fp) = file_pattern_owned {
+                    if !glob_match(fp, &rel.to_string_lossy()) {
+                        continue;
+                    }
+                }
+                let full = root.join(rel);
+                let Ok(content) = std::fs::read_to_string(&full) else {
                     continue;
-                }
-            }
-            let full = self.root.join(rel);
-            let Ok(content) = std::fs::read_to_string(&full) else {
-                continue;
-            };
-            for (i, line) in content.lines().enumerate() {
-                let line_cmp = if case_insensitive {
-                    line.to_lowercase()
-                } else {
-                    line.to_string()
                 };
-                if line_cmp.contains(&query_cmp) {
-                    results.push(format!("{}:{}: {line}", rel.display(), i + 1));
+                for (i, line) in content.lines().enumerate() {
+                    let line_cmp = if case_insensitive {
+                        line.to_lowercase()
+                    } else {
+                        line.to_string()
+                    };
+                    if line_cmp.contains(&query_cmp) {
+                        results.push(format!("{}:{}: {line}", rel.display(), i + 1));
+                    }
                 }
             }
-        }
+            results
+        })
+        .await
+        .map_err(|e| ToolError::Execution(format!("grep walk panicked: {e}")))?;
 
         if results.is_empty() {
             Ok("(no matches)\n".into())

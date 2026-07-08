@@ -31,8 +31,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use crate::llm::{
-    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter,
-    Usage, DEFAULT_MODEL, PREMIUM_MODEL,
+    CompletionRequest, CompletionResponse, LlmClient, LlmError, Message, ModelRouter, Usage,
+    DEFAULT_MODEL, PREMIUM_MODEL,
 };
 use crate::tool::ToolSignal;
 
@@ -153,10 +153,11 @@ impl Default for AgentConfig {
             review_every_change: true,
             spend_cap_usd: None,
             dry_run: false,
-            // 5 tool-call iterations is the sweet spot: hard convergence message
-            // fires at 75% budget (iteration 3), giving 2 iterations to comply.
-            // 8 was wasteful — most models converge by iteration 3 or never do.
-            max_tool_iterations: 5,
+            // 7 tool-call iterations gives enough budget for: read 1-2 files →
+            // receive progress nudge at iteration 3 → make edits by iteration 5
+            // before the hard convergence cutoff. 5 was too tight — models that
+            // read even 2 files had no budget left for edits.
+            max_tool_iterations: 7,
             // 5-minute wall-clock timeout for the entire tool loop.
             loop_timeout_secs: 300,
             system_hints: Vec::new(),
@@ -214,8 +215,8 @@ impl TaskComplexity {
     /// Effective max tool iterations for this complexity level.
     pub fn max_tool_iterations(self, configured: usize) -> usize {
         match self {
-            TaskComplexity::Trivial => configured.min(5),
-            TaskComplexity::Simple => configured.min(5),
+            TaskComplexity::Trivial => configured.min(7),
+            TaskComplexity::Simple => configured.min(7),
             TaskComplexity::Research => configured.min(10),
             _ => configured,
         }
@@ -244,19 +245,34 @@ pub fn classify_task_complexity(
         // Use word-boundary matching via split_whitespace to avoid false positives
         // like "build" in "the build failing" or "change" in "what changed".
         let has_implementation_keywords = {
-            let words: std::collections::HashSet<&str> =
-                goal_lower.split_whitespace().collect();
+            let words: std::collections::HashSet<&str> = goal_lower.split_whitespace().collect();
             const IMPL_WORDS: &[&str] = &[
-                "add", "create", "implement", "write", "edit", "fix",
-                "refactor", "migrate", "delete", "remove", "modify",
+                "add",
+                "create",
+                "implement",
+                "write",
+                "edit",
+                "fix",
+                "refactor",
+                "migrate",
+                "delete",
+                "remove",
+                "modify",
             ];
             IMPL_WORDS.iter().any(|k| words.contains(k))
         };
 
         let is_question = trimmed.ends_with('?');
         let is_exploratory_prefix = [
-            "what", "why", "explain", "analyze", "describe",
-            "investigate", "evaluate", "review", "research",
+            "what",
+            "why",
+            "explain",
+            "analyze",
+            "describe",
+            "investigate",
+            "evaluate",
+            "review",
+            "research",
         ]
         .iter()
         .any(|prefix| {
@@ -647,6 +663,26 @@ pub fn content_has_quality(content: &str) -> bool {
     true
 }
 
+/// Structured quality gate that uses step convergence + tool signal data
+/// already computed at every call site, instead of raw string heuristics alone.
+///
+/// This replaces ad-hoc string checks like `content.contains("ERROR")` with
+/// structural signals: did the model converge naturally? Did all tools succeed?
+/// Is the output non-trivial and free of refusal patterns?
+pub fn step_has_quality(
+    converged: bool,
+    tool_signals: &[crate::tool::ToolSignal],
+    content: &str,
+) -> bool {
+    if !converged {
+        return false;
+    }
+    if tool_signals.iter().any(|s| !s.ok) {
+        return false;
+    }
+    content_has_quality(content)
+}
+
 /// Prioritizes tool output (shell/stderr) for low-level errors, then critic issues for
 /// high-level architectural/spec problems.
 pub fn classify_error(critique_issues: &[String], step_results: &[StepResult]) -> ErrorClass {
@@ -818,7 +854,10 @@ impl ScopeDrift {
     }
 
     /// Return an escalated pipeline that adds Plan and/or Critique if missing.
-    pub fn escalated_stages(&self, current: &[crate::manifest::StageKind]) -> Vec<crate::manifest::StageKind> {
+    pub fn escalated_stages(
+        &self,
+        current: &[crate::manifest::StageKind],
+    ) -> Vec<crate::manifest::StageKind> {
         use crate::manifest::StageKind;
         let mut stages: Vec<StageKind> = current.to_vec();
         if !stages.contains(&StageKind::Plan) {
@@ -1275,48 +1314,59 @@ impl Agent {
                                     "(run cargo check first)",
                                     if pct >= 20 {
                                         Some("Run `cargo check` before editing — high rate of compilation errors in this repo.".to_string())
-                                    } else { None },
+                                    } else {
+                                        None
+                                    },
                                 ),
                                 ErrorClass::Type => (
                                     "(check type annotations before tests)",
                                     if pct >= 20 {
                                         Some("Check type annotations and trait bounds carefully — type errors are common here.".to_string())
-                                    } else { None },
+                                    } else {
+                                        None
+                                    },
                                 ),
                                 ErrorClass::Test => (
                                     "(verify logic against acceptance criteria)",
                                     if pct >= 20 {
                                         Some("Verify test assertions against acceptance criteria before implementing.".to_string())
-                                    } else { None },
+                                    } else {
+                                        None
+                                    },
                                 ),
                                 ErrorClass::Runtime => (
                                     "(check for unwrap/None, bounds)",
                                     if pct >= 20 {
                                         Some("Check for unwrap/None and bounds — runtime panics are frequent in this repo.".to_string())
-                                    } else { None },
+                                    } else {
+                                        None
+                                    },
                                 ),
                                 ErrorClass::Lint => (
                                     "(run cargo clippy)",
                                     if pct >= 20 {
                                         Some("Run `cargo clippy --fix` after changes.".to_string())
-                                    } else { None },
+                                    } else {
+                                        None
+                                    },
                                 ),
                                 ErrorClass::Architecture => (
                                     "(check boundary crossings)",
                                     if pct >= 20 {
                                         Some("Run `sruja drift` before verification — boundary violations are common.".to_string())
-                                    } else { None },
+                                    } else {
+                                        None
+                                    },
                                 ),
                                 ErrorClass::SpecGap => (
                                     "(verify all criteria are addressed)",
                                     if pct >= 20 {
                                         Some("Verify all acceptance criteria are addressed before submitting.".to_string())
-                                    } else { None },
+                                    } else {
+                                        None
+                                    },
                                 ),
-                                ErrorClass::Other => (
-                                    "(investigate carefully)",
-                                    None,
-                                ),
+                                ErrorClass::Other => ("(investigate carefully)", None),
                             };
                             percentages.push(format!("{}% {:?} {}", pct, f.error_class, advice));
                             if let Some(pc) = precond {
@@ -1389,7 +1439,9 @@ impl Agent {
         // didn't write a final answer), re-prompt once without tools to get
         // a plain-text summary of what was learned.
         let (summary, final_usage) = if response.content.trim().is_empty() {
-            tracing::warn!("comprehend: tool loop returned empty summary — re-prompting for text-only answer");
+            tracing::warn!(
+                "comprehend: tool loop returned empty summary — re-prompting for text-only answer"
+            );
             let retry_system = "You are a Principal Engineer. Summarize your analysis concisely. \
                 Do NOT call any tools — just write your findings as plain text.";
             let retry_user = format!(
@@ -1740,14 +1792,14 @@ impl Agent {
                 }
 
                 // Track file changes for progress detection
-                if final_record.ok && (call.name == "file_write" || call.name == "file_edit") {
+                if final_record.ok
+                    && (call.name == "file_write"
+                        || call.name == "file_edit"
+                        || call.name == "diff_edit")
+                {
                     file_changes += 1;
                     last_file_change_iteration = Some(iteration);
-                    tracing::debug!(
-                        iteration,
-                        file_changes,
-                        "tool_loop: file change detected"
-                    );
+                    tracing::debug!(iteration, file_changes, "tool_loop: file change detected");
                 }
 
                 // U5: emit tool_result event after dispatch (when tracing enabled).
@@ -1876,7 +1928,9 @@ impl Agent {
                     .map(|s| s.tool.as_str())
                     .collect();
                 let has_read = tool_names.iter().any(|t| t.contains("read"));
-                let has_write = tool_names.iter().any(|t| t.contains("write") || t.contains("edit"));
+                let has_write = tool_names
+                    .iter()
+                    .any(|t| t.contains("write") || t.contains("edit"));
 
                 if has_read && !has_write {
                     tracing::info!(
@@ -1889,7 +1943,7 @@ impl Agent {
                         "You have been reading files but haven't made any changes yet. \
                          The goal requires code changes. Please:\n\
                          1. Identify the file(s) that need to be modified\n\
-                         2. Use file_write or file_edit to make the changes\n\
+                         2. Use diff_edit, file_edit, or file_write to make the changes\n\
                          3. Don't just keep reading — take action!\n\
                          If you're unsure, make your best attempt and move on.",
                     ));
@@ -2193,7 +2247,8 @@ impl Agent {
                     "reason": c.reason,
                 })
             }).collect::<Vec<_>>(),
-        })).unwrap_or_else(|_| "{}".to_string());
+        }))
+        .unwrap_or_else(|_| "{}".to_string());
 
         let user = format!(
             "## Goal\n{goal_str}\n\n\
@@ -2397,8 +2452,6 @@ impl Agent {
 
         Ok(results)
     }
-
-
 
     // --- Critique: review every change via the review model ---
 
@@ -2860,7 +2913,9 @@ impl Agent {
             format!(
                 "\n\n## Pre-conditions from Error History\n\
                  This repo has patterns of recurring failures. Address these proactively:\n{}\n",
-                comprehension.pre_conditions.iter()
+                comprehension
+                    .pre_conditions
+                    .iter()
                     .map(|p| format!("- {p}"))
                     .collect::<Vec<_>>()
                     .join("\n")
@@ -2955,9 +3010,11 @@ impl Agent {
                 match stage_kind {
                     crate::manifest::StageKind::Comprehend
                     | crate::manifest::StageKind::TestReview => {
-                        // Research: use full LLM-based comprehension instead of synthetic.
+                        // Use full LLM-based comprehension for all non-trivial tasks.
+                        // Only Trivial tasks keep the synthetic comprehension.
                         if stage_kind == crate::manifest::StageKind::Comprehend
-                            && complexity == TaskComplexity::Research
+                            && iteration == 1
+                            && complexity != TaskComplexity::Trivial
                         {
                             let real_comprehension = self.comprehend(goal).await?;
                             total_usage.accumulate(&real_comprehension.usage);
@@ -2997,18 +3054,22 @@ impl Agent {
                         // regenerating the full plan.
                         if let Some(ref critique) = current_critique {
                             if !critique.approved && !critique.issues.is_empty() {
-                                let file_refs = crate::cognition::parsing::extract_file_references(&critique.issues);
+                                let file_refs = crate::cognition::parsing::extract_file_references(
+                                    &critique.issues,
+                                );
                                 if !file_refs.is_empty() {
                                     let git_diff = self.get_git_diff().await.unwrap_or_default();
-                                    let critique_json = serde_json::to_string_pretty(&serde_json::json!({
-                                        "approved": critique.approved,
-                                        "score": critique.score,
-                                        "issues": critique.issues,
-                                        "suggestions": critique.suggestions,
-                                        "file_references": file_refs.iter().map(|(f, lines)| {
-                                            serde_json::json!({"file": f, "lines": lines})
-                                        }).collect::<Vec<_>>(),
-                                    })).unwrap_or_default();
+                                    let critique_json =
+                                        serde_json::to_string_pretty(&serde_json::json!({
+                                            "approved": critique.approved,
+                                            "score": critique.score,
+                                            "issues": critique.issues,
+                                            "suggestions": critique.suggestions,
+                                            "file_references": file_refs.iter().map(|(f, lines)| {
+                                                serde_json::json!({"file": f, "lines": lines})
+                                            }).collect::<Vec<_>>(),
+                                        }))
+                                        .unwrap_or_default();
 
                                     let fix_user = format!(
                                         "## Current Diff\n```diff\n{}\n```\n\n\
@@ -3021,16 +3082,20 @@ impl Agent {
                                     let mut fix_req = CompletionRequest::prompt(
                                         crate::cognition::prompts::FIX_SYSTEM_PROMPT,
                                         &fix_user,
-                                    ).with_tools(self.tools.schemas());
+                                    )
+                                    .with_tools(self.tools.schemas());
                                     fix_req.model = Some(self.config.models.premium.clone());
 
-                                    let (response, usage, tool_signals, step_converged) = self
-                                        .run_tool_loop_with_limit(fix_req, 5)
-                                        .await?;
+                                    let (response, usage, tool_signals, step_converged) =
+                                        self.run_tool_loop_with_limit(fix_req, 5).await?;
                                     total_usage.accumulate(&usage);
                                     scope_drift.record_tool_signals(&tool_signals);
 
-                                    let status = if step_converged && content_has_quality(&response.content) {
+                                    let status = if step_has_quality(
+                                        step_converged,
+                                        &tool_signals,
+                                        &response.content,
+                                    ) {
                                         StepStatus::Ok
                                     } else {
                                         StepStatus::Failed
@@ -3057,7 +3122,9 @@ impl Agent {
                                     step_results.push(result);
                                     _last_output = output;
                                 } else {
-                                    tracing::info!("fix stage: no file-level references — skipping");
+                                    tracing::info!(
+                                        "fix stage: no file-level references — skipping"
+                                    );
                                 }
                             } else {
                                 tracing::info!("fix stage: critique approved or empty — skipping");
@@ -3096,50 +3163,130 @@ impl Agent {
                     }
 
                     crate::manifest::StageKind::Implement
-                    | crate::manifest::StageKind::TestAuthor
-                    | crate::manifest::StageKind::Replan => {
-                        // Run tool loop — model drives changes.
-                        let max_iters =
-                            complexity.max_tool_iterations(self.config.max_tool_iterations);
-                        let (response, usage, tool_signals, step_converged) = self
-                            .run_tool_loop_with_limit(req.clone(), max_iters)
-                            .await?;
-                        total_usage.accumulate(&usage);
-                        scope_drift.record_tool_signals(&tool_signals);
-                        _last_output = response.content.clone();
+                    | crate::manifest::StageKind::TestAuthor => {
+                        // When a plan exists, use structured per-subtask execution
+                        // with phase enforcement and TDD support.
+                        if let Some(ref plan) = current_plan {
+                            let exec_results = self.execute(plan).await?;
+                            let mut usage_sum = crate::llm::Usage::default();
+                            for r in &exec_results {
+                                usage_sum.accumulate(&r.usage);
+                            }
+                            total_usage.accumulate(&usage_sum);
+                            if let Some(last) = exec_results.last() {
+                                _last_output = last.output.clone();
+                                if !last.converged {
+                                    non_converged_count += 1;
+                                }
+                                scope_drift.record_tool_signals(&last.tool_signals);
+                            }
+                            step_results.extend(exec_results);
 
-                        if !step_converged {
-                            non_converged_count += 1;
-                        }
-
-                        let status = if response.content.contains("ERROR")
-                            || !step_converged
-                            || !content_has_quality(&response.content)
-                        {
-                            StepStatus::Failed
+                            Self::emit_event(
+                                events,
+                                LoopEvent::StepProgress {
+                                    step: iteration,
+                                    total: max_iterations,
+                                    description: format!(
+                                        "{} ({} subtask(s))",
+                                        stage_kind.user_friendly_description(),
+                                        plan.subtasks.len(),
+                                    ),
+                                },
+                            );
                         } else {
-                            StepStatus::Ok
-                        };
-                        step_results.push(StepResult {
-                            subtask_id: format!("{iteration}_{stage_kind:?}"),
-                            status,
-                            output: response.content.clone(),
-                            usage: usage.clone(),
-                            tool_signals,
-                            converged: step_converged,
-                        });
+                            // Fallback: raw tool loop when no plan is available.
+                            let max_iters =
+                                complexity.max_tool_iterations(self.config.max_tool_iterations);
+                            let (response, usage, tool_signals, step_converged) = self
+                                .run_tool_loop_with_limit(req.clone(), max_iters)
+                                .await?;
+                            total_usage.accumulate(&usage);
+                            scope_drift.record_tool_signals(&tool_signals);
+                            _last_output = response.content.clone();
 
-                        Self::emit_event(
-                            events,
-                            LoopEvent::StepProgress {
-                                step: iteration,
-                                total: max_iterations,
-                                description: format!(
-                                    "{} (iteration {iteration})",
-                                    stage_kind.user_friendly_description()
-                                ),
-                            },
-                        );
+                            if !step_converged {
+                                non_converged_count += 1;
+                            }
+
+                            let status = if !step_has_quality(
+                                step_converged,
+                                &tool_signals,
+                                &response.content,
+                            ) {
+                                StepStatus::Failed
+                            } else {
+                                StepStatus::Ok
+                            };
+                            step_results.push(StepResult {
+                                subtask_id: format!("{iteration}_{stage_kind:?}"),
+                                status,
+                                output: response.content.clone(),
+                                usage: usage.clone(),
+                                tool_signals,
+                                converged: step_converged,
+                            });
+                        }
+                    }
+
+                    crate::manifest::StageKind::Replan => {
+                        // Structured replan: use critique feedback to generate
+                        // a revised plan instead of a raw tool loop.
+                        if let (Some(ref critique), Some(ref _plan)) =
+                            (&current_critique, &current_plan)
+                        {
+                            let pressure = if non_converged_count > 0 {
+                                Some(format!(
+                                    "{} of {} iterations failed to converge. \
+                                     Change the approach significantly.",
+                                    non_converged_count, iteration
+                                ))
+                            } else {
+                                None
+                            };
+                            let new_plan = self
+                                .replan(
+                                    goal,
+                                    &comprehension,
+                                    critique,
+                                    pressure.as_deref(),
+                                    &failure_tracker,
+                                )
+                                .await?;
+                            current_plan = Some(new_plan);
+                        } else {
+                            // Fallback: raw tool loop when critique or plan missing.
+                            let max_iters =
+                                complexity.max_tool_iterations(self.config.max_tool_iterations);
+                            let (response, usage, tool_signals, step_converged) = self
+                                .run_tool_loop_with_limit(req.clone(), max_iters)
+                                .await?;
+                            total_usage.accumulate(&usage);
+                            scope_drift.record_tool_signals(&tool_signals);
+                            _last_output = response.content.clone();
+
+                            if !step_converged {
+                                non_converged_count += 1;
+                            }
+
+                            let status = if !step_has_quality(
+                                step_converged,
+                                &tool_signals,
+                                &response.content,
+                            ) {
+                                StepStatus::Failed
+                            } else {
+                                StepStatus::Ok
+                            };
+                            step_results.push(StepResult {
+                                subtask_id: format!("{iteration}_{stage_kind:?}"),
+                                status,
+                                output: response.content.clone(),
+                                usage: usage.clone(),
+                                tool_signals,
+                                converged: step_converged,
+                            });
+                        }
                     }
 
                     crate::manifest::StageKind::Verify => {
@@ -3206,13 +3353,18 @@ impl Agent {
             // Determine approval from the last work stage result.
             let last_work = step_results.last();
             let step_converged = last_work.is_some_and(|r| r.converged);
+            let last_tool_signals = last_work.map(|r| r.tool_signals.as_slice()).unwrap_or(&[]);
+            let critique_approved = current_critique
+                .as_ref()
+                .map(|c| c.approved)
+                .unwrap_or(true);
             let approved = if complexity == TaskComplexity::Research {
                 // For Research, comprehension IS the deliverable — no verify gate needed.
-                content_has_quality(&_last_output)
+                step_has_quality(step_converged, last_tool_signals, &_last_output)
             } else {
                 iteration_verify_failed.is_empty()
-                    && step_converged
-                    && content_has_quality(&_last_output)
+                    && step_has_quality(step_converged, last_tool_signals, &_last_output)
+                    && critique_approved
             };
 
             // Record iteration.
@@ -3422,7 +3574,10 @@ impl Agent {
         };
 
         let outcome_summary = if converged {
-            format!("Completed successfully in {} iteration(s)", iterations.len())
+            format!(
+                "Completed successfully in {} iteration(s)",
+                iterations.len()
+            )
         } else {
             format!(
                 "Stopped after {} iteration(s) - {}",
@@ -3433,7 +3588,8 @@ impl Agent {
                     crate::cognition::LoopTermination::NoReplan => "no replan",
                     crate::cognition::LoopTermination::SpendCapExceeded(_) => "budget exceeded",
                     crate::cognition::LoopTermination::Oscillation => "oscillation detected",
-                    crate::cognition::LoopTermination::ModelNotConverging(_) => "model not converging",
+                    crate::cognition::LoopTermination::ModelNotConverging(_) =>
+                        "model not converging",
                     crate::cognition::LoopTermination::Aborted(_) => "aborted",
                 }
             )
@@ -3456,10 +3612,9 @@ impl Agent {
         goal: &crate::goal::GoalSpec,
         loop_config: &LoopConfig,
     ) -> Result<LoopResult, AgentError> {
-        let checkpoint_dir = loop_config
-            .checkpoint_dir
-            .as_ref()
-            .ok_or_else(|| AgentError::Checkpoint("no checkpoint_dir configured for resume".into()))?;
+        let checkpoint_dir = loop_config.checkpoint_dir.as_ref().ok_or_else(|| {
+            AgentError::Checkpoint("no checkpoint_dir configured for resume".into())
+        })?;
 
         let checkpoint = RunCheckpoint::load(checkpoint_dir)
             .map_err(|e| AgentError::Checkpoint(format!("failed to load checkpoint: {e}")))?;
