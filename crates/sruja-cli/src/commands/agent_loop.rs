@@ -911,7 +911,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
                         }
                     })
                     .collect();
-                checkpoints.sort_by(|a, b| b.0.cmp(&a.0)); // most recent first
+                checkpoints.sort_by_key(|b| std::cmp::Reverse(b.0)); // most recent first
                 if let Some((_, path)) = checkpoints.first() {
                     found_checkpoint = Some(path.clone());
                 }
