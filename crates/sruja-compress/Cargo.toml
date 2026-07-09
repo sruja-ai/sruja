@@ -20,7 +20,7 @@ thiserror.workspace = true
 tracing.workspace = true
 regex = "1"
 sha2 = "0.10"
-lru = "0.12"
+lru = "0.16.3"
 
 # kompress-only. ort is in RC; pin at integration time. Default features don't pull it.
 ort = { version = "2.0.0-rc.12", optional = true, default-features = false, features = ["std", "ndarray"] }
