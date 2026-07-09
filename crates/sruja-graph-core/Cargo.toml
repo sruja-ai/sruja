@@ -9,4 +9,4 @@ repository.workspace = true
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-hashbrown = "0.14"
+hashbrown = "0.17"
