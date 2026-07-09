@@ -3,12 +3,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 /// A simple progress tracker that allows incrementing a counter and reading its value.
+#[allow(dead_code)]
 pub struct ProgressTracker {
     current: AtomicUsize,
     total: usize,
     start_time: Instant,
 }
 
+#[allow(dead_code)]
 impl ProgressTracker {
     /// Creates a new tracker with `total` as the expected maximum.
     pub fn new(total: usize) -> Self {

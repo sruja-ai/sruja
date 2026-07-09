@@ -1703,7 +1703,7 @@ impl Agent {
                     }
                 }
 
-                let (result, mut record) = match self
+                let (result, record) = match self
                     .tools
                     .dispatch_record(&call.name, call.arguments.clone())
                     .await

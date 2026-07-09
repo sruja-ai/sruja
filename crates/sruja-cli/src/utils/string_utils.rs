@@ -13,6 +13,7 @@
 /// assert_eq!(truncate_with_ellipsis("hello world", 8), "hello w…");
 /// assert_eq!(truncate_with_ellipsis("hi", 3), "hi");
 /// ```
+#[allow(dead_code)]
 pub fn truncate_with_ellipsis(s: &str, max_len: usize) -> String {
     if max_len == 0 {
         return String::new();
@@ -41,6 +42,7 @@ pub fn truncate_with_ellipsis(s: &str, max_len: usize) -> String {
 /// assert_eq!(snake_to_title_case("FOO_BAR_BAZ"), "Foo Bar Baz");
 /// assert_eq!(snake_to_title_case("already"), "Already");
 /// ```
+#[allow(dead_code)]
 pub fn snake_to_title_case(s: &str) -> String {
     s.split('_')
         .filter(|seg| !seg.is_empty())
@@ -74,6 +76,7 @@ pub fn snake_to_title_case(s: &str) -> String {
 /// assert_eq!(count_words(""), 0);
 /// assert_eq!(count_words("single"), 1);
 /// ```
+#[allow(dead_code)]
 pub fn count_words(s: &str) -> usize {
     s.split_whitespace().count()
 }
