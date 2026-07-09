@@ -5,6 +5,39 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.66.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.65.0...sruja-v0.66.0) (2026-07-08)
+
+
+### Features
+
+* add CompressionStats::report() method and fix subtask counting ([5577db3](https://github.com/sruja-ai/sruja/commit/5577db3bfe0da882347de072bcd890cedccf982d))
+* add more validation functions ([241198d](https://github.com/sruja-ai/sruja/commit/241198d38383f48228da855b5b668ae107615fb0))
+* add progress tracking features ([4947b1d](https://github.com/sruja-ai/sruja/commit/4947b1df17f3dd4ce8108dd8877152830a886bd7))
+* add progress tracking utility module ([29a1d22](https://github.com/sruja-ai/sruja/commit/29a1d2297f755f18d3ff76e165ae020a82373754))
+* add retry mechanism for failed tool calls ([9402176](https://github.com/sruja-ai/sruja/commit/940217627e4079820795e9ba83e1e96929696423))
+* add string_utils module with truncate, title_case, word_count ([6f01a1b](https://github.com/sruja-ai/sruja/commit/6f01a1b633177aed2d6f900ac485d0b67cfa50f1))
+* add validation utility module with validate_not_empty function ([458b313](https://github.com/sruja-ai/sruja/commit/458b31316c4c7b104a2650e0ba97578c931c7e18))
+* **agent:** add Research/analysis pipeline for non-coding goals ([18be8bf](https://github.com/sruja-ai/sruja/commit/18be8bf3c772675cc2114939166a656721e23d26))
+* **agent:** implement 5 improvements to the agent loop ([c381968](https://github.com/sruja-ai/sruja/commit/c3819680e15eb8ef967560a10c496533df34e808))
+* auto-inject architecture context into agent comprehension ([b7f09e4](https://github.com/sruja-ai/sruja/commit/b7f09e48e7143392e15b6f02914d38021b08f31c))
+* **cli:** conversational agent UX — natural output, intuitive commands ([d7b111a](https://github.com/sruja-ai/sruja/commit/d7b111a88444090e1eaaf87a6fa1d20c9070f1d5))
+* improve agent prompts to encourage decisive action ([4a10f5f](https://github.com/sruja-ai/sruja/commit/4a10f5fe2800c44da4b610a87047f151e5051623))
+* improve agent user-friendliness with clearer output ([395e286](https://github.com/sruja-ai/sruja/commit/395e286a13a4f7bed2b11ba517734449c21967e8))
+* improve context compression with code-aware scoring ([2fffa4c](https://github.com/sruja-ai/sruja/commit/2fffa4c14b6922c08c67045c85901ecf411b5130))
+* improve stuck detection with progress tracking ([3cd945b](https://github.com/sruja-ai/sruja/commit/3cd945b6d08dfb7c9735c6bfdfc5d7420cb621f8))
+* **memory:** borrow Evolver's signal extraction and Gene schema for agent memory ([4da3e1b](https://github.com/sruja-ai/sruja/commit/4da3e1be9e663a793034b178e9706900e47c079f))
+* production-ready agent — safety fixes, structured quality gates, rich pipeline ([5898e29](https://github.com/sruja-ai/sruja/commit/5898e29bde9067596469418256ceb8a720b2bfa5))
+
+
+### Bug Fixes
+
+* add default limit of 200 lines to file_read tool ([40bab86](https://github.com/sruja-ai/sruja/commit/40bab86d15633f26a902a45656bbba59992357f5))
+* correct usage tracking in comprehension retry and add redact module ([db0f91b](https://github.com/sruja-ai/sruja/commit/db0f91b0593cb475064344a63b9f69ed33a0d4c6))
+* increase Trivial task tool iterations from 3 to 5 ([f2c988f](https://github.com/sruja-ai/sruja/commit/f2c988fba7bc844726b4fe5a97320505d369944f))
+* remove double colon in 'What I did' output ([0a753e9](https://github.com/sruja-ai/sruja/commit/0a753e93ceaa71e87d8e5a076265c214d0a22e95))
+* validate_intermediate_state method and add math utility ([7994669](https://github.com/sruja-ai/sruja/commit/7994669442ae2301d136c19f7c0999f33b5307d3))
+* write checkpoint after each stage and iteration ([a5d8a22](https://github.com/sruja-ai/sruja/commit/a5d8a228184c9be3a7e82604ed7cb5bc1bec3bf6))
+
 ## [0.65.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.64.1...sruja-v0.65.0) (2026-07-02)
 
 
