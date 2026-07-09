@@ -8,6 +8,7 @@ use regex::Regex;
 use serde_json::Value;
 use std::sync::LazyLock;
 
+#[allow(dead_code)]
 static SECRET_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
     vec![
         // Common API key prefixes (with or without quotes around value)
@@ -36,8 +37,10 @@ static SECRET_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
     ]
 });
 
+#[allow(dead_code)]
 static REDACTED: &str = "[REDACTED]";
 
+#[allow(dead_code)]
 pub fn redact_json_value(value: &mut Value) {
     match value {
         Value::String(s) => {
@@ -57,6 +60,7 @@ pub fn redact_json_value(value: &mut Value) {
     }
 }
 
+#[allow(dead_code)]
 pub fn redact_string(mut s: String) -> String {
     for pattern in SECRET_PATTERNS.iter() {
         s = pattern.replace_all(&s, REDACTED).to_string();
