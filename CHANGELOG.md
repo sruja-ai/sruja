@@ -5,6 +5,15 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.66.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.66.0...sruja-v0.66.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* clippy unnecessary_sort_by in agent_loop.rs ([00338b3](https://github.com/sruja-ai/sruja/commit/00338b345dd05b37d71d6537c7dc596ca4c704ca))
+* **deps:** upgrade lru 0.12 to 0.16.4 (RUSTSEC-2026-0002) ([3fa1c5c](https://github.com/sruja-ai/sruja/commit/3fa1c5c951fecb7499e89a1cb4011c62d47fc24b))
+* resolve all compiler warnings ([4b88e8b](https://github.com/sruja-ai/sruja/commit/4b88e8bd245b97d8d7396c9df53418ebfd75e73d))
+
 ## [0.66.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.65.0...sruja-v0.66.0) (2026-07-08)
 
 
