@@ -19,7 +19,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 regex = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 lru = "0.16.3"
 
 # kompress-only. ort is in RC; pin at integration time. Default features don't pull it.
