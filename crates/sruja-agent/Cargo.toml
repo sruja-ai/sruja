@@ -29,8 +29,8 @@ fs2 = "0.4.3"
 reqwest = { workspace = true, optional = true, features = ["stream"] }
 futures.workspace = true
 async-stream.workspace = true
-rmcp = { version = "1.7", default-features = false, optional = true, features = ["client", "transport-child-process", "transport-streamable-http-client", "transport-streamable-http-client-reqwest"] }
+rmcp = { version = "2.2", default-features = false, optional = true, features = ["client", "transport-child-process", "transport-streamable-http-client", "transport-streamable-http-client-reqwest"] }
 
 [dev-dependencies]
 tempfile = "3.10"
-rmcp = { version = "1.7", features = ["server", "macros", "transport-io"] }
+rmcp = { version = "2.2", features = ["server", "macros", "transport-io"] }
