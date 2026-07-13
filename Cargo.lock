@@ -1882,9 +1882,9 @@ dependencies = [
 
 [[package]]
 name = "ignore"
-version = "0.4.27"
+version = "0.4.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe112b004901c62c2faa11f4f75e9864e0cc5af8da71c9115d184a3aa888749f"
+checksum = "2adf14691c72bcfc1058740436a35bdd3ae9c07d1a941ef00b749e9ea16aefa7"
 dependencies = [
  "crossbeam-deque",
  "globset",
@@ -3372,9 +3372,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.12.4"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1292b7759ae1cb9ec195452d1390a074f0cd8541ab7a5a8c31cd6db45d4a6ba"
+checksum = "2a0e75113e14dc5acb068cd0786884f214f1312650a3d36d269f5c4f3cdee8a2"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -3957,7 +3957,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-agent"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -3979,7 +3979,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-cli"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "assert_cmd",
  "async-trait",
@@ -4027,7 +4027,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-compress"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "lru",
  "ndarray 0.16.1",
@@ -4043,7 +4043,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4051,7 +4051,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "git2",
@@ -4066,7 +4066,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-engine"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "serde",
  "sruja-diagnostics",
@@ -4079,7 +4079,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "fastembed",
@@ -4096,7 +4096,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-extract"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "ignore",
  "log",
@@ -4109,7 +4109,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "proptest",
@@ -4126,7 +4126,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph-core"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "hashbrown 0.17.1",
  "serde",
@@ -4135,7 +4135,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-intent"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "colored",
@@ -4154,7 +4154,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-language"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "nom 8.0.0",
  "serde",
@@ -4164,7 +4164,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-memory"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "rusqlite",
@@ -4178,7 +4178,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-scan"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "blake3",
  "ignore",
@@ -4214,7 +4214,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "console_error_panic_hook",
  "getrandom 0.4.3",
@@ -4773,9 +4773,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.26.10"
+version = "0.26.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c343ed63e3f5c64d1acdecb5d2c13d4e169cb5fde0052106ebaa6c6f27f9e55"
+checksum = "af1c71c1c4cc0920b20d6b0f6572e7682cd07a6a2faec71067a31fa394c586df"
 dependencies = [
  "cc",
  "regex",
@@ -5058,9 +5058,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.23.4"
+version = "1.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf80a72845275afea99e7f2b434723d3bc7e38470fcd1c7ed39a599c73319a53"
+checksum = "ea5fab0d6c3c01ae70085a09cb03d4c7a1d6314e2b3e075392783396d724ca0a"
 dependencies = [
  "getrandom 0.4.3",
  "js-sys",
