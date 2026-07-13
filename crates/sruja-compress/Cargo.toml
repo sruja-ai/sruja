@@ -24,7 +24,7 @@ lru = "0.16.3"
 
 # kompress-only. ort is in RC; pin at integration time. Default features don't pull it.
 ort = { version = "2.0.0-rc.12", optional = true, default-features = false, features = ["std", "ndarray"] }
-tokenizers = { version = "0.21", optional = true, features = ["onig"] }
+tokenizers = { version = "0.22", optional = true, features = ["onig"] }
 ndarray = { version = "0.16", optional = true }
 
 [dev-dependencies]
