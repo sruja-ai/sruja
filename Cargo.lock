@@ -3701,9 +3701,9 @@ dependencies = [
 
 [[package]]
 name = "scip"
-version = "0.7.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4d0e81b39f590b2edbe2369760641511898ed34062aed2e18e6d05eead3d6b7"
+checksum = "26a72133c2d6fd45c9a3a343bcb3db2faa30f68f0919bfa3370ca85add5460c3"
 dependencies = [
  "protobuf",
 ]
@@ -3957,7 +3957,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-agent"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -3979,7 +3979,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-cli"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "assert_cmd",
  "async-trait",
@@ -4027,7 +4027,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-compress"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "lru",
  "ndarray 0.16.1",
@@ -4043,7 +4043,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4051,7 +4051,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "git2",
@@ -4066,7 +4066,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-engine"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "serde",
  "sruja-diagnostics",
@@ -4079,7 +4079,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "fastembed",
@@ -4096,7 +4096,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-extract"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "ignore",
  "log",
@@ -4109,7 +4109,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "proptest",
@@ -4126,7 +4126,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-graph-core"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "hashbrown 0.17.1",
  "serde",
@@ -4135,7 +4135,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-intent"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "colored",
@@ -4154,7 +4154,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-language"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "nom 8.0.0",
  "serde",
@@ -4164,7 +4164,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-memory"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "chrono",
  "rusqlite",
@@ -4178,7 +4178,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-scan"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "blake3",
  "ignore",
@@ -4214,7 +4214,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.66.0"
+version = "0.66.1"
 dependencies = [
  "console_error_panic_hook",
  "getrandom 0.4.3",
