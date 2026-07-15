@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
@@ -117,7 +117,7 @@ jobs:
         run: cp scripts/install.sh book/book/install.sh
 
       - name: Upload book site artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.BOOK_ARTIFACT }}
           path: book/book
@@ -133,10 +133,10 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download book site artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.BOOK_ARTIFACT }}
           path: book/book
@@ -154,10 +154,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download book site artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.BOOK_ARTIFACT }}
           path: book/book
