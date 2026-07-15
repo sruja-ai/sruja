@@ -104,7 +104,7 @@ impl Default for LearningConstraints {
 }
 
 /// Blast radius of a change — how many files/lines were affected.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BlastRadius {
     /// Number of files changed.
     #[serde(default)]
@@ -112,12 +112,6 @@ pub struct BlastRadius {
     /// Number of lines changed (added + removed).
     #[serde(default)]
     pub lines: usize,
-}
-
-impl Default for BlastRadius {
-    fn default() -> Self {
-        Self { files: 0, lines: 0 }
-    }
 }
 
 /// Standard signal names extracted from session context.

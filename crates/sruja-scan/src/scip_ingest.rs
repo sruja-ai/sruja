@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn scip_index_multiple_documents() {
-        let docs = vec![
+        let docs = [
             DocumentInfo {
                 relative_path: "file1.rs".to_string(),
                 occurrences: vec![],

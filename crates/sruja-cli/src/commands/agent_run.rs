@@ -565,7 +565,7 @@ fn build_intent_report_json(
     }
 
     let detector = DriftDetector::new();
-    let mut report = detector.detect(&merged_model, &graph, context.schema());
+    let mut report = detector.detect(&merged_model, graph, context.schema());
 
     if strict {
         let graph_json = {
@@ -581,13 +581,13 @@ fn build_intent_report_json(
                 serde_json::from_str(&std::fs::read_to_string(graph_json)?)?;
             let proposals = sruja_diff::Proposal::load_all(repo_path).unwrap_or_default();
             let unproposed =
-                sruja_diff::detect_unproposed_changes(&previous_graph, &graph, &proposals);
+                sruja_diff::detect_unproposed_changes(&previous_graph, graph, &proposals);
             report.drifts.extend(unproposed);
             report.recompute_summary_and_score();
         }
     }
 
-    let policy_drifts = DriftDetector::evaluate_policy_violations(&merged_model, &graph);
+    let policy_drifts = DriftDetector::evaluate_policy_violations(&merged_model, graph);
     if !policy_drifts.is_empty() {
         report.drifts.extend(policy_drifts);
         report.recompute_summary_and_score();
@@ -794,6 +794,7 @@ fn build_agent_history_json(
     Ok(serde_json::to_value(entries).unwrap_or(Value::Null))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_facts_payload(
     options: &AgentRunOptions,
     query: Option<&str>,

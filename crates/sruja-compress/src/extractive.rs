@@ -438,8 +438,10 @@ mod tests {
     #[test]
     fn respects_keep_policy() {
         let content = "Error: something went wrong.\nfile: src/main.rs\nFixme: todo.\nOrdinary line one.\nOrdinary line two.";
-        let mut ctx = CompressContext::default();
-        ctx.keep = crate::KeepPolicy::for_tool_output();
+        let ctx = CompressContext {
+            keep: crate::KeepPolicy::for_tool_output(),
+            ..Default::default()
+        };
         let r = TextCrusher::default().compress(content, &ctx).unwrap();
         assert!(r.text.contains("Error:"));
         assert!(r.text.contains("Fixme:"));

@@ -675,7 +675,7 @@ fn test_category_filter_on_search() {
 
     // Filter to Repair only.
     let repair = mem.search("repair", 10, Some(LearningCategory::Repair));
-    assert!(repair.len() >= 1, "Repair filter should return at least 1 entry");
+    assert!(!repair.is_empty(), "Repair filter should return at least 1 entry");
     assert!(repair.iter().all(|e| e.category == Some(LearningCategory::Repair)));
 
     // Filter to Innovate — none should match.

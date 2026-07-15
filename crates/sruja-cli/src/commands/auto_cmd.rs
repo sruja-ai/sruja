@@ -6,6 +6,7 @@ use sruja_agent::PipelineConfig;
 use crate::commands::{agent_loop, AgentLoopOptions};
 
 /// Run the autonomous execution loop.
+#[allow(clippy::too_many_arguments)]
 pub async fn auto_run(
     repo: &str,
     goal: &str,

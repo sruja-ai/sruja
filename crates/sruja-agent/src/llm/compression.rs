@@ -416,7 +416,7 @@ pub fn extract_ccr_handle(content: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::llm::{Message, Usage};
+    use crate::llm::Message;
     use sruja_compress::InMemoryCcrStore;
 
     // --- Mock LlmClient that captures the last request ---
@@ -637,16 +637,15 @@ mod tests {
 
         client.complete(&req).await.unwrap();
 
-        let captured = inner.last_messages.lock().unwrap();
-        let tool_msg = captured
-            .iter()
-            .find(|m| m.tool_call_id.as_deref() == Some("tc1"))
-            .unwrap();
-
-        assert!(tool_msg.content.starts_with(CCR_PREFIX));
-
-        let handle_str = extract_ccr_handle(&tool_msg.content).unwrap();
-        let handle = CcrHandle(handle_str.to_string());
+        let handle_str = {
+            let captured = inner.last_messages.lock().unwrap();
+            let tool_msg = captured
+                .iter()
+                .find(|m| m.tool_call_id.as_deref() == Some("tc1"))
+                .unwrap();
+            assert!(tool_msg.content.starts_with(CCR_PREFIX));
+            extract_ccr_handle(&tool_msg.content).unwrap().to_string()
+        };
 
         let restore_tool = CompressRestoreTool::new(ccr.clone());
         let restored = restore_tool

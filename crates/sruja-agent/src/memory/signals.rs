@@ -318,9 +318,7 @@ fn regex_lite_match(haystack: &str, _pattern: &str) -> bool {
         .replace("(?i)", "")
         .replace("\\b", "")
         .replace("\\s+", " ")
-        .replace('\\', "")
-        .replace('(', "")
-        .replace(')', "");
+        .replace(['\\', '(', ')'], "");
 
     // Check if all pipe-separated alternatives contain at least one match.
     for alt in p.split('|') {

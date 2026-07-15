@@ -265,223 +265,6 @@ impl TaskInstance {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-    use tempfile::TempDir;
-
-    fn create_test_instance_dir(tmp_dir: &Path) -> PathBuf {
-        let instance_dir = tmp_dir.join("test-task");
-        let snapshots_dir = instance_dir.join("snapshots");
-
-        fs::create_dir_all(&snapshots_dir).unwrap();
-
-        // Initialize git repo in tmp_dir so HEAD commit exists
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(tmp_dir)
-            .output()
-            .expect("git init failed");
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(tmp_dir)
-            .output()
-            .expect("git config failed");
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(tmp_dir)
-            .output()
-            .expect("git config failed");
-        std::process::Command::new("git")
-            .args(["commit", "--allow-empty", "-m", "initial"])
-            .current_dir(tmp_dir)
-            .output()
-            .expect("git commit failed");
-
-        // Get actual commit hash
-        let head_output = std::process::Command::new("git")
-            .args(["rev-parse", "HEAD"])
-            .current_dir(tmp_dir)
-            .output()
-            .expect("git rev-parse failed");
-        let head_hash = String::from_utf8_lossy(&head_output.stdout)
-            .trim()
-            .to_string();
-
-        // Create problem statement
-        fs::write(
-            instance_dir.join("problem_statement.md"),
-            "# Fix the bug\n\nThe function panics on empty input.",
-        )
-        .unwrap();
-
-        // Create patch files
-        fs::write(
-            snapshots_dir.join("gold.diff"),
-            "--- a/file.rs\n+++ b/file.rs\n@@ -1,1 +1,1 @@\n-old\n+new\n",
-        )
-        .unwrap();
-        fs::write(
-            snapshots_dir.join("tests.diff"),
-            "--- a/tests.rs\n+++ b/tests.rs\n@@ -1,1 +1,1 @@\n-old\n+new\n",
-        )
-        .unwrap();
-
-        // Create instance.toml with actual HEAD hash
-        let instance_toml = format!(
-            r#"
-instance_id = "test-001"
-category = "bug_repro_fix"
-difficulty = 2
-profile = "bugfix"
-base_commit = "{}"
-gold_patch = "gold.diff"
-test_patch = "tests.diff"
-fail_to_pass = ["test_fix*"]
-pass_to_pass = ["test_existing*"]
-problem_statement = "problem_statement.md"
-"#,
-            head_hash
-        );
-        fs::write(instance_dir.join("instance.toml"), instance_toml).unwrap();
-
-        instance_dir
-    }
-
-    #[test]
-    fn test_load_well_formed_instance() {
-        let tmp = TempDir::new().unwrap();
-        let instance_dir = create_test_instance_dir(tmp.path());
-
-        let instance = TaskInstance::load(&instance_dir, tmp.path()).unwrap();
-
-        assert_eq!(instance.instance_id, "test-001");
-        assert_eq!(instance.category, TaskCategory::BugReproFix);
-        assert_eq!(instance.difficulty, 2);
-        assert_eq!(instance.profile_name, "bugfix");
-        assert_eq!(instance.fail_to_pass_patterns, vec!["test_fix*"]);
-        assert_eq!(instance.pass_to_pass_patterns, vec!["test_existing*"]);
-    }
-
-    #[test]
-    fn test_load_missing_instance_toml() {
-        let tmp = TempDir::new().unwrap();
-        let instance_dir = tmp.path().join("test-task");
-        fs::create_dir_all(&instance_dir).unwrap();
-
-        let result = TaskInstance::load(&instance_dir, tmp.path());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("instance.toml not found"));
-    }
-
-    #[test]
-    fn test_load_unknown_profile() {
-        let tmp = TempDir::new().unwrap();
-        let instance_dir = create_test_instance_dir(tmp.path());
-
-        let instance_path = instance_dir.join("instance.toml");
-        let mut content = fs::read_to_string(&instance_path).unwrap();
-        content = content.replace("profile = \"bugfix\"", "profile = \"unknown\"");
-        fs::write(&instance_path, content).unwrap();
-
-        let result = TaskInstance::load(&instance_dir, tmp.path());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("unknown verify profile"));
-    }
-
-    #[test]
-    fn test_load_missing_fail_to_pass_for_non_refactor() {
-        let tmp = TempDir::new().unwrap();
-        let instance_dir = create_test_instance_dir(tmp.path());
-
-        let instance_path = instance_dir.join("instance.toml");
-        let mut content = fs::read_to_string(&instance_path).unwrap();
-        content = content.replace("fail_to_pass = [\"test_fix*\"]", "fail_to_pass = []");
-        fs::write(&instance_path, content).unwrap();
-
-        let result = TaskInstance::load(&instance_dir, tmp.path());
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .contains("fail_to_pass must be non-empty"));
-    }
-
-    #[test]
-    fn test_load_refactor_accepts_empty_fail_to_pass() {
-        let tmp = TempDir::new().unwrap();
-        let instance_dir = create_test_instance_dir(tmp.path());
-
-        let instance_path = instance_dir.join("instance.toml");
-        let mut content = fs::read_to_string(&instance_path).unwrap();
-        content = content.replace("category = \"bug_repro_fix\"", "category = \"refactor\"");
-        content = content.replace("fail_to_pass = [\"test_fix*\"]", "fail_to_pass = []");
-        fs::write(&instance_path, content).unwrap();
-
-        let result = TaskInstance::load(&instance_dir, tmp.path());
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().category, TaskCategory::Refactor);
-    }
-
-    #[test]
-    fn test_load_invalid_difficulty() {
-        let tmp = TempDir::new().unwrap();
-        let instance_dir = create_test_instance_dir(tmp.path());
-
-        let instance_path = instance_dir.join("instance.toml");
-        let mut content = fs::read_to_string(&instance_path).unwrap();
-        content = content.replace("difficulty = 2", "difficulty = 10");
-        fs::write(&instance_path, content).unwrap();
-
-        let result = TaskInstance::load(&instance_dir, tmp.path());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("difficulty must be 1-5"));
-    }
-
-    #[test]
-    fn test_read_problem_statement() {
-        let tmp = TempDir::new().unwrap();
-        let instance_dir = create_test_instance_dir(tmp.path());
-
-        let instance = TaskInstance::load(&instance_dir, tmp.path()).unwrap();
-        let problem = instance.read_problem_statement(&instance_dir).unwrap();
-
-        assert!(problem.contains("Fix the bug"));
-        assert!(problem.contains("panics on empty input"));
-    }
-
-    #[test]
-    fn test_verify_profile_parsing() {
-        assert_eq!(
-            VerifyProfile::from_name("coding").unwrap(),
-            VerifyProfile::Coding
-        );
-        assert_eq!(
-            VerifyProfile::from_name("bugfix").unwrap(),
-            VerifyProfile::Bugfix
-        );
-        assert_eq!(
-            VerifyProfile::from_name("review").unwrap(),
-            VerifyProfile::Review
-        );
-        assert_eq!(
-            VerifyProfile::from_name("arch").unwrap(),
-            VerifyProfile::Arch
-        );
-
-        assert!(VerifyProfile::from_name("unknown").is_err());
-        assert!(VerifyProfile::from_name("").is_err());
-    }
-
-    #[test]
-    fn test_verify_profile_as_str() {
-        assert_eq!(VerifyProfile::Coding.as_str(), "coding");
-        assert_eq!(VerifyProfile::Bugfix.as_str(), "bugfix");
-        assert_eq!(VerifyProfile::Review.as_str(), "review");
-        assert_eq!(VerifyProfile::Arch.as_str(), "arch");
-    }
-}
-
 /// Run a single eval task instance against the agent.
 pub async fn run_eval_instance(
     instance_id: &str,
@@ -750,4 +533,221 @@ pub fn list_eval_instances(tasks_dir: &str) -> Result<(), Box<dyn std::error::Er
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn create_test_instance_dir(tmp_dir: &Path) -> PathBuf {
+        let instance_dir = tmp_dir.join("test-task");
+        let snapshots_dir = instance_dir.join("snapshots");
+
+        fs::create_dir_all(&snapshots_dir).unwrap();
+
+        // Initialize git repo in tmp_dir so HEAD commit exists
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp_dir)
+            .output()
+            .expect("git init failed");
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(tmp_dir)
+            .output()
+            .expect("git config failed");
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(tmp_dir)
+            .output()
+            .expect("git config failed");
+        std::process::Command::new("git")
+            .args(["commit", "--allow-empty", "-m", "initial"])
+            .current_dir(tmp_dir)
+            .output()
+            .expect("git commit failed");
+
+        // Get actual commit hash
+        let head_output = std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(tmp_dir)
+            .output()
+            .expect("git rev-parse failed");
+        let head_hash = String::from_utf8_lossy(&head_output.stdout)
+            .trim()
+            .to_string();
+
+        // Create problem statement
+        fs::write(
+            instance_dir.join("problem_statement.md"),
+            "# Fix the bug\n\nThe function panics on empty input.",
+        )
+        .unwrap();
+
+        // Create patch files
+        fs::write(
+            snapshots_dir.join("gold.diff"),
+            "--- a/file.rs\n+++ b/file.rs\n@@ -1,1 +1,1 @@\n-old\n+new\n",
+        )
+        .unwrap();
+        fs::write(
+            snapshots_dir.join("tests.diff"),
+            "--- a/tests.rs\n+++ b/tests.rs\n@@ -1,1 +1,1 @@\n-old\n+new\n",
+        )
+        .unwrap();
+
+        // Create instance.toml with actual HEAD hash
+        let instance_toml = format!(
+            r#"
+instance_id = "test-001"
+category = "bug_repro_fix"
+difficulty = 2
+profile = "bugfix"
+base_commit = "{}"
+gold_patch = "gold.diff"
+test_patch = "tests.diff"
+fail_to_pass = ["test_fix*"]
+pass_to_pass = ["test_existing*"]
+problem_statement = "problem_statement.md"
+"#,
+            head_hash
+        );
+        fs::write(instance_dir.join("instance.toml"), instance_toml).unwrap();
+
+        instance_dir
+    }
+
+    #[test]
+    fn test_load_well_formed_instance() {
+        let tmp = TempDir::new().unwrap();
+        let instance_dir = create_test_instance_dir(tmp.path());
+
+        let instance = TaskInstance::load(&instance_dir, tmp.path()).unwrap();
+
+        assert_eq!(instance.instance_id, "test-001");
+        assert_eq!(instance.category, TaskCategory::BugReproFix);
+        assert_eq!(instance.difficulty, 2);
+        assert_eq!(instance.profile_name, "bugfix");
+        assert_eq!(instance.fail_to_pass_patterns, vec!["test_fix*"]);
+        assert_eq!(instance.pass_to_pass_patterns, vec!["test_existing*"]);
+    }
+
+    #[test]
+    fn test_load_missing_instance_toml() {
+        let tmp = TempDir::new().unwrap();
+        let instance_dir = tmp.path().join("test-task");
+        fs::create_dir_all(&instance_dir).unwrap();
+
+        let result = TaskInstance::load(&instance_dir, tmp.path());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("instance.toml not found"));
+    }
+
+    #[test]
+    fn test_load_unknown_profile() {
+        let tmp = TempDir::new().unwrap();
+        let instance_dir = create_test_instance_dir(tmp.path());
+
+        let instance_path = instance_dir.join("instance.toml");
+        let mut content = fs::read_to_string(&instance_path).unwrap();
+        content = content.replace("profile = \"bugfix\"", "profile = \"unknown\"");
+        fs::write(&instance_path, content).unwrap();
+
+        let result = TaskInstance::load(&instance_dir, tmp.path());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("unknown verify profile"));
+    }
+
+    #[test]
+    fn test_load_missing_fail_to_pass_for_non_refactor() {
+        let tmp = TempDir::new().unwrap();
+        let instance_dir = create_test_instance_dir(tmp.path());
+
+        let instance_path = instance_dir.join("instance.toml");
+        let mut content = fs::read_to_string(&instance_path).unwrap();
+        content = content.replace("fail_to_pass = [\"test_fix*\"]", "fail_to_pass = []");
+        fs::write(&instance_path, content).unwrap();
+
+        let result = TaskInstance::load(&instance_dir, tmp.path());
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .contains("fail_to_pass must be non-empty"));
+    }
+
+    #[test]
+    fn test_load_refactor_accepts_empty_fail_to_pass() {
+        let tmp = TempDir::new().unwrap();
+        let instance_dir = create_test_instance_dir(tmp.path());
+
+        let instance_path = instance_dir.join("instance.toml");
+        let mut content = fs::read_to_string(&instance_path).unwrap();
+        content = content.replace("category = \"bug_repro_fix\"", "category = \"refactor\"");
+        content = content.replace("fail_to_pass = [\"test_fix*\"]", "fail_to_pass = []");
+        fs::write(&instance_path, content).unwrap();
+
+        let result = TaskInstance::load(&instance_dir, tmp.path());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().category, TaskCategory::Refactor);
+    }
+
+    #[test]
+    fn test_load_invalid_difficulty() {
+        let tmp = TempDir::new().unwrap();
+        let instance_dir = create_test_instance_dir(tmp.path());
+
+        let instance_path = instance_dir.join("instance.toml");
+        let mut content = fs::read_to_string(&instance_path).unwrap();
+        content = content.replace("difficulty = 2", "difficulty = 10");
+        fs::write(&instance_path, content).unwrap();
+
+        let result = TaskInstance::load(&instance_dir, tmp.path());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("difficulty must be 1-5"));
+    }
+
+    #[test]
+    fn test_read_problem_statement() {
+        let tmp = TempDir::new().unwrap();
+        let instance_dir = create_test_instance_dir(tmp.path());
+
+        let instance = TaskInstance::load(&instance_dir, tmp.path()).unwrap();
+        let problem = instance.read_problem_statement(&instance_dir).unwrap();
+
+        assert!(problem.contains("Fix the bug"));
+        assert!(problem.contains("panics on empty input"));
+    }
+
+    #[test]
+    fn test_verify_profile_parsing() {
+        assert_eq!(
+            VerifyProfile::from_name("coding").unwrap(),
+            VerifyProfile::Coding
+        );
+        assert_eq!(
+            VerifyProfile::from_name("bugfix").unwrap(),
+            VerifyProfile::Bugfix
+        );
+        assert_eq!(
+            VerifyProfile::from_name("review").unwrap(),
+            VerifyProfile::Review
+        );
+        assert_eq!(
+            VerifyProfile::from_name("arch").unwrap(),
+            VerifyProfile::Arch
+        );
+
+        assert!(VerifyProfile::from_name("unknown").is_err());
+        assert!(VerifyProfile::from_name("").is_err());
+    }
+
+    #[test]
+    fn test_verify_profile_as_str() {
+        assert_eq!(VerifyProfile::Coding.as_str(), "coding");
+        assert_eq!(VerifyProfile::Bugfix.as_str(), "bugfix");
+        assert_eq!(VerifyProfile::Review.as_str(), "review");
+        assert_eq!(VerifyProfile::Arch.as_str(), "arch");
+    }
 }

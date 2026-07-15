@@ -250,15 +250,13 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
     // ── Pre-flight: check for LLM config ─────────────────────────────────
     let config_path = repo_path.join(".sruja/config.toml");
     if !config_path.exists() {
-        return Err(CliError::validation(format!(
-            "No LLM provider configured.\n\
+        return Err(CliError::validation("No LLM provider configured.\n\
              \n\
              The agent needs an LLM to work. Run the setup wizard once:\n\
                sruja agent setup\n\
              \n\
              This creates .sruja/config.toml with your provider settings.\n\
-             API keys are stored in environment variables, not the config file."
-        )));
+             API keys are stored in environment variables, not the config file.".to_string()));
     }
 
     // ── Resolve multi-provider configuration ──────────────────────────────
@@ -1207,7 +1205,7 @@ fn print_loop_result_human(result: &sruja_agent::LoopResult, verbose: bool) {
     // ── Artifact paths (only when verbose) ─────────────────────────────
     if verbose {
         let run_dir = std::path::Path::new(".sruja").join("runs")
-            .join(&format!("run_{}", result.goal.chars().take(30).collect::<String>().replace(' ', "_")));
+            .join(format!("run_{}", result.goal.chars().take(30).collect::<String>().replace(' ', "_")));
         println!(
             "{}",
             colors::detail_line(&format!("Run data: {}", run_dir.display()))

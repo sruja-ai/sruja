@@ -7,7 +7,6 @@ use std::sync::Mutex;
 // --- Ensemble critic tests (U1) ---
 /// Helper for scripted ensemble tests: a mock that returns different
 /// responses based on which persona's system prompt substring it matches.
-
 struct DropGuard(Arc<AtomicUsize>);
 impl Drop for DropGuard {
     fn drop(&mut self) {
@@ -1046,10 +1045,11 @@ async fn ensemble_one_persona_blocks_union_issues_and_min_score() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1068,7 +1068,7 @@ async fn ensemble_one_persona_blocks_union_issues_and_min_score() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1121,7 +1121,7 @@ fn ensemble_empty_personas_fallback_to_single_critic() {
                     schema_version: String::new(),
                     complexity: TaskComplexity::default(),
                 },
-                &vec![],
+                &[],
             )
             .await
             .expect("critique runs");
@@ -1170,9 +1170,11 @@ async fn ensemble_union_dedup_issues() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1191,7 +1193,7 @@ async fn ensemble_union_dedup_issues() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1241,9 +1243,11 @@ async fn ensemble_parallel_dispatch_is_concurrent() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm.clone())
         .tools(ToolRegistry::new())
@@ -1262,7 +1266,7 @@ async fn ensemble_parallel_dispatch_is_concurrent() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1308,9 +1312,11 @@ async fn ensemble_all_personas_approve() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1329,7 +1335,7 @@ async fn ensemble_all_personas_approve() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1377,9 +1383,11 @@ async fn ensemble_score_is_min_not_mean() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1398,7 +1406,7 @@ async fn ensemble_score_is_min_not_mean() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1425,9 +1433,11 @@ async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
         "Pattern extraction approach is validated.",
     );
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![]);
@@ -1459,7 +1469,7 @@ async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1479,9 +1489,11 @@ async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
 #[tokio::test]
 async fn critique_no_memory_shows_no_blind_spots_section() {
     // No memory → no blind-spots section in the prompt.
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
 
     let llm = PersonaScriptedLlm::new(vec![
         PersonaResponse {
@@ -1534,7 +1546,7 @@ async fn critique_no_memory_shows_no_blind_spots_section() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1565,9 +1577,11 @@ async fn critique_playbooks_excluded_from_blind_spots() {
         "Use Redis for caching.",
     );
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![PersonaResponse {
@@ -1609,7 +1623,7 @@ async fn critique_playbooks_excluded_from_blind_spots() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1636,9 +1650,11 @@ async fn critique_roundtrips_with_ensemble() {
         "Always handle Result types properly.",
     );
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![
@@ -1703,7 +1719,7 @@ async fn critique_roundtrips_with_ensemble() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");

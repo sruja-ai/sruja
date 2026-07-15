@@ -305,7 +305,7 @@ pub fn extract_file_references(issues: &[String]) -> Vec<(String, Vec<usize>)> {
                             // Walk backward from extension to find path start
                             let path_start = abs_pos.saturating_sub(1);
                             let file_start = issue[..=path_start]
-                                .rfind(|c: char| c == ' ' || c == '\t' || c == '`' || c == '–' || c == '-')
+                                .rfind([' ', '\t', '`', '–', '-'])
                                 .map(|p| p + 1)
                                 .unwrap_or(0);
                             let file = &issue[file_start..after_ext];
@@ -322,7 +322,7 @@ pub fn extract_file_references(issues: &[String]) -> Vec<(String, Vec<usize>)> {
                     // No :digits — just a file reference (file-level)
                     let path_start = abs_pos.saturating_sub(1);
                     let file_start = issue[..=path_start]
-                        .rfind(|c: char| c == ' ' || c == '\t' || c == '`' || c == '–' || c == '-')
+                        .rfind([' ', '\t', '`', '–', '-'])
                         .map(|p| p + 1)
                         .unwrap_or(0);
                     let file = &issue[file_start..after_ext];

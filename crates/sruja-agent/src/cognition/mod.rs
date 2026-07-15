@@ -59,21 +59,18 @@ pub use tool_tracing::ToolCallTracer;
 /// personas, or run a single quick check first and skip the ensemble when
 /// the quick check is confident.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum CritiqueMode {
     /// Always run the full persona ensemble (current behavior).
     Full,
     /// Run a single quick-check call first. If its score >= threshold and
     /// it approves, skip the full ensemble. Otherwise, fall through.
+    #[default]
     QuickThenFull,
     /// Always run just the quick check (cheapest, least thorough).
     QuickOnly,
 }
 
-impl Default for CritiqueMode {
-    fn default() -> Self {
-        Self::QuickThenFull
-    }
-}
 
 /// User-configured model names per complexity tier.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -1147,7 +1144,7 @@ impl LoopResult {
 // Errors
 // ---------------------------------------------------------------------------
 
-/// Errors from parsing a [`Plan`] from the LLM response.
+// Errors from parsing a [`Plan`] from the LLM response.
 // ---------------------------------------------------------------------------
 // Agent
 // ---------------------------------------------------------------------------

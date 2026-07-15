@@ -146,7 +146,7 @@ impl LlmClient for CircuitBreakerClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::llm::{CompletionResponse, FinishReason, Usage};
+    use crate::llm::CompletionResponse;
     use async_trait::async_trait;
     use std::sync::atomic::{AtomicU32, Ordering};
 
