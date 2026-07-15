@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use std::sync::Arc;
 
+use super::stream::Stream;
 use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError};
 
 /// Configuration for the circuit breaker.
@@ -138,6 +139,74 @@ impl LlmClient for CircuitBreakerClient {
         result
     }
 
+    fn complete_stream<'a>(&'a self, req: &'a CompletionRequest) -> Stream<'a> {
+        let model = req.model.as_deref().unwrap_or_default().to_string();
+
+        // Check circuit state before dispatching (mirrors `complete`).
+        {
+            let mut states = self.states.lock().unwrap();
+            match states.get(&model) {
+                Some(CircuitState::Open { since }) => {
+                    if since.elapsed() < self.config.half_open_timeout {
+                        let msg = format!(
+                            "circuit breaker open for model `{model}` (retry after {}s)",
+                            self.config
+                                .half_open_timeout
+                                .as_secs()
+                                .saturating_sub(since.elapsed().as_secs())
+                        );
+                        return Box::pin(async_stream::stream! { yield Err(LlmError::Other(msg)); });
+                    }
+                    states.insert(model.clone(), CircuitState::HalfOpen);
+                }
+                Some(CircuitState::HalfOpen) => {
+                    let msg = format!("circuit breaker probe pending for model `{model}`");
+                    return Box::pin(async_stream::stream! { yield Err(LlmError::Other(msg)); });
+                }
+                _ => {}
+            }
+        }
+
+        // Delegate to the inner stream, then reconcile circuit state from the
+        // stream's outcome. A single error anywhere in the stream trips the
+        // breaker; a fully successful stream closes it.
+        let mut inner_stream = self.inner.complete_stream(req);
+        Box::pin(async_stream::stream! {
+            use futures::StreamExt;
+            let mut failed = false;
+            while let Some(item) = inner_stream.next().await {
+                if item.is_err() {
+                    failed = true;
+                }
+                yield item;
+            }
+
+            let mut states = self.states.lock().unwrap();
+            if failed {
+                match states.get(&model) {
+                    Some(CircuitState::HalfOpen) => {
+                        states.insert(model, CircuitState::Open { since: Instant::now() });
+                    }
+                    _ => {
+                        let entry = states
+                            .entry(model.clone())
+                            .or_insert(CircuitState::Closed { failures: 0 });
+                        if let CircuitState::Closed { ref mut failures } = entry {
+                            *failures += 1;
+                            if *failures >= self.config.threshold {
+                                *entry = CircuitState::Open {
+                                    since: Instant::now(),
+                                };
+                            }
+                        }
+                    }
+                }
+            } else {
+                states.remove(&model);
+            }
+        })
+    }
+
     fn default_model(&self) -> &str {
         self.inner.default_model()
     }
@@ -146,6 +215,7 @@ impl LlmClient for CircuitBreakerClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::llm::stream::{Stream, StreamEvent};
     use crate::llm::{CompletionResponse, FinishReason, Usage};
     use async_trait::async_trait;
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -251,6 +321,88 @@ mod tests {
         assert!(matches!(err, LlmError::Network(_)));
 
         // After probe fails, circuit re-opens
+        let err = cb.complete(&req).await.unwrap_err();
+        assert!(err.to_string().contains("circuit breaker open"));
+    }
+
+    /// A client whose streaming path can be made to fail.
+    struct StreamingClient {
+        fail: bool,
+    }
+
+    #[async_trait]
+    impl LlmClient for StreamingClient {
+        async fn complete(
+            &self,
+            _req: &CompletionRequest,
+        ) -> Result<CompletionResponse, LlmError> {
+            if self.fail {
+                Err(LlmError::Network("non-streaming fail".into()))
+            } else {
+                Ok(CompletionResponse::text("ok"))
+            }
+        }
+
+        fn complete_stream<'a>(&'a self, _req: &'a CompletionRequest) -> Stream<'a> {
+            let fail = self.fail;
+            Box::pin(async_stream::stream! {
+                if fail {
+                    yield Err(LlmError::Network("stream fail".into()));
+                } else {
+                    yield Ok(StreamEvent::ContentDelta("hello".into()));
+                    yield Ok(StreamEvent::Finish {
+                        finish_reason: FinishReason::Stop,
+                    });
+                }
+            })
+        }
+
+        fn default_model(&self) -> &str {
+            "test-model"
+        }
+    }
+
+    #[tokio::test]
+    async fn complete_stream_delegates_to_inner() {
+        let inner = Arc::new(StreamingClient { fail: false }) as Arc<dyn LlmClient>;
+        let cb = CircuitBreakerClient::new(inner);
+        let req = CompletionRequest::new(vec![]).with_model("test-model");
+
+        let mut events: Vec<StreamEvent> = Vec::new();
+        let mut stream = cb.complete_stream(&req);
+        use futures::StreamExt;
+        while let Some(item) = stream.next().await {
+            events.push(item.unwrap());
+        }
+        let content: String = events
+            .into_iter()
+            .filter_map(|e| match e {
+                StreamEvent::ContentDelta(d) => Some(d),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(content, "hello");
+    }
+
+    #[tokio::test]
+    async fn complete_stream_trips_circuit_on_failure() {
+        let inner = Arc::new(StreamingClient { fail: true }) as Arc<dyn LlmClient>;
+        let cb = CircuitBreakerClient::new(inner);
+        let req = CompletionRequest::new(vec![]).with_model("test-model");
+
+        let mut had_error = false;
+        for _ in 0..3 {
+            let mut stream = cb.complete_stream(&req);
+            use futures::StreamExt;
+            while let Some(item) = stream.next().await {
+                if item.is_err() {
+                    had_error = true;
+                }
+            }
+        }
+        assert!(had_error);
+
+        // After threshold, the circuit breaker should reject without reaching inner.
         let err = cb.complete(&req).await.unwrap_err();
         assert!(err.to_string().contains("circuit breaker open"));
     }
