@@ -165,10 +165,11 @@ async fn read_only_tools_execute_concurrently() {
     }
 
     let start = Instant::now();
+    let reg = Arc::new(reg);
     let mut handles = Vec::new();
     for i in 0..count {
         let name = format!("read_{i}");
-        let reg_ref = &reg;
+        let reg_ref = Arc::clone(&reg);
         handles.push(tokio::spawn(async move {
             reg_ref.dispatch(&name, serde_json::json!({})).await
         }));

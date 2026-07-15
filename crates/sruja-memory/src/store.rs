@@ -835,6 +835,11 @@ mod tests {
             retrieval_count: 0,
             task_success_after: 0,
             task_total_after: 0,
+            category: None,
+            signals_match: vec![],
+            constraints: None,
+            validation: vec![],
+            blast_radius: None,
         });
         memory.save(dir).unwrap();
         std::fs::write(

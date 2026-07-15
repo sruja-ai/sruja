@@ -139,6 +139,17 @@ pub trait Tool: Send + Sync {
         false
     }
 
+    /// Whether this tool is read-only (does not mutate state) and may run
+    /// concurrently with other read-only tools.
+    ///
+    /// When dispatched through [`ToolRegistry::dispatch_batch`], read-only
+    /// tools execute in parallel while mutating tools run sequentially in
+    /// order. Defaults to `false`; tools that are purely read-only should
+    /// override this to return `true`.
+    fn is_read_only(&self) -> bool {
+        false
+    }
+
     /// Paths this invocation will modify (for phase-based guard checking).
     ///
     /// File-mutating tools override this to return the target path(s).
@@ -324,6 +335,48 @@ impl ToolRegistry {
             Some(tool) if tool.is_mutating() => tool.affected_paths(params),
             _ => Vec::new(),
         }
+    }
+
+    /// Dispatch a batch of tool calls, partitioning by mutability.
+    ///
+    /// Read-only tools (those whose [`Tool::is_read_only`] returns `true`) run
+    /// concurrently; mutating tools run sequentially in batch order. The
+    /// returned results are in the same order as `batch`.
+    pub async fn dispatch_batch(
+        &self,
+        batch: &[(&str, serde_json::Value)],
+    ) -> Vec<Result<String, ToolError>> {
+        use futures::future::join_all;
+
+        let mut read_only: Vec<usize> = Vec::new();
+        let mut mutating: Vec<usize> = Vec::new();
+        for (i, (name, _)) in batch.iter().enumerate() {
+            match self.tools.get(*name) {
+                Some(tool) if tool.is_read_only() => read_only.push(i),
+                _ => mutating.push(i),
+            }
+        }
+
+        let mut results: Vec<Option<Result<String, ToolError>>> =
+            std::iter::repeat_with(|| None).take(batch.len()).collect();
+
+        // Phase 1: read-only tools run concurrently.
+        let futures = read_only.iter().map(|&i| {
+            let (name, params) = &batch[i];
+            self.dispatch(name, params.clone())
+        });
+        let read_only_results = join_all(futures).await;
+        for (slot, result) in read_only.iter().zip(read_only_results) {
+            results[*slot] = Some(result);
+        }
+
+        // Phase 2: mutating tools run sequentially in batch order.
+        for &i in &mutating {
+            let (name, params) = &batch[i];
+            results[i] = Some(self.dispatch(name, params.clone()).await);
+        }
+
+        results.into_iter().map(|r| r.unwrap()).collect()
     }
 
     /// Dispatch a tool call and wrap the outcome in a [`ToolCallRecord`].
