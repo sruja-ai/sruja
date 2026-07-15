@@ -356,6 +356,65 @@ impl Tool for SrujaQueryTool {
     }
 }
 // ---------------------------------------------------------------------------
+// Lookup — compact concept card for a single architecture element
+// ---------------------------------------------------------------------------
+
+/// Fetch a compact concept card for one architecture element — the cheap,
+/// single-element alternative to `sruja_focus`. Use when you need just one
+/// element's shape (kind, purpose, tech, edges) instead of a full briefing.
+pub struct SrujaLookupTool {
+    pub sruja_path: PathBuf,
+    pub repo_root: PathBuf,
+}
+
+impl SrujaLookupTool {
+    pub fn new(repo_root: impl Into<PathBuf>) -> Self {
+        let root = repo_root.into();
+        Self {
+            sruja_path: find_sruja(&root),
+            repo_root: root,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for SrujaLookupTool {
+    fn name(&self) -> &str {
+        "sruja_lookup"
+    }
+
+    fn description(&self) -> &str {
+        "Fetch a compact concept card for one architecture element. Returns kind, purpose, \
+         technology, path, and incoming/outgoing edges as a small JSON record. Use INSTEAD of \
+         sruja_focus when you need only one element's shape — far fewer tokens."
+    }
+
+    fn parameters(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Element name or ID (e.g. 'Sruja.CLI' or 'Auth.Handler'); exact match, then best-effort suffix match"
+                }
+            },
+            "required": ["name"]
+        })
+    }
+
+    async fn call(&self, params: Value) -> Result<String, ToolError> {
+        let name = super::builtin::str_param(&params, "name")?;
+        let output = run_sruja(
+            &self.sruja_path,
+            &self.repo_root,
+            &["lookup", &name, "-r", ".", "--format", "json"],
+        )
+        .await?;
+        Ok(truncate_json(&output, 4_000))
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -374,6 +433,7 @@ fn truncate_json(s: &str, max_chars: usize) -> String {
 /// Re-exports for ergonomic registration.
 pub mod tools {
     pub use super::{
-        SrujaComplianceTool, SrujaDriftTool, SrujaExplainTool, SrujaFocusTool, SrujaQueryTool,
+        SrujaComplianceTool, SrujaDriftTool, SrujaExplainTool, SrujaFocusTool, SrujaLookupTool,
+        SrujaQueryTool,
     };
 }

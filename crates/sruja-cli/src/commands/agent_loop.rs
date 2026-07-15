@@ -382,6 +382,9 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
         .with(Box::new(sruja_agent::tool::sruja::SrujaQueryTool::new(
             repo_path.to_path_buf(),
         )))
+        .with(Box::new(sruja_agent::tool::sruja::SrujaLookupTool::new(
+            repo_path.to_path_buf(),
+        )))
         .with(Box::new(sruja_agent::tool::CompressRestoreTool::new(
             ccr_store,
         )));

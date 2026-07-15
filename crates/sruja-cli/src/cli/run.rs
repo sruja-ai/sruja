@@ -664,6 +664,9 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await
             }
         }
+        Commands::Lookup { name, repo, format } => {
+            commands::lookup(&name, &repo, &format).await
+        }
         Commands::Ai {
             repo,
             task,

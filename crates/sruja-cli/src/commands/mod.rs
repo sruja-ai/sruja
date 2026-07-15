@@ -135,6 +135,7 @@ pub mod learn;
 pub mod plan_cmd;
 pub mod verify_cmd;
 pub use learn::learn;
+pub use lookup::lookup;
 
 pub(crate) mod loop_checkpoint;
 pub(crate) mod loop_events;
@@ -144,6 +145,7 @@ pub mod cognitive_debt;
 pub mod confidence;
 pub mod drift_velocity;
 pub mod explain_cmd;
+pub mod lookup;
 pub mod map_cmd;
 pub mod trace_cmd;
 pub mod what_if;
