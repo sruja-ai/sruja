@@ -509,6 +509,58 @@ MySystem = system "My System" {
 }
 
 #[tokio::test]
+async fn mcp_tool_call_lookup_symbol_returns_compact_card() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    fs::write(
+        dir.path().join("repo.sruja"),
+        r#"
+MySystem = system "My System" {
+  description "Test system"
+
+  Api = container "API" {
+    technology "Rust"
+    description "HTTP API"
+  }
+
+  Api -> Db "depends_on"
+
+  Db = database "DB" {
+    technology "PostgreSQL"
+    description "Data store"
+  }
+}
+"#,
+    )
+    .expect("repo.sruja");
+
+    let cache = Arc::new(Mutex::new(HashMap::new()));
+    let out = run_tool(
+        "sruja_lookup_symbol",
+        &json!({ "path": dir.path().to_string_lossy(), "name": "MySystem.Api" }),
+        ".",
+        &cache,
+    )
+    .await
+    .expect("lookup");
+
+    let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+    assert_eq!(
+        parsed.get("schema_version").and_then(|v| v.as_str()),
+        Some("concept_card/v1")
+    );
+    assert_eq!(parsed.get("missing").and_then(|v| v.as_bool()), Some(false));
+    let card = parsed.get("card").expect("card present");
+    assert_eq!(card.get("id").and_then(|v| v.as_str()), Some("MySystem.Api"));
+    assert_eq!(card.get("kind").and_then(|v| v.as_str()), Some("container"));
+    let outgoing = card.get("outgoing").and_then(|v| v.as_array()).expect("outgoing");
+    assert!(outgoing
+        .iter()
+        .any(|e| e.as_str() == Some("depends_on:MySystem.Db")));
+    // Compactness: a single card should stay well under a typical token budget.
+    assert!(out.len() < 1_500, "card response too large: {} bytes", out.len());
+}
+
+#[tokio::test]
 async fn mcp_tool_call_topology_element_ids_include_neighbors() {
     let dir = tempfile::tempdir().expect("tempdir");
     fs::write(

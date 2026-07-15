@@ -46,8 +46,8 @@ use thiserror::Error;
 
 pub use graph::{
     detect_communities, summarize_communities, AutoContext, BlastRadiusDirection, BlastRadiusNode,
-    BlastRadiusResult, CommunityInfo, Criticality, Edge, EdgeEvidence, EdgeKind, Graph, Incident,
-    Node, NodeKind, ResolvedContract, ResolvedError, ResolvedField, ResolvedStateMachine,
+    BlastRadiusResult, CommunityInfo, ConceptCard, Criticality, Edge, EdgeEvidence, EdgeKind, Graph,
+    Incident, Node, NodeKind, ResolvedContract, ResolvedError, ResolvedField, ResolvedStateMachine,
     ResolvedTransition,
 };
 pub use repomap::{generate_repomap, generate_repomap_from_graph, RepoMapOptions};

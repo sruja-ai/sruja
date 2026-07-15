@@ -248,6 +248,22 @@ pub(crate) async fn try_run(
             finish(Ok(out))
         }
 
+        "sruja_lookup_symbol" => {
+            let name = arguments
+                .get("name")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| CliError::validation("Missing name"))?;
+            let repo_path = Path::new(&repo);
+            let (arch, warning) = load_architecture_program_best_effort(repo_path);
+            let out = if let Some((source_file, program)) = arch {
+                build_concept_card_from_program(&source_file, &program, name, warning.as_deref())?
+            } else {
+                let graph = get_or_scan_graph(graph_cache, repo).await?;
+                build_concept_card_from_scan(&graph, name, warning.as_deref())?
+            };
+            finish(Ok(out))
+        }
+
         "sruja_get_elements" => {
             let ids = arguments
                 .get("ids")
