@@ -26,7 +26,7 @@ jobs:
 
       - name: PR-scoped drift check (new violations only)
         run: |
-          sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
+          sruja guard drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
 
       - name: Lint architecture blueprints (if present)
         run: |
