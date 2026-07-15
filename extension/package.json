@@ -464,7 +464,7 @@
     "@types/glob": "^9.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.8.0",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.125.0",
     "@vscode/test-electron": "^3.0.0",
     "@vscode/vsce": "^3.3.2",
     "glob": "^13.0.6",
