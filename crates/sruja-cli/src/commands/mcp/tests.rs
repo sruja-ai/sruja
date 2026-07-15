@@ -561,6 +561,36 @@ MySystem = system "My System" {
 }
 
 #[tokio::test]
+async fn mcp_tool_call_lookup_symbol_scan_path_missing_returns_null_card() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let src = dir.path().join("src");
+    fs::create_dir_all(&src).expect("src");
+    fs::write(src.join("lib.rs"), "pub fn hello() {}\n").expect("write");
+
+    let cache = Arc::new(Mutex::new(HashMap::new()));
+    let out = run_tool(
+        "sruja_lookup_symbol",
+        &json!({ "path": dir.path().to_string_lossy(), "name": "DefinitelyNotHere" }),
+        ".",
+        &cache,
+    )
+    .await
+    .expect("lookup");
+
+    let parsed: Value = serde_json::from_str(&out).expect("valid JSON");
+    assert_eq!(
+        parsed.pointer("/source/kind").and_then(|v| v.as_str()),
+        Some("scan")
+    );
+    assert_eq!(
+        parsed.get("schema_version").and_then(|v| v.as_str()),
+        Some("concept_card/v1")
+    );
+    assert_eq!(parsed.get("missing").and_then(|v| v.as_bool()), Some(true));
+    assert_eq!(parsed.get("card"), Some(&Value::Null), "missing card must be null");
+}
+
+#[tokio::test]
 async fn mcp_tool_call_topology_element_ids_include_neighbors() {
     let dir = tempfile::tempdir().expect("tempdir");
     fs::write(
