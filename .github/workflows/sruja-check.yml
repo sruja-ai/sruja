@@ -23,7 +23,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           git fetch origin ${{ github.base_ref }}
-          sruja drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
+          sruja guard drift-pr -r . --base origin/${{ github.base_ref }} --head HEAD -f github-actions
       - name: Drift check (declared vs actual)
         if: github.event_name != 'pull_request'
         run: sruja drift -r . --violations-only

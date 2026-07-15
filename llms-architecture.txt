@@ -2,7 +2,7 @@
 
 From `sruja sync-ide-rules`. Use MCP for detail; do not paste full `repo.sruja`.
 
-Counts: crates 14, databases 1.
+Counts: crates 15, databases 1.
 
 MCP: `sruja_list_architecture_index` → `sruja_get_topology` → `sruja_get_elements` → `sruja_get_task_context` (`cache_friendly` optional).
 Resources: `sruja://context/invariant.md`, `sruja://architecture/main`.
