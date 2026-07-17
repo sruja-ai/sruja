@@ -2254,6 +2254,8 @@ async fn delegate_reader_returns_compressed_report_with_citations() {
         goal: crate::goal::GoalSpec::new("Review MySystem.ApiContainer for unused imports"),
         inject: vec!["Focus on src/api.rs".to_string()],
         budget: SubAgentBudget::default(),
+        system_prompt: None,
+        user_prompt: None,
     };
     let report = agent.delegate(spec).await.expect("delegate succeeds");
     assert!(report.converged, "single-shot LLM should converge");

@@ -69,6 +69,16 @@ pub struct SubAgentSpec {
     /// dumps from other scopes must never be placed here.
     pub inject: Vec<String>,
     pub budget: SubAgentBudget,
+    /// Override the default role-based system prompt. When `None`, the
+    /// sub-agent uses the built-in prompt for its role. Set this when the
+    /// parent needs to pass a custom system prompt (e.g., the full
+    /// comprehension prompt with memory context and error history).
+    pub system_prompt: Option<String>,
+    /// Override the default user prompt. When `None`, the sub-agent uses
+    /// the built-in format ("## Goal\n{goal}{inject}"). Set this when the
+    /// parent needs to pass a custom user prompt (e.g., the full
+    /// comprehension prompt with preloaded files and architecture context).
+    pub user_prompt: Option<String>,
 }
 
 /// The only thing that escapes a sub-agent's isolated context window.
@@ -161,6 +171,8 @@ impl Agent {
     ///         max_iterations: Some(8),
     ///         max_summary_chars: 2000,
     ///     },
+    ///     system_prompt: None,
+    ///     user_prompt: None,
     /// }).await?;
     ///
     /// // Only the summary and cited element IDs are visible here.
@@ -188,27 +200,32 @@ impl Agent {
             )
         };
 
-        let system = match spec.role {
+        let system = spec.system_prompt.unwrap_or_else(|| match spec.role {
             Role::Reader => {
                 "You are a read-only Principal Engineer. Explore using tools, cite architecture \
                  element IDs, and return a concise grounded summary. Do NOT attempt to write files."
+                    .to_string()
             }
             Role::Checker => {
                 "You are a deterministic verification agent. Run the provided sruja verification \
                  tools and return a clear pass/fail verdict with the specific violations found."
+                    .to_string()
             }
             Role::Writer => {
                 "You are an implementation agent. Apply the edits described in the goal using the \
                  provided file tools. Do not explore — act only on the curated inputs given."
+                    .to_string()
             }
-        };
+        });
 
-        let user = format!(
-            "## Goal\n{goal_str}{injected}\n\n\
-             Produce your final answer as a concise summary of what you did and found."
-        );
+        let user = spec.user_prompt.unwrap_or_else(|| {
+            format!(
+                "## Goal\n{goal_str}{injected}\n\n\
+                 Produce your final answer as a concise summary of what you did and found."
+            )
+        });
 
-        let req = CompletionRequest::prompt(system, user)
+        let req = CompletionRequest::prompt(&system, user)
             .with_tools(scoped.tools.schemas())
             .with_model(self.config.models.mid.clone());
 

@@ -1422,47 +1422,32 @@ impl Agent {
              Produce a concise, grounded understanding.{preloaded_section}{arch_context_section}"
         );
 
-        let mut req = CompletionRequest::prompt(&system, user).with_tools(self.tools.schemas());
-        req.model = Some(self.config.models.mid.clone());
+        // Delegate exploration to an isolated Reader sub-agent.
+        // The Reader gets a fresh context window with only read-only tools,
+        // preventing exploration noise from poisoning later phases.
+        tracing::info!("comprehend: delegating exploration to Reader sub-agent");
+        let report = self
+            .delegate(crate::cognition::subagent::SubAgentSpec {
+                role: crate::cognition::subagent::Role::Reader,
+                goal: goal.clone(),
+                inject: Vec::new(),
+                budget: crate::cognition::subagent::SubAgentBudget {
+                    max_iterations: Some(self.config.max_tool_iterations),
+                    max_summary_chars: 8000,
+                },
+                system_prompt: Some(system),
+                user_prompt: Some(user),
+            })
+            .await?;
 
-        let (response, usage, _signals) = self.run_tool_loop(req).await?;
-
-        let cited_elements = extract_element_ids(&response.content);
+        let cited_elements = extract_element_ids(&report.summary);
 
         let complexity =
             classify_task_complexity(goal_str, &goal.target_files, &goal.target_elements);
         tracing::info!(?complexity, "comprehend: classified task complexity");
 
-        // If the tool loop produced no text summary (LLM called tools but
-        // didn't write a final answer), re-prompt once without tools to get
-        // a plain-text summary of what was learned.
-        let (summary, final_usage) = if response.content.trim().is_empty() {
-            tracing::warn!(
-                "comprehend: tool loop returned empty summary — re-prompting for text-only answer"
-            );
-            let retry_system = "You are a Principal Engineer. Summarize your analysis concisely. \
-                Do NOT call any tools — just write your findings as plain text.";
-            let retry_user = format!(
-                "Goal: {goal_str}\n\n\
-                 You explored the codebase using tools but did not produce a written summary. \
-                 Based on what you found, write a concise analysis now. \
-                 Include: what you found, key risks, and recommended next steps."
-            );
-            let retry_req = CompletionRequest::prompt(retry_system, retry_user);
-            match self.llm.complete(&retry_req).await {
-                Ok(retry_response) => {
-                    let mut total = usage.clone();
-                    total.accumulate(&retry_response.usage);
-                    (retry_response.content, total)
-                }
-                Err(e) => {
-                    tracing::warn!("comprehend: retry prompt failed: {e}");
-                    (response.content, usage)
-                }
-            }
-        } else {
-            (response.content, usage)
-        };
+        let summary = report.summary;
+        let final_usage = crate::llm::Usage::default();
 
         Ok(Comprehension {
             goal: goal.to_string(),
