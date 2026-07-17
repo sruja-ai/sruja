@@ -85,6 +85,13 @@ pub struct SubAgentReport {
     pub role: Role,
 }
 
+impl SubAgentReport {
+    /// Returns `true` when the sub-agent reported success.
+    pub fn is_ok(&self) -> bool {
+        self.ok
+    }
+}
+
 impl Agent {
     /// Delegate work to an isolated sub-agent and receive a compressed report.
     ///
@@ -314,7 +321,7 @@ fn bound_summary(text: String, max_chars: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::bound_summary;
+    use super::{bound_summary, Role, SubAgentReport};
 
     #[test]
     fn bound_summary_short_text_unchanged() {
@@ -348,5 +355,29 @@ mod tests {
             result.chars().count() < 200,
             "result must be shorter than the original"
         );
+    }
+
+    #[test]
+    fn is_ok_returns_true_when_ok_is_true() {
+        let report = SubAgentReport {
+            summary: "all good".into(),
+            citations: vec![],
+            converged: true,
+            ok: true,
+            role: Role::Reader,
+        };
+        assert!(report.is_ok(), "is_ok must return true when ok is true");
+    }
+
+    #[test]
+    fn is_ok_returns_false_when_ok_is_false() {
+        let report = SubAgentReport {
+            summary: "something failed".into(),
+            citations: vec!["E1".into()],
+            converged: false,
+            ok: false,
+            role: Role::Checker,
+        };
+        assert!(!report.is_ok(), "is_ok must return false when ok is false");
     }
 }
