@@ -238,3 +238,42 @@ fn bound_summary(text: String, max_chars: usize) -> String {
     let truncated: String = text.chars().take(max_chars.saturating_sub(20)).collect();
     format!("{truncated}\n…[truncated to {max_chars} chars]")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::bound_summary;
+
+    #[test]
+    fn bound_summary_short_text_unchanged() {
+        let text = "hello world".to_string();
+        let result = bound_summary(text.clone(), 100);
+        assert_eq!(result, text, "text shorter than max must be returned as-is");
+    }
+
+    #[test]
+    fn bound_summary_exact_max_unchanged() {
+        let text = "a".repeat(50);
+        let result = bound_summary(text.clone(), 50);
+        assert_eq!(result, text, "text exactly at max must be returned as-is");
+    }
+
+    #[test]
+    fn bound_summary_long_text_truncated() {
+        let text = "x".repeat(200);
+        let result = bound_summary(text, 100);
+
+        // Must contain the truncation marker.
+        assert!(
+            result.contains("[truncated to 100 chars]"),
+            "truncated summary must contain the marker"
+        );
+        // The head of the original text must be preserved.
+        let head: String = result.chars().take(80).collect();
+        assert_eq!(head, "x".repeat(80), "head of original text must be preserved");
+        // The result must be shorter than the original.
+        assert!(
+            result.chars().count() < 200,
+            "result must be shorter than the original"
+        );
+    }
+}

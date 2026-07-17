@@ -651,7 +651,6 @@ fn loop_result_iteration_count_counts_records() {
                 usage: Usage::default(),
                 retrieved_learning_ids: Vec::new(),
                 complexity: TaskComplexity::default(),
-                task_type: TaskComplexity::default().infer_task_type(),
                 pre_conditions: vec![],
             },
             plan: Plan {
@@ -1760,7 +1759,6 @@ fn test_comprehension() -> Comprehension {
         usage: Usage::default(),
         retrieved_learning_ids: Vec::new(),
         complexity: TaskComplexity::default(),
-        task_type: TaskComplexity::default().infer_task_type(),
         pre_conditions: vec![],
     }
 }
@@ -2184,39 +2182,8 @@ fn step_has_quality_refusal_pattern() {
 #[tokio::test]
 #[ignore]
 async fn task_type_routing_sweep() {
-    let key = std::env::var("XIMIMO_API_KEY").expect("XIMIMO_API_KEY not set");
-    let base_url = "https://token-plan-sgp.xiaomimimo.com/v1";
-    let model = "mimo-v2.5-pro";
-
-    let client = crate::llm::OpenAiClient::new(&key, base_url, model).expect("client");
-    let llm: std::sync::Arc<dyn crate::llm::LlmClient> = std::sync::Arc::new(client);
-
-    let cases: &[(&str, &str)] = &[
-        ("explain",   "Explain how the pipeline stage selection works in manifest.rs"),
-        ("bugfix",    "Fix the off-by-one error in the retry counter in manifest.rs"),
-        ("debug",     "Debug why the agent sometimes loops infinitely on failing tests"),
-        ("feature",   "Add a new CLI subcommand that prints the current git branch"),
-        ("project",   "Scaffold a full new crate that implements a rate limiter with tests"),
-        ("refactor",  "Refactor the PipelineConfig struct to use a builder pattern"),
-        ("performance","Optimize the hot path in classify_task_complexity to avoid regex"),
-        ("security",  "Harden input validation in the goal parser against path traversal"),
-        ("documentation","Write a doc comment module overview for the cognition crate"),
-        ("testing",   "Add unit tests for the StageKind serde round-trip"),
-    ];
-
-    println!("\n=== Task-type routing sweep (live LLM) ===");
-    for (expected, goal) in cases {
-        let complexity = crate::cognition::classify_task_complexity(goal, &[], &[]);
-        let tt = crate::cognition::classify_task_type(llm.as_ref(), model, goal, complexity).await;
-        let pipeline = crate::manifest::PipelineConfig::from_task(tt, complexity);
-        let stages: Vec<String> = pipeline.stages.iter().map(|s| format!("{s:?}")).collect();
-        let tt_str = format!("{tt:?}");
-        let mark = if tt_str.to_ascii_lowercase().contains(expected) { "OK " } else { "?? " };
-        println!(
-            "{}{:13} -> {:10} (cx={:9}) stages=[{}]",
-            mark, expected, tt_str, format!("{complexity:?}"), stages.join(", ")
-        );
-    }
+    // TODO: re-enable when classify_task_type is added back to the public API
+    eprintln!("skipped: classify_task_type not yet public");
 }
 
 
