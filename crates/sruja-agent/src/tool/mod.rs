@@ -265,6 +265,11 @@ impl ToolRegistry {
         self.tools.get(name).map(|t| t.as_ref())
     }
 
+    /// Return `true` if a tool with the given name is registered.
+    pub fn has(&self, name: &str) -> bool {
+        self.tools.contains_key(name)
+    }
+
     /// All registered tool names.
     pub fn names(&self) -> Vec<&str> {
         self.tools.keys().map(|s| s.as_str()).collect()
@@ -615,5 +620,12 @@ mod tests {
                 "known sentinel {sentinel:?} not found in EMPTY_SENTINELS"
             );
         }
+    }
+
+    #[test]
+    fn has_returns_true_for_registered_tool() {
+        let reg = ToolRegistry::new().with(Box::new(Echo));
+        assert!(reg.has("echo"));
+        assert!(!reg.has("nope"));
     }
 }
