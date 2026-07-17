@@ -86,11 +86,84 @@ pub struct SubAgentReport {
 }
 
 impl Agent {
-    /// Delegate work to an isolated sub-agent.
+    /// Delegate work to an isolated sub-agent and receive a compressed report.
     ///
-    /// The sub-agent gets a fresh, empty message history and a role-scoped tool
-    /// registry. Only the compressed [`SubAgentReport`] returns to the caller;
-    /// the raw tool outputs stay inside the sub-agent's context window.
+    /// Runs a child [`Agent`] in its own, fresh context window with a
+    /// role-scoped tool registry. The sub-agent iterates autonomously (via
+    /// [`run_tool_loop_with_limit`](Agent::run_tool_loop_with_limit)) until it
+    /// converges or hits the budget cap. Only the returned [`SubAgentReport`]
+    /// escapes — raw tool dumps never enter the caller's context.
+    ///
+    /// # Why isolation matters
+    ///
+    /// A single shared context window accumulates *all* tool outputs — grep
+    /// dumps, file reads, edit diffs — which creates four failure modes that
+    /// isolation eliminates:
+    ///
+    /// | Failure mode    | Symptom                                              |
+    /// |-----------------|------------------------------------------------------|
+    /// | **Poisoning**   | A 500-line grep result biases subsequent reasoning.  |
+    /// | **Distraction** | The LLM fixates on irrelevant details from earlier.  |
+    /// | **Confusion**   | Outputs from different scopes are conflated.         |
+    /// | **Clash**       | Two contradictory reads coexist, causing loops.      |
+    ///
+    /// Delegation puts each scope (explore / verify / write) in its own window,
+    /// so the parent sees only the high-signal summary.
+    ///
+    /// # When to use `delegate` vs `run_tool_loop`
+    ///
+    /// Use **`delegate`** when:
+    /// - You need role-scoped work (read-only exploration, verification, or writes)
+    ///   and only a summary should return to the caller.
+    /// - You want automatic tool-allowlist enforcement so the sub-agent physically
+    ///   *cannot* use tools outside its role.
+    ///
+    /// Use **`run_tool_loop`** directly when the parent agent itself should drive
+    /// the tool calls with full context and no isolation boundary.
+    ///
+    /// # Roles and their tool allowlists
+    ///
+    /// Each role receives a purpose-built [`ToolRegistry`]; tools outside the
+    /// role are simply absent — no prompt-level guardrails needed.
+    ///
+    /// | Role              | Purpose                          | Tools                                                                   |
+    /// |-------------------|----------------------------------|-------------------------------------------------------------------------|
+    /// | [`Role::Reader`]  | Explore the codebase read-only   | `sruja_focus`, `sruja_lookup`, `sruja_drift`, `file_read`, `glob`, `grep` |
+    /// | [`Role::Checker`] | Deterministic verification       | `sruja_drift`, `sruja_focus`                                              |
+    /// | [`Role::Writer`]  | Apply edits, no exploration      | `file_write`, `file_edit`, `diff_edit`, `glob`                            |
+    ///
+    /// # Budget
+    ///
+    /// [`SubAgentBudget`] caps the iteration count (falls back to the parent's
+    /// `max_tool_iterations`) and the summary length (default 4 000 chars).
+    /// The summary is truncated head-first by [`bound_summary`] if it exceeds
+    /// the cap.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use sruja_agent::cognition::subagent::{Role, SubAgentSpec, SubAgentBudget};
+    /// use sruja_agent::goal::GoalSpec;
+    ///
+    /// # async fn example(agent: &sruja_agent::cognition::Agent) -> Result<(), sruja_agent::AgentError> {
+    /// let report = agent.delegate(SubAgentSpec {
+    ///     role: Role::Reader,
+    ///     goal: GoalSpec::new("Find all database connection patterns in the repo"),
+    ///     inject: vec!["schema.rs defines the connection pool".into()],
+    ///     budget: SubAgentBudget {
+    ///         max_iterations: Some(8),
+    ///         max_summary_chars: 2000,
+    ///     },
+    /// }).await?;
+    ///
+    /// // Only the summary and cited element IDs are visible here.
+    /// println!("Summary: {}", report.summary);
+    /// for id in &report.citations {
+    ///     println!("Cited element: {id}");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn delegate(&self, spec: SubAgentSpec) -> Result<SubAgentReport, crate::AgentError> {
         let scoped = self.scoped_for(spec.role);
         let goal_str = spec.goal.statement.clone();
