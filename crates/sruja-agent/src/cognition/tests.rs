@@ -651,6 +651,7 @@ fn loop_result_iteration_count_counts_records() {
                 usage: Usage::default(),
                 retrieved_learning_ids: Vec::new(),
                 complexity: TaskComplexity::default(),
+                task_type: TaskComplexity::default().infer_task_type(),
                 pre_conditions: vec![],
             },
             plan: Plan {
@@ -1759,6 +1760,7 @@ fn test_comprehension() -> Comprehension {
         usage: Usage::default(),
         retrieved_learning_ids: Vec::new(),
         complexity: TaskComplexity::default(),
+        task_type: TaskComplexity::default().infer_task_type(),
         pre_conditions: vec![],
     }
 }
@@ -2172,3 +2174,131 @@ fn step_has_quality_refusal_pattern() {
 }
 
 // ---------------------------------------------------------------------------
+// Live task-type routing sweep (requires a real LLM backend).
+//
+// Builds the real OpenAI-compatible client from the `ximimo` provider env
+// vars and classifies a representative prompt for every supported task type,
+// then prints the resulting TaskType + the pipeline stages it routes to.
+// Run with: cargo test -p sruja-agent --lib --ignored task_type_routing_sweep
+// ---------------------------------------------------------------------------
+#[tokio::test]
+#[ignore]
+async fn task_type_routing_sweep() {
+    let key = std::env::var("XIMIMO_API_KEY").expect("XIMIMO_API_KEY not set");
+    let base_url = "https://token-plan-sgp.xiaomimimo.com/v1";
+    let model = "mimo-v2.5-pro";
+
+    let client = crate::llm::OpenAiClient::new(&key, base_url, model).expect("client");
+    let llm: std::sync::Arc<dyn crate::llm::LlmClient> = std::sync::Arc::new(client);
+
+    let cases: &[(&str, &str)] = &[
+        ("explain",   "Explain how the pipeline stage selection works in manifest.rs"),
+        ("bugfix",    "Fix the off-by-one error in the retry counter in manifest.rs"),
+        ("debug",     "Debug why the agent sometimes loops infinitely on failing tests"),
+        ("feature",   "Add a new CLI subcommand that prints the current git branch"),
+        ("project",   "Scaffold a full new crate that implements a rate limiter with tests"),
+        ("refactor",  "Refactor the PipelineConfig struct to use a builder pattern"),
+        ("performance","Optimize the hot path in classify_task_complexity to avoid regex"),
+        ("security",  "Harden input validation in the goal parser against path traversal"),
+        ("documentation","Write a doc comment module overview for the cognition crate"),
+        ("testing",   "Add unit tests for the StageKind serde round-trip"),
+    ];
+
+    println!("\n=== Task-type routing sweep (live LLM) ===");
+    for (expected, goal) in cases {
+        let complexity = crate::cognition::classify_task_complexity(goal, &[], &[]);
+        let tt = crate::cognition::classify_task_type(llm.as_ref(), model, goal, complexity).await;
+        let pipeline = crate::manifest::PipelineConfig::from_task(tt, complexity);
+        let stages: Vec<String> = pipeline.stages.iter().map(|s| format!("{s:?}")).collect();
+        let tt_str = format!("{tt:?}");
+        let mark = if tt_str.to_ascii_lowercase().contains(expected) { "OK " } else { "?? " };
+        println!(
+            "{}{:13} -> {:10} (cx={:9}) stages=[{}]",
+            mark, expected, tt_str, format!("{complexity:?}"), stages.join(", ")
+        );
+    }
+}
+
+
+// --- Sub-agent isolation tests (context-engineering "Isolate" step) ---
+
+use super::subagent::{Role, SubAgentSpec, SubAgentBudget};
+
+/// A minimal LLM that returns a grounded summary citing an element ID, with no
+/// tool calls (so the loop converges on the first response).
+struct SummarizingLlm;
+#[async_trait]
+impl LlmClient for SummarizingLlm {
+    async fn complete(&self, _req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+        Ok(CompletionResponse {
+            content: "Reviewed MySystem.ApiContainer: it depends on MySystem.Database. \
+                      No unused imports found; change is safe."
+                .to_string(),
+            tool_calls: Vec::new(),
+            usage: Usage { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
+            model: "scripted".into(),
+            finish_reason: crate::llm::FinishReason::Stop,
+        })
+    }
+    fn default_model(&self) -> &str { "scripted" }
+}
+
+fn isolated_agent() -> Agent {
+    Agent::builder()
+        .llm(Arc::new(SummarizingLlm))
+        .tools(ToolRegistry::new())
+        .config(AgentConfig::default())
+        .build()
+        .expect("agent builds")
+}
+
+#[test]
+fn writer_subagent_has_no_exploration_tools() {
+    let agent = isolated_agent();
+    let names = agent.scoped_tool_names(Role::Writer);
+    // Writers may write/edit and resolve globs, but must NOT read or search.
+    assert!(names.contains(&"file_write".to_string()), "writer needs file_write: {names:?}");
+    assert!(names.contains(&"file_edit".to_string()), "writer needs file_edit: {names:?}");
+    assert!(!names.contains(&"grep".to_string()), "writer must not have grep: {names:?}");
+    assert!(!names.contains(&"file_read".to_string()), "writer must not have file_read: {names:?}");
+    assert!(
+        !names.iter().any(|n| n.starts_with("sruja_lookup")),
+        "writer must not have lookup tools: {names:?}"
+    );
+}
+
+#[test]
+fn reader_subagent_has_no_write_tools() {
+    let agent = isolated_agent();
+    let names = agent.scoped_tool_names(Role::Reader);
+    assert!(names.contains(&"grep".to_string()), "reader needs grep: {names:?}");
+    assert!(names.contains(&"sruja_focus".to_string()), "reader needs sruja_focus: {names:?}");
+    assert!(
+        !names.iter().any(|n| n.starts_with("file_write") || n.starts_with("file_edit")),
+        "reader must not have write tools: {names:?}"
+    );
+}
+
+#[tokio::test]
+async fn delegate_reader_returns_compressed_report_with_citations() {
+    let agent = isolated_agent();
+    let spec = SubAgentSpec {
+        role: Role::Reader,
+        goal: crate::goal::GoalSpec::new("Review MySystem.ApiContainer for unused imports"),
+        inject: vec!["Focus on src/api.rs".to_string()],
+        budget: SubAgentBudget::default(),
+    };
+    let report = agent.delegate(spec).await.expect("delegate succeeds");
+    assert!(report.converged, "single-shot LLM should converge");
+    assert!(report.ok, "reader report should be ok");
+    assert!(
+        report.citations.iter().any(|c| c.starts_with("MySystem")),
+        "citations should include architecture element IDs: {:?}",
+        report.citations
+    );
+    assert!(
+        report.summary.len() <= SubAgentBudget::default().max_summary_chars + 30,
+        "summary must be bounded: len={}",
+        report.summary.len()
+    );
+}

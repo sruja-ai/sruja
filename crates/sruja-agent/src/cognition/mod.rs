@@ -23,6 +23,7 @@ pub mod hook;
 pub mod loop_event;
 pub mod runbook;
 pub mod tool_tracing;
+pub mod subagent;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -3786,7 +3787,7 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
-fn extract_element_ids(text: &str) -> Vec<String> {
+pub(crate) fn extract_element_ids(text: &str) -> Vec<String> {
     // Match patterns like Element.Id or System.Container.Component
     let mut ids = Vec::new();
     for word in text.split_whitespace() {
