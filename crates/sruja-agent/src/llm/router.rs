@@ -178,6 +178,7 @@ impl ModelRouter {
             .config
             .pricing
             .get(model)
+            .or(self.config.fallback_pricing.as_ref())
             .map(|p| p.cost(usage.prompt_tokens, usage.completion_tokens))
             .unwrap_or(0.0);
         *self.spent.lock().unwrap() += cost;
