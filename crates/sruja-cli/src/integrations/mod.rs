@@ -307,10 +307,15 @@ pub fn resolve_openai_auth() -> Option<String> {
         .or_else(|| std::env::var("SRUJA_LLM_API_KEY").ok())
 }
 
+/// Shared preamble for all enrichment prompts — use only provided facts.
+pub const ENRICHMENT_FACTS_PREAMBLE: &str =
+    "You MUST only use the JSON facts provided below. \
+     Do not invent modules, APIs, or file paths. If unknown, say \"unknown\".";
+
 /// Default user prompt template for generic enrichment (plan/risks/questions).
 pub const DEFAULT_ENRICHMENT_PROMPT_TEMPLATE: &str = r#"You are assisting an AI coding agent.
 
-You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
+{preamble}
 
 Produce markdown with these sections:
 - "One-paragraph plan"
@@ -324,7 +329,7 @@ JSON facts:
 /// Critique-specific prompt template for adversarial architecture review.
 pub const CRITIQUE_ENRICHMENT_PROMPT_TEMPLATE: &str = r#"You are performing an adversarial architecture review for a code change.
 
-You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
+{preamble}
 
 Produce markdown with these sections:
 - "High-level critique summary"

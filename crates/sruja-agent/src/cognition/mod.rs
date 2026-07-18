@@ -2073,10 +2073,7 @@ impl Agent {
                     "tool_loop: injecting hard convergence message"
                 );
                 req.messages.push(Message::user(
-                    "CRITICAL: You have very few tool calls remaining. \
-                     You MUST produce your final answer now as plain text. \
-                     Do NOT call any more tools. Synthesize what you have \
-                     learned and write your answer.",
+                    prompts::CONVERGENCE_HARD,
                 ));
             } else if remaining > 0 && remaining <= half && !soft_sent && !hard_sent {
                 soft_sent = true;
@@ -2086,9 +2083,7 @@ impl Agent {
                     "tool_loop: injecting soft convergence reminder"
                 );
                 req.messages.push(Message::user(
-                    "Note: you have about half your tool calls remaining. \
-                     Start thinking about how to wrap up. If you can produce \
-                     your final answer now, please do.",
+                    prompts::CONVERGENCE_SOFT,
                 ));
             }
         }

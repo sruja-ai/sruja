@@ -298,10 +298,7 @@ impl crate::cognition::Agent {
                     "streaming_turn: injecting hard convergence message"
                 );
                 req.messages.push(Message::user(
-                    "CRITICAL: You have very few tool calls remaining. \
-                     You MUST produce your final answer now as plain text. \
-                     Do NOT call any more tools. Synthesize what you have \
-                     learned and write your answer.",
+                    super::prompts::CONVERGENCE_HARD,
                 ));
             } else if remaining > 0 && remaining <= half && !soft_sent {
                 soft_sent = true;
@@ -311,8 +308,7 @@ impl crate::cognition::Agent {
                     "streaming_turn: injecting soft convergence reminder"
                 );
                 req.messages.push(Message::user(
-                    "REMINDER: You have used more than half your tool budget. \
-                     Wrap up exploration and produce your final answer soon.",
+                    super::prompts::CONVERGENCE_SOFT,
                 ));
             }
         }

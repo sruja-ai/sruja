@@ -1401,18 +1401,15 @@ fn enrich_discover_explain(
     };
 
     let user_prompt = format!(
-        r#"You are analyzing an architecture graph explanation.
-
-You MUST only use the JSON facts provided below. Do not invent components, APIs, or file paths. If something is unknown, say "unknown".
-
-Produce markdown with these sections:
-- "Architectural Narrative" (narrative summary of the architecture and role)
-- "Why the God Nodes matter" (bullets explaining significance based on facts)
-- "Surprising Connections insights" (analysis of Surprising Connections and suggestions about coupling)
-- "Architectural Risks & Questions" (suggested investigative paths)
-
-JSON facts:
-{}"#,
+        "You are analyzing an architecture graph explanation.\n\n\
+         {}\n\n\
+         Produce markdown with these sections:\n\
+         - \"Architectural Narrative\" (narrative summary of the architecture and role)\n\
+         - \"Why the God Nodes matter\" (bullets explaining significance based on facts)\n\
+         - \"Surprising Connections insights\" (analysis of Surprising Connections and suggestions about coupling)\n\
+         - \"Architectural Risks & Questions\" (suggested investigative paths)\n\n\
+         JSON facts:\n{}",
+        crate::integrations::ENRICHMENT_FACTS_PREAMBLE,
         payload
     );
 

@@ -74,17 +74,14 @@ pub(crate) fn enrich_wrapper_json(
         match resolve_openai_auth() {
             Some(key) => {
                 let user_prompt = format!(
-                    r#"You are assisting an AI coding agent.
-
-You MUST only use the JSON facts provided below. Do not invent modules, APIs, or file paths. If something is unknown, say "unknown".
-
-Produce markdown with these sections:
-- "Summary"
-- "Risks / unknowns to verify" (bullets)
-- "Suggested verification steps" (bullets)
-
-JSON facts:
-{}"#,
+                    "You are assisting an AI coding agent.\n\n\
+                     {}\n\n\
+                     Produce markdown with these sections:\n\
+                     - \"Summary\"\n\
+                     - \"Risks / unknowns to verify\" (bullets)\n\
+                     - \"Suggested verification steps\" (bullets)\n\n\
+                     JSON facts:\n{}",
+                    crate::integrations::ENRICHMENT_FACTS_PREAMBLE,
                     input
                 );
                 match run_openai_markdown(

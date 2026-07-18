@@ -301,19 +301,16 @@ fn enrich_onboard(
     };
 
     let prompt = format!(
-        r#"You are assisting developers onboarding to a repo.
-
-You MUST only use the JSON facts provided below. Do not invent endpoints, technologies, or file paths. If something is unknown, say "unknown".
-
-Produce markdown with these sections:
-- "What this repo likely is"
-- "Key runtime boundaries (based on relationships)"
-- "Risks / unknowns to verify" (bullets)
-- "Suggested onboarding path" (ordered steps referencing specific files/IDs if present)
-- "Questions to ask maintainers" (bullets)
-
-JSON facts:
-{}"#,
+        "You are assisting developers onboarding to a repo.\n\n\
+         {}\n\n\
+         Produce markdown with these sections:\n\
+         - \"What this repo likely is\"\n\
+         - \"Key runtime boundaries (based on relationships)\"\n\
+         - \"Risks / unknowns to verify\" (bullets)\n\
+         - \"Suggested onboarding path\" (ordered steps referencing specific files/IDs if present)\n\
+         - \"Questions to ask maintainers\" (bullets)\n\n\
+         JSON facts:\n{}",
+        crate::integrations::ENRICHMENT_FACTS_PREAMBLE,
         payload
     );
 

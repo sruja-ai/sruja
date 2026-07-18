@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError};
+use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError, StreamEvent};
 
 /// Configuration for the circuit breaker.
 #[derive(Debug, Clone)]
@@ -144,6 +144,16 @@ impl LlmClient for CircuitBreakerClient {
 
     fn default_model(&self) -> &str {
         self.inner.default_model()
+    }
+
+    fn complete_stream<'a>(
+        &'a self,
+        req: &'a CompletionRequest,
+    ) -> std::pin::Pin<Box<dyn futures::Stream<Item = Result<StreamEvent, LlmError>> + Send + 'a>>
+    {
+        // Delegate streaming to the inner client directly, bypassing the
+        // default non-streaming fallback in the trait.
+        self.inner.complete_stream(req)
     }
 }
 

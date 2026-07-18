@@ -299,6 +299,62 @@ impl CompressingClient {
 
         req
     }
+
+    /// Compress with a custom config (used for aggressive recovery).
+    fn compress_request_with_config(
+        &self,
+        req: &CompletionRequest,
+        config: &CompressionConfig,
+    ) -> CompletionRequest {
+        let total = req.messages.len();
+        let preserve_from = total.saturating_sub(config.preserve_recent);
+
+        let mut req = req.clone();
+
+        for (idx, msg) in req.messages.iter_mut().enumerate() {
+            if idx >= preserve_from {
+                break;
+            }
+            if msg.role != MessageRole::Tool {
+                continue;
+            }
+            if msg.content.starts_with(CCR_PREFIX) {
+                continue;
+            }
+
+            let original_tokens = count_tokens(&msg.content);
+            if original_tokens < config.min_tokens {
+                continue;
+            }
+
+            let ctx = CompressContext {
+                query: None,
+                role: Some(TextRole::Tool),
+                target_ratio: config.target_ratio,
+                keep: KeepPolicy::for_tool_output(),
+            };
+
+            if let Ok(result) = self.compressor.compress(&msg.content, &ctx) {
+                if result.savings() > 0.0 {
+                    if let Ok(handle) = self.ccr.put(&msg.content) {
+                        msg.content = format_ccr_message(&handle, &result.text);
+                    }
+                }
+            }
+        }
+
+        req
+    }
+}
+
+/// Detect context length overflow errors from LLM providers.
+fn is_context_overflow(error_body: &str) -> bool {
+    let lower = error_body.to_lowercase();
+    lower.contains("context_length_exceeded")
+        || lower.contains("maximum context length")
+        || lower.contains("context window")
+        || lower.contains("too many tokens")
+        || (lower.contains("context") && lower.contains("exceed"))
 }
 
 #[async_trait::async_trait]
@@ -317,7 +373,24 @@ impl LlmClient for CompressingClient {
             );
         }
 
-        self.inner.complete(&compressed_req).await
+        match self.inner.complete(&compressed_req).await {
+            Ok(response) => Ok(response),
+            Err(LlmError::Api { status, body }) if is_context_overflow(&body) => {
+                tracing::warn!(
+                    status,
+                    "context overflow detected — applying aggressive compression and retrying"
+                );
+                // Aggressively compress: reduce preserve_recent to 1 and lower min_tokens
+                let aggressive_config = CompressionConfig {
+                    min_tokens: 50,
+                    preserve_recent: 1,
+                    target_ratio: Some(0.15),
+                };
+                let aggressive_req = self.compress_request_with_config(req, &aggressive_config);
+                self.inner.complete(&aggressive_req).await
+            }
+            Err(e) => Err(e),
+        }
     }
 
     fn default_model(&self) -> &str {
