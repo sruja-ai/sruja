@@ -550,14 +550,24 @@ MySystem = system "My System" {
     );
     assert_eq!(parsed.get("missing").and_then(|v| v.as_bool()), Some(false));
     let card = parsed.get("card").expect("card present");
-    assert_eq!(card.get("id").and_then(|v| v.as_str()), Some("MySystem.Api"));
+    assert_eq!(
+        card.get("id").and_then(|v| v.as_str()),
+        Some("MySystem.Api")
+    );
     assert_eq!(card.get("kind").and_then(|v| v.as_str()), Some("container"));
-    let outgoing = card.get("outgoing").and_then(|v| v.as_array()).expect("outgoing");
+    let outgoing = card
+        .get("outgoing")
+        .and_then(|v| v.as_array())
+        .expect("outgoing");
     assert!(outgoing
         .iter()
         .any(|e| e.as_str() == Some("depends_on:MySystem.Db")));
     // Compactness: a single card should stay well under a typical token budget.
-    assert!(out.len() < 1_500, "card response too large: {} bytes", out.len());
+    assert!(
+        out.len() < 1_500,
+        "card response too large: {} bytes",
+        out.len()
+    );
 }
 
 #[tokio::test]
@@ -587,7 +597,11 @@ async fn mcp_tool_call_lookup_symbol_scan_path_missing_returns_null_card() {
         Some("concept_card/v1")
     );
     assert_eq!(parsed.get("missing").and_then(|v| v.as_bool()), Some(true));
-    assert_eq!(parsed.get("card"), Some(&Value::Null), "missing card must be null");
+    assert_eq!(
+        parsed.get("card"),
+        Some(&Value::Null),
+        "missing card must be null"
+    );
 }
 
 #[tokio::test]

@@ -14,7 +14,10 @@ pub async fn lookup(name: &str, repo: &str, format: &str) -> Result<(), CliError
     let repo_path = Path::new(repo);
 
     // Prefer the DSL program (grounded, author-reviewed truth); fall back to scan.
-    let (arch, warning) = crate::commands::scan_domain::mcp::helpers::load_architecture_program_best_effort(repo_path);
+    let (arch, warning) =
+        crate::commands::scan_domain::mcp::helpers::load_architecture_program_best_effort(
+            repo_path,
+        );
     let out = if let Some((source_file, program)) = arch {
         crate::commands::scan_domain::mcp::ladder::build_concept_card_from_program(
             &source_file,

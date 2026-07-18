@@ -578,9 +578,16 @@ fn parses_lookup_command() {
         .name("clap_parse_lookup".to_string())
         .stack_size(16 * 1024 * 1024)
         .spawn(|| {
-            let cli =
-                Cli::try_parse_from(["sruja", "lookup", "Sruja.CLI", "-r", ".", "--format", "json"])
-                    .expect("parse");
+            let cli = Cli::try_parse_from([
+                "sruja",
+                "lookup",
+                "Sruja.CLI",
+                "-r",
+                ".",
+                "--format",
+                "json",
+            ])
+            .expect("parse");
             match cli.command {
                 Commands::Lookup { name, repo, format } => {
                     assert_eq!(name, "Sruja.CLI");

@@ -883,12 +883,19 @@ mod concept_card_tests {
     #[test]
     fn builds_compact_card_with_typed_edges() {
         let mut g = Graph::new();
-        g.nodes.push(node("OrderService", "container", "Order processing service"));
-        g.nodes.push(node("PaymentGateway", "component", "Charges cards"));
+        g.nodes.push(node(
+            "OrderService",
+            "container",
+            "Order processing service",
+        ));
+        g.nodes
+            .push(node("PaymentGateway", "component", "Charges cards"));
         g.nodes.push(node("Db", "database", "Orders store"));
-        g.edges.push(edge("OrderService", "PaymentGateway", "calls"));
+        g.edges
+            .push(edge("OrderService", "PaymentGateway", "calls"));
         g.edges.push(edge("OrderService", "Db", "depends_on"));
-        g.edges.push(edge("PaymentGateway", "OrderService", "calls"));
+        g.edges
+            .push(edge("PaymentGateway", "OrderService", "calls"));
 
         let card = g.concept_card("OrderService").expect("card exists");
         assert_eq!(card.id, "OrderService");
@@ -915,7 +922,13 @@ mod concept_card_tests {
         g.nodes.push(node("Lonely", "module", "Isolated node"));
         let card = g.concept_card("Lonely").expect("card exists");
         let json = serde_json::to_string(&card).expect("serialize");
-        assert!(!json.contains("\"outgoing\""), "empty outgoing omitted: {json}");
-        assert!(!json.contains("\"incoming\""), "empty incoming omitted: {json}");
+        assert!(
+            !json.contains("\"outgoing\""),
+            "empty outgoing omitted: {json}"
+        );
+        assert!(
+            !json.contains("\"incoming\""),
+            "empty incoming omitted: {json}"
+        );
     }
 }

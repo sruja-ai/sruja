@@ -140,5 +140,3 @@ Rules:\n\
 Use the same tools you would normally use (file_read, edit_file). \
 Be precise with line numbers. \
 Do not touch files that are not mentioned in the critique.";
-
-

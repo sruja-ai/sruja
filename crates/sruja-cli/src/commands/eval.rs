@@ -332,7 +332,7 @@ pub async fn run_eval_instance(
         verbose: false,
     };
 
-    super::agent_loop(&options).await?;
+    super::run_agent_loop(&options).await?;
 
     // Verify against held-out tests
     eprintln!();

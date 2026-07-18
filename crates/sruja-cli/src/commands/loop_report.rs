@@ -278,10 +278,7 @@ impl Hook for LiveReportHook {
         HookAction::Continue
     }
 
-    async fn after_comprehend(
-        &self,
-        result: &sruja_agent::cognition::Comprehension,
-    ) -> HookAction {
+    async fn after_comprehend(&self, result: &sruja_agent::cognition::Comprehension) -> HookAction {
         let mut s = self.state.lock().unwrap();
         s.current_phase = "plan".into();
         eprintln!(

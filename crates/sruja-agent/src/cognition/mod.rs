@@ -22,11 +22,10 @@ pub mod errors;
 pub mod hook;
 pub mod loop_event;
 pub mod runbook;
-pub mod tool_tracing;
 pub mod subagent;
+pub mod tool_tracing;
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
@@ -59,8 +58,7 @@ pub use tool_tracing::ToolCallTracer;
 /// How the critique ensemble dispatches: always run the full set of
 /// personas, or run a single quick check first and skip the ensemble when
 /// the quick check is confident.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CritiqueMode {
     /// Always run the full persona ensemble (current behavior).
     Full,
@@ -71,7 +69,6 @@ pub enum CritiqueMode {
     /// Always run just the quick check (cheapest, least thorough).
     QuickOnly,
 }
-
 
 /// User-configured model names per complexity tier.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -1532,6 +1529,157 @@ impl Agent {
         }
     }
 
+    /// Stream an LLM completion and dispatch tool calls the instant they arrive,
+    /// overlapping tool execution with the tail of generation.
+    ///
+    /// This is the Claude Code "streaming tool execution" pattern: instead of
+    /// blocking on a single `complete()` call and only then running tools, we
+    /// open the stream, accumulate tool calls as their argument JSON completes,
+    /// and run each one concurrently while the model keeps generating.
+    ///
+    /// Model-agnostic: every [`LlmClient`] implements `complete_stream` (the
+    /// default buffers non-streaming providers into a correct event stream), so
+    /// this path works on any OpenAI-compatible endpoint.
+    ///
+    /// Returns the fully reassembled final [`CompletionResponse`] plus the
+    /// accumulated tool results keyed by tool-call id in arrival order.
+    async fn stream_and_dispatch(
+        &self,
+        req: CompletionRequest,
+    ) -> Result<
+        (
+            CompletionResponse,
+            Usage,
+            Vec<(
+                String,
+                String,
+                serde_json::Value,
+                Result<(String, crate::tool::ToolCallRecord), crate::tool::ToolError>,
+            )>,
+        ),
+        AgentError,
+    > {
+        use crate::llm::stream::StreamEvent;
+        use futures::StreamExt;
+
+        let model = req.model.clone().unwrap_or_default();
+        let mut stream = self.llm.complete_stream(&req);
+
+        // Accumulators for reassembly.
+        let mut content = String::new();
+        let mut usage = Usage::default();
+        let mut finish_reason = crate::llm::FinishReason::Stop;
+
+        // Tool-call assembly buffers (args arrive as JSON-string fragments).
+        let mut accs: std::collections::BTreeMap<usize, (Option<String>, Option<String>, String)> =
+            Default::default();
+        // Dispatched tasks keyed by call id.
+        let mut dispatched: std::collections::HashMap<
+            String,
+            (
+                String,
+                serde_json::Value,
+                tokio::task::JoinHandle<
+                    Result<(String, crate::tool::ToolCallRecord), crate::tool::ToolError>,
+                >,
+            ),
+        > = std::collections::HashMap::new();
+
+        while let Some(event) = stream.next().await {
+            let event = event.map_err(|e| AgentError::Other(e.to_string()))?;
+            match event {
+                StreamEvent::ContentDelta(s) => content.push_str(&s),
+                StreamEvent::ToolCallStart { index, id, name } => {
+                    let entry = accs.entry(index).or_default();
+                    entry.0 = Some(id);
+                    entry.1 = Some(name);
+                }
+                StreamEvent::ToolCallArguments { index, fragment } => {
+                    let entry = accs.entry(index).or_default();
+                    entry.2.push_str(&fragment);
+                    // Dispatch the moment args parse as valid complete JSON.
+                    if let Some((id, name, buf)) = accs.get(&index).map(|e| {
+                        (
+                            e.0.clone().unwrap_or_default(),
+                            e.1.clone().unwrap_or_default(),
+                            e.2.clone(),
+                        )
+                    }) {
+                        if !dispatched.contains_key(&id) {
+                            if let Ok(args) = serde_json::from_str::<serde_json::Value>(&buf) {
+                                let name_c = name.clone();
+                                let args_c = args.clone();
+                                let id_c = id.clone();
+                                let tools = self.tools.clone();
+                                let handle = tokio::spawn(async move {
+                                    tools.dispatch_record(&name_c, args_c).await
+                                });
+                                dispatched.insert(id_c, (name, args, handle));
+                            }
+                        }
+                    }
+                }
+                StreamEvent::Usage(u) => usage = u,
+                StreamEvent::Finish { finish_reason: fr } => {
+                    finish_reason = fr;
+                    // Finalize any tool call whose args never parsed mid-stream.
+                    for (id, name, buf) in accs.values() {
+                        let id = id.clone().unwrap_or_default();
+                        if dispatched.contains_key(&id) {
+                            continue;
+                        }
+                        let args = serde_json::from_str(buf).unwrap_or(serde_json::json!({}));
+                        let name_c = name.clone().unwrap_or_default();
+                        let args_c = args.clone();
+                        let id_c = id.clone();
+                        let tools = self.tools.clone();
+                        let name_in_closure = name_c.clone();
+                        let handle = tokio::spawn(async move {
+                            tools.dispatch_record(&name_in_closure, args_c).await
+                        });
+                        dispatched.insert(id_c, (name_c, args, handle));
+                    }
+                }
+            }
+        }
+
+        // Wait for all dispatched tool tasks.
+        let mut tool_results = Vec::new();
+        for (id, (_name, args, handle)) in dispatched.into_iter() {
+            let name = _name;
+            let result = handle
+                .await
+                .map_err(|e| AgentError::Other(format!("tool task join: {e}")))?;
+            tool_results.push((id, name, args, result));
+        }
+
+        // Reassemble tool_calls in index order for the final response.
+        let mut ordered: Vec<(usize, crate::llm::ToolCall)> = Vec::new();
+        for (idx, (id, name, buf)) in accs {
+            let arguments = serde_json::from_str(&buf).unwrap_or(serde_json::json!({}));
+            ordered.push((
+                idx,
+                crate::llm::ToolCall {
+                    id: id.unwrap_or_default(),
+                    name: name.unwrap_or_default(),
+                    arguments,
+                },
+            ));
+        }
+        ordered.sort_by_key(|(idx, _)| *idx);
+        let tool_calls = ordered.into_iter().map(|(_, tc)| tc).collect();
+
+        let response = CompletionResponse {
+            content,
+            tool_calls,
+            usage: usage.clone(),
+            model,
+            finish_reason,
+        };
+
+        Ok((response, usage, tool_results))
+    }
+
     /// Inner implementation of the tool loop (extracted for timeout wrapping).
     ///
     /// Returns `(response, usage, tool_signals, converged)`. When `converged`
@@ -1565,7 +1713,9 @@ impl Agent {
         let mut last_file_change_iteration: Option<usize> = None;
 
         for iteration in 0..max_iterations {
-            let response = self.llm.complete(&req).await?;
+            // Stream the completion and dispatch tool calls as they arrive,
+            // overlapping tool execution with the tail of generation.
+            let (response, _usage, tool_results) = self.stream_and_dispatch(req.clone()).await?;
             total_usage.prompt_tokens += response.usage.prompt_tokens;
             total_usage.completion_tokens += response.usage.completion_tokens;
             total_usage.total_tokens += response.usage.total_tokens;
@@ -1653,12 +1803,47 @@ impl Agent {
                 tool_call_id: None,
             });
 
-            // Execute each requested tool and feed results back.
-            for call in &response.tool_calls {
+            // Tool calls were already dispatched (concurrently, as they streamed
+            // in). Map the streamed results into the per-call handling below.
+            let call_id_to_result: std::collections::HashMap<
+                String,
+                Result<(String, crate::tool::ToolCallRecord), crate::tool::ToolError>,
+            > = tool_results
+                .into_iter()
+                .map(|(id, _name, _args, res)| (id, res))
+                .collect();
+
+            for (_call_idx, call) in response.tool_calls.iter().enumerate() {
+                let result = call_id_to_result.get(&call.id);
+                let (result, record) = match result {
+                    Some(Ok(ok)) => ok.clone(),
+                    Some(Err(e)) => {
+                        let record = crate::tool::ToolCallRecord {
+                            ok: false,
+                            empty: false,
+                            elapsed_ms: 0,
+                            source: crate::tool::ToolRegistry::classify_source(&call.name),
+                            truncated: false,
+                            payload: e.to_string(),
+                        };
+                        (format!("ERROR: {e}"), record)
+                    }
+                    None => {
+                        let record = crate::tool::ToolCallRecord {
+                            ok: false,
+                            empty: false,
+                            elapsed_ms: 0,
+                            source: crate::tool::ToolRegistry::classify_source(&call.name),
+                            truncated: false,
+                            payload: "streamed tool result missing".to_string(),
+                        };
+                        ("ERROR: streamed tool result missing".to_string(), record)
+                    }
+                };
                 tracing::debug!(
                     tool = %call.name,
                     args_preview = %call.arguments.to_string().chars().take(200).collect::<String>(),
-                    "tool_loop: dispatching tool"
+                    "tool_loop: processing tool result"
                 );
                 // U5: emit tool_call event before dispatch (when tracing enabled).
                 if self.config.enable_tool_call_tracing {
@@ -1686,71 +1871,11 @@ impl Agent {
                     }
                 }
 
-                let (result, record) = match self
-                    .tools
-                    .dispatch_record(&call.name, call.arguments.clone())
-                    .await
-                {
-                    Ok(out) => out,
-                    Err(e) => {
-                        let record = crate::tool::ToolCallRecord {
-                            ok: false,
-                            empty: false,
-                            elapsed_ms: 0,
-                            source: crate::tool::ToolRegistry::classify_source(&call.name),
-                            truncated: false,
-                            payload: e.to_string(),
-                        };
-                        (format!("ERROR: {e}"), record)
-                    }
-                };
-
-                // Retry failed tool calls up to 2 times for transient errors
-                let mut retry_count = 0;
-                let max_retries = 2;
-                let mut final_result = result;
-                let mut final_record = record;
-
-                while !final_record.ok && retry_count < max_retries {
-                    retry_count += 1;
-                    tracing::info!(
-                        tool = %call.name,
-                        retry_count,
-                        "tool_loop: retrying failed tool call"
-                    );
-
-                    // Wait a bit before retrying (exponential backoff)
-                    tokio::time::sleep(Duration::from_millis(100 * retry_count as u64)).await;
-
-                    let (retry_result, retry_record) = match self
-                        .tools
-                        .dispatch_record(&call.name, call.arguments.clone())
-                        .await
-                    {
-                        Ok(out) => out,
-                        Err(e) => {
-                            let record = crate::tool::ToolCallRecord {
-                                ok: false,
-                                empty: false,
-                                elapsed_ms: 0,
-                                source: crate::tool::ToolRegistry::classify_source(&call.name),
-                                truncated: false,
-                                payload: e.to_string(),
-                            };
-                            (format!("ERROR: {e}"), record)
-                        }
-                    };
-
-                    if retry_record.ok {
-                        final_result = retry_result;
-                        final_record = retry_record;
-                        break;
-                    }
-                }
-                let truncated_text = truncate(&final_result, 8_000);
-                let was_truncated = final_result.len() > 8_000;
+                let truncated_text = truncate(&result, 8_000);
+                let was_truncated = result.len() > 8_000;
+                let mut record = record;
                 if was_truncated {
-                    final_record.truncated = true;
+                    record.truncated = true;
                 }
                 tracing::debug!(
                     tool = %call.name,
@@ -1760,14 +1885,14 @@ impl Agent {
                 );
                 tool_signals.push(ToolSignal {
                     tool: call.name.clone(),
-                    ok: final_record.ok,
-                    empty: final_record.empty,
-                    elapsed_ms: final_record.elapsed_ms,
-                    source: final_record.source,
+                    ok: record.ok,
+                    empty: record.empty,
+                    elapsed_ms: record.elapsed_ms,
+                    source: record.source,
                 });
 
                 // Track consecutive errors for circuit breaker.
-                if !final_record.ok {
+                if !record.ok {
                     consecutive_errors += 1;
                 } else {
                     consecutive_errors = 0;
@@ -1775,7 +1900,7 @@ impl Agent {
                 }
 
                 // Track file changes for progress detection
-                if final_record.ok
+                if record.ok
                     && (call.name == "file_write"
                         || call.name == "file_edit"
                         || call.name == "diff_edit")
@@ -1803,9 +1928,9 @@ impl Agent {
                             run_id,
                             trace_id,
                             &call.name,
-                            final_record.ok,
-                            final_record.empty,
-                            final_record.elapsed_ms,
+                            record.ok,
+                            record.empty,
+                            record.elapsed_ms,
                         );
                     }
                 }

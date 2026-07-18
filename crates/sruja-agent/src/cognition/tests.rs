@@ -2186,10 +2186,9 @@ async fn task_type_routing_sweep() {
     eprintln!("skipped: classify_task_type not yet public");
 }
 
-
 // --- Sub-agent isolation tests (context-engineering "Isolate" step) ---
 
-use super::subagent::{Role, SubAgentSpec, SubAgentBudget};
+use super::subagent::{Role, SubAgentBudget, SubAgentSpec};
 
 /// A minimal LLM that returns a grounded summary citing an element ID, with no
 /// tool calls (so the loop converges on the first response).
@@ -2202,12 +2201,18 @@ impl LlmClient for SummarizingLlm {
                       No unused imports found; change is safe."
                 .to_string(),
             tool_calls: Vec::new(),
-            usage: Usage { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
+            usage: Usage {
+                prompt_tokens: 5,
+                completion_tokens: 5,
+                total_tokens: 10,
+            },
             model: "scripted".into(),
             finish_reason: crate::llm::FinishReason::Stop,
         })
     }
-    fn default_model(&self) -> &str { "scripted" }
+    fn default_model(&self) -> &str {
+        "scripted"
+    }
 }
 
 fn isolated_agent() -> Agent {
@@ -2224,10 +2229,22 @@ fn writer_subagent_has_no_exploration_tools() {
     let agent = isolated_agent();
     let names = agent.scoped_tool_names(Role::Writer);
     // Writers may write/edit and resolve globs, but must NOT read or search.
-    assert!(names.contains(&"file_write".to_string()), "writer needs file_write: {names:?}");
-    assert!(names.contains(&"file_edit".to_string()), "writer needs file_edit: {names:?}");
-    assert!(!names.contains(&"grep".to_string()), "writer must not have grep: {names:?}");
-    assert!(!names.contains(&"file_read".to_string()), "writer must not have file_read: {names:?}");
+    assert!(
+        names.contains(&"file_write".to_string()),
+        "writer needs file_write: {names:?}"
+    );
+    assert!(
+        names.contains(&"file_edit".to_string()),
+        "writer needs file_edit: {names:?}"
+    );
+    assert!(
+        !names.contains(&"grep".to_string()),
+        "writer must not have grep: {names:?}"
+    );
+    assert!(
+        !names.contains(&"file_read".to_string()),
+        "writer must not have file_read: {names:?}"
+    );
     assert!(
         !names.iter().any(|n| n.starts_with("sruja_lookup")),
         "writer must not have lookup tools: {names:?}"
@@ -2238,10 +2255,18 @@ fn writer_subagent_has_no_exploration_tools() {
 fn reader_subagent_has_no_write_tools() {
     let agent = isolated_agent();
     let names = agent.scoped_tool_names(Role::Reader);
-    assert!(names.contains(&"grep".to_string()), "reader needs grep: {names:?}");
-    assert!(names.contains(&"sruja_focus".to_string()), "reader needs sruja_focus: {names:?}");
     assert!(
-        !names.iter().any(|n| n.starts_with("file_write") || n.starts_with("file_edit")),
+        names.contains(&"grep".to_string()),
+        "reader needs grep: {names:?}"
+    );
+    assert!(
+        names.contains(&"sruja_focus".to_string()),
+        "reader needs sruja_focus: {names:?}"
+    );
+    assert!(
+        !names
+            .iter()
+            .any(|n| n.starts_with("file_write") || n.starts_with("file_edit")),
         "reader must not have write tools: {names:?}"
     );
 }

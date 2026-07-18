@@ -23,12 +23,10 @@ use serde::{Deserialize, Serialize};
 use crate::cognition::Agent;
 use crate::goal::GoalSpec;
 use crate::llm::CompletionRequest;
-use crate::tool::builtin::tools::{DiffEdit, FileEdit, FileWrite, Glob, Grep};
 use crate::tool::builtin::tools::FileRead;
+use crate::tool::builtin::tools::{DiffEdit, FileEdit, FileWrite, Glob, Grep};
+use crate::tool::sruja::{SrujaDriftTool, SrujaFocusTool, SrujaLookupTool};
 use crate::tool::ToolRegistry;
-use crate::tool::sruja::{
-    SrujaDriftTool, SrujaFocusTool, SrujaLookupTool,
-};
 
 /// The isolation role a sub-agent plays.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -233,9 +231,8 @@ impl Agent {
             .budget
             .max_iterations
             .unwrap_or(self.config.max_tool_iterations);
-        let (response, _usage, _signals, converged) = scoped
-            .run_tool_loop_with_limit(req, max_iter)
-            .await?;
+        let (response, _usage, _signals, converged) =
+            scoped.run_tool_loop_with_limit(req, max_iter).await?;
 
         let citations = extract_element_ids(&response.content);
         let summary = bound_summary(response.content.clone(), spec.budget.max_summary_chars);
@@ -243,8 +240,10 @@ impl Agent {
         // Role-specific success signal: a checker that produced no violations
         // text is treated as passing; writers/reader report ok on convergence.
         let ok = match spec.role {
-            Role::Checker => !summary.to_lowercase().contains("violation")
-                && !summary.to_lowercase().contains("fail"),
+            Role::Checker => {
+                !summary.to_lowercase().contains("violation")
+                    && !summary.to_lowercase().contains("fail")
+            }
             _ => converged,
         };
 
@@ -310,7 +309,12 @@ impl Agent {
     /// never receives exploration tools).
     #[cfg(test)]
     pub(crate) fn scoped_tool_names(&self, role: Role) -> Vec<String> {
-        self.scoped_for(role).tools.names().iter().map(|s| s.to_string()).collect()
+        self.scoped_for(role)
+            .tools
+            .names()
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
     }
 }
 
@@ -366,7 +370,11 @@ mod tests {
         );
         // The head of the original text must be preserved.
         let head: String = result.chars().take(80).collect();
-        assert_eq!(head, "x".repeat(80), "head of original text must be preserved");
+        assert_eq!(
+            head,
+            "x".repeat(80),
+            "head of original text must be preserved"
+        );
         // The result must be shorter than the original.
         assert!(
             result.chars().count() < 200,

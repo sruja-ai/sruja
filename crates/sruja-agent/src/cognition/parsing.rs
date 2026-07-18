@@ -300,7 +300,8 @@ pub fn extract_file_references(issues: &[String]) -> Vec<(String, Vec<usize>)> {
                     // Check if followed by :digits
                     if after_ext < issue.len() && issue.as_bytes()[after_ext] == b':' {
                         let rest = &issue[after_ext + 1..];
-                        let line_str: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+                        let line_str: String =
+                            rest.chars().take_while(|c| c.is_ascii_digit()).collect();
                         if !line_str.is_empty() {
                             // Walk backward from extension to find path start
                             let path_start = abs_pos.saturating_sub(1);
@@ -348,7 +349,10 @@ pub fn extract_file_references(issues: &[String]) -> Vec<(String, Vec<usize>)> {
                 let after = abs_idx + indicator.len();
                 // Take the next whitespace-delimited token
                 let rest = &issue[after..];
-                let token: String = rest.chars().take_while(|c| !c.is_whitespace() && *c != ',' && *c != '.').collect();
+                let token: String = rest
+                    .chars()
+                    .take_while(|c| !c.is_whitespace() && *c != ',' && *c != '.')
+                    .collect();
                 if !token.is_empty() && KNOWN_EXTENSIONS.iter().any(|e| token.ends_with(e)) {
                     refs.entry(token).or_default();
                 }

@@ -7,9 +7,9 @@
 //! probe request is allowed through to test recovery.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use std::sync::Arc;
 
 use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError};
 
@@ -85,8 +85,7 @@ impl LlmClient for CircuitBreakerClient {
                     if since.elapsed() < self.config.half_open_timeout {
                         return Err(LlmError::Other(format!(
                             "circuit breaker open for model `{model}` (retry after {}s)",
-                            self.config.half_open_timeout.as_secs()
-                                - since.elapsed().as_secs()
+                            self.config.half_open_timeout.as_secs() - since.elapsed().as_secs()
                         )));
                     }
                     // Timeout expired: transition to HalfOpen for probe.
@@ -115,7 +114,12 @@ impl LlmClient for CircuitBreakerClient {
                 match states.get(&model) {
                     Some(CircuitState::HalfOpen) => {
                         // Probe failed — re-open the circuit.
-                        states.insert(model, CircuitState::Open { since: Instant::now() });
+                        states.insert(
+                            model,
+                            CircuitState::Open {
+                                since: Instant::now(),
+                            },
+                        );
                     }
                     _ => {
                         // Normal failure: increment counter.

@@ -244,7 +244,10 @@ fn extract_regex(corpus: &str, lower: &str, error_hit: bool) -> Vec<Signal> {
     }
 
     // Unsupported input type.
-    if regex_lite_match(lower, r"(?i)unsupported\s+mime|unsupported.*type|invalid.*mime") {
+    if regex_lite_match(
+        lower,
+        r"(?i)unsupported\s+mime|unsupported.*type|invalid.*mime",
+    ) {
         signals.push(Signal::new("unsupported_input_type"));
     }
 
@@ -252,8 +255,7 @@ fn extract_regex(corpus: &str, lower: &str, error_hit: bool) -> Vec<Signal> {
     let has_feature_request = regex_lite_match(
         lower,
         r"(?i)\b(add|implement|create|build|make|develop|write|design)\b[^.?!\n]{3,120}\b(feature|function|module|capability|tool|support|endpoint|command|option|mode)\b",
-    )
-    || regex_lite_match(
+    ) || regex_lite_match(
         lower,
         r"(?i)\b(i want|i need|we need|please add|can you add|could you add|let'?s add)\b",
     );
@@ -339,9 +341,7 @@ fn count_recurring_patterns(lower: &str) -> Vec<(String, usize)> {
     // Look for repeated error-like substrings.
     for line in lower.lines() {
         let trimmed = line.trim();
-        if trimmed.contains("error")
-            || trimmed.contains("failed")
-            || trimmed.contains("exception")
+        if trimmed.contains("error") || trimmed.contains("failed") || trimmed.contains("exception")
         {
             let key: String = trimmed.chars().take(100).collect();
             *counts.entry(key).or_insert(0) += 1;

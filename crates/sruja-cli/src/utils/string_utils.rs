@@ -125,7 +125,7 @@ mod tests {
         let result = truncate_with_ellipsis(&s, 10);
         // 10 chars fits exactly, so no truncation needed
         assert_eq!(result, s);
-        
+
         let result2 = truncate_with_ellipsis(&s, 5);
         // Should truncate to 4 chars + ellipsis
         assert!(result2.ends_with('…'));
