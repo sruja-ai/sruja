@@ -5,6 +5,7 @@
 
 pub mod analysis;
 pub mod author;
+pub mod compress_stats;
 pub mod density;
 pub mod dsl_domain;
 pub mod eval;

@@ -2172,20 +2172,6 @@ fn step_has_quality_refusal_pattern() {
 }
 
 // ---------------------------------------------------------------------------
-// Live task-type routing sweep (requires a real LLM backend).
-//
-// Builds the real OpenAI-compatible client from the `ximimo` provider env
-// vars and classifies a representative prompt for every supported task type,
-// then prints the resulting TaskType + the pipeline stages it routes to.
-// Run with: cargo test -p sruja-agent --lib --ignored task_type_routing_sweep
-// ---------------------------------------------------------------------------
-#[tokio::test]
-#[ignore]
-async fn task_type_routing_sweep() {
-    // TODO: re-enable when classify_task_type is added back to the public API
-    eprintln!("skipped: classify_task_type not yet public");
-}
-
 // --- Sub-agent isolation tests (context-engineering "Isolate" step) ---
 
 use super::subagent::{Role, SubAgentBudget, SubAgentSpec};

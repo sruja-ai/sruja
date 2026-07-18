@@ -939,17 +939,6 @@ fn build_discover_explanation(
     })
 }
 
-/// Build discovery explanation as JSON from a pre-scanned graph (avoids rescanning).
-#[expect(dead_code)]
-pub fn discover_explanation_json_from_graph(
-    repo: &str,
-    repo_path: &Path,
-    graph: &Graph,
-) -> Result<String, CliError> {
-    let explanation = build_discover_explanation(repo, repo_path, graph)?;
-    serde_json::to_string_pretty(&explanation).map_err(|e| CliError::validation(e.to_string()))
-}
-
 /// Build discovery explanation as a JSON value from a pre-scanned graph (avoids rescanning).
 pub fn discover_explanation_value_from_graph(
     repo: &str,

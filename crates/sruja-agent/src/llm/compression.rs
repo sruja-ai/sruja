@@ -406,32 +406,36 @@ impl LlmClient for CompressingClient {
         let inner = self.inner.clone();
 
         Box::pin(async_stream::try_stream! {
-            let read_guard = cached_request_ref.read().await;
+            // Check cache with read lock
+            {
+                let read_guard = cached_request_ref.read().await;
+                if let Some(cached) = read_guard.as_ref() {
+                    let cached_key = *self.cached_request_key.lock().unwrap();
+                    if cached_key == Some(key) {
+                        // Clone the cached request to avoid lifetime issues
+                        let cached_clone = cached.clone();
+                        drop(read_guard);
 
-            if let Some(cached) = read_guard.as_ref() {
-                let cached_key = *self.cached_request_key.lock().unwrap();
-                if cached_key == Some(key) {
-                    let req_ref = unsafe { &*(cached as *const CompletionRequest) };
-                    drop(read_guard);
-
-                    let mut stream = inner.complete_stream(req_ref);
-                    while let Some(event) = stream.next().await {
-                        yield event?;
+                        let mut stream = inner.complete_stream(&cached_clone);
+                        while let Some(event) = stream.next().await {
+                            yield event?;
+                        }
+                        return;
                     }
-                    return;
                 }
             }
-            drop(read_guard);
 
+            // Check cache with write lock (in case another task updated it)
             {
                 let mut write_guard = cached_request_ref.write().await;
                 if let Some(cached) = write_guard.as_ref() {
                     let cached_key = *self.cached_request_key.lock().unwrap();
                     if cached_key == Some(key) {
-                        let req_ref = unsafe { &*(cached as *const CompletionRequest) };
-                        let _read_guard = write_guard.downgrade();
+                        // Clone the cached request to avoid lifetime issues
+                        let cached_clone = cached.clone();
+                        drop(write_guard);
 
-                        let mut stream = inner.complete_stream(req_ref);
+                        let mut stream = inner.complete_stream(&cached_clone);
                         while let Some(event) = stream.next().await {
                             yield event?;
                         }
@@ -439,14 +443,14 @@ impl LlmClient for CompressingClient {
                     }
                 }
 
+                // Cache miss - compress and store
                 let compressed = self.compress_request(req);
+                let compressed_clone = compressed.clone();
                 *write_guard = Some(compressed);
                 *self.cached_request_key.lock().unwrap() = Some(key);
+                drop(write_guard);
 
-                let req_ref = unsafe { &*(write_guard.as_ref().unwrap() as *const CompletionRequest) };
-                let _read_guard = write_guard.downgrade();
-
-                let mut stream = inner.complete_stream(req_ref);
+                let mut stream = inner.complete_stream(&compressed_clone);
                 while let Some(event) = stream.next().await {
                     yield event?;
                 }

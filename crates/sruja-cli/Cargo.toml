@@ -57,3 +57,5 @@ rmcp = { version = "1.7", default-features = false, features = ["server", "macro
 tempfile = "3.27"
 assert_cmd = "2.0"
 predicates = "3.1"
+libc = "0.2"
+os_pipe = "1"

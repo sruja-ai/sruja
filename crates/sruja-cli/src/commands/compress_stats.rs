@@ -1,5 +1,6 @@
 use crate::commands::CliError;
 
+#[allow(dead_code)]
 pub async fn run(run_id: Option<&str>, format: &str) -> Result<(), CliError> {
     let repo = std::env::current_dir()
         .map_err(|e| CliError::validation(e.to_string()))?
@@ -8,6 +9,7 @@ pub async fn run(run_id: Option<&str>, format: &str) -> Result<(), CliError> {
     compress_stats(&repo, run_id, format).await
 }
 
+#[allow(dead_code)]
 pub async fn compress_stats(
     repo: &str,
     run_id: Option<&str>,

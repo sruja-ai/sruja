@@ -61,52 +61,52 @@ pub struct AgentRunOptions<'a> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct AgentBudgets {
-    pub(crate) max_steps: usize,
-    pub(crate) max_runtime_ms_per_step: u64,
+pub struct AgentBudgets {
+    pub max_steps: usize,
+    pub max_runtime_ms_per_step: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct AgentTarget {
-    pub(crate) selector: String,
-    pub(crate) resolved_element_id: Option<String>,
+pub struct AgentTarget {
+    pub selector: String,
+    pub resolved_element_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct AgentStep {
-    pub(crate) id: String,
-    pub(crate) kind: String,
-    pub(crate) argv: Vec<String>,
+pub struct AgentStep {
+    pub id: String,
+    pub kind: String,
+    pub argv: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) expected: Option<String>,
+    pub expected: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct AgentSafety {
-    pub(crate) mode: String,
-    pub(crate) allowlist_source: String,
+pub struct AgentSafety {
+    pub mode: String,
+    pub allowlist_source: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) denied_steps: Vec<String>,
+    pub denied_steps: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct AgentPlanOutput {
+pub struct AgentPlanOutput {
     /// Always `deterministic_plan` — steps and verification are reproducible from repo facts.
-    pub(crate) artifact_kind: String,
+    pub artifact_kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) trace_id: Option<String>,
-    pub(crate) schema_version: String,
+    pub trace_id: Option<String>,
+    pub schema_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) run_id: Option<String>,
-    pub(crate) repo: String,
-    pub(crate) goal: String,
-    pub(crate) target: AgentTarget,
-    pub(crate) facts_refs: Vec<String>,
-    pub(crate) facts: Value,
+    pub run_id: Option<String>,
+    pub repo: String,
+    pub goal: String,
+    pub target: AgentTarget,
+    pub facts_refs: Vec<String>,
+    pub facts: Value,
     /// Path to a `.sruja` proposal (e.g. `repo.sruja.working` or
     /// `.sruja/proposals/<id>.sruja`) describing the architecture delta this
     /// plan intends. When populated, architecture-grade verify steps
@@ -115,28 +115,28 @@ pub(crate) struct AgentPlanOutput {
     /// architecture-as-code. None when the plan does not move boundaries or
     /// when no proposal has been authored yet.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) proposal_sruja: Option<String>,
-    pub(crate) steps: Vec<AgentStep>,
-    pub(crate) verification: Vec<AgentStep>,
-    pub(crate) risks: Vec<String>,
-    pub(crate) open_questions: Vec<String>,
-    pub(crate) budgets: AgentBudgets,
-    pub(crate) safety: AgentSafety,
+    pub proposal_sruja: Option<String>,
+    pub steps: Vec<AgentStep>,
+    pub verification: Vec<AgentStep>,
+    pub risks: Vec<String>,
+    pub open_questions: Vec<String>,
+    pub budgets: AgentBudgets,
+    pub safety: AgentSafety,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) enrichment: Option<AgentEnrichment>,
+    pub enrichment: Option<AgentEnrichment>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct StepObservation {
-    pub(crate) step_id: String,
-    pub(crate) status: String,
-    pub(crate) exit_code: Option<i32>,
-    pub(crate) stdout: String,
-    pub(crate) stderr: String,
-    pub(crate) elapsed_ms: u128,
+pub struct StepObservation {
+    pub step_id: String,
+    pub status: String,
+    pub exit_code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+    pub elapsed_ms: u128,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) content_hash: Option<String>,
+    pub content_hash: Option<String>,
 }
 
 /// Apply-mode success: every executed verification step is ok or explicitly skipped.
@@ -299,7 +299,7 @@ fn agent_enrichment(result: EnrichmentResult) -> AgentEnrichment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct AgentEnrichment {
+pub struct AgentEnrichment {
     /// Always `llm_interpretation` when present — narrative only; never changes facts.
     artifact_kind: String,
     status: String,

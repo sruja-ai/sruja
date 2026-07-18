@@ -1573,17 +1573,19 @@ impl Agent {
         // Tool-call assembly buffers (args arrive as JSON-string fragments).
         let mut accs: std::collections::BTreeMap<usize, (Option<String>, Option<String>, String)> =
             Default::default();
-        // Dispatched tasks keyed by call id.
-        let mut dispatched: std::collections::HashMap<
+
+        /// A dispatched tool task: (tool name, arguments JSON, join handle for result).
+        type DispatchedTask = (
             String,
-            (
-                String,
-                serde_json::Value,
-                tokio::task::JoinHandle<
-                    Result<(String, crate::tool::ToolCallRecord), crate::tool::ToolError>,
-                >,
-            ),
-        > = std::collections::HashMap::new();
+            serde_json::Value,
+            tokio::task::JoinHandle<
+                Result<(String, crate::tool::ToolCallRecord), crate::tool::ToolError>,
+            >,
+        );
+
+        // Dispatched tasks keyed by call id.
+        let mut dispatched: std::collections::HashMap<String, DispatchedTask> =
+            std::collections::HashMap::new();
 
         while let Some(event) = stream.next().await {
             let event = event.map_err(|e| AgentError::Other(e.to_string()))?;
@@ -1813,7 +1815,7 @@ impl Agent {
                 .map(|(id, _name, _args, res)| (id, res))
                 .collect();
 
-            for (_call_idx, call) in response.tool_calls.iter().enumerate() {
+            for call in response.tool_calls.iter() {
                 let result = call_id_to_result.get(&call.id);
                 let (result, record) = match result {
                     Some(Ok(ok)) => ok.clone(),

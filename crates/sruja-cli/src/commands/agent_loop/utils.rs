@@ -102,8 +102,6 @@ pub(crate) fn preloaded_architecture_context(repo_path: &Path, max_tokens: usize
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     const DEFAULT_SHELL_ALLOWLIST: &[&str] = &["cargo", "git"];
 
     #[test]
