@@ -297,9 +297,8 @@ impl crate::cognition::Agent {
                     remaining,
                     "streaming_turn: injecting hard convergence message"
                 );
-                req.messages.push(Message::user(
-                    super::prompts::CONVERGENCE_HARD,
-                ));
+                req.messages
+                    .push(Message::user(super::prompts::CONVERGENCE_HARD));
             } else if remaining > 0 && remaining <= half && !soft_sent {
                 soft_sent = true;
                 tracing::info!(
@@ -307,9 +306,8 @@ impl crate::cognition::Agent {
                     remaining,
                     "streaming_turn: injecting soft convergence reminder"
                 );
-                req.messages.push(Message::user(
-                    super::prompts::CONVERGENCE_SOFT,
-                ));
+                req.messages
+                    .push(Message::user(super::prompts::CONVERGENCE_SOFT));
             }
         }
 

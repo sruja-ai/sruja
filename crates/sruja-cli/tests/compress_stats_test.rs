@@ -84,7 +84,9 @@ async fn compress_stats_handles_empty_iterations() {
     .expect("failed to write fixture");
 
     let repo_str = repo_root.to_str().unwrap();
-    let result = sruja_cli::commands::compress_stats::compress_stats(repo_str, Some("empty-run"), "text").await;
+    let result =
+        sruja_cli::commands::compress_stats::compress_stats(repo_str, Some("empty-run"), "text")
+            .await;
 
     assert!(
         result.is_ok(),
@@ -121,12 +123,9 @@ async fn compress_stats_handles_missing_usage_fields() {
     .expect("failed to write fixture");
 
     let repo_str = repo_root.to_str().unwrap();
-    let result = sruja_cli::commands::compress_stats::compress_stats(
-        repo_str,
-        Some("sparse-run"),
-        "text",
-    )
-    .await;
+    let result =
+        sruja_cli::commands::compress_stats::compress_stats(repo_str, Some("sparse-run"), "text")
+            .await;
 
     assert!(
         result.is_ok(),
@@ -210,12 +209,9 @@ async fn compress_stats_nested_phases_token_aggregation() {
     .expect("failed to write fixture");
 
     let repo_str = repo_root.to_str().unwrap();
-    let result = sruja_cli::commands::compress_stats::compress_stats(
-        repo_str,
-        Some("nested-run"),
-        "json",
-    )
-    .await;
+    let result =
+        sruja_cli::commands::compress_stats::compress_stats(repo_str, Some("nested-run"), "json")
+            .await;
 
     assert!(
         result.is_ok(),

@@ -230,7 +230,10 @@ pub fn count_tokens(text: &str) -> usize {
 /// pattern, inside a fenced code block, or containing a keep-word) survive
 /// compression even when the compressor drops them. Shared by all backends.
 pub(crate) fn restore_kept(original: &str, compressed: &str, policy: &KeepPolicy) -> String {
-    if policy.keep_line_patterns.is_empty() && !policy.keep_code_blocks && policy.keep_words.is_empty() {
+    if policy.keep_line_patterns.is_empty()
+        && !policy.keep_code_blocks
+        && policy.keep_words.is_empty()
+    {
         return compressed.to_string();
     }
     let must = must_keep_lines(original, policy);
