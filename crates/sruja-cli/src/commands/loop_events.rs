@@ -133,6 +133,13 @@ pub struct StatusBar {
     needs_heartbeat: bool,
     /// Whether we've printed the phase header yet (for TTY single-line overwrite).
     header_printed: bool,
+    /// Live token/cost tracking.
+    total_tokens: u64,
+    estimated_cost_usd: f64,
+    /// Current iteration number.
+    current_iteration: usize,
+    /// Current tool being dispatched (shown in progress line).
+    active_tool: Option<String>,
 }
 
 impl StatusBar {
@@ -145,6 +152,10 @@ impl StatusBar {
             total: 0,
             needs_heartbeat: false,
             header_printed: false,
+            total_tokens: 0,
+            estimated_cost_usd: 0.0,
+            current_iteration: 0,
+            active_tool: None,
         }
     }
 
@@ -167,6 +178,7 @@ impl StatusBar {
                     LoopPhase::Comprehend | LoopPhase::Plan | LoopPhase::Replan
                 );
                 self.header_printed = false;
+                self.active_tool = None;
 
                 // If we had a previous phase, print its completion time
                 if let Some(_prev_phase) = prev {
@@ -185,14 +197,133 @@ impl StatusBar {
                 self.step = *step;
                 self.total = *total;
                 self.needs_heartbeat = false;
+                self.active_tool = None;
                 let desc: Option<&str> = Some(description.as_str());
                 self.render_step_progress(&desc);
+            }
+            LoopEvent::UsageUpdate {
+                total_tokens,
+                estimated_cost_usd,
+                ..
+            } => {
+                self.total_tokens = *total_tokens;
+                self.estimated_cost_usd = *estimated_cost_usd;
+                // Update the progress line with token info
+                self.render_progress_line();
+            }
+            LoopEvent::IterationStarted { n, .. } => {
+                self.current_iteration = *n;
+                self.active_tool = None;
+                if !self.is_tty {
+                    eprintln!("  {}", colors::detail_line(&format!("Iteration {n}")));
+                }
+            }
+            LoopEvent::IterationComplete {
+                iteration,
+                succeeded,
+                failed,
+                critique_approved,
+                cost_usd,
+            } => {
+                self.active_tool = None;
+                let status = if *critique_approved {
+                    colors::verdict_badge("approved", "pass")
+                } else {
+                    colors::verdict_badge("needs work", "warn")
+                };
+                let cost_str = if *cost_usd > 0.001 {
+                    format!("  ${:.4}", cost_usd)
+                } else {
+                    String::new()
+                };
+                if self.is_tty {
+                    eprint!("\r{}", " ".repeat(80));
+                    eprintln!(
+                        "\r  iteration {iteration}: {succeeded} ok, {failed} failed  {status}{cost_str}"
+                    );
+                } else {
+                    eprintln!(
+                        "  iteration {iteration}: {succeeded} ok, {failed} failed  {status}{cost_str}"
+                    );
+                }
+                let _ = io::stderr().flush();
+            }
+            LoopEvent::ToolDispatch {
+                tool_name,
+                subtask_id,
+            } => {
+                self.active_tool = Some(tool_name.clone());
+                let subtask_str = subtask_id
+                    .as_ref()
+                    .map(|s| format!(" [{s}]"))
+                    .unwrap_or_default();
+                if self.is_tty {
+                    let elapsed = self.elapsed_str();
+                    let line = format!(
+                        "\r  {}  {}/{}  [{}]  {}{}",
+                        "→", self.step, self.total, elapsed, tool_name, subtask_str,
+                    );
+                    let padded = format!("{:<80}", line);
+                    eprint!("{}", padded);
+                    let _ = io::stderr().flush();
+                } else {
+                    eprintln!("  tool: {tool_name}{subtask_str}");
+                }
+            }
+            LoopEvent::RecoveryNotice { reason, strategy } => {
+                self.active_tool = None;
+                if self.is_tty {
+                    eprint!("\r{}", " ".repeat(80));
+                    eprintln!(
+                        "\r  {} {}",
+                        colors::warning("!"),
+                        colors::warning(&format!("{strategy}: {reason}"))
+                    );
+                } else {
+                    eprintln!("  {} {strategy}: {reason}", colors::warning("!"));
+                }
+                let _ = io::stderr().flush();
             }
             LoopEvent::Done { .. } => {
                 self.finish_phase();
             }
             _ => {}
         }
+    }
+
+    /// Render the progress line with optional token/cost info.
+    fn render_progress_line(&self) {
+        if !self.is_tty || self.last_phase.is_none() {
+            return;
+        }
+        let elapsed = self.elapsed_str();
+        let prefix = if self.total > 0 {
+            format!("{}/{}", self.step, self.total)
+        } else {
+            String::new()
+        };
+        let tool_str = self
+            .active_tool
+            .as_deref()
+            .map(|t| format!("  {t}"))
+            .unwrap_or_default();
+        let token_str = if self.total_tokens > 0 {
+            let cost_str = if self.estimated_cost_usd > 0.001 {
+                format!(" ${:.4}", self.estimated_cost_usd)
+            } else {
+                String::new()
+            };
+            format!("  {}t{}", self.total_tokens, cost_str)
+        } else {
+            String::new()
+        };
+        let line = format!(
+            "\r  {}  {}  [{}]{}{}",
+            "→", prefix, elapsed, tool_str, token_str,
+        );
+        let padded = format!("{:<80}", line);
+        eprint!("{}", padded);
+        let _ = io::stderr().flush();
     }
 
     /// Print the phase header (TTY) or transition line (non-TTY).

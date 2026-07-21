@@ -94,7 +94,7 @@ impl LayeredConfig {
         if env_overrides
             .value
             .as_table()
-            .map_or(false, |t| !t.is_empty())
+            .is_some_and(|t| !t.is_empty())
         {
             deep_merge(&mut merged, env_overrides.value.clone());
             layers.push(env_overrides);

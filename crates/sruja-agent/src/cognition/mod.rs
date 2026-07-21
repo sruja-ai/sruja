@@ -218,6 +218,7 @@ impl TaskComplexity {
     }
 }
 
+/// test function
 /// Classify task complexity from the goal statement and scope hints.
 ///
 /// Uses keyword heuristics + scope (file/element count). Deterministic —
@@ -3487,6 +3488,31 @@ impl Agent {
                 incorporation_gap: None,
             });
 
+            // --- Emit live usage update ---
+            Self::emit_event(
+                events,
+                LoopEvent::UsageUpdate {
+                    prompt_tokens: total_usage.prompt_tokens,
+                    completion_tokens: total_usage.completion_tokens,
+                    total_tokens: total_usage.total_tokens,
+                    estimated_cost_usd: total_usage.estimated_cost_usd(),
+                },
+            );
+
+            // --- Emit iteration complete summary ---
+            let iter_succeeded = if approved { 1 } else { 0 };
+            let iter_failed = if approved { 0 } else { 1 };
+            Self::emit_event(
+                events,
+                LoopEvent::IterationComplete {
+                    iteration,
+                    succeeded: iter_succeeded,
+                    failed: iter_failed,
+                    critique_approved: approved,
+                    cost_usd: total_usage.estimated_cost_usd(),
+                },
+            );
+
             // --- Write checkpoint after each iteration ---
             // This enables resume from last good state if something goes wrong
             if let Some(ref checkpoint_dir) = loop_config.checkpoint_dir {
@@ -3886,7 +3912,15 @@ fn truncate(s: &str, max: usize) -> String {
     if s.len() <= max {
         s.to_string()
     } else {
-        format!("{}...\n(truncated, {} total chars)", &s[..max], s.len())
+        let dropped_chars = s.len() - max;
+        let dropped_lines = s[max..].lines().count();
+        format!(
+            "{}...\n(truncated: {} chars, {} lines dropped — {} total chars)",
+            &s[..max],
+            dropped_chars,
+            dropped_lines,
+            s.len()
+        )
     }
 }
 

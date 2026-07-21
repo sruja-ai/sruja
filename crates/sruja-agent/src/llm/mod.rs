@@ -33,6 +33,9 @@ pub mod openai;
 pub mod anthropic;
 
 pub mod circuit_breaker;
+pub mod retrying;
+#[cfg(test)]
+pub mod retrying_example;
 pub mod tiered;
 
 #[cfg(feature = "compression")]
@@ -53,6 +56,7 @@ pub use stream::{reassemble_stream, Stream, StreamEvent};
 pub use tiered::TieredClient;
 
 pub use circuit_breaker::{CircuitBreakerClient, CircuitBreakerConfig};
+pub use retrying::{RetryConfig, RetryingClient};
 
 #[cfg(feature = "compression")]
 pub use compression::{CompressingClient, CompressionConfig, CompressionStats};

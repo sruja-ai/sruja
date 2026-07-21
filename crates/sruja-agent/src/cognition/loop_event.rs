@@ -118,6 +118,28 @@ pub enum LoopEvent {
         total: usize,
         description: String,
     },
+    /// Live token/cost update during execution.
+    UsageUpdate {
+        prompt_tokens: u64,
+        completion_tokens: u64,
+        total_tokens: u64,
+        estimated_cost_usd: f64,
+    },
+    /// An iteration completed with a summary.
+    IterationComplete {
+        iteration: usize,
+        succeeded: usize,
+        failed: usize,
+        critique_approved: bool,
+        cost_usd: f64,
+    },
+    /// A tool call is being dispatched (shows which tool is running).
+    ToolDispatch {
+        tool_name: String,
+        subtask_id: Option<String>,
+    },
+    /// Recovery strategy activated (circuit breaker, stuck detection, etc.).
+    RecoveryNotice { reason: String, strategy: String },
     /// Deterministic grader result for a verify step.
     VerifyResult { step: String, ok: bool },
     /// Loop finished with outcome summary.

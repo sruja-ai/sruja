@@ -572,19 +572,21 @@ impl LoopManifest {
 
     /// Load from a `.sruja/loop.toml` file path. Returns `Default` if the
     /// file does not exist (non-fatal — the manifest is optional).
-    /// Emits an error if the file exists but cannot be parsed.
+    /// Emits a user-visible warning if the file exists but cannot be parsed.
     pub fn load_from_path(repo: &std::path::Path) -> Self {
         let path = repo.join(".sruja/loop.toml");
         match std::fs::read_to_string(&path) {
             Ok(content) => match Self::from_toml_str(&content) {
                 Ok(m) => m,
                 Err(e) => {
-                    tracing::error!(
-                        "INVALID loop config at {}: {e}. \
-                         Your loop.toml is broken — falling back to defaults. \
-                         Fix the file or delete it to suppress this error.",
+                    let msg = format!(
+                        "loop.toml parse error at {}: {e}\n\
+                         \x20 Falling back to defaults. Fix the file or delete it to suppress.",
                         path.display()
                     );
+                    tracing::error!("{}", msg);
+                    // Print to stderr so the user sees the warning even without RUST_LOG
+                    eprintln!("  \u{26a0}{msg}");
                     Self::default()
                 }
             },

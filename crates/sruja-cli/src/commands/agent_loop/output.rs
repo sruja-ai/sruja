@@ -1,4 +1,14 @@
 //! Output formatting for the agent loop results.
+//!
+//! Renders a human-readable summary after the agent loop finishes, covering:
+//!   - Convergence status (pass / fail badge)
+//!   - Narrative list of subtask descriptions ("What I did")
+//!   - Files touched during execution
+//!   - Per-subtask status breakdown (ok / failed / skipped)
+//!   - Verification issues and termination reason when the loop didn't converge
+//!   - Token usage and cost summary (when `--show-tokens` / `--verbose`)
+//!
+//! All colour output is delegated to [`crate::utils::colors`].
 
 use crate::utils::colors;
 
@@ -104,6 +114,34 @@ pub(crate) fn print_loop_result_human(result: &sruja_agent::LoopResult, verbose:
         parts.join(", ")
     );
 
+    // ── Subtask details (succeeded/failed status per subtask) ───────
+    if plan.subtasks.len() > 1 {
+        println!();
+        for st in &plan.subtasks {
+            let status = if steps.iter().any(|s| {
+                s.subtask_id == st.id && s.status == sruja_agent::cognition::StepStatus::Ok
+            }) {
+                colors::verdict_badge("ok", "pass")
+            } else if steps.iter().any(|s| {
+                s.subtask_id == st.id && s.status == sruja_agent::cognition::StepStatus::Failed
+            }) {
+                colors::verdict_badge("failed", "fail")
+            } else if steps.iter().any(|s| {
+                s.subtask_id == st.id && s.status == sruja_agent::cognition::StepStatus::Skipped
+            }) {
+                colors::verdict_badge("skipped", "info")
+            } else {
+                colors::verdict_badge("—", "info")
+            };
+            println!(
+                "  {} {}. {}",
+                status,
+                st.id,
+                colors::detail_line(&st.description)
+            );
+        }
+    }
+
     // ── Verification ──────────────────────────────────────────────────
     if result.converged {
         let critique = result.final_result.critique.as_ref();
@@ -124,23 +162,41 @@ pub(crate) fn print_loop_result_human(result: &sruja_agent::LoopResult, verbose:
                 println!("  {}", colors::detail_line(&format!("• {}", issue)));
             }
         }
+        // Show termination reason
+        let reason = match &result.termination {
+            sruja_agent::cognition::LoopTermination::MaxIterations => {
+                "Max iterations reached without convergence"
+            }
+            sruja_agent::cognition::LoopTermination::Oscillation => {
+                "Detected repeated failure pattern (oscillation)"
+            }
+            sruja_agent::cognition::LoopTermination::SpendCapExceeded(cost) => {
+                &format!("Budget exceeded (${cost:.4})")
+            }
+            sruja_agent::cognition::LoopTermination::ModelNotConverging(frac) => {
+                &format!("Model not converging ({:.0}% non-converged)", frac * 100.0)
+            }
+            sruja_agent::cognition::LoopTermination::NoReplan => "No replan strategy available",
+            sruja_agent::cognition::LoopTermination::Aborted(msg) => &format!("Aborted: {msg}"),
+            _ => "Unknown reason",
+        };
         println!();
+        println!("{}", colors::warning(&format!("Stopped: {reason}")));
         println!(
             "{}",
             colors::detail_line("Try rephrasing the goal or increasing --max-iterations.")
         );
     }
 
-    // ── Token / cost (only when verbose) ───────────────────────────────
-    if verbose {
+    // ── Token / cost ───────────────────────────────────────────────
+    // Always show cost summary — users need to know what they spent.
+    let cost = result.total_usage.estimated_cost_usd();
+    let tokens = result.total_usage.total_tokens;
+    if tokens > 0 {
         println!();
         println!(
             "{}",
-            colors::detail_line(&format!(
-                "{} tokens  ·  ${:.4}",
-                result.total_usage.total_tokens,
-                result.total_usage.estimated_cost_usd()
-            ))
+            colors::detail_line(&format!("{tokens} tokens  ·  ${cost:.4}"))
         );
     }
 

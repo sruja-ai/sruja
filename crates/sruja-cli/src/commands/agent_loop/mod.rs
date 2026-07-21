@@ -260,6 +260,11 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
     tracing::info!("agent_loop: context compression enabled (TextCrusher + CCR)");
 
+    // ── Retry layer ──────────────────────────────────────────────────────
+    // Wrap in RetryingClient for automatic retry on transient LLM errors
+    // (429 rate limits, 5xx server errors, network timeouts).
+    let retrying = sruja_agent::llm::RetryingClient::new(Arc::new(compressing));
+
     // ── Build tools + agent ───────────────────────────────────────────────
     // Built-in filesystem/shell tools + the sruja-native "eyes" (focus, explain,
     // drift, compliance, query). The latter ground the agent in the architecture
@@ -390,7 +395,7 @@ pub async fn agent_loop(options: &AgentLoopOptions<'_>) -> Result<(), CliError> 
 
     let agent = {
         let mut builder = sruja_agent::Agent::builder()
-            .llm(Arc::new(compressing))
+            .llm(Arc::new(retrying))
             .tools(tools)
             .config(config)
             .memory(repo_path)

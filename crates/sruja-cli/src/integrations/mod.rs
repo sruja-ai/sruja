@@ -159,7 +159,7 @@ pub fn load_repo_config(repo_root: &Path) -> Option<SrujaConfigFile> {
     let has_content = layered
         .layers
         .iter()
-        .any(|l| l.path.is_some() || !l.value.as_table().map_or(true, |t| t.is_empty()));
+        .any(|l| l.path.is_some() || !l.value.as_table().is_none_or(|t| t.is_empty()));
     if !has_content {
         return None;
     }
