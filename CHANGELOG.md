@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.69.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.68.0...sruja-v0.69.0) (2026-07-21)
+
+
+### Features
+
+* **config:** add layered configuration with deep merge ([708235e](https://github.com/sruja-ai/sruja/commit/708235efb0962dd49244813da5ebcd19d6991276))
+
 ## [0.68.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.67.0...sruja-v0.68.0) (2026-07-18)
 
 
