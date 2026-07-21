@@ -316,7 +316,11 @@ fn load_sruja_config(repo_path: &Path) -> SrujaConfig {
             let sources: Vec<String> = layered
                 .layers
                 .iter()
-                .filter_map(|l| l.path.as_ref().map(|p| format!("{} ({})", l.name, p.display())))
+                .filter_map(|l| {
+                    l.path
+                        .as_ref()
+                        .map(|p| format!("{} ({})", l.name, p.display()))
+                })
                 .collect();
             eprintln!(
                 "⚠  Failed to parse merged config: {e}. Using default config.\n\
@@ -338,7 +342,9 @@ fn load_sruja_config(repo_path: &Path) -> SrujaConfig {
 ///
 /// Use this instead of re-loading config when you already have a
 /// [`LayeredConfig`] instance (avoids redundant file reads).
-pub fn list_config_sources_from(layered: &LayeredConfig) -> Vec<(&'static str, Option<&std::path::PathBuf>)> {
+pub fn list_config_sources_from(
+    layered: &LayeredConfig,
+) -> Vec<(&'static str, Option<&std::path::PathBuf>)> {
     layered
         .layers
         .iter()

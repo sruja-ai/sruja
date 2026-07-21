@@ -156,9 +156,10 @@ pub fn load_repo_config(repo_root: &Path) -> Option<SrujaConfigFile> {
     // This preserves backward compatibility: callers that gate on
     // `if let Some(cfg) = load_repo_config(...)` still get None when
     // no config exists anywhere on disk or in SRUJA_CONFIG.
-    let has_content = layered.layers.iter().any(|l| {
-        l.path.is_some() || !l.value.as_table().map_or(true, |t| t.is_empty())
-    });
+    let has_content = layered
+        .layers
+        .iter()
+        .any(|l| l.path.is_some() || !l.value.as_table().map_or(true, |t| t.is_empty()));
     if !has_content {
         return None;
     }
@@ -317,8 +318,7 @@ pub fn resolve_openai_auth() -> Option<String> {
 }
 
 /// Shared preamble for all enrichment prompts — use only provided facts.
-pub const ENRICHMENT_FACTS_PREAMBLE: &str =
-    "You MUST only use the JSON facts provided below. \
+pub const ENRICHMENT_FACTS_PREAMBLE: &str = "You MUST only use the JSON facts provided below. \
      Do not invent modules, APIs, or file paths. If unknown, say \"unknown\".";
 
 /// Default user prompt template for generic enrichment (plan/risks/questions).

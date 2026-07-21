@@ -2074,9 +2074,7 @@ impl Agent {
                     remaining,
                     "tool_loop: injecting hard convergence message"
                 );
-                req.messages.push(Message::user(
-                    prompts::CONVERGENCE_HARD,
-                ));
+                req.messages.push(Message::user(prompts::CONVERGENCE_HARD));
             } else if remaining > 0 && remaining <= half && !soft_sent && !hard_sent {
                 soft_sent = true;
                 tracing::info!(
@@ -2084,9 +2082,7 @@ impl Agent {
                     remaining,
                     "tool_loop: injecting soft convergence reminder"
                 );
-                req.messages.push(Message::user(
-                    prompts::CONVERGENCE_SOFT,
-                ));
+                req.messages.push(Message::user(prompts::CONVERGENCE_SOFT));
             }
         }
 

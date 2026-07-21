@@ -95,20 +95,44 @@ pub async fn compress_stats(
     for iter in &iterations {
         // Aggregate top-level usage
         if let Some(usage) = iter.get("usage") {
-            total_input_tokens += usage.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            total_output_tokens += usage.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            total_cache_read_tokens += usage.get("cache_read_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            total_cache_write_tokens += usage.get("cache_write_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            total_input_tokens += usage
+                .get("prompt_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            total_output_tokens += usage
+                .get("completion_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            total_cache_read_tokens += usage
+                .get("cache_read_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+            total_cache_write_tokens += usage
+                .get("cache_write_tokens")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
         }
 
         // Aggregate nested phase usage (e.g. comprehension, plan, critique)
         if let Some(phases) = iter.get("phases").and_then(|v| v.as_object()) {
             for (_phase_name, phase_val) in phases {
                 if let Some(phase_usage) = phase_val.get("usage") {
-                    total_input_tokens += phase_usage.get("prompt_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                    total_output_tokens += phase_usage.get("completion_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                    total_cache_read_tokens += phase_usage.get("cache_read_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                    total_cache_write_tokens += phase_usage.get("cache_write_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    total_input_tokens += phase_usage
+                        .get("prompt_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    total_output_tokens += phase_usage
+                        .get("completion_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    total_cache_read_tokens += phase_usage
+                        .get("cache_read_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    total_cache_write_tokens += phase_usage
+                        .get("cache_write_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
                 }
             }
         }
@@ -116,13 +140,32 @@ pub async fn compress_stats(
 
     let iteration_count = iterations.len();
 
-    let total_tokens = total_input_tokens + total_output_tokens + total_cache_read_tokens + total_cache_write_tokens;
+    let total_tokens = total_input_tokens
+        + total_output_tokens
+        + total_cache_read_tokens
+        + total_cache_write_tokens;
 
     let count = iteration_count as u64;
-    let avg_input = if count == 0 { 0 } else { total_input_tokens / count };
-    let avg_output = if count == 0 { 0 } else { total_output_tokens / count };
-    let avg_cache_read = if count == 0 { 0 } else { total_cache_read_tokens / count };
-    let avg_cache_write = if count == 0 { 0 } else { total_cache_write_tokens / count };
+    let avg_input = if count == 0 {
+        0
+    } else {
+        total_input_tokens / count
+    };
+    let avg_output = if count == 0 {
+        0
+    } else {
+        total_output_tokens / count
+    };
+    let avg_cache_read = if count == 0 {
+        0
+    } else {
+        total_cache_read_tokens / count
+    };
+    let avg_cache_write = if count == 0 {
+        0
+    } else {
+        total_cache_write_tokens / count
+    };
     let avg_tokens_per_iter = if count == 0 { 0 } else { total_tokens / count };
 
     // Cost rates: $3.00/M input, $15.00/M output, $0.30/M cache_read, $3.75/M cache_write

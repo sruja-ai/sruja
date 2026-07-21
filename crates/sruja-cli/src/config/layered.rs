@@ -91,7 +91,11 @@ impl LayeredConfig {
         // SRUJA_CONFIG sections can be specified as inline TOML via env var.
         // Format: SRUJA_CONFIG='[integrations]\nmodel = "gpt-4"'
         let env_overrides = load_env_overrides();
-        if env_overrides.value.as_table().map_or(false, |t| !t.is_empty()) {
+        if env_overrides
+            .value
+            .as_table()
+            .map_or(false, |t| !t.is_empty())
+        {
             deep_merge(&mut merged, env_overrides.value.clone());
             layers.push(env_overrides);
         }
@@ -110,8 +114,8 @@ impl LayeredConfig {
         // Round-trip through TOML string for reliable deserialization.
         // toml::Value deserialization via serde has edge cases with table
         // ordering and spanned values; string round-trip is always correct.
-        let encoded =
-            toml::to_string_pretty(&self.merged).map_err(|e| format!("cannot serialize merged config: {e}"))?;
+        let encoded = toml::to_string_pretty(&self.merged)
+            .map_err(|e| format!("cannot serialize merged config: {e}"))?;
         toml::from_str(&encoded).map_err(|e| format!("{e}"))
     }
 
@@ -123,7 +127,11 @@ impl LayeredConfig {
     /// Collect all resolved config file paths (existing files only).
     pub fn existing_config_paths(repo_path: &Path) -> Vec<PathBuf> {
         let mut paths = Vec::new();
-        for p in &[system_config_path(), user_config_path(), repo_path.join(".sruja/config.toml")] {
+        for p in &[
+            system_config_path(),
+            user_config_path(),
+            repo_path.join(".sruja/config.toml"),
+        ] {
             if p.exists() {
                 paths.push(p.clone());
             }
@@ -314,17 +322,21 @@ mod tests {
 
     #[test]
     fn test_deep_merge_tables_combine() {
-        let mut base = toml_val(r#"
+        let mut base = toml_val(
+            r#"
 [integrations]
 default_provider = "zai"
 
 [agent.models]
 cheap = { provider = "zai", model = "GLM-4-Flash" }
-"#);
-        let overlay = toml_val(r#"
+"#,
+        );
+        let overlay = toml_val(
+            r#"
 [agent.models]
 premium = { provider = "openrouter", model = "claude-sonnet-4" }
-"#);
+"#,
+        );
         deep_merge(&mut base, overlay);
 
         // Original keys preserved
@@ -362,10 +374,7 @@ premium = { provider = "openrouter", model = "claude-sonnet-4" }
         let arr = base.get("tools").and_then(|t| t.as_array());
         assert!(arr.is_some());
         assert_eq!(arr.unwrap().len(), 1);
-        assert_eq!(
-            arr.unwrap()[0].as_str(),
-            Some("c")
-        );
+        assert_eq!(arr.unwrap()[0].as_str(), Some("c"));
     }
 
     #[test]
@@ -422,23 +431,27 @@ model = "glm-4-flash"
         // Simulate by constructing layers manually.
         let mut merged = toml::Value::Table(toml::map::Map::new());
 
-        let system = toml_val(r#"
+        let system = toml_val(
+            r#"
 [integrations]
 default_provider = "openai"
 model = "gpt-4"
 
 [agent.models]
 cheap = { provider = "openai", model = "gpt-4o-mini" }
-"#);
+"#,
+        );
         deep_merge(&mut merged, system);
 
-        let project = toml_val(r#"
+        let project = toml_val(
+            r#"
 [integrations]
 default_provider = "zai"
 
 [agent.models]
 premium = { provider = "zai", model = "GLM-4.7" }
-"#);
+"#,
+        );
         deep_merge(&mut merged, project);
 
         // Project overrides default_provider
@@ -482,16 +495,20 @@ premium = { provider = "zai", model = "GLM-4.7" }
     fn test_env_overrides_highest_priority() {
         let mut merged = toml::Value::Table(toml::map::Map::new());
 
-        let project = toml_val(r#"
+        let project = toml_val(
+            r#"
 [integrations]
 model = "glm-4-flash"
-"#);
+"#,
+        );
         deep_merge(&mut merged, project);
 
-        let env = toml_val(r#"
+        let env = toml_val(
+            r#"
 [integrations]
 model = "gpt-4"
-"#);
+"#,
+        );
         deep_merge(&mut merged, env);
 
         assert_eq!(
@@ -529,10 +546,7 @@ model = "gpt-4"
         std::env::set_var("SRUJA_CONFIG", "");
         let layer = load_env_overrides();
         std::env::remove_var("SRUJA_CONFIG");
-        assert!(layer
-            .value
-            .as_table()
-            .map_or(false, |t| t.is_empty()));
+        assert!(layer.value.as_table().map_or(false, |t| t.is_empty()));
     }
 
     #[test]
@@ -571,10 +585,7 @@ key_env = "ZAI_API_KEY"
         }
 
         let cfg: TestConfig = layered.deserialize().unwrap();
-        assert_eq!(
-            cfg.integrations.default_provider.as_deref(),
-            Some("zai")
-        );
+        assert_eq!(cfg.integrations.default_provider.as_deref(), Some("zai"));
         assert_eq!(cfg.integrations.model.as_deref(), Some("glm-4-flash"));
     }
 
@@ -588,7 +599,10 @@ key_env = "ZAI_API_KEY"
         std::env::set_var("HOME", "/home/testuser");
 
         let path = user_config_path();
-        assert_eq!(path, PathBuf::from("/home/testuser/.config/sruja/config.toml"));
+        assert_eq!(
+            path,
+            PathBuf::from("/home/testuser/.config/sruja/config.toml")
+        );
 
         // Restore
         if let Some(xdg) = prev_xdg {
@@ -620,7 +634,8 @@ key_env = "ZAI_API_KEY"
         let mut merged = toml::Value::Table(toml::map::Map::new());
 
         // System layer: sets base provider and model
-        let system = toml_val(r#"
+        let system = toml_val(
+            r#"
 [integrations]
 default_provider = "openai"
 model = "gpt-4"
@@ -631,19 +646,23 @@ allowed_sruja_subcommands = ["sync", "drift"]
 [agent.models]
 cheap = { provider = "openai", model = "gpt-4o-mini" }
 premium = { provider = "openai", model = "gpt-4" }
-"#);
+"#,
+        );
         deep_merge(&mut merged, system);
 
         // User layer: overrides premium model, adds review tier
-        let user = toml_val(r#"
+        let user = toml_val(
+            r#"
 [agent.models]
 premium = { provider = "openrouter", model = "claude-sonnet-4" }
 review = { provider = "openrouter", model = "claude-opus-4" }
-"#);
+"#,
+        );
         deep_merge(&mut merged, user);
 
         // Project layer: overrides default_provider, adds cheap model
-        let project = toml_val(r#"
+        let project = toml_val(
+            r#"
 [integrations]
 default_provider = "zai"
 
@@ -653,7 +672,8 @@ key_env = "ZAI_API_KEY"
 
 [agent.models]
 cheap = { provider = "zai", model = "GLM-4-Flash" }
-"#);
+"#,
+        );
         deep_merge(&mut merged, project);
 
         // Verify: project override of default_provider

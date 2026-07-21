@@ -96,11 +96,9 @@ Rules:\n\
 4. When done, write a brief summary of changes.";
 
 /// Hard convergence message: few tool calls remaining, must produce final answer.
-pub(super) const CONVERGENCE_HARD: &str =
-    "CRITICAL: You have very few tool calls remaining. \
+pub(super) const CONVERGENCE_HARD: &str = "CRITICAL: You have very few tool calls remaining. \
      Produce your final answer now as plain text. Do NOT call any more tools.";
 
 /// Soft convergence message: half the tool budget used, start wrapping up.
-pub(super) const CONVERGENCE_SOFT: &str =
-    "You have used more than half your tool calls. \
+pub(super) const CONVERGENCE_SOFT: &str = "You have used more than half your tool calls. \
      Start wrapping up and produce your final answer soon.";
