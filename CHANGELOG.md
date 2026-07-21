@@ -5,6 +5,13 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.70.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.69.1...sruja-v0.70.0) (2026-07-21)
+
+
+### Features
+
+* **agent:** improve UX/UI, robustness, and retry logic ([510d841](https://github.com/sruja-ai/sruja/commit/510d841f2c316cd0ca36cf30b9a3cb380495e565))
+
 ## [0.69.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.69.0...sruja-v0.69.1) (2026-07-21)
 
 
