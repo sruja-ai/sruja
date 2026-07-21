@@ -8,7 +8,7 @@ pub(crate) use super::{parse_sruja_file, CliError};
 pub mod check;
 #[path = "completions.rs"]
 pub mod completions;
-#[path = "dsl.rs"]
+#[path = "dsl/mod.rs"]
 pub mod dsl;
 #[path = "generate.rs"]
 pub mod generate;

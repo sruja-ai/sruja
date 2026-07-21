@@ -16,7 +16,7 @@ pub mod ai;
 pub mod critique;
 #[path = "evolution.rs"]
 pub mod evolution;
-#[path = "focus.rs"]
+#[path = "focus/mod.rs"]
 pub mod focus;
 #[path = "ingest.rs"]
 pub mod ingest;
@@ -24,7 +24,7 @@ pub mod ingest;
 pub mod intent;
 #[path = "onboard.rs"]
 pub mod onboard;
-#[path = "propose.rs"]
+#[path = "propose/mod.rs"]
 pub mod propose;
 #[path = "remediation.rs"]
 pub mod remediation;

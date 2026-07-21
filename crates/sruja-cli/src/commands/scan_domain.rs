@@ -9,7 +9,7 @@ pub(crate) use super::{parse_sruja_file, scan_repo_cached, scan_repo_cached_with
 pub mod context_graph;
 #[path = "context_score.rs"]
 pub mod context_score;
-#[path = "discover.rs"]
+#[path = "discover/mod.rs"]
 pub mod discover;
 #[path = "explore.rs"]
 pub mod explore;

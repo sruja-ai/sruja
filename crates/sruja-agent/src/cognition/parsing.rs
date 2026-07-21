@@ -124,7 +124,7 @@ pub fn parse_plan_from_response(
     })
 }
 
-pub(super) fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
+pub(crate) fn parse_critique_from_response(content: &str, usage: Usage) -> Critique {
     let json_str = extract_json(content);
 
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
@@ -206,7 +206,7 @@ pub(super) fn parse_critique_from_response(content: &str, usage: Usage) -> Criti
     }
 }
 
-pub(super) fn parse_learnings_from_response(content: &str) -> Vec<LearningEntry> {
+pub(crate) fn parse_learnings_from_response(content: &str) -> Vec<LearningEntry> {
     let json_str = extract_json(content);
 
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {

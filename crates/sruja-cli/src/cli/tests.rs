@@ -20,33 +20,19 @@ fn parses_ai_context_defaults() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "ai-context"]).expect("parse");
             match cli.command {
-                Commands::AiContext {
-                    run_id: _,
-                    format,
-                    repo,
-                    output,
-                    file,
-                    element_id,
-                    query,
-                    base_ref,
-                    head_ref,
-                    intent,
-                    depth,
-                    max_tokens,
-                    cache_friendly,
-                } => {
-                    assert_eq!(format, "cursor-rules");
-                    assert!(repo.is_empty());
-                    assert!(output.is_none());
-                    assert!(file.is_none());
-                    assert!(element_id.is_none());
-                    assert!(query.is_none());
-                    assert!(base_ref.is_none());
-                    assert!(head_ref.is_none());
-                    assert!(intent.is_none());
-                    assert_eq!(depth, 2);
-                    assert_eq!(max_tokens, 10000);
-                    assert!(!cache_friendly);
+                Commands::AiContext(ref args) => {
+                    assert_eq!(args.format, "cursor-rules");
+                    assert!(args.repo.is_empty());
+                    assert!(args.output.is_none());
+                    assert!(args.file.is_none());
+                    assert!(args.element_id.is_none());
+                    assert!(args.query.is_none());
+                    assert!(args.base_ref.is_none());
+                    assert!(args.head_ref.is_none());
+                    assert!(args.intent.is_none());
+                    assert_eq!(args.depth, 2);
+                    assert_eq!(args.max_tokens, 10000);
+                    assert!(!args.cache_friendly);
                 }
                 _ => panic!("expected AiContext command"),
             }
@@ -65,9 +51,9 @@ fn parses_check_drift_state_format() {
             let cli = Cli::try_parse_from(["sruja", "check", "-r", ".", "--format", "drift-state"])
                 .expect("parse");
             match cli.command {
-                Commands::Check { repo, format, .. } => {
-                    assert_eq!(repo, ".");
-                    assert_eq!(format, "drift-state");
+                Commands::Check(ref args) => {
+                    assert_eq!(args.repo, ".");
+                    assert_eq!(args.format, "drift-state");
                 }
                 _ => panic!("expected Check command with drift-state format"),
             }
@@ -85,25 +71,25 @@ fn parses_discover_subcommands() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "discover", "explain"]).expect("parse");
             match cli.command {
-                Commands::Discover { cmd, .. } => {
-                    assert!(matches!(cmd, Some(DiscoverCommand::Explain)));
+                Commands::Discover(ref args) => {
+                    assert!(matches!(args.cmd, Some(DiscoverCommand::Explain)));
                 }
                 _ => panic!("expected Discover command"),
             }
 
             let cli2 = Cli::try_parse_from(["sruja", "discover", "repomap"]).expect("parse");
             match cli2.command {
-                Commands::Discover { cmd, .. } => {
-                    assert!(matches!(cmd, Some(DiscoverCommand::Repomap)));
+                Commands::Discover(ref args) => {
+                    assert!(matches!(args.cmd, Some(DiscoverCommand::Repomap)));
                 }
                 _ => panic!("expected Discover command"),
             }
 
             let cli3 = Cli::try_parse_from(["sruja", "discover"]).expect("parse bare");
             match cli3.command {
-                Commands::Discover { cmd, .. } => {
+                Commands::Discover(ref args) => {
                     assert!(
-                        cmd.is_none(),
+                        args.cmd.is_none(),
                         "bare discover should have no subcommand (defaults to questions)"
                     );
                 }
@@ -113,8 +99,8 @@ fn parses_discover_subcommands() {
             let cli4 =
                 Cli::try_parse_from(["sruja", "discover", "questions"]).expect("parse questions");
             match cli4.command {
-                Commands::Discover { cmd, .. } => {
-                    assert!(matches!(cmd, Some(DiscoverCommand::Questions)));
+                Commands::Discover(ref args) => {
+                    assert!(matches!(args.cmd, Some(DiscoverCommand::Questions)));
                 }
                 _ => panic!("expected Discover command"),
             }
@@ -122,8 +108,8 @@ fn parses_discover_subcommands() {
             let cli5 =
                 Cli::try_parse_from(["sruja", "discover", "context"]).expect("parse context");
             match cli5.command {
-                Commands::Discover { cmd, .. } => {
-                    assert!(matches!(cmd, Some(DiscoverCommand::Context)));
+                Commands::Discover(ref args) => {
+                    assert!(matches!(args.cmd, Some(DiscoverCommand::Context)));
                 }
                 _ => panic!("expected Discover command"),
             }
@@ -141,8 +127,8 @@ fn parses_author_subcommands() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "author", "evidence"]).expect("parse");
             match cli.command {
-                Commands::Author { cmd } => {
-                    assert!(matches!(cmd, AuthorCommand::Evidence { .. }));
+                Commands::Author(ref args) => {
+                    assert!(matches!(args.cmd, AuthorCommand::Evidence { .. }));
                 }
                 _ => panic!("expected Author command"),
             }
@@ -158,8 +144,8 @@ fn parses_author_subcommands() {
             ])
             .expect("parse propose");
             match cli2.command {
-                Commands::Author { cmd } => {
-                    assert!(matches!(cmd, AuthorCommand::Propose { .. }));
+                Commands::Author(ref args) => {
+                    assert!(matches!(args.cmd, AuthorCommand::Propose { .. }));
                 }
                 _ => panic!("expected Author command"),
             }
@@ -190,8 +176,8 @@ fn parses_propose_subcommands() {
             ])
             .expect("parse propose create");
             match cli.command {
-                Commands::Propose { cmd } => {
-                    assert!(matches!(cmd, ProposeCommand::Create { .. }));
+                Commands::Propose(ref args) => {
+                    assert!(matches!(args.cmd, ProposeCommand::Create { .. }));
                 }
                 _ => panic!("expected Propose command"),
             }
@@ -199,8 +185,8 @@ fn parses_propose_subcommands() {
             let cli2 = Cli::try_parse_from(["sruja", "propose", "list", "-r", ".", "-f", "text"])
                 .expect("parse propose list");
             match cli2.command {
-                Commands::Propose { cmd } => {
-                    assert!(matches!(cmd, ProposeCommand::List { .. }));
+                Commands::Propose(ref args) => {
+                    assert!(matches!(args.cmd, ProposeCommand::List { .. }));
                 }
                 _ => panic!("expected Propose command"),
             }
@@ -218,8 +204,8 @@ fn parses_propose_subcommands() {
             ])
             .expect("parse propose approve");
             match cli3.command {
-                Commands::Propose { cmd } => {
-                    assert!(matches!(cmd, ProposeCommand::Approve { .. }));
+                Commands::Propose(ref args) => {
+                    assert!(matches!(args.cmd, ProposeCommand::Approve { .. }));
                 }
                 _ => panic!("expected Propose command"),
             }
@@ -237,19 +223,19 @@ fn parses_check_ci_flag() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "check", "--ci"]).expect("parse");
             match cli.command {
-                Commands::Check { ci, .. } => assert!(ci),
+                Commands::Check(ref args) => assert!(args.ci),
                 _ => panic!("expected Check command"),
             }
 
             let cli2 = Cli::try_parse_from(["sruja", "check"]).expect("parse");
             match cli2.command {
-                Commands::Check { ci, .. } => assert!(!ci),
+                Commands::Check(ref args) => assert!(!args.ci),
                 _ => panic!("expected Check command"),
             }
 
             let cli3 = Cli::try_parse_from(["sruja", "drift", "--ci"]).expect("parse alias");
             match cli3.command {
-                Commands::Check { ci, .. } => assert!(ci),
+                Commands::Check(ref args) => assert!(args.ci),
                 _ => panic!("expected Check command via drift alias"),
             }
 
@@ -263,13 +249,9 @@ fn parses_check_ci_flag() {
             ])
             .expect("parse");
             match cli4.command {
-                Commands::Check {
-                    structural_only,
-                    advisory,
-                    ..
-                } => {
-                    assert!(structural_only);
-                    assert!(advisory);
+                Commands::Check(ref args) => {
+                    assert!(args.structural_only);
+                    assert!(args.advisory);
                 }
                 _ => panic!("expected Check command"),
             }
@@ -287,13 +269,13 @@ fn parses_start_and_init_alias() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "start"]).expect("parse");
             match cli.command {
-                Commands::Init { path, .. } => assert_eq!(path, "."),
+                Commands::Init(ref args) => assert_eq!(args.path, "."),
                 _ => panic!("expected Init command via start"),
             }
 
             let cli2 = Cli::try_parse_from(["sruja", "init"]).expect("parse");
             match cli2.command {
-                Commands::Init { path, .. } => assert_eq!(path, "."),
+                Commands::Init(ref args) => assert_eq!(args.path, "."),
                 _ => panic!("expected Init command via init alias"),
             }
         })
@@ -310,16 +292,11 @@ fn parses_ingest_command() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "ingest"]).expect("parse");
             match cli.command {
-                Commands::Ingest {
-                    sources,
-                    repo,
-                    category,
-                    elements,
-                } => {
-                    assert!(sources.is_empty());
-                    assert_eq!(repo, ".");
-                    assert!(category.is_none());
-                    assert!(elements.is_none());
+                Commands::Ingest(ref args) => {
+                    assert!(args.sources.is_empty());
+                    assert_eq!(args.repo, ".");
+                    assert!(args.category.is_none());
+                    assert!(args.elements.is_none());
                 }
                 _ => panic!("expected Ingest command"),
             }
@@ -335,15 +312,10 @@ fn parses_ingest_command() {
             ])
             .expect("parse");
             match cli2.command {
-                Commands::Ingest {
-                    sources,
-                    category,
-                    elements,
-                    ..
-                } => {
-                    assert_eq!(sources, vec!["docs/adr/".to_string()]);
-                    assert_eq!(category.as_deref(), Some("adr"));
-                    assert_eq!(elements.as_deref(), Some("Sruja.CLI"));
+                Commands::Ingest(ref args) => {
+                    assert_eq!(args.sources, vec!["docs/adr/".to_string()]);
+                    assert_eq!(args.category.as_deref(), Some("adr"));
+                    assert_eq!(args.elements.as_deref(), Some("Sruja.CLI"));
                 }
                 _ => panic!("expected Ingest command"),
             }
@@ -361,16 +333,16 @@ fn parses_intent_evaluate_and_history() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "intent", "evaluate"]).expect("parse");
             match cli.command {
-                Commands::Intent { cmd } => {
-                    assert!(matches!(cmd, IntentCommand::Evaluate { .. }));
+                Commands::Intent(ref args) => {
+                    assert!(matches!(args.cmd, IntentCommand::Evaluate { .. }));
                 }
                 _ => panic!("expected Intent command"),
             }
 
             let cli2 = Cli::try_parse_from(["sruja", "intent", "history"]).expect("parse");
             match cli2.command {
-                Commands::Intent { cmd } => {
-                    assert!(matches!(cmd, IntentCommand::History { .. }));
+                Commands::Intent(ref args) => {
+                    assert!(matches!(args.cmd, IntentCommand::History { .. }));
                 }
                 _ => panic!("expected Intent command"),
             }
@@ -388,38 +360,26 @@ fn parses_ai_as_focus_alias() {
         .spawn(|| {
             let cli = Cli::try_parse_from(["sruja", "ai"]).expect("parse");
             match cli.command {
-                Commands::Ai {
-                    repo,
-                    task,
-                    file,
-                    element_id,
-                    query,
-                    base_ref,
-                    head_ref,
-                    staged,
-                    max_tokens,
-                    output,
-                    enrich,
-                } => {
-                    assert_eq!(repo, ".");
-                    assert!(task.is_none());
-                    assert!(file.is_none());
-                    assert!(element_id.is_none());
-                    assert!(query.is_none());
-                    assert!(base_ref.is_none());
-                    assert!(head_ref.is_none());
-                    assert!(!staged);
-                    assert_eq!(max_tokens, 8000);
-                    assert!(output.is_none());
-                    assert!(!enrich.enrich);
+                Commands::Ai(ref args) => {
+                    assert_eq!(args.repo, ".");
+                    assert!(args.task.is_none());
+                    assert!(args.file.is_none());
+                    assert!(args.element_id.is_none());
+                    assert!(args.query.is_none());
+                    assert!(args.base_ref.is_none());
+                    assert!(args.head_ref.is_none());
+                    assert!(!args.staged);
+                    assert_eq!(args.max_tokens, 8000);
+                    assert!(args.output.is_none());
+                    assert!(!args.enrich.enrich);
                 }
                 _ => panic!("expected Ai command"),
             }
 
             let cli2 = Cli::try_parse_from(["sruja", "focus"]).expect("parse focus");
             match cli2.command {
-                Commands::Focus { format, .. } => {
-                    assert_eq!(format, "text");
+                Commands::Focus(ref args) => {
+                    assert_eq!(args.format, "text");
                 }
                 _ => panic!("expected Focus command"),
             }
@@ -458,30 +418,19 @@ fn parses_ai_brief_focus_options() {
             ])
             .expect("parse");
             match cli.command {
-                Commands::Ai {
-                    task,
-                    file,
-                    element_id,
-                    query,
-                    base_ref,
-                    head_ref,
-                    staged,
-                    max_tokens,
-                    output,
-                    ..
-                } => {
-                    assert_eq!(task.as_deref(), Some("Fix parser diagnostics"));
+                Commands::Ai(ref args) => {
+                    assert_eq!(args.task.as_deref(), Some("Fix parser diagnostics"));
                     assert_eq!(
-                        file.as_deref(),
+                        args.file.as_deref(),
                         Some("crates/sruja-language/src/parser/mod.rs")
                     );
-                    assert_eq!(element_id.as_deref(), Some("Sruja.Language"));
-                    assert_eq!(query.as_deref(), Some("parser"));
-                    assert_eq!(base_ref.as_deref(), Some("main"));
-                    assert_eq!(head_ref.as_deref(), Some("HEAD"));
-                    assert!(staged);
-                    assert_eq!(max_tokens, 12000);
-                    assert_eq!(output.as_deref(), Some("brief.md"));
+                    assert_eq!(args.element_id.as_deref(), Some("Sruja.Language"));
+                    assert_eq!(args.query.as_deref(), Some("parser"));
+                    assert_eq!(args.base_ref.as_deref(), Some("main"));
+                    assert_eq!(args.head_ref.as_deref(), Some("HEAD"));
+                    assert!(args.staged);
+                    assert_eq!(args.max_tokens, 12000);
+                    assert_eq!(args.output.as_deref(), Some("brief.md"));
                 }
                 _ => panic!("expected Ai command"),
             }
@@ -508,20 +457,20 @@ fn parses_agent_run_defaults() {
             ])
             .expect("parse");
             match cli.command {
-                Commands::Agent { cmd } => match cmd {
+                Commands::Agent(ref args) => match &args.cmd {
                     AgentCommand::Run {
-                        repo,
-                        goal,
-                        file,
-                        element_id,
-                        query,
-                        mode,
-                        ai_mode,
-                        format,
-                        max_steps,
-                        max_runtime_ms_per_step,
-                        enrich,
-                        continue_on_error,
+                        ref repo,
+                        ref goal,
+                        ref file,
+                        ref element_id,
+                        ref query,
+                        ref mode,
+                        ref ai_mode,
+                        ref format,
+                        ref max_steps,
+                        ref max_runtime_ms_per_step,
+                        ref enrich,
+                        ref continue_on_error,
                         ..
                     } => {
                         assert_eq!(repo, ".");
@@ -556,13 +505,9 @@ fn parses_focus_compact_flag() {
             let cli = Cli::try_parse_from(["sruja", "focus", "--element-id", "Auth", "--compact"])
                 .expect("parse");
             match cli.command {
-                Commands::Focus {
-                    element_id,
-                    compact,
-                    ..
-                } => {
-                    assert_eq!(element_id.as_deref(), Some("Auth"));
-                    assert!(compact);
+                Commands::Focus(ref args) => {
+                    assert_eq!(args.element_id.as_deref(), Some("Auth"));
+                    assert!(args.compact);
                 }
                 _ => panic!("expected Focus command"),
             }
@@ -589,10 +534,10 @@ fn parses_lookup_command() {
             ])
             .expect("parse");
             match cli.command {
-                Commands::Lookup { name, repo, format } => {
-                    assert_eq!(name, "Sruja.CLI");
-                    assert_eq!(repo, ".");
-                    assert_eq!(format, "json");
+                Commands::Lookup(ref args) => {
+                    assert_eq!(args.name, "Sruja.CLI");
+                    assert_eq!(args.repo, ".");
+                    assert_eq!(args.format, "json");
                 }
                 _ => panic!("expected Lookup command"),
             }

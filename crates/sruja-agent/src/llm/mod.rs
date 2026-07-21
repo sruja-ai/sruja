@@ -34,8 +34,6 @@ pub mod anthropic;
 
 pub mod circuit_breaker;
 pub mod retrying;
-#[cfg(test)]
-pub mod retrying_example;
 pub mod tiered;
 
 #[cfg(feature = "compression")]
