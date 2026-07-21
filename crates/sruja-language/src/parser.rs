@@ -239,6 +239,7 @@ fn advance_one_utf8_char(input: &str, pos: usize) -> usize {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
 

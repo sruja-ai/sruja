@@ -205,6 +205,32 @@ pub struct BlastRadiusResult {
     pub downstream: Vec<BlastRadiusNode>,
 }
 
+/// Compact, agent-ready summary of a single graph element.
+///
+/// Mirrors the OKF "concept card" idea: one tight, deterministic record an
+/// agent can fetch instead of pulling a whole topology radius or a verbose
+/// element body. Empty collections are skipped so a card stays ~100-200 tokens.
+///
+/// Relationship edges are rendered as `"<edge_kind>:<other_id>"` strings so the
+/// consuming agent can reconstruct direction and kind without extra fields.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct ConceptCard {
+    pub id: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purpose: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub technology: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Outgoing edges, each `"<edge_kind>:<target_id>"`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub outgoing: Vec<String>,
+    /// Incoming edges, each `"<edge_kind>:<source_id>"`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub incoming: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResolvedStateMachine {
     pub name: String,
@@ -275,6 +301,43 @@ impl Graph {
             self.metadata.entry(k).or_insert(v);
         }
         self.canonicalize();
+    }
+
+    /// Build a compact [`ConceptCard`] for the element with the given id.
+    ///
+    /// Returns `None` if no node matches. Outgoing/incoming edges are grouped
+    /// by direction and rendered as `"<edge_kind>:<other_id>"` so the result
+    /// stays small and reversible.
+    #[must_use]
+    pub fn concept_card(&self, id: &str) -> Option<ConceptCard> {
+        let node = self.nodes.iter().find(|n| n.id == id)?;
+        let mut outgoing = Vec::new();
+        let mut incoming = Vec::new();
+        for e in &self.edges {
+            if e.source == id {
+                outgoing.push(format!("{}:{}", e.kind.as_str(), e.target));
+            } else if e.target == id {
+                incoming.push(format!("{}:{}", e.kind.as_str(), e.source));
+            }
+        }
+        outgoing.sort();
+        outgoing.dedup();
+        incoming.sort();
+        incoming.dedup();
+        let purpose = if node.label.is_empty() {
+            None
+        } else {
+            Some(node.label.clone())
+        };
+        Some(ConceptCard {
+            id: node.id.clone(),
+            kind: node.kind.as_str().to_string(),
+            purpose,
+            technology: node.technology.clone(),
+            path: node.path.clone(),
+            outgoing,
+            incoming,
+        })
     }
 
     pub fn canonicalize(&mut self) {
@@ -788,5 +851,84 @@ mod tests {
 
         let no_path = graph.find_path("d", "a");
         assert!(no_path.is_none());
+    }
+}
+
+#[cfg(test)]
+mod concept_card_tests {
+    use super::*;
+    use sruja_language::ast::{EdgeKind, NodeKind};
+
+    fn edge(source: &str, target: &str, kind: &str) -> Edge {
+        Edge {
+            source: source.to_string(),
+            target: target.to_string(),
+            kind: EdgeKind(kind.to_string()),
+            evidence: Vec::new(),
+            confidence: EdgeConfidence::Extracted,
+        }
+    }
+
+    fn node(id: &str, kind: &str, label: &str) -> Node {
+        Node {
+            id: id.to_string(),
+            kind: NodeKind(kind.to_string()),
+            label: label.to_string(),
+            technology: Some("Rust".to_string()),
+            path: Some("src/lib.rs".to_string()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn builds_compact_card_with_typed_edges() {
+        let mut g = Graph::new();
+        g.nodes.push(node(
+            "OrderService",
+            "container",
+            "Order processing service",
+        ));
+        g.nodes
+            .push(node("PaymentGateway", "component", "Charges cards"));
+        g.nodes.push(node("Db", "database", "Orders store"));
+        g.edges
+            .push(edge("OrderService", "PaymentGateway", "calls"));
+        g.edges.push(edge("OrderService", "Db", "depends_on"));
+        g.edges
+            .push(edge("PaymentGateway", "OrderService", "calls"));
+
+        let card = g.concept_card("OrderService").expect("card exists");
+        assert_eq!(card.id, "OrderService");
+        assert_eq!(card.kind, "container");
+        assert_eq!(card.purpose.as_deref(), Some("Order processing service"));
+        assert_eq!(card.technology.as_deref(), Some("Rust"));
+        assert_eq!(card.outgoing, vec!["calls:PaymentGateway", "depends_on:Db"]);
+        assert_eq!(card.incoming, vec!["calls:PaymentGateway"]);
+
+        let pg = g.concept_card("PaymentGateway").expect("card exists");
+        assert_eq!(pg.incoming, vec!["calls:OrderService"]);
+        assert_eq!(pg.outgoing, vec!["calls:OrderService"]);
+    }
+
+    #[test]
+    fn missing_node_returns_none() {
+        let g = Graph::new();
+        assert!(g.concept_card("nope").is_none());
+    }
+
+    #[test]
+    fn empty_edges_are_omitted_from_serialization() {
+        let mut g = Graph::new();
+        g.nodes.push(node("Lonely", "module", "Isolated node"));
+        let card = g.concept_card("Lonely").expect("card exists");
+        let json = serde_json::to_string(&card).expect("serialize");
+        assert!(
+            !json.contains("\"outgoing\""),
+            "empty outgoing omitted: {json}"
+        );
+        assert!(
+            !json.contains("\"incoming\""),
+            "empty incoming omitted: {json}"
+        );
     }
 }

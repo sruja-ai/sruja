@@ -2,7 +2,7 @@
   "name": "sruja",
   "displayName": "Sruja – Context engineering for the AI era.",
   "description": "Context engineering for the AI era: diagnostics, validation, Markdown export, and AI skill support for Sruja architecture files",
-  "version": "0.66.1",
+  "version": "0.68.0",
   "publisher": "SrujaAI",
   "icon": "sruja-logo.png",
   "license": "Apache-2.0",
@@ -463,7 +463,7 @@
   "devDependencies": {
     "@types/glob": "^9.0.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.8.0",
+    "@types/node": "^26.1.1",
     "@types/vscode": "^1.125.0",
     "@vscode/test-electron": "^3.0.0",
     "@vscode/vsce": "^3.3.2",

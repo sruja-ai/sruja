@@ -679,7 +679,7 @@ mod tests {
             max_depth: 1,
         };
         let summary = engine.generate_summary(
-            &vec![CritiqueFinding {
+            &[CritiqueFinding {
                 category: CritiqueCategory::PolicyViolation,
                 severity: CritiqueSeverity::Medium,
                 title: "v".to_string(),

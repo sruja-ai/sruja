@@ -23,8 +23,8 @@ use crate::cognition::ErrorClass;
 pub use types::ErrorFrequency;
 pub use types::{
     BlastRadius, CurationReport, ExperimentOutcome, LearningCategory, LearningConstraints,
-    LearningEntry, LearningKind, LearningPatch, LowUtilityEntry,
-    MemoryError, MergeSuggestion, SignalPattern, StaleEntry,
+    LearningEntry, LearningKind, LearningPatch, LowUtilityEntry, MemoryError, MergeSuggestion,
+    SignalPattern, StaleEntry,
 };
 
 /// Maximum number of error frequency entries before the oldest are evicted.
@@ -233,7 +233,8 @@ impl AgenticMemory {
         // Enforce cap: if over MAX_ERROR_ENTRIES, evict oldest entries.
         if self.error_frequencies.len() > MAX_ERROR_ENTRIES {
             let excess = self.error_frequencies.len() - MAX_ERROR_ENTRIES;
-            self.error_frequencies.sort_by(|a, b| a.last_updated.cmp(&b.last_updated));
+            self.error_frequencies
+                .sort_by(|a, b| a.last_updated.cmp(&b.last_updated));
             self.error_frequencies.drain(..excess);
         }
     }
@@ -538,8 +539,7 @@ impl Memory for std::sync::Mutex<AgenticMemory> {
         // Score by signal overlap: boost learnings whose signals_match
         // aligns with the extracted query signals.
         for entry in &mut results {
-            let _signal_score =
-                signals::score_signals_match(&query_signals, &entry.signals_match);
+            let _signal_score = signals::score_signals_match(&query_signals, &entry.signals_match);
         }
 
         // Sort by composite score: decay * utility + signal boost.

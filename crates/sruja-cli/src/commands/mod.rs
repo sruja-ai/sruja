@@ -5,6 +5,7 @@
 
 pub mod analysis;
 pub mod author;
+pub mod compress_stats;
 pub mod density;
 pub mod dsl_domain;
 pub mod eval;
@@ -19,11 +20,11 @@ pub(crate) mod workflow_aidlc;
 
 pub use intent_domain::remediation;
 
-pub use agent_loop::{agent_loop, AgentLoopOptions};
+pub use agent_loop::{agent_loop as run_agent_loop, AgentLoopOptions};
 pub use agent_reflect::agent_reflect;
 pub use auto_cmd::auto_run;
 pub use intent_domain::agent::{
-    agent_clear, agent_clusters, agent_curate, agent_delete, agent_learn, agent_history,
+    agent_clear, agent_clusters, agent_curate, agent_delete, agent_history, agent_learn,
     agent_merge, agent_propose_fact, agent_record, agent_session_summary, agent_update,
 };
 pub use intent_domain::agent_plan::{agent_apply, agent_plan};
@@ -135,6 +136,7 @@ pub mod learn;
 pub mod plan_cmd;
 pub mod verify_cmd;
 pub use learn::learn;
+pub use lookup::lookup;
 
 pub(crate) mod loop_checkpoint;
 pub(crate) mod loop_events;
@@ -144,6 +146,7 @@ pub mod cognitive_debt;
 pub mod confidence;
 pub mod drift_velocity;
 pub mod explain_cmd;
+pub mod lookup;
 pub mod map_cmd;
 pub mod trace_cmd;
 pub mod what_if;
@@ -171,143 +174,11 @@ pub use memory_cmd::{
 };
 pub use requirements::requirements_list;
 
-/// Read git HEAD commit (short) if repo is a git work tree; otherwise None.
-pub(crate) fn git_commit_short(repo_path: &std::path::Path) -> Option<String> {
-    std::process::Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
-        .current_dir(repo_path)
-        .output()
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-}
-
-pub(crate) fn scan_repo_cached(repo_path: &std::path::Path) -> Result<sruja_scan::Graph, CliError> {
-    scan_repo_cached_with_opts(repo_path, false)
-}
-
-pub(crate) const SCAN_CACHE_PATH: &str = ".sruja/cache/scan.json";
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(crate) struct ScanCache {
-    #[serde(default)]
-    git_commit: String,
-    graph: sruja_scan::Graph,
-}
-
-pub(crate) fn scan_repo_cached_with_opts(
-    repo_path: &std::path::Path,
-    incremental: bool,
-) -> Result<sruja_scan::Graph, CliError> {
-    let cache_path = repo_path.join(SCAN_CACHE_PATH);
-    let current_commit = git_commit_short(repo_path).unwrap_or_default();
-
-    if !incremental && cache_path.exists() {
-        if let Ok(content) = std::fs::read_to_string(&cache_path) {
-            // Try new ScanCache format with git_commit staleness check
-            if let Ok(cache) = serde_json::from_str::<ScanCache>(&content) {
-                // If no git repo, skip staleness check (treat as fresh)
-                if current_commit.is_empty() || cache.git_commit == current_commit {
-                    return Ok(cache.graph);
-                }
-                // Cache is stale — fall through to use incremental rescan
-            } else if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
-                // Legacy format (raw Graph, no commit tracking)
-                return Ok(graph);
-            }
-        }
-    }
-
-    // Try legacy path for backward compat
-    if !incremental {
-        let legacy = repo_path.join(".sruja/graph.json");
-        if legacy.exists() {
-            if let Ok(content) = std::fs::read_to_string(&legacy) {
-                if let Ok(graph) = serde_json::from_str::<sruja_scan::Graph>(&content) {
-                    return Ok(graph);
-                }
-            }
-        }
-    }
-
-    let do_incremental = incremental || cache_path.exists();
-    let graph = if do_incremental {
-        sruja_scan::scan_repo_incremental(repo_path)?
-    } else {
-        sruja_scan::scan_repo(repo_path)?
-    };
-
-    if let Some(parent) = cache_path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let cache = ScanCache {
-        git_commit: current_commit,
-        graph: graph.clone(),
-    };
-    let content = serde_json::to_string(&cache)?;
-    let _ = std::fs::write(cache_path, content);
-
-    Ok(graph)
-}
-
-const CENTRALITY_CACHE_PATH: &str = ".sruja/cache/centrality.json";
-
-/// Compute centrality with disk caching. Results are cached keyed by graph hash.
-pub(crate) fn compute_all_centrality_cached(
-    repo_path: &std::path::Path,
-    graph: &sruja_scan::Graph,
-    quiet: bool,
-) -> Result<std::collections::HashMap<String, sruja_scan::graph::ComponentImportance>, CliError> {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    // Compute a hash of the graph for cache key.
-    let graph_json = serde_json::to_string(&graph)?;
-    let mut hasher = DefaultHasher::new();
-    graph_json.hash(&mut hasher);
-    let graph_hash = hasher.finish();
-
-    let cache_path = repo_path.join(CENTRALITY_CACHE_PATH);
-
-    // Try to load from cache.
-    if cache_path.exists() {
-        if let Ok(content) = std::fs::read_to_string(&cache_path) {
-            if let Ok(cached) = serde_json::from_str::<CentralityCache>(&content) {
-                if cached.graph_hash == graph_hash {
-                    return Ok(cached.scores);
-                }
-            }
-        }
-    }
-
-    // Compute fresh.
-    let scores = if quiet {
-        sruja_scan::graph::centrality::compute_all_centrality_quiet(graph, true)
-    } else {
-        sruja_scan::graph::centrality::compute_all_centrality(graph)
-    };
-
-    // Write cache.
-    let cache = CentralityCache {
-        graph_hash,
-        scores: scores.clone(),
-    };
-    if let Some(parent) = cache_path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let content = serde_json::to_string(&cache)?;
-    let _ = std::fs::write(cache_path, content);
-
-    Ok(scores)
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct CentralityCache {
-    graph_hash: u64,
-    scores: std::collections::HashMap<String, sruja_scan::graph::ComponentImportance>,
-}
+// Re-export cache functions from sruja-cache crate.
+pub(crate) use sruja_cache::{
+    compute_all_centrality_cached, git_commit_short, scan_repo_cached, scan_repo_cached_with_opts,
+    ScanCache, SCAN_CACHE_PATH,
+};
 
 #[cfg(test)]
 mod tests {

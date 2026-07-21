@@ -7,7 +7,6 @@ use std::sync::Mutex;
 // --- Ensemble critic tests (U1) ---
 /// Helper for scripted ensemble tests: a mock that returns different
 /// responses based on which persona's system prompt substring it matches.
-
 struct DropGuard(Arc<AtomicUsize>);
 impl Drop for DropGuard {
     fn drop(&mut self) {
@@ -1046,10 +1045,11 @@ async fn ensemble_one_persona_blocks_union_issues_and_min_score() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1068,7 +1068,7 @@ async fn ensemble_one_persona_blocks_union_issues_and_min_score() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1121,7 +1121,7 @@ fn ensemble_empty_personas_fallback_to_single_critic() {
                     schema_version: String::new(),
                     complexity: TaskComplexity::default(),
                 },
-                &vec![],
+                &[],
             )
             .await
             .expect("critique runs");
@@ -1170,9 +1170,11 @@ async fn ensemble_union_dedup_issues() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1191,7 +1193,7 @@ async fn ensemble_union_dedup_issues() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1241,9 +1243,11 @@ async fn ensemble_parallel_dispatch_is_concurrent() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm.clone())
         .tools(ToolRegistry::new())
@@ -1262,7 +1266,7 @@ async fn ensemble_parallel_dispatch_is_concurrent() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1308,9 +1312,11 @@ async fn ensemble_all_personas_approve() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1329,7 +1335,7 @@ async fn ensemble_all_personas_approve() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1377,9 +1383,11 @@ async fn ensemble_score_is_min_not_mean() {
         },
     ]);
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let agent = Agent::builder()
         .llm(llm)
         .tools(ToolRegistry::new())
@@ -1398,7 +1406,7 @@ async fn ensemble_score_is_min_not_mean() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1425,9 +1433,11 @@ async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
         "Pattern extraction approach is validated.",
     );
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![]);
@@ -1459,7 +1469,7 @@ async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1479,9 +1489,11 @@ async fn critique_injects_guardrail_blind_spots_and_bumps_retrieval_count() {
 #[tokio::test]
 async fn critique_no_memory_shows_no_blind_spots_section() {
     // No memory → no blind-spots section in the prompt.
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
 
     let llm = PersonaScriptedLlm::new(vec![
         PersonaResponse {
@@ -1534,7 +1546,7 @@ async fn critique_no_memory_shows_no_blind_spots_section() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1565,9 +1577,11 @@ async fn critique_playbooks_excluded_from_blind_spots() {
         "Use Redis for caching.",
     );
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![PersonaResponse {
@@ -1609,7 +1623,7 @@ async fn critique_playbooks_excluded_from_blind_spots() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -1636,9 +1650,11 @@ async fn critique_roundtrips_with_ensemble() {
         "Always handle Result types properly.",
     );
 
-    let mut config = AgentConfig::default();
-    config.critique_personas = CritiquePersona::default_personas();
-    config.critique_mode = CritiqueMode::Full;
+    let config = AgentConfig {
+        critique_personas: CritiquePersona::default_personas(),
+        critique_mode: CritiqueMode::Full,
+        ..Default::default()
+    };
     let tempdir = tempfile::tempdir().expect("tempdir");
 
     let llm = PersonaScriptedLlm::new(vec![
@@ -1703,7 +1719,7 @@ async fn critique_roundtrips_with_ensemble() {
                 schema_version: String::new(),
                 complexity: TaskComplexity::default(),
             },
-            &vec![],
+            &[],
         )
         .await
         .expect("critique runs");
@@ -2156,3 +2172,113 @@ fn step_has_quality_refusal_pattern() {
 }
 
 // ---------------------------------------------------------------------------
+// --- Sub-agent isolation tests (context-engineering "Isolate" step) ---
+
+use super::subagent::{Role, SubAgentBudget, SubAgentSpec};
+
+/// A minimal LLM that returns a grounded summary citing an element ID, with no
+/// tool calls (so the loop converges on the first response).
+struct SummarizingLlm;
+#[async_trait]
+impl LlmClient for SummarizingLlm {
+    async fn complete(&self, _req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
+        Ok(CompletionResponse {
+            content: "Reviewed MySystem.ApiContainer: it depends on MySystem.Database. \
+                      No unused imports found; change is safe."
+                .to_string(),
+            tool_calls: Vec::new(),
+            usage: Usage {
+                prompt_tokens: 5,
+                completion_tokens: 5,
+                total_tokens: 10,
+            },
+            model: "scripted".into(),
+            finish_reason: crate::llm::FinishReason::Stop,
+        })
+    }
+    fn default_model(&self) -> &str {
+        "scripted"
+    }
+}
+
+fn isolated_agent() -> Agent {
+    Agent::builder()
+        .llm(Arc::new(SummarizingLlm))
+        .tools(ToolRegistry::new())
+        .config(AgentConfig::default())
+        .build()
+        .expect("agent builds")
+}
+
+#[test]
+fn writer_subagent_has_no_exploration_tools() {
+    let agent = isolated_agent();
+    let names = agent.scoped_tool_names(Role::Writer);
+    // Writers may write/edit and resolve globs, but must NOT read or search.
+    assert!(
+        names.contains(&"file_write".to_string()),
+        "writer needs file_write: {names:?}"
+    );
+    assert!(
+        names.contains(&"file_edit".to_string()),
+        "writer needs file_edit: {names:?}"
+    );
+    assert!(
+        !names.contains(&"grep".to_string()),
+        "writer must not have grep: {names:?}"
+    );
+    assert!(
+        !names.contains(&"file_read".to_string()),
+        "writer must not have file_read: {names:?}"
+    );
+    assert!(
+        !names.iter().any(|n| n.starts_with("sruja_lookup")),
+        "writer must not have lookup tools: {names:?}"
+    );
+}
+
+#[test]
+fn reader_subagent_has_no_write_tools() {
+    let agent = isolated_agent();
+    let names = agent.scoped_tool_names(Role::Reader);
+    assert!(
+        names.contains(&"grep".to_string()),
+        "reader needs grep: {names:?}"
+    );
+    assert!(
+        names.contains(&"sruja_focus".to_string()),
+        "reader needs sruja_focus: {names:?}"
+    );
+    assert!(
+        !names
+            .iter()
+            .any(|n| n.starts_with("file_write") || n.starts_with("file_edit")),
+        "reader must not have write tools: {names:?}"
+    );
+}
+
+#[tokio::test]
+async fn delegate_reader_returns_compressed_report_with_citations() {
+    let agent = isolated_agent();
+    let spec = SubAgentSpec {
+        role: Role::Reader,
+        goal: crate::goal::GoalSpec::new("Review MySystem.ApiContainer for unused imports"),
+        inject: vec!["Focus on src/api.rs".to_string()],
+        budget: SubAgentBudget::default(),
+        system_prompt: None,
+        user_prompt: None,
+    };
+    let report = agent.delegate(spec).await.expect("delegate succeeds");
+    assert!(report.converged, "single-shot LLM should converge");
+    assert!(report.ok, "reader report should be ok");
+    assert!(
+        report.citations.iter().any(|c| c.starts_with("MySystem")),
+        "citations should include architecture element IDs: {:?}",
+        report.citations
+    );
+    assert!(
+        report.summary.len() <= SubAgentBudget::default().max_summary_chars + 30,
+        "summary must be bounded: len={}",
+        report.summary.len()
+    );
+}

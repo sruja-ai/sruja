@@ -396,9 +396,11 @@ mod tests {
             },
         ];
 
-        let mut opts = VerifyOptions::default();
-        opts.allowed_executables = vec![];
-        opts.continue_on_error = true;
+        let opts = VerifyOptions {
+            allowed_executables: vec![],
+            continue_on_error: true,
+            ..Default::default()
+        };
 
         let results = run_verification_steps(&steps, &opts, std::path::Path::new(".")).await;
 
@@ -433,8 +435,10 @@ mod tests {
             },
         ];
 
-        let mut opts = VerifyOptions::default();
-        opts.continue_on_error = true;
+        let opts = VerifyOptions {
+            continue_on_error: true,
+            ..Default::default()
+        };
 
         let results = run_verification_steps(&steps, &opts, std::path::Path::new(".")).await;
 

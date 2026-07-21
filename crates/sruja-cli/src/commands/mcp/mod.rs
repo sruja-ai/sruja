@@ -9,8 +9,8 @@
 
 mod config;
 mod definitions;
-mod helpers;
-mod ladder;
+pub(crate) mod helpers;
+pub(crate) mod ladder;
 mod mcp_v2;
 mod server;
 mod trace;

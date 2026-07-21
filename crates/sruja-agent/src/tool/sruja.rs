@@ -8,11 +8,53 @@
 //! before making changes — no guessing allowed.
 
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
 use super::{Tool, ToolError};
+
+/// Simple TTL cache for sruja CLI results to avoid redundant subprocess spawns.
+struct SrujaResultCache {
+    entries: Mutex<std::collections::HashMap<String, (String, Instant)>>,
+    ttl: Duration,
+}
+
+impl SrujaResultCache {
+    fn new(ttl: Duration) -> Self {
+        Self {
+            entries: Mutex::new(std::collections::HashMap::new()),
+            ttl,
+        }
+    }
+
+    fn get(&self, key: &str) -> Option<String> {
+        let mut cache = self.entries.lock().unwrap();
+        if let Some((value, inserted_at)) = cache.get(key) {
+            if inserted_at.elapsed() < self.ttl {
+                return Some(value.clone());
+            }
+            cache.remove(key);
+        }
+        None
+    }
+
+    fn insert(&self, key: String, value: String) {
+        let mut cache = self.entries.lock().unwrap();
+        // Evict expired entries on insert to prevent unbounded growth
+        cache.retain(|_, (_, t)| t.elapsed() < self.ttl);
+        cache.insert(key, (value, Instant::now()));
+    }
+}
+
+/// Global cache for sruja CLI results — 60-second TTL.
+static SRUJA_CACHE: std::sync::OnceLock<SrujaResultCache> = std::sync::OnceLock::new();
+
+fn sruja_cache() -> &'static SrujaResultCache {
+    SRUJA_CACHE.get_or_init(|| SrujaResultCache::new(Duration::from_secs(60)))
+}
 
 /// Returns `true` if `name` belongs to a sruja deterministic tool.
 pub fn is_sruja_tool(name: &str) -> bool {
@@ -53,12 +95,26 @@ pub fn find_sruja(repo_root: &Path) -> PathBuf {
     PathBuf::from("sruja")
 }
 
-/// Run a sruja command and return stdout.
+/// Run a sruja command and return stdout. Uses a 60-second TTL cache to avoid
+/// redundant subprocess spawns for repeated calls with the same arguments.
 async fn run_sruja(
     sruja_path: &Path,
     repo_root: &Path,
     args: &[&str],
 ) -> Result<String, ToolError> {
+    let cache_key = format!(
+        "{}:{}:{}",
+        repo_root.display(),
+        sruja_path.display(),
+        args.join(" ")
+    );
+
+    // Check cache first
+    if let Some(cached) = sruja_cache().get(&cache_key) {
+        tracing::debug!("sruja cache hit for args: {:?}", args);
+        return Ok(cached);
+    }
+
     let output = tokio::process::Command::new(sruja_path)
         .args(args)
         .current_dir(repo_root)
@@ -74,7 +130,9 @@ async fn run_sruja(
         )));
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    let result = String::from_utf8_lossy(&output.stdout).to_string();
+    sruja_cache().insert(cache_key, result.clone());
+    Ok(result)
 }
 
 // ---------------------------------------------------------------------------
@@ -356,6 +414,65 @@ impl Tool for SrujaQueryTool {
     }
 }
 // ---------------------------------------------------------------------------
+// Lookup — compact concept card for a single architecture element
+// ---------------------------------------------------------------------------
+
+/// Fetch a compact concept card for one architecture element — the cheap,
+/// single-element alternative to `sruja_focus`. Use when you need just one
+/// element's shape (kind, purpose, tech, edges) instead of a full briefing.
+pub struct SrujaLookupTool {
+    pub sruja_path: PathBuf,
+    pub repo_root: PathBuf,
+}
+
+impl SrujaLookupTool {
+    pub fn new(repo_root: impl Into<PathBuf>) -> Self {
+        let root = repo_root.into();
+        Self {
+            sruja_path: find_sruja(&root),
+            repo_root: root,
+        }
+    }
+}
+
+#[async_trait]
+impl Tool for SrujaLookupTool {
+    fn name(&self) -> &str {
+        "sruja_lookup"
+    }
+
+    fn description(&self) -> &str {
+        "Fetch a compact concept card for one architecture element. Returns kind, purpose, \
+         technology, path, and incoming/outgoing edges as a small JSON record. Use INSTEAD of \
+         sruja_focus when you need only one element's shape — far fewer tokens."
+    }
+
+    fn parameters(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Element name or ID (e.g. 'Sruja.CLI' or 'Auth.Handler'); exact match, then best-effort suffix match"
+                }
+            },
+            "required": ["name"]
+        })
+    }
+
+    async fn call(&self, params: Value) -> Result<String, ToolError> {
+        let name = super::builtin::str_param(&params, "name")?;
+        let output = run_sruja(
+            &self.sruja_path,
+            &self.repo_root,
+            &["lookup", &name, "-r", ".", "--format", "json"],
+        )
+        .await?;
+        Ok(truncate_json(&output, 4_000))
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -363,10 +480,12 @@ fn truncate_json(s: &str, max_chars: usize) -> String {
     if s.len() <= max_chars {
         s.to_string()
     } else {
+        // Use char_indices to avoid splitting multi-byte UTF-8 characters
+        let truncated: String = s.chars().take(max_chars).collect();
+        let total_chars = s.chars().count();
         format!(
             "{}\n... (truncated, {} total chars)",
-            &s[..max_chars],
-            s.len()
+            truncated, total_chars
         )
     }
 }
@@ -374,6 +493,7 @@ fn truncate_json(s: &str, max_chars: usize) -> String {
 /// Re-exports for ergonomic registration.
 pub mod tools {
     pub use super::{
-        SrujaComplianceTool, SrujaDriftTool, SrujaExplainTool, SrujaFocusTool, SrujaQueryTool,
+        SrujaComplianceTool, SrujaDriftTool, SrujaExplainTool, SrujaFocusTool, SrujaLookupTool,
+        SrujaQueryTool,
     };
 }

@@ -88,7 +88,8 @@ mod tests {
 
     #[test]
     fn redacts_database_url() {
-        let s = redact_string("DATABASE_URL=postgres://admin:hunter2@db.internal:5432/staging".into());
+        let s =
+            redact_string("DATABASE_URL=postgres://admin:hunter2@db.internal:5432/staging".into());
         assert!(s.contains("[REDACTED]"));
         assert!(!s.contains("hunter2"));
     }

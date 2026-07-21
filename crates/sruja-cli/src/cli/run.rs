@@ -664,6 +664,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await
             }
         }
+        Commands::Lookup { name, repo, format } => commands::lookup(&name, &repo, &format).await,
         Commands::Ai {
             repo,
             task,
@@ -1157,7 +1158,7 @@ pub async fn run_command(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 eprintln!(
                     "⚠️  `sruja agent loop` is deprecated. Use `sruja auto \"{goal}\"` instead."
                 );
-                commands::agent_loop(&commands::AgentLoopOptions {
+                commands::run_agent_loop(&commands::AgentLoopOptions {
                     repo: &repo,
                     goal: &goal,
                     max_iterations,

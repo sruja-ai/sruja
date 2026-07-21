@@ -81,8 +81,7 @@ pub enum AuthorCommand {
 
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)]
-#[command(
-    after_help = r#"Quick start:
+#[command(after_help = r#"Quick start:
   sruja agent task "add health check"    Autonomous coding agent
   sruja agent setup                      Configure your LLM provider
 
@@ -95,8 +94,7 @@ Advanced:
   sruja agent record / update / delete / merge / curate / clusters / clear
   sruja agent propose-fact / reflect
 
-Tip: sruja auto "task" does the same thing as sruja agent task "task"."#
-)]
+Tip: sruja auto "task" does the same thing as sruja agent task "task"."#)]
 pub enum AgentCommand {
     /// Run the autonomous coding agent on a task.
     ///

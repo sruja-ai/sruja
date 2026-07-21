@@ -5,6 +5,41 @@ All notable changes to Sruja will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.68.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.67.0...sruja-v0.68.0) (2026-07-18)
+
+
+### Features
+
+* **agent:** add sub-agent isolation (Role/Reader/Checker/Writer) ([854ebbd](https://github.com/sruja-ai/sruja/commit/854ebbd5e75e170588f88ad23db863708e62ad79))
+* **agent:** add SubAgentReport::is_ok() + tests ([b005839](https://github.com/sruja-ai/sruja/commit/b0058392077eac3b57512d26bc04ad7ae2e6ac1e))
+* **agent:** add ToolRegistry::has() convenience method ([34863eb](https://github.com/sruja-ai/sruja/commit/34863eb81d027ae959af8f09dd26afe754673d24))
+* **agent:** wire Reader sub-agent into comprehend() phase ([dd09d16](https://github.com/sruja-ai/sruja/commit/dd09d1643b624fec50b1fee967f1c17c6c616582))
+
+
+### Bug Fixes
+
+* code quality improvements and test fixes ([ea6e128](https://github.com/sruja-ai/sruja/commit/ea6e128f4fabbf7b87a5f467c61d8c54020c6cd0))
+* use fallback_pricing for unknown models in ModelRouter ([921e661](https://github.com/sruja-ai/sruja/commit/921e66185d654a246b07e15dec65f2cb886e335e))
+
+
+### Performance Improvements
+
+* token optimization and bug fixes ([b9345c6](https://github.com/sruja-ai/sruja/commit/b9345c6fb65ff1784bb2b2d98202c62d0ddfff8a))
+
+## [0.67.0](https://github.com/sruja-ai/sruja/compare/sruja-v0.66.1...sruja-v0.67.0) (2026-07-15)
+
+
+### Features
+
+* **agent:** add native sruja_lookup tool + CLI command ([aef1012](https://github.com/sruja-ai/sruja/commit/aef10124a39156b129d2f6aa2039b6987eb2cd71))
+* **mcp:** add sruja_lookup_symbol compact concept-card tool ([8ada57b](https://github.com/sruja-ai/sruja/commit/8ada57bab3801be623a209558e1426c28e55fbc4))
+
+
+### Bug Fixes
+
+* **agent:** add Tool::is_read_only + dispatch_batch; fix LearningEntry test ([#246](https://github.com/sruja-ai/sruja/issues/246)) ([dfb6298](https://github.com/sruja-ai/sruja/commit/dfb6298aa72197e60767b210fd52cb410f37e850))
+* **ci:** use 'sruja guard drift-pr' in check workflows ([#244](https://github.com/sruja-ai/sruja/issues/244)) ([f844305](https://github.com/sruja-ai/sruja/commit/f844305838d1c0f9e7d3f0b51a99255989f3f6e7))
+
 ## [0.66.1](https://github.com/sruja-ai/sruja/compare/sruja-v0.66.0...sruja-v0.66.1) (2026-07-09)
 
 

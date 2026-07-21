@@ -671,12 +671,21 @@ fn test_category_filter_on_search() {
     // we use a broad text query "the" that appears in all contexts.
     let all = mem.search("repair", 10, None);
     // All entries whose context contains "repair" should be returned.
-    assert!(all.len() >= 2, "at least repair entries should match, got {}", all.len());
+    assert!(
+        all.len() >= 2,
+        "at least repair entries should match, got {}",
+        all.len()
+    );
 
     // Filter to Repair only.
     let repair = mem.search("repair", 10, Some(LearningCategory::Repair));
-    assert!(repair.len() >= 1, "Repair filter should return at least 1 entry");
-    assert!(repair.iter().all(|e| e.category == Some(LearningCategory::Repair)));
+    assert!(
+        !repair.is_empty(),
+        "Repair filter should return at least 1 entry"
+    );
+    assert!(repair
+        .iter()
+        .all(|e| e.category == Some(LearningCategory::Repair)));
 
     // Filter to Innovate — none should match.
     let innovate = mem.search("repair", 10, Some(LearningCategory::Innovate));

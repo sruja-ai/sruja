@@ -44,6 +44,7 @@ pub use policy::{FileGuard, Phase, TestPathClassifier};
 pub use compress::CompressRestoreTool;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
@@ -101,7 +102,7 @@ pub struct ToolSignal {
 }
 
 /// Error from a tool invocation.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum ToolError {
     #[error("tool not found: {0}")]
     NotFound(String),
@@ -139,6 +140,17 @@ pub trait Tool: Send + Sync {
         false
     }
 
+    /// Whether this tool is read-only (does not mutate state) and may run
+    /// concurrently with other read-only tools.
+    ///
+    /// When dispatched through [`ToolRegistry::dispatch_batch`], read-only
+    /// tools execute in parallel while mutating tools run sequentially in
+    /// order. Defaults to `false`; tools that are purely read-only should
+    /// override this to return `true`.
+    fn is_read_only(&self) -> bool {
+        false
+    }
+
     /// Paths this invocation will modify (for phase-based guard checking).
     ///
     /// File-mutating tools override this to return the target path(s).
@@ -162,9 +174,19 @@ pub fn tool_schema(tool: &dyn Tool) -> FunctionSchema {
 /// In `dry_run` mode, mutating tools are blocked automatically.
 /// When a [`FileGuard`] is attached, phase-based TDD enforcement applies.
 pub struct ToolRegistry {
-    tools: HashMap<String, Box<dyn Tool>>,
+    tools: HashMap<String, Arc<dyn Tool>>,
     dry_run: bool,
     guard: Option<FileGuard>,
+}
+
+impl Clone for ToolRegistry {
+    fn clone(&self) -> Self {
+        Self {
+            tools: self.tools.clone(),
+            dry_run: self.dry_run,
+            guard: self.guard.clone(),
+        }
+    }
 }
 
 impl Default for ToolRegistry {
@@ -240,7 +262,7 @@ impl ToolRegistry {
 
     /// Register a tool.
     pub fn register(&mut self, tool: Box<dyn Tool>) {
-        self.tools.insert(tool.name().to_string(), tool);
+        self.tools.insert(tool.name().to_string(), Arc::from(tool));
     }
 
     /// Register a tool (builder-style).
@@ -252,6 +274,11 @@ impl ToolRegistry {
     /// Look up a tool by name.
     pub fn get(&self, name: &str) -> Option<&dyn Tool> {
         self.tools.get(name).map(|t| t.as_ref())
+    }
+
+    /// Return `true` if a tool with the given name is registered.
+    pub fn has(&self, name: &str) -> bool {
+        self.tools.contains_key(name)
     }
 
     /// All registered tool names.
@@ -326,6 +353,48 @@ impl ToolRegistry {
         }
     }
 
+    /// Dispatch a batch of tool calls, partitioning by mutability.
+    ///
+    /// Read-only tools (those whose [`Tool::is_read_only`] returns `true`) run
+    /// concurrently; mutating tools run sequentially in batch order. The
+    /// returned results are in the same order as `batch`.
+    pub async fn dispatch_batch(
+        &self,
+        batch: &[(&str, serde_json::Value)],
+    ) -> Vec<Result<String, ToolError>> {
+        use futures::future::join_all;
+
+        let mut read_only: Vec<usize> = Vec::new();
+        let mut mutating: Vec<usize> = Vec::new();
+        for (i, (name, _)) in batch.iter().enumerate() {
+            match self.tools.get(*name) {
+                Some(tool) if tool.is_read_only() => read_only.push(i),
+                _ => mutating.push(i),
+            }
+        }
+
+        let mut results: Vec<Option<Result<String, ToolError>>> =
+            std::iter::repeat_with(|| None).take(batch.len()).collect();
+
+        // Phase 1: read-only tools run concurrently.
+        let futures = read_only.iter().map(|&i| {
+            let (name, params) = &batch[i];
+            self.dispatch(name, params.clone())
+        });
+        let read_only_results = join_all(futures).await;
+        for (slot, result) in read_only.iter().zip(read_only_results) {
+            results[*slot] = Some(result);
+        }
+
+        // Phase 2: mutating tools run sequentially in batch order.
+        for &i in &mutating {
+            let (name, params) = &batch[i];
+            results[i] = Some(self.dispatch(name, params.clone()).await);
+        }
+
+        results.into_iter().map(|r| r.unwrap()).collect()
+    }
+
     /// Dispatch a tool call and wrap the outcome in a [`ToolCallRecord`].
     ///
     /// This is the primary entry point for the tool loop — it captures timing,
@@ -369,6 +438,48 @@ impl ToolRegistry {
             }
         }
     }
+}
+
+/// Dispatch multiple tool calls: read-only tools in parallel, mutating tools sequentially.
+///
+/// Returns results in the same order as `calls`. Each result is a tuple of
+/// `(output, record)` where `record` captures timing and classification.
+pub async fn dispatch_record_batch(
+    registry: &ToolRegistry,
+    calls: &[(String, serde_json::Value)],
+) -> Vec<Result<(String, ToolCallRecord), ToolError>> {
+    use futures::future::join_all;
+
+    // Classify each call.
+    let mut read_only_indices: Vec<usize> = Vec::new();
+    let mut mutating_indices: Vec<usize> = Vec::new();
+    for (i, (name, _)) in calls.iter().enumerate() {
+        match registry.get(name) {
+            Some(tool) if tool.is_read_only() => read_only_indices.push(i),
+            _ => mutating_indices.push(i),
+        }
+    }
+
+    let mut results: Vec<Option<Result<(String, ToolCallRecord), ToolError>>> =
+        vec![None; calls.len()];
+
+    // Phase 1: read-only tools run concurrently.
+    let futures = read_only_indices.iter().map(|&i| {
+        let (name, params) = &calls[i];
+        registry.dispatch_record(name, params.clone())
+    });
+    let ro_results = join_all(futures).await;
+    for (slot, result) in read_only_indices.iter().zip(ro_results) {
+        results[*slot] = Some(result);
+    }
+
+    // Phase 2: mutating tools run sequentially.
+    for &i in &mutating_indices {
+        let (name, params) = &calls[i];
+        results[i] = Some(registry.dispatch_record(name, params.clone()).await);
+    }
+
+    results.into_iter().map(|r| r.unwrap()).collect()
 }
 
 #[cfg(test)]
@@ -562,5 +673,89 @@ mod tests {
                 "known sentinel {sentinel:?} not found in EMPTY_SENTINELS"
             );
         }
+    }
+
+    #[test]
+    fn has_returns_true_for_registered_tool() {
+        let reg = ToolRegistry::new().with(Box::new(Echo));
+        assert!(reg.has("echo"));
+        assert!(!reg.has("nope"));
+    }
+
+    #[tokio::test]
+    async fn dispatch_record_batch_preserves_order_and_runs_parallel() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+
+        // Slow echo: sleeps 80ms per call.
+        struct SlowEcho;
+        #[async_trait::async_trait]
+        impl Tool for SlowEcho {
+            fn name(&self) -> &str {
+                "slow_echo"
+            }
+            fn description(&self) -> &str {
+                "Slow echo"
+            }
+            fn parameters(&self) -> serde_json::Value {
+                serde_json::json!({ "type": "object", "properties": {} })
+            }
+            fn is_read_only(&self) -> bool {
+                true
+            }
+            async fn call(&self, _p: serde_json::Value) -> Result<String, ToolError> {
+                tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                Ok("done".into())
+            }
+        }
+
+        let counter = Arc::new(AtomicUsize::new(0));
+        struct CountingEcho(Arc<AtomicUsize>);
+        #[async_trait::async_trait]
+        impl Tool for CountingEcho {
+            fn name(&self) -> &str {
+                "count"
+            }
+            fn description(&self) -> &str {
+                "Counts"
+            }
+            fn parameters(&self) -> serde_json::Value {
+                serde_json::json!({ "type": "object", "properties": {} })
+            }
+            fn is_read_only(&self) -> bool {
+                true
+            }
+            async fn call(&self, _p: serde_json::Value) -> Result<String, ToolError> {
+                self.0.fetch_add(1, Ordering::SeqCst);
+                tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                Ok("counted".into())
+            }
+        }
+
+        let mut reg = ToolRegistry::new();
+        reg.register(Box::new(SlowEcho));
+        reg.register(Box::new(CountingEcho(counter.clone())));
+
+        let calls = vec![
+            ("slow_echo".into(), serde_json::json!({})),
+            ("slow_echo".into(), serde_json::json!({})),
+            ("slow_echo".into(), serde_json::json!({})),
+            ("count".into(), serde_json::json!({})),
+        ];
+
+        let start = std::time::Instant::now();
+        let results = dispatch_record_batch(&reg, &calls).await;
+        let elapsed = start.elapsed();
+
+        assert_eq!(results.len(), 4);
+        for r in &results {
+            assert!(r.is_ok());
+        }
+        // 4 reads @ 80ms each should complete in <200ms if parallel.
+        assert!(
+            elapsed < std::time::Duration::from_millis(200),
+            "expected parallel execution but took {elapsed:?}"
+        );
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
 }

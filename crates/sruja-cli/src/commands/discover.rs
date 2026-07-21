@@ -939,17 +939,6 @@ fn build_discover_explanation(
     })
 }
 
-/// Build discovery explanation as JSON from a pre-scanned graph (avoids rescanning).
-#[expect(dead_code)]
-pub fn discover_explanation_json_from_graph(
-    repo: &str,
-    repo_path: &Path,
-    graph: &Graph,
-) -> Result<String, CliError> {
-    let explanation = build_discover_explanation(repo, repo_path, graph)?;
-    serde_json::to_string_pretty(&explanation).map_err(|e| CliError::validation(e.to_string()))
-}
-
 /// Build discovery explanation as a JSON value from a pre-scanned graph (avoids rescanning).
 pub fn discover_explanation_value_from_graph(
     repo: &str,
@@ -1401,18 +1390,15 @@ fn enrich_discover_explain(
     };
 
     let user_prompt = format!(
-        r#"You are analyzing an architecture graph explanation.
-
-You MUST only use the JSON facts provided below. Do not invent components, APIs, or file paths. If something is unknown, say "unknown".
-
-Produce markdown with these sections:
-- "Architectural Narrative" (narrative summary of the architecture and role)
-- "Why the God Nodes matter" (bullets explaining significance based on facts)
-- "Surprising Connections insights" (analysis of Surprising Connections and suggestions about coupling)
-- "Architectural Risks & Questions" (suggested investigative paths)
-
-JSON facts:
-{}"#,
+        "You are analyzing an architecture graph explanation.\n\n\
+         {}\n\n\
+         Produce markdown with these sections:\n\
+         - \"Architectural Narrative\" (narrative summary of the architecture and role)\n\
+         - \"Why the God Nodes matter\" (bullets explaining significance based on facts)\n\
+         - \"Surprising Connections insights\" (analysis of Surprising Connections and suggestions about coupling)\n\
+         - \"Architectural Risks & Questions\" (suggested investigative paths)\n\n\
+         JSON facts:\n{}",
+        crate::integrations::ENRICHMENT_FACTS_PREAMBLE,
         payload
     );
 

@@ -3,6 +3,7 @@ use crate::commands::{agent_run_to_string, AgentRunOptions};
 /// Understand scope and produce a reviewable plan.
 ///
 /// By default outputs human-readable text. Use `json=true` for machine-readable output.
+#[allow(clippy::too_many_arguments)]
 pub async fn plan_run(
     repo: &str,
     goal: &str,

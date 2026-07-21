@@ -13,6 +13,9 @@ members = [
     "crates/sruja-graph",
     "crates/sruja-extract",
 
+    # Tier 1.5: Shared Infrastructure
+    "crates/sruja-cache",
+
     # Tier 2: Delivery Layer
     "crates/sruja-wasm",
     "crates/sruja-cli",
@@ -27,7 +30,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.66.1"
+version = "0.68.0"
 edition = "2021"
 authors = ["Sruja Contributors"]
 license = "MIT OR Apache-2.0"

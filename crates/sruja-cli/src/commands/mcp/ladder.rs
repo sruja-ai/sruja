@@ -699,3 +699,112 @@ pub(crate) fn build_elements_from_scan(
     )?;
     Ok(serde_json::to_string_pretty(&response)?)
 }
+
+pub(crate) fn build_concept_card_from_program(
+    source_file: &str,
+    program: &sruja_language::ast::Program,
+    name: &str,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    use sruja_scan::ConceptCard;
+
+    let (elements, relations) = sruja_language::collect_elements(program);
+    let mut all_ids = elements.keys().cloned().collect::<Vec<_>>();
+    all_ids.sort();
+    let resolved = resolve_id_best_effort(name, &all_ids);
+
+    let mut warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+    push_resolution_warnings(&mut warnings, name, &resolved);
+
+    let card: Option<ConceptCard> = if let Some(elem) = elements.get(&resolved.id) {
+        let mut outgoing = Vec::new();
+        let mut incoming = Vec::new();
+        for r in &relations {
+            let src = r.from.as_string();
+            let tgt = r.to.as_string();
+            let kind = r.label.as_deref().unwrap_or("relates_to");
+            if src == resolved.id {
+                outgoing.push(format!("{}:{}", kind, tgt));
+            } else if tgt == resolved.id {
+                incoming.push(format!("{}:{}", kind, src));
+            }
+        }
+        outgoing.sort();
+        outgoing.dedup();
+        incoming.sort();
+        incoming.dedup();
+        let title = elem
+            .assignment
+            .title
+            .clone()
+            .unwrap_or_else(|| resolved.id.clone());
+        let (description, technology) = elem
+            .assignment
+            .body
+            .as_ref()
+            .map(|b| (b.description.clone(), b.technology.clone()))
+            .unwrap_or((None, None));
+        let purpose = description.or(Some(title));
+        Some(ConceptCard {
+            id: resolved.id.clone(),
+            kind: elem.assignment.kind.to_string(),
+            purpose,
+            technology,
+            path: None,
+            outgoing,
+            incoming,
+        })
+    } else {
+        None
+    };
+
+    let missing = !elements.contains_key(&resolved.id);
+    let mut response = json!({
+        "schema_version": "concept_card/v1",
+        "source": { "kind": "dsl", "file": source_file },
+        "requested_name": name,
+        "resolved_id": resolved.id,
+        "missing": missing,
+        "card": card,
+        "next_suggested_tool": "sruja_get_elements",
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+    set_estimated_tokens(&mut response)?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}
+
+pub(crate) fn build_concept_card_from_scan(
+    graph: &sruja_scan::Graph,
+    name: &str,
+    warning: Option<&str>,
+) -> Result<String, CliError> {
+    let mut all_ids: Vec<String> = graph.nodes.iter().map(|n| n.id.clone()).collect();
+    all_ids.sort();
+    let resolved = resolve_id_best_effort(name, &all_ids);
+
+    let mut warnings = match warning {
+        Some(w) => vec![w.to_string()],
+        None => Vec::new(),
+    };
+    push_resolution_warnings(&mut warnings, name, &resolved);
+
+    let card = graph.concept_card(&resolved.id);
+    let missing = card.is_none();
+    let mut response = json!({
+        "schema_version": "concept_card/v1",
+        "source": { "kind": "scan" },
+        "requested_name": name,
+        "resolved_id": resolved.id,
+        "missing": missing,
+        "card": card,
+        "next_suggested_tool": "sruja_get_elements",
+        "estimated_tokens": 0,
+        "warnings": warnings
+    });
+    set_estimated_tokens(&mut response)?;
+    Ok(serde_json::to_string_pretty(&response)?)
+}

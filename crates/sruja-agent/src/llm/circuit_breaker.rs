@@ -7,12 +7,11 @@
 //! probe request is allowed through to test recovery.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use std::sync::Arc;
 
-use super::stream::Stream;
-use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError};
+use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError, Stream};
 
 /// Configuration for the circuit breaker.
 #[derive(Debug, Clone)]
@@ -86,8 +85,7 @@ impl LlmClient for CircuitBreakerClient {
                     if since.elapsed() < self.config.half_open_timeout {
                         return Err(LlmError::Other(format!(
                             "circuit breaker open for model `{model}` (retry after {}s)",
-                            self.config.half_open_timeout.as_secs()
-                                - since.elapsed().as_secs()
+                            self.config.half_open_timeout.as_secs() - since.elapsed().as_secs()
                         )));
                     }
                     // Timeout expired: transition to HalfOpen for probe.
@@ -116,7 +114,12 @@ impl LlmClient for CircuitBreakerClient {
                 match states.get(&model) {
                     Some(CircuitState::HalfOpen) => {
                         // Probe failed — re-open the circuit.
-                        states.insert(model, CircuitState::Open { since: Instant::now() });
+                        states.insert(
+                            model,
+                            CircuitState::Open {
+                                since: Instant::now(),
+                            },
+                        );
                     }
                     _ => {
                         // Normal failure: increment counter.
@@ -155,7 +158,9 @@ impl LlmClient for CircuitBreakerClient {
                                 .as_secs()
                                 .saturating_sub(since.elapsed().as_secs())
                         );
-                        return Box::pin(async_stream::stream! { yield Err(LlmError::Other(msg)); });
+                        return Box::pin(
+                            async_stream::stream! { yield Err(LlmError::Other(msg)); },
+                        );
                     }
                     states.insert(model.clone(), CircuitState::HalfOpen);
                 }
@@ -215,8 +220,7 @@ impl LlmClient for CircuitBreakerClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::llm::stream::{Stream, StreamEvent};
-    use crate::llm::{CompletionResponse, FinishReason, Usage};
+    use crate::llm::{CompletionResponse, FinishReason, StreamEvent};
     use async_trait::async_trait;
     use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -332,10 +336,7 @@ mod tests {
 
     #[async_trait]
     impl LlmClient for StreamingClient {
-        async fn complete(
-            &self,
-            _req: &CompletionRequest,
-        ) -> Result<CompletionResponse, LlmError> {
+        async fn complete(&self, _req: &CompletionRequest) -> Result<CompletionResponse, LlmError> {
             if self.fail {
                 Err(LlmError::Network("non-streaming fail".into()))
             } else {

@@ -239,6 +239,19 @@ pub(crate) fn tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "sruja_lookup_symbol",
+            "title": "Sruja Lookup Symbol",
+            "description": "Fetch a single compact concept card for one element by ID or name (exact match, then best-effort suffix match). Returns ~100-200 tokens: kind, purpose, technology, path, and typed incoming/outgoing edges. Use instead of sruja_get_topology/sruja_get_elements when you only need one element's context.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": { "type": "string", "description": "Repository root path (defaults to .)" },
+                    "name": { "type": "string", "description": "Element ID or short name to look up" }
+                },
+                "required": ["name"]
+            }
+        }),
+        json!({
             "name": "sruja_get_diagnostic_full",
             "title": "Sruja Diagnostic Full Text",
             "description": "Fetch the full text of a truncated diagnostic stored under .sruja/vfs/diagnostics/ (URI from head/tail truncation payloads).",

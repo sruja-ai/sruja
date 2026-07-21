@@ -497,9 +497,11 @@ mod tests {
 
     #[test]
     fn context_node_trait_delegates_to_graph_node() {
-        let mut node = GraphNode::default();
-        node.id = "svc".to_string();
-        node.label = "Service".to_string();
+        let mut node = GraphNode {
+            id: "svc".to_string(),
+            label: "Service".to_string(),
+            ..Default::default()
+        };
         node.set_technology(Some("Go".to_string()));
         node.description = Some("API service".to_string());
 

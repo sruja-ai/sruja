@@ -221,6 +221,16 @@ impl From<sruja_scan::ScanError> for CliError {
     }
 }
 
+impl From<sruja_cache::CacheError> for CliError {
+    fn from(e: sruja_cache::CacheError) -> Self {
+        match e {
+            sruja_cache::CacheError::Io(e) => CliError::Io(e),
+            sruja_cache::CacheError::Json(e) => CliError::Json(e),
+            sruja_cache::CacheError::Scan(e) => CliError::from(e),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

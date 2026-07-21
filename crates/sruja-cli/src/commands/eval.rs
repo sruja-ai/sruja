@@ -265,6 +265,276 @@ impl TaskInstance {
     }
 }
 
+/// Run a single eval task instance against the agent.
+pub async fn run_eval_instance(
+    instance_id: &str,
+    repo: &str,
+    max_iterations: usize,
+    dry_run: bool,
+    format: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use super::CliError;
+    use std::path::PathBuf;
+
+    let repo_path = PathBuf::from(repo);
+    let tasks_dir = repo_path.join("evaluation").join("tasks");
+    let instance_dir = tasks_dir.join(instance_id);
+
+    if !instance_dir.exists() {
+        return Err(CliError::validation(format!("Task instance not found: {instance_id}")).into());
+    }
+
+    let instance = TaskInstance::load(&instance_dir, &repo_path).map_err(|e| {
+        CliError::validation(format!("Failed to load task instance {instance_id}: {e}"))
+    })?;
+
+    let problem = instance
+        .read_problem_statement(&instance_dir)
+        .map_err(|e| CliError::validation(format!("Failed to read problem statement: {e}")))?;
+
+    eprintln!("Eval task: {}", instance.instance_id);
+    eprintln!("Category: {:?}", instance.category);
+    eprintln!("Difficulty: {}", instance.difficulty);
+    eprintln!("Profile: {}", instance.profile_name);
+    eprintln!();
+    eprintln!("Problem statement:");
+    eprintln!("{problem}");
+    eprintln!();
+
+    // Run the agent loop with the problem statement as the goal
+    let goal = format!(
+        "Task: {} (difficulty {})\n\n{}",
+        instance.instance_id, instance.difficulty, problem
+    );
+
+    let options = super::AgentLoopOptions {
+        repo,
+        goal: &goal,
+        max_iterations: Some(max_iterations),
+        no_tdd: false,
+        dry_run,
+        model: None,
+        base_url: None,
+        spend_cap_usd: None,
+        no_oscillation_detection: false,
+        format,
+        force_proceed: true, // eval tasks always proceed
+        no_default_grader: false,
+        steer: false,
+        resume: false,
+        show_plan: false,
+        plan_only: false,
+        show_pipeline: false,
+        pipeline_override: None,
+        checkpoint: false,
+        no_checkpoint: true,
+        changelog: false,
+        verbose: false,
+    };
+
+    super::run_agent_loop(&options).await?;
+
+    // Verify against held-out tests
+    eprintln!();
+    eprintln!("Verification against held-out tests...");
+
+    let test_diff = instance_dir
+        .join("snapshots")
+        .join(&instance.test_patch_path);
+    let repo_path_clone = repo_path.clone();
+
+    let verification_status = if test_diff.exists() {
+        eprintln!("Applying test patch: {}", test_diff.display());
+
+        // Reset to clean state so the test patch applies against baseline,
+        // not on top of agent changes. This mirrors SWE-bench behavior:
+        // attempt → reset → apply gold fix → run tests.
+        let reset_output = std::process::Command::new("git")
+            .args(["reset", "--hard", "HEAD"])
+            .current_dir(&repo_path_clone)
+            .output();
+        if let Ok(out) = &reset_output {
+            if !out.status.success() {
+                eprintln!(
+                    "Warning: git reset failed: {}",
+                    String::from_utf8_lossy(&out.stderr)
+                );
+            }
+        }
+        // Also clean untracked files the agent may have created
+        let _ = std::process::Command::new("git")
+            .args(["clean", "-fd"])
+            .current_dir(&repo_path_clone)
+            .output();
+
+        // Apply test patch
+        let apply_output = std::process::Command::new("git")
+            .args(["apply", "--check"])
+            .arg(test_diff.to_str().unwrap_or_default())
+            .current_dir(&repo_path_clone)
+            .output();
+
+        let patch_applyable = match apply_output {
+            Ok(out) => out.status.success(),
+            Err(_) => false,
+        };
+
+        if patch_applyable {
+            let apply_result = std::process::Command::new("git")
+                .args(["apply"])
+                .arg(test_diff.to_str().unwrap_or_default())
+                .current_dir(&repo_path_clone)
+                .output();
+
+            match apply_result {
+                Ok(out) if out.status.success() => {
+                    eprintln!("Test patch applied successfully.");
+                    run_held_out_tests(&instance, &repo_path_clone).await
+                }
+                Ok(out) => {
+                    let stderr = String::from_utf8_lossy(&out.stderr);
+                    eprintln!("Failed to apply test patch: {stderr}");
+                    "error".to_string()
+                }
+                Err(e) => {
+                    eprintln!("Failed to apply test patch: {e}");
+                    "error".to_string()
+                }
+            }
+        } else {
+            eprintln!("Test patch does not apply cleanly, skipping test verification.");
+            "skipped".to_string()
+        }
+    } else {
+        eprintln!("No test patch found at: {}", test_diff.display());
+        "skipped".to_string()
+    };
+
+    if format == "json" {
+        let result = serde_json::json!({
+            "instance_id": instance.instance_id,
+            "category": format!("{:?}", instance.category),
+            "difficulty": instance.difficulty,
+            "profile": instance.profile_name,
+            "fail_to_pass": instance.fail_to_pass_patterns,
+            "pass_to_pass": instance.pass_to_pass_patterns,
+            "status": verification_status,
+        });
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    }
+
+    Ok(())
+}
+
+/// Run held-out tests against the repo and report pass/fail results.
+///
+/// Applies the test patch, then runs fail-to-pass and pass-to-pass test
+/// patterns. Returns "passed" if all tests match expectations, "failed"
+/// otherwise.
+async fn run_held_out_tests(instance: &TaskInstance, repo_path: &Path) -> String {
+    use sruja_agent::verify::{run_verification_steps, VerifyOptions, VerifyStep};
+
+    let mut all_results = Vec::new();
+    let opts = VerifyOptions {
+        continue_on_error: true,
+        timeout_ms: 120_000,
+        ..Default::default()
+    };
+
+    // Run fail-to-pass tests (these should now pass after the fix)
+    for pattern in &instance.fail_to_pass_patterns {
+        let step = VerifyStep {
+            id: format!("fail_to_pass:{pattern}"),
+            command: "cargo".into(),
+            args: vec!["test".into(), pattern.into()],
+            expected: None,
+            group: None,
+        };
+        let results = run_verification_steps(&[step], &opts, repo_path).await;
+        all_results.extend(results);
+    }
+
+    // Run pass-to-pass tests (these should still pass - regression check)
+    for pattern in &instance.pass_to_pass_patterns {
+        let step = VerifyStep {
+            id: format!("pass_to_pass:{pattern}"),
+            command: "cargo".into(),
+            args: vec!["test".into(), pattern.into()],
+            expected: None,
+            group: None,
+        };
+        let results = run_verification_steps(&[step], &opts, repo_path).await;
+        all_results.extend(results);
+    }
+
+    // Report results
+    let mut failed_patterns = Vec::new();
+    for result in &all_results {
+        if !matches!(result.status, sruja_agent::verify::VerifyStatus::Ok) {
+            let detail = if result.stderr.trim().is_empty() {
+                result.stdout.trim()
+            } else {
+                result.stderr.trim()
+            };
+            eprintln!("  FAIL {}: {}", result.step_id, detail);
+            failed_patterns.push(result.step_id.clone());
+        } else {
+            eprintln!("  OK   {}", result.step_id);
+        }
+    }
+
+    if failed_patterns.is_empty() {
+        eprintln!("All held-out tests passed!");
+        "passed".to_string()
+    } else {
+        eprintln!("{} test patterns failed", failed_patterns.len());
+        "failed".to_string()
+    }
+}
+
+/// List available eval task instances.
+pub fn list_eval_instances(tasks_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use super::CliError;
+    use std::path::PathBuf;
+
+    let tasks_path = PathBuf::from(tasks_dir);
+    if !tasks_path.exists() {
+        return Err(CliError::validation(format!("Tasks directory not found: {tasks_dir}")).into());
+    }
+
+    let mut instances: Vec<String> = std::fs::read_dir(&tasks_path)?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().join("instance.toml").exists())
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .collect();
+
+    instances.sort();
+
+    if instances.is_empty() {
+        eprintln!("No eval task instances found in {tasks_dir}");
+        return Ok(());
+    }
+
+    eprintln!("Found {} eval task instances:", instances.len());
+    for instance_id in &instances {
+        let instance_dir = tasks_path.join(instance_id);
+        let toml_path = instance_dir.join("instance.toml");
+        let toml_content = std::fs::read_to_string(&toml_path).unwrap_or_default();
+
+        let (category, difficulty) = match toml::from_str::<TaskInstance>(&toml_content) {
+            Ok(inst) => (format!("{:?}", inst.category), inst.difficulty.to_string()),
+            Err(_) => ("parse_error".to_string(), "?".to_string()),
+        };
+
+        eprintln!(
+            "  {} (category={}, difficulty={})",
+            instance_id, category, difficulty
+        );
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -480,274 +750,4 @@ problem_statement = "problem_statement.md"
         assert_eq!(VerifyProfile::Review.as_str(), "review");
         assert_eq!(VerifyProfile::Arch.as_str(), "arch");
     }
-}
-
-/// Run a single eval task instance against the agent.
-pub async fn run_eval_instance(
-    instance_id: &str,
-    repo: &str,
-    max_iterations: usize,
-    dry_run: bool,
-    format: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    use super::CliError;
-    use std::path::PathBuf;
-
-    let repo_path = PathBuf::from(repo);
-    let tasks_dir = repo_path.join("evaluation").join("tasks");
-    let instance_dir = tasks_dir.join(instance_id);
-
-    if !instance_dir.exists() {
-        return Err(CliError::validation(format!("Task instance not found: {instance_id}")).into());
-    }
-
-    let instance = TaskInstance::load(&instance_dir, &repo_path).map_err(|e| {
-        CliError::validation(format!("Failed to load task instance {instance_id}: {e}"))
-    })?;
-
-    let problem = instance
-        .read_problem_statement(&instance_dir)
-        .map_err(|e| CliError::validation(format!("Failed to read problem statement: {e}")))?;
-
-    eprintln!("Eval task: {}", instance.instance_id);
-    eprintln!("Category: {:?}", instance.category);
-    eprintln!("Difficulty: {}", instance.difficulty);
-    eprintln!("Profile: {}", instance.profile_name);
-    eprintln!();
-    eprintln!("Problem statement:");
-    eprintln!("{problem}");
-    eprintln!();
-
-    // Run the agent loop with the problem statement as the goal
-    let goal = format!(
-        "Task: {} (difficulty {})\n\n{}",
-        instance.instance_id, instance.difficulty, problem
-    );
-
-    let options = super::AgentLoopOptions {
-        repo,
-        goal: &goal,
-        max_iterations: Some(max_iterations),
-        no_tdd: false,
-        dry_run,
-        model: None,
-        base_url: None,
-        spend_cap_usd: None,
-        no_oscillation_detection: false,
-        format,
-        force_proceed: true, // eval tasks always proceed
-        no_default_grader: false,
-        steer: false,
-        resume: false,
-        show_plan: false,
-        plan_only: false,
-        show_pipeline: false,
-        pipeline_override: None,
-        checkpoint: false,
-        no_checkpoint: true,
-        changelog: false,
-        verbose: false,
-    };
-
-    super::agent_loop(&options).await?;
-
-    // Verify against held-out tests
-    eprintln!();
-    eprintln!("Verification against held-out tests...");
-
-    let test_diff = instance_dir
-        .join("snapshots")
-        .join(&instance.test_patch_path);
-    let repo_path_clone = repo_path.clone();
-
-    let verification_status = if test_diff.exists() {
-        eprintln!("Applying test patch: {}", test_diff.display());
-
-        // Reset to clean state so the test patch applies against baseline,
-        // not on top of agent changes. This mirrors SWE-bench behavior:
-        // attempt → reset → apply gold fix → run tests.
-        let reset_output = std::process::Command::new("git")
-            .args(["reset", "--hard", "HEAD"])
-            .current_dir(&repo_path_clone)
-            .output();
-        if let Ok(out) = &reset_output {
-            if !out.status.success() {
-                eprintln!(
-                    "Warning: git reset failed: {}",
-                    String::from_utf8_lossy(&out.stderr)
-                );
-            }
-        }
-        // Also clean untracked files the agent may have created
-        let _ = std::process::Command::new("git")
-            .args(["clean", "-fd"])
-            .current_dir(&repo_path_clone)
-            .output();
-
-        // Apply test patch
-        let apply_output = std::process::Command::new("git")
-            .args(["apply", "--check"])
-            .arg(test_diff.to_str().unwrap_or_default())
-            .current_dir(&repo_path_clone)
-            .output();
-
-        let patch_applyable = match apply_output {
-            Ok(out) => out.status.success(),
-            Err(_) => false,
-        };
-
-        if patch_applyable {
-            let apply_result = std::process::Command::new("git")
-                .args(["apply"])
-                .arg(test_diff.to_str().unwrap_or_default())
-                .current_dir(&repo_path_clone)
-                .output();
-
-            match apply_result {
-                Ok(out) if out.status.success() => {
-                    eprintln!("Test patch applied successfully.");
-                    run_held_out_tests(&instance, &repo_path_clone).await
-                }
-                Ok(out) => {
-                    let stderr = String::from_utf8_lossy(&out.stderr);
-                    eprintln!("Failed to apply test patch: {stderr}");
-                    "error".to_string()
-                }
-                Err(e) => {
-                    eprintln!("Failed to apply test patch: {e}");
-                    "error".to_string()
-                }
-            }
-        } else {
-            eprintln!("Test patch does not apply cleanly, skipping test verification.");
-            "skipped".to_string()
-        }
-    } else {
-        eprintln!("No test patch found at: {}", test_diff.display());
-        "skipped".to_string()
-    };
-
-    if format == "json" {
-        let result = serde_json::json!({
-            "instance_id": instance.instance_id,
-            "category": format!("{:?}", instance.category),
-            "difficulty": instance.difficulty,
-            "profile": instance.profile_name,
-            "fail_to_pass": instance.fail_to_pass_patterns,
-            "pass_to_pass": instance.pass_to_pass_patterns,
-            "status": verification_status,
-        });
-        println!("{}", serde_json::to_string_pretty(&result)?);
-    }
-
-    Ok(())
-}
-
-/// Run held-out tests against the repo and report pass/fail results.
-///
-/// Applies the test patch, then runs fail-to-pass and pass-to-pass test
-/// patterns. Returns "passed" if all tests match expectations, "failed"
-/// otherwise.
-async fn run_held_out_tests(instance: &TaskInstance, repo_path: &Path) -> String {
-    use sruja_agent::verify::{run_verification_steps, VerifyOptions, VerifyStep};
-
-    let mut all_results = Vec::new();
-    let opts = VerifyOptions {
-        continue_on_error: true,
-        timeout_ms: 120_000,
-        ..Default::default()
-    };
-
-    // Run fail-to-pass tests (these should now pass after the fix)
-    for pattern in &instance.fail_to_pass_patterns {
-        let step = VerifyStep {
-            id: format!("fail_to_pass:{pattern}"),
-            command: "cargo".into(),
-            args: vec!["test".into(), pattern.into()],
-            expected: None,
-            group: None,
-        };
-        let results = run_verification_steps(&[step], &opts, repo_path).await;
-        all_results.extend(results);
-    }
-
-    // Run pass-to-pass tests (these should still pass - regression check)
-    for pattern in &instance.pass_to_pass_patterns {
-        let step = VerifyStep {
-            id: format!("pass_to_pass:{pattern}"),
-            command: "cargo".into(),
-            args: vec!["test".into(), pattern.into()],
-            expected: None,
-            group: None,
-        };
-        let results = run_verification_steps(&[step], &opts, repo_path).await;
-        all_results.extend(results);
-    }
-
-    // Report results
-    let mut failed_patterns = Vec::new();
-    for result in &all_results {
-        if !matches!(result.status, sruja_agent::verify::VerifyStatus::Ok) {
-            let detail = if result.stderr.trim().is_empty() {
-                result.stdout.trim()
-            } else {
-                result.stderr.trim()
-            };
-            eprintln!("  FAIL {}: {}", result.step_id, detail);
-            failed_patterns.push(result.step_id.clone());
-        } else {
-            eprintln!("  OK   {}", result.step_id);
-        }
-    }
-
-    if failed_patterns.is_empty() {
-        eprintln!("All held-out tests passed!");
-        "passed".to_string()
-    } else {
-        eprintln!("{} test patterns failed", failed_patterns.len());
-        "failed".to_string()
-    }
-}
-
-/// List available eval task instances.
-pub fn list_eval_instances(tasks_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-    use super::CliError;
-    use std::path::PathBuf;
-
-    let tasks_path = PathBuf::from(tasks_dir);
-    if !tasks_path.exists() {
-        return Err(CliError::validation(format!("Tasks directory not found: {tasks_dir}")).into());
-    }
-
-    let mut instances: Vec<String> = std::fs::read_dir(&tasks_path)?
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().join("instance.toml").exists())
-        .filter_map(|entry| entry.file_name().into_string().ok())
-        .collect();
-
-    instances.sort();
-
-    if instances.is_empty() {
-        eprintln!("No eval task instances found in {tasks_dir}");
-        return Ok(());
-    }
-
-    eprintln!("Found {} eval task instances:", instances.len());
-    for instance_id in &instances {
-        let instance_dir = tasks_path.join(instance_id);
-        let toml_path = instance_dir.join("instance.toml");
-        let toml_content = std::fs::read_to_string(&toml_path).unwrap_or_default();
-
-        let (category, difficulty) = match toml::from_str::<TaskInstance>(&toml_content) {
-            Ok(inst) => (format!("{:?}", inst.category), inst.difficulty.to_string()),
-            Err(_) => ("parse_error".to_string(), "?".to_string()),
-        };
-
-        eprintln!(
-            "  {} (category={}, difficulty={})",
-            instance_id, category, difficulty
-        );
-    }
-
-    Ok(())
 }

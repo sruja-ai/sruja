@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError};
+use super::{CompletionRequest, CompletionResponse, LlmClient, LlmError, StreamEvent};
 
 /// Complexity tier for routing a subtask to the right model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -178,6 +178,7 @@ impl ModelRouter {
             .config
             .pricing
             .get(model)
+            .or(self.config.fallback_pricing.as_ref())
             .map(|p| p.cost(usage.prompt_tokens, usage.completion_tokens))
             .unwrap_or(0.0);
         *self.spent.lock().unwrap() += cost;
@@ -195,6 +196,15 @@ impl LlmClient for ModelRouter {
 
     fn default_model(&self) -> &str {
         self.client.default_model()
+    }
+
+    fn complete_stream<'a>(
+        &'a self,
+        req: &'a CompletionRequest,
+    ) -> std::pin::Pin<Box<dyn futures::Stream<Item = Result<StreamEvent, LlmError>> + Send + 'a>>
+    {
+        // Delegate streaming to the inner client directly.
+        self.client.complete_stream(req)
     }
 }
 

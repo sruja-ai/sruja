@@ -655,7 +655,10 @@ async fn quick_init(
     });
     match classify_result {
         Ok(()) => {
-            println!("  {}", colors::success("✅ Classification written (.sruja/classification.json)"));
+            println!(
+                "  {}",
+                colors::success("✅ Classification written (.sruja/classification.json)")
+            );
         }
         Err(e) => {
             println!("  {} Classification skipped: {e}", colors::warning("⚠"));
@@ -664,14 +667,13 @@ async fn quick_init(
 
     // Step 2: sync IDE rules
     let sync_pb = progress::spinner("📝 Syncing IDE rules...");
-    let sync_result = super::sync_ide_rules::sync_ide_rules(
-        super::sync_ide_rules::SyncIdeRulesOptions {
+    let sync_result =
+        super::sync_ide_rules::sync_ide_rules(super::sync_ide_rules::SyncIdeRulesOptions {
             repo: &repo_path.to_string_lossy(),
             max_tokens: 10000,
             check: false,
-        },
-    )
-    .await;
+        })
+        .await;
     sync_pb.finish_and_clear();
 
     match sync_result {

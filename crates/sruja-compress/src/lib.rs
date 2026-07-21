@@ -87,7 +87,7 @@ pub struct KeepPolicy {
     pub keep_code_blocks: bool,
     /// Keep any line matching one of these (e.g. `^Error:`, `^\s*at\s`, `FATAL`).
     pub keep_line_patterns: Vec<regex::Regex>,
-    /// Whole-word tokens to force-keep (identifiers, error codes). TODO: wire.
+    /// Whole-word tokens to force-keep (identifiers, error codes).
     pub keep_words: Vec<String>,
 }
 
@@ -227,10 +227,13 @@ pub fn count_tokens(text: &str) -> usize {
 }
 
 /// Post-pass restore for [`KeepPolicy`]. Ensures force-kept lines (matching a
-/// pattern, or inside a fenced code block) survive compression even when the
-/// compressor drops them. Shared by all backends.
+/// pattern, inside a fenced code block, or containing a keep-word) survive
+/// compression even when the compressor drops them. Shared by all backends.
 pub(crate) fn restore_kept(original: &str, compressed: &str, policy: &KeepPolicy) -> String {
-    if policy.keep_line_patterns.is_empty() && !policy.keep_code_blocks {
+    if policy.keep_line_patterns.is_empty()
+        && !policy.keep_code_blocks
+        && policy.keep_words.is_empty()
+    {
         return compressed.to_string();
     }
     let must = must_keep_lines(original, policy);
@@ -258,6 +261,7 @@ pub(crate) fn restore_kept(original: &str, compressed: &str, policy: &KeepPolicy
 fn must_keep_lines(original: &str, policy: &KeepPolicy) -> Vec<String> {
     let mut out = Vec::new();
     let mut in_fence = false;
+    let keep_words_set: HashSet<&str> = policy.keep_words.iter().map(|s| s.as_str()).collect();
     for line in original.lines() {
         let trimmed = line.trim();
         if policy.keep_code_blocks {
@@ -267,6 +271,14 @@ fn must_keep_lines(original: &str, policy: &KeepPolicy) -> Vec<String> {
                 continue;
             }
             if in_fence {
+                out.push(line.to_string());
+                continue;
+            }
+        }
+        // Check if line contains any keep words (whole-word match)
+        if !keep_words_set.is_empty() {
+            let words: Vec<&str> = line.split_whitespace().collect();
+            if words.iter().any(|w| keep_words_set.contains(w)) {
                 out.push(line.to_string());
                 continue;
             }

@@ -2,10 +2,14 @@
 //!
 //! Follows industry best practices:
 //! - **12-factor app**: Secrets in environment variables, never in config files
-//! - **Layered resolution**: CLI flags > env vars > config.toml > defaults
+//! - **Layered resolution**: CLI flags > env vars > config files > defaults
+//! - **Layered file sources**: System (`/etc/sruja/config.toml`), User (`~/.config/sruja/config.toml`),
+//!   Project (`.sruja/config.toml`), and Environment (`SRUJA_CONFIG`) — deep-merged in priority order
 //! - **Provider-aware**: Uses provider's `key_env` to find the correct API key
 //! - **Multi-provider**: Different providers for different tasks (cheap/mid/premium/review)
 //! - **Fail-fast**: Clear error messages when configuration is missing
+
+pub mod layered;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -14,6 +18,7 @@ use serde::Deserialize;
 
 use crate::commands::CliError;
 use crate::integrations::providers::{self, ProviderPreset};
+use layered::LayeredConfig;
 
 /// Configuration loaded from `.sruja/config.toml`.
 ///
@@ -294,22 +299,57 @@ fn resolve_tier_config(
     }
 }
 
-/// Load `.sruja/config.toml` if it exists.
+/// Load configuration using the layered system.
+///
+/// Sources (lowest to highest priority):
+/// 1. System: `/etc/sruja/config.toml`
+/// 2. User: `~/.config/sruja/config.toml`
+/// 3. Project: `.sruja/config.toml`
+/// 4. Environment: `SRUJA_CONFIG` env var
+///
+/// Missing files are silently skipped. Parse warnings are emitted but don't fail.
 fn load_sruja_config(repo_path: &Path) -> SrujaConfig {
-    let config_path = repo_path.join(".sruja/config.toml");
-    match std::fs::read_to_string(&config_path) {
-        Ok(content) => match toml::from_str(&content) {
-            Ok(config) => config,
-            Err(e) => {
-                eprintln!(
-                    "⚠  Failed to parse {}: {e}. Using default config.",
-                    config_path.display()
-                );
-                SrujaConfig::default()
-            }
-        },
-        Err(_) => SrujaConfig::default(),
+    let layered = LayeredConfig::load(repo_path);
+    match layered.deserialize::<SrujaConfig>() {
+        Ok(config) => config,
+        Err(e) => {
+            let sources: Vec<String> = layered
+                .layers
+                .iter()
+                .filter_map(|l| {
+                    l.path
+                        .as_ref()
+                        .map(|p| format!("{} ({})", l.name, p.display()))
+                })
+                .collect();
+            eprintln!(
+                "⚠  Failed to parse merged config: {e}. Using default config.\n\
+                 \n\
+                 Loaded layers: {}\n\
+                 Tip: check each file above for syntax errors.",
+                if sources.is_empty() {
+                    "none found".to_string()
+                } else {
+                    sources.join(", ")
+                }
+            );
+            SrujaConfig::default()
+        }
     }
+}
+
+/// Return loaded config layer info from an existing [`LayeredConfig`].
+///
+/// Use this instead of re-loading config when you already have a
+/// [`LayeredConfig`] instance (avoids redundant file reads).
+pub fn list_config_sources_from(
+    layered: &LayeredConfig,
+) -> Vec<(&'static str, Option<&std::path::PathBuf>)> {
+    layered
+        .layers
+        .iter()
+        .map(|l| (l.name, l.path.as_ref()))
+        .collect()
 }
 
 /// Resolve the provider preset from config or default.

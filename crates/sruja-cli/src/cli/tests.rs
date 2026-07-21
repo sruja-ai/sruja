@@ -571,3 +571,33 @@ fn parses_focus_compact_flag() {
         .join()
         .expect("join");
 }
+
+#[test]
+fn parses_lookup_command() {
+    std::thread::Builder::new()
+        .name("clap_parse_lookup".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            let cli = Cli::try_parse_from([
+                "sruja",
+                "lookup",
+                "Sruja.CLI",
+                "-r",
+                ".",
+                "--format",
+                "json",
+            ])
+            .expect("parse");
+            match cli.command {
+                Commands::Lookup { name, repo, format } => {
+                    assert_eq!(name, "Sruja.CLI");
+                    assert_eq!(repo, ".");
+                    assert_eq!(format, "json");
+                }
+                _ => panic!("expected Lookup command"),
+            }
+        })
+        .expect("spawn")
+        .join()
+        .expect("join");
+}

@@ -657,6 +657,23 @@ pub enum Commands {
         open: bool,
     },
 
+    /// Fetch a compact concept card for one architecture element
+    ///
+    /// Returns a small, deterministic JSON record (kind, purpose, technology, path,
+    /// incoming/outgoing edges) for the element matching a name. Use this instead of
+    /// `sruja focus` when you need just one element's shape — far fewer tokens.
+    ///
+    /// Use `sruja lookup <name> -r . --format json`.
+    Lookup {
+        /// Element name or ID to look up (exact match, then best-effort suffix match)
+        name: String,
+        /// Path to repository root
+        #[arg(long, short = 'r', alias = "path", default_value = ".")]
+        repo: String,
+        /// Output format (json only)
+        #[arg(long, short = 'f', default_value = "json")]
+        format: String,
+    },
     /// Retrieve task context before editing
     ///
     /// Generates task-scoped or file-scoped context for AI editors and developers.

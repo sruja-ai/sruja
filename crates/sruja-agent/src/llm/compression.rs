@@ -299,6 +299,62 @@ impl CompressingClient {
 
         req
     }
+
+    /// Compress with a custom config (used for aggressive recovery).
+    fn compress_request_with_config(
+        &self,
+        req: &CompletionRequest,
+        config: &CompressionConfig,
+    ) -> CompletionRequest {
+        let total = req.messages.len();
+        let preserve_from = total.saturating_sub(config.preserve_recent);
+
+        let mut req = req.clone();
+
+        for (idx, msg) in req.messages.iter_mut().enumerate() {
+            if idx >= preserve_from {
+                break;
+            }
+            if msg.role != MessageRole::Tool {
+                continue;
+            }
+            if msg.content.starts_with(CCR_PREFIX) {
+                continue;
+            }
+
+            let original_tokens = count_tokens(&msg.content);
+            if original_tokens < config.min_tokens {
+                continue;
+            }
+
+            let ctx = CompressContext {
+                query: None,
+                role: Some(TextRole::Tool),
+                target_ratio: config.target_ratio,
+                keep: KeepPolicy::for_tool_output(),
+            };
+
+            if let Ok(result) = self.compressor.compress(&msg.content, &ctx) {
+                if result.savings() > 0.0 {
+                    if let Ok(handle) = self.ccr.put(&msg.content) {
+                        msg.content = format_ccr_message(&handle, &result.text);
+                    }
+                }
+            }
+        }
+
+        req
+    }
+}
+
+/// Detect context length overflow errors from LLM providers.
+fn is_context_overflow(error_body: &str) -> bool {
+    let lower = error_body.to_lowercase();
+    lower.contains("context_length_exceeded")
+        || lower.contains("maximum context length")
+        || lower.contains("context window")
+        || lower.contains("too many tokens")
+        || (lower.contains("context") && lower.contains("exceed"))
 }
 
 #[async_trait::async_trait]
@@ -317,7 +373,24 @@ impl LlmClient for CompressingClient {
             );
         }
 
-        self.inner.complete(&compressed_req).await
+        match self.inner.complete(&compressed_req).await {
+            Ok(response) => Ok(response),
+            Err(LlmError::Api { status, body }) if is_context_overflow(&body) => {
+                tracing::warn!(
+                    status,
+                    "context overflow detected — applying aggressive compression and retrying"
+                );
+                // Aggressively compress: reduce preserve_recent to 1 and lower min_tokens
+                let aggressive_config = CompressionConfig {
+                    min_tokens: 50,
+                    preserve_recent: 1,
+                    target_ratio: Some(0.15),
+                };
+                let aggressive_req = self.compress_request_with_config(req, &aggressive_config);
+                self.inner.complete(&aggressive_req).await
+            }
+            Err(e) => Err(e),
+        }
     }
 
     fn default_model(&self) -> &str {
@@ -333,32 +406,36 @@ impl LlmClient for CompressingClient {
         let inner = self.inner.clone();
 
         Box::pin(async_stream::try_stream! {
-            let read_guard = cached_request_ref.read().await;
+            // Check cache with read lock
+            {
+                let read_guard = cached_request_ref.read().await;
+                if let Some(cached) = read_guard.as_ref() {
+                    let cached_key = *self.cached_request_key.lock().unwrap();
+                    if cached_key == Some(key) {
+                        // Clone the cached request to avoid lifetime issues
+                        let cached_clone = cached.clone();
+                        drop(read_guard);
 
-            if let Some(cached) = read_guard.as_ref() {
-                let cached_key = *self.cached_request_key.lock().unwrap();
-                if cached_key == Some(key) {
-                    let req_ref = unsafe { &*(cached as *const CompletionRequest) };
-                    drop(read_guard);
-
-                    let mut stream = inner.complete_stream(req_ref);
-                    while let Some(event) = stream.next().await {
-                        yield event?;
+                        let mut stream = inner.complete_stream(&cached_clone);
+                        while let Some(event) = stream.next().await {
+                            yield event?;
+                        }
+                        return;
                     }
-                    return;
                 }
             }
-            drop(read_guard);
 
+            // Check cache with write lock (in case another task updated it)
             {
                 let mut write_guard = cached_request_ref.write().await;
                 if let Some(cached) = write_guard.as_ref() {
                     let cached_key = *self.cached_request_key.lock().unwrap();
                     if cached_key == Some(key) {
-                        let req_ref = unsafe { &*(cached as *const CompletionRequest) };
-                        let _read_guard = write_guard.downgrade();
+                        // Clone the cached request to avoid lifetime issues
+                        let cached_clone = cached.clone();
+                        drop(write_guard);
 
-                        let mut stream = inner.complete_stream(req_ref);
+                        let mut stream = inner.complete_stream(&cached_clone);
                         while let Some(event) = stream.next().await {
                             yield event?;
                         }
@@ -366,14 +443,14 @@ impl LlmClient for CompressingClient {
                     }
                 }
 
+                // Cache miss - compress and store
                 let compressed = self.compress_request(req);
+                let compressed_clone = compressed.clone();
                 *write_guard = Some(compressed);
                 *self.cached_request_key.lock().unwrap() = Some(key);
+                drop(write_guard);
 
-                let req_ref = unsafe { &*(write_guard.as_ref().unwrap() as *const CompletionRequest) };
-                let _read_guard = write_guard.downgrade();
-
-                let mut stream = inner.complete_stream(req_ref);
+                let mut stream = inner.complete_stream(&compressed_clone);
                 while let Some(event) = stream.next().await {
                     yield event?;
                 }
@@ -416,7 +493,7 @@ pub fn extract_ccr_handle(content: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::llm::{Message, Usage};
+    use crate::llm::Message;
     use sruja_compress::InMemoryCcrStore;
 
     // --- Mock LlmClient that captures the last request ---
@@ -637,16 +714,15 @@ mod tests {
 
         client.complete(&req).await.unwrap();
 
-        let captured = inner.last_messages.lock().unwrap();
-        let tool_msg = captured
-            .iter()
-            .find(|m| m.tool_call_id.as_deref() == Some("tc1"))
-            .unwrap();
-
-        assert!(tool_msg.content.starts_with(CCR_PREFIX));
-
-        let handle_str = extract_ccr_handle(&tool_msg.content).unwrap();
-        let handle = CcrHandle(handle_str.to_string());
+        let handle_str = {
+            let captured = inner.last_messages.lock().unwrap();
+            let tool_msg = captured
+                .iter()
+                .find(|m| m.tool_call_id.as_deref() == Some("tc1"))
+                .unwrap();
+            assert!(tool_msg.content.starts_with(CCR_PREFIX));
+            extract_ccr_handle(&tool_msg.content).unwrap().to_string()
+        };
 
         let restore_tool = CompressRestoreTool::new(ccr.clone());
         let restored = restore_tool
