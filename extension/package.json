@@ -469,7 +469,7 @@
     "@vscode/vsce": "^3.3.2",
     "glob": "^13.0.6",
     "jest": "^30.3.0",
-    "ts-jest": "^29.4.9",
+    "ts-jest": "^29.4.12",
     "typescript": "~6.0.0"
   },
   "overrides": {
