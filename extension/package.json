@@ -463,7 +463,7 @@
   "devDependencies": {
     "@types/glob": "^9.0.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "@types/vscode": "^1.125.0",
     "@vscode/test-electron": "^3.0.0",
     "@vscode/vsce": "^3.3.2",
