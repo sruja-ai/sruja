@@ -214,9 +214,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.91"
+version = "0.1.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae36dc4177970ef04fde5178d3e2429882def40e57a451f919c098f72baa6cec"
+checksum = "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -250,7 +250,7 @@ dependencies = [
  "num-traits",
  "pastey 0.1.1",
  "rayon",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "v_frame",
  "y4m",
 ]
@@ -289,6 +289,12 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
+name = "base64"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "base64ct"
@@ -349,9 +355,9 @@ dependencies = [
 
 [[package]]
 name = "blake3"
-version = "1.8.5"
+version = "1.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa83c34e62843d924f905e0f5c866eb1dd6545fc4d719e803d9ba6030371fce"
+checksum = "76ae7bad254120e9e4c63bafc385310756f90c484eac0e36b8317cf09cb92a77"
 dependencies = [
  "arrayref",
  "arrayvec",
@@ -483,9 +489,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.6.2"
+version = "4.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd059f9da4f5c36b3787f65d38ccaab1cc315f07b01f89abc8359ee6a8205011"
+checksum = "473c7e07f409a8d772161724aa8db6a765a2532a70f9667eeb7b49d3d02fbdca"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -493,9 +499,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.6.2"
+version = "4.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f09628afdcc538b57f3c6341e9c8e9970f18e4a481690a64974d7023bd33548b"
+checksum = "7b48fea5a88e9ae728a2dcbedbfc0e730f7d60da42e1cb049a83c9fb8b789889"
 dependencies = [
  "anstream",
  "anstyle",
@@ -505,23 +511,23 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.6.7"
+version = "4.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db8b397918185f0161ff3d6fcaa9e4bfc09b8367caf6e1d4a2848e5477ed027b"
+checksum = "3be2ad0423bdbbb0e25bc89add796f3559706d4a95e1bc98e4d9662a957b6a19"
 dependencies = [
  "clap",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "4.6.1"
+version = "4.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2ce8604710f6733aa641a2b3731eaa1e8b3d9973d5e3565da11800813f997a9"
+checksum = "d012d2b9d65aca7f18f4d9878a045bc17899bba951561ba5ec3c2ba1eed9a061"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.118",
+ "syn 3.0.2",
 ]
 
 [[package]]
@@ -902,7 +908,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10d60334b3b2e7c9d91ef8150abfb6fa4c1c39ebbcf4a81c2e346aad939fee3e"
 dependencies = [
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -1594,7 +1600,7 @@ dependencies = [
  "reqwest 0.12.28",
  "serde",
  "serde_json",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "ureq",
  "windows-sys 0.61.2",
 ]
@@ -1882,9 +1888,9 @@ dependencies = [
 
 [[package]]
 name = "ignore"
-version = "0.4.30"
+version = "0.4.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b009b6744c1445efd7244084e25e498636412effb6760b55067553baa925cc7"
+checksum = "0b17771570a2b94107741a7b033f19132c2eee21d59d21b24d2ced26500bd66e"
 dependencies = [
  "crossbeam-deque",
  "globset",
@@ -2110,9 +2116,9 @@ checksum = "7a79a3332a6609480d7d0c9eab957bca6b455b91bb84e66d19f5ff66294b85b8"
 
 [[package]]
 name = "libc"
-version = "0.2.186"
+version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "libfuzzer-sys"
@@ -2365,7 +2371,7 @@ dependencies = [
  "mach2",
  "nix 0.30.1",
  "sysctl",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "widestring",
  "windows 0.48.0",
 ]
@@ -3111,7 +3117,7 @@ dependencies = [
  "rustc-hash",
  "rustls",
  "socket2",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tokio",
  "tracing",
  "web-time",
@@ -3133,7 +3139,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "slab",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tinyvec",
  "tracing",
  "web-time",
@@ -3268,7 +3274,7 @@ dependencies = [
  "rand 0.9.4",
  "rand_chacha",
  "simd_helpers",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "v_frame",
  "wasm-bindgen",
 ]
@@ -3357,7 +3363,7 @@ checksum = "a4e608c6638b9c18977b00b475ac1f28d14e84b27d8d42f70e0bf1e3dec127ac"
 dependencies = [
  "getrandom 0.2.17",
  "libredox",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -3530,7 +3536,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sse-stream",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -3967,7 +3973,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-agent"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -3981,7 +3987,7 @@ dependencies = [
  "sruja-compress",
  "sruja-graph",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tokio",
  "toml",
  "tracing",
@@ -3989,18 +3995,18 @@ dependencies = [
 
 [[package]]
 name = "sruja-cache"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "serde",
  "serde_json",
  "sruja-scan",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "sruja-cli"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "assert_cmd",
  "async-trait",
@@ -4040,7 +4046,7 @@ dependencies = [
  "sruja-memory",
  "sruja-scan",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tokio",
  "toml",
  "tracing",
@@ -4051,7 +4057,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-compress"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "lru",
  "ndarray 0.16.1",
@@ -4060,14 +4066,14 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tokenizers 0.21.4",
  "tracing",
 ]
 
 [[package]]
 name = "sruja-diagnostics"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4075,7 +4081,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-diff"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "chrono",
  "git2",
@@ -4085,17 +4091,17 @@ dependencies = [
  "sruja-intent",
  "sruja-language",
  "sruja-scan",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "sruja-engine"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "serde",
  "sruja-diagnostics",
  "sruja-language",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tokio",
  "tokio-test",
  "tracing",
@@ -4103,7 +4109,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-export"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "chrono",
  "fastembed",
@@ -4115,12 +4121,12 @@ dependencies = [
  "sruja-graph",
  "sruja-language",
  "sruja-scan",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "sruja-extract"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "ignore",
  "log",
@@ -4128,12 +4134,12 @@ dependencies = [
  "serde_json",
  "sruja-language",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "sruja-graph"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "chrono",
  "proptest",
@@ -4143,14 +4149,14 @@ dependencies = [
  "sruja-language",
  "sruja-scan",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tokio-test",
  "uuid",
 ]
 
 [[package]]
 name = "sruja-graph-core"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "hashbrown 0.17.1",
  "serde",
@@ -4159,7 +4165,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-intent"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "chrono",
  "colored",
@@ -4172,23 +4178,23 @@ dependencies = [
  "sruja-language",
  "sruja-scan",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "walkdir",
 ]
 
 [[package]]
 name = "sruja-language"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "nom 8.0.0",
  "serde",
  "sruja-diagnostics",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "sruja-memory"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "chrono",
  "rusqlite",
@@ -4197,12 +4203,12 @@ dependencies = [
  "serde_yaml",
  "sruja-agent",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "sruja-scan"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "blake3",
  "ignore",
@@ -4218,7 +4224,7 @@ dependencies = [
  "sruja-graph-core",
  "sruja-language",
  "tempfile",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "tracing",
  "tree-sitter",
  "tree-sitter-c",
@@ -4238,7 +4244,7 @@ dependencies = [
 
 [[package]]
 name = "sruja-wasm"
-version = "0.68.0"
+version = "0.70.0"
 dependencies = [
  "console_error_panic_hook",
  "getrandom 0.4.3",
@@ -4404,11 +4410,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.19"
+version = "2.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09a43598840e33d5b0331f38c5e30d13bb11c11210a4b58f0d9b18a5a5eefcd9"
+checksum = "ec86235f5fcc2a73650310756d2ac5b138a5780bbbdfae3eeccec992c435ba4f"
 dependencies = [
- "thiserror-impl 2.0.19",
+ "thiserror-impl 2.0.20",
 ]
 
 [[package]]
@@ -4424,9 +4430,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.19"
+version = "2.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43cbfe0cf76104d42a574802844187e84a305e531ed54455f11fbde0f10541cd"
+checksum = "bc04cd3e1236dd4a98afca4569f2deb3f120e5422a4023be2cb683f8486292af"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4539,7 +4545,7 @@ dependencies = [
  "serde",
  "serde_json",
  "spm_precompiled",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "unicode-normalization-alignments",
  "unicode-segmentation",
  "unicode_categories",
@@ -4572,7 +4578,7 @@ dependencies = [
  "serde",
  "serde_json",
  "spm_precompiled",
- "thiserror 2.0.19",
+ "thiserror 2.0.20",
  "unicode-normalization-alignments",
  "unicode-segmentation",
  "unicode_categories",
@@ -4580,9 +4586,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.53.0"
+version = "1.53.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d988bcd52dbe076d3d46903332f58c912b87a2c49b1428419a5845154762ffee"
+checksum = "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed"
 dependencies = [
  "bytes",
  "libc",
@@ -4663,9 +4669,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "1.1.3+spec-1.1.0"
+version = "1.1.4+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53c96ecdfa941c8fc4fcaed14f99ada8ebed502eef533015095a07e3301d4c3c"
+checksum = "3aace63f4bbcdfc2c965b059de67119c89c4017a70d633be6c104910f67056f5"
 dependencies = [
  "indexmap",
  "serde_core",
@@ -4687,9 +4693,9 @@ dependencies = [
 
 [[package]]
 name = "toml_parser"
-version = "1.1.2+spec-1.1.0"
+version = "1.1.3+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2abe9b86193656635d2411dc43050282ca48aa31c2451210f4202550afb7526"
+checksum = "1d38ac1cf9b95face32296c0a3ede1fdc270627c9d9c02a7274dd6d960dc4d56"
 dependencies = [
  "winnow",
 ]
@@ -4808,9 +4814,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.26.11"
+version = "0.26.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af1c71c1c4cc0920b20d6b0f6572e7682cd07a6a2faec71067a31fa394c586df"
+checksum = "83c567a8e18ae93f20982c90370b16fd24023aeaf52f6052b96957ab253a0fec"
 dependencies = [
  "cc",
  "regex",
@@ -4938,9 +4944,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-scala"
-version = "0.26.0"
+version = "0.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de5a4a7ff23a55474ce6a741d52aaeca7a82fe9421bb982b86e98c6ac8629397"
+checksum = "24e0ab4505990bfe30051761d40a7bf4033ce5a81c9eda9e20e987a5cdc84826"
 dependencies = [
  "cc",
  "tree-sitter-language",
@@ -5027,11 +5033,11 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "ureq"
-version = "3.3.0"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dea7109cdcd5864d4eeb1b58a1648dc9bf520360d7af16ec26d0a9354bafcfc0"
+checksum = "972d7902c8735f2695410b8aed7df6ed12a47394aa1c8d7af49f0497b731a94d"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "cookie_store",
  "der",
  "flate2",
@@ -5051,11 +5057,11 @@ dependencies = [
 
 [[package]]
 name = "ureq-proto"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e994ba84b0bd1b1b0cf92878b7ef898a5c1760108fe7b6010327e274917a808c"
+checksum = "da5f78b09e6941e1a0f2e30e695e4b120377b54d5e0aec11b594bb57b3971613"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "http",
  "httparse",
  "log",
